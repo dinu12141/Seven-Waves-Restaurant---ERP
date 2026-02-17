@@ -1,2 +1,43 @@
-# Seven-Waves-Restaurant---ERP
-Seven Waves ERP is a comprehensive, cloud-based business management solution designed to streamline operations. From inventory and finance to HR and CRM, it provides real-time insights and automated workflows to help businesses scale efficiently. Built for performance, reliability, and seamless integration.
+# Seven Waves | Restaurant Management (restaurant-erp)
+
+Seven Waves Restaurant Management
+
+## Install the dependencies
+
+```bash
+yarn
+# or
+npm install
+```
+
+### Start the app in development mode (hot-code reloading, error reporting, etc.)
+
+```bash
+quasar dev
+```
+
+### Lint the files
+
+```bash
+yarn lint
+# or
+npm run lint
+```
+
+### Format the files
+
+```bash
+yarn format
+# or
+npm run format
+```
+
+### Build the app for production
+
+```bash
+quasar build
+```
+
+### Customize the configuration
+
+See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
