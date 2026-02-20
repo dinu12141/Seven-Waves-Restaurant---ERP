@@ -53,7 +53,7 @@ const refunds = ref([
     date: '2023-10-25 04:00 PM',
     originalInvoice: 'INV-1004',
     reason: 'Customer cancelled order before preparation',
-    amount: '$15.00',
+    amount: 'LKR 1,500.00',
     status: 'Completed',
   },
   {
@@ -62,7 +62,7 @@ const refunds = ref([
     date: '2023-10-24 08:00 PM',
     originalInvoice: 'INV-0998',
     reason: 'Wrong item served',
-    amount: '$12.50',
+    amount: 'LKR 1,250.00',
     status: 'Processing',
   },
 ])

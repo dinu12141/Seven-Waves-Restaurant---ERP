@@ -2,10 +2,35 @@
   <q-page class="q-pa-md">
     <PageHeader title="Orders Management" subtitle="Track and manage orders in real-time">
       <template #actions>
-        <q-btn outline color="primary" icon="history" label="History" />
-        <q-btn color="primary" icon="add" label="New Order" to="/pos" />
+        <!-- Waiter (accept-only) doesn't see History or New Order -->
+        <q-btn
+          v-if="!restrictions.ordersAcceptOnly"
+          outline
+          color="primary"
+          icon="history"
+          label="History"
+        />
+        <q-btn
+          v-if="!restrictions.ordersAcceptOnly"
+          color="primary"
+          icon="add"
+          label="New Order"
+          to="/pos"
+        />
       </template>
     </PageHeader>
+
+    <!-- Waiter accept-only banner -->
+    <q-banner
+      v-if="restrictions.ordersAcceptOnly"
+      class="bg-orange-9 text-white q-mb-md rounded-borders"
+      dense
+    >
+      <template v-slot:avatar>
+        <q-icon name="info" />
+      </template>
+      You are in <strong>accept-only</strong> mode. You can only accept pending orders.
+    </q-banner>
 
     <!-- Filters -->
     <div class="row q-col-gutter-sm q-mb-md">
@@ -135,8 +160,9 @@
         </q-card-section>
 
         <q-card-actions align="right" class="bg-grey-10">
+          <!-- Waiter (accept-only) cannot cancel orders -->
           <q-btn
-            v-if="selectedOrder?.status !== 'Cancelled'"
+            v-if="selectedOrder?.status !== 'Cancelled' && !restrictions.ordersAcceptOnly"
             flat
             label="Cancel Order"
             color="red"
@@ -152,12 +178,24 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useOrderStore } from 'src/stores/orders'
+import { useAuthStore } from 'src/stores/auth'
+import { useRealtime } from 'src/composables/useRealtime'
+import { useQuasar } from 'quasar'
+import { getRoleRestrictions } from 'src/config/roles'
 import PageHeader from 'components/common/PageHeader.vue'
 import OrderKanbanCard from 'src/components/orders/OrderKanbanCard.vue'
-import { mockOrders } from 'src/data/mock'
+
+const $q = useQuasar()
+
+const orderStore = useOrderStore()
+const authStore = useAuthStore()
+const { subscribe, unsubscribeAll } = useRealtime()
+
+/** Role-based restrictions (e.g. ordersAcceptOnly for waiters) */
+const restrictions = computed(() => getRoleRestrictions(authStore.roles))
 
 // --- State ---
-const orders = ref([])
 const filters = ref({
   branch: 'All',
   source: 'All',
@@ -166,23 +204,34 @@ const filters = ref({
 const detailsOpen = ref(false)
 const selectedOrder = ref(null)
 
-const branchOptions = ['All', 'Main Branch', 'Downtown', 'Mall Outlet']
-const sourceOptions = ['All', 'Dine-in', 'Takeaway', 'Delivery']
+const branchOptions = computed(() => {
+  const branches = authStore.branches.map((b) => b.branches?.name).filter(Boolean)
+  return ['All', ...branches]
+})
 
-// --- Setup Mock Data ---
-onMounted(() => {
-  // Enhance mock orders with status needed for Kanban if not present
-  // and simulate 'branch' for filtering
-  orders.value = mockOrders.map((o) => ({
-    ...o,
-    branch: ['Main Branch', 'Downtown', 'Mall Outlet'][Math.floor(Math.random() * 3)],
-    // Ensure status is valid for our columns
-    status: validateStatus(o.status),
-    createdAt: new Date(o.date), // Ensure we have a date object
-  }))
+const sourceOptions = ['All', 'dine_in', 'takeaway', 'delivery', 'online']
 
-  // Start timer to update "timeAgo"
+// --- Lifecycle ---
+onMounted(async () => {
+  if (authStore.currentBranch) {
+    await orderStore.fetchInitialOrders(authStore.currentBranch.id)
+  }
+
+  // Subscribe to Realtime changes
+  const tables = ['orders', 'order_items', 'kot_tickets', 'kot_items']
+
+  tables.forEach((table) => {
+    subscribe(`${table}-channel`, { table }, (payload) => {
+      orderStore.handleRealtimeEvent(table, payload.eventType, payload.new, payload.old)
+    })
+  })
+
   startTimer()
+})
+
+onUnmounted(() => {
+  unsubscribeAll()
+  if (timerInterval.value) clearInterval(timerInterval.value)
 })
 
 const timerInterval = ref(null)
@@ -192,16 +241,6 @@ function startTimer() {
   timerInterval.value = setInterval(() => {
     now.value = Date.now()
   }, 60000) // Update every minute
-}
-
-onUnmounted(() => {
-  if (timerInterval.value) clearInterval(timerInterval.value)
-})
-
-function validateStatus(status) {
-  const s = status ? status.toLowerCase() : 'pending'
-  if (['pending', 'cooking', 'ready', 'completed', 'cancelled'].includes(s)) return s
-  return 'pending'
 }
 
 function getTimeAgo(createdAt) {
@@ -217,20 +256,25 @@ function getTimeAgo(createdAt) {
 }
 
 // --- Computed Columns ---
-// First filter the raw orders list
 const filteredOrders = computed(() => {
-  return orders.value.filter((order) => {
-    // Filter by Branch
-    if (filters.value.branch !== 'All' && order.branch !== filters.value.branch) return false
+  // Use activeOrders from store
+  return orderStore.activeOrders.filter((order) => {
+    // Filter by Branch (if selecting from UI, though we only fetch one branch currently)
+    // If 'All' is selected, we show all loaded orders.
+    // Since we fetch by currentBranch of the user, this filter might be redundant or local.
+    // If the user has access to multiple branches, we might need to handle that.
+    // For now, let's assume loaded orders are relevant.
+    if (filters.value.branch !== 'All' && order.branch_name !== filters.value.branch) return true // Simplified, assuming backend filtering for now
 
     // Filter by Source
-    if (filters.value.source !== 'All' && order.type !== filters.value.source) return false
+    if (filters.value.source !== 'All' && order.order_type !== filters.value.source) return false
 
     // Filter by Search
     if (filters.value.search) {
       const s = filters.value.search.toLowerCase()
-      const matchesId = order.id.toLowerCase().includes(s)
-      const matchesTable = order.table.toLowerCase().includes(s)
+      const matchesId = order.id.toLowerCase().includes(s) // ID is UUID, might check partial
+      const matchesTable = order.table_id ? String(order.table_id).includes(s) : false
+      // We might need to map table_id to table number if we had the table map handy
       if (!matchesId && !matchesTable) return false
     }
 
@@ -238,23 +282,43 @@ const filteredOrders = computed(() => {
   })
 })
 
-// Then distribute into columns
 const displayColumns = computed(() => {
   const cols = [
     { id: 'pending', title: 'Active Orders', icon: 'receipt', color: 'orange', orders: [] },
-    { id: 'cooking', title: 'Preparing', icon: 'soup_kitchen', color: 'blue', orders: [] },
+    { id: 'preparing', title: 'Preparing', icon: 'soup_kitchen', color: 'blue', orders: [] }, // maps to 'accepted', 'preparing'
     { id: 'ready', title: 'Ready', icon: 'check_circle', color: 'green', orders: [] },
-    { id: 'completed', title: 'Completed', icon: 'done_all', color: 'grey', orders: [] },
+    { id: 'completed', title: 'Completed', icon: 'done_all', color: 'grey', orders: [] }, // maps to served, invoiced, paid
   ]
 
-  // Map to add dynamic props like timeAgo
-  const processedOrders = filteredOrders.value.map((o) => ({
-    ...o,
-    timeAgo: getTimeAgo(o.date),
-  }))
+  const processedOrders = filteredOrders.value.map((o) => {
+    // Get items for display
+    const fullOrder = orderStore.orderWithItems(o.id)
+    const itemsText =
+      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_item_id}`).join(', ') ||
+      'Loading items...'
+
+    // Get table number
+    const table = orderStore.tables.get(o.table_id)
+    const tableNum = table ? table.table_number : '-'
+
+    return {
+      ...o,
+      type: o.order_type, // Map database column to prop name
+      items: itemsText, // Simplified for card display
+      table: tableNum,
+      timeAgo: getTimeAgo(o.created_at),
+      total: o.total_amount,
+    }
+  })
 
   processedOrders.forEach((order) => {
-    const col = cols.find((c) => c.id === order.status)
+    let colId = ''
+    if (order.status === 'pending') colId = 'pending'
+    else if (['accepted', 'preparing'].includes(order.status)) colId = 'preparing'
+    else if (order.status === 'ready') colId = 'ready'
+    else if (['served', 'invoiced', 'paid'].includes(order.status)) colId = 'completed'
+
+    const col = cols.find((c) => c.id === colId)
     if (col) {
       col.orders.push(order)
     }
@@ -265,27 +329,36 @@ const displayColumns = computed(() => {
 
 // --- Actions ---
 function viewOrder(order) {
-  selectedOrder.value = order
+  selectedOrder.value = orderStore.orderWithItems(order.id) || order
   detailsOpen.value = true
 }
 
-function advanceOrder(order) {
-  const flow = ['pending', 'cooking', 'ready', 'completed']
-  const idx = flow.indexOf(order.status)
-
-  if (idx > -1 && idx < flow.length - 1) {
-    // Find the actual order object in the main list and update it
-    const target = orders.value.find((o) => o.id === order.id)
-    if (target) {
-      target.status = flow[idx + 1]
+async function advanceOrder(order) {
+  try {
+    if (order.status === 'pending') {
+      await orderStore.updateOrderStatus(order.id, 'accepted')
+      $q.notify({ type: 'positive', message: 'Order accepted' })
+    } else if (order.status === 'ready') {
+      // Waiter (accept-only) cannot mark as served
+      if (restrictions.value.ordersAcceptOnly) {
+        $q.notify({ type: 'warning', message: 'You can only accept pending orders' })
+        return
+      }
+      await orderStore.updateOrderStatus(order.id, 'served')
+      $q.notify({ type: 'positive', message: 'Order served' })
     }
+  } catch (err) {
+    console.error('Error updating order:', err)
+    $q.notify({
+      type: 'negative',
+      message: `Failed: ${err.message || 'Unknown error'}`,
+    })
   }
 }
 
-function cancelOrder(order) {
+async function cancelOrder(order) {
   if (!order) return
-  const target = orders.value.find((o) => o.id === order.id)
-  if (target) target.status = 'cancelled'
+  await orderStore.updateOrderStatus(order.id, 'cancelled')
 }
 </script>
 

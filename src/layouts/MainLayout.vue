@@ -39,6 +39,20 @@
           {{ authStore.currentBranch.name }}
         </q-chip>
 
+        <!-- Role indicator -->
+        <q-chip
+          v-for="role in authStore.roles"
+          :key="role"
+          dense
+          :color="roleChipColor(role)"
+          text-color="white"
+          class="q-mr-xs"
+          size="sm"
+        >
+          <q-icon :name="roleIcon(role)" size="14px" class="q-mr-xs" />
+          {{ role }}
+        </q-chip>
+
         <!-- Notification Bell -->
         <NotificationPanel />
 
@@ -105,25 +119,68 @@
     >
       <q-scroll-area class="fit">
         <q-list padding class="menu-list">
-          <q-item-label header class="text-grey-4 text-weight-medium"> NAVIGATION </q-item-label>
+          <template v-for="(item, index) in filteredMenuItems" :key="item.label">
+            <!-- Section header when changing sections -->
+            <q-item-label
+              v-if="
+                item.section &&
+                (index === 0 || item.section !== filteredMenuItems[index - 1]?.section)
+              "
+              header
+              class="text-grey-4 text-weight-medium"
+            >
+              {{ item.section }}
+            </q-item-label>
+            <q-item-label v-else-if="index === 0" header class="text-grey-4 text-weight-medium">
+              NAVIGATION
+            </q-item-label>
 
-          <q-item
-            v-for="item in filteredMenuItems"
-            :key="item.to"
-            clickable
-            v-ripple
-            :to="item.to"
-            exact
-            active-class="bg-primary text-white"
-            class="menu-item"
-          >
-            <q-item-section avatar>
-              <q-icon :name="item.icon" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ item.label }}</q-item-label>
-            </q-item-section>
-          </q-item>
+            <!-- Single Page Item -->
+            <q-item
+              v-if="!item.children"
+              clickable
+              v-ripple
+              :to="item.to"
+              exact
+              active-class="bg-primary text-white"
+              class="menu-item"
+            >
+              <q-item-section avatar>
+                <q-icon :name="item.icon" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ item.label }}</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <!-- Collapsible Item (Management, Procurement, etc.) -->
+            <q-expansion-item
+              v-else
+              :icon="item.icon"
+              :label="item.label"
+              header-class="menu-item text-white"
+              expand-icon-class="text-white"
+              class="overflow-hidden"
+            >
+              <q-item
+                v-for="child in item.children"
+                :key="child.to"
+                clickable
+                v-ripple
+                :to="child.to"
+                exact
+                active-class="bg-primary text-white"
+                class="menu-item q-ml-sm"
+              >
+                <q-item-section avatar>
+                  <q-icon :name="child.icon" size="20px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ child.label }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-expansion-item>
+          </template>
         </q-list>
       </q-scroll-area>
     </q-drawer>
@@ -139,79 +196,94 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
+import { getFilteredNavItems } from 'src/config/roles'
+import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 
 const leftDrawerOpen = ref(true)
 const searchQuery = ref('')
 const router = useRouter()
 const authStore = useAuthStore()
+const modulesStore = useModulesStore()
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-async function logout() {
-  await authStore.signOut()
+function logout() {
+  // Navigate FIRST — instant redirect
   router.push('/auth/login')
+  // Sign out in background — don't block the UI
+  authStore.signOut()
 }
 
-const menuItems = [
-  {
-    label: 'Dashboard',
-    icon: 'dashboard',
-    to: '/dashboard',
-    roles: ['admin', 'manager'],
-  },
-  {
-    label: 'POS',
-    icon: 'point_of_sale',
-    to: '/pos',
-    roles: ['admin', 'manager', 'cashier', 'waiter'],
-  },
-  {
-    label: 'Kitchen',
-    icon: 'kitchen',
-    to: '/kitchen',
-    roles: ['admin', 'manager', 'kitchen'],
-  },
-  {
-    label: 'Orders',
-    icon: 'receipt_long',
-    to: '/orders',
-    roles: ['admin', 'manager', 'waiter', 'cashier'],
-  },
-  {
-    label: 'Inventory',
-    icon: 'inventory_2',
-    to: '/inventory',
-    roles: ['admin', 'manager', 'inventory'],
-  },
-  {
-    label: 'Finance',
-    icon: 'account_balance',
-    to: '/finance',
-    roles: ['admin', 'manager', 'finance'],
-  },
-  {
-    label: 'Admin',
-    icon: 'admin_panel_settings',
-    to: '/admin',
-    roles: ['admin'],
-  },
-]
-
+/**
+ * Dynamically filter navigation items based on user roles AND enabled modules.
+ * Uses the centralized config from src/config/roles.ts
+ */
 const filteredMenuItems = computed(() => {
-  const userRoles = authStore.roles || []
+  const roleFiltered = getFilteredNavItems(authStore.roles || [])
 
-  // If user is admin, show everything
-  if (userRoles.includes('admin')) return menuItems
+  // Additionally filter out items whose module is disabled (recursively)
+  function recursiveModuleFilter(items) {
+    return items
+      .filter((item) => {
+        if (!item.moduleCode) return true
+        return modulesStore.isModuleEnabled(item.moduleCode)
+      })
+      .map((item) => {
+        if (item.children) {
+          return {
+            ...item,
+            children: recursiveModuleFilter(item.children),
+          }
+        }
+        return item
+      })
+      .filter((item) => {
+        // Hide parent if it has no children and no 'to' link
+        if (item.children && item.children.length === 0 && !item.to) {
+          return false
+        }
+        return true
+      })
+  }
 
-  // Filter based on roles
-  return menuItems.filter((item) => {
-    if (!item.roles || item.roles.length === 0) return true
-    return item.roles.some((role) => userRoles.includes(role))
-  })
+  return recursiveModuleFilter(roleFiltered)
 })
+
+/**
+ * Role badge colors for the header
+ */
+function roleChipColor(role) {
+  const colors = {
+    admin: 'red-8',
+    manager: 'deep-purple-8',
+    waiter: 'teal-8',
+    cashier: 'blue-8',
+    kitchen: 'orange-8',
+    inventory: 'green-8',
+    finance: 'amber-9',
+    hr: 'pink-8',
+    procurement: 'deep-orange-8',
+  }
+  return colors[role] || 'grey-7'
+}
+
+function roleIcon(role) {
+  const icons = {
+    admin: 'shield',
+    manager: 'supervisor_account',
+    waiter: 'room_service',
+    cashier: 'point_of_sale',
+    kitchen: 'soup_kitchen',
+    inventory: 'inventory_2',
+    finance: 'account_balance',
+    hr: 'people',
+    procurement: 'local_shipping',
+  }
+  return icons[role] || 'person'
+}
 </script>
 
 <style scoped lang="scss">

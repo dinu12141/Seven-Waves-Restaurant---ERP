@@ -77,5 +77,12 @@ BEGIN
     ON CONFLICT (user_id, branch_id) DO UPDATE
     SET is_home_branch = EXCLUDED.is_home_branch;
 
+    -- 8. Ensure Main Store Exists (Required for Inventory Logic)
+    -- We check by branch_id and type to avoid duplicates
+    IF NOT EXISTS (SELECT 1 FROM stores WHERE branch_id = v_branch_id AND type = 'main') THEN
+        INSERT INTO stores (branch_id, name, type)
+        VALUES (v_branch_id, 'Main Store', 'main');
+    END IF;
+
     RAISE NOTICE 'Admin user setup completed for: %', v_admin_user_id;
 END $$;

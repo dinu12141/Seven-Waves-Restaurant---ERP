@@ -1,89 +1,102 @@
 <template>
-  <q-card class="kitchen-ticket-card" :class="cardClass" flat bordered>
-    <!-- Card Header with Order Number and Timer -->
-    <q-card-section class="ticket-header" :class="headerClass">
-      <div class="row items-center justify-between no-wrap">
-        <div class="order-number">#{{ order.orderId }}</div>
-        <div class="timer-display row items-center">
-          <q-icon name="schedule" size="32px" class="q-mr-xs" />
-          <span class="timer-text">{{ order.timeElapsed }}</span>
+  <q-card class="kds-card" flat>
+    <div class="card-strip" :class="stripColorClass"></div>
+
+    <div class="q-pa-md card-content column justify-between full-height">
+      <!-- Header -->
+      <div>
+        <div class="row items-center justify-between no-wrap q-mb-sm">
+          <div class="row items-center">
+            <span class="text-h5 text-weight-bolder font-mono q-mr-sm">#{{ displayOrderId }}</span>
+            <q-badge
+              v-if="order.type"
+              :color="typeColor"
+              text-color="white"
+              class="type-badge shadow-1"
+            >
+              {{ order.type }}
+            </q-badge>
+          </div>
+
+          <div class="timer-box" :class="{ 'timer-late': isLate }">
+            <q-icon name="schedule" size="18px" class="q-mr-xs" />
+            <span class="text-weight-bold font-mono text-subtitle1">{{ order.timeElapsed }}</span>
+          </div>
         </div>
-      </div>
-      <div class="row items-center q-mt-sm">
-        <q-badge :color="tableColor" class="table-badge" text-color="white">
-          {{ order.table !== '-' ? `Table ${order.table}` : 'Takeaway' }}
-        </q-badge>
-        <q-chip
-          v-if="order.type"
-          dense
-          :color="typeColor"
-          text-color="white"
-          class="q-ml-sm"
-          icon="restaurant"
-        >
-          {{ order.type }}
-        </q-chip>
-      </div>
-    </q-card-section>
 
-    <q-separator :color="separatorColor" />
+        <!-- Meta Info -->
+        <div class="row items-center text-grey-5 q-mb-md text-caption">
+          <q-icon name="table_restaurant" size="16px" class="q-mr-xs" />
+          <span class="text-weight-medium text-body2">{{
+            order.table !== '-' ? `Table ${order.table}` : 'Fast Food / Takeaway'
+          }}</span>
+          <div class="q-mx-sm text-grey-8">|</div>
+          <span class="text-grey-5 text-body2">{{ itemCount }} Items</span>
+        </div>
 
-    <!-- Items List -->
-    <q-card-section class="ticket-items">
-      <div class="items-title q-mb-md">ORDER ITEMS</div>
-      <div v-for="(item, idx) in order.items" :key="idx" class="item-row">
-        <div class="item-qty">{{ item.qty }}x</div>
-        <div class="item-details">
-          <div class="item-name">{{ item.name }}</div>
-          <div v-if="item.notes" class="item-notes">
-            <q-icon name="sticky_note_2" size="18px" class="q-mr-xs" />
-            {{ item.notes }}
+        <q-separator dark class="q-mb-md separator-dashed" />
+
+        <!-- Items List -->
+        <div class="items-list q-gutter-y-md">
+          <div v-for="(item, idx) in order.items" :key="idx" class="item-row">
+            <div class="row no-wrap items-start">
+              <div class="item-qty shadow-2">{{ item.qty }}</div>
+              <div class="col q-pl-md">
+                <div class="text-body1 text-weight-medium item-name text-grey-2">
+                  {{ item.name }}
+                </div>
+                <div v-if="item.notes" class="item-notes q-mt-xs">
+                  <q-icon name="sticky_note_2" size="14px" class="q-mr-xs text-amber-5" />
+                  <span class="text-amber-2 text-italic">{{ item.notes }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </q-card-section>
 
-    <q-separator :color="separatorColor" />
+      <!-- Footer: Actions -->
+      <div class="q-mt-lg action-area">
+        <q-btn
+          v-if="order.status === 'Pending'"
+          unelevated
+          rounded
+          class="full-width action-btn btn-new"
+          @click="$emit('start-cooking', order)"
+        >
+          <div class="row items-center justify-center">
+            <q-icon name="restaurant" size="20px" class="q-mr-sm" />
+            <span>START COOKING</span>
+          </div>
+        </q-btn>
 
-    <!-- Action Buttons -->
-    <q-card-actions class="ticket-actions">
-      <q-btn
-        v-if="order.status === 'Pending'"
-        unelevated
-        color="blue"
-        text-color="white"
-        size="lg"
-        class="action-btn full-width"
-        @click="$emit('start-cooking', order)"
-      >
-        <q-icon name="soup_kitchen" size="28px" class="q-mr-sm" />
-        <span class="action-btn-text">START COOKING</span>
-      </q-btn>
-      <q-btn
-        v-else-if="order.status === 'Cooking'"
-        unelevated
-        color="green"
-        text-color="white"
-        size="lg"
-        class="action-btn full-width"
-        @click="$emit('mark-ready', order)"
-      >
-        <q-icon name="check_circle" size="28px" class="q-mr-sm" />
-        <span class="action-btn-text">MARK READY</span>
-      </q-btn>
-      <q-btn
-        v-else-if="order.status === 'Ready'"
-        unelevated
-        color="grey-7"
-        text-color="white"
-        size="lg"
-        class="action-btn full-width"
-        @click="$emit('complete', order)"
-      >
-        <q-icon name="done_all" size="28px" class="q-mr-sm" />
-        <span class="action-btn-text">COMPLETE</span>
-      </q-btn>
-    </q-card-actions>
+        <q-btn
+          v-else-if="order.status === 'Cooking'"
+          unelevated
+          rounded
+          class="full-width action-btn btn-cooking"
+          @click="$emit('mark-ready', order)"
+        >
+          <div class="row items-center justify-center">
+            <q-icon name="check_circle" size="20px" class="q-mr-sm" />
+            <span>MARK READY</span>
+          </div>
+        </q-btn>
+
+        <q-btn
+          v-else-if="order.status === 'Ready'"
+          unelevated
+          rounded
+          class="full-width action-btn btn-ready"
+          @click="$emit('complete', order)"
+        >
+          <div class="row items-center justify-center">
+            <q-icon name="done_all" size="20px" class="q-mr-sm" />
+            <span>COMPLETE</span>
+          </div>
+        </q-btn>
+      </div>
+    </div>
   </q-card>
 </template>
 
@@ -91,264 +104,210 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  order: {
-    type: Object,
-    required: true,
-  },
+  order: { type: Object, required: true },
 })
 
 defineEmits(['start-cooking', 'mark-ready', 'complete'])
 
-const cardClass = computed(() => {
-  switch (props.order.status) {
-    case 'Pending':
-      return 'status-pending'
-    case 'Cooking':
-      return 'status-cooking'
-    case 'Ready':
-      return 'status-ready'
-    default:
-      return 'status-pending'
-  }
+const itemCount = computed(() => {
+  return props.order.items.reduce((acc, item) => acc + item.qty, 0)
 })
 
-const headerClass = computed(() => {
-  switch (props.order.status) {
-    case 'Pending':
-      return 'header-orange'
-    case 'Cooking':
-      return 'header-blue'
-    case 'Ready':
-      return 'header-green'
-    default:
-      return 'header-orange'
-  }
+const displayOrderId = computed(() => {
+  return props.order.orderId ? props.order.orderId.replace(/[^\d]/g, '') : '??'
 })
 
-const separatorColor = computed(() => {
-  switch (props.order.status) {
-    case 'Pending':
-      return 'orange-6'
-    case 'Cooking':
-      return 'blue-6'
-    case 'Ready':
-      return 'green-6'
-    default:
-      return 'grey-6'
-  }
+// Late logic: e.g., > 20 mins
+const isLate = computed(() => {
+  if (!props.order.timeElapsed) return false
+  const parts = props.order.timeElapsed.split(':')
+  if (parts.length !== 2) return false
+  const mm = parseInt(parts[0], 10)
+  // const ss = parseInt(parts[1], 10) // unused
+  return mm >= 20
 })
 
-const tableColor = computed(() => {
-  return props.order.table !== '-' ? 'primary' : 'orange-8'
+const stripColorClass = computed(() => {
+  switch (props.order.status) {
+    case 'Pending':
+      return 'bg-orange-5'
+    case 'Cooking':
+      return 'bg-blue-5'
+    case 'Ready':
+      return 'bg-green-5'
+    default:
+      return 'bg-grey-6'
+  }
 })
 
 const typeColor = computed(() => {
-  switch (props.order.type?.toLowerCase()) {
-    case 'dine-in':
-      return 'teal-7'
-    case 'takeaway':
-      return 'orange-7'
-    case 'delivery':
-      return 'purple-7'
-    default:
-      return 'grey-7'
-  }
+  const t = props.order.type?.toLowerCase() || ''
+  if (t.includes('dine')) return 'purple-6'
+  if (t.includes('take')) return 'teal-6'
+  if (t.includes('deliver')) return 'deep-orange-6'
+  return 'grey-7'
 })
 </script>
 
 <style scoped>
-.kitchen-ticket-card {
+.kds-card {
   background: #1e1e1e;
-  color: white;
-  border-width: 3px;
-  transition: all 0.3s ease;
-  min-height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative; /* For strip positioning */
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
 }
 
-.kitchen-ticket-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+.kds-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.kitchen-ticket-card {
-  animation: card-flash 0.8s ease-out;
+.card-strip {
+  height: 6px;
+  width: 100%;
 }
 
-@keyframes card-flash {
+.card-content {
+  color: white;
+  min-height: 200px; /* Ensure consistent minimum height */
+}
+
+/* Typography & Utils */
+.text-weight-bolder {
+  font-weight: 900;
+}
+.font-mono {
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: -0.5px;
+}
+.separator-dashed {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  background: transparent;
+}
+
+/* Timer */
+.timer-box {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s;
+  border: 1px solid transparent;
+}
+
+.timer-late {
+  background: rgba(244, 67, 54, 0.15);
+  color: #ff5252;
+  border-color: rgba(244, 67, 54, 0.3);
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
   0% {
-    background-color: rgba(255, 255, 255, 0.8);
-    transform: scale(1.02);
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(244, 67, 54, 0);
   }
   100% {
-    background-color: #1e1e1e;
-    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
   }
 }
 
-/* Status-based card borders */
-.status-pending {
-  border-color: #ff9800;
-}
-
-.status-cooking {
-  border-color: #2196f3;
-}
-
-.status-ready {
-  border-color: #4caf50;
-}
-
-/* Header Styling */
-.ticket-header {
-  padding: 20px;
-}
-
-.header-orange {
-  background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
-}
-
-.header-blue {
-  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
-}
-
-.header-green {
-  background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
-}
-
-.order-number {
-  font-size: 2.5rem;
-  font-weight: 900;
-  letter-spacing: 1px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.timer-display {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 8px 16px;
-  border-radius: 8px;
-}
-
-.timer-text {
-  font-size: 2rem;
+/* Badges */
+.type-badge {
+  font-size: 0.7rem;
   font-weight: 700;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 2px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-.table-badge {
-  font-size: 1.1rem;
-  font-weight: 700;
-  padding: 8px 16px;
-}
-
-/* Items Section */
-.ticket-items {
-  padding: 24px;
-  flex: 1;
-  background: #2a2a2a;
-}
-
-.items-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #9e9e9e;
-  letter-spacing: 2px;
-}
-
-.item-row {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  border-left: 4px solid rgba(255, 255, 255, 0.1);
-}
-
+/* Items */
 .item-qty {
-  font-size: 2rem;
-  font-weight: 900;
-  color: #ff9800;
-  min-width: 60px;
+  background: #2a2a2a;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.item-details {
-  flex: 1;
+  font-weight: 800;
+  color: #fff;
+  font-size: 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .item-name {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #f5f5f5;
+  line-height: 1.3;
 }
 
 .item-notes {
-  font-size: 1.1rem;
-  color: #ffd54f;
-  display: flex;
-  align-items: center;
-  font-style: italic;
-  margin-top: 8px;
-  padding: 8px;
-  background: rgba(255, 213, 79, 0.1);
-  border-radius: 4px;
+  background: rgba(255, 193, 7, 0.15);
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  font-size: 0.85rem;
+  border-left: 3px solid #ffc107;
 }
 
-/* Action Buttons */
-.ticket-actions {
-  padding: 16px;
-  background: #1e1e1e;
-}
-
+/* Action Area */
 .action-btn {
-  height: 64px;
-  font-weight: 700;
-  border-radius: 8px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  height: 54px;
+  font-size: 1rem;
   transition: all 0.2s ease;
 }
 
-.action-btn:active {
-  transform: scale(0.98);
+.btn-new {
+  background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(245, 124, 0, 0.4);
+}
+.btn-new:hover {
+  box-shadow: 0 6px 20px rgba(245, 124, 0, 0.6);
 }
 
-.action-btn-text {
-  font-size: 1.3rem;
-  letter-spacing: 1px;
+.btn-cooking {
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+}
+.btn-cooking:hover {
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
 }
 
-/* Touch optimization - larger touch targets */
-@media (hover: none) and (pointer: coarse) {
-  .action-btn {
-    height: 72px;
-  }
-
-  .item-row {
-    padding: 16px;
-  }
+.btn-ready {
+  background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+}
+.btn-ready:hover {
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-  .order-number {
-    font-size: 2rem;
-  }
-
-  .timer-text {
-    font-size: 1.6rem;
-  }
-
-  .item-name {
-    font-size: 1.3rem;
-  }
-
-  .item-qty {
-    font-size: 1.6rem;
-  }
+/* Scrollbar safety */
+.items-list {
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.items-list::-webkit-scrollbar {
+  width: 4px;
+}
+.items-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 </style>

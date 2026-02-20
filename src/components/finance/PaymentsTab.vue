@@ -54,7 +54,7 @@ const payments = ref([
     date: '2023-10-25 12:35 PM',
     invoiceNumber: 'INV-1001',
     method: 'Cash',
-    amount: '$45.50',
+    amount: 'LKR 4,550.00',
     status: 'Completed',
   },
   {
@@ -63,7 +63,7 @@ const payments = ref([
     date: '2023-10-25 02:50 PM',
     invoiceNumber: 'INV-1003',
     method: 'Credit Card',
-    amount: '$85.20',
+    amount: 'LKR 8,520.00',
     status: 'Completed',
   },
   {
@@ -72,7 +72,7 @@ const payments = ref([
     date: '2023-10-24 08:20 PM',
     invoiceNumber: 'INV-1005',
     method: 'Online',
-    amount: '$65.00',
+    amount: 'LKR 6,500.00',
     status: 'Completed',
   },
   {
@@ -81,7 +81,7 @@ const payments = ref([
     date: '2023-10-24 09:00 PM',
     invoiceNumber: 'INV-1006',
     method: 'Debit Card',
-    amount: '$200.00',
+    amount: 'LKR 20,000.00',
     status: 'Failed',
   },
 ])

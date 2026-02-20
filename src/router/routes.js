@@ -36,6 +36,36 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'finance'] },
       },
       {
+        path: 'hr',
+        component: () => import('pages/HRPage.vue'),
+        meta: { roles: ['admin', 'manager', 'hr'] },
+      },
+      {
+        path: 'procurement',
+        component: () => import('pages/procurement/ProcurementLayout.vue'),
+        children: [
+          { path: '', redirect: 'suppliers' },
+          { path: 'suppliers', component: () => import('pages/procurement/SuppliersPage.vue') },
+          {
+            path: 'purchase-orders',
+            component: () => import('pages/procurement/PurchaseOrdersPage.vue'),
+          },
+          { path: 'grn', component: () => import('pages/procurement/GRNPage.vue') },
+          { path: 'ap-invoices', component: () => import('pages/procurement/APInvoicesPage.vue') },
+          { path: 'payments', component: () => import('pages/procurement/PaymentsPage.vue') },
+          { path: 'returns', component: () => import('pages/procurement/PurchaseReturnsPage.vue') },
+          {
+            path: 'reports',
+            component: () => import('pages/procurement/ProcurementReportsPage.vue'),
+          },
+          {
+            path: 'settings',
+            component: () => import('pages/procurement/ProcurementSettingsPage.vue'),
+          },
+        ],
+        meta: { roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'] },
+      },
+      {
         path: 'admin',
         component: () => import('pages/AdminPage.vue'),
         meta: { roles: ['admin'] },
@@ -68,13 +98,20 @@ const routes = [
     ],
   },
   {
+    path: '/menu',
+    component: () => import('layouts/CustomerLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/CustomerMenuPage.vue') },
+      { path: 'track', component: () => import('pages/OrderTrackingPage.vue') },
+    ],
+  },
+  {
     path: '/auth',
+
     component: () => import('layouts/AuthLayout.vue'),
     meta: { requiresAuth: false },
     children: [{ path: 'login', component: () => import('pages/auth/LoginPage.vue') }],
   },
-
-  // Always leave this as last one
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

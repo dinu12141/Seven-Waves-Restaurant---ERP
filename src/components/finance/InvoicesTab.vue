@@ -62,7 +62,7 @@ const invoices = ref([
     invoiceNumber: 'INV-1001',
     date: '2023-10-25 12:30 PM',
     customer: 'Walk-in Customer',
-    amount: '$45.50',
+    amount: 'LKR 4,550.00',
     status: 'Paid',
   },
   {
@@ -70,7 +70,7 @@ const invoices = ref([
     invoiceNumber: 'INV-1002',
     date: '2023-10-25 01:15 PM',
     customer: 'John Doe',
-    amount: '$120.00',
+    amount: 'LKR 12,000.00',
     status: 'Pending',
   },
   {
@@ -78,7 +78,7 @@ const invoices = ref([
     invoiceNumber: 'INV-1003',
     date: '2023-10-25 02:45 PM',
     customer: 'Table 5',
-    amount: '$85.20',
+    amount: 'LKR 8,500.00',
     status: 'Paid',
   },
   {
@@ -86,7 +86,7 @@ const invoices = ref([
     invoiceNumber: 'INV-1004',
     date: '2023-10-24 07:30 PM',
     customer: 'Sarah Smith',
-    amount: '$210.00',
+    amount: 'LKR 21,000.00',
     status: 'Cancelled',
   },
   {
@@ -94,7 +94,7 @@ const invoices = ref([
     invoiceNumber: 'INV-1005',
     date: '2023-10-24 08:15 PM',
     customer: 'Table 12',
-    amount: '$65.00',
+    amount: 'LKR 6,500.00',
     status: 'Paid',
   },
 ])

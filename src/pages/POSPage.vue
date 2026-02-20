@@ -60,9 +60,30 @@
 
       <!-- ── Product Grid ── -->
       <q-scroll-area class="col product-scroll q-px-md q-pt-md">
+        <!-- Loading state -->
+        <div v-if="menuLoading" class="column items-center justify-center q-pa-xl text-grey-6">
+          <q-spinner-dots color="primary" size="40px" class="q-mb-sm" />
+          <div class="text-caption">Loading menu...</div>
+        </div>
+
+        <!-- Error state -->
+        <div v-else-if="menuError" class="column items-center justify-center q-pa-xl text-grey-6">
+          <q-icon name="error_outline" size="48px" color="red-4" class="q-mb-sm" />
+          <div class="text-subtitle2 text-red-4">Failed to load menu</div>
+          <div class="text-caption q-mb-md">{{ menuError }}</div>
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            label="Retry"
+            icon="refresh"
+            @click="fetchMenuItems"
+          />
+        </div>
+
         <!-- No results -->
         <div
-          v-if="filteredProducts.length === 0"
+          v-else-if="filteredProducts.length === 0"
           class="column items-center justify-center q-pa-xl text-grey-6"
         >
           <q-icon name="search_off" size="48px" class="q-mb-sm" style="opacity: 0.3" />
@@ -145,33 +166,129 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- ════════════════════════════════════════════════════════
+         PAYMENT DIALOG
+         ════════════════════════════════════════════════════════ -->
+    <PaymentDialog
+      v-model="paymentDialog"
+      :total-amount="store.total"
+      :item-count="store.itemCount"
+      :order-type="store.orderType"
+      :loading="isProcessingPayment"
+      @confirm="handleConfirmPayment"
+    />
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useQuasar } from 'quasar'
-import { mockProducts, mockCategories } from 'src/data/mock'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar, Loading, Notify } from 'quasar'
+import { useRouter } from 'vue-router'
+import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import MenuItemCard from 'src/components/pos/MenuItemCard.vue'
 import OrderCart from 'src/components/pos/OrderCart.vue'
+import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 
 const $q = useQuasar()
+const router = useRouter()
 const store = useOrderStore()
 
 // ── Local State ──────────────────────────────────────────
 const searchQuery = ref('')
 const selectedCategory = ref('All')
-const categories = ref(mockCategories)
+
+// Menu data from Supabase
+const menuProducts = ref([])
+const categories = ref([{ id: 'all', name: 'All', icon: 'store' }])
+const menuLoading = ref(false)
+const menuError = ref(null)
 
 // Variant dialog
 const variantDialog = ref(false)
 const selectedProduct = ref(null)
 const selectedVariant = ref(null)
 
+// Payment Dialog
+const paymentDialog = ref(false)
+const isProcessingPayment = ref(false)
+async function fetchMenuItems() {
+  menuLoading.value = true
+  menuError.value = null
+
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select(
+        `
+        id,
+        name,
+        base_price,
+        is_available,
+        kitchen_id,
+        categories(id, name)
+      `,
+      )
+      .eq('is_available', true)
+      .order('name')
+
+    if (error) throw error
+
+    // Map to the shape MenuItemCard expects
+    menuProducts.value = (data || []).map((item) => ({
+      id: item.id, // real UUID — used as menu_item_id in order_items
+      name: item.name,
+      price: parseFloat(item.base_price || 0),
+      kitchen_id: item.kitchen_id,
+      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+      category: item.categories?.name || 'Other',
+      variants: [], // variants loaded separately if needed
+    }))
+
+    // Build category list from unique categories in the data
+    const seen = new Set()
+    const cats = [{ id: 'all', name: 'All', icon: 'store' }]
+    for (const item of menuProducts.value) {
+      if (!seen.has(item.category)) {
+        seen.add(item.category)
+        cats.push({
+          id: item.category,
+          name: item.category,
+          icon: _categoryIcon(item.category),
+        })
+      }
+    }
+    categories.value = cats
+  } catch (err) {
+    console.error('[POS] Failed to load menu items:', err)
+    menuError.value = err.message || 'Unknown error'
+  } finally {
+    menuLoading.value = false
+  }
+}
+
+function _categoryIcon(name) {
+  const icons = {
+    Burgers: 'lunch_dining',
+    Pizza: 'local_pizza',
+    Pasta: 'dinner_dining',
+    Appetizers: 'tapas',
+    Salads: 'restaurant',
+    Desserts: 'cake',
+    Drinks: 'local_bar',
+    Sides: 'fastfood',
+    Beverages: 'local_bar',
+  }
+  return icons[name] || 'restaurant_menu'
+}
+
+onMounted(() => {
+  fetchMenuItems()
+})
+
 // ── Computed ─────────────────────────────────────────────
 const filteredProducts = computed(() => {
-  let products = mockProducts
+  let products = menuProducts.value
 
   if (selectedCategory.value !== 'All') {
     products = products.filter((p) => p.category === selectedCategory.value)
@@ -188,7 +305,7 @@ const filteredProducts = computed(() => {
 })
 
 function getCategoryCount(categoryName) {
-  return mockProducts.filter((p) => p.category === categoryName).length
+  return menuProducts.value.filter((p) => p.category === categoryName).length
 }
 
 // ── Product Selection ────────────────────────────────────
@@ -216,7 +333,7 @@ function confirmVariantSelection() {
 }
 
 function showAddNotification(itemName) {
-  $q.notify({
+  Notify.create({
     message: `${itemName} added`,
     color: 'positive',
     icon: 'check_circle',
@@ -227,38 +344,86 @@ function showAddNotification(itemName) {
 }
 
 // ── Cart Actions ─────────────────────────────────────────
-function handleSendToKitchen() {
-  const result = store.sendToKitchen()
-  if (result && result.success) {
-    $q.notify({
-      message: `Order #${result.orderNumber} sent to kitchen!`,
-      caption: `${result.items.length} item(s) • ${result.type}`,
-      color: 'teal',
-      icon: 'soup_kitchen',
+async function handleSendToKitchen() {
+  if (store.isEmpty) return
+
+  Loading.show({ message: 'Sending to kitchen...' })
+
+  try {
+    const result = await store.sendToKitchen()
+
+    if (result && result.success) {
+      Loading.hide()
+
+      Notify.create({
+        message: `Order #${result.order.order_number ?? result.order.id.slice(0, 8).toUpperCase()} sent to kitchen!`,
+        caption: `${store.cartItems.length} item(s) • ${store.orderType}`,
+        color: 'teal',
+        icon: 'soup_kitchen',
+        position: 'top-right',
+        timeout: 3000,
+      })
+
+      // Clear cart and redirect to Orders page
+      store.clearCart()
+      router.push('/orders')
+    }
+  } catch (err) {
+    Loading.hide()
+
+    Notify.create({
+      message: 'Failed to send order',
+      caption: err.message || 'Please try again',
+      color: 'negative',
+      icon: 'error_outline',
       position: 'top-right',
-      timeout: 3000,
+      timeout: 5000,
+      actions: [{ label: 'Dismiss', color: 'white', flat: true }],
     })
+
+    console.error('[POS] sendToKitchen error:', err)
   }
 }
 
 function handleProcessPayment() {
-  $q.loading.show({ message: 'Processing payment...' })
+  if (store.isEmpty) return
+  paymentDialog.value = true
+}
 
-  setTimeout(() => {
-    const result = store.processPayment('cash')
-    $q.loading.hide()
+async function handleConfirmPayment(method) {
+  isProcessingPayment.value = true
+
+  try {
+    const result = await store.processPayment(method)
 
     if (result && result.success) {
-      $q.notify({
-        message: `Payment received — $${result.total.toFixed(2)}`,
-        caption: `Order #${result.orderNumber} completed`,
+      paymentDialog.value = false
+
+      Notify.create({
+        message: `Payment Successful!`,
+        caption: `Invoice #${result.invoiceNumber} • Paid via ${method}`,
         color: 'positive',
-        icon: 'check_circle',
+        icon: 'verified',
         position: 'top-right',
-        timeout: 3000,
+        timeout: 4000,
+        actions: [{ label: 'Print Invoice', color: 'white', flat: true }],
       })
+
+      // Optionally refresh or redirect? store.processPayment already clears the cart
+      // Maybe stay on POS for next order
     }
-  }, 1200)
+  } catch (err) {
+    console.error('Payment failed:', err)
+    Notify.create({
+      message: 'Payment Failed',
+      caption: err.message || 'Please try again',
+      color: 'negative',
+      icon: 'error_outline',
+      position: 'top-right',
+    })
+  } finally {
+    isProcessingPayment.value = false
+  }
 }
 
 function handleClearCart() {

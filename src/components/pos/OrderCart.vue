@@ -149,6 +149,7 @@
       <!-- Action Buttons -->
       <div class="row q-gutter-sm">
         <q-btn
+          v-if="restrictions.canSendToKitchen"
           unelevated
           no-caps
           class="col"
@@ -160,6 +161,7 @@
           @click="$emit('sendToKitchen')"
         />
         <q-btn
+          v-if="restrictions.canProcessPayment"
           unelevated
           no-caps
           class="col"
@@ -170,6 +172,20 @@
           :disable="store.isEmpty"
           @click="$emit('processPayment')"
         />
+        <!-- Waiter sees a disabled payment button to indicate they can't process -->
+        <q-btn
+          v-if="!restrictions.canProcessPayment && restrictions.canSendToKitchen"
+          unelevated
+          no-caps
+          class="col"
+          color="grey-8"
+          text-color="grey-5"
+          icon="payment"
+          label="Payment"
+          disable
+        >
+          <q-tooltip>You don't have permission to process payments</q-tooltip>
+        </q-btn>
       </div>
 
       <!-- Cancel Button -->
@@ -188,10 +204,17 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useOrderStore } from 'src/stores/orderStore'
+import { useAuthStore } from 'src/stores/auth'
+import { getRoleRestrictions } from 'src/config/roles'
 import QuantityControl from './QuantityControl.vue'
 
 const store = useOrderStore()
+const authStore = useAuthStore()
+
+/** Role-based POS restrictions */
+const restrictions = computed(() => getRoleRestrictions(authStore.roles))
 
 defineEmits(['sendToKitchen', 'processPayment', 'clearCart'])
 </script>

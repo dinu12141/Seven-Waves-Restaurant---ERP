@@ -62,16 +62,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { supabase } from 'src/boot/supabase'
 import PageHeader from 'components/common/PageHeader.vue'
 import StatCard from 'components/common/StatCard.vue'
 import DataTable from 'components/common/DataTable.vue'
 import StatusChip from 'components/common/StatusChip.vue'
-import { mockStats, mockOrders, mockProducts } from 'src/data/mock'
+import { mockProducts } from 'src/data/mock'
 
 const loading = ref(false)
-const stats = ref(mockStats)
-const orders = ref(mockOrders)
+
+const stats = ref([
+  {
+    title: 'Today Sales',
+    value: '$0.00',
+    icon: 'payments',
+    color: 'green',
+    trend: '',
+  },
+  {
+    title: 'Active Orders',
+    value: '0',
+    icon: 'receipt_long',
+    color: 'orange',
+    trend: '',
+  },
+  {
+    title: 'Kitchen Pending',
+    value: '0',
+    icon: 'kitchen',
+    color: 'red',
+    trend: '',
+  },
+  {
+    title: 'Low Stock Items',
+    value: '0',
+    icon: 'inventory_2',
+    color: 'warning',
+    trend: '',
+  },
+])
+
+const orders = ref([])
 
 const orderColumns = [
   { name: 'id', label: 'Order ID', field: 'id', align: 'left', sortable: true },
@@ -90,10 +122,87 @@ const topItems = ref(
   })),
 )
 
-function refreshData() {
+async function fetchDashboardData() {
   loading.value = true
-  setTimeout(() => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0]
+
+    const results = await Promise.allSettled([
+      // 1. Today Sales
+      supabase
+        .from('orders')
+        .select('total_amount')
+        .gte('created_at', todayStr + 'T00:00:00')
+        .neq('status', 'cancelled'),
+
+      // 2. Active Orders
+      supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .not('status', 'in', '("completed","cancelled")'),
+
+      // 3. Kitchen Pending
+      supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['accepted', 'preparing', 'cooking']),
+
+      // 4. Low Stock
+      supabase.from('inventory_items').select('quantity, reorder_level'),
+
+      // 5. Recent Orders
+      supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
+    ])
+
+    // Process Sales
+    if (results[0].status === 'fulfilled' && results[0].value.data) {
+      const totalSales = results[0].value.data.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+      stats.value[0].value = `$${totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    }
+
+    // Process Active Orders
+    if (results[1].status === 'fulfilled') {
+      stats.value[1].value = results[1].value.count || 0
+    }
+
+    // Process Kitchen Pending
+    if (results[2].status === 'fulfilled') {
+      stats.value[2].value = results[2].value.count || 0
+    }
+
+    // Process Low Stock
+    if (results[3].status === 'fulfilled' && results[3].value.data) {
+      const lowStockCount = results[3].value.data.filter(
+        (i) => (i.quantity ?? 0) <= (i.reorder_level ?? 0),
+      ).length
+      stats.value[3].value = lowStockCount
+    } else {
+      // Fallback for demo
+      stats.value[3].value = 0
+    }
+
+    // Process Recent Orders
+    if (results[4].status === 'fulfilled' && results[4].value.data) {
+      orders.value = results[4].value.data.map((o) => ({
+        id: o.order_number || `#${o.id.slice(0, 8)}`,
+        customer: o.customer_name || 'Walk-in',
+        total: `$${(o.total_amount || 0).toFixed(2)}`,
+        status: o.status,
+        type: o.order_type === 'dine_in' ? 'Dine-in' : 'Takeaway',
+      }))
+    }
+  } catch (err) {
+    console.error('Failed to fetch dashboard data:', err)
+  } finally {
     loading.value = false
-  }, 1000)
+  }
 }
+
+function refreshData() {
+  fetchDashboardData()
+}
+
+onMounted(() => {
+  fetchDashboardData()
+})
 </script>

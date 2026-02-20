@@ -1,121 +1,144 @@
 <template>
-  <q-page class="kds-page">
-    <PageHeader title="Kitchen Display System" subtitle="Real-time order tracking">
-      <template #actions>
-        <q-select
-          v-model="filterMode"
-          :options="['All', 'Dine-in', 'Takeaway', 'Delivery']"
-          dense
-          outlined
-          dark
-          options-dense
-          class="filter-select"
-          style="min-width: 150px"
-        />
-      </template>
-    </PageHeader>
+  <q-page class="kds-page dark-backdrop">
+    <div class="q-pa-md full-height-container">
+      <div class="row items-center justify-between q-mb-md">
+        <div class="row items-center q-gutter-x-sm">
+          <q-icon name="kitchen" size="32px" color="primary" />
+          <div class="text-h5 text-weight-bold text-white">Kitchen Display System</div>
+          <q-badge color="accent" class="q-ml-sm text-caption">LIVE</q-badge>
+        </div>
 
-    <!-- Three Column Kanban Layout -->
-    <div class="kanban-container row q-col-gutter-md q-mt-md">
-      <!-- Column 1: New Orders (Orange) -->
-      <div class="col-12 col-lg-4">
-        <div class="kanban-column column-new-orders">
-          <div class="column-header header-orange">
-            <q-icon name="receipt_long" size="36px" class="q-mr-sm" />
-            <div class="column-title">NEW ORDERS</div>
-            <q-badge color="white" text-color="orange-9" class="count-badge">
-              {{ newOrders.length }}
-            </q-badge>
+        <div class="row items-center q-gutter-x-md">
+          <!-- Connection Status -->
+          <div class="row items-center bg-dark-soft q-px-md q-py-sm rounded-borders">
+            <div
+              class="connection-dot q-mr-sm"
+              :class="{ 'status-online': isConnected, 'status-offline': !isConnected }"
+            ></div>
+            <span class="text-caption text-grey-4">{{ isConnected ? 'ONLINE' : 'OFFLINE' }}</span>
           </div>
 
-          <q-scroll-area class="column-content">
-            <div v-if="newOrders.length === 0" class="empty-state">
-              <q-icon name="inbox" size="64px" color="grey-6" />
-              <div class="text-grey-6 q-mt-md">No new orders</div>
-            </div>
-
-            <transition-group
-              appear
-              enter-active-class="animated fadeInUp"
-              leave-active-class="animated fadeOutDown"
-            >
-              <KitchenTicketCard
-                v-for="order in newOrders"
-                :key="order.id"
-                :order="order"
-                class="q-mb-md"
-                @start-cooking="updateStatus(order, 'Cooking')"
-              />
-            </transition-group>
-          </q-scroll-area>
+          <!-- Filter -->
+          <q-select
+            v-model="filterMode"
+            :options="['All', 'Dine-in', 'Takeaway', 'Delivery']"
+            dense
+            outlined
+            dark
+            options-dense
+            bg-color="grey-9"
+            class="filter-select"
+            style="min-width: 160px"
+            behavior="menu"
+          />
         </div>
       </div>
 
-      <!-- Column 2: Preparing (Blue) -->
-      <div class="col-12 col-lg-4">
-        <div class="kanban-column column-preparing">
-          <div class="column-header header-blue">
-            <q-icon name="soup_kitchen" size="36px" class="q-mr-sm" />
-            <div class="column-title">PREPARING</div>
-            <q-badge color="white" text-color="blue-9" class="count-badge">
-              {{ preparingOrders.length }}
-            </q-badge>
-          </div>
-
-          <q-scroll-area class="column-content">
-            <div v-if="preparingOrders.length === 0" class="empty-state">
-              <q-icon name="inbox" size="64px" color="grey-6" />
-              <div class="text-grey-6 q-mt-md">No orders preparing</div>
+      <!-- Main Kanban Board -->
+      <div class="row q-col-gutter-md full-height-board">
+        <!-- NEW ORDERS -->
+        <div class="col-12 col-md-4 kanban-col-wrapper">
+          <div class="kanban-column bg-dark-glass">
+            <div class="column-header">
+              <div class="row items-center justify-between q-mb-xs">
+                <span class="text-h6 text-weight-bold text-orange-4">NEW ORDERS</span>
+                <q-chip size="sm" color="orange-9" text-color="white" class="text-weight-bold">
+                  {{ newOrders.length }}
+                </q-chip>
+              </div>
+              <div class="header-bar bg-orange-5"></div>
             </div>
 
-            <transition-group
-              appear
-              enter-active-class="animated fadeInUp"
-              leave-active-class="animated fadeOutDown"
+            <q-scroll-area
+              class="column-scroll"
+              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#fb8c00' }"
             >
-              <KitchenTicketCard
-                v-for="order in preparingOrders"
-                :key="order.id"
-                :order="order"
-                class="q-mb-md"
-                @mark-ready="updateStatus(order, 'Ready')"
-              />
-            </transition-group>
-          </q-scroll-area>
+              <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
+                <template v-if="newOrders.length > 0">
+                  <KitchenTicketCard
+                    v-for="ticket in newOrders"
+                    :key="ticket.id"
+                    :order="ticket"
+                    @start-cooking="updateTicketStatus(ticket, 'preparing')"
+                  />
+                </template>
+                <div v-else class="empty-placeholder">
+                  <q-icon name="receipt_long" size="48px" color="grey-8" />
+                  <div class="text-grey-7 q-mt-sm text-subtitle2">No new orders</div>
+                </div>
+              </transition-group>
+            </q-scroll-area>
+          </div>
         </div>
-      </div>
 
-      <!-- Column 3: Ready (Green) -->
-      <div class="col-12 col-lg-4">
-        <div class="kanban-column column-ready">
-          <div class="column-header header-green">
-            <q-icon name="check_circle" size="36px" class="q-mr-sm" />
-            <div class="column-title">READY</div>
-            <q-badge color="white" text-color="green-9" class="count-badge">
-              {{ readyOrders.length }}
-            </q-badge>
-          </div>
-
-          <q-scroll-area class="column-content">
-            <div v-if="readyOrders.length === 0" class="empty-state">
-              <q-icon name="inbox" size="64px" color="grey-6" />
-              <div class="text-grey-6 q-mt-md">No orders ready</div>
+        <!-- PREPARING -->
+        <div class="col-12 col-md-4 kanban-col-wrapper">
+          <div class="kanban-column bg-dark-glass">
+            <div class="column-header">
+              <div class="row items-center justify-between q-mb-xs">
+                <span class="text-h6 text-weight-bold text-blue-4">PREPARING</span>
+                <q-chip size="sm" color="blue-9" text-color="white" class="text-weight-bold">
+                  {{ preparingOrders.length }}
+                </q-chip>
+              </div>
+              <div class="header-bar bg-blue-5"></div>
             </div>
 
-            <transition-group
-              appear
-              enter-active-class="animated fadeInUp"
-              leave-active-class="animated fadeOutDown"
+            <q-scroll-area
+              class="column-scroll"
+              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#2196f3' }"
             >
-              <KitchenTicketCard
-                v-for="order in readyOrders"
-                :key="order.id"
-                :order="order"
-                class="q-mb-md"
-                @complete="completeOrder(order)"
-              />
-            </transition-group>
-          </q-scroll-area>
+              <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
+                <template v-if="preparingOrders.length > 0">
+                  <KitchenTicketCard
+                    v-for="ticket in preparingOrders"
+                    :key="ticket.id"
+                    :order="ticket"
+                    @mark-ready="updateTicketStatus(ticket, 'ready')"
+                  />
+                </template>
+                <div v-else class="empty-placeholder">
+                  <q-icon name="soup_kitchen" size="48px" color="grey-8" />
+                  <div class="text-grey-7 q-mt-sm text-subtitle2">Kitchen is clear</div>
+                </div>
+              </transition-group>
+            </q-scroll-area>
+          </div>
+        </div>
+
+        <!-- READY -->
+        <div class="col-12 col-md-4 kanban-col-wrapper">
+          <div class="kanban-column bg-dark-glass">
+            <div class="column-header">
+              <div class="row items-center justify-between q-mb-xs">
+                <span class="text-h6 text-weight-bold text-green-4">READY</span>
+                <q-chip size="sm" color="green-9" text-color="white" class="text-weight-bold">
+                  {{ readyOrders.length }}
+                </q-chip>
+              </div>
+              <div class="header-bar bg-green-5"></div>
+            </div>
+
+            <q-scroll-area
+              class="column-scroll"
+              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#4caf50' }"
+            >
+              <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
+                <template v-if="readyOrders.length > 0">
+                  <KitchenTicketCard
+                    v-for="ticket in readyOrders"
+                    :key="ticket.id"
+                    :order="ticket"
+                    @complete="completeTicket(ticket)"
+                  />
+                </template>
+                <div v-else class="empty-placeholder">
+                  <q-icon name="check_circle" size="48px" color="grey-8" />
+                  <div class="text-grey-7 q-mt-sm text-subtitle2">No orders waiting</div>
+                </div>
+              </transition-group>
+            </q-scroll-area>
+          </div>
         </div>
       </div>
     </div>
@@ -124,268 +147,441 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import PageHeader from 'components/common/PageHeader.vue'
+import { useQuasar } from 'quasar'
+import { supabase } from 'boot/supabase'
 import KitchenTicketCard from 'components/kitchen/KitchenTicketCard.vue'
 
+const $q = useQuasar()
 const filterMode = ref('All')
+const activeTickets = ref([])
+const isConnected = ref(false)
 
-// Mock Tickets Data
-const activeTickets = ref([
-  {
-    id: 1,
-    orderId: 'ORD-101',
-    table: 'T5',
-    status: 'Pending',
-    startTime: Date.now() - 1000 * 60 * 2, // 2 mins ago
-    timeElapsed: '02:00',
-    type: 'Dine-in',
-    items: [
-      { name: 'Classic Burger', qty: 2, notes: 'No onions' },
-      { name: 'Fries', qty: 1 },
-    ],
-  },
-  {
-    id: 2,
-    orderId: 'ORD-102',
-    table: 'T2',
-    status: 'Cooking',
-    startTime: Date.now() - 1000 * 60 * 12, // 12 mins ago
-    timeElapsed: '12:00',
-    type: 'Dine-in',
-    items: [
-      { name: 'Pizza Margherita', qty: 1 },
-      { name: 'Caesar Salad', qty: 1, notes: 'Extra dressing' },
-    ],
-  },
-  {
-    id: 3,
-    orderId: 'ORD-103',
-    table: '-',
-    status: 'Ready',
-    startTime: Date.now() - 1000 * 60 * 25, // 25 mins ago
-    timeElapsed: '25:00',
-    type: 'Takeaway',
-    items: [
-      { name: 'Pasta Carbonara', qty: 2 },
-      { name: 'Garlic Bread', qty: 1 },
-    ],
-  },
-  {
-    id: 4,
-    orderId: 'ORD-104',
-    table: 'T8',
-    status: 'Pending',
-    startTime: Date.now() - 1000 * 30, // 30 sec ago
-    timeElapsed: '00:30',
-    type: 'Dine-in',
-    items: [
-      { name: 'Steak', qty: 1, notes: 'Medium Rare' },
-      { name: 'Mashed Potatoes', qty: 1 },
-      { name: 'Grilled Vegetables', qty: 1 },
-    ],
-  },
-  {
-    id: 5,
-    orderId: 'ORD-105',
-    table: 'T3',
-    status: 'Cooking',
-    startTime: Date.now() - 1000 * 60 * 8, // 8 mins ago
-    timeElapsed: '08:00',
-    type: 'Dine-in',
-    items: [
-      { name: 'Chicken Wings', qty: 2, notes: 'Extra spicy' },
-      { name: 'Onion Rings', qty: 1 },
-    ],
-  },
-  {
-    id: 6,
-    orderId: 'ORD-106',
-    table: '-',
-    status: 'Ready',
-    startTime: Date.now() - 1000 * 60 * 15, // 15 mins ago
-    timeElapsed: '15:00',
-    type: 'Delivery',
-    items: [
-      { name: 'Pepperoni Pizza', qty: 1 },
-      { name: 'Coca Cola', qty: 2 },
-    ],
-  },
-])
+// Realtime Channel
+let channel = null
+let timerInterval = null
 
-// Computed columns
+// --- Computed Columns ---
+
 const newOrders = computed(() => {
-  return filterTickets(activeTickets.value.filter((t) => t.status === 'Pending'))
+  return filterTickets(
+    activeTickets.value.filter((t) => ['pending', 'accepted'].includes(t.rawStatus)),
+  )
 })
 
 const preparingOrders = computed(() => {
-  return filterTickets(activeTickets.value.filter((t) => t.status === 'Cooking'))
+  return filterTickets(activeTickets.value.filter((t) => t.rawStatus === 'preparing'))
 })
 
 const readyOrders = computed(() => {
-  return filterTickets(activeTickets.value.filter((t) => t.status === 'Ready'))
+  return filterTickets(activeTickets.value.filter((t) => t.rawStatus === 'ready'))
 })
 
 function filterTickets(tickets) {
   if (filterMode.value === 'All') return tickets
-  return tickets.filter((t) => t.type === filterMode.value)
+  return tickets.filter((t) => t.type?.toLowerCase() === filterMode.value.toLowerCase())
 }
 
-// Timer Logic
-let timerInterval
-onMounted(() => {
-  timerInterval = setInterval(() => {
-    activeTickets.value.forEach((ticket) => {
-      const diff = Date.now() - ticket.startTime
-      const minutes = Math.floor(diff / 60000)
-      const seconds = Math.floor((diff % 60000) / 1000)
-      ticket.timeElapsed = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+// --- Data Fetching ---
+
+async function fetchActiveTickets() {
+  try {
+    const { data, error } = await supabase
+      .from('kot_tickets')
+      .select(
+        `
+        *,
+        order:orders (
+          order_number,
+          order_type,
+          table:restaurant_tables (table_number)
+        ),
+        kot_items (
+          quantity,
+          notes,
+          order_item:order_items (
+            menu_item:menu_items (name)
+          )
+        )
+      `,
+      )
+      .in('status', ['pending', 'accepted', 'preparing', 'ready'])
+      .is('completed_at', null)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    activeTickets.value = data.map(transformTicket)
+  } catch (err) {
+    console.error('Error fetching tickets:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to load tickets',
     })
-  }, 1000)
+  }
+}
+
+function transformTicket(ticket) {
+  // Map Supabase data to component format
+  return {
+    id: ticket.id,
+    orderId: ticket.kot_number ? `#${ticket.kot_number}` : '---',
+    // Fallback if table is null (e.g. takeaway)
+    table: ticket.order?.table?.table_number || '-',
+    // Component expects PascalCase status for styling classes
+    status: capitalize(ticket.status),
+    rawStatus: ticket.status, // Keep raw for logic
+    startTime: new Date(ticket.created_at).getTime(),
+    timeElapsed: '00:00',
+    type: formatOrderType(ticket.order?.order_type),
+    items:
+      ticket.kot_items?.map((item) => ({
+        name: item.order_item?.menu_item?.name || 'Unknown Item',
+        qty: item.quantity,
+        notes: item.notes || '',
+      })) || [],
+  }
+}
+
+function capitalize(str) {
+  if (!str) return ''
+  // Component expects: Pending, Cooking, Ready
+  if (str === 'preparing') return 'Cooking'
+  if (str === 'pending' || str === 'accepted') return 'Pending' // Map accepted to Pending UI
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function formatOrderType(type) {
+  if (!type) return 'Dine-in'
+  // dine_in -> Dine-in
+  return type
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('-')
+}
+
+// --- Realtime Subscription ---
+
+function subscribeToTickets() {
+  // Unsubscribe previous if exists
+  if (channel) supabase.removeChannel(channel)
+
+  channel = supabase
+    .channel('kitchen-display')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'kot_tickets' }, (payload) => {
+      handleTicketChange(payload)
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'kot_items' }, (payload) => {
+      // If items change, we might need to refresh the ticket they belong to
+      // Since kot_items has kot_id, we can find it.
+      if (payload.new && payload.new.kot_id) {
+        refreshTicket(payload.new.kot_id)
+      } else if (payload.old && payload.old.kot_id) {
+        refreshTicket(payload.old.kot_id)
+      }
+    })
+    .subscribe((status) => {
+      isConnected.value = status === 'SUBSCRIBED'
+      if (status === 'SUBSCRIBED') {
+        fetchActiveTickets()
+      }
+    })
+}
+
+async function refreshTicket(kotId) {
+  const { data, error } = await supabase
+    .from('kot_tickets')
+    .select(
+      `
+        *,
+        order:orders (
+          order_number,
+          order_type,
+          table:restaurant_tables (table_number)
+        ),
+        kot_items (
+          quantity,
+          notes,
+          order_item:order_items (
+            menu_item:menu_items (name)
+          )
+        )
+      `,
+    )
+    .eq('id', kotId)
+    .single()
+
+  if (!error && data) {
+    const idx = activeTickets.value.findIndex((t) => t.id === kotId)
+
+    // If completed, ensure not in list
+    if (data.completed_at) {
+      if (idx !== -1) activeTickets.value.splice(idx, 1)
+      return
+    }
+
+    if (idx !== -1) {
+      activeTickets.value[idx] = transformTicket(data)
+    } else if (['pending', 'accepted', 'preparing', 'ready'].includes(data.status)) {
+      // Add if it matches our filter criteria
+      activeTickets.value.push(transformTicket(data))
+    }
+  }
+}
+
+async function handleTicketChange(payload) {
+  const { eventType, new: newRecord, old: oldRecord } = payload
+
+  if (eventType === 'INSERT') {
+    // Fetch full details for the new ticket
+    refreshTicket(newRecord.id)
+  } else if (eventType === 'UPDATE') {
+    const index = activeTickets.value.findIndex((t) => t.id === newRecord.id)
+    if (index !== -1) {
+      if (
+        !['pending', 'accepted', 'preparing', 'ready'].includes(newRecord.status) ||
+        newRecord.completed_at
+      ) {
+        // Remove if cancelled or served/completed
+        activeTickets.value.splice(index, 1)
+      } else {
+        // Update local status immediately
+        activeTickets.value[index].status = capitalize(newRecord.status)
+        activeTickets.value[index].rawStatus = newRecord.status
+        // Also refresh to be safe (syncs time, etc)
+        // refreshTicket(newRecord.id) // Optional, might be overkill
+      }
+    } else {
+      // If not in list (e.g. was pending and we missed it?), try adding
+      if (
+        ['pending', 'accepted', 'preparing', 'ready'].includes(newRecord.status) &&
+        !newRecord.completed_at
+      ) {
+        refreshTicket(newRecord.id)
+      }
+    }
+  } else if (eventType === 'DELETE') {
+    const index = activeTickets.value.findIndex((t) => t.id === oldRecord.id)
+    if (index !== -1) activeTickets.value.splice(index, 1)
+  }
+}
+
+// --- Actions ---
+
+async function updateTicketStatus(ticket, newStatus) {
+  try {
+    // Optimistic UI update
+    const oldStatus = ticket.rawStatus
+    const oldUiStatus = ticket.status
+
+    ticket.rawStatus = newStatus
+    ticket.status = capitalize(newStatus)
+
+    // We update the local array to trigger computed calc
+    // Since computed depends on properties of objects in array, mutating object works
+
+    const { error } = await supabase
+      .from('kot_tickets')
+      .update({ status: newStatus })
+      .eq('id', ticket.id)
+
+    if (error) {
+      // Revert
+      ticket.rawStatus = oldStatus
+      ticket.status = oldUiStatus
+      throw error
+    }
+  } catch (err) {
+    console.error('Update status failed:', err)
+    $q.notify({ type: 'negative', message: 'Failed to update status' })
+  }
+}
+
+async function completeTicket(ticket) {
+  try {
+    // We assume 'served' is the completion status (or we just use ready for now? Schema allows 'status').
+    // Let's set to 'served' if possible. If mapped to check constraint issues, we might need to change schema or use 'ready' + completed_at.
+    // Schema in orders.sql: status IN ('pending', 'accepted', 'preparing', 'ready', 'cancelled')
+    // It DOES NOT have 'served'.
+    // So we should probably treat it as removed from KDS when 'ready' is done.
+    // But how do we distinguish?
+    // Maybe we move it to a 'completed' state in a new field?
+    // `completed_at` exists!
+
+    // If we set `completed_at`, it doesn't change `status`.
+    // But we can filter our query: `.is('completed_at', null)`
+    // So let's update `completed_at` to Now.
+
+    const { error } = await supabase
+      .from('kot_tickets')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('id', ticket.id)
+
+    if (error) throw error
+
+    // Remove from UI
+    const idx = activeTickets.value.findIndex((t) => t.id === ticket.id)
+    if (idx > -1) activeTickets.value.splice(idx, 1)
+  } catch (err) {
+    console.error('Complete failed', err)
+    $q.notify({ type: 'negative', message: 'Failed to complete ticket' })
+  }
+}
+
+// --- Timer ---
+
+function startTimer() {
+  updateTimes() // Immediate run
+  timerInterval = setInterval(updateTimes, 1000)
+}
+
+function updateTimes() {
+  const now = Date.now()
+  activeTickets.value.forEach((ticket) => {
+    const diff = now - ticket.startTime
+    // If negative (clock drift?), show 00:00
+    if (diff < 0) {
+      ticket.timeElapsed = '00:00'
+      return
+    }
+    const minutes = Math.floor(diff / 60000)
+    const seconds = Math.floor((diff % 60000) / 1000)
+    ticket.timeElapsed = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  })
+}
+
+// --- Lifecycle ---
+
+onMounted(() => {
+  fetchActiveTickets()
+  subscribeToTickets()
+  startTimer()
+
+  // Auto-refresh on reconnect
+  window.addEventListener('online', fetchActiveTickets)
 })
 
 onUnmounted(() => {
-  clearInterval(timerInterval)
+  if (channel) supabase.removeChannel(channel)
+  if (timerInterval) clearInterval(timerInterval)
+  window.removeEventListener('online', fetchActiveTickets)
 })
-
-function updateStatus(ticket, newStatus) {
-  ticket.status = newStatus
-  // In a real app, you would make an API call here
-}
-
-function completeOrder(ticket) {
-  // Remove from active list
-  const idx = activeTickets.value.findIndex((t) => t.id === ticket.id)
-  if (idx > -1) {
-    activeTickets.value.splice(idx, 1)
-  }
-  // In a real app, you would update order status in the database
-}
 </script>
 
 <style scoped>
 .kds-page {
-  background: #121212;
+  /* Rich dark gradient background */
+  background: radial-gradient(circle at 50% -20%, #2a2a2a, #121212);
   min-height: 100vh;
-  padding: 16px;
+  color: #e0e0e0;
 }
 
-.kanban-container {
-  height: calc(100vh - 140px);
+.full-height-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.kanban-column {
+.full-height-board {
+  flex: 1;
+  min-height: 0; /* Important for flex scrolling */
+}
+
+.kanban-col-wrapper {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.kanban-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   border-radius: 12px;
+  background: rgba(30, 30, 30, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   overflow: hidden;
-  background: #1e1e1e;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .column-header {
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 3px solid rgba(255, 255, 255, 0.1);
-}
-
-.header-orange {
-  background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
-}
-
-.header-blue {
-  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
-}
-
-.header-green {
-  background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
-}
-
-.column-title {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: white;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  flex: 1;
-}
-
-.count-badge {
-  font-size: 1.2rem;
-  font-weight: 700;
-  padding: 8px 16px;
-}
-
-.column-content {
-  flex: 1;
   padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.empty-state {
+.header-bar {
+  height: 4px;
+  width: 100%;
+  border-radius: 2px;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.column-scroll {
+  flex: 1;
+  /* background: rgba(0,0,0,0.1); */
+}
+
+/* Empty State */
+.empty-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
-  text-align: center;
+  height: 200px;
+  opacity: 0.5;
 }
 
-/* Filter select styling */
-.filter-select {
-  font-size: 1.1rem;
+/* Connection Dot */
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
-/* Animations */
-.animated {
-  animation-duration: 0.5s;
-  animation-fill-mode: both;
+.status-online {
+  background-color: #00e676;
+  box-shadow: 0 0 8px #00e676;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.status-offline {
+  background-color: #f44336;
+  box-shadow: 0 0 8px #f44336;
 }
 
-@keyframes fadeOutDown {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(20px);
-  }
+/* Transitions */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.list-move {
+  transition: transform 0.4s ease;
 }
 
-.fadeInUp {
-  animation-name: fadeInUp;
-}
-
-.fadeOutDown {
-  animation-name: fadeOutDown;
-}
-
-/* Responsive adjustments */
+/* Responsive */
 @media (max-width: 1023px) {
-  .kanban-container {
+  .full-height-container {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .full-height-board {
     height: auto;
   }
 
-  .kanban-column {
-    min-height: 400px;
-    margin-bottom: 20px;
+  .kanban-col-wrapper {
+    height: auto;
+    min-height: 500px;
   }
 
-  .column-content {
-    height: 400px;
+  .kanban-column {
+    min-height: 500px;
   }
 }
 </style>

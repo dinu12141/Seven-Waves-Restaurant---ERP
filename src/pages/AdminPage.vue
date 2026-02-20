@@ -72,6 +72,13 @@ const modules = ref([
     to: '/admin/kitchens',
   },
   {
+    title: 'Module Configuration',
+    description: 'Enable or disable system modules (GRN, GIN, Auto Deduct, etc.)',
+    icon: 'extension',
+    color: 'deep-purple',
+    to: '/admin/settings',
+  },
+  {
     title: 'System Settings',
     description: 'Global system configuration',
     icon: 'settings',

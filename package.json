@@ -18,11 +18,16 @@
     "@quasar/extras": "^1.16.4",
     "@supabase/supabase-js": "^2.95.3",
     "axios": "^1.2.1",
+    "file-saver": "^2.0.5",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
     "vue": "^3.5.22",
     "vue-i18n": "^11.0.0",
-    "vue-router": "^5.0.0"
+    "vue-router": "^5.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",

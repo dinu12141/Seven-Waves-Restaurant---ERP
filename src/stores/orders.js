@@ -194,6 +194,16 @@ export const useOrderStore = defineStore('orders', () => {
     tables.value = new Map()
   }
 
+  async function updateOrderStatus(orderId, status) {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', orderId)
+
+    if (error) {
+      console.error('Failed to update order status:', error)
+      throw error
+    }
+    return true
+  }
+
   return {
     // state
     orders,
@@ -212,7 +222,9 @@ export const useOrderStore = defineStore('orders', () => {
     orderWithItems,
     // actions
     handleRealtimeEvent,
+
     fetchInitialOrders,
+    updateOrderStatus,
     clearAll,
   }
 })

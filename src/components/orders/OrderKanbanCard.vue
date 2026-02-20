@@ -57,6 +57,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useAuthStore } from 'src/stores/auth'
+import { getRoleRestrictions } from 'src/config/roles'
+
+const authStore = useAuthStore()
 
 const props = defineProps({
   order: {
@@ -67,14 +71,19 @@ const props = defineProps({
 
 defineEmits(['view', 'next-stage'])
 
+/** Compute role restrictions (e.g. ordersAcceptOnly for waiters) */
+const restrictions = computed(() => getRoleRestrictions(authStore.roles))
+
 const statusClass = computed(() => {
   switch (props.order.status) {
     case 'pending':
       return 'bg-grey-9'
-    case 'cooking':
+    case 'accepted':
+    case 'preparing':
       return 'bg-blue-grey-10'
     case 'ready':
       return 'bg-green-10'
+    case 'served':
     case 'completed':
       return 'bg-grey-10'
     default:
@@ -87,8 +96,10 @@ const tableColor = computed(() => {
 })
 
 const typeColor = computed(() => {
-  switch (props.order.type.toLowerCase()) {
+  const type = props.order?.type?.toLowerCase() || ''
+  switch (type) {
     case 'dine-in':
+    case 'dine_in':
       return 'teal'
     case 'takeaway':
       return 'orange'
@@ -99,14 +110,23 @@ const typeColor = computed(() => {
   }
 })
 
+/**
+ * Determine next action label based on status AND RBAC.
+ * Waiter (ordersAcceptOnly): ONLY sees "Accept" on pending orders.
+ * Other roles: see full action flow.
+ */
 const nextActionLabel = computed(() => {
+  const acceptOnly = restrictions.value.ordersAcceptOnly
+
   switch (props.order.status) {
     case 'pending':
-      return 'Start'
-    case 'cooking':
-      return 'Ready'
+      return 'Accept'
+    case 'accepted':
+    case 'preparing':
+      return null // Kitchen handles this, no action from order page
     case 'ready':
-      return 'Complete'
+      // Waiter (accept-only) cannot mark as served — only full-access roles can
+      return acceptOnly ? null : 'Served'
     default:
       return null
   }
@@ -116,7 +136,8 @@ const nextActionColor = computed(() => {
   switch (props.order.status) {
     case 'pending':
       return 'primary'
-    case 'cooking':
+    case 'accepted':
+    case 'preparing':
       return 'secondary'
     case 'ready':
       return 'positive'

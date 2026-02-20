@@ -14,7 +14,7 @@
       </div>
     </q-card-section>
 
-    <q-card-section class="q-pt-none">
+    <q-card-section class="q-pt-none" v-if="trend">
       <div class="row items-center text-caption" :class="`text-${trendColor}`">
         <q-icon :name="trendIcon" size="16px" class="q-mr-xs" />
         <span class="text-weight-bold">{{ trend }}</span>
@@ -31,7 +31,7 @@ defineProps({
     required: true,
   },
   value: {
-    type: String,
+    type: [String, Number],
     required: true,
   },
   icon: {
@@ -44,7 +44,7 @@ defineProps({
   },
   trend: {
     type: String,
-    default: '0%',
+    default: '',
   },
   trendIcon: {
     type: String,

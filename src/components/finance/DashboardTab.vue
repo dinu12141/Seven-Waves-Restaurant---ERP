@@ -4,7 +4,7 @@
     <div class="col-12 col-md-3">
       <StatCard
         title="Today's Revenue"
-        value="$2,845.00"
+        value="LKR 845,000.00"
         icon="attach_money"
         color="green"
         trend="+15%"
@@ -17,7 +17,7 @@
     <div class="col-12 col-md-3">
       <StatCard
         title="Pending Payments"
-        value="$540.00"
+        value="LKR 160,000.00"
         icon="pending_actions"
         color="orange"
         trend="3 Invoices"
@@ -30,7 +30,7 @@
     <div class="col-12 col-md-3">
       <StatCard
         title="Refunds (Today)"
-        value="$45.00"
+        value="LKR 12,500.00"
         icon="replay"
         color="red"
         trend="-2%"
@@ -43,7 +43,7 @@
     <div class="col-12 col-md-3">
       <StatCard
         title="Avg. Order Value"
-        value="$32.50"
+        value="LKR 3,450.00"
         icon="receipt_long"
         color="blue"
         trend="+5%"
@@ -67,27 +67,27 @@
             <div>
               <div class="row justify-between q-mb-xs">
                 <span>Credit/Debit Card</span>
-                <span>65% ($1,849.25)</span>
+                <span>65% (LKR 549,250.00)</span>
               </div>
-              <q-linear-progress value="0.65" color="primary" rounded size="10px" />
+              <q-linear-progress :value="0.65" color="primary" rounded size="10px" />
             </div>
 
             <!-- Cash -->
             <div>
               <div class="row justify-between q-mb-xs">
                 <span>Cash</span>
-                <span>25% ($711.25)</span>
+                <span>25% (LKR 211,250.00)</span>
               </div>
-              <q-linear-progress value="0.25" color="green" rounded size="10px" />
+              <q-linear-progress :value="0.25" color="green" rounded size="10px" />
             </div>
 
             <!-- Online -->
             <div>
               <div class="row justify-between q-mb-xs">
                 <span>Online / UPI</span>
-                <span>10% ($284.50)</span>
+                <span>10% (LKR 84,500.00)</span>
               </div>
-              <q-linear-progress value="0.10" color="orange" rounded size="10px" />
+              <q-linear-progress :value="0.1" color="orange" rounded size="10px" />
             </div>
           </div>
         </q-card-section>
