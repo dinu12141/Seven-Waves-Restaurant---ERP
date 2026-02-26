@@ -16,10 +16,10 @@ import type { UserRole } from 'src/stores/auth'
 
 /** Route paths each role is allowed to visit */
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
-  waiter: ['/pos', '/orders'],
+  waiter: ['/pos', '/orders', '/waiter'],
   kitchen: ['/kitchen'],
-  cashier: ['/pos', '/orders'], // cashier needs orders for payment context
-  manager: ['/dashboard', '/orders', '/inventory', '/finance', '/kitchen'],
+  cashier: ['/pos', '/orders', '/cashier'], // cashier needs orders for payment context
+  manager: ['/dashboard', '/orders', '/inventory', '/finance', '/kitchen', '/operations/tables'],
   admin: ['*'], // wildcard — admin has full access
   inventory: ['/inventory'],
   finance: ['/finance'],
@@ -29,7 +29,7 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
 
 /** The default landing page for each role after login */
 export const ROLE_LANDING: Record<UserRole, string> = {
-  waiter: '/pos',
+  waiter: '/waiter',
   cashier: '/pos',
   kitchen: '/kitchen',
   inventory: '/inventory',
@@ -84,24 +84,22 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  // ─── MAIN ──────────────────────────────────────────────────────────────────
   {
     label: 'Dashboard',
-    icon: 'dashboard',
+    icon: 'space_dashboard',
     to: '/dashboard',
     roles: ['admin', 'manager'],
     section: 'MAIN',
   },
+
+  // ─── OPERATIONS ────────────────────────────────────────────────────────────
   {
-    label: 'POS',
+    label: 'Point of Sale',
     icon: 'point_of_sale',
     to: '/pos',
     roles: ['admin', 'manager', 'cashier', 'waiter'],
-  },
-  {
-    label: 'Kitchen',
-    icon: 'kitchen',
-    to: '/kitchen',
-    roles: ['admin', 'manager', 'kitchen'],
+    section: 'OPERATIONS',
   },
   {
     label: 'Orders',
@@ -110,34 +108,39 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'manager', 'waiter', 'cashier'],
   },
   {
-    label: 'Management',
-    icon: 'business_center',
-    roles: ['admin', 'manager', 'inventory', 'finance', 'hr'],
-    section: 'MANAGEMENT',
-    children: [
-      {
-        label: 'Inventory',
-        icon: 'inventory_2',
-        to: '/inventory',
-        roles: ['admin', 'manager', 'inventory'],
-        moduleCode: 'INVENTORY',
-      },
-      {
-        label: 'Finance',
-        icon: 'account_balance',
-        to: '/finance',
-        roles: ['admin', 'manager', 'finance'],
-        moduleCode: 'FINANCE',
-      },
-      {
-        label: 'HR & Payroll',
-        icon: 'people',
-        to: '/hr',
-        roles: ['admin', 'manager', 'hr'],
-        moduleCode: 'HR',
-      },
-    ],
+    label: 'Kitchen Display',
+    icon: 'soup_kitchen',
+    to: '/kitchen',
+    roles: ['admin', 'manager', 'kitchen'],
   },
+  {
+    label: 'Cashier Station',
+    icon: 'local_atm',
+    to: '/cashier',
+    roles: ['admin', 'manager', 'cashier'],
+  },
+  {
+    label: 'Waiter Station',
+    icon: 'room_service',
+    to: '/waiter',
+    roles: ['admin', 'manager', 'waiter'],
+  },
+  {
+    label: 'Table Management',
+    icon: 'table_restaurant',
+    to: '/operations/tables',
+    roles: ['admin', 'manager'],
+  },
+  {
+    label: 'Inventory',
+    icon: 'inventory_2',
+    to: '/inventory',
+    roles: ['admin', 'manager', 'inventory'],
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+
+  // ─── PROCUREMENT ───────────────────────────────────────────────────────────
   {
     label: 'Procurement',
     icon: 'shopping_cart',
@@ -157,20 +160,20 @@ export const NAV_ITEMS: NavItem[] = [
         roles: ['admin', 'manager', 'inventory', 'procurement'],
       },
       {
-        label: 'Goods Receipt (GRN)',
-        icon: 'inventory',
+        label: 'Goods Receipt',
+        icon: 'move_to_inbox',
         to: '/procurement/grn',
         roles: ['admin', 'manager', 'inventory', 'procurement'],
       },
       {
         label: 'AP Invoices',
-        icon: 'receipt',
+        icon: 'request_quote',
         to: '/procurement/ap-invoices',
         roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'],
       },
       {
         label: 'Supplier Payments',
-        icon: 'payment',
+        icon: 'payments',
         to: '/procurement/payments',
         roles: ['admin', 'manager', 'finance', 'procurement'],
       },
@@ -181,15 +184,37 @@ export const NAV_ITEMS: NavItem[] = [
         roles: ['admin', 'manager', 'inventory', 'procurement'],
       },
       {
-        label: 'Procurement Reports',
-        icon: 'analytics',
+        label: 'Reports',
+        icon: 'bar_chart',
         to: '/procurement/reports',
         roles: ['admin', 'manager', 'finance', 'procurement'],
       },
     ],
   },
+
+  // ─── FINANCE ───────────────────────────────────────────────────────────────
   {
-    label: 'Admin',
+    label: 'Finance',
+    icon: 'account_balance',
+    to: '/finance',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'FINANCE',
+    moduleCode: 'FINANCE',
+  },
+
+  // ─── HR ────────────────────────────────────────────────────────────────────
+  {
+    label: 'HR & Payroll',
+    icon: 'badge',
+    to: '/hr',
+    roles: ['admin', 'manager', 'hr'],
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+
+  // ─── SYSTEM ────────────────────────────────────────────────────────────────
+  {
+    label: 'Admin Settings',
     icon: 'admin_panel_settings',
     to: '/admin',
     roles: ['admin'],

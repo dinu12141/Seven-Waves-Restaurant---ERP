@@ -185,7 +185,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    /** Fetch profile + branches + modules without blocking */
+    /** Fetch profile + branches + modules + notifications without blocking */
     _backgroundFetchNonCritical() {
       Promise.all([this._fetchProfile(), this._fetchBranches()]).catch(() => {})
       // Load system modules in background (non-blocking, separate promise)
@@ -194,6 +194,13 @@ export const useAuthStore = defineStore('auth', {
         const companyId = this.branches?.[0]?.branches?.company_id
         modulesStore.fetchModules(companyId).catch(() => {})
       })
+      // Initialize notification engine in background
+      if (this.user?.id) {
+        import('src/stores/notifications').then(({ useNotificationStore }) => {
+          const notifStore = useNotificationStore()
+          notifStore.initialize(this.user?.id).catch(() => {})
+        })
+      }
     },
 
     /**
@@ -202,6 +209,14 @@ export const useAuthStore = defineStore('auth', {
      * 2. Call Supabase signOut in background (don't wait for it)
      */
     async signOut() {
+      // Cleanup notifications before clearing user data
+      import('src/stores/notifications')
+        .then(({ useNotificationStore }) => {
+          const notifStore = useNotificationStore()
+          notifStore.cleanup()
+        })
+        .catch(() => {})
+
       // Clear local state FIRST — instant logout feel
       this._clearUserData()
 

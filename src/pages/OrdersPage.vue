@@ -313,7 +313,7 @@ const displayColumns = computed(() => {
 
   processedOrders.forEach((order) => {
     let colId = ''
-    if (order.status === 'pending') colId = 'pending'
+    if (['pending', 'pending_waiter'].includes(order.status)) colId = 'pending'
     else if (['accepted', 'preparing'].includes(order.status)) colId = 'preparing'
     else if (order.status === 'ready') colId = 'ready'
     else if (['served', 'invoiced', 'paid'].includes(order.status)) colId = 'completed'
@@ -335,7 +335,7 @@ function viewOrder(order) {
 
 async function advanceOrder(order) {
   try {
-    if (order.status === 'pending') {
+    if (['pending', 'pending_waiter'].includes(order.status)) {
       await orderStore.updateOrderStatus(order.id, 'accepted')
       $q.notify({ type: 'positive', message: 'Order accepted' })
     } else if (order.status === 'ready') {

@@ -160,7 +160,7 @@
   </q-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import {

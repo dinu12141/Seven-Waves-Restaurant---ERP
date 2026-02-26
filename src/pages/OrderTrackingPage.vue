@@ -1,59 +1,618 @@
 <template>
-  <q-page class="q-pa-md bg-dark flex flex-center">
-    <div class="full-width" style="max-width: 500px">
-      <OrderTrackingPanel
-        v-if="store.currentOrder"
-        :order-id="store.currentOrder.id"
-        :current-status="store.currentOrder.status"
-      />
+  <div class="track-root">
+    <!-- Background -->
+    <div class="bg-layer">
+      <div class="bg-orb bg-orb--1" />
+      <div class="bg-orb bg-orb--2" />
+    </div>
 
-      <div v-else class="column items-center text-center q-pa-xl">
-        <q-icon name="history" size="64px" class="q-mb-md text-grey-8" />
-        <div class="text-h6 text-grey-6">No recent order found</div>
-        <div class="text-caption text-grey-7 q-mb-lg">Place an order to start tracking.</div>
-        <q-btn flat color="primary" label="Back to Menu" to="/menu" no-caps />
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <q-btn flat round dense icon="arrow_back" color="white" @click="goBack" />
+      <div class="top-bar-title">Order Tracking</div>
+      <q-btn flat round dense icon="loyalty" color="amber" @click="$router.push('/loyalty')">
+        <q-tooltip>My Loyalty Card</q-tooltip>
+      </q-btn>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="loading-state">
+      <q-spinner-dots color="orange" size="52px" />
+      <div class="text-grey-5 q-mt-md">Loading order status…</div>
+    </div>
+
+    <!-- Not found -->
+    <div v-else-if="!order" class="empty-state">
+      <q-icon name="search_off" size="64px" color="grey-7" />
+      <div class="text-h6 text-grey-5 q-mt-md">Order not found</div>
+      <q-btn flat color="orange" no-caps label="Go Back" @click="goBack" class="q-mt-md" />
+    </div>
+
+    <!-- Order content -->
+    <div v-else class="track-content">
+      <!-- Order summary card -->
+      <div class="order-card">
+        <div class="order-no">
+          <span class="order-label">ORDER</span>
+          <span class="order-number">#{{ order.order_number }}</span>
+        </div>
+        <div class="order-total">
+          <span class="total-label">Total</span>
+          <span class="total-value">LKR {{ Number(order.total_amount).toLocaleString() }}</span>
+        </div>
       </div>
 
-      <div class="q-mt-xl text-center">
+      <!-- Status timeline -->
+      <div class="timeline-section">
+        <div class="section-label">Order Progress</div>
+
+        <div class="timeline">
+          <div
+            v-for="(step, idx) in statusSteps"
+            :key="step.key"
+            class="timeline-step"
+            :class="{
+              completed: getStepState(idx) === 'done',
+              active: getStepState(idx) === 'active',
+              pending: getStepState(idx) === 'pending',
+            }"
+          >
+            <div
+              class="step-connector"
+              v-if="idx > 0"
+              :class="{ filled: getStepState(idx) !== 'pending' }"
+            />
+            <div class="step-dot-wrap">
+              <div
+                class="step-dot"
+                :style="
+                  getStepState(idx) === 'active' ? `box-shadow: 0 0 0 6px ${step.color}22` : ''
+                "
+              >
+                <q-icon
+                  :name="getStepState(idx) === 'done' ? 'check' : step.icon"
+                  size="16px"
+                  color="white"
+                />
+                <div v-if="getStepState(idx) === 'active'" class="pulse-ring" />
+              </div>
+            </div>
+            <div class="step-meta">
+              <div class="step-name" :class="getStepState(idx)">{{ step.label }}</div>
+              <div v-if="getStepState(idx) === 'active'" class="step-sub active-sub">
+                In progress...
+              </div>
+              <div v-else-if="getStepState(idx) === 'done'" class="step-sub done-sub">
+                Completed ✓
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ordered items -->
+      <div class="items-section">
+        <div class="section-label">Your Items</div>
+        <div v-for="item in order.order_items" :key="item.id" class="order-item-row">
+          <div class="item-img">
+            <img
+              v-if="getItemMeta(item).image_url"
+              :src="getItemMeta(item).image_url"
+              :alt="getItemMeta(item).name"
+            />
+            <q-icon v-else name="restaurant" size="22px" color="grey-6" />
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{ getItemMeta(item).name ?? 'Item' }}</div>
+            <div class="item-qty-price">
+              × {{ item.quantity }} &nbsp;·&nbsp; LKR
+              {{ Number(item.unit_price).toLocaleString() }} each
+            </div>
+          </div>
+          <div class="item-status-chip" :class="item.status">
+            {{ item.status.replace('_', ' ') }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Loyalty points earned -->
+      <div v-if="order.status === 'paid' && customer.isLoggedIn" class="loyalty-earned">
+        <q-icon name="stars" size="20px" color="amber" class="q-mr-sm" />
+        <div>
+          <div class="loyalty-earned-title">Points Earned!</div>
+          <div class="loyalty-earned-sub">Check your loyalty card for your new balance.</div>
+        </div>
         <q-btn
           flat
-          dense
           no-caps
-          color="grey-7"
-          label="Refresh Status"
-          icon="refresh"
-          @click="refreshStatus"
+          size="sm"
+          color="amber"
+          label="View Card"
+          @click="$router.push('/loyalty')"
+          class="q-ml-auto"
+        />
+      </div>
+
+      <!-- Place another order button -->
+      <div class="bottom-actions">
+        <q-btn
+          unelevated
+          no-caps
+          class="order-again-btn full-width"
+          icon="add_shopping_cart"
+          label="Order More Items"
+          @click="goToMenu"
         />
       </div>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script setup>
-import { useCustomerOrderStore } from 'src/stores/customerOrderStore'
-import OrderTrackingPanel from 'src/components/customer/OrderTrackingPanel.vue'
-import { onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  getOrderStatus,
+  subscribeToOrder,
+  unsubscribeFromOrder,
+  ORDER_STATUS_STEPS,
+  getStatusIndex,
+} from 'src/services/orderService'
+import { useTableSessionStore } from 'src/stores/tableSessionStore'
+import { useCustomerStore } from 'src/stores/customerStore'
 
-const store = useCustomerOrderStore()
+const route = useRoute()
+const router = useRouter()
+const session = useTableSessionStore()
+const customer = useCustomerStore()
 
-// Mock status progression for demonstration
-function refreshStatus() {
-  if (!store.currentOrder) return
+// Support both /menu/track/:orderId and /table/:sessionToken/track/:orderId
+const orderId = computed(() => String(route.params.orderId ?? ''))
+// Prefer route param token (from QR session URL), fall back to store
+const routeToken = computed(() =>
+  route.params.sessionToken ? String(route.params.sessionToken) : null,
+)
+const backToken = computed(() => routeToken.value ?? session.sessionToken)
 
-  const statusOrder = ['pending_waiter', 'accepted', 'preparing', 'ready']
-  const currentIndex = statusOrder.indexOf(store.currentOrder.status)
+const loading = ref(true)
+const order = ref(null)
+let channel = null
+let pollTimer = null
 
-  if (currentIndex < statusOrder.length - 1) {
-    store.currentOrder.status = statusOrder[currentIndex + 1]
+const statusSteps = ORDER_STATUS_STEPS.filter((s) => s.key !== 'invoiced')
+
+const currentStatusIdx = computed(() => {
+  if (!order.value) return -1
+  return getStatusIndex(order.value.status)
+})
+
+function getStepState(idx) {
+  const cur = currentStatusIdx.value
+  if (cur === -1) return 'pending'
+  if (idx < cur) return 'done'
+  if (idx === cur) return 'active'
+  return 'pending'
+}
+
+// Safely resolve menu_items (Supabase may return array OR object)
+function getItemMeta(item) {
+  const mi = item.menu_items
+  if (!mi) return { name: null, image_url: null }
+  if (Array.isArray(mi)) return mi[0] || { name: null, image_url: null }
+  return mi
+}
+
+async function loadOrder() {
+  if (!orderId.value) return
+  loading.value = true
+  order.value = await getOrderStatus(orderId.value)
+  loading.value = false
+}
+
+function goBack() {
+  const token = backToken.value
+  if (token) {
+    router.replace('/table/' + encodeURIComponent(token) + '/menu')
+  } else {
+    router.replace('/menu')
   }
 }
 
-onMounted(() => {
-  // If we just landed here and have an order, simulate progression after 5 seconds
-  if (store.currentOrder && store.currentOrder.status === 'pending_waiter') {
-    setTimeout(() => {
-      if (store.currentOrder) store.currentOrder.status = 'accepted'
-    }, 5000)
+function goToMenu() {
+  const token = backToken.value
+  if (token) {
+    router.push('/table/' + encodeURIComponent(token) + '/menu')
+  } else {
+    router.push('/menu')
+  }
+}
+
+onMounted(async () => {
+  await loadOrder()
+
+  if (orderId.value) {
+    channel = subscribeToOrder(orderId.value, (updated) => {
+      if (order.value) {
+        Object.assign(order.value, updated)
+      }
+    })
+
+    // Polling fallback every 15s in case realtime WS is blocked
+    pollTimer = setInterval(async () => {
+      const fresh = await getOrderStatus(orderId.value)
+      if (fresh && order.value) {
+        Object.assign(order.value, fresh)
+      }
+    }, 15_000)
+  }
+})
+
+onUnmounted(async () => {
+  if (channel) {
+    await unsubscribeFromOrder(channel)
+    channel = null
+  }
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
 })
 </script>
+
+<style lang="scss" scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.track-root {
+  background: #0d0d14;
+  min-height: 100dvh;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+}
+
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.08;
+  &--1 {
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle, #f97316 0%, transparent 70%);
+    top: -150px;
+    left: -150px;
+  }
+  &--2 {
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
+    bottom: -80px;
+    right: -80px;
+  }
+}
+
+// Top bar
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 58px;
+  background: rgba(13, 13, 20, 0.94);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  gap: 8px;
+}
+.top-bar-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+// States
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+// Content
+.track-content {
+  position: relative;
+  z-index: 1;
+  padding: 20px 16px 100px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+// Order card
+.order-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.order-no {
+  display: flex;
+  flex-direction: column;
+}
+.order-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #6b7280;
+}
+.order-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  margin-top: 2px;
+}
+.order-total {
+  text-align: right;
+}
+.total-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: block;
+}
+.total-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fb923c;
+}
+
+// Section label
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+// Timeline
+.timeline-section {
+  margin-bottom: 28px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 20px;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.step-connector {
+  position: absolute;
+  left: 19px;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateX(-50%);
+  z-index: 0;
+
+  &.filled {
+    background: linear-gradient(180deg, #f97316, rgba(249, 115, 22, 0.3));
+  }
+}
+
+.step-dot-wrap {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.step-dot {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+
+  .completed & {
+    background: linear-gradient(135deg, #f97316, #ef4444);
+    border-color: transparent;
+  }
+  .active & {
+    background: linear-gradient(135deg, #f97316, #dc2626);
+    border-color: transparent;
+  }
+}
+
+.pulse-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #f97316;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+}
+
+.step-meta {
+  padding-top: 8px;
+}
+
+.step-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #6b7280;
+
+  &.done {
+    color: #d1d5db;
+  }
+  &.active {
+    color: #fff;
+    font-size: 1rem;
+  }
+}
+
+.step-sub {
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+.active-sub {
+  color: #fb923c;
+}
+.done-sub {
+  color: #10b981;
+}
+
+// Order items
+.items-section {
+  margin-bottom: 24px;
+}
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.item-img {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.item-info {
+  flex: 1;
+}
+.item-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+.item-qty-price {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.item-status-chip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 20px;
+  text-transform: capitalize;
+  white-space: nowrap;
+
+  &.queued {
+    background: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+  }
+  &.sent_to_kitchen {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+  }
+  &.preparing {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+  }
+  &.ready {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+  }
+  &.served {
+    background: rgba(6, 182, 212, 0.15);
+    color: #22d3ee;
+  }
+}
+
+// Loyalty earned
+.loyalty-earned {
+  display: flex;
+  align-items: center;
+  background: rgba(251, 191, 36, 0.07);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+}
+.loyalty-earned-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+.loyalty-earned-sub {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+// Bottom actions
+.bottom-actions {
+  margin-top: 8px;
+}
+
+.order-again-btn {
+  background: linear-gradient(135deg, #f97316, #ef4444) !important;
+  color: white !important;
+  border-radius: 14px;
+  height: 52px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 24px rgba(249, 115, 22, 0.35);
+}
+</style>

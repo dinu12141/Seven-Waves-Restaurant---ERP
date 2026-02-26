@@ -19,16 +19,8 @@ export default defineConfig((ctx) => {
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
-      // 'ionicons-v4',
-      // 'mdi-v7',
-      // 'fontawesome-v6',
-      // 'eva-icons',
-      // 'themify',
-      // 'line-awesome',
-      // 'roboto-font-latin-ext', // this or either 'roboto-font', NEVER both!
-
-      'roboto-font', // optional, you are not bound to it
-      'material-icons', // optional, you are not bound to it
+      // Inter is loaded via erp-theme.scss from Google Fonts
+      'material-icons', // material icons from Quasar extras
     ],
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
@@ -97,18 +89,29 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
       config: {
-        dark: true, // Enable dark mode by default
+        dark: true, // Enforce dark mode — ERP theme
+        brand: {
+          primary: '#4385f5',
+          secondary: '#6c757d',
+          accent: '#8ab4f8',
+          dark: '#1c2028',
+          positive: '#34a853',
+          negative: '#ea4335',
+          info: '#4385f5',
+          warning: '#f9ab00',
+        },
+        notify: {
+          position: 'top-right',
+          timeout: 3000,
+          progress: true,
+          actions: [{ icon: 'close', color: 'white', round: true }],
+        },
+        loading: {
+          spinnerColor: 'primary',
+        },
       },
 
-      // iconSet: 'material-icons', // Quasar icon set
-      // lang: 'en-US', // Quasar language pack
-
-      // For special cases outside of where the auto-import strategy can have an impact
-      // (like functional components as one of the examples),
-      // you can manually specify Quasar components/directives to be available everywhere:
-      //
-      // components: [],
-      // directives: [],
+      iconSet: 'material-icons',
 
       // Quasar plugins
       plugins: ['Notify', 'Dialog', 'Loading'],

@@ -67,8 +67,9 @@ CREATE TABLE restaurant_tables (
     company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
     table_number TEXT NOT NULL,
+    section TEXT,
     capacity INTEGER DEFAULT 4,
-    status TEXT DEFAULT 'available', -- available, occupied, reserved
+    status TEXT DEFAULT 'available', -- available, occupied, reserved, maintenance
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(branch_id, table_number)
 );

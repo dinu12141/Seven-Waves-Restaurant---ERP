@@ -77,6 +77,7 @@ const restrictions = computed(() => getRoleRestrictions(authStore.roles))
 const statusClass = computed(() => {
   switch (props.order.status) {
     case 'pending':
+    case 'pending_waiter':
       return 'bg-grey-9'
     case 'accepted':
     case 'preparing':
@@ -120,6 +121,7 @@ const nextActionLabel = computed(() => {
 
   switch (props.order.status) {
     case 'pending':
+    case 'pending_waiter':
       return 'Accept'
     case 'accepted':
     case 'preparing':
@@ -135,6 +137,7 @@ const nextActionLabel = computed(() => {
 const nextActionColor = computed(() => {
   switch (props.order.status) {
     case 'pending':
+    case 'pending_waiter':
       return 'primary'
     case 'accepted':
     case 'preparing':

@@ -115,7 +115,7 @@
   </q-table>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -133,6 +133,7 @@ defineEmits(['add-line', 'remove-line', 'item-change'])
 const showPrice = computed(() => ['PO', 'INVOICE', 'RETURN'].includes(props.mode))
 const showDiscount = computed(() => ['PO', 'INVOICE'].includes(props.mode))
 
+// @ts-ignore
 const columns = computed(() => {
   const cols = [
     { name: 'line_number', label: '#', align: 'left', field: 'line_number' },

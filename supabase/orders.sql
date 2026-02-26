@@ -150,7 +150,7 @@ CREATE TABLE kot_tickets (
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT chk_kot_status CHECK (
-        status IN ('pending', 'accepted', 'preparing', 'ready', 'cancelled')
+        status IN ('created', 'pending', 'accepted', 'preparing', 'ready', 'cancelled')
     )
 );
 
@@ -224,7 +224,7 @@ DECLARE
     r RECORD;
     v_kot_id UUID;
 BEGIN
-    IF NEW.status = 'accepted' AND OLD.status = 'pending' THEN
+    IF NEW.status = 'accepted' AND OLD.status IN ('pending', 'pending_waiter') THEN
 
         FOR r IN
             SELECT DISTINCT kitchen_id
@@ -234,7 +234,7 @@ BEGIN
               AND status = 'queued'
         LOOP
             INSERT INTO kot_tickets(order_id, kitchen_id, status)
-            VALUES (NEW.id, r.kitchen_id, 'pending')
+            VALUES (NEW.id, r.kitchen_id, 'created')
             RETURNING id INTO v_kot_id;
 
             INSERT INTO kot_items(kot_id, order_item_id, quantity)

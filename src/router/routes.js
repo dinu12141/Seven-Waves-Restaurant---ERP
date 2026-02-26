@@ -26,6 +26,11 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'waiter', 'cashier'] },
       },
       {
+        path: 'cashier',
+        component: () => import('pages/CashierPage.vue'),
+        meta: { roles: ['admin', 'manager', 'cashier'] },
+      },
+      {
         path: 'inventory',
         component: () => import('pages/InventoryPage.vue'),
         meta: { roles: ['admin', 'manager', 'inventory'] },
@@ -91,9 +96,24 @@ const routes = [
         meta: { roles: ['admin'] },
       },
       {
+        path: 'admin/printers',
+        component: () => import('pages/admin/PrintersPage.vue'),
+        meta: { roles: ['admin'] },
+      },
+      {
         path: 'admin/settings',
         component: () => import('pages/admin/SettingsPage.vue'),
         meta: { roles: ['admin'] },
+      },
+      {
+        path: 'operations/tables',
+        component: () => import('pages/admin/TablesManagementPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
+        path: 'waiter',
+        component: () => import('pages/WaiterPage.vue'),
+        meta: { roles: ['admin', 'manager', 'waiter'] },
       },
     ],
   },
@@ -102,8 +122,50 @@ const routes = [
     component: () => import('layouts/CustomerLayout.vue'),
     children: [
       { path: '', component: () => import('pages/CustomerMenuPage.vue') },
-      { path: 'track', component: () => import('pages/OrderTrackingPage.vue') },
+      { path: 'track/:orderId', component: () => import('pages/OrderTrackingPage.vue') },
     ],
+  },
+  {
+    // Customer authentication (register + phone OTP)
+    path: '/customer/auth',
+    component: () => import('pages/CustomerAuthPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // Loyalty digital card
+    path: '/loyalty',
+    component: () => import('pages/LoyaltyPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // QR code entry — scanned from table, resolves token → session → menu
+    path: '/c/:qrToken',
+    component: () => import('pages/QrEntryPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // Standalone table device login — no auth required
+    path: '/table-login',
+    component: () => import('pages/TableLoginPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // Table customer menu — session validated in-component
+    path: '/table/:sessionToken/menu',
+    component: () => import('pages/TableMenuPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // Order tracking (standalone from table session menu)
+    path: '/menu/track/:orderId',
+    component: () => import('pages/OrderTrackingPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    // Order tracking within table session (supports back navigation to /table/:token/menu)
+    path: '/table/:sessionToken/track/:orderId',
+    component: () => import('pages/OrderTrackingPage.vue'),
+    meta: { requiresAuth: false },
   },
   {
     path: '/auth',

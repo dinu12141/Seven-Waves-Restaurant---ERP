@@ -1,198 +1,407 @@
 <template>
-  <q-page class="q-pa-md bg-dark">
-    <!-- Search & Filters -->
-    <div class="row q-mb-lg items-center">
-      <q-input
-        v-model="search"
-        placeholder="Search for food..."
-        dark
-        dense
-        outlined
-        rounded
-        class="col"
-        bg-color="dark-elevated"
-      >
-        <template v-slot:prepend>
-          <q-icon name="search" color="primary" />
-        </template>
-      </q-input>
-    </div>
-
-    <!-- Category Tabs -->
-    <div class="q-mb-md overflow-hidden">
-      <q-tabs
-        v-model="selectedCategory"
-        dense
-        no-caps
-        align="left"
-        class="text-grey-5 category-tabs"
-        active-color="primary"
-        indicator-color="transparent"
-      >
-        <q-tab
-          v-for="cat in categories"
-          :key="cat.name"
-          :name="cat.name"
-          class="q-mr-sm category-tab"
-        >
-          <div class="column items-center">
-            <q-icon :name="cat.icon" size="24px" />
-            <span class="text-caption q-mt-xs">{{ cat.name }}</span>
-          </div>
-        </q-tab>
-      </q-tabs>
-    </div>
-
-    <!-- Menu Grid -->
-    <div class="row q-col-gutter-lg">
-      <div v-for="item in filteredItems" :key="item.id" class="col-12 col-sm-6 col-md-4">
-        <MenuItemCard :product="item" @select="handleItemSelect" />
+  <q-page class="customer-menu-page">
+    <!-- Hero Banner -->
+    <div class="menu-hero">
+      <div class="hero-content">
+        <div class="text-overline text-primary letter-spacing q-mb-xs">TODAY'S MENU</div>
+        <div class="text-h5 text-white text-weight-bolder">What are you craving?</div>
+        <div class="text-caption text-grey-5 q-mt-xs">
+          {{ filteredItems.length }} delicious items available
+        </div>
       </div>
     </div>
 
-    <div
-      v-if="filteredItems.length === 0"
-      class="column items-center justify-center q-pa-xl text-grey-7"
-    >
-      <q-icon name="no_meals" size="64px" class="q-mb-md" style="opacity: 0.2" />
-      <div class="text-subtitle1">No matching items found</div>
-      <q-btn flat color="primary" label="Clear Filters" @click="resetFilters" no-caps />
+    <!-- Sticky Search + Category Bar -->
+    <div class="sticky-bar">
+      <!-- Search -->
+      <div class="search-wrap q-px-md q-pt-md q-pb-sm">
+        <q-input
+          v-model="search"
+          placeholder="Search dishes, drinks, desserts..."
+          dense
+          outlined
+          rounded
+          dark
+          class="search-input"
+          clearable
+        >
+          <template v-slot:prepend>
+            <q-icon name="search" color="primary" />
+          </template>
+        </q-input>
+      </div>
+
+      <!-- Category Scroll -->
+      <div class="category-scroll q-px-md q-pb-sm">
+        <div class="category-track">
+          <button
+            v-for="cat in categories"
+            :key="cat.name"
+            class="cat-pill"
+            :class="{ active: selectedCategory === cat.name }"
+            @click="selectedCategory = cat.name"
+          >
+            <span class="cat-icon">{{ cat.emoji }}</span>
+            <span class="cat-label">{{ cat.name }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div style="height: 100px"></div>
+    <!-- Menu Content -->
+    <div class="menu-content q-px-md q-pb-xl">
+      <!-- Group by category mode (when "All" is selected) -->
+      <template v-if="selectedCategory === 'All' && !search">
+        <div v-for="catGroup in groupedItems" :key="catGroup.name" class="category-group q-mb-xl">
+          <div class="category-header q-mb-md row items-center">
+            <span class="cat-emoji-big">{{ getCatEmoji(catGroup.name) }}</span>
+            <div class="q-ml-sm">
+              <div class="text-subtitle1 text-white text-weight-bold">{{ catGroup.name }}</div>
+              <div class="text-caption text-grey-6">{{ catGroup.items.length }} items</div>
+            </div>
+          </div>
 
-    <!-- Floating Order Button for Mobile -->
-    <q-page-sticky position="bottom" :offset="[0, 18]" class="lt-sm">
-      <q-btn
-        v-if="!store.isEmpty"
-        unelevated
-        rounded
-        color="primary"
-        class="q-px-xl q-py-sm shadow-10"
-        @click="store.toggleCart"
-      >
-        <div class="row items-center">
-          <q-icon name="shopping_basket" class="q-mr-sm" />
-          <span class="text-weight-bold">View Order ({{ store.itemCount }})</span>
+          <div class="menu-grid">
+            <MenuItemCard
+              v-for="item in catGroup.items"
+              :key="item.id"
+              :product="item"
+              :cart-qty="store.getItemQty(item.id)"
+              @add="store.addItem(item)"
+              @remove="decrementItem(item)"
+            />
+          </div>
         </div>
-      </q-btn>
-    </q-page-sticky>
+      </template>
+
+      <!-- Filtered / search mode -->
+      <template v-else>
+        <div class="text-caption text-grey-6 q-mb-md q-mt-sm">
+          <span v-if="search"
+            >Results for "<b class="text-white">{{ search }}</b
+            >"</span
+          >
+          <span v-else>{{ selectedCategory }}</span>
+          · {{ filteredItems.length }} items
+        </div>
+
+        <div class="menu-grid">
+          <MenuItemCard
+            v-for="item in filteredItems"
+            :key="item.id"
+            :product="item"
+            :cart-qty="store.getItemQty(item.id)"
+            @add="store.addItem(item)"
+            @remove="decrementItem(item)"
+          />
+        </div>
+
+        <!-- Empty state -->
+        <div
+          v-if="filteredItems.length === 0"
+          class="column items-center q-pa-xl text-center q-mt-xl"
+        >
+          <div style="font-size: 48px">🍽️</div>
+          <div class="text-subtitle1 text-grey-5 q-mt-md q-mb-sm">Nothing found</div>
+          <div class="text-caption text-grey-7">Try searching for something else</div>
+          <q-btn
+            flat
+            color="primary"
+            label="Clear Filters"
+            no-caps
+            class="q-mt-md"
+            @click="resetFilters"
+          />
+        </div>
+      </template>
+    </div>
+
+    <!-- Bottom spacer for FAB -->
+    <div style="height: 90px"></div>
+
+    <!-- Floating Cart FAB -->
+    <transition name="cart-fab">
+      <q-page-sticky v-if="!store.isEmpty" position="bottom" :offset="[0, 20]">
+        <q-btn unelevated class="cart-fab-btn" @click="store.toggleCart">
+          <div class="row items-center no-wrap">
+            <q-badge color="white" text-color="orange" class="q-mr-sm q-px-sm">
+              {{ store.itemCount }}
+            </q-badge>
+            <span class="text-weight-bold">View Order</span>
+            <q-space class="q-mx-sm" />
+            <span class="text-weight-bold">LKR {{ store.subtotal.toLocaleString() }}</span>
+            <q-icon name="chevron_right" class="q-ml-xs" />
+          </div>
+        </q-btn>
+      </q-page-sticky>
+    </transition>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCustomerOrderStore } from 'src/stores/customerOrderStore'
 import MenuItemCard from 'src/components/customer/MenuItemCard.vue'
+import { supabase } from 'src/boot/supabase'
 
 const store = useCustomerOrderStore()
 
 const search = ref('')
 const selectedCategory = ref('All')
 
-const categories = [
-  { name: 'All', icon: 'restaurant' },
-  { name: 'Burgers', icon: 'lunch_dining' },
-  { name: 'Pizza', icon: 'local_pizza' },
-  { name: 'Pastas', icon: 'dinner_dining' },
-  { name: 'Drinks', icon: 'local_bar' },
-  { name: 'Desserts', icon: 'cake' },
-]
+const menuItems = ref([])
+const categories = ref([{ name: 'All', emoji: '🍽️' }])
+const loading = ref(true)
 
-const mockItems = [
-  {
-    id: 'm1',
-    name: 'Classic Cheeseburger',
-    description: 'Juicy beef patty with cheddar cheese, lettuce, and our secret sauce.',
-    price: 1850,
-    category: 'Burgers',
-    is_popular: true,
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=600&h=450&fit=crop',
-  },
-  {
-    id: 'm2',
-    name: 'Pepperoni Perfection',
-    description: 'Crispy thin crust topped with premium pepperoni and mozzarella.',
-    price: 2400,
-    category: 'Pizza',
-    is_popular: true,
-    image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?q=80&w=600&h=450&fit=crop',
-  },
-  {
-    id: 'm3',
-    name: 'Creamy Carbonara',
-    description: 'Spaghetti in a rich parmesan and pancetta cream sauce.',
-    price: 1650,
-    category: 'Pastas',
-    image: 'https://images.unsplash.com/photo-1612450844493-f1441864199c?q=80&w=600&h=450&fit=crop',
-  },
-  {
-    id: 'm4',
-    name: 'Double BBQ Wings',
-    description: '8 pieces of smokey BBQ glazed chicken wings.',
-    price: 1400,
-    category: 'All',
-    image: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?q=80&w=600&h=450&fit=crop',
-  },
-  {
-    id: 'm5',
-    name: 'Mango Iced Tea',
-    description: 'Refreshing homemade iced tea with fresh mango pulp.',
-    price: 650,
-    category: 'Drinks',
-    image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=600&h=450&fit=crop',
-  },
-  {
-    id: 'm6',
-    name: 'Tiramisu',
-    description: 'Classic Italian coffee-flavored dessert.',
-    price: 950,
-    category: 'Desserts',
-    image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?q=80&w=600&h=450&fit=crop',
-  },
-]
+function getCatEmoji(name) {
+  return categories.value.find((c) => c.name === name)?.emoji || '🍽️'
+}
+
+async function fetchMenu() {
+  if (!store.companyId) return
+
+  loading.value = true
+  try {
+    // 1. Fetch Categories
+    const { data: catData } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('company_id', store.companyId)
+      .eq('is_active', true)
+      .order('sort_order')
+
+    if (catData) {
+      categories.value = [
+        { name: 'All', emoji: '🍽️' },
+        ...catData.map((c) => ({
+          name: c.name,
+          emoji: '🍴', // Default or map based on name if needed
+          id: c.id,
+        })),
+      ]
+    }
+
+    // 2. Fetch Menu Items
+    const { data: itemData } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('company_id', store.companyId)
+      .eq('is_available', true)
+      .order('sort_order')
+
+    if (itemData) {
+      menuItems.value = itemData.map((i) => ({
+        id: i.id,
+        name: i.name,
+        description: i.description,
+        price: Number(i.base_price),
+        category: catData?.find((c) => c.id === i.category_id)?.name || 'Other',
+        image:
+          i.image_url ||
+          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
+        kitchen_id: i.kitchen_id,
+        is_popular: i.sort_order < 3, // Mock popular if not in DB
+      }))
+    }
+  } catch (e) {
+    console.error('Fetch menu failed:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchMenu()
+})
 
 const filteredItems = computed(() => {
-  return mockItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.value.toLowerCase())
+  return menuItems.value.filter((item) => {
+    const matchesSearch =
+      !search.value ||
+      item.name.toLowerCase().includes(search.value.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.value.toLowerCase())
     const matchesCategory =
       selectedCategory.value === 'All' || item.category === selectedCategory.value
     return matchesSearch && matchesCategory
   })
 })
 
-function handleItemSelect(product) {
-  store.addItem(product)
-}
+const groupedItems = computed(() => {
+  const groups = {}
+  menuItems.value.forEach((item) => {
+    if (!groups[item.category]) groups[item.category] = []
+    groups[item.category].push(item)
+  })
+
+  // Sort groups based on categories order
+  return categories.value
+    .filter((c) => c.name !== 'All' && groups[c.name])
+    .map((c) => ({
+      name: c.name,
+      items: groups[c.name],
+    }))
+})
 
 function resetFilters() {
   search.value = ''
   selectedCategory.value = 'All'
 }
+
+function decrementItem(product) {
+  const idx = store.cartItems.findIndex((i) => i.productId === product.id)
+  if (idx !== -1) store.updateQuantity(idx, store.cartItems[idx].qty - 1)
+}
 </script>
 
 <style lang="scss" scoped>
-.category-tab {
-  min-width: 80px;
+.customer-menu-page {
+  background: #0d0d14;
+  min-height: 100vh;
+  font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+.menu-hero {
+  background: linear-gradient(
+    135deg,
+    rgba(249, 115, 22, 0.12),
+    rgba(239, 68, 68, 0.08),
+    transparent
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 20px 16px 16px;
+}
+
+.letter-spacing {
+  letter-spacing: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 13, 20, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.search-input {
+  :deep(.q-field__control) {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.category-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.category-track {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+  padding-bottom: 2px;
+}
+
+.cat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  padding: 10px;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  color: #9ca3af;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  font-family: 'Inter', 'Roboto', sans-serif;
 
-  &.q-tab--active {
-    background: rgba(var(--q-primary), 0.1);
-    border-color: rgba(var(--q-primary), 0.2);
+  &:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: white;
+  }
+
+  &.active {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.2));
+    border-color: rgba(249, 115, 22, 0.4);
+    color: #fb923c;
+    font-weight: 600;
   }
 }
 
-.category-tabs {
-  :deep(.q-tabs__content) {
-    padding: 4px;
+.cat-icon {
+  font-size: 1rem;
+}
+.cat-label {
+  font-size: 0.82rem;
+}
+
+.menu-content {
+  padding-top: 16px;
+}
+
+.category-header {
+  position: relative;
+}
+
+.cat-emoji-big {
+  font-size: 1.8rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
   }
 }
 
-.dark-elevated {
-  background: #1e1e1e;
+.cart-fab-btn {
+  background: linear-gradient(135deg, #f97316, #ef4444) !important;
+  color: white !important;
+  border-radius: 30px;
+  padding: 0 20px;
+  height: 52px;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 30px rgba(249, 115, 22, 0.5);
+  min-width: 280px;
+  max-width: 90vw;
+
+  &:hover {
+    box-shadow: 0 12px 40px rgba(249, 115, 22, 0.6);
+  }
+}
+
+.cart-fab-enter-active,
+.cart-fab-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cart-fab-enter-from,
+.cart-fab-leave-to {
+  transform: translateY(80px);
+  opacity: 0;
 }
 </style>

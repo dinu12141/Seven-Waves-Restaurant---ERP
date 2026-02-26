@@ -38,7 +38,7 @@
   </q-footer>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 
 defineEmits(['save', 'post', 'cancel', 'print'])

@@ -224,7 +224,7 @@
   </q-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {

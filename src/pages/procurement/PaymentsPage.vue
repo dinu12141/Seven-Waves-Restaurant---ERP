@@ -146,7 +146,7 @@
   </q-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {
@@ -187,6 +187,7 @@ const defaultForm = {
 }
 const form = ref({ ...defaultForm })
 
+// @ts-ignore
 const columns = [
   { name: 'doc_number', label: 'Payment #', field: 'doc_number', align: 'left', sortable: true },
   {

@@ -1,47 +1,76 @@
 <template>
-  <q-chip
-    :color="getColor(status)"
-    :text-color="getTextColor(status)"
-    :icon="getIcon(status)"
-    dense
-    class="text-weight-bold text-uppercase q-ma-none text-caption"
-  >
-    {{ status }}
-  </q-chip>
+  <span class="erp-chip" :class="chipClass">
+    <span class="erp-chip__dot"></span>
+    {{ displayText }}
+  </span>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   status: {
     type: String,
     required: true,
   },
 })
 
-function getColor(status) {
-  const s = status.toLowerCase()
-  if (['completed', 'paid', 'delivered', 'ready', 'good', 'posted'].includes(s)) return 'green-9'
-  if (['pending', 'processing', 'cooking', 'low', 'draft'].includes(s)) return 'orange-9'
-  if (['cancelled', 'void', 'failed', 'critical'].includes(s)) return 'red-9'
-  return 'grey-8'
+// Status → variant mapping
+const STATUS_MAP = {
+  // Orders
+  completed: 'success',
+  paid: 'success',
+  delivered: 'success',
+  ready: 'success',
+  served: 'success',
+  posted: 'success',
+  active: 'success',
+  approved: 'success',
+  received: 'success',
+  // Warnings / In-progress
+  pending: 'warning',
+  pending_waiter: 'warning',
+  processing: 'warning',
+  cooking: 'warning',
+  preparing: 'warning',
+  accepted: 'info',
+  low: 'warning',
+  draft: 'neutral',
+  scheduled: 'info',
+  in_progress: 'warning',
+  partial: 'warning',
+  ordered: 'info',
+  sent: 'info',
+  // Errors
+  cancelled: 'error',
+  void: 'error',
+  failed: 'error',
+  critical: 'error',
+  overdue: 'error',
+  rejected: 'error',
+  // Neutral / info
+  invoiced: 'neutral',
+  archived: 'neutral',
+  inactive: 'neutral',
 }
 
-function getTextColor(status) {
-  const s = status.toLowerCase()
-  if (['completed', 'paid', 'delivered', 'ready', 'good', 'posted'].includes(s)) return 'green-1'
-  if (['pending', 'processing', 'cooking', 'low', 'draft'].includes(s)) return 'orange-1'
-  if (['cancelled', 'void', 'failed', 'critical'].includes(s)) return 'red-1'
-  return 'grey-3'
+// Status → human-readable display text
+const DISPLAY_TEXT = {
+  pending_waiter: 'Pending',
+  in_progress: 'In Progress',
 }
 
-function getIcon(status) {
-  const s = status.toLowerCase()
-  if (['completed', 'paid', 'posted'].includes(s)) return 'check_circle'
-  if (['pending', 'processing', 'draft'].includes(s)) return 'edit_note'
-  if (['cooking'].includes(s)) return 'soup_kitchen'
-  if (['ready', 'delivered'].includes(s)) return 'local_shipping'
-  if (['cancelled', 'void'].includes(s)) return 'cancel'
-  if (['low', 'critical'].includes(s)) return 'warning'
-  return 'info'
-}
+const variant = computed(() => {
+  return STATUS_MAP[props.status?.toLowerCase()] || 'neutral'
+})
+
+const chipClass = computed(() => `erp-chip--${variant.value}`)
+
+const displayText = computed(() => {
+  const s = props.status?.toLowerCase()
+  return (
+    DISPLAY_TEXT[s] ||
+    props.status?.charAt(0).toUpperCase() + props.status?.slice(1).replace(/_/g, ' ')
+  )
+})
 </script>

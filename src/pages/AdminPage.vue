@@ -72,6 +72,13 @@ const modules = ref([
     to: '/admin/kitchens',
   },
   {
+    title: 'Printer Management',
+    description: 'Configure receipt and kitchen printers for each branch.',
+    icon: 'print',
+    color: 'teal',
+    to: '/admin/printers',
+  },
+  {
     title: 'Module Configuration',
     description: 'Enable or disable system modules (GRN, GIN, Auto Deduct, etc.)',
     icon: 'extension',

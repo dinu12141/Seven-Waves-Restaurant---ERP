@@ -1,194 +1,228 @@
 <template>
-  <q-layout view="lHh Lpr lFf" class="bg-dark">
-    <!-- Header -->
-    <q-header elevated class="bg-grey-10 text-white border-bottom">
-      <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
-
-        <q-toolbar-title class="text-weight-medium">
-          <q-icon name="restaurant" size="24px" class="q-mr-sm" />
-          Restaurant ERP
-        </q-toolbar-title>
-
-        <!-- Search Bar -->
-        <q-input
-          dark
+  <q-layout view="lHh Lpr lFf">
+    <!-- ─── Header ────────────────────────────────────────────────────── -->
+    <q-header class="erp-header">
+      <q-toolbar class="erp-toolbar">
+        <!-- Toggle sidebar -->
+        <q-btn
+          flat
           dense
-          standout
-          v-model="searchQuery"
-          placeholder="Search..."
-          class="q-mx-md"
-          style="max-width: 300px"
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
+          round
+          icon="menu"
+          aria-label="Toggle Menu"
+          class="erp-toolbar-btn"
+          @click="toggleLeftDrawer"
+        />
+
+        <!-- Brand -->
+        <div class="erp-brand">
+          <q-icon name="restaurant" size="18px" class="erp-brand__icon" />
+          <span class="erp-brand__name">Seven Waves</span>
+          <span class="erp-brand__tag">ERP</span>
+        </div>
+
+        <!-- Global Search -->
+        <div class="erp-search-wrap">
+          <q-input
+            v-model="searchQuery"
+            dense
+            borderless
+            placeholder="Search..."
+            class="erp-search"
+          >
+            <template #prepend>
+              <q-icon name="search" size="18px" class="erp-search__icon" />
+            </template>
+            <template #append>
+              <kbd class="erp-search__kbd">⌘K</kbd>
+            </template>
+          </q-input>
+        </div>
 
         <q-space />
 
-        <!-- Branch indicator -->
-        <q-chip
-          v-if="authStore.currentBranch"
-          dense
-          color="grey-8"
-          text-color="white"
-          icon="store"
-          class="q-mr-sm"
-        >
-          {{ authStore.currentBranch.name }}
-        </q-chip>
+        <!-- Branch chip -->
+        <div v-if="authStore.currentBranch" class="erp-branch-chip">
+          <q-icon name="store_mall_directory" size="14px" />
+          <span>{{ authStore.currentBranch.name }}</span>
+        </div>
 
-        <!-- Role indicator -->
-        <q-chip
-          v-for="role in authStore.roles"
-          :key="role"
-          dense
-          :color="roleChipColor(role)"
-          text-color="white"
-          class="q-mr-xs"
-          size="sm"
-        >
-          <q-icon :name="roleIcon(role)" size="14px" class="q-mr-xs" />
-          {{ role }}
-        </q-chip>
+        <!-- Role badges -->
+        <div class="erp-role-badges">
+          <span
+            v-for="role in authStore.roles"
+            :key="role"
+            class="erp-role-badge"
+            :class="`erp-role-badge--${role}`"
+          >
+            {{ role }}
+          </span>
+        </div>
 
         <!-- Notification Bell -->
         <NotificationPanel />
 
-        <!-- User Menu -->
-        <q-btn round flat>
-          <q-avatar size="32px">
-            <img src="https://cdn.quasar.dev/img/boy-avatar.png" />
+        <!-- User Avatar & Menu -->
+        <q-btn flat round class="erp-avatar-btn">
+          <q-avatar size="30px" class="erp-user-avatar">
+            <span>{{ userInitials }}</span>
           </q-avatar>
-          <q-menu>
-            <q-list style="min-width: 220px">
-              <!-- User info header -->
-              <q-item>
-                <q-item-section>
-                  <q-item-label class="text-weight-bold">{{
-                    authStore.userDisplayName
-                  }}</q-item-label>
-                  <q-item-label caption>{{ authStore.user?.email }}</q-item-label>
-                  <div class="q-mt-xs">
-                    <q-badge
+          <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
+            <div class="erp-user-menu">
+              <!-- User header -->
+              <div class="erp-user-menu__header">
+                <q-avatar size="44px" class="erp-user-menu__avatar">
+                  <span>{{ userInitials }}</span>
+                </q-avatar>
+                <div class="erp-user-menu__info">
+                  <div class="erp-user-menu__name">{{ authStore.userDisplayName }}</div>
+                  <div class="erp-user-menu__email">{{ authStore.user?.email }}</div>
+                  <div class="erp-user-menu__roles">
+                    <span
                       v-for="role in authStore.roles"
                       :key="role"
-                      :color="role === 'admin' ? 'red' : 'primary'"
-                      class="q-mr-xs"
+                      class="erp-role-badge erp-role-badge--sm"
+                      :class="`erp-role-badge--${role}`"
+                      >{{ role }}</span
                     >
-                      {{ role }}
-                    </q-badge>
                   </div>
-                </q-item-section>
-              </q-item>
-              <q-separator />
-              <q-item clickable v-close-popup>
-                <q-item-section avatar>
-                  <q-icon name="person" />
-                </q-item-section>
-                <q-item-section>Profile</q-item-section>
-              </q-item>
-              <q-item clickable v-close-popup>
-                <q-item-section avatar>
-                  <q-icon name="settings" />
-                </q-item-section>
-                <q-item-section>Settings</q-item-section>
-              </q-item>
-              <q-separator />
-              <q-item clickable v-close-popup @click="logout">
-                <q-item-section avatar>
-                  <q-icon name="logout" />
-                </q-item-section>
-                <q-item-section>Logout</q-item-section>
-              </q-item>
-            </q-list>
+                </div>
+              </div>
+
+              <div class="erp-user-menu__divider"></div>
+
+              <q-list class="erp-user-menu__list">
+                <q-item clickable v-close-popup class="erp-user-menu__item">
+                  <q-item-section avatar>
+                    <q-icon name="person_outline" size="18px" />
+                  </q-item-section>
+                  <q-item-section>My Profile</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup class="erp-user-menu__item">
+                  <q-item-section avatar>
+                    <q-icon name="settings" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Settings</q-item-section>
+                </q-item>
+                <div class="erp-user-menu__divider"></div>
+                <q-item
+                  clickable
+                  v-close-popup
+                  class="erp-user-menu__item erp-user-menu__item--danger"
+                  @click="logout"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="logout" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Sign Out</q-item-section>
+                </q-item>
+              </q-list>
+            </div>
           </q-menu>
         </q-btn>
       </q-toolbar>
     </q-header>
 
-    <!-- Sidebar -->
+    <!-- ─── Sidebar ──────────────────────────────────────────────────── -->
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      bordered
-      :width="250"
+      :width="240"
       :breakpoint="1024"
-      class="bg-grey-10 sidebar-drawer"
+      class="erp-sidebar"
     >
-      <q-scroll-area class="fit">
-        <q-list padding class="menu-list">
+      <!-- Logo area -->
+      <div class="erp-sidebar__logo">
+        <q-icon name="restaurant" size="20px" />
+        <div class="erp-sidebar__logo-text">
+          <span class="erp-sidebar__logo-name">Seven Waves</span>
+          <span class="erp-sidebar__logo-sub">Restaurant ERP</span>
+        </div>
+      </div>
+
+      <q-scroll-area class="erp-sidebar__scroll">
+        <nav class="erp-sidebar__nav">
           <template v-for="(item, index) in filteredMenuItems" :key="item.label">
-            <!-- Section header when changing sections -->
-            <q-item-label
+            <!-- Section header -->
+            <div
               v-if="
                 item.section &&
                 (index === 0 || item.section !== filteredMenuItems[index - 1]?.section)
               "
-              header
-              class="text-grey-4 text-weight-medium"
+              class="erp-sidebar__section-label"
             >
               {{ item.section }}
-            </q-item-label>
-            <q-item-label v-else-if="index === 0" header class="text-grey-4 text-weight-medium">
-              NAVIGATION
-            </q-item-label>
+            </div>
 
-            <!-- Single Page Item -->
-            <q-item
-              v-if="!item.children"
-              clickable
-              v-ripple
-              :to="item.to"
-              exact
-              active-class="bg-primary text-white"
-              class="menu-item"
-            >
-              <q-item-section avatar>
-                <q-icon :name="item.icon" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ item.label }}</q-item-label>
-              </q-item-section>
-            </q-item>
+            <!-- Leaf item -->
+            <router-link v-if="!item.children" :to="item.to" custom v-slot="{ isActive, navigate }">
+              <div
+                class="erp-sidebar__item"
+                :class="{ 'erp-sidebar__item--active': isActive }"
+                @click="navigate"
+                role="button"
+                :tabindex="0"
+              >
+                <q-icon :name="item.icon" size="18px" class="erp-sidebar__item-icon" />
+                <span class="erp-sidebar__item-label">{{ item.label }}</span>
+              </div>
+            </router-link>
 
-            <!-- Collapsible Item (Management, Procurement, etc.) -->
+            <!-- Expandable group -->
             <q-expansion-item
               v-else
-              :icon="item.icon"
-              :label="item.label"
-              header-class="menu-item text-white"
-              expand-icon-class="text-white"
-              class="overflow-hidden"
+              dense
+              class="erp-sidebar__expansion"
+              header-class="erp-sidebar__expansion-header"
+              expand-icon-class="erp-sidebar__expand-icon"
             >
-              <q-item
-                v-for="child in item.children"
-                :key="child.to"
-                clickable
-                v-ripple
-                :to="child.to"
-                exact
-                active-class="bg-primary text-white"
-                class="menu-item q-ml-sm"
-              >
-                <q-item-section avatar>
-                  <q-icon :name="child.icon" size="20px" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ child.label }}</q-item-label>
-                </q-item-section>
-              </q-item>
+              <template v-slot:header>
+                <div class="erp-sidebar__item-header-content">
+                  <q-icon :name="item.icon" size="18px" class="erp-sidebar__item-icon" />
+                  <span class="erp-sidebar__item-label">{{ item.label }}</span>
+                </div>
+              </template>
+
+              <div class="erp-sidebar__children">
+                <router-link
+                  v-for="child in item.children"
+                  :key="child.to"
+                  :to="child.to"
+                  custom
+                  v-slot="{ isActive, navigate }"
+                >
+                  <div
+                    class="erp-sidebar__child-item"
+                    :class="{ 'erp-sidebar__item--active': isActive }"
+                    @click="navigate"
+                    role="button"
+                    :tabindex="0"
+                  >
+                    <q-icon :name="child.icon" size="16px" class="erp-sidebar__item-icon" />
+                    <span class="erp-sidebar__item-label">{{ child.label }}</span>
+                  </div>
+                </router-link>
+              </div>
             </q-expansion-item>
           </template>
-        </q-list>
+        </nav>
       </q-scroll-area>
+
+      <!-- Version footer -->
+      <div class="erp-sidebar__footer">
+        <span>v2.0.0</span>
+        <span class="erp-sidebar__footer-dot">·</span>
+        <span>Seven Waves ERP</span>
+      </div>
     </q-drawer>
 
-    <!-- Page Content -->
+    <!-- ─── Page Content ──────────────────────────────────────────────── -->
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Global Notification Toasts -->
+    <NotificationToast />
   </q-layout>
 </template>
 
@@ -199,6 +233,7 @@ import { useAuthStore } from 'stores/auth'
 import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
+import NotificationToast from 'components/common/NotificationToast.vue'
 
 const leftDrawerOpen = ref(true)
 const searchQuery = ref('')
@@ -211,20 +246,26 @@ function toggleLeftDrawer() {
 }
 
 function logout() {
-  // Navigate FIRST — instant redirect
   router.push('/auth/login')
-  // Sign out in background — don't block the UI
   authStore.signOut()
 }
 
+/** User initials for avatar */
+const userInitials = computed(() => {
+  const name = authStore.userDisplayName || authStore.user?.email || 'U'
+  return name
+    .split(/[\s@]+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
+})
+
 /**
  * Dynamically filter navigation items based on user roles AND enabled modules.
- * Uses the centralized config from src/config/roles.ts
  */
 const filteredMenuItems = computed(() => {
   const roleFiltered = getFilteredNavItems(authStore.roles || [])
 
-  // Additionally filter out items whose module is disabled (recursively)
   function recursiveModuleFilter(items) {
     return items
       .filter((item) => {
@@ -241,7 +282,6 @@ const filteredMenuItems = computed(() => {
         return item
       })
       .filter((item) => {
-        // Hide parent if it has no children and no 'to' link
         if (item.children && item.children.length === 0 && !item.to) {
           return false
         }
@@ -251,67 +291,477 @@ const filteredMenuItems = computed(() => {
 
   return recursiveModuleFilter(roleFiltered)
 })
-
-/**
- * Role badge colors for the header
- */
-function roleChipColor(role) {
-  const colors = {
-    admin: 'red-8',
-    manager: 'deep-purple-8',
-    waiter: 'teal-8',
-    cashier: 'blue-8',
-    kitchen: 'orange-8',
-    inventory: 'green-8',
-    finance: 'amber-9',
-    hr: 'pink-8',
-    procurement: 'deep-orange-8',
-  }
-  return colors[role] || 'grey-7'
-}
-
-function roleIcon(role) {
-  const icons = {
-    admin: 'shield',
-    manager: 'supervisor_account',
-    waiter: 'room_service',
-    cashier: 'point_of_sale',
-    kitchen: 'soup_kitchen',
-    inventory: 'inventory_2',
-    finance: 'account_balance',
-    hr: 'people',
-    procurement: 'local_shipping',
-  }
-  return icons[role] || 'person'
-}
 </script>
 
 <style scoped lang="scss">
-.border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+// ─── Header ────────────────────────────────────────────────────────────────────
+.erp-header {
+  background-color: var(--erp-bg-header) !important;
+  border-bottom: 1px solid var(--erp-border) !important;
+  box-shadow: none !important;
 }
 
-.sidebar-drawer {
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+.erp-toolbar {
+  height: 52px;
+  min-height: 52px;
+  padding: 0 16px;
+  gap: 8px;
 }
 
-.menu-list {
-  padding-top: 1rem;
-}
-
-.menu-item {
-  margin: 0.25rem 0.5rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-
+.erp-toolbar-btn {
+  color: var(--erp-text-secondary) !important;
   &:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--erp-text-primary) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
   }
 }
 
-:deep(.q-item__label--header) {
-  padding: 1rem 1rem 0.5rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.5px;
+// ─── Brand ─────────────────────────────────────────────────────────────────────
+.erp-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+  text-decoration: none;
+  cursor: default;
+
+  &__icon {
+    color: var(--erp-primary);
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--erp-text-primary);
+    white-space: nowrap;
+  }
+
+  &__tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--erp-primary);
+    background-color: var(--erp-primary-subtle);
+    border: 1px solid rgba(67, 133, 245, 0.2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    align-self: center;
+  }
+}
+
+// ─── Global Search ─────────────────────────────────────────────────────────────
+.erp-search-wrap {
+  flex: 0 1 300px;
+  margin: 0 8px;
+}
+
+.erp-search {
+  :deep(.q-field__control) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 8px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 12px !important;
+    transition: border-color 0.15s;
+
+    &:focus-within {
+      border-color: var(--erp-primary) !important;
+      background-color: rgba(67, 133, 245, 0.04) !important;
+    }
+  }
+
+  :deep(.q-field__native) {
+    font-size: 13px !important;
+    color: var(--erp-text-primary) !important;
+    padding: 0 4px !important;
+    &::placeholder {
+      color: var(--erp-text-tertiary);
+    }
+  }
+
+  &__icon {
+    color: var(--erp-text-tertiary);
+  }
+
+  &__kbd {
+    font-size: 10px;
+    font-family: var(--erp-font-family);
+    color: var(--erp-text-tertiary);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--erp-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+}
+
+// ─── Branch ────────────────────────────────────────────────────────────────────
+.erp-branch-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--erp-text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-right: 8px;
+}
+
+// ─── Role Badges ───────────────────────────────────────────────────────────────
+.erp-role-badges {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.erp-role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+
+  &--admin {
+    background: rgba(234, 67, 53, 0.12);
+    color: #ea4335;
+    border-color: rgba(234, 67, 53, 0.2);
+  }
+  &--manager {
+    background: rgba(124, 77, 255, 0.12);
+    color: #9c71f4;
+    border-color: rgba(124, 77, 255, 0.2);
+  }
+  &--cashier {
+    background: rgba(67, 133, 245, 0.12);
+    color: #4385f5;
+    border-color: rgba(67, 133, 245, 0.2);
+  }
+  &--waiter {
+    background: rgba(0, 188, 212, 0.12);
+    color: #00bcd4;
+    border-color: rgba(0, 188, 212, 0.2);
+  }
+  &--kitchen {
+    background: rgba(255, 152, 0, 0.12);
+    color: #ff9800;
+    border-color: rgba(255, 152, 0, 0.2);
+  }
+  &--inventory {
+    background: rgba(76, 175, 80, 0.12);
+    color: #4caf50;
+    border-color: rgba(76, 175, 80, 0.2);
+  }
+  &--finance {
+    background: rgba(255, 193, 7, 0.12);
+    color: #ffc107;
+    border-color: rgba(255, 193, 7, 0.2);
+  }
+  &--hr {
+    background: rgba(233, 30, 99, 0.12);
+    color: #e91e63;
+    border-color: rgba(233, 30, 99, 0.2);
+  }
+  &--procurement {
+    background: rgba(255, 87, 34, 0.12);
+    color: #ff5722;
+    border-color: rgba(255, 87, 34, 0.2);
+  }
+
+  &--sm {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+}
+
+// ─── Avatar ────────────────────────────────────────────────────────────────────
+.erp-avatar-btn {
+  margin-left: 4px;
+}
+
+.erp-user-avatar {
+  background: var(--erp-primary) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+// ─── User Menu ─────────────────────────────────────────────────────────────────
+.erp-user-menu {
+  width: 260px;
+  background-color: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: 12px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  &__avatar {
+    background: var(--erp-primary) !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--erp-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__email {
+    font-size: 11px;
+    color: var(--erp-text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 6px;
+  }
+
+  &__divider {
+    height: 1px;
+    background-color: var(--erp-border);
+    margin: 0;
+  }
+
+  &__list {
+    padding: 4px 0;
+  }
+
+  &__item {
+    min-height: 40px !important;
+    padding: 0 16px !important;
+    font-size: 13px !important;
+    color: var(--erp-text-primary) !important;
+    gap: 10px;
+
+    &:hover {
+      background-color: var(--erp-bg-card-hover) !important;
+    }
+
+    :deep(.q-icon) {
+      color: var(--erp-text-secondary) !important;
+    }
+
+    &--danger {
+      color: var(--erp-error) !important;
+      :deep(.q-icon) {
+        color: var(--erp-error) !important;
+      }
+      &:hover {
+        background-color: var(--erp-error-bg) !important;
+      }
+    }
+  }
+}
+
+// ─── Sidebar ───────────────────────────────────────────────────────────────────
+.erp-sidebar {
+  background-color: var(--erp-bg-sidebar) !important;
+  border-right: 1px solid var(--erp-border) !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--erp-border);
+    flex-shrink: 0;
+
+    .q-icon {
+      color: var(--erp-primary);
+    }
+  }
+
+  &__logo-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__logo-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--erp-text-primary);
+    line-height: 1.2;
+  }
+
+  &__logo-sub {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--erp-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__scroll {
+    flex: 1;
+    height: calc(100% - 110px); // logo + footer heights
+  }
+
+  &__nav {
+    padding: 8px 0;
+  }
+
+  &__section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--erp-text-tertiary);
+    padding: 16px 16px 4px;
+    margin-top: 4px;
+
+    &:first-child {
+      margin-top: 0;
+      padding-top: 8px;
+    }
+  }
+
+  &__item,
+  &__child-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 12px;
+    margin: 1px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    text-decoration: none;
+    border: 1px solid transparent;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+
+      .erp-sidebar__item-label {
+        color: var(--erp-text-primary);
+      }
+      .q-icon {
+        color: var(--erp-text-secondary);
+      }
+    }
+
+    &--active {
+      background-color: var(--erp-primary-subtle) !important;
+      border-color: rgba(67, 133, 245, 0.15) !important;
+
+      .erp-sidebar__item-label {
+        color: var(--erp-primary) !important;
+        font-weight: 600;
+      }
+      .q-icon {
+        color: var(--erp-primary) !important;
+      }
+    }
+  }
+
+  &__child-item {
+    padding-left: 16px;
+    min-height: 36px;
+    margin: 1px 8px 1px 16px;
+  }
+
+  &__item-header-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  &__item-icon {
+    color: var(--erp-text-tertiary);
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+
+  &__item-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--erp-text-secondary);
+    transition: color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__children {
+    padding: 2px 0;
+  }
+
+  &__footer {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid var(--erp-border);
+    font-size: 10px;
+    color: var(--erp-text-tertiary);
+    flex-shrink: 0;
+  }
+
+  &__footer-dot {
+    opacity: 0.4;
+  }
+}
+
+// Expansion item overrides
+.erp-sidebar {
+  :deep(.erp-sidebar__expansion) {
+    .q-expansion-item__container {
+      .q-item {
+        min-height: 38px !important;
+        padding: 0 12px !important;
+        margin: 1px 8px !important;
+        border-radius: 8px !important;
+        gap: 0 !important;
+
+        // Custom header content alignment
+        .q-item__section--main {
+          padding: 0 !important;
+        }
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .q-expansion-item__toggle-icon {
+          color: var(--erp-text-tertiary);
+          font-size: 16px;
+        }
+      }
+    }
+  }
 }
 </style>

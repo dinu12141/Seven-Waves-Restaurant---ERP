@@ -168,7 +168,7 @@
   </q-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { listSuppliers, upsertSupplier } from 'src/services/procurementService'

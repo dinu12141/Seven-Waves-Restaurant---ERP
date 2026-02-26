@@ -1,44 +1,58 @@
 <template>
   <q-card class="kds-card" flat>
-    <div class="card-strip" :class="stripColorClass"></div>
+    <div class="card-strip" :class="stripClass"></div>
 
     <div class="q-pa-md card-content column justify-between full-height">
       <!-- Header -->
       <div>
         <div class="row items-center justify-between no-wrap q-mb-sm">
-          <div class="row items-center">
-            <span class="text-h5 text-weight-bolder font-mono q-mr-sm">#{{ displayOrderId }}</span>
+          <div class="row items-center q-gutter-x-sm">
+            <span class="text-h5 text-weight-bolder font-mono"
+              >#{{ ticket.kot_number || ticket.orderNumber }}</span
+            >
             <q-badge
-              v-if="order.type"
+              v-if="ticket.orderType"
               :color="typeColor"
               text-color="white"
               class="type-badge shadow-1"
             >
-              {{ order.type }}
+              {{ ticket.orderType }}
             </q-badge>
+            <!-- Print indicator -->
+            <q-icon
+              v-if="ticket.printed_at"
+              name="print"
+              size="16px"
+              color="green-5"
+              class="q-ml-xs"
+            >
+              <q-tooltip>Printed</q-tooltip>
+            </q-icon>
           </div>
 
-          <div class="timer-box" :class="{ 'timer-late': isLate }">
+          <div class="timer-box" :class="{ 'timer-late': isLate, 'timer-critical': isCritical }">
             <q-icon name="schedule" size="18px" class="q-mr-xs" />
-            <span class="text-weight-bold font-mono text-subtitle1">{{ order.timeElapsed }}</span>
+            <span class="text-weight-bold font-mono text-subtitle1">{{ ticket.timeElapsed }}</span>
           </div>
         </div>
 
         <!-- Meta Info -->
         <div class="row items-center text-grey-5 q-mb-md text-caption">
           <q-icon name="table_restaurant" size="16px" class="q-mr-xs" />
-          <span class="text-weight-medium text-body2">{{
-            order.table !== '-' ? `Table ${order.table}` : 'Fast Food / Takeaway'
-          }}</span>
+          <span class="text-weight-medium text-body2">
+            {{ ticket.tableNumber !== '—' ? `Table ${ticket.tableNumber}` : 'Takeaway' }}
+          </span>
           <div class="q-mx-sm text-grey-8">|</div>
-          <span class="text-grey-5 text-body2">{{ itemCount }} Items</span>
+          <span class="text-grey-5 text-body2">{{ itemCount }} items</span>
+          <div class="q-mx-sm text-grey-8">|</div>
+          <span class="text-grey-5 text-body2">Order #{{ ticket.orderNumber }}</span>
         </div>
 
         <q-separator dark class="q-mb-md separator-dashed" />
 
         <!-- Items List -->
         <div class="items-list q-gutter-y-md">
-          <div v-for="(item, idx) in order.items" :key="idx" class="item-row">
+          <div v-for="(item, idx) in ticket.items" :key="idx" class="item-row">
             <div class="row no-wrap items-start">
               <div class="item-qty shadow-2">{{ item.qty }}</div>
               <div class="col q-pl-md">
@@ -53,48 +67,91 @@
             </div>
           </div>
         </div>
+
+        <!-- Order Notes -->
+        <div v-if="ticket.orderNotes" class="order-notes q-mt-md">
+          <q-icon name="notes" size="14px" class="q-mr-xs" />
+          {{ ticket.orderNotes }}
+        </div>
       </div>
 
       <!-- Footer: Actions -->
       <div class="q-mt-lg action-area">
-        <q-btn
-          v-if="order.status === 'Pending'"
-          unelevated
-          rounded
-          class="full-width action-btn btn-new"
-          @click="$emit('start-cooking', order)"
-        >
-          <div class="row items-center justify-center">
-            <q-icon name="restaurant" size="20px" class="q-mr-sm" />
-            <span>START COOKING</span>
+        <!-- STATUS: CREATED → Accept + Print -->
+        <template v-if="ticket.status === 'created'">
+          <div class="row q-gutter-sm">
+            <q-btn
+              unelevated
+              rounded
+              class="col action-btn btn-accept"
+              :loading="accepting"
+              @click="$emit('accept', ticket.id)"
+            >
+              <q-icon name="restaurant" size="20px" class="q-mr-sm" />
+              ACCEPT
+            </q-btn>
+            <q-btn
+              unelevated
+              rounded
+              class="action-btn btn-print"
+              :loading="isPrinting"
+              @click="$emit('print', ticket.id)"
+            >
+              <q-icon name="print" size="20px" />
+              <q-tooltip>Print KOT</q-tooltip>
+            </q-btn>
           </div>
-        </q-btn>
+        </template>
 
-        <q-btn
-          v-else-if="order.status === 'Cooking'"
-          unelevated
-          rounded
-          class="full-width action-btn btn-cooking"
-          @click="$emit('mark-ready', order)"
-        >
-          <div class="row items-center justify-center">
-            <q-icon name="check_circle" size="20px" class="q-mr-sm" />
-            <span>MARK READY</span>
+        <!-- STATUS: PREPARING → Mark Ready + Print -->
+        <template v-else-if="ticket.status === 'preparing'">
+          <div class="row q-gutter-sm">
+            <q-btn
+              unelevated
+              rounded
+              class="col action-btn btn-ready"
+              @click="$emit('mark-ready', ticket.id)"
+            >
+              <q-icon name="check_circle" size="20px" class="q-mr-sm" />
+              MARK READY
+            </q-btn>
+            <q-btn
+              unelevated
+              rounded
+              class="action-btn btn-print"
+              :loading="isPrinting"
+              @click="$emit('print', ticket.id)"
+            >
+              <q-icon name="print" size="20px" />
+              <q-tooltip>{{ ticket.printed_at ? 'Reprint KOT' : 'Print KOT' }}</q-tooltip>
+            </q-btn>
           </div>
-        </q-btn>
+        </template>
 
-        <q-btn
-          v-else-if="order.status === 'Ready'"
-          unelevated
-          rounded
-          class="full-width action-btn btn-ready"
-          @click="$emit('complete', order)"
-        >
-          <div class="row items-center justify-center">
-            <q-icon name="done_all" size="20px" class="q-mr-sm" />
-            <span>COMPLETE</span>
+        <!-- STATUS: READY → Complete/Dismiss + Reprint -->
+        <template v-else-if="ticket.status === 'ready'">
+          <div class="row q-gutter-sm">
+            <q-btn
+              unelevated
+              rounded
+              class="col action-btn btn-complete"
+              @click="$emit('dismiss', ticket.id)"
+            >
+              <q-icon name="done_all" size="20px" class="q-mr-sm" />
+              COMPLETE
+            </q-btn>
+            <q-btn
+              unelevated
+              rounded
+              class="action-btn btn-print"
+              :loading="isPrinting"
+              @click="$emit('print', ticket.id)"
+            >
+              <q-icon name="print" size="20px" />
+              <q-tooltip>Reprint KOT</q-tooltip>
+            </q-btn>
           </div>
-        </q-btn>
+        </template>
       </div>
     </div>
   </q-card>
@@ -104,36 +161,38 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  order: { type: Object, required: true },
+  ticket: { type: Object, required: true },
+  accepting: { type: Boolean, default: false },
+  isPrinting: { type: Boolean, default: false },
 })
 
-defineEmits(['start-cooking', 'mark-ready', 'complete'])
+defineEmits(['accept', 'mark-ready', 'dismiss', 'print'])
 
-const itemCount = computed(() => {
-  return props.order.items.reduce((acc, item) => acc + item.qty, 0)
-})
+const itemCount = computed(() => props.ticket.items?.reduce((sum, i) => sum + i.qty, 0) || 0)
 
-const displayOrderId = computed(() => {
-  return props.order.orderId ? props.order.orderId.replace(/[^\d]/g, '') : '??'
-})
-
-// Late logic: e.g., > 20 mins
+// Late: > 15 mins
 const isLate = computed(() => {
-  if (!props.order.timeElapsed) return false
-  const parts = props.order.timeElapsed.split(':')
-  if (parts.length !== 2) return false
-  const mm = parseInt(parts[0], 10)
-  // const ss = parseInt(parts[1], 10) // unused
-  return mm >= 20
+  const elapsed = props.ticket.timeElapsed
+  if (!elapsed) return false
+  const mins = parseInt(elapsed.split(':')[0], 10)
+  return mins >= 15 && mins < 30
 })
 
-const stripColorClass = computed(() => {
-  switch (props.order.status) {
-    case 'Pending':
+// Critical: > 30 mins
+const isCritical = computed(() => {
+  const elapsed = props.ticket.timeElapsed
+  if (!elapsed) return false
+  const mins = parseInt(elapsed.split(':')[0], 10)
+  return mins >= 30
+})
+
+const stripClass = computed(() => {
+  switch (props.ticket.status) {
+    case 'created':
       return 'bg-orange-5'
-    case 'Cooking':
+    case 'preparing':
       return 'bg-blue-5'
-    case 'Ready':
+    case 'ready':
       return 'bg-green-5'
     default:
       return 'bg-grey-6'
@@ -141,7 +200,7 @@ const stripColorClass = computed(() => {
 })
 
 const typeColor = computed(() => {
-  const t = props.order.type?.toLowerCase() || ''
+  const t = (props.ticket.orderType || '').toLowerCase()
   if (t.includes('dine')) return 'purple-6'
   if (t.includes('take')) return 'teal-6'
   if (t.includes('deliver')) return 'deep-orange-6'
@@ -154,7 +213,7 @@ const typeColor = computed(() => {
   background: #1e1e1e;
   border-radius: 12px;
   overflow: hidden;
-  position: relative; /* For strip positioning */
+  position: relative;
   transition:
     transform 0.2s,
     box-shadow 0.2s;
@@ -163,7 +222,6 @@ const typeColor = computed(() => {
   display: flex;
   flex-direction: column;
 }
-
 .kds-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
@@ -177,10 +235,9 @@ const typeColor = computed(() => {
 
 .card-content {
   color: white;
-  min-height: 200px; /* Ensure consistent minimum height */
+  min-height: 200px;
 }
 
-/* Typography & Utils */
 .text-weight-bolder {
   font-weight: 900;
 }
@@ -203,14 +260,17 @@ const typeColor = computed(() => {
   transition: all 0.3s;
   border: 1px solid transparent;
 }
-
 .timer-late {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ffb74d;
+  border-color: rgba(255, 152, 0, 0.3);
+}
+.timer-critical {
   background: rgba(244, 67, 54, 0.15);
   color: #ff5252;
   border-color: rgba(244, 67, 54, 0.3);
   animation: pulse-border 2s infinite;
 }
-
 @keyframes pulse-border {
   0% {
     box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
@@ -223,7 +283,6 @@ const typeColor = computed(() => {
   }
 }
 
-/* Badges */
 .type-badge {
   font-size: 0.7rem;
   font-weight: 700;
@@ -247,11 +306,9 @@ const typeColor = computed(() => {
   font-size: 1.2rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
-
 .item-name {
   line-height: 1.3;
 }
-
 .item-notes {
   background: rgba(255, 193, 7, 0.15);
   padding: 6px 10px;
@@ -261,43 +318,63 @@ const typeColor = computed(() => {
   border-left: 3px solid #ffc107;
 }
 
-/* Action Area */
+.order-notes {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  background: rgba(245, 158, 11, 0.06);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(245, 158, 11, 0.2);
+}
+
+/* Action Buttons */
 .action-btn {
   font-weight: 800;
   letter-spacing: 1.5px;
   height: 54px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   transition: all 0.2s ease;
 }
 
-.btn-new {
-  background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
-  color: white;
+.btn-accept {
+  background: linear-gradient(135deg, #f57c00, #ff9800) !important;
+  color: white !important;
   box-shadow: 0 4px 15px rgba(245, 124, 0, 0.4);
 }
-.btn-new:hover {
+.btn-accept:hover {
   box-shadow: 0 6px 20px rgba(245, 124, 0, 0.6);
 }
 
-.btn-cooking {
-  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
-  color: white;
+.btn-ready {
+  background: linear-gradient(135deg, #1976d2, #2196f3) !important;
+  color: white !important;
   box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
 }
-.btn-cooking:hover {
+.btn-ready:hover {
   box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
 }
 
-.btn-ready {
-  background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
-  color: white;
+.btn-complete {
+  background: linear-gradient(135deg, #388e3c, #4caf50) !important;
+  color: white !important;
   box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
 }
-.btn-ready:hover {
+.btn-complete:hover {
   box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
 }
 
-/* Scrollbar safety */
+.btn-print {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e0e0e0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  min-width: 54px;
+}
+.btn-print:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Items scroll */
 .items-list {
   max-height: 350px;
   overflow-y: auto;

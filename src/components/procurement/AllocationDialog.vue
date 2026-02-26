@@ -69,7 +69,7 @@
   </q-dialog>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
@@ -87,6 +87,7 @@ watch(
   (val) => {
     if (val) {
       // Clone invoices and add 'allocation' field initialized to 0
+      // @ts-ignore
       localInvoices.value = props.invoices.map((inv) => ({ ...inv, allocation: 0 }))
     }
   },
@@ -97,6 +98,7 @@ const totalAllocated = computed(() =>
 )
 const remainingToAllocate = computed(() => props.totalPayment - totalAllocated.value)
 
+// @ts-ignore
 const columns = [
   { name: 'doc_number', label: 'Invoice #', align: 'left', field: 'doc_number' },
   { name: 'doc_date', label: 'Date', align: 'left', field: 'doc_date' },

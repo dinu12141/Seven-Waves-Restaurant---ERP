@@ -2,8 +2,8 @@ import { boot } from 'quasar/wrappers'
 import { useAuthStore } from 'src/stores/auth'
 import { canAccessRoute } from 'src/config/roles'
 
-export default boot(async ({ router, store }) => {
-  const authStore = useAuthStore(store)
+export default boot(async ({ router }) => {
+  const authStore = useAuthStore()
 
   // Initialize auth — fast: just checks session + fetches roles
   await authStore.initialize()
