@@ -4,9 +4,11 @@
     <div class="report-toolbar">
       <div class="report-toolbar__left">
         <div class="report-toolbar__breadcrumb">
-          <span class="report-toolbar__breadcrumb-root">Reports</span>
-          <q-icon name="chevron_right" size="14px" class="report-toolbar__breadcrumb-sep" />
-          <span class="report-toolbar__breadcrumb-title">{{ title }}</span>
+          <span class="report-toolbar__breadcrumb-item">REPORTS</span>
+          <span class="report-toolbar__breadcrumb-sep">/</span>
+          <span class="report-toolbar__breadcrumb-item report-toolbar__breadcrumb-item--active">{{
+            title
+          }}</span>
         </div>
         <h1 class="report-toolbar__title">{{ title }}</h1>
         <p v-if="subtitle" class="report-toolbar__subtitle">{{ subtitle }}</p>
@@ -385,47 +387,59 @@ onMounted(() => {
   gap: 16px;
   margin-bottom: 16px;
 
-  &__breadcrumb {
+  &__left {
     display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
   }
 
-  &__breadcrumb-root,
+  &__breadcrumb {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    margin-bottom: 6px;
+  }
+
+  &__breadcrumb-item,
   &__breadcrumb-sep {
     font-size: 11px;
+    font-weight: 700;
     color: var(--erp-text-muted, #64748b);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
-  &__breadcrumb-title {
-    font-size: 11px;
+  &__breadcrumb-item--active {
     color: var(--erp-text-secondary, #94a3b8);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-weight: 800;
   }
 
   &__title {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 22px;
+    font-weight: 800;
     color: var(--erp-text-primary, #f8fafc);
     margin: 0;
-    line-height: 1.2;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
   }
 
   &__subtitle {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--erp-text-muted, #64748b);
-    margin: 4px 0 0;
+    margin: 6px 0 0;
+    line-height: 1.4;
   }
 
   &__right {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     flex-shrink: 0;
+    align-self: flex-start;
   }
 }
 

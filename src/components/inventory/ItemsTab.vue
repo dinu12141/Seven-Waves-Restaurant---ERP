@@ -94,7 +94,7 @@
     <BaseDialog v-model="showDialog" :title="editingItem ? 'Edit Item' : 'Add Item'" size="md">
       <BaseFormSection title="General" description="Basic identification and categorization">
         <div class="row q-col-gutter-md">
-          <div class="col-4">
+          <div class="col-3">
             <BaseInput
               label="Code"
               required
@@ -102,7 +102,10 @@
               :rules="[(v) => !!v || 'Required']"
             />
           </div>
-          <div class="col-8">
+          <div class="col-3">
+            <BaseInput label="Barcode" v-model="form.barcode" />
+          </div>
+          <div class="col-6">
             <BaseInput
               label="Item Name"
               required
@@ -112,6 +115,14 @@
           </div>
         </div>
         <div class="row q-col-gutter-md">
+          <div class="col-4">
+            <BaseSelect
+              label="Item Type"
+              v-model="form.item_type"
+              :options="['Finish Good', 'Raw Material', 'Packing Set', 'Servable', 'Non Servable']"
+              required
+            />
+          </div>
           <div class="col-6">
             <BaseSelect
               label="Category"
@@ -197,7 +208,9 @@ const saving = ref(false)
 
 const emptyForm = {
   code: '',
+  barcode: '',
   name: '',
+  item_type: 'Raw Material',
   category_id: null,
   inventory_uom_id: null,
   avg_cost: 0,
@@ -230,7 +243,9 @@ const columns = [
     sortable: true,
     style: 'width: 100px',
   },
+  { name: 'barcode', label: 'Barcode', field: 'barcode', align: 'left', sortable: true },
   { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
+  { name: 'item_type', label: 'Type', field: 'item_type', align: 'left', sortable: true },
   {
     name: 'category_name',
     label: 'Category',
@@ -268,7 +283,9 @@ function openEdit(row) {
   editingItem.value = row
   Object.assign(form, {
     code: row.code,
+    barcode: row.barcode,
     name: row.name,
+    item_type: row.item_type || 'Raw Material',
     category_id: row.category_id,
     inventory_uom_id: row.inventory_uom_id,
     avg_cost: row.avg_cost,
@@ -315,4 +332,8 @@ async function deactivate(row) {
 function formatCurrency(val) {
   return 'LKR ' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
 }
+defineExpose({
+  columns,
+  rows: filteredItems,
+})
 </script>

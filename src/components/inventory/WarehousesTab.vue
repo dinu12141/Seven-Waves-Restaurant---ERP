@@ -53,6 +53,26 @@
                 {{ (wh.warehouse_type || '').replace('_', ' ') }}
               </q-chip>
               <q-chip
+                v-if="wh.category"
+                dense
+                size="sm"
+                color="secondary"
+                text-color="white"
+                icon="category"
+              >
+                {{ wh.category }}
+              </q-chip>
+              <q-chip
+                v-if="wh.city"
+                dense
+                size="sm"
+                color="info"
+                text-color="white"
+                icon="location_city"
+              >
+                {{ wh.city }}
+              </q-chip>
+              <q-chip
                 v-if="wh.is_default"
                 dense
                 size="sm"
@@ -121,6 +141,23 @@
             emit-value
             map-options
           />
+          <q-select
+            dark
+            outlined
+            v-model="form.category"
+            :options="['Selling', 'Brand', 'Stores', 'Service']"
+            label="Category"
+            emit-value
+            map-options
+          />
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-input dark outlined v-model="form.city" label="City" />
+            </div>
+            <div class="col-6">
+              <q-input dark outlined v-model="form.contact_no" label="Contact No" />
+            </div>
+          </div>
           <q-toggle dark v-model="form.is_default" label="Default Warehouse" color="primary" />
           <q-toggle
             dark
@@ -161,6 +198,9 @@ const emptyForm = {
   code: '',
   name: '',
   warehouse_type: 'kitchen',
+  category: 'Stores',
+  city: '',
+  contact_no: '',
   is_default: false,
   allow_negative_stock: false,
 }
@@ -211,6 +251,9 @@ function openEdit(wh) {
     code: wh.code,
     name: wh.name,
     warehouse_type: wh.warehouse_type,
+    category: wh.category || 'Stores',
+    city: wh.city || '',
+    contact_no: wh.contact_no || '',
     is_default: wh.is_default,
     allow_negative_stock: wh.allow_negative_stock,
   })
@@ -252,6 +295,20 @@ async function toggleActive(wh) {
     $q.notify({ type: 'negative', message: e.message || 'Failed to update warehouse.' })
   }
 }
+const columns = [
+  { name: 'code', label: 'Code', field: 'code' },
+  { name: 'name', label: 'Warehouse Name', field: 'name' },
+  { name: 'warehouse_type', label: 'Type', field: 'warehouse_type' },
+  { name: 'category', label: 'Category', field: 'category' },
+  { name: 'city', label: 'City', field: 'city' },
+  { name: 'contact_no', label: 'Contact', field: 'contact_no' },
+  { name: 'is_active', label: 'Status', field: (row) => (row.is_active ? 'Active' : 'Inactive') },
+]
+
+defineExpose({
+  columns,
+  rows: warehouses,
+})
 </script>
 
 <style scoped>

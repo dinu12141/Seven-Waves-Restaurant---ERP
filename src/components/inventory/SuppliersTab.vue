@@ -212,4 +212,8 @@ async function toggleActive(supplier) {
     $q.notify({ type: 'negative', message: e.message || 'Failed to update status.' })
   }
 }
+defineExpose({
+  columns,
+  rows: suppliers,
+})
 </script>

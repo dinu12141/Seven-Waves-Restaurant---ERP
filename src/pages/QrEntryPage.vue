@@ -68,12 +68,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { loginWithQrToken } from 'src/services/tableAuthService'
 import { useTableSessionStore } from 'src/stores/tableSessionStore'
-import { useCustomerStore } from 'src/stores/customerStore'
+import { supabase } from 'src/boot/supabase'
 
 const route = useRoute()
 const router = useRouter()
 const session = useTableSessionStore()
-const customer = useCustomerStore()
 
 const loading = ref(true)
 const errorMsg = ref('')
@@ -100,30 +99,47 @@ async function resolveQr() {
       expires_at: result.expires_at,
     })
 
-    // Try restoring customer from localStorage
-    customer.tryRestoreFromLocal()
-
-    // If customer already logged in, go directly to menu; else go to auth
-    if (customer.isLoggedIn) {
-      router.replace('/table/' + encodeURIComponent(result.session_token) + '/menu')
-    } else {
-      router.replace('/customer/auth')
+    try {
+      const { data } = await supabase
+        .from('restaurant_tables')
+        .select('table_number')
+        .eq('id', result.table_id)
+        .single()
+      if (data && data.table_number) {
+        localStorage.setItem('tm_table_id', data.table_number)
+      }
+    } catch (e) {
+      console.error(e)
     }
+
+    localStorage.setItem('tm_session_token', result.session_token)
+
+    // Redirect to the new Touch Menu interface
+    router.replace('/touch')
   } else {
     errorMsg.value = result.error || 'Invalid or expired QR code. Ask your waiter for a new one.'
     loading.value = false
   }
 }
 
-onMounted(() => {
-  // If session already active and customer logged in, go to menu
+onMounted(async () => {
+  // By default if already authenticated, just go straight to touch menu
   if (session.isAuthenticated && session.sessionToken) {
-    customer.tryRestoreFromLocal()
-    if (customer.isLoggedIn) {
-      router.replace('/table/' + encodeURIComponent(session.sessionToken) + '/menu')
-    } else {
-      router.replace('/customer/auth')
+    try {
+      const { data } = await supabase
+        .from('restaurant_tables')
+        .select('table_number')
+        .eq('id', session.tableId)
+        .single()
+      if (data && data.table_number) {
+        localStorage.setItem('tm_table_id', data.table_number)
+      }
+    } catch (e) {
+      console.error('Initial QR Entry error:', e)
     }
+
+    localStorage.setItem('tm_session_token', session.sessionToken)
+    router.replace('/touch')
     return
   }
   resolveQr()

@@ -225,4 +225,8 @@ function formatDateTime(val) {
     d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   )
 }
+defineExpose({
+  columns,
+  rows: entries,
+})
 </script>

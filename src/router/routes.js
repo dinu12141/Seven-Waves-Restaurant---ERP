@@ -141,6 +141,41 @@ const routes = [
         component: () => import('pages/reports/InventoryLedger.vue'),
         meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
       },
+      {
+        path: 'reports/electronic-journal',
+        component: () => import('pages/reports/ElectronicJournal.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/item-wise-sale',
+        component: () => import('pages/reports/ItemWiseSale.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/waiter-wise-sale',
+        component: () => import('pages/reports/WaiterWiseSale.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/table-wise-sale',
+        component: () => import('pages/reports/TableWiseSale.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/sales-statement',
+        component: () => import('pages/reports/SalesStatement.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/group-summary',
+        component: () => import('pages/reports/GroupSummary.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/inventory-performance',
+        component: () => import('pages/reports/InventoryPerformanceReport.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
+      },
     ],
   },
   {
@@ -150,6 +185,13 @@ const routes = [
       { path: '', component: () => import('pages/CustomerMenuPage.vue') },
       { path: 'track/:orderId', component: () => import('pages/OrderTrackingPage.vue') },
     ],
+  },
+  {
+    // Touch Screen Menu Book Layout (Tablet/Mobile WebApp format)
+    path: '/touch',
+    component: () => import('layouts/TouchMenuLayout.vue'),
+    meta: { requiresAuth: false },
+    children: [{ path: '', component: () => import('pages/touch-menu/MenuBookTablet.vue') }],
   },
   {
     // Customer authentication (register + phone OTP)

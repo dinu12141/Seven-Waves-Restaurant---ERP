@@ -266,4 +266,8 @@ function getStatusIcon(s) {
 function formatCurrency(val) {
   return 'LKR ' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
 }
+defineExpose({
+  columns,
+  rows: documents,
+})
 </script>

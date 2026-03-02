@@ -211,4 +211,16 @@ function formatCurrencyShort(val) {
   if (val >= 1000) return 'LKR ' + (val / 1000).toFixed(1) + 'K'
   return 'LKR ' + Number(val || 0).toFixed(0)
 }
+const columns = [
+  { name: 'warehouse_name', label: 'Warehouse Name', field: 'warehouse_name' },
+  { name: 'warehouse_type', label: 'Type', field: 'warehouse_type' },
+  { name: 'item_count', label: 'Items', field: 'item_count' },
+  { name: 'total_value', label: 'Value (LKR)', field: 'total_value' },
+  { name: 'low_stock', label: 'Low Stock', field: 'low_stock' },
+]
+
+defineExpose({
+  columns,
+  rows: warehouseSummary,
+})
 </script>

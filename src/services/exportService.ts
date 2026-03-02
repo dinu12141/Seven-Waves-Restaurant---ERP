@@ -78,3 +78,52 @@ export function exportToPDF(document: any, lines: any[]) {
     throw err
   }
 }
+
+/**
+ * Generic CSV Export
+ */
+export function exportTableToCSV(columns: any[], rows: any[], filename: string) {
+  const headers = columns.map((c) => c.label).join(',')
+  const csvRows = rows
+    .map((r) => {
+      return columns
+        .map((col) => {
+          const val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+          // Escape commas and wrap in quotes
+          const escaped = ('' + (val || '')).replace(/"/g, '""')
+          return `"${escaped}"`
+        })
+        .join(',')
+    })
+    .join('\n')
+
+  const content = headers + '\n' + csvRows
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', filename.endsWith('.csv') ? filename : `${filename}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+/**
+ * Generic Excel Export
+ */
+export function exportTableToExcel(columns: any[], rows: any[], filename: string) {
+  const data = rows.map((r) => {
+    const obj: any = {}
+    columns.forEach((col) => {
+      obj[col.label] = typeof col.field === 'function' ? col.field(r) : r[col.field]
+    })
+    return obj
+  })
+
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Data')
+  const finalFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`
+  XLSX.writeFile(wb, finalFilename)
+}

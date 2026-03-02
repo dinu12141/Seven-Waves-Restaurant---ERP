@@ -565,4 +565,8 @@ async function saveRecipe() {
     saving.value = false
   }
 }
+defineExpose({
+  columns,
+  rows: filteredRecipes,
+})
 </script>

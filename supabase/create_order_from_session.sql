@@ -212,7 +212,12 @@ BEGIN
        SET last_activity_at = now()
      WHERE id = v_session.id;
 
-    -- 10. Return success
+    -- 10. Lock the table (set status to occupied)
+    UPDATE restaurant_tables
+       SET status = 'occupied', updated_at = now()
+     WHERE id = v_table.table_id;
+
+    -- 11. Return success
     RETURN jsonb_build_object(
         'success',      true,
         'order_id',     v_order_id,

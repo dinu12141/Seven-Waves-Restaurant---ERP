@@ -1,13 +1,13 @@
 <template>
-  <div class="erp-toolbar q-py-sm q-px-md items-center shadow-1">
-    <div class="row full-width justify-between no-wrap">
+  <div class="erp-toolbar q-px-lg shadow-2">
+    <div class="row full-width items-center no-wrap h-100">
       <!-- Left side: Title, Badges, Breadcrumbs -->
-      <div class="erp-toolbar__left row items-center no-wrap q-gutter-x-sm">
+      <div class="col-auto row items-center no-wrap q-gutter-x-md">
         <div class="column justify-center">
-          <div class="erp-toolbar__breadcrumbs text-grey-5 text-uppercase" v-if="breadcrumbs">
+          <div class="erp-toolbar__breadcrumbs text-grey-6 text-uppercase" v-if="breadcrumbs">
             {{ breadcrumbs }}
           </div>
-          <div class="row items-center q-gutter-x-sm">
+          <div class="row items-center no-wrap q-gutter-x-sm">
             <h1 class="erp-toolbar__title text-white no-margin">{{ title }}</h1>
             <q-badge v-if="roleBadge" outline color="primary" class="erp-toolbar__role-badge">
               {{ roleBadge }}
@@ -17,25 +17,26 @@
       </div>
 
       <!-- Center: Global Search -->
-      <div class="erp-toolbar__center col-grow row justify-center q-px-xl" v-if="showSearch">
+      <div class="col row justify-center q-px-xl" v-if="showSearch">
         <q-input
           v-model="searchQuery"
           dense
           outlined
           dark
-          placeholder="Search..."
+          bg-color="grey-10"
+          placeholder="Search items, orders, or records..."
           class="erp-toolbar__search full-width"
-          style="max-width: 400px"
+          style="max-width: 480px"
           @keyup.enter="$emit('search', searchQuery)"
         >
           <template #prepend>
-            <q-icon name="search" size="18px" />
+            <q-icon name="search" size="20px" class="text-grey-5" />
           </template>
         </q-input>
       </div>
 
       <!-- Right side: Actions -->
-      <div class="erp-toolbar__right row items-center no-wrap q-gutter-x-sm">
+      <div class="col-auto row items-center no-wrap q-gutter-x-sm">
         <q-select
           v-if="showBranchSelector && branches.length > 0"
           v-model="selectedBranch"
@@ -45,58 +46,80 @@
           dense
           outlined
           dark
+          bg-color="grey-10"
           emit-value
           map-options
           class="erp-toolbar__branch"
-          style="min-width: 160px"
+          style="min-width: 140px"
           @update:model-value="$emit('branch-change', selectedBranch)"
         >
           <template #prepend>
-            <q-icon name="store" size="18px" />
+            <q-icon name="store" size="18px" class="text-primary" />
           </template>
         </q-select>
 
         <slot name="bulk-actions" />
 
-        <q-btn
-          v-if="showRefresh"
-          flat
-          round
-          dense
-          icon="refresh"
-          size="sm"
-          color="grey-5"
-          class="erp-toolbar__icon-btn"
-          @click="$emit('refresh')"
-        />
-        <q-btn
-          v-if="showFilter"
-          flat
-          round
-          dense
-          icon="filter_list"
-          size="sm"
-          color="grey-5"
-          class="erp-toolbar__icon-btn"
-          @click="$emit('filter')"
-        />
+        <div class="row items-center no-wrap q-gutter-x-xs">
+          <q-btn
+            v-if="showRefresh"
+            flat
+            round
+            dense
+            icon="refresh"
+            size="sm"
+            color="grey-7"
+            class="erp-toolbar__icon-btn"
+            @click="$emit('refresh')"
+          >
+            <q-tooltip>Refresh Data</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="showFilter"
+            flat
+            round
+            dense
+            icon="filter_list"
+            size="sm"
+            color="grey-7"
+            class="erp-toolbar__icon-btn"
+            @click="$emit('filter')"
+          >
+            <q-tooltip>Advanced Filter</q-tooltip>
+          </q-btn>
+        </div>
 
         <slot name="secondary-actions" />
 
-        <q-btn
+        <q-btn-dropdown
           v-if="showExport && canExport"
           outline
-          class="erp-toolbar__secondary-btn q-ml-sm"
+          class="erp-toolbar__secondary-btn"
           color="white"
           label="Export"
-          icon="download"
-          @click="$emit('export')"
-        />
+          icon="file_download"
+          no-caps
+        >
+          <q-list dense class="bg-dark text-white" style="min-width: 140px">
+            <q-item clickable v-close-popup @click="$emit('export-csv')">
+              <q-item-section avatar>
+                <q-icon name="table_view" size="20px" />
+              </q-item-section>
+              <q-item-section>Export CSV</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="$emit('export-excel')">
+              <q-item-section avatar>
+                <q-icon name="grid_on" size="20px" />
+              </q-item-section>
+              <q-item-section>Export Excel</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
 
         <q-btn
           v-if="primaryAction && canCreate"
           unelevated
-          class="erp-toolbar__primary-btn q-ml-sm"
+          class="erp-toolbar__primary-btn"
           color="primary"
           :label="primaryActionLabel"
           icon="add"
@@ -105,12 +128,12 @@
 
         <q-btn-dropdown
           v-if="secondaryActions && secondaryActions.length > 0"
-          class="erp-toolbar__dropdown-btn q-ml-sm"
+          class="erp-toolbar__dropdown-btn"
           outline
           color="white"
           icon="more_vert"
         >
-          <q-list class="bg-dark text-white">
+          <q-list class="bg-dark text-white" style="min-width: 180px">
             <q-item
               v-for="action in secondaryActions"
               :key="action.label"
@@ -154,7 +177,15 @@ const props = defineProps({
   secondaryActions: { type: Array, default: () => [] }, // { label, icon, handler }
 })
 
-defineEmits(['search', 'branch-change', 'refresh', 'filter', 'export', 'primary-action'])
+defineEmits([
+  'search',
+  'branch-change',
+  'refresh',
+  'filter',
+  'export-csv',
+  'export-excel',
+  'primary-action',
+])
 
 const authStore = useAuthStore()
 const { canCreateRecord, canExportData } = useToolbarPermissions()
@@ -170,82 +201,114 @@ const canExport = computed(() => canExportData(props.moduleName))
 
 <style scoped lang="scss">
 .erp-toolbar {
-  height: 56px;
-  background-color: var(--erp-bg-form-card, #111827); // subtle neutral
-  border-bottom: 1px solid var(--erp-input-border, #1f2937);
+  height: 64px;
+  background-color: var(--erp-bg-form-card, #111827);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: sticky;
   top: 0;
   z-index: 100;
-  margin: -16px -16px 16px -16px; // Adjust negative margins based on Quasar q-page padding
+  margin: -16px -16px 16px -16px;
+  display: flex;
+  align-items: center;
+
+  .h-100 {
+    height: 100%;
+  }
 
   &__title {
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
   }
 
   &__breadcrumbs {
     font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+    opacity: 0.7;
   }
 
   &__role-badge {
-    height: 18px;
-    font-size: 10px;
-    padding: 0 4px;
-    border-width: 1px;
+    height: 20px;
+    font-size: 11px;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-weight: 600;
   }
 
   &__search :deep(.q-field__control),
   &__branch :deep(.q-field__control) {
-    height: 32px !important;
-    min-height: 32px !important;
-    border-radius: 6px;
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    &.q-field__control--focused {
+      border-color: var(--erp-primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
   }
 
   &__icon-btn {
+    width: 32px;
+    height: 32px;
+    transition: all 0.2s ease;
     &:hover {
       color: white !important;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
     }
   }
 
   &__primary-btn {
-    height: 32px;
-    min-height: 32px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 0 16px;
-    .q-icon {
-      font-size: 16px;
+    height: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 20px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
     }
   }
 
   &__secondary-btn,
   &__dropdown-btn {
-    height: 32px;
-    min-height: 32px;
-    border-radius: 6px;
-    font-size: 13px;
+    height: 38px;
+    min-height: 38px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 500;
     padding: 0 16px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease;
+
+    :deep(.q-btn-dropdown__arrow) {
+      display: none;
+    }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.3);
     }
   }
 
   &__dropdown-btn {
-    padding: 0 8px;
-    :deep(.q-btn__content) {
-      margin-left: 0;
-    }
+    padding: 0 10px;
     :deep(.q-btn-dropdown__arrow) {
       display: none;
     }

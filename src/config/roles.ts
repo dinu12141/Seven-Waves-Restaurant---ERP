@@ -263,6 +263,48 @@ export const NAV_ITEMS: NavItem[] = [
         roles: ['admin', 'manager', 'finance'],
       },
       {
+        label: 'Electronic Journal',
+        icon: 'auto_stories',
+        to: '/reports/electronic-journal',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Item Wise Sale',
+        icon: 'summarize',
+        to: '/reports/item-wise-sale',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Waiter Wise Sale',
+        icon: 'person_search',
+        to: '/reports/waiter-wise-sale',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Table Wise Sale',
+        icon: 'deck',
+        to: '/reports/table-wise-sale',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Sales Statement',
+        icon: 'analytics',
+        to: '/reports/sales-statement',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Group Summary',
+        icon: 'folder_shared',
+        to: '/reports/group-summary',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Inventory Performance',
+        icon: 'monitoring',
+        to: '/reports/inventory-performance',
+        roles: ['admin', 'manager', 'inventory', 'finance'],
+      },
+      {
         label: 'Inventory Ledger',
         icon: 'inventory_2',
         to: '/reports/inventory',

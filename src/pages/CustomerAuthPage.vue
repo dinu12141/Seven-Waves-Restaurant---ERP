@@ -424,7 +424,7 @@ async function finishAuth() {
   // Navigate to menu
   const token = session.sessionToken
   if (token) {
-    router.replace('/table/' + encodeURIComponent(token) + '/menu')
+    router.replace('/touch')
   } else {
     router.replace('/menu')
   }
@@ -435,7 +435,7 @@ async function finishAuth() {
 function skipAuth() {
   const token = session.sessionToken
   if (token) {
-    router.replace('/table/' + encodeURIComponent(token) + '/menu')
+    router.replace('/touch')
   } else {
     router.replace('/menu')
   }
