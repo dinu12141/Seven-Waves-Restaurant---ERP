@@ -1,22 +1,23 @@
 <template>
   <q-page class="printers-page q-pa-md">
-    <div class="row items-center justify-between q-mb-lg">
-      <div>
-        <div class="text-overline text-primary letter-sp">SYSTEM CONFIG</div>
-        <div class="text-h5 text-weight-bold text-white">Printer Management</div>
-        <div class="text-body2 text-grey-6 q-mt-xs">
-          Configure receipt and kitchen printers for each branch
-        </div>
-      </div>
-      <q-btn
-        unelevated
-        color="primary"
-        icon="add"
-        label="Add Printer"
-        @click="openAdd"
-        class="add-btn"
-      />
-    </div>
+    <PageHeader
+      title="Printer Management"
+      subtitle="Configure receipt and kitchen printers for each branch"
+      show-back
+      back-route="/admin"
+      breadcrumb="SYSTEM CONFIG"
+    >
+      <template #actions>
+        <q-btn
+          unelevated
+          color="primary"
+          icon="add"
+          label="Add Printer"
+          @click="openAdd"
+          class="add-btn"
+        />
+      </template>
+    </PageHeader>
 
     <!-- Stats row -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -406,6 +407,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import PageHeader from 'components/common/PageHeader.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()

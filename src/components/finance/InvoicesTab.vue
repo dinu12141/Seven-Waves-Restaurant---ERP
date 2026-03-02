@@ -2,7 +2,7 @@
   <div>
     <DataTable
       title="Invoices"
-      :rows="invoices"
+      :rows="store.dailyInvoices"
       :columns="columns"
       :filter="filter"
       :loading="loading"
@@ -41,8 +41,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useFinanceStore } from 'src/stores/financeStore'
 import DataTable from 'components/common/DataTable.vue'
 import StatusChip from 'components/common/StatusChip.vue'
+
+const store = useFinanceStore()
 
 const filter = ref('')
 const loading = ref(false)
@@ -56,46 +59,5 @@ const columns = [
   { name: 'actions', label: 'Actions', align: 'right', field: 'actions' },
 ]
 
-const invoices = ref([
-  {
-    id: 1,
-    invoiceNumber: 'INV-1001',
-    date: '2023-10-25 12:30 PM',
-    customer: 'Walk-in Customer',
-    amount: 'LKR 4,550.00',
-    status: 'Paid',
-  },
-  {
-    id: 2,
-    invoiceNumber: 'INV-1002',
-    date: '2023-10-25 01:15 PM',
-    customer: 'John Doe',
-    amount: 'LKR 12,000.00',
-    status: 'Pending',
-  },
-  {
-    id: 3,
-    invoiceNumber: 'INV-1003',
-    date: '2023-10-25 02:45 PM',
-    customer: 'Table 5',
-    amount: 'LKR 8,500.00',
-    status: 'Paid',
-  },
-  {
-    id: 4,
-    invoiceNumber: 'INV-1004',
-    date: '2023-10-24 07:30 PM',
-    customer: 'Sarah Smith',
-    amount: 'LKR 21,000.00',
-    status: 'Cancelled',
-  },
-  {
-    id: 5,
-    invoiceNumber: 'INV-1005',
-    date: '2023-10-24 08:15 PM',
-    customer: 'Table 12',
-    amount: 'LKR 6,500.00',
-    status: 'Paid',
-  },
-])
+// invoices removed as it's now coming from store
 </script>

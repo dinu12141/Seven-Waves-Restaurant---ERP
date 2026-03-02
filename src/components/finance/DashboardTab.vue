@@ -4,24 +4,30 @@
     <div class="col-12 col-md-3">
       <StatCard
         title="Today's Revenue"
-        value="LKR 845,000.00"
+        :value="
+          'LKR ' +
+          Number(store.todayRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
+        "
         icon="attach_money"
         color="green"
-        trend="+15%"
-        trendIcon="trending_up"
+        trend="Collected"
+        trendIcon="check_circle"
         trendColor="green"
       />
     </div>
 
-    <!-- Pending Payments -->
+    <!-- WIP Revenue (Potential) -->
     <div class="col-12 col-md-3">
       <StatCard
-        title="Pending Payments"
-        value="LKR 160,000.00"
-        icon="pending_actions"
+        title="WIP Revenue (Live)"
+        :value="
+          'LKR ' +
+          Number(store.wipRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
+        "
+        icon="soup_kitchen"
         color="orange"
-        trend="3 Invoices"
-        trendIcon="warning"
+        :trend="store.wipOrders.length + ' Active Orders'"
+        trendIcon="pending_actions"
         trendColor="orange"
       />
     </div>
@@ -103,8 +109,20 @@
 </template>
 
 <script setup>
+import { onMounted, onUnmounted } from 'vue'
+import { useFinanceStore } from 'src/stores/financeStore'
 import StatCard from 'components/common/StatCard.vue'
 import SalesChart from 'components/finance/SalesChart.vue'
+
+const store = useFinanceStore()
+
+onMounted(() => {
+  store.initialize()
+})
+
+onUnmounted(() => {
+  store.cleanup()
+})
 </script>
 
 <style scoped>

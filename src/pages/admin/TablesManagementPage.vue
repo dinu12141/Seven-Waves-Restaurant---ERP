@@ -1,12 +1,13 @@
 <template>
   <q-page class="tables-mgmt-page q-pa-md">
     <!-- Page Header -->
-    <div class="page-header q-mb-lg">
-      <div class="row items-center justify-between">
-        <div>
-          <div class="page-title">Table Management</div>
-          <div class="page-subtitle">Register tables, generate QR codes & manage table devices</div>
-        </div>
+    <PageHeader
+      title="Table Management"
+      subtitle="Register tables, generate QR codes & manage table devices"
+      show-back
+      back-route="/admin"
+    >
+      <template #actions>
         <q-btn
           id="add-table-btn"
           color="primary"
@@ -16,8 +17,8 @@
           unelevated
           @click="openAddTable"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- Stats Row -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -76,6 +77,15 @@
           <div class="col-12 col-md-4 text-right">
             <q-btn
               flat
+              icon="grid_view"
+              label="Live Chart"
+              no-caps
+              color="primary"
+              class="q-mr-sm"
+              @click="floorPlanDialog = true"
+            />
+            <q-btn
+              flat
               icon="refresh"
               label="Refresh"
               no-caps
@@ -108,110 +118,85 @@
       />
     </div>
 
-    <div v-else class="row q-col-gutter-md">
+    <div v-else class="tables-grid">
       <div
         v-for="table in filteredTables"
         :key="table.id"
-        class="col-12 col-sm-6 col-md-4 col-lg-3"
+        class="tbl-card"
+        :class="'tbl-card--' + table.status"
       >
-        <div class="table-card" :class="'status-' + table.status">
-          <!-- Status badge -->
-          <div class="table-status-badge" :class="'badge-' + table.status">
-            {{ table.status }}
-          </div>
-
-          <!-- Table icon + number -->
-          <div class="table-icon-wrap">
-            <q-icon name="table_restaurant" size="36px" :color="statusColor(table.status)" />
-          </div>
-          <div class="table-number">Table {{ table.table_number }}</div>
-          <div class="table-section text-grey-6" v-if="table.section">{{ table.section }}</div>
-          <div class="table-capacity">
-            <q-icon name="people" size="14px" class="q-mr-xs" />
-            {{ table.capacity }} seats
-          </div>
-
-          <!-- Indicators -->
-          <div class="table-indicators row q-gutter-xs justify-center q-mt-sm">
-            <q-chip
-              dense
-              :color="table.has_qr ? 'positive' : 'grey-4'"
-              :text-color="table.has_qr ? 'white' : 'grey-7'"
-              icon="qr_code_2"
-              size="sm"
-            >
-              {{ table.has_qr ? 'QR Ready' : 'No QR' }}
-            </q-chip>
-            <q-chip
-              dense
-              :color="table.has_device ? 'orange' : 'grey-4'"
-              :text-color="table.has_device ? 'white' : 'grey-7'"
-              icon="devices"
-              size="sm"
-            >
-              {{ table.has_device ? 'Device' : 'No Device' }}
-            </q-chip>
-          </div>
-
-          <!-- Action buttons -->
-          <div class="table-actions q-mt-md">
-            <q-btn
-              v-if="table.has_qr"
-              dense
-              flat
-              no-caps
-              icon="qr_code_scanner"
-              color="positive"
-              size="sm"
-              label="View QR"
-              class="q-mr-xs"
-              @click="viewQR(table)"
-            />
-            <q-btn
-              dense
-              flat
-              no-caps
-              icon="qr_code_2"
-              :color="table.has_qr ? 'grey-6' : 'primary'"
-              size="sm"
-              :label="table.has_qr ? 'Regen QR' : 'Gen QR'"
-              class="q-mr-xs"
-              @click="generateQR(table)"
-              :loading="table.generatingQr"
-            />
-            <q-btn
-              dense
-              flat
-              no-caps
-              icon="phonelink_setup"
-              color="orange"
-              size="sm"
-              label="Device"
-              @click="openDeviceDialog(table)"
-            />
-          </div>
-
-          <!-- Edit/Delete -->
-          <div class="table-meta-actions">
-            <q-btn
-              flat
-              round
-              dense
-              icon="edit"
-              size="xs"
-              color="grey-6"
-              @click="editTable(table)"
-            />
-            <q-btn
-              flat
-              round
-              dense
-              icon="delete"
-              size="xs"
-              color="negative"
+        <!-- Top bar: actions + status dot -->
+        <div class="tbl-card__topbar">
+          <div class="tbl-card__actions-top">
+            <button class="tbl-icon-btn" title="Edit" @click="editTable(table)">
+              <q-icon name="edit" size="14px" />
+            </button>
+            <button
+              class="tbl-icon-btn tbl-icon-btn--danger"
+              title="Delete"
               @click="deleteTable(table)"
-            />
+            >
+              <q-icon name="delete" size="14px" />
+            </button>
           </div>
+          <div class="tbl-status-dot" :class="'tbl-status-dot--' + table.status" />
+        </div>
+
+        <!-- Main info -->
+        <div class="tbl-card__body">
+          <q-icon
+            name="table_restaurant"
+            :class="'tbl-icon--' + table.status"
+            size="28px"
+            class="tbl-main-icon"
+          />
+          <div class="tbl-name">{{ table.table_number }}</div>
+          <div class="tbl-meta">
+            {{ table.section || 'General' }}&nbsp;·&nbsp;<q-icon
+              name="people"
+              size="11px"
+            />&nbsp;{{ table.capacity }}
+          </div>
+        </div>
+
+        <!-- Indicator chips -->
+        <div class="tbl-card__chips">
+          <span class="tbl-chip" :class="table.has_qr ? 'tbl-chip--green' : 'tbl-chip--muted'">
+            <q-icon :name="table.has_qr ? 'qr_code_2' : 'qr_code'" size="11px" />
+            <q-tooltip>{{ table.has_qr ? 'QR Ready' : 'No QR' }}</q-tooltip>
+          </span>
+          <span class="tbl-chip" :class="table.has_device ? 'tbl-chip--orange' : 'tbl-chip--muted'">
+            <q-icon :name="table.has_device ? 'devices' : 'tv_off'" size="11px" />
+            <q-tooltip>{{ table.has_device ? 'Device Linked' : 'No Device' }}</q-tooltip>
+          </span>
+        </div>
+
+        <!-- Bottom action buttons -->
+        <div class="tbl-card__footer">
+          <button
+            class="tbl-foot-btn tbl-foot-btn--green"
+            :class="{ 'tbl-foot-btn--disabled': !table.has_qr }"
+            :disabled="!table.has_qr"
+            title="View QR Code"
+            @click="table.has_qr ? viewQR(table) : null"
+          >
+            <q-icon name="qr_code_scanner" size="14px" />
+          </button>
+          <button
+            class="tbl-foot-btn tbl-foot-btn--blue"
+            title="Generate / Regenerate QR"
+            @click="generateQR(table)"
+          >
+            <q-icon name="qr_code_2" size="14px" />
+            <q-spinner-dots v-if="table.generatingQr" size="10px" />
+          </button>
+          <button
+            class="tbl-foot-btn tbl-foot-btn--orange"
+            title="Device Setup"
+            @click="openDeviceDialog(table)"
+          >
+            <q-icon name="phonelink_setup" size="14px" />
+          </button>
         </div>
       </div>
     </div>
@@ -305,26 +290,38 @@
 
     <!-- ─── QR Code Dialog ─── -->
     <q-dialog v-model="qrDialog" persistent>
-      <q-card style="min-width: 380px; max-width: 440px">
-        <q-card-section class="dialog-header">
-          <q-icon name="qr_code_2" size="24px" class="q-mr-sm" />
-          QR Code — Table {{ qrTarget?.table_number }}
-          <q-btn flat round dense icon="close" class="dialog-close" v-close-popup />
+      <q-card style="width: 320px; max-width: 90vw">
+        <q-card-section class="dialog-header" style="padding: 12px 16px">
+          <q-icon name="qr_code_2" size="20px" class="q-mr-sm" />
+          <span style="font-size: 0.95rem"
+            >QR Code — T{{ (qrTarget?.table_number || '').replace('Table', '').trim() }}</span
+          >
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            class="dialog-close"
+            style="top: 8px; right: 8px"
+            v-close-popup
+          />
         </q-card-section>
 
-        <q-card-section class="text-center q-pb-none">
+        <q-card-section class="text-center q-pa-sm">
           <div class="qr-container" id="qr-print-area">
             <div class="qr-brand">SEVEN WAVES</div>
-            <div class="qr-table-label">Table {{ qrTarget?.table_number }}</div>
+            <div class="qr-table-label">
+              Table {{ (qrTarget?.table_number || '').replace('Table', '').trim() }}
+            </div>
             <div v-if="qrTarget?.section" class="qr-section-label">{{ qrTarget?.section }}</div>
-            <div class="qr-code-wrap q-my-md">
-              <canvas ref="qrCanvas" id="qr-canvas" style="border-radius: 12px" />
+            <div class="qr-code-wrap q-my-sm">
+              <canvas ref="qrCanvas" id="qr-canvas" style="border-radius: 8px" />
             </div>
             <div class="qr-instruction">
-              <q-icon name="phone_iphone" size="16px" class="q-mr-xs" />
+              <q-icon name="phone_iphone" size="14px" class="q-mr-xs" />
               Scan to view menu & order
             </div>
-            <div class="qr-url q-mt-sm">
+            <div class="qr-url q-mt-xs">
               <a
                 :href="qrUrl"
                 target="_blank"
@@ -341,35 +338,34 @@
                 color="primary"
                 no-caps
                 icon="open_in_new"
-                label="Open Menu Link"
+                label="Open Link"
                 type="a"
                 :href="qrUrl"
                 target="_blank"
                 class="q-px-sm"
+                size="sm"
               />
             </div>
           </div>
         </q-card-section>
 
-        <q-card-actions align="center" class="q-pb-md q-gutter-sm">
-          <q-btn outlined no-caps icon="print" label="Print" color="grey-7" @click="printQR" />
+        <q-card-actions align="center" class="q-pb-sm q-pt-none q-gutter-x-sm">
+          <q-btn flat dense no-caps icon="print" color="grey-7" @click="printQR"
+            ><q-tooltip>Print</q-tooltip></q-btn
+          >
+          <q-btn flat dense no-caps icon="download" color="primary" @click="downloadQR"
+            ><q-tooltip>Download</q-tooltip></q-btn
+          >
           <q-btn
-            outlined
-            no-caps
-            icon="download"
-            label="Download"
-            color="primary"
-            @click="downloadQR"
-          />
-          <q-btn
-            unelevated
+            flat
+            dense
             no-caps
             icon="refresh"
-            label="Regenerate"
             color="orange"
             @click="regenerateQR"
             :loading="regeneratingQr"
-          />
+            ><q-tooltip>Regenerate</q-tooltip></q-btn
+          >
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -501,14 +497,81 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ─── Live Table Chart / Floor Plan Dialog ─── -->
+    <q-dialog v-model="floorPlanDialog" maximized transition-show="scale" transition-hide="fade">
+      <q-card class="bg-blue-grey-1 text-dark flex column">
+        <!-- Header -->
+        <q-card-section class="row items-center q-pb-md shadow-1 bg-white" style="z-index: 10">
+          <q-icon name="grid_view" size="28px" color="primary" class="q-mr-sm" />
+          <div class="text-h6 text-weight-bolder">Live Table Chart</div>
+          <q-space />
+
+          <div class="row q-gutter-x-lg q-mr-lg items-center">
+            <div class="row items-center q-gutter-x-sm">
+              <div
+                class="box-available"
+                style="width: 16px; height: 16px; border-radius: 4px"
+              ></div>
+              <span class="text-caption text-weight-bold" style="font-size: 13px"
+                >Available ({{ floorPlanStats.available }})</span
+              >
+            </div>
+            <div class="row items-center q-gutter-x-sm">
+              <div
+                class="box-locked pulse-lock-demo"
+                style="width: 16px; height: 16px; border-radius: 4px"
+              ></div>
+              <span class="text-caption text-weight-bold" style="font-size: 13px"
+                >Locked / Occupied ({{ floorPlanStats.occupied }})</span
+              >
+            </div>
+          </div>
+
+          <q-btn flat round dense icon="close" size="lg" v-close-popup />
+        </q-card-section>
+
+        <!-- Body: Scrollable Grid but fit all to page -->
+        <q-card-section class="col q-pa-md row items-center justify-center">
+          <div
+            class="row q-gutter-md justify-center align-center"
+            style="max-width: 1300px; width: 100%"
+          >
+            <div v-for="table in filteredTables" :key="table.id">
+              <div
+                class="floor-plan-box shadow-2"
+                :class="
+                  table.status === 'available'
+                    ? 'bg-positive text-white box-available'
+                    : 'bg-orange text-white box-locked'
+                "
+              >
+                <div class="text-center">
+                  <div class="text-weight-bolder" style="font-size: 15px; line-height: 1">
+                    {{ (table.table_number || '').replace('Table', '').trim() }}
+                  </div>
+                  <div
+                    class="row items-center justify-center q-mt-xs"
+                    style="font-size: 9px; opacity: 0.9"
+                  >
+                    <q-icon name="people" size="9px" class="q-mr-xs" /> {{ table.capacity }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import QRCode from 'qrcode'
+import PageHeader from 'components/common/PageHeader.vue'
 
 const $q = useQuasar()
 
@@ -518,6 +581,8 @@ const branches = ref([])
 const selectedBranch = ref(null)
 const search = ref('')
 const loadingTables = ref(false)
+const floorPlanDialog = ref(false)
+let realtimeChannel = null
 
 // Table dialog
 const tableDialog = ref(false)
@@ -560,6 +625,13 @@ const deviceForm = ref({ device_code: '', device_name: '', device_secret: '' })
 // ─── Computed ─────────────────────────────────────────────────────────────────
 const branchOptions = computed(() => branches.value.map((b) => ({ label: b.name, value: b.id })))
 
+const floorPlanStats = computed(() => {
+  return {
+    available: filteredTables.value.filter((t) => t.status === 'available').length,
+    occupied: filteredTables.value.filter((t) => t.status !== 'available').length,
+  }
+})
+
 const filteredTables = computed(() => {
   let list = tables.value
   if (selectedBranch.value) list = list.filter((t) => t.branch_id === selectedBranch.value)
@@ -577,6 +649,29 @@ const filteredTables = computed(() => {
 onMounted(async () => {
   await loadBranches()
   await loadTables()
+
+  // Real-time listener for table status updates
+  realtimeChannel = supabase
+    .channel('tables_status_channel')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'restaurant_tables' },
+      (payload) => {
+        const idx = tables.value.findIndex((t) => t.id === payload.new.id)
+        if (idx !== -1) {
+          tables.value[idx].status = payload.new.status
+          if (payload.new.capacity) tables.value[idx].capacity = payload.new.capacity
+          if (payload.new.section) tables.value[idx].section = payload.new.section
+        }
+      },
+    )
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel)
+  }
 })
 
 // ─── Data Loaders ─────────────────────────────────────────────────────────────
@@ -775,7 +870,7 @@ async function viewQR(table) {
   setTimeout(async () => {
     if (qrCanvas.value) {
       await QRCode.toCanvas(qrCanvas.value, url, {
-        width: 240,
+        width: 170,
         margin: 2,
         color: { dark: '#111827', light: '#ffffff' },
         errorCorrectionLevel: 'H',
@@ -801,7 +896,7 @@ async function regenerateQR() {
     const url = `${getAppBaseUrl()}/c/${updatedTable.qr_token}`
     qrUrl.value = url
     await QRCode.toCanvas(qrCanvas.value, url, {
-      width: 240,
+      width: 170,
       margin: 2,
       color: { dark: '#111827', light: '#ffffff' },
       errorCorrectionLevel: 'H',
@@ -958,12 +1053,6 @@ async function toggleDevice(device) {
   })
   await loadTables()
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function statusColor(status) {
-  const map = { available: 'teal', occupied: 'orange', reserved: 'blue', maintenance: 'red' }
-  return map[status] || 'grey'
-}
 </script>
 
 <style lang="scss" scoped>
@@ -984,153 +1073,269 @@ function statusColor(status) {
   margin-top: 2px;
 }
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
+// ── Tables Grid layout ────────────────────────────────────────────────────────
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+}
+
+// ── Table Card ────────────────────────────────────────────────────────────────
+.tbl-card {
+  background: var(--erp-bg-card, #1e293b);
+  border: 1.5px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 168px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s;
+  cursor: default;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  // Status border accents
+  &--available {
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+  &--occupied {
+    border-color: rgba(249, 115, 22, 0.35);
+  }
+  &--reserved {
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+  &--maintenance {
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+.tbl-card__topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tbl-card__actions-top {
+  display: flex;
+  gap: 2px;
+}
+
+.tbl-icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.35);
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  &--danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+}
+
+// ── Status dot ────────────────────────────────────────────────────────────────
+.tbl-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &--available {
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  }
+  &--occupied {
+    background: #f97316;
+    box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+  }
+  &--reserved {
+    background: #3b82f6;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+  }
+  &--maintenance {
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  }
+}
+
+// ── Card body ─────────────────────────────────────────────────────────────────
+.tbl-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.tbl-main-icon {
+  &.tbl-icon--available {
+    color: #10b981;
+  }
+  &.tbl-icon--occupied {
+    color: #f97316;
+  }
+  &.tbl-icon--reserved {
+    color: #3b82f6;
+  }
+  &.tbl-icon--maintenance {
+    color: #ef4444;
+  }
+}
+
+.tbl-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--erp-text-primary, #f1f5f9);
+  line-height: 1.2;
+  letter-spacing: -0.1px;
+}
+
+.tbl-meta {
+  font-size: 11px;
+  color: var(--erp-text-secondary, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+// ── Indicator chips ───────────────────────────────────────────────────────────
+.tbl-card__chips {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.tbl-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: default;
+
+  &--green {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+  &--orange {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+    border: 1px solid rgba(249, 115, 22, 0.25);
+  }
+  &--muted {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+}
+
+// ── Footer action buttons ─────────────────────────────────────────────────────
+.tbl-card__footer {
+  display: flex;
+  justify-content: space-evenly;
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.tbl-foot-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+
+  &--green {
+    color: #10b981;
+    &:hover {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+  }
+  &--blue {
+    color: #3b82f6;
+    &:hover {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+  }
+  &--orange {
+    color: #f97316;
+    &:hover {
+      background: rgba(249, 115, 22, 0.12);
+      border-color: rgba(249, 115, 22, 0.3);
+    }
+  }
+  &--disabled {
+    color: rgba(255, 255, 255, 0.15);
+    cursor: not-allowed;
+    &:hover {
+      background: transparent;
+      border-color: transparent;
+    }
+  }
+}
+
+// ── Stats Cards ───────────────────────────────────────────────────────────────
 .stat-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--erp-bg-card, #1e293b);
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
   border-radius: 14px;
   padding: 20px;
   text-align: center;
   transition: box-shadow 0.2s;
+
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }
 }
 .stat-value {
   font-size: 2rem;
   font-weight: 800;
-  color: #111827;
+  color: var(--erp-text-primary, #f1f5f9);
   line-height: 1;
 }
 .stat-label {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--erp-text-secondary, #94a3b8);
   margin-top: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-.body--dark .stat-card {
-  background: #1f2937;
-  border-color: #374151;
-}
-.body--dark .stat-value {
-  color: #f9fafb;
-}
-
-// ── Table Cards ───────────────────────────────────────────────────────────────
-.table-card {
-  position: relative;
-  background: white;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 18px;
-  padding: 20px 16px 16px;
-  text-align: center;
-  transition: all 0.22s ease;
-  overflow: hidden;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 280px;
-
-  &:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-  }
-
-  &.status-occupied {
-    border-color: rgba(249, 115, 22, 0.35);
-  }
-  &.status-reserved {
-    border-color: rgba(59, 130, 246, 0.35);
-  }
-  &.status-maintenance {
-    border-color: rgba(239, 68, 68, 0.3);
-  }
-  &.status-available {
-    border-color: rgba(13, 148, 136, 0.25);
-  }
-}
-
-.body--dark .table-card {
-  background: #1f2937;
-  border-color: #374151;
-}
-
-.table-status-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 0.64rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  padding: 2px 8px;
-  border-radius: 20px;
-
-  &.badge-available {
-    background: rgba(13, 148, 136, 0.12);
-    color: #0d9488;
-  }
-  &.badge-occupied {
-    background: rgba(249, 115, 22, 0.12);
-    color: #f97316;
-  }
-  &.badge-reserved {
-    background: rgba(59, 130, 246, 0.12);
-    color: #3b82f6;
-  }
-  &.badge-maintenance {
-    background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
-  }
-}
-
-.table-icon-wrap {
-  margin: 4px 0 8px;
-}
-
-.table-number {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #111827;
-}
-.body--dark .table-number {
-  color: #f9fafb;
-}
-
-.table-section {
-  font-size: 0.78rem;
-  margin-top: 2px;
-}
-
-.table-capacity {
-  font-size: 0.78rem;
-  color: #9ca3af;
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.table-actions {
-  border-top: 1px solid #f3f4f6;
-  padding-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-  margin-top: auto;
-}
-.body--dark .table-actions {
-  border-color: #374151;
-}
-
-.table-meta-actions {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: flex;
-  gap: 2px;
 }
 
 // ── Dialog ────────────────────────────────────────────────────────────────────
@@ -1139,8 +1344,9 @@ function statusColor(status) {
   align-items: center;
   font-size: 1.05rem;
   font-weight: 700;
+  color: var(--erp-text-primary, #f1f5f9);
   padding: 20px 20px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
   position: relative;
 }
 .dialog-close {
@@ -1151,64 +1357,105 @@ function statusColor(status) {
 
 // ── QR Dialog ─────────────────────────────────────────────────────────────────
 .qr-container {
-  padding: 20px;
+  padding: 12px;
   background: white;
-  border-radius: 20px;
+  border-radius: 12px;
   display: inline-block;
+  width: 100%;
 }
 .qr-brand {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 800;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   color: #f97316;
 }
 .qr-table-label {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: #111827;
-  margin-top: 2px;
+  line-height: 1.1;
 }
 .qr-section-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6b7280;
 }
 .qr-code-wrap canvas {
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 .qr-instruction {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #374151;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .qr-url {
-  max-width: 280px;
-  margin: 4px auto 0;
+  font-size: 0.7rem;
+  max-width: 260px;
+  margin: 2px auto 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-// ── Info box ──────────────────────────────────────────────────────────────────
+// ── Info Box ──────────────────────────────────────────────────────────────────
 .info-box {
   background: rgba(59, 130, 246, 0.07);
   border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 0.85rem;
-  color: #374151;
+  color: var(--erp-text-secondary, #94a3b8);
   display: flex;
   align-items: flex-start;
-}
-.body--dark .info-box {
-  color: #d1d5db;
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
 .empty-state {
   text-align: center;
   padding: 80px 20px;
+}
+
+// ── Floor Plan ────────────────────────────────────────────────────────────────
+.floor-plan-box {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  user-select: none;
+}
+.floor-plan-box:hover {
+  transform: scale(1.08);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.2),
+    0 4px 6px -2px rgba(0, 0, 0, 0.1);
+}
+.box-available {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+.box-locked {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  animation: pulse-lock 2s infinite;
+}
+@keyframes pulse-lock {
+  0% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(249, 115, 22, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+  }
+}
+.pulse-lock-demo {
+  animation: pulse-lock 2s infinite;
 }
 </style>

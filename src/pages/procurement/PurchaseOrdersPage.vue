@@ -1,166 +1,56 @@
 <template>
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Purchase Orders</div>
-      <q-btn color="primary" icon="add" label="New PO" @click="createNewPO" />
+      <div>
+        <div
+          class="text-h2 text-white"
+          style="font-size: var(--erp-font-size-h2); font-weight: 600"
+        >
+          Purchase Orders
+        </div>
+        <div class="text-caption" style="color: var(--erp-text-secondary)">
+          Manage stock procurement
+        </div>
+      </div>
+      <q-btn unelevated icon="add" label="New PO" class="erp-btn-primary" @click="createNewPO" />
     </div>
 
-    <!-- Tabs -->
-    <q-tabs
-      v-model="tab"
-      dense
-      class="text-grey"
-      active-color="primary"
-      indicator-color="primary"
-      align="justify"
-      narrow-indicator
-    >
-      <q-tab name="all" label="All" />
-      <q-tab name="draft" label="Drafts" />
-      <q-tab name="open" label="Open" />
-      <q-tab name="closed" label="Closed" />
-    </q-tabs>
+    <!-- Status filter tabs (ERP standard) -->
+    <div class="erp-tab-bar q-mb-md">
+      <button
+        v-for="t in tabOptions"
+        :key="t.value"
+        class="erp-tab"
+        :class="{ 'erp-tab--active': tab === t.value }"
+        @click="tab = t.value"
+      >
+        {{ t.label }}
+        <span class="erp-tab__count">{{ tabCount(t.value) }}</span>
+      </button>
+    </div>
 
-    <q-separator />
+    <!-- ERP DataGrid -->
+    <BaseDataGrid
+      title="Purchase Orders"
+      :subtitle="`${filteredPOs.length} records`"
+      :columns="columns"
+      :rows="filteredPOs"
+      :loading="loading"
+      :actions="gridActions"
+      :filters="gridFilters"
+      storage-key="purchase-orders"
+      search-placeholder="Search by PO#, supplier..."
+      no-data-label="No purchase orders found"
+      @edit="editPO"
+      @view="editPO"
+    />
 
-    <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="all" class="q-pa-none">
-        <q-table
-          :rows="filteredPOs"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          flat
-          bordered
-        >
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props" align="center">
-              <q-chip
-                :color="statusColor(props.row.status)"
-                text-color="white"
-                dense
-                size="sm"
-                class="text-uppercase text-weight-bold"
-              >
-                {{ props.row.status }}
-              </q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props" align="right">
-              <q-btn flat round color="primary" icon="edit" size="sm" @click="editPO(props.row)" />
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-      <!-- We use 'all' panel logic for others filtered computed property -->
-      <q-tab-panel name="draft" class="q-pa-none">
-        <q-table
-          :rows="filteredPOs"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          flat
-          bordered
-        >
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props" align="center">
-              <q-chip
-                :color="statusColor(props.row.status)"
-                text-color="white"
-                dense
-                size="sm"
-                class="text-uppercase text-weight-bold"
-              >
-                {{ props.row.status }}
-              </q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props"
-            ><q-td :props="props" align="right"
-              ><q-btn
-                flat
-                round
-                color="primary"
-                icon="edit"
-                size="sm"
-                @click="editPO(props.row)" /></q-td
-          ></template>
-        </q-table>
-      </q-tab-panel>
-      <q-tab-panel name="open" class="q-pa-none">
-        <q-table
-          :rows="filteredPOs"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          flat
-          bordered
-        >
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props" align="center">
-              <q-chip
-                :color="statusColor(props.row.status)"
-                text-color="white"
-                dense
-                size="sm"
-                class="text-uppercase text-weight-bold"
-              >
-                {{ props.row.status }}
-              </q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props"
-            ><q-td :props="props" align="right"
-              ><q-btn
-                flat
-                round
-                color="primary"
-                icon="edit"
-                size="sm"
-                @click="editPO(props.row)" /></q-td
-          ></template>
-        </q-table>
-      </q-tab-panel>
-      <q-tab-panel name="closed" class="q-pa-none">
-        <q-table
-          :rows="filteredPOs"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          flat
-          bordered
-        >
-          <template v-slot:body-cell-status="props">
-            <q-td :props="props" align="center">
-              <q-chip
-                :color="statusColor(props.row.status)"
-                text-color="white"
-                dense
-                size="sm"
-                class="text-uppercase text-weight-bold"
-              >
-                {{ props.row.status }}
-              </q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-actions="props"
-            ><q-td :props="props" align="right"
-              ><q-btn
-                flat
-                round
-                color="primary"
-                icon="edit"
-                size="sm"
-                @click="editPO(props.row)" /></q-td
-          ></template>
-        </q-table>
-      </q-tab-panel>
-    </q-tab-panels>
-
-    <!-- PO Dialog -->
+    <!-- PO Dialog (unchanged — business logic preserved) -->
     <q-dialog v-model="dialogVisible" full-width persistent>
-      <q-card style="height: 90vh; display: flex; flex-direction: column">
+      <q-card
+        style="height: 90vh; display: flex; flex-direction: column"
+        class="bg-dark text-white"
+      >
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="text-h6">
             {{ isEditing ? 'Edit Purchase Order' : 'New Purchase Order' }}
@@ -168,7 +58,7 @@
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-separator />
+        <q-separator color="grey-9" />
 
         <q-card-section class="col scroll q-pa-md">
           <DocHeader
@@ -184,7 +74,7 @@
             show-expected-date
           />
 
-          <q-separator class="q-my-md" />
+          <q-separator class="q-my-md" color="grey-9" />
 
           <DocLinesEditor
             :lines="form.lines"
@@ -202,12 +92,14 @@
           <!-- Totals -->
           <div class="row justify-end q-mt-md">
             <div class="col-12 col-md-4">
-              <q-card flat bordered class="q-pa-md bg-grey-1">
-                <div class="row justify-between text-h6 text-primary">
-                  <div>Total</div>
-                  <div>{{ formatCurrency(totalAmount) }}</div>
+              <div class="erp-card q-pa-md">
+                <div class="row justify-between">
+                  <span style="font-size: 14px; color: var(--erp-text-secondary)">Total</span>
+                  <span style="font-size: 18px; font-weight: 700; color: var(--erp-text-primary)">
+                    {{ formatCurrency(totalAmount) }}
+                  </span>
                 </div>
-              </q-card>
+              </div>
             </div>
           </div>
         </q-card-section>
@@ -237,6 +129,7 @@ import {
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
+import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 
 const $q = useQuasar()
 const tab = ref('all')
@@ -267,30 +160,93 @@ const defaultForm = {
 const form = ref({ ...defaultForm })
 
 const columns = [
-  { name: 'doc_number', label: 'PO #', field: 'doc_number', align: 'left', sortable: true },
+  {
+    name: 'doc_number',
+    label: 'PO #',
+    field: 'doc_number',
+    type: 'text',
+    sortable: true,
+    minWidth: 100,
+  },
   {
     name: 'doc_date',
     label: 'Date',
     field: 'doc_date',
-    align: 'left',
-    format: (val) => date.formatDate(val, 'DD/MM/YYYY'),
+    type: 'date',
+    sortable: true,
+  },
+  {
+    name: 'expected_date',
+    label: 'Exp. Date',
+    field: 'expected_date',
+    type: 'date',
+    sortable: true,
+    hideable: true,
   },
   {
     name: 'supplier',
     label: 'Supplier',
-    field: (row) => row.suppliers?.name || row.supplier?.name,
-    align: 'left',
+    field: (row) => row.suppliers?.name || row.supplier?.name || '—',
+    type: 'text',
+    sortable: true,
+    minWidth: 160,
   },
   {
     name: 'amount',
     label: 'Amount',
     field: 'total_amount',
+    type: 'currency',
+    sortable: true,
     align: 'right',
-    format: (val) => formatCurrency(val),
   },
-  { name: 'status', label: 'Status', field: 'status', align: 'center' },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
+  { name: 'status', label: 'Status', field: 'status', type: 'status', align: 'center', width: 110 },
 ]
+
+// Grid actions
+const gridActions = [
+  { event: 'view', icon: 'visibility', label: 'View PO', color: 'primary' },
+  {
+    event: 'edit',
+    icon: 'edit',
+    label: 'Edit PO',
+    color: 'primary',
+    show: (row) => row.status === 'draft',
+  },
+]
+
+// Filter drawer config
+const gridFilters = [
+  {
+    field: 'doc_date',
+    label: 'PO Date',
+    type: 'date-range',
+  },
+  {
+    field: 'status',
+    label: 'Status',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      { label: 'Draft', value: 'draft' },
+      { label: 'Open', value: 'open' },
+      { label: 'Closed', value: 'closed' },
+      { label: 'Cancelled', value: 'cancelled' },
+    ],
+  },
+]
+
+// Tab config
+const tabOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Open', value: 'open' },
+  { label: 'Closed', value: 'closed' },
+]
+
+function tabCount(tabVal) {
+  if (tabVal === 'all') return purchaseOrders.value.length
+  return purchaseOrders.value.filter((po) => po.status === tabVal).length
+}
 
 onMounted(async () => {
   loading.value = true
@@ -321,15 +277,6 @@ const totalAmount = computed(() => {
 
 function formatCurrency(val) {
   return (val || 0).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })
-}
-
-function statusColor(status) {
-  if (status === 'draft') return 'grey'
-  if (status === 'open') return 'blue'
-  if (status === 'closed') return 'green'
-  if (status === 'cancelled') return 'red'
-  if (status === 'partial') return 'orange'
-  return 'grey'
 }
 
 function createNewPO() {

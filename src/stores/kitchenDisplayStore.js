@@ -17,6 +17,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   const tickets = ref([])
   const kitchens = ref([]) // available kitchens for this branch
   const selectedKitchenId = ref(null)
+  const lockedKitchenId = ref(null) // set when user is a kitchen-role user with assigned kitchen
   const loading = ref(false)
   const isConnected = ref(false)
   const printing = ref(null) // ticket ID currently printing
@@ -35,16 +36,27 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     kitchens.value.find((k) => k.id === selectedKitchenId.value),
   )
 
+  // True when the user is a kitchen-role user locked to a specific kitchen
+  const isKitchenLocked = computed(() => !!lockedKitchenId.value)
+
   // ── Initialize ─────────────────────────────────────────────
 
   async function initialize() {
     loading.value = true
     try {
       await fetchKitchens()
-      // Auto-select first kitchen
-      if (kitchens.value.length > 0 && !selectedKitchenId.value) {
+
+      // Check if this user is a kitchen-role user with an assigned kitchen
+      const assignedKitchenId = authStore.profile?.kitchen_id
+      if (assignedKitchenId) {
+        // Lock user to their assigned kitchen — no switching allowed
+        lockedKitchenId.value = assignedKitchenId
+        selectedKitchenId.value = assignedKitchenId
+      } else if (kitchens.value.length > 0 && !selectedKitchenId.value) {
+        // Admin/Manager: auto-select first kitchen
         selectedKitchenId.value = kitchens.value[0].id
       }
+
       if (selectedKitchenId.value) {
         await fetchTickets()
         subscribeToTickets()
@@ -155,6 +167,20 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
         },
         (payload) => {
           handleTicketChange(payload)
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kot_dispatches',
+          filter: `target_code=eq.KITCHEN`,
+        },
+        (payload) => {
+          if (payload.new && payload.new.kot_id) {
+            refreshSingleTicket(payload.new.kot_id)
+          }
         },
       )
       .on(
@@ -336,6 +362,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
   /**
    * Mark ready: preparing → ready
+   * NOTE: Do NOT set completed_at here — that removes the ticket from KDS.
+   * completed_at is set when the waiter marks the order as served.
    */
   async function markReady(ticketId) {
     const idx = tickets.value.findIndex((t) => t.id === ticketId)
@@ -348,7 +376,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       .from('kot_tickets')
       .update({
         status: 'ready',
-        completed_at: new Date().toISOString(),
+        // completed_at intentionally NOT set here
+        // It gets set when the waiter clicks "Mark Served"
       })
       .eq('id', ticketId)
       .eq('status', 'preparing')
@@ -361,7 +390,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   }
 
   /**
-   * Complete / dismiss a "ready" ticket
+   * Complete / dismiss a "ready" ticket (called from kitchen after serving)
+   * This sets completed_at to remove it from the KDS board.
    */
   async function dismissTicket(ticketId) {
     const { error } = await supabase
@@ -487,6 +517,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     kitchens,
     selectedKitchenId,
     selectedKitchen,
+    lockedKitchenId,
+    isKitchenLocked,
     loading,
     isConnected,
     printing,

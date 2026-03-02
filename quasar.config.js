@@ -1,4 +1,5 @@
 // Configuration for your app
+// Trigger DEV server restart
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
 import { defineConfig } from '#q-app/wrappers'
@@ -91,14 +92,14 @@ export default defineConfig((ctx) => {
       config: {
         dark: true, // Enforce dark mode — ERP theme
         brand: {
-          primary: '#4385f5',
-          secondary: '#6c757d',
-          accent: '#8ab4f8',
-          dark: '#1c2028',
-          positive: '#34a853',
-          negative: '#ea4335',
-          info: '#4385f5',
-          warning: '#f9ab00',
+          primary: '#2563EB',
+          secondary: '#94A3B8',
+          accent: '#3B82F6',
+          dark: '#0F172A',
+          positive: '#16A34A',
+          negative: '#DC2626',
+          info: '#0EA5E9',
+          warning: '#F59E0B',
         },
         notify: {
           position: 'top-right',

@@ -82,10 +82,9 @@ export function getCategoryEmoji(name: string): string {
 // ─── Load Categories ──────────────────────────────────────────────────────────
 
 export async function loadCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
+  const { data: catData, error } = await supabase
     .from('categories')
-    .select('*')
-    .eq('is_active', true)
+    .select('id, name, sort_order')
     .order('sort_order')
 
   if (error) {
@@ -93,8 +92,11 @@ export async function loadCategories(): Promise<Category[]> {
     return []
   }
 
-  return (data || []).map((c) => ({
-    ...c,
+  return (catData || []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    sort_order: c.sort_order || 0,
+    is_active: true,
     emoji: getCategoryEmoji(c.name),
   }))
 }
@@ -115,7 +117,7 @@ export async function loadMenuItems(filters?: MenuFilters): Promise<MenuItem[]> 
     .select(
       `
       id, category_id, name, description, base_price,
-      image_url, is_available, is_veg, is_spicy, is_best_seller,
+      image_url, is_available,
       kitchen_id, preparation_time_minutes, sort_order,
       categories!left(id, name)
     `,
@@ -153,9 +155,9 @@ export async function loadMenuItems(filters?: MenuFilters): Promise<MenuItem[]> 
       base_price: Number(item.base_price ?? 0),
       image_url: item.image_url,
       is_available: item.is_available,
-      is_veg: item.is_veg ?? false,
-      is_spicy: item.is_spicy ?? false,
-      is_best_seller: item.is_best_seller ?? false,
+      is_veg: false,
+      is_spicy: false,
+      is_best_seller: false,
       kitchen_id: item.kitchen_id,
       preparation_time_minutes: item.preparation_time_minutes,
       sort_order: item.sort_order ?? 0,

@@ -3,6 +3,8 @@
     <PageHeader
       title="System Settings"
       subtitle="Configure modules, features, and application preferences"
+      show-back
+      back-route="/admin"
     />
 
     <!-- Module Configuration Section -->

@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { Notify } from 'quasar'
+import { acceptOrder as dispatchAcceptOrder } from 'src/services/kotDispatchService'
 
 /**
  * Waiter Order Store — Shift-Aware
@@ -24,8 +26,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   const companyId = ref(null)
   const shiftInfo = ref(null) // { branch_name, shift_name, shift_start, shift_end }
 
-  // Subscriptions
+  // Realtime channels
   let ordersChannel = null
+  let kotChannel = null
 
   // ── Getters ────────────────────────────────────────────────
   const pendingCount = computed(() => pendingOrders.value.length)
@@ -75,8 +78,8 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           .single()
         companyId.value = branchData?.company_id
       } else {
-        // No shift assignments found
-        isOnShift.value = false
+        // No shift assignments found - but admins/managers are always "on shift" if they have a branch
+        isOnShift.value = authStore.roles.some((r) => ['admin', 'manager'].includes(r))
         branchId.value = authStore.currentBranch?.id
         companyId.value = authStore.currentBranch?.company_id
       }
@@ -147,38 +150,24 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   async function fetchMyOrders() {
     if (!waiterId.value) return
 
-    const { data, error } = await supabase
+    // Fetch waiter name first (simple, no join that can break)
+    let waiterName = 'Staff'
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', waiterId.value)
+        .single()
+      if (profileData?.full_name) waiterName = profileData.full_name
+      // eslint-disable-next-line no-unused-vars
+    } catch (_e) {
+      /* non-critical */
+    }
+
+    const { data: ordersData, error } = await supabase
       .from('orders')
       .select(
-        `
-        id,
-        order_number,
-        table_id,
-        order_type,
-        order_source,
-        status,
-        total_amount,
-        notes,
-        created_at,
-        updated_at,
-        restaurant_tables ( table_number ),
-        order_items (
-          id,
-          menu_item_id,
-          quantity,
-          unit_price,
-          notes,
-          status,
-          menu_items ( name )
-        ),
-        kot_tickets (
-          id,
-          kot_number,
-          kitchen_id,
-          status,
-          created_at
-        )
-      `,
+        'id, order_number, table_id, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, restaurant_tables ( table_number )',
       )
       .eq('assigned_waiter_id', waiterId.value)
       .in('status', ['accepted', 'preparing', 'ready'])
@@ -189,7 +178,40 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       return
     }
 
-    myOrders.value = (data || []).map(normalizeOrder)
+    const enriched = await Promise.all(
+      (ordersData || []).map(async (row) => {
+        const [itemsResp, kotResp] = await Promise.all([
+          supabase
+            .from('order_items')
+            .select('id, quantity, unit_price, status, notes, menu_items ( name )')
+            .eq('order_id', row.id),
+          supabase
+            .from('kot_tickets')
+            .select(
+              'id, kot_number, kitchen_id, status, created_at, kot_items ( order_item_id, quantity, status )',
+            )
+            .eq('order_id', row.id),
+        ])
+
+        const items = itemsResp.data || []
+        const kotTickets = kotResp.data || []
+
+        return {
+          ...row,
+          tableNumber: row.restaurant_tables?.table_number || '—',
+          waiterName,
+          itemCount: items.reduce((sum, i) => sum + i.quantity, 0) || 0,
+          items: items.map((oi) => ({
+            ...oi,
+            name: oi.menu_items?.name || 'Unknown Item',
+          })),
+          kot_tickets: kotTickets,
+          timeAgo: getTimeAgo(row.created_at),
+        }
+      }),
+    )
+
+    myOrders.value = enriched
   }
 
   // ── Accept Order (RPC) ─────────────────────────────────────
@@ -208,37 +230,88 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     accepting.value = orderId
 
     try {
-      const { data, error: rpcError } = await supabase.rpc('accept_order_as_waiter', {
-        p_order_id: orderId,
-      })
+      console.log('[WaiterStore] Accepting order via ERP dispatch:', orderId)
+      // Use the dispatch service (wraps the upgraded accept_order_as_waiter RPC)
+      const result = await dispatchAcceptOrder(orderId)
 
-      if (rpcError) {
-        return { success: false, error: rpcError.message }
+      if (!result.success) {
+        Notify.create({
+          type: 'warning',
+          message: result.error || 'This order was already accepted by another waiter.',
+          position: 'top',
+          timeout: 4000,
+        })
+        fetchPendingOrders() // refresh list to clear it off
+        return { success: false, error: result.error || 'Accept failed' }
       }
 
-      if (!data?.success) {
-        return { success: false, error: data?.error || 'Accept failed' }
+      // Log ERP dispatch summary
+      if (result.data) {
+        console.log('[WaiterStore] ERP Dispatch complete:', {
+          kotCount: result.data.kot_count,
+          dispatchCount: result.data.dispatch_count,
+          queues: result.data.queues_created,
+        })
       }
 
       // Remove from local pending list
       pendingOrders.value = pendingOrders.value.filter((o) => o.id !== orderId)
 
-      // Refresh my orders
+      // Refresh my orders immediately
       await fetchMyOrders()
 
-      return { success: true }
+      // Small delay and refresh again to be 100% sure the DB change is visible
+      setTimeout(() => fetchMyOrders(), 800)
+
+      Notify.create({
+        type: 'positive',
+        message: 'Order Accepted!',
+        position: 'top',
+        timeout: 2000,
+      })
+
+      return { success: true, data: result.data }
     } catch (e) {
       console.error('[WaiterStore] Accept error:', e)
+      Notify.create({ type: 'negative', message: e.message })
       return { success: false, error: e.message }
     } finally {
       accepting.value = null
     }
   }
 
-  // ── Realtime ───────────────────────────────────────────────
+  // ── Mark Order Served ──────────────────────────────────────
+
+  async function markOrderServed(orderId) {
+    if (!waiterId.value) return { success: false, error: 'Not authenticated' }
+
+    try {
+      const { data, error: rpcError } = await supabase.rpc('mark_order_served', {
+        p_order_id: orderId,
+      })
+
+      if (rpcError) {
+        console.error('[WaiterStore] Mark served RPC error:', rpcError)
+        return { success: false, error: rpcError.message }
+      }
+
+      if (!data?.success) {
+        return { success: false, error: data?.error || 'Failed to mark as served' }
+      }
+
+      // Remove from my orders list
+      myOrders.value = myOrders.value.filter((o) => o.id !== orderId)
+
+      return { success: true }
+    } catch (e) {
+      console.error('[WaiterStore] Mark served error:', e)
+      return { success: false, error: e.message }
+    }
+  }
 
   function subscribeToOrders() {
     if (ordersChannel) supabase.removeChannel(ordersChannel)
+    if (kotChannel) supabase.removeChannel(kotChannel)
 
     // Subscribe to orders for ALL shift branches
     const branchIds = shiftBranches.value.map((b) => b.branch_id)
@@ -282,6 +355,23 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           .subscribe()
       })
     }
+
+    // Subscribe to KOT tickets to refresh My Orders when trigger generates them
+    kotChannel = supabase
+      .channel('waiter-kot-rt')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kot_tickets',
+        },
+        () => {
+          // When KOT generated or status changed, sync My Orders
+          fetchMyOrders()
+        },
+      )
+      .subscribe()
   }
 
   function handleOrderChange(payload) {
@@ -290,8 +380,36 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     if (eventType === 'INSERT') {
       // New order — add to pending if it matches
       if (newRow.status === 'pending_waiter' && !newRow.assigned_waiter_id) {
+        // 🔔 Play notification sound instantly
+        playAlertSound()
+
         // Re-fetch from RPC to ensure shift check on server
         fetchPendingOrders()
+
+        // 🔔 Fire notification for New Order
+        if (newRow.table_id) {
+          supabase
+            .from('restaurant_tables')
+            .select('table_number')
+            .eq('id', newRow.table_id)
+            .single()
+            .then(({ data }) => {
+              const tNum = data?.table_number ? data.table_number.replace('Table', '').trim() : ''
+              const tableName = tNum ? `Table ${tNum}` : 'a Table'
+              Notify.create({
+                type: 'info',
+                icon: 'room_service',
+                color: 'blue-9',
+                textColor: 'white',
+                message: `New Order from ${tableName}!`,
+                position: 'top',
+                timeout: 8000,
+                dense: true,
+                classes: 'text-weight-bold',
+                actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+              })
+            })
+        }
       }
     }
 
@@ -305,10 +423,27 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       if (newRow.assigned_waiter_id === waiterId.value) {
         const idx = myOrders.value.findIndex((o) => o.id === newRow.id)
         if (idx !== -1) {
+          const prevStatus = myOrders.value[idx].status
           myOrders.value[idx] = {
             ...myOrders.value[idx],
             status: newRow.status,
             updated_at: newRow.updated_at,
+          }
+          // 🔔 Fire a notification when order becomes ready
+          if (newRow.status === 'ready' && prevStatus !== 'ready') {
+            const order = myOrders.value[idx]
+            Notify.create({
+              type: 'positive',
+              icon: 'notifications_active',
+              color: 'green-9',
+              textColor: 'white',
+              message: `Order #${order.order_number || ''} READY (Table ${order.tableNumber})`,
+              position: 'top-right',
+              timeout: 6000,
+              dense: true,
+              classes: 'text-weight-bold',
+              actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+            })
           }
         } else if (newRow.status === 'accepted') {
           fetchMyOrders()
@@ -324,18 +459,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
   // ── Helpers ────────────────────────────────────────────────
 
-  function normalizeOrder(order) {
-    return {
-      ...order,
-      tableNumber: order.restaurant_tables?.table_number || '—',
-      itemCount: order.order_items?.reduce((sum, i) => sum + i.quantity, 0) || 0,
-      items: (order.order_items || []).map((oi) => ({
-        ...oi,
-        name: oi.menu_items?.name || 'Unknown Item',
-      })),
-      timeAgo: getTimeAgo(order.created_at),
-    }
-  }
+  // normalizeOrder removed because it was unused
 
   function getTimeAgo(dateStr) {
     const diff = Date.now() - new Date(dateStr).getTime()
@@ -346,12 +470,47 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     return `${hrs}h ${mins % 60}m ago`
   }
 
+  function playAlertSound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+
+      const playTone = (freq, type, startTime, dur) => {
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.type = type
+        osc.frequency.setValueAtTime(freq, startTime)
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur)
+        osc.start(startTime)
+        osc.stop(startTime + dur)
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume()
+      }
+
+      const now = audioCtx.currentTime
+      // A bright "Ding - Ding" sequence suitable for restaurants
+      playTone(1046.5, 'sine', now, 0.4) // C6
+      playTone(1318.51, 'sine', now + 0.15, 0.6) // E6
+    } catch (e) {
+      console.error('[WaiterStore] Audio alert failed:', e)
+    }
+  }
+
   // ── Cleanup ────────────────────────────────────────────────
 
   function cleanup() {
     if (ordersChannel) {
       supabase.removeChannel(ordersChannel)
       ordersChannel = null
+    }
+    if (kotChannel) {
+      supabase.removeChannel(kotChannel)
+      kotChannel = null
     }
     pendingOrders.value = []
     myOrders.value = []
@@ -373,6 +532,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     fetchPendingOrders,
     fetchMyOrders,
     acceptOrder,
+    markOrderServed,
     cleanup,
   }
 })

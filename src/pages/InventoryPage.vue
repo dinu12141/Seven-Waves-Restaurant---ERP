@@ -1,19 +1,18 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader
+    <ERPToolbar
+      moduleName="inventory"
       title="Inventory Management"
-      subtitle="Stock control, documents, and warehouse operations"
-    >
-      <template #actions>
-        <q-btn
-          outline
-          color="primary"
-          icon="add"
-          label="New Document"
-          @click="openCreateDocument"
-        />
-      </template>
-    </PageHeader>
+      breadcrumbs="Supply Chain / Inventory"
+      showSearch
+      showBranchSelector
+      showExport
+      showRefresh
+      primaryAction
+      primaryActionLabel="New Document"
+      @primary-action="openCreateDocument"
+      @export="() => {}"
+    />
 
     <!-- Main tabs card -->
     <q-card class="bg-dark text-white q-mt-md">
@@ -40,6 +39,16 @@
         <!-- Items Master -->
         <q-tab-panel name="items" class="q-pa-none">
           <ItemsTab />
+        </q-tab-panel>
+
+        <!-- Menu Master -->
+        <q-tab-panel name="menu_items" class="q-pa-none">
+          <MenuItemsTab />
+        </q-tab-panel>
+
+        <!-- Recipes / BOM -->
+        <q-tab-panel name="recipes" class="q-pa-none">
+          <RecipesTab />
         </q-tab-panel>
 
         <!-- Stock Levels -->
@@ -86,7 +95,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import PageHeader from 'components/common/PageHeader.vue'
+import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardTab from 'components/inventory/DashboardTab.vue'
 import ItemsTab from 'components/inventory/ItemsTab.vue'
 import WarehousesTab from 'components/inventory/WarehousesTab.vue'
@@ -95,13 +104,17 @@ import DocumentCreateTab from 'components/inventory/DocumentCreateTab.vue'
 import StockLevelsTab from 'components/inventory/StockLevelsTab.vue'
 import StockLedgerTab from 'components/inventory/StockLedgerTab.vue'
 import SuppliersTab from 'components/inventory/SuppliersTab.vue'
+import RecipesTab from 'components/inventory/RecipesTab.vue'
+import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 
 const tab = ref('dashboard')
 const editingDocument = ref(null)
 
 const tabs = [
   { name: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { name: 'items', label: 'Items', icon: 'category' },
+  { name: 'items', label: 'Inventory Items', icon: 'category' },
+  { name: 'menu_items', label: 'Menu Items', icon: 'restaurant' },
+  { name: 'recipes', label: 'Recipes / BOM', icon: 'restaurant_menu' },
   { name: 'stock', label: 'Stock Levels', icon: 'inventory_2' },
   { name: 'warehouses', label: 'Warehouses', icon: 'warehouse' },
   { name: 'suppliers', label: 'Suppliers', icon: 'local_shipping' },

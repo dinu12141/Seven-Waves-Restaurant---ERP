@@ -1,6 +1,11 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader title="Branch Management" subtitle="Manage restaurant outlets and locations" />
+    <PageHeader
+      title="Branch Management"
+      subtitle="Manage restaurant outlets and locations"
+      show-back
+      back-route="/admin"
+    />
 
     <q-card flat bordered class="q-mt-md">
       <q-card-section>

@@ -1,6 +1,7 @@
 import { boot } from 'quasar/wrappers'
 import { useAuthStore } from 'src/stores/auth'
 import { canAccessRoute } from 'src/config/roles'
+import { supabase } from 'src/boot/supabase'
 
 export default boot(async ({ router }) => {
   const authStore = useAuthStore()
@@ -8,7 +9,12 @@ export default boot(async ({ router }) => {
   // Initialize auth — fast: just checks session + fetches roles
   await authStore.initialize()
 
-  router.beforeEach((to, _from, next) => {
+  router.beforeEach(async (to, _from, next) => {
+    // Make sure we have the latest session
+    if (!authStore.initialized) {
+      await authStore.initialize()
+    }
+
     const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
 
     // Not authenticated → login
@@ -18,7 +24,7 @@ export default boot(async ({ router }) => {
 
     // Already authenticated → skip login page
     if (to.path === '/auth/login' && authStore.isAuthenticated) {
-      return next(authStore.defaultLandingPage)
+      return next(authStore.defaultLandingPage || '/dashboard')
     }
 
     // Role-based guard
@@ -34,12 +40,16 @@ export default boot(async ({ router }) => {
       if (requiredRoles.length > 0) {
         // @ts-ignore
         const hasAccess = requiredRoles.some((role) => authStore.roles.includes(role))
-        if (!hasAccess) return next(authStore.defaultLandingPage)
+        if (!hasAccess) {
+          if (to.path === authStore.defaultLandingPage) return next('/profile')
+          return next(authStore.defaultLandingPage || '/dashboard')
+        }
       }
 
       // Check centralized config
-      if (!canAccessRoute(authStore.roles, to.path)) {
-        return next(authStore.defaultLandingPage)
+      if (!canAccessRoute(authStore.roles, to.path, authStore.permissions)) {
+        if (to.path === authStore.defaultLandingPage) return next('/profile')
+        return next(authStore.defaultLandingPage || '/dashboard')
       }
     }
 

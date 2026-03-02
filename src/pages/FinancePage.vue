@@ -1,9 +1,25 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader title="Finance Dashboard" subtitle="Financial overview and reports">
-      <template #actions>
-        <q-btn-dropdown outline color="primary" label="Reports" icon="assessment">
-          <q-list>
+    <ERPToolbar
+      moduleName="finance"
+      title="Finance Dashboard"
+      breadcrumbs="Accounting / Finance"
+      showSearch
+      showBranchSelector
+      showExport
+      primaryAction
+      primaryActionLabel="Record Expense"
+      @primary-action="() => {}"
+    >
+      <template #secondary-actions>
+        <q-btn-dropdown
+          class="erp-toolbar__dropdown-btn q-ml-sm"
+          outline
+          color="white"
+          label="Reports"
+          icon="assessment"
+        >
+          <q-list class="bg-dark text-white">
             <q-item clickable v-close-popup>
               <q-item-section>Daily Sales Report</q-item-section>
             </q-item>
@@ -12,9 +28,8 @@
             </q-item>
           </q-list>
         </q-btn-dropdown>
-        <q-btn color="primary" icon="add" label="Record Expense" class="q-ml-sm" />
       </template>
-    </PageHeader>
+    </ERPToolbar>
 
     <q-tabs
       v-model="tab"
@@ -53,7 +68,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import PageHeader from 'components/common/PageHeader.vue'
+import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardTab from 'components/finance/DashboardTab.vue'
 import InvoicesTab from 'components/finance/InvoicesTab.vue'
 import PaymentsTab from 'components/finance/PaymentsTab.vue'

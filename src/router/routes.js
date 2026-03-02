@@ -42,8 +42,19 @@ const routes = [
       },
       {
         path: 'hr',
-        component: () => import('pages/HRPage.vue'),
+        component: () => import('pages/hr/HRLayout.vue'),
         meta: { roles: ['admin', 'manager', 'hr'] },
+        children: [
+          { path: '', redirect: 'employees' },
+          { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue') },
+          { path: 'salary-config', component: () => import('pages/hr/SalaryConfigPage.vue') },
+          { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue') },
+          { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue') },
+          { path: 'commission', component: () => import('pages/hr/CommissionPage.vue') },
+          { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue') },
+          { path: 'performance', component: () => import('pages/hr/PerformancePage.vue') },
+          { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue') },
+        ],
       },
       {
         path: 'procurement',
@@ -114,6 +125,21 @@ const routes = [
         path: 'waiter',
         component: () => import('pages/WaiterPage.vue'),
         meta: { roles: ['admin', 'manager', 'waiter'] },
+      },
+      {
+        path: 'profile',
+        component: () => import('pages/auth/UserProfilePage.vue'),
+      },
+      // ── Reports ───────────────────────────────────────────────────────────────
+      {
+        path: 'reports/sales',
+        component: () => import('pages/reports/SalesReport.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'reports/inventory',
+        component: () => import('pages/reports/InventoryLedger.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
       },
     ],
   },

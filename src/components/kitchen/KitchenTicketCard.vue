@@ -87,8 +87,12 @@
               :loading="accepting"
               @click="$emit('accept', ticket.id)"
             >
-              <q-icon name="restaurant" size="20px" class="q-mr-sm" />
+              <q-icon name="restaurant" size="18px" class="q-mr-xs" />
               ACCEPT
+            </q-btn>
+            <q-btn unelevated rounded class="action-btn btn-view" @click="$emit('view', ticket.id)">
+              <q-icon name="visibility" size="18px" />
+              <q-tooltip>View KOT</q-tooltip>
             </q-btn>
             <q-btn
               unelevated
@@ -97,7 +101,7 @@
               :loading="isPrinting"
               @click="$emit('print', ticket.id)"
             >
-              <q-icon name="print" size="20px" />
+              <q-icon name="print" size="18px" />
               <q-tooltip>Print KOT</q-tooltip>
             </q-btn>
           </div>
@@ -112,8 +116,12 @@
               class="col action-btn btn-ready"
               @click="$emit('mark-ready', ticket.id)"
             >
-              <q-icon name="check_circle" size="20px" class="q-mr-sm" />
-              MARK READY
+              <q-icon name="check_circle" size="18px" class="q-mr-xs" />
+              READY
+            </q-btn>
+            <q-btn unelevated rounded class="action-btn btn-view" @click="$emit('view', ticket.id)">
+              <q-icon name="visibility" size="18px" />
+              <q-tooltip>View KOT</q-tooltip>
             </q-btn>
             <q-btn
               unelevated
@@ -122,7 +130,7 @@
               :loading="isPrinting"
               @click="$emit('print', ticket.id)"
             >
-              <q-icon name="print" size="20px" />
+              <q-icon name="print" size="18px" />
               <q-tooltip>{{ ticket.printed_at ? 'Reprint KOT' : 'Print KOT' }}</q-tooltip>
             </q-btn>
           </div>
@@ -137,8 +145,12 @@
               class="col action-btn btn-complete"
               @click="$emit('dismiss', ticket.id)"
             >
-              <q-icon name="done_all" size="20px" class="q-mr-sm" />
-              COMPLETE
+              <q-icon name="done_all" size="18px" class="q-mr-xs" />
+              DONE
+            </q-btn>
+            <q-btn unelevated rounded class="action-btn btn-view" @click="$emit('view', ticket.id)">
+              <q-icon name="visibility" size="18px" />
+              <q-tooltip>View KOT</q-tooltip>
             </q-btn>
             <q-btn
               unelevated
@@ -147,8 +159,8 @@
               :loading="isPrinting"
               @click="$emit('print', ticket.id)"
             >
-              <q-icon name="print" size="20px" />
-              <q-tooltip>Reprint KOT</q-tooltip>
+              <q-icon name="print" size="18px" />
+              <q-tooltip>Reprint</q-tooltip>
             </q-btn>
           </div>
         </template>
@@ -166,7 +178,7 @@ const props = defineProps({
   isPrinting: { type: Boolean, default: false },
 })
 
-defineEmits(['accept', 'mark-ready', 'dismiss', 'print'])
+defineEmits(['accept', 'mark-ready', 'dismiss', 'print', 'view'])
 
 const itemCount = computed(() => props.ticket.items?.reduce((sum, i) => sum + i.qty, 0) || 0)
 
@@ -363,15 +375,24 @@ const typeColor = computed(() => {
   box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
 }
 
-.btn-print {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #e0e0e0 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+.btn-print,
+.btn-view {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #9ca3af !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   min-width: 54px;
 }
+
 .btn-print:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
   border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.btn-view:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
 }
 
 /* Items scroll */

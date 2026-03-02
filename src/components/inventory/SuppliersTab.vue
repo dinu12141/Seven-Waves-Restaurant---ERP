@@ -3,7 +3,7 @@
     <div class="row items-center q-mb-md">
       <div class="text-h6"><q-icon name="local_shipping" class="q-mr-sm" />Supplier Management</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Add Supplier" @click="openCreate" />
+      <BaseButton variant="primary" icon="add" label="Add Supplier" @click="openCreate" />
     </div>
 
     <q-inner-loading :showing="loading" dark />
@@ -118,6 +118,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useSupplierList } from 'src/services/inventoryService'
 
 const $q = useQuasar()

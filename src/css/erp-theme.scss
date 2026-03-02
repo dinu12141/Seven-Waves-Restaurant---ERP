@@ -1,895 +1,316 @@
-// =============================================================================
-// ERP DESIGN SYSTEM — Global Theme
-// Premium dark-mode enterprise UI (SAP / Oracle / Dynamics style)
-// =============================================================================
+/* 
+  Global ERP Design System Theme
+  Centralized variables for all ERP components
+*/
 
-// ─── Google Fonts ─────────────────────────────────────────────────────────────
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-// =============================================================================
-// CSS CUSTOM PROPERTIES (Design Tokens)
-// =============================================================================
 :root {
-  // ── Typography ──────────────────────────────────────────────────────────────
-  --erp-font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
-
+  /* ─── Typography ─── */
+  --erp-font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --erp-font-size-base: 14px;
   --erp-font-size-h1: 22px;
   --erp-font-size-h2: 18px;
   --erp-font-size-h3: 16px;
-  --erp-font-size-body: 14px;
-  --erp-font-size-label: 12px;
-  --erp-font-size-meta: 12px;
-  --erp-font-size-btn: 13px;
-  --erp-font-size-table-header: 11px;
+  --erp-font-size-small: 12px;
+  --erp-font-size-table: 13px;
 
+  /* ─── Base Font Weights ─── */
   --erp-font-weight-regular: 400;
   --erp-font-weight-medium: 500;
   --erp-font-weight-semibold: 600;
   --erp-font-weight-bold: 700;
 
-  --erp-line-height-title: 1.2;
-  --erp-line-height-body: 1.5;
+  /* ─── Semantic Colors ─── */
+  --erp-primary: #2563eb;
+  --erp-primary-hover: #1d4ed8;
+  --erp-primary-subtle: rgba(37, 99, 235, 0.1);
+  --erp-success: #16a34a;
+  --erp-warning: #f59e0b;
+  --erp-danger: #dc2626;
+  --erp-info: #0ea5e9;
 
-  // ── Spacing (8px grid) ──────────────────────────────────────────────────────
-  --erp-space-1: 4px; // 0.5x
-  --erp-space-2: 8px; // 1x
-  --erp-space-3: 12px; // 1.5x
-  --erp-space-4: 16px; // 2x
-  --erp-space-5: 20px; // 2.5x
-  --erp-space-6: 24px; // 3x
-  --erp-space-8: 32px; // 4x
-  --erp-space-10: 40px; // 5x
-  --erp-space-12: 48px; // 6x
+  /* ─── Backgrounds (Dark ERP Theme) ─── */
+  --erp-bg-main: #0f172a;
+  --erp-bg-card: #1e293b;
+  --erp-bg-card-hover: rgba(255, 255, 255, 0.04);
+  --erp-bg-sidebar: #0b1220;
+  --erp-bg-header: #0f172a;
 
-  --erp-page-padding: 24px;
-  --erp-card-padding: 16px;
-  --erp-card-padding-lg: 20px;
+  /* ─── Borders ─── */
+  --erp-border: rgba(255, 255, 255, 0.06);
+  --erp-border-hover: rgba(255, 255, 255, 0.12);
 
-  // ── Sizing ──────────────────────────────────────────────────────────────────
-  --erp-height-table-row: 44px;
-  --erp-height-table-row-compact: 40px;
-  --erp-height-form-field: 40px;
-  --erp-height-btn: 36px;
-  --erp-height-btn-lg: 40px;
-  --erp-height-toolbar: 52px;
-  --erp-width-sidebar: 240px;
+  /* ─── Text Colors ─── */
+  --erp-text-primary: #f8fafc;
+  --erp-text-secondary: #94a3b8;
+  --erp-text-muted: #64748b;
+  --erp-text-placeholder: #475569;
 
-  // ── Icon sizes ──────────────────────────────────────────────────────────────
-  --erp-icon-sidebar: 20px;
-  --erp-icon-toolbar: 20px;
-  --erp-icon-btn: 18px;
-  --erp-icon-action: 18px;
-  --erp-icon-kpi: 22px;
+  /* ─── Dimensions & Spacing (8px Grid Rules) ─── */
+  --erp-spacing-xs: 4px;
+  --erp-spacing-sm: 8px;
+  --erp-spacing-md: 16px;
+  --erp-spacing-lg: 24px;
+  --erp-spacing-xl: 32px;
 
-  // ── Border Radius ─────────────────────────────────────────────────────────
-  --erp-radius-sm: 6px;
-  --erp-radius-md: 8px;
-  --erp-radius-lg: 10px;
-  --erp-radius-xl: 12px;
-  --erp-radius-chip: 6px;
-  --erp-radius-btn: 8px;
+  --erp-radius-sm: 4px;
+  --erp-radius-md: 6px;
+  --erp-radius-lg: 8px; /* Max 8px */
 
-  // ── Colors ─ Dark Theme ────────────────────────────────────────────────────
-  --erp-bg-page: #0f1117;
-  --erp-bg-surface: #16191f;
-  --erp-bg-card: #1c2028;
-  --erp-bg-card-hover: #21262e;
-  --erp-bg-sidebar: #12151b;
-  --erp-bg-header: #12151b;
-  --erp-bg-input: rgba(255, 255, 255, 0.04);
-  --erp-bg-table-header: #1a1e26;
-  --erp-bg-row-alt: rgba(255, 255, 255, 0.018);
-  --erp-bg-row-hover: rgba(67, 133, 245, 0.06);
+  --erp-input-height: 38px;
+  --erp-btn-height: 36px;
+  --erp-row-height: 44px;
 
-  --erp-border: rgba(255, 255, 255, 0.08);
-  --erp-border-focus: rgba(67, 133, 245, 0.5);
-
-  // ── Brand Colors ───────────────────────────────────────────────────────────
-  --erp-primary: #4385f5; // Google-blue
-  --erp-primary-hover: #3273e0;
-  --erp-primary-subtle: rgba(67, 133, 245, 0.12);
-
-  // ── Text ───────────────────────────────────────────────────────────────────
-  --erp-text-primary: #e8eaed;
-  --erp-text-secondary: #9aa0ab;
-  --erp-text-tertiary: #5f6670;
-  --erp-text-inverse: #0f1117;
-  --erp-text-link: #4385f5;
-
-  // ── Status ─────────────────────────────────────────────────────────────────
-  --erp-success: #34a853;
-  --erp-success-bg: rgba(52, 168, 83, 0.12);
-  --erp-warning: #f9ab00;
-  --erp-warning-bg: rgba(249, 171, 0, 0.12);
-  --erp-error: #ea4335;
-  --erp-error-bg: rgba(234, 67, 53, 0.12);
-  --erp-info: #4385f5;
-  --erp-info-bg: rgba(67, 133, 245, 0.12);
-  --erp-neutral: #5f6670;
-  --erp-neutral-bg: rgba(95, 102, 112, 0.2);
-
-  // ── Shadows ────────────────────────────────────────────────────────────────
-  --erp-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --erp-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --erp-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --erp-shadow-card: 0 1px 4px rgba(0, 0, 0, 0.5);
+  /* ─── Shadows ─── */
+  --erp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --erp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-// =============================================================================
-// GLOBAL RESETS & BASE
-// =============================================================================
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  font-size: var(--erp-font-size-base);
+/* ─── Global Base Settings ─── */
+body.body--dark {
+  background-color: var(--erp-bg-main) !important;
+  color: var(--erp-text-primary) !important;
+  font-family: var(--erp-font-family) !important;
+  font-size: var(--erp-font-size-base) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
-body,
-.q-layout {
-  font-family: var(--erp-font-family) !important;
-  font-size: var(--erp-font-size-body);
-  font-weight: var(--erp-font-weight-regular);
-  line-height: var(--erp-line-height-body);
-  color: var(--erp-text-primary);
-  background-color: var(--erp-bg-page);
-}
-
-// =============================================================================
-// TYPOGRAPHY SCALE
-// =============================================================================
-
-.erp-h1 {
-  font-size: var(--erp-font-size-h1);
-  font-weight: var(--erp-font-weight-semibold);
-  line-height: var(--erp-line-height-title);
-  color: var(--erp-text-primary);
-  margin: 0;
-}
-
-.erp-h2 {
-  font-size: var(--erp-font-size-h2);
-  font-weight: var(--erp-font-weight-semibold);
-  line-height: var(--erp-line-height-title);
-  color: var(--erp-text-primary);
-  margin: 0;
-}
-
-.erp-h3 {
-  font-size: var(--erp-font-size-h3);
-  font-weight: var(--erp-font-weight-semibold);
-  line-height: var(--erp-line-height-title);
-  color: var(--erp-text-primary);
-  margin: 0;
-}
-
-.erp-body {
-  font-size: var(--erp-font-size-body);
-  font-weight: var(--erp-font-weight-regular);
-  line-height: var(--erp-line-height-body);
+/* ─── Headings ─── */
+h1,
+.text-h1 {
+  font-size: var(--erp-font-size-h1) !important;
+  font-weight: var(--erp-font-weight-semibold) !important;
+  line-height: 1.2 !important;
+  margin: 0 0 var(--erp-spacing-md) 0;
   color: var(--erp-text-primary);
 }
 
-.erp-label {
-  font-size: var(--erp-font-size-label);
-  font-weight: var(--erp-font-weight-medium);
-  line-height: 1.3;
-  color: var(--erp-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.erp-meta {
-  font-size: var(--erp-font-size-meta);
-  font-weight: var(--erp-font-weight-regular);
-  color: var(--erp-text-secondary);
-}
-
-.erp-text-primary {
-  color: var(--erp-text-primary) !important;
-}
-.erp-text-secondary {
-  color: var(--erp-text-secondary) !important;
-}
-.erp-text-tertiary {
-  color: var(--erp-text-tertiary) !important;
-}
-.erp-text-link {
-  color: var(--erp-text-link) !important;
-}
-
-// =============================================================================
-// LAYOUT
-// =============================================================================
-
-body.body--dark {
-  background-color: var(--erp-bg-page);
+h2,
+.text-h2 {
+  font-size: var(--erp-font-size-h2) !important;
+  font-weight: var(--erp-font-weight-semibold) !important;
+  line-height: 1.3 !important;
+  margin: 0 0 var(--erp-spacing-sm) 0;
   color: var(--erp-text-primary);
 }
 
-.q-page {
-  padding: var(--erp-page-padding);
-  min-height: 100%;
+h3,
+.text-h3 {
+  font-size: var(--erp-font-size-h3) !important;
+  font-weight: var(--erp-font-weight-semibold) !important;
+  line-height: 1.4 !important;
+  margin: 0 0 var(--erp-spacing-sm) 0;
+  color: var(--erp-text-primary);
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
-.q-header {
-  background-color: var(--erp-bg-header) !important;
-  border-bottom: 1px solid var(--erp-border) !important;
-  box-shadow: none !important;
-  height: var(--erp-height-toolbar);
-
-  .q-toolbar {
-    height: var(--erp-height-toolbar);
-    min-height: var(--erp-height-toolbar);
-    padding: 0 var(--erp-space-4);
-  }
-}
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-.q-drawer {
-  background-color: var(--erp-bg-sidebar) !important;
-  border-right: 1px solid var(--erp-border) !important;
-  box-shadow: none !important;
-}
-
-// ─── Page Container ───────────────────────────────────────────────────────────
-.q-page-container {
-  background-color: var(--erp-bg-page);
-}
-
-// =============================================================================
-// SCROLLBAR
-// =============================================================================
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
-
-// =============================================================================
-// CARDS
-// =============================================================================
-
-.q-card,
+/* ─── Cards ─── */
 .erp-card {
   background-color: var(--erp-bg-card) !important;
   border: 1px solid var(--erp-border) !important;
-  border-radius: var(--erp-radius-xl) !important;
-  box-shadow: var(--erp-shadow-card) !important;
-
-  .q-card__section:first-child {
-    padding: var(--erp-card-padding);
-  }
+  border-radius: var(--erp-radius-lg) !important;
+  box-shadow: var(--erp-shadow-sm) !important;
 }
 
-.erp-card--dashboard {
-  .q-card__section:first-child {
-    padding: var(--erp-card-padding-lg);
-  }
+/* ─── Tables ─── */
+.erp-table {
+  background: transparent !important;
 }
 
-// =============================================================================
-// BUTTONS
-// =============================================================================
-
-.q-btn {
-  font-family: var(--erp-font-family) !important;
-  font-size: var(--erp-font-size-btn) !important;
+.erp-table thead tr th {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  font-size: var(--erp-font-size-small) !important;
   font-weight: var(--erp-font-weight-semibold) !important;
-  text-transform: none !important;
-  border-radius: var(--erp-radius-btn) !important;
-  letter-spacing: 0.01em;
-  height: var(--erp-height-btn);
-  min-height: var(--erp-height-btn);
-
-  &.q-btn--round {
-    height: auto;
-    min-height: auto;
-    border-radius: 50% !important;
-  }
-
-  // Sizes
-  &.erp-btn-lg {
-    height: var(--erp-height-btn-lg);
-    min-height: var(--erp-height-btn-lg);
-    padding: 0 var(--erp-space-5);
-    font-size: 14px !important;
-  }
-
-  // Primary
-  &.erp-btn-primary {
-    background-color: var(--erp-primary) !important;
-    color: #fff !important;
-    &:hover {
-      background-color: var(--erp-primary-hover) !important;
-    }
-  }
-
-  // Secondary
-  &.erp-btn-secondary {
-    background-color: transparent !important;
-    border: 1px solid var(--erp-border) !important;
-    color: var(--erp-text-primary) !important;
-    &:hover {
-      background-color: var(--erp-bg-card-hover) !important;
-    }
-  }
-
-  // Ghost
-  &.erp-btn-ghost {
-    background-color: transparent !important;
-    color: var(--erp-primary) !important;
-    &:hover {
-      background-color: var(--erp-primary-subtle) !important;
-    }
-  }
-
-  // Danger
-  &.erp-btn-danger {
-    background-color: transparent !important;
-    color: var(--erp-error) !important;
-    border: 1px solid var(--erp-error-bg) !important;
-    &:hover {
-      background-color: var(--erp-error-bg) !important;
-    }
-  }
-}
-
-// =============================================================================
-// TABLES
-// =============================================================================
-
-.q-table {
-  font-family: var(--erp-font-family) !important;
-  font-size: var(--erp-font-size-body) !important;
-  background-color: var(--erp-bg-card) !important;
-
-  // Container
-  &__container {
-    border-radius: var(--erp-radius-xl) !important;
-    border: 1px solid var(--erp-border) !important;
-    box-shadow: var(--erp-shadow-card) !important;
-    overflow: hidden;
-  }
-
-  // Header
-  thead tr {
-    background-color: var(--erp-bg-table-header) !important;
-  }
-
-  th {
-    font-size: var(--erp-font-size-table-header) !important;
-    font-weight: var(--erp-font-weight-semibold) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.6px !important;
-    color: var(--erp-text-tertiary) !important;
-    border-bottom: 1px solid var(--erp-border) !important;
-    height: 40px !important;
-    padding: 0 12px !important;
-    white-space: nowrap;
-  }
-
-  // Rows
-  td {
-    font-size: var(--erp-font-size-body) !important;
-    color: var(--erp-text-primary) !important;
-    border-bottom: 1px solid var(--erp-border) !important;
-    height: var(--erp-height-table-row) !important;
-    padding: 0 12px !important;
-  }
-
-  // Zebra
-  tbody tr:nth-child(even) {
-    background-color: var(--erp-bg-row-alt) !important;
-  }
-  tbody tr:hover {
-    background-color: var(--erp-bg-row-hover) !important;
-  }
-
-  // Numeric alignment
-  td.text-right,
-  th.text-right {
-    text-align: right !important;
-  }
-
-  // Sticky header
-  &.q-table--sticky-header thead tr:first-child th {
-    background-color: var(--erp-bg-table-header);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-
-  // Compact variant
-  &--compact td {
-    height: var(--erp-height-table-row-compact) !important;
-  }
-
-  // No data
-  &__bottom {
-    font-size: var(--erp-font-size-meta) !important;
-    color: var(--erp-text-secondary) !important;
-    border-top: 1px solid var(--erp-border) !important;
-    background-color: var(--erp-bg-table-header) !important;
-    min-height: 40px;
-  }
-}
-
-// =============================================================================
-// FORMS & INPUTS
-// =============================================================================
-
-.q-field {
-  font-family: var(--erp-font-family) !important;
-
-  &__control {
-    height: var(--erp-height-form-field) !important;
-    min-height: var(--erp-height-form-field) !important;
-    background-color: var(--erp-bg-input) !important;
-    border-radius: var(--erp-radius-md) !important;
-    border: 1px solid var(--erp-border) !important;
-
-    &:hover {
-      border-color: rgba(255, 255, 255, 0.15) !important;
-    }
-  }
-
-  &--focused .q-field__control {
-    border-color: var(--erp-primary) !important;
-    box-shadow: 0 0 0 2px var(--erp-primary-subtle) !important;
-  }
-
-  &__label {
-    font-size: var(--erp-font-size-label) !important;
-    font-weight: var(--erp-font-weight-medium) !important;
-    color: var(--erp-text-secondary) !important;
-    top: 12px !important;
-  }
-
-  &__native,
-  &__input {
-    font-family: var(--erp-font-family) !important;
-    font-size: var(--erp-font-size-body) !important;
-    color: var(--erp-text-primary) !important;
-    padding: 0 4px !important;
-  }
-
-  &__bottom {
-    font-size: var(--erp-font-size-meta) !important;
-    color: var(--erp-text-secondary) !important;
-  }
-
-  &--error .q-field__bottom {
-    color: var(--erp-error) !important;
-  }
-
-  &__messages {
-    font-size: var(--erp-font-size-meta) !important;
-  }
-}
-
-// Remove default Quasar field outline
-.q-field--outlined .q-field__control {
-  &::before,
-  &::after {
-    display: none !important;
-  }
-}
-
-// Search input variant
-.erp-search-field {
-  .q-field__control {
-    height: 40px !important;
-    min-height: 40px !important;
-    border-radius: var(--erp-radius-md) !important;
-    background-color: var(--erp-bg-input) !important;
-    border: 1px solid var(--erp-border) !important;
-    transition: border-color 0.15s;
-
-    &:focus-within {
-      border-color: var(--erp-primary) !important;
-    }
-  }
-}
-
-// Select
-.q-select .q-field__append {
   color: var(--erp-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--erp-border) !important;
 }
 
-// =============================================================================
-// STATUS CHIPS (ERP Standard)
-// =============================================================================
-
-.erp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: var(--erp-radius-chip);
-  font-size: 11px;
-  font-weight: var(--erp-font-weight-semibold);
-  line-height: 1.4;
-  white-space: nowrap;
-  border: 1px solid transparent;
-  font-family: var(--erp-font-family);
-
-  &--success {
-    color: var(--erp-success);
-    background-color: var(--erp-success-bg);
-    border-color: rgba(52, 168, 83, 0.2);
-  }
-  &--warning {
-    color: var(--erp-warning);
-    background-color: var(--erp-warning-bg);
-    border-color: rgba(249, 171, 0, 0.2);
-  }
-  &--error {
-    color: var(--erp-error);
-    background-color: var(--erp-error-bg);
-    border-color: rgba(234, 67, 53, 0.2);
-  }
-  &--info {
-    color: var(--erp-info);
-    background-color: var(--erp-info-bg);
-    border-color: rgba(67, 133, 245, 0.2);
-  }
-  &--neutral {
-    color: var(--erp-text-secondary);
-    background-color: var(--erp-neutral-bg);
-    border-color: rgba(255, 255, 255, 0.08);
-  }
-  &--primary {
-    color: var(--erp-primary);
-    background-color: var(--erp-primary-subtle);
-    border-color: rgba(67, 133, 245, 0.2);
-  }
-
-  .erp-chip__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: currentColor;
-    flex-shrink: 0;
-  }
+.erp-table tbody tr {
+  border-bottom: 1px solid var(--erp-border) !important;
+  transition: background-color 0.15s ease;
 }
 
-// Quasar chips
-.q-chip {
-  font-family: var(--erp-font-family) !important;
-  font-size: 11px !important;
-  font-weight: var(--erp-font-weight-semibold) !important;
-  border-radius: var(--erp-radius-chip) !important;
-  height: 22px !important;
+.erp-table tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.01) !important;
 }
 
-// =============================================================================
-// SIDEBAR MENU OVERRIDES
-// =============================================================================
+.erp-table tbody tr:hover {
+  background-color: var(--erp-bg-card-hover) !important;
+}
 
-// Override Quasar's menu items for ERP density
-.erp-nav-item {
+.erp-table tbody td {
+  font-size: var(--erp-font-size-table) !important;
+  color: var(--erp-text-primary) !important;
+  padding: 8px 16px !important;
+  height: var(--erp-row-height) !important;
+}
+
+/* ─── Buttons ─── */
+.q-btn {
+  text-transform: none !important;
+  font-weight: var(--erp-font-weight-medium) !important;
+  font-size: var(--erp-font-size-base) !important;
+}
+
+.erp-btn-primary,
+.erp-btn-secondary,
+.erp-btn-danger {
+  height: var(--erp-btn-height) !important;
+  min-height: var(--erp-btn-height) !important;
+  border-radius: var(--erp-radius-md) !important; /* 6px */
+  padding: 0 var(--erp-spacing-md) !important;
+}
+
+.erp-btn-primary {
+  background-color: var(--erp-primary) !important;
+  color: #ffffff !important;
+}
+
+.erp-btn-secondary {
+  background-color: var(--erp-bg-card-hover) !important; /* Gray */
+  color: var(--erp-text-primary) !important;
+  border: 1px solid var(--erp-border) !important;
+}
+
+.erp-btn-danger {
+  background-color: var(--erp-danger) !important;
+  color: #ffffff !important;
+}
+
+/* ─── Ghost / Flat Button ─── */
+.erp-btn-ghost {
+  background-color: transparent !important;
+  border: 1px solid var(--erp-border) !important;
+  color: var(--erp-text-secondary) !important;
+  height: var(--erp-btn-height) !important;
   border-radius: var(--erp-radius-md) !important;
-  min-height: 38px !important;
-  padding: 0 var(--erp-space-2) !important;
-  margin: 2px var(--erp-space-2) !important;
-  transition: background-color 0.15s ease !important;
-
-  .q-item__section--avatar {
-    min-width: 32px;
-    padding-right: 4px;
-  }
-
-  .q-item__label {
-    font-size: 13px !important;
-    font-weight: var(--erp-font-weight-medium) !important;
-    color: var(--erp-text-secondary) !important;
-    line-height: 1.2;
-  }
-
-  .q-icon {
-    color: var(--erp-text-tertiary) !important;
-    font-size: var(--erp-icon-sidebar) !important;
-  }
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.05) !important;
-    .q-item__label {
-      color: var(--erp-text-primary) !important;
-    }
-    .q-icon {
-      color: var(--erp-text-secondary) !important;
-    }
-  }
-
-  &.router-link-active,
-  &.q-router-link--active {
-    background-color: var(--erp-primary-subtle) !important;
-    .q-item__label {
-      color: var(--erp-primary) !important;
-      font-weight: var(--erp-font-weight-semibold) !important;
-    }
-    .q-icon {
-      color: var(--erp-primary) !important;
-    }
-  }
-}
-
-// Expansion items
-.erp-expansion-item {
-  .q-expansion-item__content {
-    padding: 0;
-  }
-}
-
-// Section headers
-.erp-nav-section-label {
-  font-size: 10px !important;
-  font-weight: var(--erp-font-weight-semibold) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.8px !important;
-  color: var(--erp-text-tertiary) !important;
-  padding: var(--erp-space-4) var(--erp-space-4) var(--erp-space-1) !important;
-  margin-top: var(--erp-space-2) !important;
-}
-
-// =============================================================================
-// DIALOGS / MODALS
-// =============================================================================
-
-.q-dialog__inner > div {
-  background-color: var(--erp-bg-card) !important;
-  border: 1px solid var(--erp-border) !important;
-  border-radius: var(--erp-radius-xl) !important;
-  box-shadow: var(--erp-shadow-lg) !important;
-  color: var(--erp-text-primary) !important;
-}
-
-// =============================================================================
-// SEPARATORS
-// =============================================================================
-
-.q-separator {
-  background-color: var(--erp-border) !important;
-}
-
-// =============================================================================
-// MENUS / POPUPS
-// =============================================================================
-
-.q-menu {
-  background-color: var(--erp-bg-card) !important;
-  border: 1px solid var(--erp-border) !important;
-  border-radius: var(--erp-radius-lg) !important;
-  box-shadow: var(--erp-shadow-lg) !important;
-
-  .q-item {
-    font-size: var(--erp-font-size-body) !important;
-    min-height: 40px !important;
     color: var(--erp-text-primary) !important;
-
-    &:hover {
-      background-color: var(--erp-bg-card-hover) !important;
-    }
   }
 }
 
-// =============================================================================
-// TOOLTIPS
-// =============================================================================
-
-.q-tooltip {
-  font-family: var(--erp-font-family) !important;
-  font-size: 12px !important;
-  background: rgba(30, 34, 44, 0.95) !important;
-  border: 1px solid var(--erp-border) !important;
-  border-radius: var(--erp-radius-sm) !important;
-  padding: 4px 8px !important;
-}
-
-// =============================================================================
-// KPI / STAT CARDS  (Dashboard standard)
-// =============================================================================
-
-.erp-stat-card {
-  position: relative;
-  overflow: hidden;
-  background-color: var(--erp-bg-card);
-  border: 1px solid var(--erp-border);
-  border-radius: var(--erp-radius-xl);
-  padding: var(--erp-card-padding-lg);
-
-  &__icon-wrap {
-    width: 44px;
-    height: 44px;
-    border-radius: var(--erp-radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  &__label {
-    font-size: var(--erp-font-size-label);
-    font-weight: var(--erp-font-weight-medium);
-    color: var(--erp-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: var(--erp-space-1);
-  }
-
-  &__value {
-    font-size: 24px;
-    font-weight: var(--erp-font-weight-semibold);
-    color: var(--erp-text-primary);
-    line-height: 1.15;
-  }
-
-  &__trend {
-    font-size: var(--erp-font-size-meta);
-    font-weight: var(--erp-font-weight-medium);
-    margin-top: var(--erp-space-1);
-  }
-}
-
-// =============================================================================
-// PAGE HEADER (ERP standard)
-// =============================================================================
-
-.erp-page-header {
+/* ─── ERP Tab Bar (used across list pages) ─── */
+.erp-tab-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: var(--erp-space-5);
-  margin-bottom: var(--erp-space-5);
+  gap: 4px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--erp-border);
-
-  &__left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  &__subtitle {
-    font-size: var(--erp-font-size-meta);
-    color: var(--erp-text-secondary);
-    font-weight: var(--erp-font-weight-regular);
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: var(--erp-space-2);
-  }
+  padding-bottom: 0;
 }
 
-// =============================================================================
-// TABS
-// =============================================================================
+.erp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--erp-font-family);
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  margin-bottom: -1px;
 
-.q-tab {
-  font-family: var(--erp-font-family) !important;
-  font-size: 13px !important;
-  font-weight: var(--erp-font-weight-medium) !important;
-  text-transform: none !important;
-  color: var(--erp-text-secondary) !important;
-  min-height: 40px !important;
+  &:hover {
+    color: var(--erp-text-primary);
+    border-bottom-color: var(--erp-border);
+  }
 
   &--active {
-    color: var(--erp-primary) !important;
-    font-weight: var(--erp-font-weight-semibold) !important;
+    color: var(--erp-primary);
+    border-bottom-color: var(--erp-primary);
+    font-weight: 600;
+  }
+
+  &__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--erp-text-muted);
+
+    .erp-tab--active & {
+      background: rgba(37, 99, 235, 0.15);
+      color: var(--erp-primary);
+    }
   }
 }
 
-.q-tabs {
-  border-bottom: 1px solid var(--erp-border);
+/* ─── ERP Badge Variants ─── */
+.erp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
 
-  &__indicator {
-    background-color: var(--erp-primary) !important;
-    height: 2px !important;
+  &--pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+
+  &--preparing {
+    background: rgba(37, 99, 235, 0.15);
+    color: var(--erp-primary);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+  }
+
+  &--ready {
+    background: rgba(22, 163, 74, 0.15);
+    color: var(--erp-success);
+    border: 1px solid rgba(22, 163, 74, 0.25);
+  }
+
+  &--paid {
+    background: rgba(22, 163, 74, 0.2);
+    color: var(--erp-success);
+    border: 1px solid rgba(22, 163, 74, 0.3);
+  }
+
+  &--cancelled {
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--erp-danger);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+  }
+
+  &--default {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--erp-text-secondary);
+    border: 1px solid var(--erp-border);
   }
 }
 
-// =============================================================================
-// BADGES
-// =============================================================================
-
-.q-badge {
-  font-family: var(--erp-font-family) !important;
-  font-size: 10px !important;
-  font-weight: var(--erp-font-weight-semibold) !important;
-  border-radius: var(--erp-radius-chip) !important;
-  padding: 2px 5px !important;
+/* ─── Typography overrides ─── */
+.erp-h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0 0 var(--erp-spacing-sm) 0;
+  color: var(--erp-text-primary);
 }
 
-// =============================================================================
-// LOADING
-// =============================================================================
-
-.q-linear-progress {
-  &__track {
-    background-color: var(--erp-border) !important;
-  }
-  &__model {
-    background-color: var(--erp-primary) !important;
-  }
-}
-
-// =============================================================================
-// UTILITY CLASSES
-// =============================================================================
-
-.erp-divider {
-  height: 1px;
-  background-color: var(--erp-border);
-  margin: var(--erp-space-4) 0;
-}
-
-.erp-surface {
-  background-color: var(--erp-bg-surface) !important;
-}
-
-.erp-card-bg {
-  background-color: var(--erp-bg-card) !important;
-}
-
-.erp-border {
-  border: 1px solid var(--erp-border) !important;
-}
-
-.erp-radius {
-  border-radius: var(--erp-radius-xl) !important;
-}
-
-// Number formatting helpers
-.erp-num {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
-}
-
-// Transition helper
-.erp-transition {
-  transition: all 0.15s ease;
-}
-
-// Shadow
-.erp-shadow {
-  box-shadow: var(--erp-shadow-card) !important;
-}
-
-// =============================================================================
-// SMOOTH GLOBAL TRANSITIONS
-// =============================================================================
-
-.q-btn,
-.q-item,
-.q-card,
-.erp-card,
-.erp-chip {
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease !important;
+/* %%% ERP Form Card System %%% */
+:root {
+  --erp-bg-form-card: #111827;
+  --erp-input-border: #1f2937;
 }

@@ -1,6 +1,11 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader title="Kitchen Management" subtitle="Configure kitchen stations and displays" />
+    <PageHeader
+      title="Kitchen Management"
+      subtitle="Configure kitchen stations and displays"
+      show-back
+      back-route="/admin"
+    />
 
     <q-card flat bordered class="q-mt-md">
       <q-card-section>

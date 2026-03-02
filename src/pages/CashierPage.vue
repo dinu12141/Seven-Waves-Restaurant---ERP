@@ -27,6 +27,10 @@
 
         <!-- Summary chips -->
         <div class="stat-chips">
+          <div class="stat-chip wip">
+            <q-icon name="soup_kitchen" size="14px" class="q-mr-xs" />
+            {{ store.wipCount }} WIP
+          </div>
           <div class="stat-chip ready">
             <q-icon name="check_circle" size="14px" class="q-mr-xs" />
             {{ store.readyCount }} Ready
@@ -67,7 +71,7 @@
       </div>
       <div class="text-grey-5 text-subtitle2 q-mt-md">No orders to bill right now</div>
       <div class="text-grey-7 text-caption q-mt-xs">
-        Orders appear here when they're marked Ready or Served.
+        Orders appear here automatically once accepted by a waiter.
       </div>
     </div>
 
@@ -86,14 +90,24 @@
           <!-- Card header -->
           <div class="card-header">
             <div class="order-number">#{{ order.order_number }}</div>
-            <q-chip
-              dense
-              :color="getStatusColor(order.status)"
-              text-color="white"
-              class="status-chip"
-            >
-              {{ statusLabel(order.status) }}
-            </q-chip>
+            <div class="row items-center q-gutter-x-sm">
+              <q-badge
+                v-if="order.kot_tickets && order.kot_tickets.length > 0"
+                color="amber-8"
+                text-color="dark"
+                class="status-chip shadow-1 letter-sp"
+              >
+                KOT #{{ order.kot_tickets[0].kot_number }}
+              </q-badge>
+              <q-chip
+                dense
+                :style="{ background: getStatusGradient(order.status) }"
+                text-color="white"
+                class="status-chip"
+              >
+                {{ statusLabel(order.status) }}
+              </q-chip>
+            </div>
           </div>
 
           <!-- Info rows -->
@@ -131,18 +145,18 @@
           <!-- Amount -->
           <div class="card-amount-row">
             <div class="amount-label">Total</div>
-            <div class="amount-value">Rs. {{ parseFloat(order.total_amount || 0).toFixed(2) }}</div>
+            <div class="amount-value">LKR {{ parseFloat(order.total_amount || 0).toFixed(2) }}</div>
           </div>
 
-          <div v-if="order.pos_invoices?.length > 0" class="invoice-strip">
+          <div v-if="order.invoices?.length > 0" class="invoice-strip">
             <q-icon name="receipt" size="12px" class="q-mr-xs" />
-            Invoice #{{ order.pos_invoices[0].invoice_number }}
+            Invoice #{{ order.invoices[0].invoice_number }}
             <q-badge
-              :color="order.pos_invoices[0].payment_status === 'paid' ? 'green' : 'orange'"
+              :color="order.invoices[0].payment_status === 'paid' ? 'green' : 'orange'"
               class="q-ml-xs"
               dense
             >
-              {{ order.pos_invoices[0].payment_status }}
+              {{ order.invoices[0].payment_status }}
             </q-badge>
           </div>
 
@@ -165,11 +179,11 @@
             <q-btn
               unelevated
               no-caps
-              :icon="order.pos_invoices?.length > 0 ? 'payments' : 'receipt_long'"
-              :label="order.pos_invoices?.length > 0 ? 'Collect Payment' : 'Generate Invoice'"
+              :icon="order.invoices?.length > 0 ? 'payments' : 'receipt_long'"
+              :label="order.invoices?.length > 0 ? 'Collect Payment' : 'Generate Invoice'"
               size="sm"
               class="action-btn-primary"
-              :color="order.pos_invoices?.length > 0 ? 'green-7' : 'primary'"
+              :color="order.invoices?.length > 0 ? 'green-7' : 'primary'"
               :loading="store.processing && store.selectedOrderId === order.id"
               @click="openBill(order)"
             />
@@ -200,7 +214,8 @@ const billDialogOpen = ref(false)
 const selectedOrder = ref(null)
 
 const tabs = [
-  { label: 'All Pending', value: 'all', icon: 'list_alt' },
+  { label: 'All', value: 'all', icon: 'list_alt' },
+  { label: 'Preparing', value: 'preparing', icon: 'soup_kitchen' },
   { label: 'Ready', value: 'ready', icon: 'check_circle' },
   { label: 'Served', value: 'served', icon: 'room_service' },
   { label: 'Invoiced', value: 'invoiced', icon: 'receipt' },
@@ -219,11 +234,17 @@ const now = computed(() => {
 
 const filteredOrders = computed(() => {
   if (activeTab.value === 'all') return store.billingOrders
+  if (activeTab.value === 'preparing') {
+    return store.billingOrders.filter((o) => ['accepted', 'preparing'].includes(o.status))
+  }
   return store.billingOrders.filter((o) => o.status === activeTab.value)
 })
 
 function tabCount(tab) {
   if (tab === 'all') return store.billingOrders.length
+  if (tab === 'preparing') {
+    return store.billingOrders.filter((o) => ['accepted', 'preparing'].includes(o.status)).length
+  }
   return store.billingOrders.filter((o) => o.status === tab).length
 }
 
@@ -244,7 +265,6 @@ async function markServed(order) {
   }).onOk(async () => {
     try {
       await store.markServed(order.id)
-      $q.notify({ type: 'positive', message: `Order #${order.order_number} marked as served` })
     } catch (err) {
       $q.notify({ type: 'negative', message: err.message || 'Failed to update status' })
     }
@@ -255,19 +275,13 @@ function onOrderPaid() {
   billDialogOpen.value = false
   selectedOrder.value = null
   store.selectedOrderId = null
-
-  $q.notify({
-    type: 'positive',
-    message: 'Order paid & closed!',
-    icon: 'payments',
-    caption: 'Inventory deduction processed automatically',
-    timeout: 4000,
-  })
 }
 
 // ── Helpers ────────────────────────────────────────────────
 function statusLabel(status) {
   const labels = {
+    accepted: '♨️ Accepted',
+    preparing: '👨‍🍳 Preparing',
     ready: '✅ Ready',
     served: '🍽️ Served',
     invoiced: '📄 Invoiced',
@@ -275,17 +289,10 @@ function statusLabel(status) {
   return labels[status] || status
 }
 
-function getStatusColor(status) {
-  const colors = {
-    ready: 'green-8',
-    served: 'teal-8',
-    invoiced: 'blue-8',
-  }
-  return colors[status] || 'grey-8'
-}
-
 function getStatusGradient(status) {
   const grads = {
+    accepted: 'linear-gradient(135deg, #FFB300, #FFA000)',
+    preparing: 'linear-gradient(135deg, #F57C00, #E65100)',
     ready: 'linear-gradient(135deg, #4CAF50, #66BB6A)',
     served: 'linear-gradient(135deg, #009688, #4DB6AC)',
     invoiced: 'linear-gradient(135deg, #1976D2, #42A5F5)',
@@ -357,6 +364,12 @@ onUnmounted(() => {
   border-radius: 20px;
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+.stat-chip.wip {
+  background: rgba(255, 152, 0, 0.12);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 152, 0, 0.2);
 }
 
 .stat-chip.ready {

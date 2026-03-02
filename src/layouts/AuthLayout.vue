@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="bg-dark auth-layout">
+  <q-layout view="hHh lpR fFf" class="auth-layout">
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -10,8 +10,8 @@
 // Auth layout for Login / Register / Forgot Password pages
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .auth-layout {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: #ffffff;
 }
 </style>

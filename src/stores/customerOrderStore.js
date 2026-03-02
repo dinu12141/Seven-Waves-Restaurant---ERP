@@ -246,36 +246,9 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
 
       if (itemsError) throw itemsError
 
-      // 3. Create KOT tickets by kitchen_id
-      const kitchens = [...new Set(insertedItems.map((i) => i.kitchen_id).filter((id) => id))]
-
-      for (const kId of kitchens) {
-        const { data: kot, error: kotError } = await supabase
-          .from('kot_tickets')
-          .insert({
-            order_id: order.id,
-            kitchen_id: kId,
-            status: 'created',
-          })
-          .select()
-          .single()
-
-        if (kotError) throw kotError
-
-        // 4. Create KOT Items
-        const kotItemsData = insertedItems
-          .filter((oi) => oi.kitchen_id === kId)
-          .map((oi) => ({
-            kot_id: kot.id,
-            order_item_id: oi.id,
-            quantity: oi.quantity,
-            status: 'queued',
-          }))
-
-        const { error: kiError } = await supabase.from('kot_items').insert(kotItemsData)
-
-        if (kiError) throw kiError
-      }
+      // 3. (REMOVED) KOT tickets and KOT items will be auto-generated
+      // by the `trg_generate_kot` trigger in the database when the waiter
+      // accepts this order and changes its status to 'accepted'.
 
       currentOrder.value = order
       currentOrder.value.items = insertedItems

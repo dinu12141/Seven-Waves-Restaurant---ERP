@@ -1,0 +1,73 @@
+/* 
+  Global ERP Design Tokens
+  Implements SAP/Oracle/Odoo enterprise style design 
+*/
+
+:root {
+  /* ─ Spacing (8px grid) ─ */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* ─ Radius ─ */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  /* ─ Input Sizing ─ */
+  --input-h: 40px;
+  --input-font: 14px;
+  --label-font: 12px;
+  --helper-font: 12px;
+
+  /* ─ Dialog Sizing ─ */
+  --dialog-w-sm: 520px;
+  --dialog-w-md: 720px;
+  --dialog-w-lg: 960px;
+
+  /* ─ Colors (Dark Theme) ─ */
+  --surface: #1e293b;
+  --surface-2: #162033;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: #2563eb;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+
+  /* ─ Shadow ─ */
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Global Quasar Overrides for ERP Input Sizing */
+body.body--dark {
+  /* Use Quasar's native dense heights, just inject our colors and radius */
+  .q-field--outlined .q-field__control {
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+
+  .q-field__native,
+  .q-field__input {
+    font-size: var(--input-font);
+    color: var(--text);
+  }
+
+  /* Elegant Focus Ring */
+  .q-field--focused .q-field__control:after {
+    border-color: var(--border-focus);
+    border-width: 1px;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+
+  /* Base Dialog Overrides */
+  .erp-dialog-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    border-radius: var(--radius-md) !important;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+  }
+}

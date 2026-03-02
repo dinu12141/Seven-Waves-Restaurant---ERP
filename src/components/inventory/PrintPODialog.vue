@@ -139,7 +139,7 @@ const grandTotal = computed(() => {
 function formatCurrency(val) {
   return (
     'LKR ' +
-    Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    Number(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   )
 }
 

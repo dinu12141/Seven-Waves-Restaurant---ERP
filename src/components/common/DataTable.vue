@@ -47,9 +47,13 @@
       :no-data-label="noDataLabel"
       :rows-per-page-options="rowsPerPageOptions"
     >
-      <!-- Pass through all custom slots -->
+      <!-- Pass through all other custom slots -->
       <template v-for="(_, name) in $slots" v-slot:[name]="slotData">
-        <slot :name="name" v-bind="slotData" />
+        <slot
+          v-if="!['top-right', 'toolbar', 'no-data'].includes(name)"
+          :name="name"
+          v-bind="slotData"
+        />
       </template>
 
       <!-- Loading overlay -->
@@ -231,16 +235,28 @@ const defaultPagination = { rowsPerPage: props.rowsPerPage }
       height: 40px !important;
       padding: 0 14px !important;
       white-space: nowrap;
+
+      /* Sticky header */
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background-color: var(--erp-bg-card) !important;
     }
+  }
+
+  /* Sticky header borders require table setup */
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
   }
 
   tbody {
     tr {
       &:nth-child(even) {
-        background-color: rgba(255, 255, 255, 0.018) !important;
+        background-color: rgba(255, 255, 255, 0.01) !important; /* Subtle zebra */
       }
       &:hover {
-        background-color: rgba(67, 133, 245, 0.06) !important;
+        background-color: var(--erp-bg-card-hover) !important; /* Standard ERP hover highlight */
       }
 
       td {
@@ -255,11 +271,15 @@ const defaultPagination = { rowsPerPage: props.rowsPerPage }
 
   .q-table__bottom {
     border-top: 1px solid var(--erp-border) !important;
-    background-color: var(--erp-bg-table-header) !important;
+    background-color: var(--erp-bg-card) !important;
     font-size: 12px !important;
     color: var(--erp-text-secondary) !important;
     min-height: 44px !important;
     padding: 0 14px !important;
+
+    /* Pagination right aligned */
+    display: flex;
+    justify-content: flex-end;
   }
 
   .q-table__linear-progress {

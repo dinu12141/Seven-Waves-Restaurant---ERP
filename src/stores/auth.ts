@@ -18,6 +18,7 @@ interface AuthState {
   user: User | null
   session: Session | null
   roles: UserRole[]
+  permissions: string[]
   profile: any | null
   branches: any[]
   loading: boolean
@@ -31,6 +32,7 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     session: null,
     roles: [],
+    permissions: [],
     profile: null,
     branches: [],
     loading: false,
@@ -84,8 +86,13 @@ export const useAuthStore = defineStore('auth', {
       if (!this.user || this._fetchingUserData) return
       this._fetchingUserData = true
       try {
-        // All 3 queries run in parallel — fastest possible
-        await Promise.all([this._fetchRoles(), this._fetchProfile(), this._fetchBranches()])
+        // All 4 queries run in parallel — fastest possible
+        await Promise.all([
+          this._fetchRoles(),
+          this._fetchPermissions(),
+          this._fetchProfile(),
+          this._fetchBranches(),
+        ])
       } finally {
         this._fetchingUserData = false
       }
@@ -95,9 +102,12 @@ export const useAuthStore = defineStore('auth', {
     _backgroundFetchUserData() {
       if (!this.user) return
       // Fire and forget — no await
-      Promise.all([this._fetchRoles(), this._fetchProfile(), this._fetchBranches()]).catch((err) =>
-        console.error('[Auth] Background fetch error:', err),
-      )
+      Promise.all([
+        this._fetchRoles(),
+        this._fetchPermissions(),
+        this._fetchProfile(),
+        this._fetchBranches(),
+      ]).catch((err) => console.error('[Auth] Background fetch error:', err))
     },
 
     async _fetchRoles() {
@@ -119,14 +129,32 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async _fetchPermissions() {
+      try {
+        const { data } = await supabase
+          .from('user_permissions')
+          .select('permission_code')
+          .eq('user_id', this.user?.id)
+        this.permissions = data?.map((p: any) => p.permission_code) || []
+      } catch (err) {
+        console.error('[Auth] Failed to fetch permissions:', err)
+        this.permissions = []
+      }
+    },
+
     async _fetchProfile() {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('full_name, email, phone, avatar_url')
+          .select('full_name, email, phone, avatar_url, is_active, kitchen_id')
           .eq('id', this.user?.id)
           .single()
         this.profile = data
+        // If profile is inactive, we should sign out
+        if (data && data.is_active === false) {
+          this.signOut()
+          this.error = 'Account disabled. Please contact admin.'
+        }
       } catch {
         /* non-critical */
       }
@@ -170,11 +198,24 @@ export const useAuthStore = defineStore('auth', {
         this.user = data.user
         this.session = data.session
 
-        // Fetch ONLY roles — critical for route guard (fast, single RPC call)
-        await this._fetchRoles()
+        // Fetch roles and permissions — critical for strict route guards
+        await Promise.all([this._fetchRoles(), this._fetchPermissions()])
 
-        // Profile & branches in background — don't block navigation
-        this._backgroundFetchNonCritical()
+        // For kitchen-role users, profile must be loaded NOW (kitchen_id needed for KDS)
+        // For all others, profile & branches load in background (non-blocking)
+        if ((this.roles as string[]).includes('kitchen')) {
+          await this._fetchProfile()
+          // Fire branches, modules, notifications in background
+          this._fetchBranches().catch(() => {})
+          if (this.user?.id) {
+            import('src/stores/notifications').then(({ useNotificationStore }) => {
+              const notifStore = useNotificationStore()
+              notifStore.initialize(this.user?.id).catch(() => {})
+            })
+          }
+        } else {
+          this._backgroundFetchNonCritical()
+        }
 
         return { data, error: null }
       } catch (err: any) {
@@ -220,10 +261,16 @@ export const useAuthStore = defineStore('auth', {
       // Clear local state FIRST — instant logout feel
       this._clearUserData()
 
-      // Fire Supabase signOut in background — don't block the UI
-      supabase.auth.signOut().catch((err) => {
+      // Fire Supabase signOut and wait for it to clear local storage tokens
+      await supabase.auth.signOut().catch((err) => {
         console.error('Background signOut error:', err)
       })
+
+      // Forcefully clear all browser storage specifically to ensure no auto-logins happen
+      if (typeof window !== 'undefined') {
+        window.localStorage.clear()
+        window.sessionStorage.clear()
+      }
     },
 
     /**
@@ -235,7 +282,7 @@ export const useAuthStore = defineStore('auth', {
         if (error) throw error
         return !!data
       } catch {
-        return this.roles.includes(roleName as UserRole)
+        return Array.isArray(this.roles) && this.roles.includes(roleName as UserRole)
       }
     },
 
@@ -243,23 +290,25 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.session = null
       this.roles = []
+      this.permissions = []
       this.profile = null
       this.branches = []
     },
   },
   getters: {
     isAuthenticated: (state) => !!state.user,
-    isAdmin: (state) => state.roles.includes('admin'),
+    isAdmin: (state) => Array.isArray(state.roles) && state.roles.includes('admin'),
     userDisplayName: (state) => state.profile?.full_name || state.user?.email || '',
     currentBranch: (state) => {
       const home = state.branches.find((b) => b.is_home_branch)
       return home?.branches || state.branches[0]?.branches || null
     },
     hasRole: (state) => {
-      return (role: UserRole) => state.roles.includes(role)
+      return (role: UserRole) => Array.isArray(state.roles) && state.roles.includes(role)
     },
     hasAnyRole: (state) => {
-      return (roles: UserRole[]) => roles.some((role) => state.roles.includes(role))
+      return (roles: UserRole[]) =>
+        Array.isArray(state.roles) && roles.some((role) => state.roles.includes(role))
     },
     canAccess: (state) => {
       return (routePath: string) => canAccessRoute(state.roles, routePath)

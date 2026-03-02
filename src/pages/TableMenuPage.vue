@@ -12,14 +12,51 @@
         <transition name="fade">
           <div v-if="session.sessionExpired" class="expired-overlay">
             <div class="expired-card">
-              <q-icon name="timer_off" size="56px" color="orange-4" class="q-mb-md" />
+              <q-icon name="lock" size="56px" color="orange-4" class="q-mb-md" />
               <div class="text-h6 text-white text-weight-bold q-mb-sm">Session Expired</div>
-              <div class="text-body2 text-grey-5 q-mb-xl">
-                Your table session has ended. Please login again.
+              <div class="text-body2 text-grey-5 q-mb-lg">
+                Please enter your access PIN to continue.
               </div>
-              <q-btn unelevated no-caps class="go-login-btn" @click="goLogin">
-                <q-icon name="login" class="q-mr-sm" />
-                Back to Login
+
+              <div class="unlock-form q-mb-lg">
+                <div class="text-caption text-grey-6 text-left q-mb-xs">Identifier / Phone</div>
+                <q-input
+                  v-model="reloginIdentifier"
+                  dense
+                  outlined
+                  dark
+                  placeholder="e.g. 077... or Code"
+                  class="q-mb-sm"
+                  :disable="isRelogging"
+                />
+
+                <div class="text-caption text-grey-6 text-left q-mb-xs">Security PIN</div>
+                <q-input
+                  v-model="reloginPin"
+                  type="password"
+                  dense
+                  outlined
+                  dark
+                  placeholder="••••"
+                  maxlength="6"
+                  :disable="isRelogging"
+                  @keyup.enter="handleRelogin"
+                />
+              </div>
+
+              <q-btn
+                unelevated
+                no-caps
+                class="go-login-btn full-width"
+                :loading="isRelogging"
+                @click="handleRelogin"
+              >
+                <q-icon name="lock_open" class="q-mr-sm" />
+                Unlock Menu
+              </q-btn>
+
+              <q-btn flat no-caps color="grey-6" class="q-mt-md" size="sm" @click="goLogin">
+                Switch to full login
               </q-btn>
             </div>
           </div>
@@ -60,6 +97,89 @@
             <q-icon name="stars" size="20px" color="amber" />
             <q-tooltip>My Loyalty Card ({{ customer.pointsBalance }} pts)</q-tooltip>
           </q-btn>
+
+          <!-- Track active orders from the table session -->
+          <q-btn
+            v-if="session.activeOrders && session.activeOrders.length > 0"
+            flat
+            round
+            dense
+            class="q-ml-sm"
+          >
+            <q-icon name="receipt_long" size="22px" color="white" />
+            <q-badge color="red" floating rounded class="cart-badge">{{
+              session.activeOrders.length
+            }}</q-badge>
+            <q-menu
+              anchor="bottom right"
+              self="top right"
+              dark
+              class="bg-grey-10"
+              style="border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px"
+            >
+              <q-list style="min-width: 220px">
+                <q-item-label
+                  header
+                  class="text-grey-5 font-bold letter-spacing text-uppercase q-py-sm"
+                  style="font-size: 0.7rem; letter-spacing: 1px"
+                  >Active Orders</q-item-label
+                >
+                <q-item
+                  v-for="(oid, idx) in session.activeOrders"
+                  :key="oid"
+                  clickable
+                  v-close-popup
+                  @click="
+                    $router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + oid)
+                  "
+                >
+                  <q-item-section avatar style="min-width: 38px; padding-right: 8px">
+                    <div
+                      class="bg-orange-10 flex flex-center"
+                      style="width: 32px; height: 32px; border-radius: 8px"
+                    >
+                      <q-icon name="local_shipping" color="orange-3" size="18px" />
+                    </div>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-white text-weight-medium" style="font-size: 0.9rem"
+                      >Order #{{ idx + 1 }}</q-item-label
+                    >
+                    <q-item-label caption class="text-grey-5" style="font-size: 0.75rem"
+                      >Track Order Status</q-item-label
+                    >
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-icon name="chevron_right" size="18px" color="grey-6" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+
+          <!-- Active Order Progress (Mini Tracker) -->
+          <div
+            v-if="session.activeOrders && session.activeOrders.length > 0"
+            class="mini-tracker-wrap"
+          >
+            <div
+              class="mini-tracker"
+              @click="
+                $router.push(
+                  '/table/' +
+                    encodeURIComponent(sessionToken) +
+                    '/track/' +
+                    session.activeOrders[session.activeOrders.length - 1],
+                )
+              "
+            >
+              <span class="pulse-dot"></span>
+              <span class="mini-tracker-label"
+                >Order #{{ session.activeOrders.length }} In Progress</span
+              >
+              <q-icon name="chevron_right" size="14px" color="orange-4" />
+            </div>
+          </div>
 
           <!-- Cart icon -->
           <q-btn flat round dense class="cart-btn q-ml-sm" @click="cartOpen = true">
@@ -209,11 +329,31 @@
 
       <q-separator dark />
 
+      <!-- Active order context banner -->
+      <div
+        v-if="session.activeOrders && session.activeOrders.length > 0"
+        class="add-to-bill-banner"
+      >
+        <q-icon name="receipt_long" size="16px" class="q-mr-xs" />
+        <span class="text-caption text-weight-medium">
+          You have {{ session.activeOrders.length }} active order{{
+            session.activeOrders.length > 1 ? 's' : ''
+          }}
+          on this table
+        </span>
+      </div>
+
       <q-scroll-area class="cart-scroll">
         <template v-if="cartItems.length === 0">
           <div class="empty-cart column items-center q-pa-xl">
             <q-icon name="shopping_basket" size="48px" color="grey-7" />
             <div class="text-grey-6 q-mt-md text-body2">Your cart is empty</div>
+            <div
+              v-if="session.activeOrders && session.activeOrders.length > 0"
+              class="text-caption text-grey-7 q-mt-sm text-center"
+            >
+              Add items from the menu to place a new order or add to your existing bill
+            </div>
           </div>
         </template>
 
@@ -258,7 +398,43 @@
             LKR {{ cartSubtotal.toLocaleString() }}
           </span>
         </div>
+
+        <!-- If there's an active order: show Add to Bill + New Order -->
+        <template v-if="session.activeOrders && session.activeOrders.length > 0">
+          <!-- Add to most recent order -->
+          <q-btn
+            unelevated
+            no-caps
+            class="add-bill-btn full-width q-mb-sm"
+            :loading="addingToBill"
+            @click="addToBill"
+          >
+            <q-icon name="add_shopping_cart" class="q-mr-sm" />
+            Add to Current Bill
+            <template #loading>
+              <q-spinner-dots color="white" size="1.5em" />
+            </template>
+          </q-btn>
+          <!-- Or place as a brand new order -->
+          <q-btn
+            unelevated
+            no-caps
+            outline
+            class="place-order-btn-outline full-width"
+            :loading="placingOrder"
+            @click="placeOrder"
+          >
+            <q-icon name="receipt_long" class="q-mr-sm" />
+            New Separate Order
+            <template #loading>
+              <q-spinner-dots color="white" size="1.5em" />
+            </template>
+          </q-btn>
+        </template>
+
+        <!-- No active order: just place order -->
         <q-btn
+          v-else
           unelevated
           no-caps
           class="place-order-btn full-width"
@@ -309,7 +485,42 @@ const categories = ref([{ name: 'All', emoji: '🍽️' }])
 // ── Cart state ────────────────────────────────────────────────────────────────
 const cartItems = ref([])
 const cartOpen = ref(false)
+
+// ── Relogin logic ─────────────────────────────────────────────────────────────
+const reloginIdentifier = ref(session.savedDeviceCode || '')
+const reloginPin = ref('')
+const isRelogging = ref(false)
+
+async function handleRelogin() {
+  if (!reloginIdentifier.value || !reloginPin.value) return
+  isRelogging.value = true
+  try {
+    const { loginWithDeviceCode } = await import('src/services/tableAuthService')
+    const result = await loginWithDeviceCode(reloginIdentifier.value, reloginPin.value)
+
+    if (result.success && result.session_token) {
+      session.setSession(result)
+      // If code changed, remember it
+      if (reloginIdentifier.value !== session.savedDeviceCode) {
+        session.rememberDeviceCode(reloginIdentifier.value)
+      }
+      $q.notify({ type: 'positive', message: 'Menu unlocked!', position: 'top' })
+      reloginPin.value = ''
+    } else {
+      throw new Error(result.error || 'Invalid identifier or PIN')
+    }
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.message || 'Unlock failed',
+      position: 'top',
+    })
+  } finally {
+    isRelogging.value = false
+  }
+}
 const placingOrder = ref(false)
+const addingToBill = ref(false)
 
 // ── Cart computed ─────────────────────────────────────────────────────────────
 const cartItemCount = computed(() => cartItems.value.reduce((s, i) => s + i.qty, 0))
@@ -481,7 +692,7 @@ async function placeOrder() {
     const result = await createOrderFromSession(session.sessionToken, items, source)
 
     if (!result.success) {
-      if (result.error && result.error.includes('session')) {
+      if (typeof result.error === 'string' && result.error.includes('session')) {
         session.sessionExpired = true
       }
       throw new Error(result.error || 'Order failed')
@@ -496,6 +707,12 @@ async function placeOrder() {
     }
 
     const placedOrderId = result.order_id
+
+    // Remember in local session for tracking
+    if (placedOrderId) {
+      session.addActiveOrder(placedOrderId)
+    }
+
     cartItems.value = []
     cartOpen.value = false
 
@@ -525,6 +742,51 @@ async function placeOrder() {
     })
   } finally {
     placingOrder.value = false
+  }
+}
+
+// ── Add items to existing bill ────────────────────────────────────────────────
+async function addToBill() {
+  const activeOrders = session.activeOrders
+  if (!activeOrders || activeOrders.length === 0 || cartItems.value.length === 0) return
+  // Use the most recent active order (last in array)
+  const targetOrderId = activeOrders[activeOrders.length - 1]
+
+  addingToBill.value = true
+  try {
+    const items = cartItems.value.map((i) => ({
+      menu_item_id: i.id,
+      qty: i.qty,
+    }))
+
+    const { data, error } = await supabase.rpc('add_items_to_order', {
+      p_order_id: targetOrderId,
+      p_session_token: session.sessionToken,
+      p_items: items,
+    })
+
+    if (error) throw new Error(error.message)
+    if (!data?.success) throw new Error(data?.error || 'Failed to add items')
+
+    cartItems.value = []
+    cartOpen.value = false
+
+    $q.notify({
+      type: 'info',
+      icon: 'add_shopping_cart',
+      message: `${data.items_added} item(s) added to bill`,
+      position: 'bottom',
+      timeout: 2000,
+      classes: 'compact-notify',
+    })
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: (err && err.message) || 'Failed to add items to bill.',
+      position: 'top',
+    })
+  } finally {
+    addingToBill.value = false
   }
 }
 
@@ -631,6 +893,73 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin-top: 2px;
+}
+
+.mini-tracker-wrap {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.mini-tracker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(249, 115, 22, 0.15);
+    border-color: rgba(249, 115, 22, 0.4);
+  }
+}
+
+.mini-tracker-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fb923c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #fb923c;
+  border-radius: 50%;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: #fb923c;
+    opacity: 0.4;
+    animation: pulse 1.5s infinite;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+:deep(.compact-notify) {
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  background: rgba(30, 30, 45, 0.95);
+  backdrop-filter: blur(8px);
 }
 
 .ttl-badge {
@@ -806,7 +1135,7 @@ onUnmounted(() => {
 }
 
 .cart-scroll {
-  height: calc(100dvh - 180px);
+  height: calc(100dvh - 220px);
 }
 
 .cart-item {
@@ -861,7 +1190,36 @@ onUnmounted(() => {
   box-shadow: 0 6px 22px rgba(249, 115, 22, 0.4);
 }
 
-// ── Session expired overlay ───────────────────────────────────────────────────
+// ── Add to Bill elements ──────────────────────────────────────────────────────
+.add-to-bill-banner {
+  display: flex;
+  align-items: center;
+  background: rgba(249, 115, 22, 0.08);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+}
+
+.add-bill-btn {
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6) !important;
+  color: white !important;
+  border-radius: 12px;
+  height: 48px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 22px rgba(59, 130, 246, 0.4);
+}
+
+.place-order-btn-outline {
+  border: 2px solid rgba(249, 115, 22, 0.5) !important;
+  color: #fb923c !important;
+  border-radius: 12px;
+  height: 48px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 .expired-overlay {
   position: fixed;
   inset: 0;

@@ -2,58 +2,60 @@
   <q-layout class="qr-entry-root">
     <q-page-container>
       <q-page class="column items-center justify-center">
-        <!-- Ambient background -->
-        <div class="bg-layer">
-          <div class="bg-orb bg-orb--1" />
-          <div class="bg-orb bg-orb--2" />
-          <div class="bg-grid" />
-        </div>
-
-        <!-- Card — always rendered, content switches via v-if on child divs -->
-        <div class="entry-card card-animate">
-          <!-- Loading state -->
-          <div v-if="loading" class="column items-center">
-            <div class="brand-icon q-mb-lg">
-              <q-icon name="restaurant" size="28px" color="white" />
-            </div>
-            <q-spinner-dots color="orange" size="42px" class="q-mb-md" />
-            <div class="text-h6 text-white text-weight-bold">Connecting…</div>
-            <div class="text-body2 text-grey-5 q-mt-xs">Setting up your table session</div>
+        <div class="full-width row items-center justify-center">
+          <!-- Ambient background -->
+          <div class="bg-layer">
+            <div class="bg-orb bg-orb--1" />
+            <div class="bg-orb bg-orb--2" />
+            <div class="bg-grid" />
           </div>
 
-          <!-- Error state -->
-          <div v-else-if="errorMsg" class="column items-center">
-            <q-icon name="error_outline" size="56px" color="red-4" class="q-mb-md" />
-            <div class="text-h6 text-white text-weight-bold q-mb-xs">Couldn't connect</div>
-            <div class="error-banner q-mb-lg">
-              <q-icon name="warning" size="15px" class="q-mr-xs" />
-              {{ errorMsg }}
+          <!-- Card — always rendered, content switches via v-if on child divs -->
+          <div class="entry-card card-animate">
+            <!-- Loading state -->
+            <div v-if="loading" class="column items-center">
+              <div class="brand-icon q-mb-lg">
+                <q-icon name="restaurant" size="28px" color="white" />
+              </div>
+              <q-spinner-dots color="orange" size="42px" class="q-mb-md" />
+              <div class="text-h6 text-white text-weight-bold">Connecting…</div>
+              <div class="text-body2 text-grey-5 q-mt-xs">Setting up your table session</div>
             </div>
-            <q-btn
-              unelevated
-              no-caps
-              class="retry-btn q-mb-sm"
-              icon="refresh"
-              label="Try Again"
-              @click="resolveQr"
-            />
-            <q-btn
-              flat
-              no-caps
-              color="grey-5"
-              label="Enter device code instead"
-              size="sm"
-              @click="$router.push('/table-login')"
-            />
-          </div>
 
-          <!-- Placeholder when redirecting (prevents empty card flash) -->
-          <div v-else class="column items-center">
-            <div class="brand-icon q-mb-lg">
-              <q-icon name="restaurant" size="28px" color="white" />
+            <!-- Error state -->
+            <div v-else-if="errorMsg" class="column items-center">
+              <q-icon name="error_outline" size="56px" color="red-4" class="q-mb-md" />
+              <div class="text-h6 text-white text-weight-bold q-mb-xs">Couldn't connect</div>
+              <div class="error-banner q-mb-lg">
+                <q-icon name="warning" size="15px" class="q-mr-xs" />
+                {{ errorMsg }}
+              </div>
+              <q-btn
+                unelevated
+                no-caps
+                class="retry-btn q-mb-sm"
+                icon="refresh"
+                label="Try Again"
+                @click="resolveQr"
+              />
+              <q-btn
+                flat
+                no-caps
+                color="grey-5"
+                label="Enter device code instead"
+                size="sm"
+                @click="$router.push('/table-login')"
+              />
             </div>
-            <q-spinner-dots color="orange" size="42px" class="q-mb-md" />
-            <div class="text-h6 text-white text-weight-bold">Redirecting…</div>
+
+            <!-- Placeholder when redirecting (prevents empty card flash) -->
+            <div v-else class="column items-center">
+              <div class="brand-icon q-mb-lg">
+                <q-icon name="restaurant" size="28px" color="white" />
+              </div>
+              <q-spinner-dots color="orange" size="42px" class="q-mb-md" />
+              <div class="text-h6 text-white text-weight-bold">Redirecting…</div>
+            </div>
           </div>
         </div>
       </q-page>

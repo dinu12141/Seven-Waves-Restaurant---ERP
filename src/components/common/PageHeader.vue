@@ -5,8 +5,22 @@
         <span class="erp-page-header__breadcrumb-text">{{ breadcrumb }}</span>
         <q-icon name="chevron_right" size="14px" class="erp-page-header__breadcrumb-sep" />
       </div>
-      <h1 class="erp-h1">{{ title }}</h1>
-      <p v-if="subtitle" class="erp-page-header__subtitle">{{ subtitle }}</p>
+      <div class="row items-center">
+        <q-btn
+          v-if="showBack"
+          flat
+          round
+          dense
+          icon="arrow_back"
+          color="primary"
+          @click="onBackClick"
+          class="q-mr-sm"
+        >
+          <q-tooltip>Back</q-tooltip>
+        </q-btn>
+        <h1 class="erp-h1 no-margin">{{ title }}</h1>
+      </div>
+      <p v-if="subtitle" class="erp-page-header__subtitle q-mt-xs">{{ subtitle }}</p>
     </div>
     <div class="erp-page-header__actions">
       <slot name="actions" />
@@ -15,7 +29,11 @@
 </template>
 
 <script setup>
-defineProps({
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const props = defineProps({
   title: {
     type: String,
     required: true,
@@ -28,7 +46,23 @@ defineProps({
     type: String,
     default: '',
   },
+  showBack: {
+    type: Boolean,
+    default: false,
+  },
+  backRoute: {
+    type: String,
+    default: '',
+  },
 })
+
+const onBackClick = () => {
+  if (props.backRoute) {
+    router.push(props.backRoute)
+  } else {
+    router.back()
+  }
+}
 </script>
 
 <style scoped lang="scss">

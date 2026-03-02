@@ -4,7 +4,7 @@
 
     <div class="row q-col-gutter-md">
       <div
-        v-for="(module, index) in modules"
+        v-for="(module, index) in filteredModules"
         :key="index"
         class="col-12 col-sm-6 col-md-4 col-lg-3"
       >
@@ -34,13 +34,22 @@
           </q-card-actions>
         </q-card>
       </div>
+
+      <div v-if="filteredModules.length === 0" class="col-12 text-center q-pa-xl">
+        <q-icon name="lock" size="100px" color="grey-8" />
+        <div class="text-h5 text-grey-7 q-mt-md">Access Restricted</div>
+        <p class="text-grey-6">You don't have permission to manage any system settings.</p>
+      </div>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
+import { useAuthStore } from 'src/stores/auth'
+
+const authStore = useAuthStore()
 
 const modules = ref([
   {
@@ -49,6 +58,7 @@ const modules = ref([
     icon: 'group',
     color: 'blue',
     to: '/admin/users',
+    permission: 'admin:users',
   },
   {
     title: 'Role & Permissions',
@@ -56,6 +66,7 @@ const modules = ref([
     icon: 'security',
     color: 'indigo',
     to: '/admin/roles',
+    permission: 'admin:roles',
   },
   {
     title: 'Branch Settings',
@@ -63,6 +74,7 @@ const modules = ref([
     icon: 'store',
     color: 'brown',
     to: '/admin/branches',
+    permission: 'admin:branches',
   },
   {
     title: 'Kitchen Setup',
@@ -70,6 +82,7 @@ const modules = ref([
     icon: 'kitchen',
     color: 'orange',
     to: '/admin/kitchens',
+    permission: 'admin:kitchens',
   },
   {
     title: 'Printer Management',
@@ -77,22 +90,30 @@ const modules = ref([
     icon: 'print',
     color: 'teal',
     to: '/admin/printers',
-  },
-  {
-    title: 'Module Configuration',
-    description: 'Enable or disable system modules (GRN, GIN, Auto Deduct, etc.)',
-    icon: 'extension',
-    color: 'deep-purple',
-    to: '/admin/settings',
+    permission: 'admin:printers',
   },
   {
     title: 'System Settings',
-    description: 'Global system configuration',
+    description: 'Global system configuration and module activation.',
     icon: 'settings',
     color: 'grey-8',
     to: '/admin/settings',
+    permission: 'admin:settings',
   },
 ])
+
+const filteredModules = computed(() => {
+  // Admin role gets everything
+  if (authStore.isAdmin || authStore.permissions?.includes('admin:console')) {
+    // If they have admin:console but not specific sub-permissions, we still check filtering
+    // below unless they are a full "admin" role.
+    if (authStore.isAdmin) return modules.value
+  }
+
+  return modules.value.filter((m) => {
+    return authStore.permissions?.includes(m.permission)
+  })
+})
 </script>
 
 <style scoped>

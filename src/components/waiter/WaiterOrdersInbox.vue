@@ -120,13 +120,13 @@ watch(
   (newLen, oldLen) => {
     if (newLen > oldLen) {
       $q.notify({
-        message: '🔔 New Incoming Order!',
-        caption: `Table ${store.pendingOrders[newLen - 1]?.tableNumber}`,
+        message: `New Order: Table ${store.pendingOrders[newLen - 1]?.tableNumber}`,
         color: 'orange-9',
         icon: 'notification_important',
         position: 'top-right',
-        timeout: 8000,
-        actions: [{ label: 'Dismiss', color: 'white' }],
+        timeout: 5000,
+        dense: true,
+        actions: [{ icon: 'close', color: 'white', size: 'sm' }],
       })
       // Optional: Play sound if user desires later
     }
@@ -157,14 +157,7 @@ async function handleAccept(order) {
   const { success, error } = await store.acceptOrder(order.id)
 
   if (success) {
-    $q.notify({
-      type: 'positive',
-      message: `Order #${order.order_number} accepted!`,
-      caption: `Table ${order.tableNumber}`,
-      icon: 'check_circle',
-      position: 'top',
-      timeout: 3000,
-    })
+    // No notification needed for professional ERP - card moves automatically
   } else {
     $q.notify({
       type: 'negative',

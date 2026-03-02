@@ -33,7 +33,7 @@ export async function loginWithDeviceCode(
   deviceSecret: string,
 ): Promise<TableSessionResult> {
   const { data, error } = await supabase.rpc('create_table_session', {
-    p_device_code: deviceCode.trim().toUpperCase(),
+    p_device_code: deviceCode.trim(),
     p_device_secret: deviceSecret,
   })
 

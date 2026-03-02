@@ -1,172 +1,145 @@
 <template>
-  <q-page class="login-page row justify-center items-center">
-    <!-- Background particles / ambient effect -->
-    <div class="bg-ambient">
-      <div class="ambient-orb orb-1"></div>
-      <div class="ambient-orb orb-2"></div>
-      <div class="ambient-orb orb-3"></div>
-    </div>
-
-    <div class="row login-container shadow-24" style="max-width: 960px; width: 100%">
-      <!-- Left Panel: Branding -->
-      <div class="col-md-5 col-12 left-branding column justify-center items-center q-pa-xl gt-sm">
-        <div class="text-center">
-          <!-- Logo -->
-          <div class="logo-wrapper q-mb-lg">
-            <q-icon name="restaurant" size="56px" color="white" />
-          </div>
-
-          <h4 class="text-white text-weight-bold q-mb-sm q-mt-none" style="letter-spacing: 1px">
-            Seven Waves
-          </h4>
-          <div class="text-blue-2 text-body2" style="opacity: 0.8; letter-spacing: 0.5px">
-            Restaurant ERP System
-          </div>
-
-          <!-- Decorative line -->
-          <div class="divider-line q-my-lg"></div>
-
-          <div class="text-blue-3 text-caption" style="opacity: 0.6; line-height: 1.6">
-            Manage orders, kitchen, inventory,<br />
-            finance, and more — all in one place.
+  <q-page class="login-page">
+    <!-- Full-screen split layout -->
+    <div class="login-wrapper">
+      <!-- LEFT: Form Panel -->
+      <div class="form-panel">
+        <!-- Logo -->
+        <div class="brand">
+          <img
+            src="~assets/seven-waves-logo-transparent.png"
+            alt="Seven Waves"
+            class="brand-logo"
+          />
+          <div class="brand-text">
+            <div class="brand-name">Seven Waves</div>
+            <div class="brand-sub">Restaurant ERP</div>
           </div>
         </div>
-      </div>
 
-      <!-- Right Panel: Login Form -->
-      <div class="col-md-7 col-12 right-form column justify-center q-pa-xl">
-        <!-- Mobile logo (shown only on small screens) -->
-        <div class="text-center q-mb-lg lt-md">
-          <q-icon name="restaurant" size="40px" color="primary" />
-          <div class="text-h6 text-white text-weight-bold q-mt-sm">Seven Waves ERP</div>
-        </div>
-
-        <div class="form-inner" style="max-width: 380px; margin: 0 auto; width: 100%">
-          <div class="text-h5 text-white text-weight-bold q-mb-xs">Sign In</div>
-          <div class="text-grey-5 text-body2 q-mb-lg">
-            Enter your credentials to access the system
+        <!-- Form Area -->
+        <div class="form-body">
+          <div class="welcome-text">
+            <h2 class="welcome-title">Welcome back 👋</h2>
+            <p class="welcome-sub">Sign in to manage your restaurant</p>
           </div>
 
-          <!-- Error Alert -->
-          <q-banner
-            v-if="errorMessage"
-            class="bg-red-9 text-white q-mb-md rounded-borders"
-            dense
-            rounded
-          >
-            <template v-slot:avatar>
-              <q-icon name="error" />
-            </template>
+          <!-- Error Banner -->
+          <div v-if="errorMessage" class="error-banner">
+            <q-icon name="error_outline" size="18px" class="q-mr-sm" />
             {{ errorMessage }}
-            <template v-slot:action>
-              <q-btn flat dense icon="close" @click="errorMessage = ''" />
-            </template>
-          </q-banner>
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              size="xs"
+              class="close-btn"
+              @click="errorMessage = ''"
+            />
+          </div>
 
-          <!-- Login Form -->
-          <q-form @submit.prevent="handleLogin" class="q-gutter-y-md">
+          <q-form @submit.prevent="handleLogin" class="login-form">
             <!-- Email -->
-            <div>
-              <label class="text-grey-4 text-caption text-weight-medium q-mb-xs block">
-                EMAIL ADDRESS
-              </label>
-              <q-input
-                v-model="email"
-                type="email"
-                placeholder="Enter your email"
-                dense
-                outlined
-                dark
-                color="primary"
-                class="login-field"
-                autocomplete="email"
-                :rules="[
-                  (val) => !!val || 'Email is required',
-                  (val) => val.includes('@') || 'Enter a valid email',
-                ]"
-                lazy-rules
-                hide-bottom-space
+            <div class="field-group">
+              <label class="field-label">Email Address</label>
+              <div
+                class="custom-input-wrapper"
+                :class="{ focused: emailFocused, 'has-value': email }"
               >
-                <template v-slot:prepend>
-                  <q-icon name="mail_outline" size="18px" color="grey-5" />
-                </template>
-              </q-input>
+                <q-icon name="mail_outline" size="18px" class="input-icon" />
+                <input
+                  v-model="email"
+                  type="email"
+                  placeholder="you@sevenwaves.lk"
+                  class="custom-input"
+                  autocomplete="email"
+                  @focus="emailFocused = true"
+                  @blur="emailFocused = false"
+                />
+              </div>
             </div>
 
             <!-- Password -->
-            <div>
-              <label class="text-grey-4 text-caption text-weight-medium q-mb-xs block">
-                PASSWORD
-              </label>
-              <q-input
-                v-model="password"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="Enter your password"
-                dense
-                outlined
-                dark
-                color="primary"
-                class="login-field"
-                autocomplete="current-password"
-                :rules="[(val) => !!val || 'Password is required']"
-                lazy-rules
-                hide-bottom-space
-                @keyup.enter="handleLogin"
+            <div class="field-group">
+              <label class="field-label">Password</label>
+              <div
+                class="custom-input-wrapper"
+                :class="{ focused: pwFocused, 'has-value': password }"
               >
-                <template v-slot:prepend>
-                  <q-icon name="lock_outline" size="18px" color="grey-5" />
-                </template>
-                <template v-slot:append>
-                  <q-icon
-                    :name="showPassword ? 'visibility_off' : 'visibility'"
-                    class="cursor-pointer"
-                    size="18px"
-                    color="grey-5"
-                    @click="showPassword = !showPassword"
-                  />
-                </template>
-              </q-input>
-            </div>
-
-            <!-- Remember + Forgot -->
-            <div class="row items-center justify-between q-mt-sm">
-              <q-checkbox
-                v-model="rememberMe"
-                label="Remember me"
-                dark
-                dense
-                color="primary"
-                class="text-grey-5 text-caption"
-              />
-              <a href="#" class="text-primary text-caption text-weight-medium forgot-link">
-                Forgot password?
-              </a>
+                <q-icon name="lock_outline" size="18px" class="input-icon" />
+                <input
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="Enter your password"
+                  class="custom-input"
+                  autocomplete="current-password"
+                  @focus="pwFocused = true"
+                  @blur="pwFocused = false"
+                  @keyup.enter="handleLogin"
+                />
+                <q-icon
+                  :name="showPassword ? 'visibility_off' : 'visibility'"
+                  size="18px"
+                  class="toggle-icon cursor-pointer"
+                  @click="showPassword = !showPassword"
+                />
+              </div>
             </div>
 
             <!-- Login Button -->
-            <q-btn
-              unelevated
-              no-caps
+            <button
               type="submit"
-              color="primary"
-              class="full-width login-btn q-mt-md"
-              :loading="loading"
-              :disable="loading"
-              size="lg"
+              class="login-btn"
+              :class="{ loading: loading }"
+              :disabled="loading"
             >
-              <q-icon name="login" class="q-mr-sm" size="20px" />
-              Sign In
-              <template v-slot:loading>
-                <q-spinner-dots class="on-left" size="20px" />
-                Signing in...
+              <q-spinner-dots v-if="loading" size="22px" color="white" />
+              <template v-else>
+                <q-icon name="login" size="18px" class="q-mr-sm" />
+                Sign In
               </template>
-            </q-btn>
+            </button>
           </q-form>
+        </div>
 
-          <!-- Footer -->
-          <div class="text-center q-mt-xl">
-            <div class="text-grey-6 text-caption">
-              &copy; 2026 Seven Waves &middot; All rights reserved
+        <!-- Footer -->
+        <div class="form-footer">
+          &copy; {{ new Date().getFullYear() }} Seven Waves &middot; All rights reserved
+        </div>
+      </div>
+
+      <!-- RIGHT: Image Panel -->
+      <div class="image-panel">
+        <!-- Overlay Gradient -->
+        <div class="image-overlay"></div>
+
+        <!-- Bottom left caption -->
+        <div class="image-caption">
+          <div class="caption-badge">
+            <q-icon name="restaurant_menu" size="16px" class="q-mr-xs" />
+            Premium Dining Experience
+          </div>
+          <h3 class="caption-title">
+            Serve Smarter.<br />
+            <span class="caption-accent">Grow Faster.</span>
+          </h3>
+        </div>
+
+        <!-- Floating Stats -->
+        <div class="floating-cards">
+          <div class="stat-card">
+            <q-icon name="receipt_long" size="20px" color="amber" />
+            <div class="stat-info">
+              <div class="stat-value">Real-Time</div>
+              <div class="stat-label">KOT & Orders</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <q-icon name="inventory_2" size="20px" color="light-green" />
+            <div class="stat-info">
+              <div class="stat-value">Live</div>
+              <div class="stat-label">Inventory Sync</div>
             </div>
           </div>
         </div>
@@ -188,12 +161,16 @@ const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const rememberMe = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const emailFocused = ref(false)
+const pwFocused = ref(false)
 
 const handleLogin = async () => {
-  if (!email.value || !password.value) return
+  if (!email.value || !password.value) {
+    errorMessage.value = 'Please enter your email and password.'
+    return
+  }
 
   loading.value = true
   errorMessage.value = ''
@@ -207,17 +184,15 @@ const handleLogin = async () => {
       return
     }
 
-    // Navigate IMMEDIATELY — don't wait for anything
     const redirect = router.currentRoute.value.query.redirect || authStore.defaultLandingPage
     router.push(redirect)
 
-    // Toast fires in background — doesn't block navigation
     $q.notify({
       color: 'positive',
-      message: `Welcome back!`,
+      message: `Welcome back, ${authStore.userDisplayName || 'User'}!`,
       icon: 'check_circle',
       position: 'top',
-      timeout: 1200,
+      timeout: 1500,
     })
   } catch {
     errorMessage.value = 'An unexpected error occurred. Please try again.'
@@ -226,203 +201,335 @@ const handleLogin = async () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
+/* ─── Page Reset ─────────────────────────────────── */
 .login-page {
   min-height: 100vh;
-  background: #0d1117;
+  padding: 0 !important;
+}
+
+.login-wrapper {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+/* ─── LEFT PANEL ─────────────────────────────────── */
+.form-panel {
+  width: 420px;
+  min-width: 380px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 44px;
   position: relative;
-  overflow: hidden;
+  z-index: 2;
+  box-shadow: 10px 0 50px rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* ── Ambient Background ── */
-.bg-ambient {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
+/* Brand */
+.brand {
+  display: flex;
+  margin-bottom: 52px;
+  align-items: center;
+  gap: 16px;
+}
+.brand-logo {
+  height: 64px;
+  object-fit: contain;
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+.brand-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0d1117;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.ambient-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
-
-  &.orb-1 {
-    width: 500px;
-    height: 500px;
-    background: #1976d2;
-    top: -150px;
-    left: -100px;
-    animation: float 12s ease-in-out infinite;
-  }
-
-  &.orb-2 {
-    width: 400px;
-    height: 400px;
-    background: #26a69a;
-    bottom: -100px;
-    right: -100px;
-    animation: float 15s ease-in-out infinite reverse;
-  }
-
-  &.orb-3 {
-    width: 250px;
-    height: 250px;
-    background: #7c4dff;
-    top: 40%;
-    right: 20%;
-    animation: float 10s ease-in-out infinite 2s;
-  }
+/* Welcome */
+.form-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0d1117;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+.welcome-sub {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 28px;
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(30px, -20px) scale(1.05);
-  }
-  66% {
-    transform: translate(-20px, 15px) scale(0.95);
-  }
-}
-
-/* ── Login Container ── */
-.login-container {
-  border-radius: 16px;
-  overflow: hidden;
+/* Error */
+.error-banner {
+  display: flex;
+  align-items: center;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 20px;
   position: relative;
-  z-index: 1;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.close-btn {
+  margin-left: auto;
+  color: #dc2626;
 }
 
-/* ── Left Branding ── */
-.left-branding {
-  background: linear-gradient(160deg, #1565c0 0%, #0d47a1 50%, #1a237e 100%);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
-  }
+/* Fields */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.custom-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0 14px;
+  height: 48px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.custom-input-wrapper.focused {
+  border-color: #1565c0;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+}
+.custom-input-wrapper:hover:not(.focused) {
+  border-color: #94a3b8;
+}
+.input-icon {
+  color: #64748b;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.custom-input-wrapper.focused .input-icon {
+  color: #1565c0;
+}
+.custom-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+  font-family: inherit;
+  width: 100%;
+}
+.custom-input:-webkit-autofill,
+.custom-input:-webkit-autofill:hover,
+.custom-input:-webkit-autofill:focus,
+.custom-input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-text-fill-color: #111827 !important;
+}
+.custom-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+.toggle-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.toggle-icon:hover {
+  color: #1565c0;
 }
 
-.logo-wrapper {
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.12);
+/* Button */
+.login-btn {
+  margin-top: 8px;
+  height: 52px;
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-}
-
-.divider-line {
-  width: 40px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-  margin: 0 auto;
-}
-
-/* ── Right Form ── */
-.right-form {
-  background: #161b22;
-}
-
-/* ── Input Fields ── */
-.login-field {
-  :deep(.q-field__control) {
-    height: 44px;
-    min-height: 44px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.25s ease;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.18);
-    }
-  }
-
-  :deep(.q-field--focused .q-field__control) {
-    background: rgba(25, 118, 210, 0.06);
-    border-color: #1976d2;
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.12);
-  }
-
-  :deep(.q-field__native) {
-    color: #e6edf3 !important;
-    font-size: 0.9rem;
-
-    &::placeholder {
-      color: #484f58 !important;
-    }
-  }
-
-  :deep(.q-field__control:before) {
-    border: none !important;
-  }
-
-  :deep(.q-field__control:after) {
-    border: none !important;
-  }
-}
-
-/* ── Login Button ── */
-.login-btn {
-  height: 48px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
+  gap: 6px;
   letter-spacing: 0.3px;
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
   transition: all 0.25s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.35);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
+  box-shadow: 0 4px 18px rgba(21, 101, 192, 0.3);
+}
+.login-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(21, 101, 192, 0.4);
+}
+.login-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-/* ── Forgot Link ── */
-.forgot-link {
-  text-decoration: none;
-  transition: opacity 0.2s ease;
-
-  &:hover {
-    opacity: 0.8;
-  }
+/* Footer */
+.form-footer {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  padding-top: 16px;
+  margin-top: auto;
 }
 
-/* ── Responsive ── */
-@media (max-width: 1023px) {
-  .login-container {
-    margin: 16px;
-    max-width: 440px !important;
-  }
+/* ─── RIGHT PANEL ─────────────────────────────────── */
+.image-panel {
+  flex: 1;
+  background-image: url('../../assets/login-food-bg.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  overflow: hidden;
+}
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0) 25%,
+    rgba(0, 0, 0, 0) 65%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
 }
 
-@media (max-width: 599px) {
-  .login-container {
-    margin: 12px;
-    border-radius: 12px;
-  }
+/* Caption */
+.image-caption {
+  position: absolute;
+  bottom: 48px;
+  left: 48px;
+  right: 48px;
+  z-index: 2;
+}
+.caption-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+}
+.caption-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 10px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+.caption-accent {
+  color: #ffd54f;
+}
+.caption-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  max-width: 380px;
+  line-height: 1.6;
+}
 
-  .right-form {
-    padding: 24px !important;
+/* Floating stats */
+.floating-cards {
+  position: absolute;
+  top: 40px;
+  right: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 2;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 12px 18px;
+  min-width: 170px;
+  transition: transform 0.25s ease;
+}
+.stat-card:hover {
+  transform: translateX(-4px);
+}
+.stat-info {
+  line-height: 1.2;
+}
+.stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.stat-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .login-wrapper {
+    flex-direction: column;
+  }
+  .form-panel {
+    width: 100%;
+    min-width: unset;
+    padding: 28px 24px;
+    min-height: 100vh;
+  }
+  .image-panel {
+    display: none;
   }
 }
 </style>

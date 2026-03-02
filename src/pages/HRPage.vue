@@ -1,27 +1,29 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader
+    <ERPToolbar
+      moduleName="hr"
       title="HR & Payroll"
-      subtitle="Employee management, attendance, and payroll processing"
+      breadcrumbs="Human Resources"
+      :roleBadge="isHR ? 'Admin' : isManager ? 'Manager' : 'Employee'"
+      showSearch
+      showBranchSelector
+      showExport
+      primaryAction
+      primaryActionLabel="Add Employee"
+      @primary-action="showAddEmployee = true"
     >
-      <template #actions>
+      <template #secondary-actions>
         <q-btn
           v-if="isHR"
+          class="erp-toolbar__secondary-btn q-ml-sm"
+          color="white"
           outline
-          color="primary"
-          icon="person_add"
-          label="Add Employee"
-          @click="showAddEmployee = true"
-        />
-        <q-btn
-          v-if="isHR"
-          color="primary"
           icon="payments"
           label="Run Payroll"
           @click="showPayrollDialog = true"
         />
       </template>
-    </PageHeader>
+    </ERPToolbar>
 
     <!-- Stats Row -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -145,8 +147,9 @@
               outlined
               v-model="newEmployee.employee_code"
               label="Employee Code"
-              placeholder="e.g. EMP001"
-              :rules="[(val) => (val && val.length > 0) || 'Required']"
+              readonly
+              hint="Auto-generated"
+              :rules="[(val) => (val && val.length > 0) || 'Generating...']"
             />
             <q-input dark outlined v-model="newEmployee.email" label="Email" type="email" />
             <q-input dark outlined v-model="newEmployee.phone" label="Phone" />
@@ -218,7 +221,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
-import PageHeader from 'components/common/PageHeader.vue'
+import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import StatCard from 'components/common/StatCard.vue'
 import EmployeesTab from 'components/hr/EmployeesTab.vue'
 import DepartmentsTab from 'components/hr/DepartmentsTab.vue'
@@ -302,6 +305,50 @@ const payrollPeriod = reactive({
 
 const departmentOptions = ref([])
 const designationOptions = ref([])
+
+async function generateEmployeeCode() {
+  try {
+    const branchId = authStore.currentBranch?.id
+    if (!branchId) return
+
+    const { data, error } = await supabase
+      .from('employees')
+      .select('employee_code')
+      .eq('branch_id', branchId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) throw error
+
+    if (data && data.length > 0 && data[0].employee_code) {
+      const lastCode = data[0].employee_code
+      // Extract numeric part at the end, e.g. EMP001 -> 1
+      const match = lastCode.match(/\d+$/)
+      if (match) {
+        const num = parseInt(match[0], 10) + 1
+        // Maintain the prefix (e.g. "EMP") and pad the number
+        const prefix = lastCode.slice(0, match.index)
+        const paddedNum = String(num).padStart(match[0].length, '0')
+        newEmployee.employee_code = `${prefix}${paddedNum}`
+      } else {
+        // Fallback if no numeric ending
+        newEmployee.employee_code = `${lastCode}-1`
+      }
+    } else {
+      // Default starting code if no employees yet
+      newEmployee.employee_code = 'EMP001'
+    }
+  } catch (err) {
+    console.error('Failed to generate employee code:', err)
+    newEmployee.employee_code = 'EMP' + Math.floor(Math.random() * 10000)
+  }
+}
+
+watch(showAddEmployee, (val) => {
+  if (val && !newEmployee.employee_code) {
+    generateEmployeeCode()
+  }
+})
 
 async function loadStats() {
   try {
@@ -388,7 +435,7 @@ async function saveEmployee() {
     Object.assign(newEmployee, {
       first_name: '',
       last_name: '',
-      employee_code: '',
+      employee_code: '', // Will be regenerated on next dialog open
       email: '',
       phone: '',
       department_id: null,

@@ -128,7 +128,7 @@ const props = defineProps({
   },
   currencySymbol: {
     type: String,
-    default: 'Rs.',
+    default: 'LKR',
   },
 })
 

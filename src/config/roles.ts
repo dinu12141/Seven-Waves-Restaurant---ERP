@@ -18,13 +18,43 @@ import type { UserRole } from 'src/stores/auth'
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
   waiter: ['/pos', '/orders', '/waiter'],
   kitchen: ['/kitchen'],
-  cashier: ['/pos', '/orders', '/cashier'], // cashier needs orders for payment context
-  manager: ['/dashboard', '/orders', '/inventory', '/finance', '/kitchen', '/operations/tables'],
-  admin: ['*'], // wildcard — admin has full access
-  inventory: ['/inventory'],
-  finance: ['/finance'],
+  cashier: ['/pos', '/orders', '/cashier'],
+  manager: [
+    '/dashboard',
+    '/orders',
+    '/inventory',
+    '/finance',
+    '/kitchen',
+    '/operations/tables',
+    '/reports',
+    '/hr',
+  ],
+  admin: ['*'],
+  inventory: ['/inventory', '/reports/inventory'],
+  finance: ['/finance', '/reports'],
   hr: ['/hr'],
   procurement: ['/procurement'],
+}
+
+/** Specific permission codes mapping to routes */
+export const PERMISSION_ROUTE_ACCESS: Record<string, string[]> = {
+  'pos:access': ['/pos'],
+  'orders:view': ['/orders'],
+  'kitchen:access': ['/kitchen'],
+  'cashier:access': ['/cashier'],
+  'waiter:access': ['/waiter'],
+  'inventory:view': ['/inventory'],
+  'procurement:access': ['/procurement'],
+  'finance:access': ['/finance'],
+  'hr:access': ['/hr'],
+  'admin:console': ['/admin'],
+  'admin:users': ['/admin/users'],
+  'admin:roles': ['/admin/roles'],
+  'admin:branches': ['/admin/branches'],
+  'admin:kitchens': ['/admin/kitchens'],
+  'admin:printers': ['/admin/printers'],
+  'admin:settings': ['/admin/settings'],
+  'tables:manage': ['/operations/tables'],
 }
 
 /** The default landing page for each role after login */
@@ -50,19 +80,24 @@ export interface RolePageRestrictions {
   canSendToKitchen: boolean
 }
 
-export function getRoleRestrictions(roles: UserRole[]): RolePageRestrictions {
-  const isAdmin = roles.includes('admin')
+export function getRoleRestrictions(
+  roles: UserRole[],
+  permissions: string[] = [],
+): RolePageRestrictions {
+  const isAdmin = roles.includes('admin') || permissions.includes('admin:console')
   const isManager = roles.includes('manager')
-  const isWaiter = roles.includes('waiter')
-  const isCashier = roles.includes('cashier')
+  const isWaiter = roles.includes('waiter') || permissions.includes('waiter:access')
+  const isCashier = roles.includes('cashier') || permissions.includes('cashier:access')
+  const canManageOrders = permissions.includes('orders:manage') || isAdmin || isManager
 
   return {
-    // Waiter can ONLY accept orders (not cancel, not advance to served, etc.)
-    ordersAcceptOnly: isWaiter && !isAdmin && !isManager && !isCashier,
-    // Only cashier, manager, admin can process payment
-    canProcessPayment: isAdmin || isManager || isCashier,
+    // Waiter can ONLY accept orders unless they have manage permission or are admin/manager/cashier
+    ordersAcceptOnly: isWaiter && !canManageOrders && !isCashier,
+    // Only cashier, manager, admin or relevant permission can process payment
+    canProcessPayment: isAdmin || isManager || isCashier || permissions.includes('cashier:access'),
     // Waiter and above can send to kitchen
-    canSendToKitchen: isAdmin || isManager || isWaiter || isCashier,
+    canSendToKitchen:
+      isAdmin || isManager || isWaiter || isCashier || permissions.includes('pos:access'),
   }
 }
 
@@ -79,6 +114,8 @@ export interface NavItem {
   section?: string
   /** Optional module code — nav item hidden when this module is disabled */
   moduleCode?: string
+  /** Fine-grained permission required for this item */
+  permission?: string
   /** Optional nested children */
   children?: NavItem[]
 }
@@ -90,6 +127,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'space_dashboard',
     to: '/dashboard',
     roles: ['admin', 'manager'],
+    permission: 'nav:dashboard',
     section: 'MAIN',
   },
 
@@ -99,6 +137,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'point_of_sale',
     to: '/pos',
     roles: ['admin', 'manager', 'cashier', 'waiter'],
+    permission: 'pos:access',
     section: 'OPERATIONS',
   },
   {
@@ -106,36 +145,42 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'receipt_long',
     to: '/orders',
     roles: ['admin', 'manager', 'waiter', 'cashier'],
+    permission: 'orders:view',
   },
   {
     label: 'Kitchen Display',
     icon: 'soup_kitchen',
     to: '/kitchen',
     roles: ['admin', 'manager', 'kitchen'],
+    permission: 'kitchen:access',
   },
   {
     label: 'Cashier Station',
     icon: 'local_atm',
     to: '/cashier',
     roles: ['admin', 'manager', 'cashier'],
+    permission: 'cashier:access',
   },
   {
     label: 'Waiter Station',
     icon: 'room_service',
     to: '/waiter',
     roles: ['admin', 'manager', 'waiter'],
+    permission: 'waiter:access',
   },
   {
     label: 'Table Management',
     icon: 'table_restaurant',
     to: '/operations/tables',
     roles: ['admin', 'manager'],
+    permission: 'tables:manage',
   },
   {
     label: 'Inventory',
     icon: 'inventory_2',
     to: '/inventory',
     roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
     section: 'INVENTORY',
     moduleCode: 'INVENTORY',
   },
@@ -145,6 +190,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Procurement',
     icon: 'shopping_cart',
     roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'],
+    permission: 'procurement:access',
     section: 'PROCUREMENT',
     children: [
       {
@@ -198,18 +244,91 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'account_balance',
     to: '/finance',
     roles: ['admin', 'manager', 'finance'],
+    permission: 'finance:access',
     section: 'FINANCE',
     moduleCode: 'FINANCE',
+  },
+
+  // ─── REPORTS ───────────────────────────────────────────────────────────────
+  {
+    label: 'Reports',
+    icon: 'bar_chart',
+    roles: ['admin', 'manager', 'finance', 'inventory'],
+    section: 'REPORTS',
+    children: [
+      {
+        label: 'Sales Report',
+        icon: 'receipt_long',
+        to: '/reports/sales',
+        roles: ['admin', 'manager', 'finance'],
+      },
+      {
+        label: 'Inventory Ledger',
+        icon: 'inventory_2',
+        to: '/reports/inventory',
+        roles: ['admin', 'manager', 'inventory', 'finance'],
+      },
+    ],
   },
 
   // ─── HR ────────────────────────────────────────────────────────────────────
   {
     label: 'HR & Payroll',
     icon: 'badge',
-    to: '/hr',
     roles: ['admin', 'manager', 'hr'],
+    permission: 'hr:access',
     section: 'HR',
     moduleCode: 'HR',
+    children: [
+      {
+        label: 'Employees',
+        icon: 'people',
+        to: '/hr/employees',
+        roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Salary Config',
+        icon: 'tune',
+        to: '/hr/salary-config',
+        roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Attendance',
+        icon: 'fingerprint',
+        to: '/hr/attendance',
+        roles: ['admin', 'hr', 'manager'],
+      },
+      {
+        label: 'Payroll',
+        icon: 'payments',
+        to: '/hr/payroll',
+        roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Commission',
+        icon: 'monetization_on',
+        to: '/hr/commission',
+        roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Salary Audit',
+        icon: 'fact_check',
+        to: '/hr/audit',
+        roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Performance',
+        icon: 'trending_up',
+        to: '/hr/performance',
+        roles: ['admin', 'hr', 'manager'],
+      },
+      {
+        label: 'Resignation',
+        icon: 'exit_to_app',
+        to: '/hr/resignation',
+        roles: ['admin', 'hr'],
+      },
+    ],
   },
 
   // ─── SYSTEM ────────────────────────────────────────────────────────────────
@@ -218,18 +337,42 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'admin_panel_settings',
     to: '/admin',
     roles: ['admin'],
+    permission: 'admin:console',
     section: 'SYSTEM',
   },
 ]
 
 /**
- * Check if a user with the given roles can access a route path.
+ * Check if a user with given roles & permissions can access a route path.
  */
-export function canAccessRoute(userRoles: UserRole[], routePath: string): boolean {
-  // Admin bypasses all checks
-  if (userRoles.includes('admin')) return true
+export function canAccessRoute(
+  userRoles: UserRole[],
+  routePath: string,
+  userPermissions: string[] = [],
+): boolean {
+  // Admin bypasses all checks, and everyone can access profile
+  if (routePath.startsWith('/profile')) return true
+  if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
 
-  // Check if any of the user's roles grant access to this path
+  // 1. Check Permissions (Direct/Custom Access)
+  for (const [perm, paths] of Object.entries(PERMISSION_ROUTE_ACCESS)) {
+    if (userPermissions.includes(perm)) {
+      if (paths.some((p) => routePath.startsWith(p))) return true
+    }
+  }
+
+  // Strict check: if user has any custom permissions configured AND the route requires one, deny if not found.
+  // If userPermissions is completely empty, we assume legacy setup and fallback to role check.
+  if (userPermissions.length > 0) {
+    const isProtectedByPermissions = Object.values(PERMISSION_ROUTE_ACCESS)
+      .flat()
+      .some((p) => routePath.startsWith(p))
+    if (isProtectedByPermissions) {
+      return false
+    }
+  }
+
+  // 2. Check Roles (Group Access) - fallback
   return userRoles.some((role) => {
     const allowedPaths = ROLE_ROUTE_ACCESS[role]
     if (!allowedPaths) return false
@@ -239,15 +382,24 @@ export function canAccessRoute(userRoles: UserRole[], routePath: string): boolea
 }
 
 /**
- * Get filtered navigation items based on user roles.
+ * Get filtered navigation items based on user roles and permissions.
  */
-export function getFilteredNavItems(userRoles: UserRole[]): NavItem[] {
+export function getFilteredNavItems(
+  userRoles: UserRole[],
+  userPermissions: string[] = [],
+): NavItem[] {
   function filterItems(items: NavItem[]): NavItem[] {
     return items
       .filter((item) => {
-        // If user is admin, show everything.
-        // Otherwise check if user has at least one role matching the item roles
-        if (userRoles.includes('admin')) return true
+        // Admin wildcard
+        if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
+
+        // Strict Check: if item requires a permission AND user has custom permissions configured
+        if (item.permission && userPermissions.length > 0) {
+          return userPermissions.includes(item.permission)
+        }
+
+        // Fallback to role check
         return item.roles.some((role) => userRoles.includes(role))
       })
       .map((item) => {

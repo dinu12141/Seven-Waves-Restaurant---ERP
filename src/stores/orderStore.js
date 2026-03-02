@@ -167,6 +167,23 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
+      // ── Step 1.5: Resolve default kitchen for items with no kitchen_id ──
+      // The DB trigger `generate_kot_on_accept` requires kitchen_id on order_items.
+      // If an item has no kitchen assigned, we resolve the branch's default kitchen.
+      let defaultKitchenId = null
+      const hasItemsWithoutKitchen = cartItems.value.some((item) => !item.kitchenId)
+      if (hasItemsWithoutKitchen) {
+        const { data: kitchenData } = await supabase
+          .from('kitchens')
+          .select('id')
+          .eq('branch_id', branchId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single()
+        defaultKitchenId = kitchenData?.id || null
+      }
+
       // ── Step 2: Insert order_items ────────────────────────
       const itemsPayload = cartItems.value.map((item) => {
         const itemQty = parseInt(item.qty) || 1
@@ -174,7 +191,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         return {
           order_id: order.id,
           menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || null,
+          kitchen_id: item.kitchenId || defaultKitchenId || null,
           quantity: itemQty,
           unit_price: itemPrice,
           total_price: parseFloat((itemQty * itemPrice).toFixed(2)),
@@ -274,11 +291,26 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
+      // 2.5. Resolve default kitchen for items missing kitchen_id
+      let payKitchenId = null
+      const payHasNoKitchen = cartItems.value.some((item) => !item.kitchenId)
+      if (payHasNoKitchen) {
+        const { data: kData } = await supabase
+          .from('kitchens')
+          .select('id')
+          .eq('branch_id', branchId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single()
+        payKitchenId = kData?.id || null
+      }
+
       // 3. Create Order Items
       const itemsPayload = cartItems.value.map((item) => ({
         order_id: order.id,
         menu_item_id: item.productId,
-        kitchen_id: item.kitchenId || null, // Ensure kitchen_id is passed for KOT
+        kitchen_id: item.kitchenId || payKitchenId || null,
         quantity: item.qty,
         unit_price: item.price,
         total_price: parseFloat((item.qty * item.price).toFixed(2)),

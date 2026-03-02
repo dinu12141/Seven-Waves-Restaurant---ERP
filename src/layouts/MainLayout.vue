@@ -5,6 +5,7 @@
       <q-toolbar class="erp-toolbar">
         <!-- Toggle sidebar -->
         <q-btn
+          v-if="!isPOSMode"
           flat
           dense
           round
@@ -15,7 +16,7 @@
         />
 
         <!-- Brand -->
-        <div class="erp-brand">
+        <div class="erp-brand" :class="{ 'erp-brand--pos': isPOSMode }">
           <q-icon name="restaurant" size="18px" class="erp-brand__icon" />
           <span class="erp-brand__name">Seven Waves</span>
           <span class="erp-brand__tag">ERP</span>
@@ -24,6 +25,7 @@
         <!-- Global Search -->
         <div class="erp-search-wrap">
           <q-input
+            ref="searchInputRef"
             v-model="searchQuery"
             dense
             borderless
@@ -92,17 +94,16 @@
               <div class="erp-user-menu__divider"></div>
 
               <q-list class="erp-user-menu__list">
-                <q-item clickable v-close-popup class="erp-user-menu__item">
+                <q-item
+                  clickable
+                  v-close-popup
+                  class="erp-user-menu__item"
+                  @click="router.push('/profile')"
+                >
                   <q-item-section avatar>
                     <q-icon name="person_outline" size="18px" />
                   </q-item-section>
-                  <q-item-section>My Profile</q-item-section>
-                </q-item>
-                <q-item clickable v-close-popup class="erp-user-menu__item">
-                  <q-item-section avatar>
-                    <q-icon name="settings" size="18px" />
-                  </q-item-section>
-                  <q-item-section>Settings</q-item-section>
+                  <q-item-section>My Profile & Settings</q-item-section>
                 </q-item>
                 <div class="erp-user-menu__divider"></div>
                 <q-item
@@ -125,6 +126,7 @@
 
     <!-- ─── Sidebar ──────────────────────────────────────────────────── -->
     <q-drawer
+      v-if="!isPOSMode"
       v-model="leftDrawerOpen"
       show-if-above
       :width="240"
@@ -228,26 +230,57 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
+import { onMounted, onUnmounted } from 'vue'
 
-const leftDrawerOpen = ref(true)
-const searchQuery = ref('')
-const router = useRouter()
 const authStore = useAuthStore()
 const modulesStore = useModulesStore()
+const route = useRoute()
+
+/** POS Mode: Hide sidebar for Cashier/Waiter or when on POS page to maximize screen space */
+const isPOSMode = computed(() => {
+  if (route.path.startsWith('/pos')) return true
+
+  return (
+    authStore.hasAnyRole(['cashier', 'waiter']) &&
+    !authStore.isAdmin &&
+    !authStore.hasRole('manager')
+  )
+})
+
+const leftDrawerOpen = ref(!isPOSMode.value)
+
+const searchQuery = ref('')
+const searchInputRef = ref(null)
+
+const handleKeyDown = (e) => {
+  if (e.ctrlKey && e.key === 'k') {
+    e.preventDefault()
+    searchInputRef.value?.focus()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-function logout() {
-  router.push('/auth/login')
-  authStore.signOut()
+async function logout() {
+  await authStore.signOut()
+  window.location.href = '/' // Triggers a full page reload which effectively cleans memory
+  window.location.reload()
 }
 
 /** User initials for avatar */
@@ -264,7 +297,7 @@ const userInitials = computed(() => {
  * Dynamically filter navigation items based on user roles AND enabled modules.
  */
 const filteredMenuItems = computed(() => {
-  const roleFiltered = getFilteredNavItems(authStore.roles || [])
+  const roleFiltered = getFilteredNavItems(authStore.roles || [], authStore.permissions || [])
 
   function recursiveModuleFilter(items) {
     return items
@@ -324,6 +357,11 @@ const filteredMenuItems = computed(() => {
   margin-right: 8px;
   text-decoration: none;
   cursor: default;
+  transition: margin-left 0.3s;
+
+  &--pos {
+    margin-left: 8px;
+  }
 
   &__icon {
     color: var(--erp-primary);
@@ -354,6 +392,11 @@ const filteredMenuItems = computed(() => {
 .erp-search-wrap {
   flex: 0 1 300px;
   margin: 0 8px;
+  transition: flex 0.3s ease;
+
+  &:focus-within {
+    flex: 0 1 450px; /* Expand on focus */
+  }
 }
 
 .erp-search {
@@ -652,15 +695,15 @@ const filteredMenuItems = computed(() => {
   &__child-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 38px;
-    padding: 0 12px;
-    margin: 1px 8px;
-    border-radius: 8px;
+    gap: 8px;
+    min-height: 44px; /* 44px row height ERP standard */
+    padding: 0 16px;
+    margin: 4px 8px; /* 8px spacing grid */
+    border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.15s ease;
     text-decoration: none;
-    border: 1px solid transparent;
+    border-left: 3px solid transparent; /* left border for active state */
 
     &:hover {
       background-color: rgba(255, 255, 255, 0.05);
@@ -675,7 +718,7 @@ const filteredMenuItems = computed(() => {
 
     &--active {
       background-color: var(--erp-primary-subtle) !important;
-      border-color: rgba(67, 133, 245, 0.15) !important;
+      border-left-color: var(--erp-primary) !important; /* Left border highlight */
 
       .erp-sidebar__item-label {
         color: var(--erp-primary) !important;
@@ -688,9 +731,9 @@ const filteredMenuItems = computed(() => {
   }
 
   &__child-item {
-    padding-left: 16px;
-    min-height: 36px;
-    margin: 1px 8px 1px 16px;
+    padding-left: 24px;
+    min-height: 44px;
+    margin: 4px 8px 4px 16px;
   }
 
   &__item-header-content {
@@ -741,10 +784,11 @@ const filteredMenuItems = computed(() => {
   :deep(.erp-sidebar__expansion) {
     .q-expansion-item__container {
       .q-item {
-        min-height: 38px !important;
-        padding: 0 12px !important;
-        margin: 1px 8px !important;
-        border-radius: 8px !important;
+        min-height: 44px !important;
+        padding: 0 16px !important;
+        margin: 4px 8px !important;
+        border-radius: 4px !important;
+        border-left: 3px solid transparent;
         gap: 0 !important;
 
         // Custom header content alignment

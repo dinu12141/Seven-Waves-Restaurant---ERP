@@ -20,11 +20,28 @@ export const useTableSessionStore = defineStore('tableSession', () => {
   const expiresAt = ref<string | null>(null)
 
   /** Remembered device code (persisted in localStorage). */
-  const savedDeviceCode = ref<string>(localStorage.getItem(LS_DEVICE_CODE_KEY) ?? '')
+  const savedDeviceCode = ref<string>(
+    typeof window !== 'undefined' ? (localStorage.getItem(LS_DEVICE_CODE_KEY) ?? '') : '',
+  )
 
   const heartbeatTimer = ref<ReturnType<typeof setInterval> | null>(null)
   const remainingSec = ref<number | null>(null)
   const sessionExpired = ref(false)
+  const activeOrders = ref<string[]>([])
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('table_active_orders')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) activeOrders.value = parsed
+        else activeOrders.value = []
+      }
+    } catch (e) {
+      console.error('[TableSession] Failed to load active orders:', e)
+      activeOrders.value = []
+    }
+  }
 
   // ── Computed ───────────────────────────────────────────────────────────────
 
@@ -52,8 +69,10 @@ export const useTableSessionStore = defineStore('tableSession', () => {
   }
 
   function rememberDeviceCode(code: string) {
-    savedDeviceCode.value = code.trim().toUpperCase()
-    localStorage.setItem(LS_DEVICE_CODE_KEY, savedDeviceCode.value)
+    savedDeviceCode.value = code.trim()
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LS_DEVICE_CODE_KEY, savedDeviceCode.value)
+    }
   }
 
   function clearSession() {
@@ -65,6 +84,20 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     expiresAt.value = null
     remainingSec.value = null
     sessionExpired.value = false
+    activeOrders.value = []
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('table_active_orders')
+    }
+  }
+
+  function addActiveOrder(orderId: string) {
+    if (!Array.isArray(activeOrders.value)) activeOrders.value = []
+    if (orderId && !activeOrders.value.includes(orderId)) {
+      activeOrders.value.push(orderId)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('table_active_orders', JSON.stringify(activeOrders.value))
+      }
+    }
   }
 
   function startHeartbeat() {
@@ -106,6 +139,7 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     savedDeviceCode,
     remainingSec,
     sessionExpired,
+    activeOrders,
     // computed
     isAuthenticated,
     expiresDate,
@@ -115,5 +149,6 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     clearSession,
     startHeartbeat,
     stopHeartbeat,
+    addActiveOrder,
   }
 })

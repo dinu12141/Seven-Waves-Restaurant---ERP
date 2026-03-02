@@ -17,6 +17,14 @@
           <q-badge v-if="order" color="blue-8" class="text-caption">
             Order #{{ order.order_number }}
           </q-badge>
+          <q-badge
+            v-if="order?.kot_tickets?.length"
+            color="amber-8"
+            text-color="dark"
+            class="text-caption text-weight-bold"
+          >
+            KOT #{{ order.kot_tickets[0].kot_number }}
+          </q-badge>
           <q-badge :color="statusColor" class="text-caption text-capitalize">
             {{ order?.status }}
           </q-badge>
@@ -209,7 +217,9 @@
             <!-- Total due highlight -->
             <div class="amount-due-card">
               <div class="amount-label">Amount Due</div>
-              <div class="amount-value">{{ fmtCurrency(order?.total_amount || 0) }}</div>
+              <div class="amount-value">
+                {{ fmtCurrency(currentInvoice?.grand_total || order?.total_amount || 0) }}
+              </div>
             </div>
 
             <!-- Payment method selector -->
@@ -233,13 +243,17 @@
                 v-model.number="cashReceived"
                 label="Cash Received"
                 type="number"
-                prefix="Rs."
+                prefix="LKR "
                 dense
                 outlined
                 dark
                 color="primary"
                 class="q-mb-sm"
-                :rules="[(v) => v >= (order?.total_amount || 0) || 'Amount too low']"
+                :rules="[
+                  (v) =>
+                    v >= (currentInvoice?.grand_total || order?.total_amount || 0) ||
+                    'Amount too low',
+                ]"
               />
               <div class="change-display" :class="{ positive: changeAmount > 0 }">
                 <span>Change</span>
@@ -270,9 +284,20 @@
               :loading="store.processing"
               :disable="
                 !selectedMethodId ||
-                (selectedMethodName === 'Cash' && cashReceived < (order?.total_amount || 0))
+                (selectedMethodName === 'Cash' &&
+                  cashReceived < (currentInvoice?.grand_total || order?.total_amount || 0))
               "
               @click="doRecordPayment"
+            />
+            <q-btn
+              outline
+              no-caps
+              color="primary"
+              icon="print"
+              label="Print Bill (Before Payment)"
+              class="full-width q-mt-sm"
+              size="md"
+              @click="printBill"
             />
           </div>
 
@@ -389,7 +414,7 @@ const statusColor = computed(() => {
 
 const changeAmount = computed(() => {
   const received = parseFloat(cashReceived.value) || 0
-  const due = parseFloat(props.order?.total_amount || 0)
+  const due = parseFloat(currentInvoice.value?.grand_total || props.order?.total_amount || 0)
   return received - due
 })
 
@@ -407,9 +432,14 @@ watch(
     printInvoice.value = null
 
     // If invoice already exists on this order, go to step 2
-    if (newOrder.pos_invoices?.length > 0) {
-      currentInvoice.value = newOrder.pos_invoices[0]
+    if (newOrder.invoices?.length > 0) {
+      currentInvoice.value = newOrder.invoices[0]
+      cashReceived.value = Math.ceil(currentInvoice.value.grand_total || 0)
       step.value = 2
+      // Pre-fetch print invoice so 'Print Bill' works immediately
+      store.fetchInvoiceDetails(currentInvoice.value.id).then((inv) => {
+        printInvoice.value = inv
+      })
     }
   },
   { immediate: true },
@@ -421,6 +451,8 @@ async function doGenerateInvoice() {
   try {
     const { invoice } = await store.generateInvoice(props.order.id)
     currentInvoice.value = invoice
+    cashReceived.value = Math.ceil(invoice.grand_total || props.order.total_amount || 0)
+    printInvoice.value = await store.fetchInvoiceDetails(invoice.id)
     step.value = 2
     $q.notify({
       type: 'positive',
@@ -436,23 +468,29 @@ function selectMethod(pm) {
   selectedMethodId.value = pm.id
   selectedMethodName.value = pm.name
   if (pm.name === 'Cash') {
-    cashReceived.value = Math.ceil(parseFloat(props.order?.total_amount || 0))
+    cashReceived.value = Math.ceil(
+      parseFloat(currentInvoice.value?.grand_total || props.order?.total_amount || 0),
+    )
   }
 }
 
 async function doRecordPayment() {
   if (!currentInvoice.value?.id || !selectedMethodId.value) return
 
-  const amount = parseFloat(props.order?.total_amount || 0)
+  const amount = parseFloat(currentInvoice.value?.grand_total || props.order?.total_amount || 0)
 
   try {
-    await store.recordPayment(currentInvoice.value.id, [
-      {
-        methodId: selectedMethodId.value,
-        amount,
-        transactionRef: transactionRef.value || null,
-      },
-    ])
+    await store.recordPayment(
+      currentInvoice.value.id,
+      [
+        {
+          methodId: selectedMethodId.value,
+          amount,
+          transactionRef: transactionRef.value || null,
+        },
+      ],
+      props.order?.id,
+    )
 
     // Fetch full invoice for print
     printInvoice.value = await store.fetchInvoiceDetails(currentInvoice.value.id)
@@ -495,7 +533,7 @@ function close() {
 
 // ── Helpers ────────────────────────────────────────────────
 function fmtCurrency(val) {
-  return `Rs. ${parseFloat(val || 0).toFixed(2)}`
+  return `LKR ${parseFloat(val || 0).toFixed(2)}`
 }
 
 function getMethodIcon(name) {
@@ -680,8 +718,6 @@ function getMethodIcon(name) {
   color: rgba(255, 255, 255, 0.5);
 }
 
-.totals-label {
-}
 .totals-value {
   font-variant-numeric: tabular-nums;
 }

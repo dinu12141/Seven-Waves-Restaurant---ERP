@@ -36,6 +36,19 @@
           <span class="order-label">ORDER</span>
           <span class="order-number">#{{ order.order_number }}</span>
         </div>
+
+        <div
+          class="order-time"
+          v-if="
+            order.status !== 'served' && order.status !== 'paid' && order.status !== 'cancelled'
+          "
+        >
+          <span class="time-label">Elapsed Time</span>
+          <span class="time-value"
+            ><q-icon name="schedule" size="14px" class="q-mr-xs" />{{ elapsedTime }}</span
+          >
+        </div>
+
         <div class="order-total">
           <span class="total-label">Total</span>
           <span class="total-value">LKR {{ Number(order.total_amount).toLocaleString() }}</span>
@@ -93,24 +106,31 @@
       <!-- Ordered items -->
       <div class="items-section">
         <div class="section-label">Your Items</div>
-        <div v-for="item in order.order_items" :key="item.id" class="order-item-row">
-          <div class="item-img">
-            <img
-              v-if="getItemMeta(item).image_url"
-              :src="getItemMeta(item).image_url"
-              :alt="getItemMeta(item).name"
-            />
-            <q-icon v-else name="restaurant" size="22px" color="grey-6" />
-          </div>
-          <div class="item-info">
-            <div class="item-name">{{ getItemMeta(item).name ?? 'Item' }}</div>
-            <div class="item-qty-price">
-              × {{ item.quantity }} &nbsp;·&nbsp; LKR
-              {{ Number(item.unit_price).toLocaleString() }} each
+        <div class="smart-items-grid">
+          <div v-for="item in order.order_items" :key="item.id" class="smart-item-card">
+            <div class="item-img-banner">
+              <img
+                v-if="getItemMeta(item).image_url"
+                :src="getItemMeta(item).image_url"
+                :alt="getItemMeta(item).name"
+              />
+              <div v-else class="img-placeholder">
+                <q-icon name="restaurant" size="28px" color="grey-7" />
+              </div>
+              <div class="smart-item-qty">×{{ item.quantity }}</div>
             </div>
-          </div>
-          <div class="item-status-chip" :class="item.status">
-            {{ item.status.replace('_', ' ') }}
+
+            <div class="smart-item-info">
+              <div class="item-name-row">
+                <div class="smart-name">{{ getItemMeta(item).name ?? 'Item' }}</div>
+              </div>
+              <div class="item-price-status">
+                <span class="smart-price">LKR {{ Number(item.total_price).toLocaleString() }}</span>
+                <span class="smart-status" :class="item.status">
+                  {{ item.status.replace('_', ' ') }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -176,14 +196,26 @@ const backToken = computed(() => routeToken.value ?? session.sessionToken)
 
 const loading = ref(true)
 const order = ref(null)
+const now = ref(new Date())
 let channel = null
 let pollTimer = null
+let clockTimer = null
 
 const statusSteps = ORDER_STATUS_STEPS.filter((s) => s.key !== 'invoiced')
 
 const currentStatusIdx = computed(() => {
   if (!order.value) return -1
   return getStatusIndex(order.value.status)
+})
+
+const elapsedTime = computed(() => {
+  if (!order.value?.created_at) return '00:00'
+  const diff = now.value.getTime() - new Date(order.value.created_at).getTime()
+  if (diff < 0) return '00:00'
+
+  const m = Math.floor(diff / 60000)
+  const s = Math.floor((diff % 60000) / 1000)
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 })
 
 function getStepState(idx) {
@@ -244,6 +276,11 @@ onMounted(async () => {
         Object.assign(order.value, fresh)
       }
     }, 15_000)
+
+    // UI Clock
+    clockTimer = setInterval(() => {
+      now.value = new Date()
+    }, 1000)
   }
 })
 
@@ -255,6 +292,10 @@ onUnmounted(async () => {
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
+  }
+  if (clockTimer) {
+    clearInterval(clockTimer)
+    clockTimer = null
   }
 })
 </script>
@@ -363,6 +404,33 @@ onUnmounted(async () => {
   color: #fff;
   margin-top: 2px;
 }
+.order-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.time-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.time-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+}
+
 .order-total {
   text-align: right;
 }
@@ -394,34 +462,46 @@ onUnmounted(async () => {
 
 .timeline {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+
+  /* Hide scrollbar */
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .timeline-step {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   position: relative;
-  padding-bottom: 20px;
-
-  &:last-child {
-    padding-bottom: 0;
-  }
+  flex: 1;
+  min-width: 90px;
+  text-align: center;
+  padding-bottom: 0;
 }
 
 .step-connector {
   position: absolute;
-  left: 19px;
-  top: 0;
-  width: 2px;
-  height: 100%;
+  right: 50%;
+  top: 19px;
+  width: 100%;
+  height: 2px;
   background: rgba(255, 255, 255, 0.07);
-  transform: translateX(-50%);
+  transform: translateY(-50%);
   z-index: 0;
 
   &.filled {
-    background: linear-gradient(180deg, #f97316, rgba(249, 115, 22, 0.3));
+    background: linear-gradient(90deg, #f97316, rgba(249, 115, 22, 0.3));
   }
 }
 
@@ -474,26 +554,26 @@ onUnmounted(async () => {
 }
 
 .step-meta {
-  padding-top: 8px;
+  padding-top: 0;
 }
 
 .step-name {
-  font-size: 0.92rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: #6b7280;
+  line-height: 1.2;
 
   &.done {
     color: #d1d5db;
   }
   &.active {
     color: #fff;
-    font-size: 1rem;
   }
 }
 
 .step-sub {
-  font-size: 0.75rem;
-  margin-top: 2px;
+  font-size: 0.62rem;
+  margin-top: 4px;
 }
 .active-sub {
   color: #fb923c;
@@ -502,59 +582,107 @@ onUnmounted(async () => {
   color: #10b981;
 }
 
-// Order items
+// Order items (Smart Grid)
 .items-section {
   margin-bottom: 24px;
 }
 
-.order-item-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 8px;
+.smart-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
 }
 
-.item-img {
-  width: 46px;
-  height: 46px;
-  border-radius: 10px;
+.smart-item-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  flex-direction: column;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.item-img-banner {
+  height: 100px;
+  width: 100%;
+  position: relative;
+  background: rgba(0, 0, 0, 0.3);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+
+  .img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.02);
+  }
 }
 
-.item-info {
+.smart-item-qty {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.smart-item-info {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
   flex: 1;
 }
-.item-name {
-  font-size: 0.9rem;
+
+.smart-name {
+  font-size: 0.85rem;
   font-weight: 600;
   color: #e5e7eb;
-}
-.item-qty-price {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 2px;
+  line-height: 1.3;
+  margin-bottom: 8px;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.item-status-chip {
-  font-size: 0.7rem;
+.item-price-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.smart-price {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fb923c;
+}
+
+.smart-status {
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 20px;
+  padding: 3px 6px;
+  border-radius: 8px;
   text-transform: capitalize;
   white-space: nowrap;
 

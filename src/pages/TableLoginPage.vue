@@ -46,7 +46,7 @@
           </div>
           <div class="brand-text">
             <div class="brand-name">SEVEN WAVES</div>
-            <div class="brand-sub">Table Device Login</div>
+            <div class="brand-sub">Table Access Portal</div>
           </div>
         </div>
 
@@ -55,30 +55,30 @@
         <!-- Form body -->
         <div class="card-body">
           <p class="instruction">
-            Enter your table's <strong>device code</strong> and <strong>PIN</strong> to access the
+            Enter your <strong>phone number</strong> or <strong>access code</strong> to unlock the
             menu.
           </p>
 
           <!-- Device code -->
           <div class="field-group q-mb-md">
-            <label class="field-label">Device Code</label>
+            <label class="field-label">Phone Number / Access Code</label>
             <q-input
               id="device-code-input"
               v-model="deviceCode"
-              placeholder="TB-000123"
+              placeholder="e.g. 0771234567 or TB-001"
               outlined
               dark
               dense
               class="field-input"
               autofocus
               :disable="loading"
-              maxlength="20"
-              autocomplete="off"
+              maxlength="40"
+              autocomplete="username"
               @keyup.enter="pinRef?.focus()"
-              @update:model-value="(val) => (deviceCode = String(val).toUpperCase())"
+              @update:model-value="(val) => (deviceCode = String(val))"
             >
               <template #prepend>
-                <q-icon name="devices" color="orange-5" size="18px" />
+                <q-icon name="phone" color="orange-5" size="18px" />
               </template>
             </q-input>
           </div>
@@ -127,7 +127,7 @@
               color="orange"
               size="sm"
             />
-            <span class="remember-label q-ml-xs">Remember device code on this tablet</span>
+            <span class="remember-label q-ml-xs">Remember me on this tablet</span>
           </div>
 
           <!-- Error banner -->
@@ -150,7 +150,7 @@
           >
             <span class="login-btn-content">
               <q-icon name="lock_open" class="q-mr-sm" size="20px" />
-              Unlock Table
+              Unlock Menu
             </span>
             <template #loading>
               <q-spinner-dots color="white" size="1.5em" />

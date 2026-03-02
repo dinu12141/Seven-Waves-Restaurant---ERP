@@ -127,7 +127,7 @@ function formatTime(dateStr: string): string {
 }
 
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('en-US', {
+  return new Date(dateStr).toLocaleString('en-LK', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

@@ -31,7 +31,7 @@ const columns = [
   { name: 'id', label: 'Order #', field: 'id', align: 'left', sortable: true },
   { name: 'items', label: 'Items', field: 'items', align: 'left' },
   { name: 'table', label: 'Table', field: 'table', align: 'left' },
-  { name: 'total', label: 'Total', field: 'total', format: (val) => `$${val}`, sortable: true },
+  { name: 'total', label: 'Total', field: 'total', format: (val) => `LKR ${val}`, sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
   { name: 'action', label: 'Action', field: 'action', align: 'right' },
 ]

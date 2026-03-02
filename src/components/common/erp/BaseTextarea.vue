@@ -1,0 +1,38 @@
+<template>
+  <div class="erp-field q-mb-lg">
+    <div class="erp-field-label q-mb-xs">
+      {{ label }} <span v-if="required" class="text-negative">*</span>
+    </div>
+    <q-input
+      v-bind="$attrs"
+      type="textarea"
+      dark
+      outlined
+      dense
+      hide-bottom-space
+      :bg-color="bgColor"
+      input-style="resize: none; min-height: 80px;"
+    >
+      <template v-for="(_, slotName) in $slots" v-slot:[slotName]="slotProps">
+        <slot :name="slotName" v-bind="slotProps || {}" />
+      </template>
+    </q-input>
+  </div>
+</template>
+
+<script setup>
+defineOptions({ inheritAttrs: false })
+defineProps({
+  label: { type: String, required: true },
+  required: { type: Boolean, default: false },
+  bgColor: { type: String, default: 'surface-2' },
+})
+</script>
+
+<style scoped>
+.erp-field-label {
+  font-size: var(--label-font);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+</style>

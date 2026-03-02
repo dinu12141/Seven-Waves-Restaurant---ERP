@@ -15,7 +15,7 @@
           title="Low Stock Items"
           :value="String(stats.lowStockCount)"
           icon="warning"
-          color="orange"
+          color="warning"
         />
       </div>
       <div class="col-12 col-sm-6 col-md-3">
@@ -26,16 +26,17 @@
           title="Today's GIN"
           :value="String(stats.todayGIN)"
           icon="unarchive"
-          color="red"
+          color="blue"
         />
       </div>
     </div>
 
     <!-- Warehouse Stock Summary -->
-    <q-card class="bg-grey-9 text-white q-mb-md" flat bordered>
-      <q-card-section>
-        <div class="text-h6 q-mb-md">
-          <q-icon name="warehouse" class="q-mr-sm" />Warehouse Stock Summary
+    <div class="erp-card q-pa-md q-mb-md">
+      <div>
+        <div class="text-h6 text-white q-mb-md">
+          <q-icon name="warehouse" class="q-mr-sm" style="color: var(--erp-primary)" />Warehouse
+          Stock Summary
         </div>
         <q-inner-loading :showing="stockLoading" dark />
         <div v-if="!stockLoading" class="row q-col-gutter-md">
@@ -44,51 +45,55 @@
             :key="wh.warehouse_id"
             class="col-12 col-sm-6 col-md-4"
           >
-            <q-card class="bg-grey-10 text-white" flat bordered>
-              <q-card-section>
-                <div class="row items-center q-mb-sm">
-                  <q-icon
-                    :name="getWhIcon(wh.warehouse_type)"
-                    :color="getWhColor(wh.warehouse_type)"
-                    size="24px"
-                    class="q-mr-sm"
-                  />
-                  <div class="text-subtitle1 text-weight-bold">{{ wh.warehouse_name }}</div>
-                  <q-space />
-                  <q-badge :color="getWhColor(wh.warehouse_type)">{{ wh.warehouse_type }}</q-badge>
+            <div class="erp-card" style="padding: var(--erp-spacing-md)">
+              <div class="row items-center q-mb-sm">
+                <q-icon
+                  :name="getWhIcon(wh.warehouse_type)"
+                  :color="getWhColor(wh.warehouse_type)"
+                  size="20px"
+                  class="q-mr-sm"
+                />
+                <div style="font-size: 14px; font-weight: 600; color: var(--erp-text-primary)">
+                  {{ wh.warehouse_name }}
                 </div>
-                <div class="row q-col-gutter-sm text-center">
-                  <div class="col-4">
-                    <div class="text-h5 text-weight-bold text-primary">{{ wh.item_count }}</div>
-                    <div class="text-caption text-grey-5">Items</div>
+                <q-space />
+                <q-badge :color="getWhColor(wh.warehouse_type)" css-class="erp-badge" rounded>{{
+                  wh.warehouse_type
+                }}</q-badge>
+              </div>
+              <div class="row q-col-gutter-sm text-center q-mt-md">
+                <div class="col-4">
+                  <div class="text-h2 erp-num" style="color: var(--erp-primary)">
+                    {{ wh.item_count }}
                   </div>
-                  <div class="col-4">
-                    <div class="text-h5 text-weight-bold text-green">
-                      {{ formatCurrencyShort(wh.total_value) }}
-                    </div>
-                    <div class="text-caption text-grey-5">Value</div>
-                  </div>
-                  <div class="col-4">
-                    <div
-                      class="text-h5 text-weight-bold"
-                      :class="wh.low_stock > 0 ? 'text-orange' : 'text-grey-5'"
-                    >
-                      {{ wh.low_stock }}
-                    </div>
-                    <div class="text-caption text-grey-5">Low Stock</div>
-                  </div>
+                  <div class="text-caption" style="color: var(--erp-text-secondary)">Items</div>
                 </div>
-              </q-card-section>
-            </q-card>
+                <div class="col-4">
+                  <div class="text-h2 erp-num text-positive">
+                    {{ formatCurrencyShort(wh.total_value) }}
+                  </div>
+                  <div class="text-caption" style="color: var(--erp-text-secondary)">Value</div>
+                </div>
+                <div class="col-4">
+                  <div
+                    class="text-h2 erp-num"
+                    :class="wh.low_stock > 0 ? 'text-warning' : 'text-grey-5'"
+                  >
+                    {{ wh.low_stock }}
+                  </div>
+                  <div class="text-caption" style="color: var(--erp-text-secondary)">Low Stock</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
 
     <!-- Low Stock Alerts -->
-    <q-card class="bg-grey-9 text-white" flat bordered v-if="lowStockAlerts.length > 0">
-      <q-card-section>
-        <div class="text-h6 q-mb-md text-orange">
+    <div class="erp-card q-pa-md" v-if="lowStockAlerts.length > 0">
+      <div>
+        <div class="text-h6 q-mb-md" style="color: var(--erp-warning)">
           <q-icon name="notification_important" class="q-mr-sm" />Low Stock Alerts
         </div>
         <div class="row q-col-gutter-md">
@@ -100,8 +105,8 @@
             <StockAlertCard :item="item" :show-actions="false" />
           </div>
         </div>
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
   </div>
 </template>
 

@@ -18,14 +18,21 @@
         dense
         v-model="categoryFilter"
         :options="categoryOptions"
-        label="Category"
+        display-value="Category"
         emit-value
         map-options
         clearable
         style="min-width: 180px"
-      />
+      >
+        <template v-if="categoryFilter" #selected>
+          {{ categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Category' }}
+        </template>
+        <template v-else #selected>
+          <div class="text-grey-5">Category</div>
+        </template>
+      </q-select>
       <q-space />
-      <q-btn color="primary" icon="add" label="Add Item" @click="openCreate" />
+      <BaseButton variant="primary" icon="add" label="Add Item" @click="openCreate" />
     </div>
 
     <!-- Items Table -->
@@ -84,103 +91,84 @@
     </DataTable>
 
     <!-- Add/Edit Dialog -->
-    <q-dialog v-model="showDialog" persistent>
-      <q-card class="bg-grey-9 text-white" style="min-width: 550px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">{{ editingItem ? 'Edit Item' : 'Add Item' }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
-        <q-separator dark />
-        <q-card-section class="q-gutter-md">
-          <div class="row q-col-gutter-md">
-            <div class="col-4">
-              <q-input
-                dark
-                outlined
-                v-model="form.code"
-                label="Code"
-                :rules="[(v) => !!v || 'Required']"
-              />
-            </div>
-            <div class="col-8">
-              <q-input
-                dark
-                outlined
-                v-model="form.name"
-                label="Item Name"
-                :rules="[(v) => !!v || 'Required']"
-              />
-            </div>
+    <BaseDialog v-model="showDialog" :title="editingItem ? 'Edit Item' : 'Add Item'" size="md">
+      <BaseFormSection title="General" description="Basic identification and categorization">
+        <div class="row q-col-gutter-md">
+          <div class="col-4">
+            <BaseInput
+              label="Code"
+              required
+              v-model="form.code"
+              :rules="[(v) => !!v || 'Required']"
+            />
           </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-select
-                dark
-                outlined
-                v-model="form.category_id"
-                :options="categories.map((c) => ({ label: c.name, value: c.id }))"
-                label="Category"
-                emit-value
-                map-options
-                clearable
-              />
-            </div>
-            <div class="col-6">
-              <q-select
-                dark
-                outlined
-                v-model="form.inventory_uom_id"
-                :options="uoms.map((u) => ({ label: `${u.code} — ${u.name}`, value: u.id }))"
-                label="UOM"
-                emit-value
-                map-options
-                :rules="[(v) => !!v || 'Required']"
-              />
-            </div>
+          <div class="col-8">
+            <BaseInput
+              label="Item Name"
+              required
+              v-model="form.name"
+              :rules="[(v) => !!v || 'Required']"
+            />
           </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-4">
-              <q-input
-                dark
-                outlined
-                v-model.number="form.avg_cost"
-                label="Avg Cost"
-                type="number"
-              />
-            </div>
-            <div class="col-4">
-              <q-input
-                dark
-                outlined
-                v-model.number="form.reorder_level"
-                label="Reorder Lvl"
-                type="number"
-              />
-            </div>
-            <div class="col-4">
-              <q-input
-                dark
-                outlined
-                v-model.number="form.last_purchase_price"
-                label="Last Price"
-                type="number"
-              />
-            </div>
+        </div>
+        <div class="row q-col-gutter-md">
+          <div class="col-6">
+            <BaseSelect
+              label="Category"
+              v-model="form.category_id"
+              :options="categories.map((c) => ({ label: c.name, value: c.id }))"
+              emit-value
+              map-options
+              clearable
+            />
           </div>
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn
-            color="primary"
-            :label="editingItem ? 'Update' : 'Save'"
-            icon="save"
-            :loading="saving"
-            @click="saveItem"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+          <div class="col-6">
+            <BaseSelect
+              label="UOM"
+              v-model="form.inventory_uom_id"
+              :options="uoms.map((u) => ({ label: `${u.code} — ${u.name}`, value: u.id }))"
+              required
+              emit-value
+              map-options
+              :rules="[(v) => !!v || 'Required']"
+            />
+          </div>
+        </div>
+      </BaseFormSection>
+
+      <BaseFormSection
+        title="Pricing & Reordering"
+        description="Costing and stock management parameters"
+      >
+        <div class="row q-col-gutter-md">
+          <div class="col-4">
+            <BaseInput label="Avg Cost" v-model.number="form.avg_cost" type="number" />
+          </div>
+          <div class="col-4">
+            <BaseInput label="Reorder Level" v-model.number="form.reorder_level" type="number" />
+          </div>
+          <div class="col-4">
+            <BaseInput label="Last Price" v-model.number="form.last_purchase_price" type="number" />
+          </div>
+        </div>
+      </BaseFormSection>
+
+      <template #actions>
+        <BaseButton
+          label="Cancel"
+          variant="secondary"
+          @click="showDialog = false"
+          class="q-mr-sm"
+        />
+        <BaseButton
+          :label="editingItem ? 'Update' : 'Save'"
+          icon="save"
+          variant="primary"
+          :loading="saving"
+          @click="saveItem"
+        />
+      </template>
+    </BaseDialog>
   </div>
 </template>
 
@@ -188,6 +176,11 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import DataTable from 'components/common/DataTable.vue'
+import BaseDialog from 'components/common/erp/BaseDialog.vue'
+import BaseFormSection from 'components/common/erp/BaseFormSection.vue'
+import BaseInput from 'components/common/erp/BaseInput.vue'
+import BaseSelect from 'components/common/erp/BaseSelect.vue'
+import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useItemsList, useCategoryList, useUomList } from 'src/services/inventoryService'
 
 const $q = useQuasar()

@@ -16,19 +16,43 @@
 
         <q-space />
 
-        <!-- Track order shortcut (if there's an active order) -->
-        <q-btn
-          v-if="store.currentOrder"
-          flat
-          no-caps
-          class="track-btn q-mr-sm"
-          size="sm"
-          to="/menu/track"
-        >
-          <q-icon name="delivery_dining" size="18px" class="q-mr-xs" />
-          <span class="text-caption">Track</span>
-          <q-badge :color="statusColor" class="q-ml-xs" floating rounded />
-        </q-btn>
+        <!-- Track order shortcut (Persistent from session) -->
+        <div v-if="session && session.activeOrders && session.activeOrders.length > 0">
+          <q-btn flat no-caps class="track-btn q-mr-sm" size="sm">
+            <q-icon name="delivery_dining" size="18px" class="q-mr-xs" />
+            <span class="text-caption">Track Order</span>
+            <q-badge color="orange" floating rounded>{{ session.activeOrders.length }}</q-badge>
+
+            <q-menu auto-close dark class="order-nav-menu">
+              <q-list dense style="min-width: 200px">
+                <q-item-label header class="text-grey-5">Review Your Orders</q-item-label>
+                <q-item
+                  v-for="(oid, idx) in session.activeOrders"
+                  :key="oid"
+                  clickable
+                  @click="
+                    router.push(
+                      session.sessionToken
+                        ? `/table/${encodeURIComponent(session.sessionToken)}/track/${oid}`
+                        : `/menu/track/${oid}`,
+                    )
+                  "
+                >
+                  <q-item-section avatar>
+                    <q-icon name="receipt_long" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <div class="text-weight-bold">Order #{{ idx + 1 }}</div>
+                    <div class="text-caption text-grey-6">{{ oid.slice(0, 8) }}...</div>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-icon name="chevron_right" size="14px" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </div>
 
         <!-- Cart icon -->
         <q-btn flat round dense class="cart-btn" @click="store.toggleCart">
@@ -72,9 +96,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useCustomerOrderStore } from 'src/stores/customerOrderStore'
+import { useTableSessionStore } from 'src/stores/tableSessionStore'
+import { useRouter } from 'vue-router'
 import CartDrawer from 'src/components/customer/CartDrawer.vue'
 
 const store = useCustomerOrderStore()
+const session = useTableSessionStore()
+const router = useRouter()
 
 const statusMap = {
   pending_waiter: {
@@ -104,11 +132,6 @@ const statusBarLabel = computed(() => {
 const statusIcon = computed(() => {
   if (!store.currentOrder) return 'info'
   return statusMap[store.currentOrder.status]?.icon || 'info'
-})
-
-const statusColor = computed(() => {
-  if (!store.currentOrder) return 'grey'
-  return statusMap[store.currentOrder.status]?.color || 'grey'
 })
 </script>
 

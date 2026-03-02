@@ -306,7 +306,7 @@ function formatTime(dateStr) {
 }
 
 function formatDateTime(dateStr) {
-  return new Date(dateStr).toLocaleString('en-US', {
+  return new Date(dateStr).toLocaleString('en-LK', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

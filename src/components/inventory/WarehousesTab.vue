@@ -3,7 +3,7 @@
     <div class="row items-center q-mb-md">
       <div class="text-h6"><q-icon name="warehouse" class="q-mr-sm" />Warehouse Management</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Add Warehouse" @click="openCreate" />
+      <BaseButton variant="primary" icon="add" label="Add Warehouse" @click="openCreate" />
     </div>
 
     <q-inner-loading :showing="loading" dark />
@@ -147,6 +147,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useWarehouseList } from 'src/services/inventoryService'
 
 const $q = useQuasar()

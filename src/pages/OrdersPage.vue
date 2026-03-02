@@ -1,24 +1,44 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader title="Orders Management" subtitle="Track and manage orders in real-time">
-      <template #actions>
-        <!-- Waiter (accept-only) doesn't see History or New Order -->
+    <ERPToolbar
+      moduleName="orders"
+      title="Orders Management"
+      breadcrumbs="Operations / Orders"
+      :roleBadge="restrictions.ordersAcceptOnly ? 'WAITER' : ''"
+      showRefresh
+      primaryAction
+      primaryActionLabel="New Order"
+      @primary-action="$router.push('/pos')"
+    >
+      <template #secondary-actions>
+        <div class="erp-view-toggle q-mr-sm">
+          <button
+            class="erp-view-btn"
+            :class="{ 'erp-view-btn--active': viewMode === 'kanban' }"
+            @click="viewMode = 'kanban'"
+            title="Kanban View"
+          >
+            <q-icon name="view_kanban" size="18px" />
+          </button>
+          <button
+            class="erp-view-btn"
+            :class="{ 'erp-view-btn--active': viewMode === 'list' }"
+            @click="viewMode = 'list'"
+            title="List View"
+          >
+            <q-icon name="table_rows" size="18px" />
+          </button>
+        </div>
         <q-btn
           v-if="!restrictions.ordersAcceptOnly"
           outline
-          color="primary"
+          color="white"
+          class="erp-toolbar__secondary-btn q-ml-sm"
           icon="history"
           label="History"
         />
-        <q-btn
-          v-if="!restrictions.ordersAcceptOnly"
-          color="primary"
-          icon="add"
-          label="New Order"
-          to="/pos"
-        />
       </template>
-    </PageHeader>
+    </ERPToolbar>
 
     <!-- Waiter accept-only banner -->
     <q-banner
@@ -32,85 +52,105 @@
       You are in <strong>accept-only</strong> mode. You can only accept pending orders.
     </q-banner>
 
-    <!-- Filters -->
-    <div class="row q-col-gutter-sm q-mb-md">
-      <div class="col-12 col-md-3">
-        <q-select
-          v-model="filters.branch"
-          :options="branchOptions"
-          label="Branch"
-          dense
-          outlined
-          dark
-          options-dense
-        >
-          <template v-slot:prepend>
-            <q-icon name="store" />
-          </template>
-        </q-select>
-      </div>
-      <div class="col-12 col-md-3">
-        <q-select
-          v-model="filters.source"
-          :options="sourceOptions"
-          label="Source"
-          dense
-          outlined
-          dark
-          options-dense
-        >
-          <template v-slot:prepend>
-            <q-icon name="category" />
-          </template>
-        </q-select>
-      </div>
-      <div class="col-12 col-md-6">
-        <q-input
-          v-model="filters.search"
-          placeholder="Search by Order ID or Table..."
-          dense
-          outlined
-          dark
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
-      </div>
+    <!-- ERP List View (DataGrid) -->
+    <div v-if="viewMode === 'list'" class="q-mt-md">
+      <BaseDataGrid
+        title="Orders"
+        :subtitle="`${filteredOrders.length} active orders`"
+        :columns="listColumns"
+        :rows="allProcessedOrders"
+        :actions="listActions"
+        :filters="listFilters"
+        storage-key="orders-list"
+        search-placeholder="Search by order #, table, type..."
+        no-data-label="No active orders"
+        @view="viewOrder"
+        @advance="advanceOrder"
+        @cancel="cancelOrder"
+      />
     </div>
 
-    <!-- Kanban Board -->
-    <div class="row q-col-gutter-md kanban-board">
-      <div class="col-12 col-md-3" v-for="column in displayColumns" :key="column.id">
-        <div class="column full-height bg-grey-10 rounded-borders q-pa-sm">
-          <div class="row items-center justify-between q-mb-sm q-px-xs">
-            <div class="text-subtitle1 text-weight-bold row items-center">
-              <q-icon :name="column.icon" :color="column.color" class="q-mr-sm" />
-              {{ column.title }}
-            </div>
-            <q-badge :color="column.color" text-color="white" rounded>
-              {{ column.orders.length }}
-            </q-badge>
-          </div>
+    <!-- Kanban Board (inside v-else wrapper) -->
+    <div v-if="viewMode !== 'list'">
+      <!-- Filters (Kanban-specific) -->
+      <div class="row q-col-gutter-sm q-mb-md">
+        <div class="col-12 col-md-3">
+          <q-select
+            v-model="filters.branch"
+            :options="branchOptions"
+            label="Branch"
+            dense
+            outlined
+            dark
+            options-dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="store" />
+            </template>
+          </q-select>
+        </div>
+        <div class="col-12 col-md-3">
+          <q-select
+            v-model="filters.source"
+            :options="sourceOptions"
+            label="Source"
+            dense
+            outlined
+            dark
+            options-dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
+        </div>
+        <div class="col-12 col-md-6">
+          <q-input
+            v-model="filters.search"
+            placeholder="Search by Order ID or Table..."
+            dense
+            outlined
+            dark
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </div>
+      </div>
 
-          <q-scroll-area class="col" style="height: calc(100vh - 280px)">
-            <div v-if="column.orders.length === 0" class="text-center q-pa-md text-grey-6">
-              No orders
+      <div class="row q-col-gutter-md kanban-board">
+        <div class="col-12 col-md-3" v-for="column in displayColumns" :key="column.id">
+          <div class="column full-height bg-grey-10 rounded-borders q-pa-sm">
+            <div class="row items-center justify-between q-mb-sm q-px-xs">
+              <div class="text-subtitle1 text-weight-bold row items-center">
+                <q-icon :name="column.icon" :color="column.color" class="q-mr-sm" />
+                {{ column.title }}
+              </div>
+              <q-badge :color="column.color" text-color="white" rounded>
+                {{ column.orders.length }}
+              </q-badge>
             </div>
-            <transition-group
-              appear
-              enter-active-class="animated fadeIn"
-              leave-active-class="animated fadeOut"
-            >
-              <OrderKanbanCard
-                v-for="order in column.orders"
-                :key="order.id"
-                :order="order"
-                @view="viewOrder"
-                @next-stage="advanceOrder"
-              />
-            </transition-group>
-          </q-scroll-area>
+
+            <q-scroll-area class="col" style="height: calc(100vh - 280px)">
+              <div v-if="column.orders.length === 0" class="text-center q-pa-md text-grey-6">
+                No orders
+              </div>
+              <transition-group
+                appear
+                enter-active-class="animated fadeIn"
+                leave-active-class="animated fadeOut"
+              >
+                <OrderKanbanCard
+                  v-for="order in column.orders"
+                  :key="order.id"
+                  :order="order"
+                  @view="viewOrder"
+                  @next-stage="advanceOrder"
+                />
+              </transition-group>
+            </q-scroll-area>
+          </div>
         </div>
       </div>
     </div>
@@ -183,8 +223,9 @@ import { useAuthStore } from 'src/stores/auth'
 import { useRealtime } from 'src/composables/useRealtime'
 import { useQuasar } from 'quasar'
 import { getRoleRestrictions } from 'src/config/roles'
-import PageHeader from 'components/common/PageHeader.vue'
+import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import OrderKanbanCard from 'src/components/orders/OrderKanbanCard.vue'
+import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 
 const $q = useQuasar()
 
@@ -194,6 +235,97 @@ const { subscribe, unsubscribeAll } = useRealtime()
 
 /** Role-based restrictions (e.g. ordersAcceptOnly for waiters) */
 const restrictions = computed(() => getRoleRestrictions(authStore.roles))
+
+// View mode: 'kanban' (default) | 'list'
+const viewMode = ref('kanban')
+
+// ─── List View Config ────────────────────────────────────────────────────────
+const listColumns = [
+  {
+    name: 'order_number',
+    label: 'Order #',
+    field: 'order_number',
+    type: 'text',
+    sortable: true,
+    minWidth: 90,
+  },
+  { name: 'status', label: 'Status', field: 'status', type: 'status', align: 'center', width: 120 },
+  { name: 'type', label: 'Type', field: 'type', type: 'badge', sortable: true, width: 100 },
+  { name: 'table', label: 'Table', field: 'table', type: 'text', width: 80 },
+  { name: 'items', label: 'Items', field: 'items', type: 'text', minWidth: 200 },
+  {
+    name: 'total',
+    label: 'Total',
+    field: 'total',
+    type: 'currency',
+    align: 'right',
+    sortable: true,
+  },
+  { name: 'timeAgo', label: 'Time', field: 'timeAgo', type: 'text', width: 90, hideable: true },
+]
+
+const listActions = [
+  { event: 'view', icon: 'visibility', label: 'View order' },
+  {
+    event: 'advance',
+    icon: 'arrow_forward',
+    label: 'Advance status',
+    show: (row) => !['completed', 'paid', 'served', 'invoiced'].includes(row.status),
+  },
+  {
+    event: 'cancel',
+    icon: 'cancel',
+    label: 'Cancel order',
+    danger: true,
+    show: (row) =>
+      !restrictions.value.ordersAcceptOnly && !['cancelled', 'paid'].includes(row.status),
+  },
+]
+
+const listFilters = [
+  {
+    field: 'status',
+    label: 'Status',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      { label: 'Pending', value: 'pending' },
+      { label: 'Preparing', value: 'preparing' },
+      { label: 'Ready', value: 'ready' },
+      { label: 'Served', value: 'served' },
+    ],
+  },
+  {
+    field: 'type',
+    label: 'Order Type',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      { label: 'Dine In', value: 'dine_in' },
+      { label: 'Takeaway', value: 'takeaway' },
+      { label: 'Delivery', value: 'delivery' },
+    ],
+  },
+  { field: 'created_at', label: 'Date', type: 'date-range' },
+]
+
+// All processed orders for the list view
+const allProcessedOrders = computed(() => {
+  return orderStore.activeOrders.map((o) => {
+    const fullOrder = orderStore.orderWithItems(o.id)
+    const itemsText =
+      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_item_id}`).join(', ') || ''
+    const table = orderStore.tables.get(o.table_id)
+    return {
+      ...o,
+      type: o.order_type,
+      items: itemsText,
+      table: table ? table.table_number : '—',
+      timeAgo: getTimeAgo(o.created_at),
+      total: o.total_amount,
+    }
+  })
+})
 
 // --- State ---
 const filters = ref({
@@ -363,8 +495,36 @@ async function cancelOrder(order) {
 </script>
 
 <style scoped>
-/* Remove specific height calculation to allow page scroll if needed,
-   but for Kanban we usually want columns to scroll independently. */
-/* Just ensuring it consumes available space */
-/* Add custom styles here if needed */
+/* View mode toggle */
+.erp-view-toggle {
+  display: flex;
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.erp-view-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  &--active {
+    background: rgba(37, 99, 235, 0.15);
+    color: #2563eb;
+  }
+}
 </style>

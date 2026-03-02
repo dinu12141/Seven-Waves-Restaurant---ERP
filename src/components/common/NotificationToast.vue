@@ -75,15 +75,15 @@ function getToastIcon(type) {
 .toast-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
   background: #1e1e2e;
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
-  backdrop-filter: blur(16px);
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  backdrop-filter: blur(12px);
   cursor: pointer;
   pointer-events: auto;
   position: relative;
@@ -91,13 +91,17 @@ function getToastIcon(type) {
 }
 
 .toast-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+
+  :deep(.q-icon) {
+    font-size: 14px !important;
+  }
 }
 
 .toast-content {
@@ -106,10 +110,10 @@ function getToastIcon(type) {
 }
 
 .toast-message {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

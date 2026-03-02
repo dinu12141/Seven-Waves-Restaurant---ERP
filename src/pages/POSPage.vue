@@ -9,6 +9,24 @@
         <div class="row items-center q-mr-md">
           <q-icon name="point_of_sale" size="24px" color="primary" class="q-mr-sm" />
           <span class="text-h6 text-white text-weight-bold">POS</span>
+
+          <q-btn
+            flat
+            dense
+            round
+            icon="receipt_long"
+            color="orange-8"
+            class="q-ml-md"
+            @click="queueDrawer = !queueDrawer"
+          >
+            <q-badge v-if="cashierStore.readyCount > 0" color="green" floating>
+              {{ cashierStore.readyCount }}
+            </q-badge>
+            <q-badge v-else-if="cashierStore.billingOrders.length > 0" color="red" floating>
+              {{ cashierStore.billingOrders.length }}
+            </q-badge>
+            <q-tooltip>Billing Queue (KOTs)</q-tooltip>
+          </q-btn>
         </div>
 
         <q-input
@@ -167,7 +185,26 @@
       </q-card>
     </q-dialog>
     <!-- ════════════════════════════════════════════════════════
-         PAYMENT DIALOG
+         BILLING QUEUE DRAWER (KOTs)
+         ════════════════════════════════════════════════════════ -->
+    <q-drawer
+      v-model="queueDrawer"
+      side="left"
+      overlay
+      behavior="mobile"
+      :width="350"
+      class="billing-queue-drawer"
+    >
+      <BillingQueue @select="openBilling" />
+    </q-drawer>
+
+    <!-- ════════════════════════════════════════════════════════
+         BILL DIALOG (for Queue Orders)
+         ════════════════════════════════════════════════════════ -->
+    <BillDialog v-model="billDialogOpen" :order="selectedQueueOrder" @paid="onOrderPaid" />
+
+    <!-- ════════════════════════════════════════════════════════
+         PAYMENT DIALOG (for Current POS Cart)
          ════════════════════════════════════════════════════════ -->
     <PaymentDialog
       v-model="paymentDialog"
@@ -186,13 +223,17 @@ import { useQuasar, Loading, Notify } from 'quasar'
 import { useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
+import { useCashierStore } from 'src/stores/cashierStore'
 import MenuItemCard from 'src/components/pos/MenuItemCard.vue'
 import OrderCart from 'src/components/pos/OrderCart.vue'
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
+import BillingQueue from 'src/components/pos/BillingQueue.vue'
+import BillDialog from 'src/components/cashier/BillDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
 const store = useOrderStore()
+const cashierStore = useCashierStore()
 
 // ── Local State ──────────────────────────────────────────
 const searchQuery = ref('')
@@ -212,6 +253,23 @@ const selectedVariant = ref(null)
 // Payment Dialog
 const paymentDialog = ref(false)
 const isProcessingPayment = ref(false)
+
+// Billing Queue
+const queueDrawer = ref(false)
+const billDialogOpen = ref(false)
+const selectedQueueOrder = ref(null)
+
+function openBilling(order) {
+  selectedQueueOrder.value = order
+  billDialogOpen.value = true
+  // We don't close queueDrawer here so user can easily switch back
+}
+
+function onOrderPaid() {
+  billDialogOpen.value = false
+  selectedQueueOrder.value = null
+  cashierStore.fetchBillingOrders()
+}
 async function fetchMenuItems() {
   menuLoading.value = true
   menuError.value = null
@@ -284,6 +342,7 @@ function _categoryIcon(name) {
 
 onMounted(() => {
   fetchMenuItems()
+  cashierStore.initialize()
 })
 
 // ── Computed ─────────────────────────────────────────────
