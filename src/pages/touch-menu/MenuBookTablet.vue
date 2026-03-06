@@ -86,7 +86,7 @@
               >
                 <q-item-section avatar>
                   <q-avatar size="30px" rounded class="border-accent">
-                    <q-img :src="cat.image_url || getCategoryImgUrl(cat.name)" />
+                    <q-img :src="getCategoryImgUrl(cat)" />
                   </q-avatar>
                 </q-item-section>
                 <q-item-section class="text-subtitle2">{{ cat.name }}</q-item-section>
@@ -127,7 +127,7 @@
             >
               <div class="cat-img-wrapper q-mb-xs rounded-borders overflow-hidden border-accent">
                 <q-img
-                  :src="cat.image_url || getCategoryImgUrl(cat.name)"
+                  :src="getCategoryImgUrl(cat)"
                   class="full-width full-height object-cover"
                   spinner-color="primary"
                   spinner-size="12px"
@@ -162,11 +162,7 @@
 
         <div v-else class="row q-col-gutter-md">
           <!-- Dynamic Grid: Smaller cards, 4-6 columns on tablet -->
-          <div
-            v-for="item in filteredItems"
-            :key="item.id"
-            class="col-6 col-sm-4 col-md-3 col-lg-2"
-          >
+          <div v-for="item in filteredItems" :key="item.id" class="col-4 col-sm-3 col-md-2">
             <MenuItemCard
               :item="item"
               @add-to-cart="touchState.addToCart"
@@ -279,7 +275,7 @@ const selectedItem = ref(null)
 // Computed
 
 const filteredItems = computed(() => {
-  let result = items.value
+  let result = items.value.filter((i) => i.is_available)
 
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -289,7 +285,7 @@ const filteredItems = computed(() => {
         (i.description && i.description.toLowerCase().includes(q)),
     )
   } else if (activeCategoryId.value && activeCategoryId.value !== 'all') {
-    result = result.filter((i) => i.category_id === activeCategoryId.value)
+    result = result.filter((i) => i.sub_category_id === activeCategoryId.value)
   }
 
   // Sort: Available first, then by name
@@ -305,7 +301,7 @@ async function fetchData() {
   loading.value = true
   try {
     const [catRes, itemRes] = await Promise.all([
-      supabase.from('menu_categories').select('*').eq('active', true).order('display_order'),
+      supabase.from('menu_sub_categories').select('*').eq('is_active', true).order('sort_order'),
       supabase.from('menu_items').select('*'),
     ])
 
@@ -315,204 +311,14 @@ async function fetchData() {
     let loadedCategories = catRes.data || []
     let loadedItems = itemRes.data || []
 
-    // Inject Mock Data if DB is empty to showcase the UI
-    if (loadedCategories.length === 0) {
-      loadedCategories = [
-        {
-          id: 'c1',
-          name: 'Burgers',
-          image_url:
-            'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c2',
-          name: 'Pizzas',
-          image_url:
-            'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c3',
-          name: 'Steaks',
-          image_url:
-            'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c8',
-          name: 'Salads',
-          image_url:
-            'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c9',
-          name: 'Pasta',
-          image_url:
-            'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c10',
-          name: 'Seafood',
-          image_url:
-            'https://images.unsplash.com/photo-1615141982883-c7da0e40f321?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c6',
-          name: 'Rice / Nasi',
-          image_url:
-            'https://images.unsplash.com/photo-1550989460026-531e21b18361?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c4',
-          name: 'Desserts',
-          image_url:
-            'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c5',
-          name: 'Beverages',
-          image_url:
-            'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80',
-        },
-        {
-          id: 'c7',
-          name: 'Soups',
-          image_url:
-            'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=200&q=80',
-        },
-      ]
-    }
-
-    if (loadedItems.length === 0) {
-      loadedItems = [
-        {
-          id: 'i1',
-          category_id: 'c1',
-          name: 'Signature Beef Burger',
-          price: 1850,
-          is_available: true,
-          is_best_seller: true,
-        },
-        {
-          id: 'i2',
-          category_id: 'c1',
-          name: 'Crispy Chicken Burger',
-          price: 1450,
-          is_available: true,
-          is_best_seller: false,
-        },
-        {
-          id: 'i3',
-          category_id: 'c2',
-          name: 'Margherita Pizza Large',
-          price: 2500,
-          is_available: true,
-          is_best_seller: false,
-          is_veg: true,
-        },
-        {
-          id: 'i4',
-          category_id: 'c2',
-          name: 'Spicy Pepperoni Pizza',
-          price: 3200,
-          is_available: true,
-          is_best_seller: true,
-          is_spicy: true,
-        },
-        {
-          id: 'i5',
-          category_id: 'c3',
-          name: 'Grilled Ribeye Steak',
-          price: 8500,
-          is_available: true,
-          is_best_seller: true,
-        },
-        {
-          id: 'i8',
-          category_id: 'c6',
-          name: 'Chicken Dum Biryani',
-          price: 1750,
-          is_available: true,
-          is_best_seller: true,
-          is_spicy: true,
-        },
-        {
-          id: 'i9',
-          category_id: 'c6',
-          name: 'Vegetable Fried Rice',
-          price: 1100,
-          is_available: true,
-          is_best_seller: false,
-          is_veg: true,
-        },
-        {
-          id: 'i6',
-          category_id: 'c4',
-          name: 'Molten Chocolate Cake',
-          price: 950,
-          is_available: true,
-          is_best_seller: true,
-        },
-        {
-          id: 'i7',
-          category_id: 'c5',
-          name: 'Iced Coffee',
-          price: 650,
-          is_available: true,
-          is_best_seller: false,
-        },
-        {
-          id: 'i10',
-          category_id: 'c7',
-          name: 'Cream of Mushroom Soup',
-          price: 850,
-          is_available: true,
-          is_best_seller: false,
-          is_veg: true,
-        },
-        {
-          id: 'i11',
-          category_id: 'c8',
-          name: 'Classic Caesar Salad',
-          price: 1200,
-          is_available: true,
-          is_best_seller: false,
-          is_veg: true,
-        },
-        {
-          id: 'i12',
-          category_id: 'c9',
-          name: 'Creamy Carbonara Pasta',
-          price: 2100,
-          is_available: true,
-          is_best_seller: true,
-        },
-        {
-          id: 'i13',
-          category_id: 'c10',
-          name: 'Grilled Garlic Prawns',
-          price: 3500,
-          is_available: true,
-          is_best_seller: true,
-        },
-        {
-          id: 'i14',
-          category_id: 'c1',
-          name: 'Double Cheese Smash Burger',
-          price: 2200,
-          is_available: true,
-          is_best_seller: true,
-        },
-      ]
-    }
-
-    categories.value = loadedCategories
+    // Ensure we have an "All Items" first choice in categories
+    categories.value = [{ id: 'all', name: 'All', image_description: 'menu' }, ...loadedCategories]
 
     // High-quality colorful food imagery from Unsplash and fallback prices for missing data
     items.value = loadedItems.map((i) => ({
       ...i,
-      price: i.price || i.name.length * 150 + 400, // Ensure price is never NaN, generate consistent mock price if missing
-      image_url:
-        i.image_url ||
-        `https://images.unsplash.com/photo-${getFoodImgId(i.name)}?auto=format&fit=crop&w=400&q=80`,
+      price: i.base_price != null ? Number(i.base_price) : i.price || i.name.length * 150 + 400,
+      image_url: i.image_url || getPremiumFallbackImage(i.name, i.id),
     }))
   } catch (err) {
     console.error('Fetch error:', err)
@@ -521,42 +327,106 @@ async function fetchData() {
   }
 }
 
-// Helper to get diverse food images based on item name
-function getFoodImgId(name) {
-  const n = name.toLowerCase()
-  if (n.includes('burger')) return '1568901346375-23c9450c58cd'
-  if (n.includes('pizza')) return '1513104890138-7c749659a591'
-  if (n.includes('pasta') || n.includes('spaghetti')) return '1551183053-bf91a1d81141'
-  if (n.includes('salad')) return '1512621776951-a57141f2eefd'
-  if (n.includes('steak') || n.includes('beef')) return '1600891964092-4316c288032e'
-  if (n.includes('chicken')) return '1604908176997-125f25cc6f3d'
-  if (n.includes('dessert') || n.includes('cake') || n.includes('sweet'))
-    return '1551024601-bec78aea704b'
-  if (n.includes('rice') || n.includes('biryani') || n.includes('nasi'))
-    return '1550989460026-531e21b18361'
-  if (n.includes('coffee') || n.includes('tea') || n.includes('drink') || n.includes('juice'))
-    return '1544145945-f904253db0ad'
-  if (n.includes('soup')) return '1547592166-23ac45744acd'
-  // Default colorful food shot
-  return '1504674900247-0877df9cc836'
+// Helper to get diverse images for category cards and menu items
+function getCategoryImgUrl(item) {
+  if (item.image_url) return item.image_url
+  return getPremiumFallbackImage(item.name, item.id)
 }
 
-// Helper to get diverse images for category cards
-function getCategoryImgUrl(name) {
-  const n = name.toLowerCase()
-  if (n.includes('burger') || n.includes('fast food'))
-    return 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=80'
+function getPremiumFallbackImage(name) {
+  const n = (name || '').toLowerCase()
+
+  // --- LUXURY PREMIUM CATEGORY & ITEM MAPPING (UNSPLASH) ---
+
+  // Drinks & Liquid Gold
+  if (n.includes('bubblelicious') || n.includes('bubble'))
+    return 'https://images.unsplash.com/photo-1558857563-b371f30bb673?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('milkshake'))
+    return 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('juice') || n.includes('fresh'))
+    return 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('coffee') || n.includes('tea') || n.includes('hot bev') || n.includes('frappe'))
+    return 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?auto=format&fit=crop&w=600&q=80'
+  if (
+    n.includes('mojito') ||
+    n.includes('smoothie') ||
+    n.includes('drink') ||
+    n.includes('lassi') ||
+    n.includes('potion')
+  )
+    return 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80'
+
+  // Fast Food & Western
+  if (n.includes('burger'))
+    return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('sandwich') || n.includes('submarine') || n.includes('bun'))
+    return 'https://images.unsplash.com/photo-1553909489-cd47e0907980?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('bread'))
+    return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('puff') || n.includes('pastry') || n.includes('patis'))
+    return 'https://images.unsplash.com/photo-1551443874-987b50448b5e?auto=format&fit=crop&w=600&q=80'
   if (n.includes('pizza'))
-    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=200&q=80'
-  if (n.includes('drink') || n.includes('beverage'))
-    return 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=200&q=80'
-  if (n.includes('dessert') || n.includes('sweet'))
-    return 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=200&q=80'
-  if (n.includes('rice') || n.includes('noodle'))
-    return 'https://images.unsplash.com/photo-1626804475297-41609ea0e4eb?auto=format&fit=crop&w=200&q=80'
-  if (n.includes('soup') || n.includes('starter') || n.includes('appetizer'))
-    return 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=200&q=80'
-  return 'https://images.unsplash.com/photo-1495195125609-84ea6af9e44d?auto=format&fit=crop&w=200&q=80'
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80'
+
+  // Luxury Mains & Grills
+  if (
+    n.includes('grilled') ||
+    n.includes('steak') ||
+    n.includes('meat') ||
+    n.includes('tandoori') ||
+    n.includes('shawarma')
+  )
+    return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('pasta') || n.includes('lasagna') || n.includes('spaghetti'))
+    return 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&w=600&q=80'
+
+  // Asian & Exotics
+  if (n.includes('rice') || n.includes('biryani') || n.includes('nasi') || n.includes('thai'))
+    return 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('kottu'))
+    return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80'
+  if (
+    n.includes('curry') ||
+    n.includes('indian') ||
+    n.includes('devil') ||
+    n.includes('chili craze')
+  )
+    return 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80'
+  if (
+    n.includes('rotty') ||
+    n.includes('naan') ||
+    n.includes('roti') ||
+    n.includes('dose') ||
+    n.includes('hopper')
+  )
+    return 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('noodle') || n.includes('chow mein') || n.includes('chopsuey'))
+    return 'https://images.unsplash.com/photo-1582878826629-29b7ad1cb438?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('roll') || n.includes('fried') || n.includes('sizzling'))
+    return 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('vade'))
+    return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80'
+
+  // Others
+  if (
+    n.includes('dessert') ||
+    n.includes('sweet') ||
+    n.includes('cake') ||
+    n.includes('waffle') ||
+    n.includes('delight')
+  )
+    return 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('salad') || n.includes('veg'))
+    return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('soup') || n.includes('stew') || n.includes('boil'))
+    return 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('breakfast') || n.includes('egg'))
+    return 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('bite') || n.includes('snack') || n.includes('add'))
+    return 'https://images.unsplash.com/photo-1541529086121-b4a78a444646?auto=format&fit=crop&w=600&q=80'
+
+  // Generic but unique professional fallback based on seed so it stays consistent
+  return `https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80`
 }
 
 function openItemDetails(item) {
@@ -680,7 +550,7 @@ onMounted(() => {
 .marquee-track {
   display: flex;
   width: max-content;
-  animation: scrollLeft 45s linear infinite;
+  animation: scrollLeft 120s linear infinite;
 
   &.paused {
     animation-play-state: paused;

@@ -114,8 +114,18 @@ async function resolveQr() {
 
     localStorage.setItem('tm_session_token', result.session_token)
 
-    // Redirect to the new Touch Menu interface
-    router.replace('/touch')
+    // Check if customer is already authenticated
+    const { useCustomerStore } = await import('src/stores/customerStore')
+    const customerStore = useCustomerStore()
+    await customerStore.tryRestoreFromLocal()
+
+    if (customerStore.isLoggedIn) {
+      // Already signed in, go straight to menu
+      router.replace('/touch')
+    } else {
+      // Prompt customer to register/login (can skip)
+      router.replace('/customer/register')
+    }
   } else {
     errorMsg.value = result.error || 'Invalid or expired QR code. Ask your waiter for a new one.'
     loading.value = false
@@ -139,7 +149,16 @@ onMounted(async () => {
     }
 
     localStorage.setItem('tm_session_token', session.sessionToken)
-    router.replace('/touch')
+
+    const { useCustomerStore } = await import('src/stores/customerStore')
+    const customerStore = useCustomerStore()
+    await customerStore.tryRestoreFromLocal()
+
+    if (customerStore.isLoggedIn) {
+      router.replace('/touch')
+    } else {
+      router.replace('/customer/register')
+    }
     return
   }
   resolveQr()

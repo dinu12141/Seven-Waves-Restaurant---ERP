@@ -267,17 +267,36 @@ async function saveWarehouse() {
   }
   saving.value = true
   try {
+    const payload = {
+      code: form.code,
+      name: form.name,
+      warehouse_type: form.warehouse_type,
+      category: form.category,
+      city: form.city,
+      contact_no: form.contact_no,
+      is_default: form.is_default,
+      allow_negative_stock: form.allow_negative_stock,
+    }
+
     if (editingWh.value) {
-      await updateWarehouse(editingWh.value.id, { ...form })
+      console.log('[WarehouseTab] Updating warehouse:', editingWh.value.id, payload)
+      await updateWarehouse(editingWh.value.id, payload)
       $q.notify({ type: 'positive', message: 'Warehouse updated!' })
     } else {
-      await createWarehouse({ ...form, is_active: true })
+      console.log('[WarehouseTab] Creating warehouse:', payload)
+      await createWarehouse({ ...payload, is_active: true })
       $q.notify({ type: 'positive', message: 'Warehouse created!' })
     }
     showDialog.value = false
     await listWarehouses()
   } catch (e) {
-    $q.notify({ type: 'negative', message: e.message || 'Failed to save warehouse.' })
+    console.error('[WarehouseTab] Error saving warehouse:', e)
+    $q.notify({
+      type: 'negative',
+      message: e.message || 'Error processing request.',
+      caption: e.details || e.hint || 'Check your internet or contact admin.',
+      timeout: 10000,
+    })
   } finally {
     saving.value = false
   }
@@ -292,7 +311,8 @@ async function toggleActive(wh) {
     })
     await listWarehouses()
   } catch (e) {
-    $q.notify({ type: 'negative', message: e.message || 'Failed to update warehouse.' })
+    console.error('[WarehouseTab] Error toggling status:', e)
+    $q.notify({ type: 'negative', message: e.message || 'Failed to update status.' })
   }
 }
 const columns = [

@@ -18,43 +18,52 @@
         <!-- Status overlay -->
         <div v-if="!item.is_available" class="absolute-full flex flex-center bg-black-06">
           <div
-            class="text-h6 text-weight-bold text-white bg-negative q-px-md q-py-sm rounded-borders rotate-45 transform-center shadow-10 letter-spacing-1"
+            class="text-caption text-weight-bold text-white bg-negative q-px-sm q-py-xs rounded-borders rotate-45 transform-center shadow-10"
           >
             SOLD OUT
           </div>
         </div>
 
         <!-- Tags top left -->
-        <div class="absolute-top-left q-pa-sm row q-gutter-x-xs bg-transparent">
+        <div class="absolute-top-left q-pa-xs row q-gutter-x-xs bg-transparent">
           <q-badge
             v-if="item.is_best_seller"
             color="warning"
-            class="text-dark text-weight-bolder shadow-3 q-px-sm"
+            class="text-dark text-weight-bolder shadow-3 q-px-xs"
             rounded
-            >★ Bestseller</q-badge
+            style="font-size: 8px"
+            >★ Best</q-badge
           >
         </div>
 
         <!-- Tags bottom right -->
-        <div class="absolute-bottom-right q-pa-sm row q-gutter-x-xs q-mb-md">
-          <q-badge v-if="item.is_veg" color="positive" class="shadow-3 text-weight-bolder"
+        <div class="absolute-bottom-right q-pa-xs row q-gutter-x-xs q-mb-sm">
+          <q-badge
+            v-if="item.is_veg"
+            color="positive"
+            class="shadow-3 text-weight-bolder"
+            style="font-size: 8px"
             >Veg</q-badge
           >
-          <q-badge v-if="item.is_spicy" color="negative" class="shadow-3 text-weight-bolder"
-            >Spicy</q-badge
+          <q-badge
+            v-if="item.is_spicy"
+            color="negative"
+            class="shadow-3 text-weight-bolder"
+            style="font-size: 8px"
+            >Hot</q-badge
           >
         </div>
       </q-img>
     </div>
 
-    <q-card-section class="q-pt-sm q-pb-none flex-grow">
-      <div class="text-subtitle1 text-weight-bold ellipsis-2-lines name-text" :title="item.name">
+    <q-card-section class="q-pt-xs q-pb-none flex-grow">
+      <div class="text-caption text-weight-bold ellipsis-2-lines name-text" :title="item.name">
         {{ item.name }}
       </div>
     </q-card-section>
 
-    <q-card-section class="row items-center justify-between q-pt-xs q-pb-md">
-      <div class="text-subtitle1 text-primary text-weight-black font-mono price-text">
+    <q-card-section class="row items-center justify-between q-pt-none q-pb-sm">
+      <div class="text-caption text-primary text-weight-black font-mono price-text">
         LKR {{ Math.round(item.price).toLocaleString('en-LK') }}
       </div>
 
@@ -64,12 +73,12 @@
         dense
         color="primary"
         icon="add"
-        size="sm"
+        size="xs"
         class="shadow-top-glow"
         unelevated
         @click="$emit('add-to-cart', item)"
       />
-      <q-btn v-else round dense color="grey-8" icon="block" size="sm" disable unelevated />
+      <q-btn v-else round dense color="grey-8" icon="block" size="xs" disable unelevated />
     </q-card-section>
   </q-card>
 </template>
@@ -133,17 +142,17 @@ defineEmits(['add-to-cart', 'request-add'])
 }
 
 .name-text {
-  font-size: 14px;
-  line-height: 1.2;
+  font-size: 11px;
+  line-height: 1.1;
   color: #f8fafc;
-  letter-spacing: -0.2px;
-  min-height: 34px;
+  letter-spacing: -0.1px;
+  min-height: 24px;
 }
 
 .price-text {
-  font-size: 15px;
+  font-size: 11px;
   color: #3b82f6;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 
 .flex-grow {

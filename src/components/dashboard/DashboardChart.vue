@@ -9,7 +9,7 @@
         <q-spinner-dots size="40px" color="primary" />
       </q-inner-loading>
       <apexchart
-        v-if="!loading && chartOptions"
+        v-if="!loading && computedOptions"
         :type="type"
         :height="height"
         :options="computedOptions"

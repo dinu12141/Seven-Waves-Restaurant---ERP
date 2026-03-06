@@ -23,12 +23,40 @@
         map-options
         clearable
         style="min-width: 180px"
+        @update:model-value="subCategoryFilter = null"
       >
         <template v-if="categoryFilter" #selected>
           {{ categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Category' }}
         </template>
         <template v-else #selected>
           <div class="text-grey-5">Category</div>
+        </template>
+      </q-select>
+
+      <q-select
+        dark
+        outlined
+        dense
+        v-model="subCategoryFilter"
+        :options="filterSubCategoryOptions"
+        display-value="Sub Category"
+        emit-value
+        map-options
+        clearable
+        :disable="!categoryFilter"
+        style="min-width: 180px"
+      >
+        <template v-if="subCategoryFilter" #selected>
+          {{
+            filterSubCategoryOptions.find((o) => o.value === subCategoryFilter)?.label ||
+            'Sub Category'
+          }}
+        </template>
+        <template v-else-if="!categoryFilter" #selected>
+          <div class="text-grey-7">Select Category</div>
+        </template>
+        <template v-else #selected>
+          <div class="text-grey-5">Sub Category</div>
         </template>
       </q-select>
       <q-space />
@@ -131,6 +159,7 @@
                     <ERPFormField label="Item Name" required :error="vErrors.name">
                       <q-input
                         v-model="form.name"
+                        dark
                         dense
                         outlined
                         placeholder="Enter item name"
@@ -143,13 +172,13 @@
                       <q-input
                         v-model.number="form.base_price"
                         type="number"
+                        dark
                         dense
                         outlined
                         placeholder="0.00"
+                        prefix="LKR"
                         @update:model-value="vErrors.base_price = ''"
-                      >
-                        <template #prepend><span style="font-size: 11px">LKR</span></template>
-                      </q-input>
+                      />
                     </ERPFormField>
                   </div>
                 </div>
@@ -159,7 +188,7 @@
                       label="Description"
                       helper="Displayed to customers ordering online"
                     >
-                      <q-input v-model="form.description" type="textarea" outlined autogrow />
+                      <q-input v-model="form.description" dark type="textarea" outlined autogrow />
                     </ERPFormField>
                   </div>
                 </div>
@@ -171,13 +200,33 @@
                     <ERPFormField label="Category" required :error="vErrors.category_id">
                       <q-select
                         v-model="form.category_id"
+                        dark
                         :options="categoryOptions"
                         emit-value
                         map-options
                         outlined
                         dense
                         placeholder="Select..."
-                        @update:model-value="vErrors.category_id = ''"
+                        @update:model-value="onCategoryChange"
+                      />
+                    </ERPFormField>
+                  </div>
+                  <div class="col-6">
+                    <ERPFormField
+                      label="Sub Category"
+                      :helper="!form.category_id ? 'Select a category first' : ''"
+                    >
+                      <q-select
+                        v-model="form.sub_category_id"
+                        dark
+                        :options="subCategoryOptions"
+                        emit-value
+                        map-options
+                        outlined
+                        dense
+                        clearable
+                        :disable="!form.category_id"
+                        placeholder="Select..."
                       />
                     </ERPFormField>
                   </div>
@@ -185,6 +234,7 @@
                     <ERPFormField label="Routing Kitchen" helper="Where KOTs are dispatched">
                       <q-select
                         v-model="form.kitchen_id"
+                        dark
                         :options="kitchenOptions"
                         emit-value
                         map-options
@@ -230,13 +280,15 @@ const loading = ref(false)
 const showDialog = ref(false)
 const saving = ref(false)
 const filter = ref('')
-const categoryFilter = ref('')
+const categoryFilter = ref(null)
+const subCategoryFilter = ref(null)
 
 const erpForm = ref(null)
 
 const menuItems = ref([])
 const categories = ref([])
 const kitchens = ref([])
+const allSubCategories = ref([])
 
 const emptyForm = {
   id: null,
@@ -244,6 +296,7 @@ const emptyForm = {
   description: '',
   base_price: 0,
   category_id: null,
+  sub_category_id: null,
   kitchen_id: null,
   is_available: true,
   is_veg: false,
@@ -263,6 +316,13 @@ const columns = [
     align: 'left',
     sortable: true,
   },
+  {
+    name: 'sub_category_name',
+    label: 'Sub Category',
+    field: 'sub_category_name',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'kitchen_name', label: 'Kitchen', field: 'kitchen_name', align: 'left', sortable: true },
   { name: 'base_price', label: 'Price', field: 'base_price', align: 'right', sortable: true },
   { name: 'tags', label: 'Tags', field: 'tags', align: 'center' },
@@ -278,12 +338,29 @@ const categoryOptions = computed(() =>
   categories.value.map((c) => ({ label: c.name, value: c.id })),
 )
 
+const subCategoryOptions = computed(() => {
+  if (!form.category_id) return []
+  return allSubCategories.value
+    .filter((s) => String(s.category_id) === String(form.category_id))
+    .map((s) => ({ label: s.name, value: s.id }))
+})
+
+const filterSubCategoryOptions = computed(() => {
+  if (!categoryFilter.value) return []
+  return allSubCategories.value
+    .filter((s) => String(s.category_id) === String(categoryFilter.value))
+    .map((s) => ({ label: s.name, value: s.id }))
+})
+
 const kitchenOptions = computed(() => kitchens.value.map((k) => ({ label: k.name, value: k.id })))
 
 const filteredItems = computed(() => {
   let result = menuItems.value
   if (categoryFilter.value) {
-    result = result.filter((i) => i.category_id === categoryFilter.value)
+    result = result.filter((i) => String(i.category_id) === String(categoryFilter.value))
+  }
+  if (subCategoryFilter.value) {
+    result = result.filter((i) => String(i.sub_category_id) === String(subCategoryFilter.value))
   }
   return result
 })
@@ -297,13 +374,20 @@ async function fetchData() {
       .order('sort_order')
     categories.value = catData || []
 
+    const { data: subData, error: subError } = await supabase
+      .from('menu_sub_categories')
+      .select('id, name, category_id')
+      .order('sort_order')
+    if (subError) throw subError
+    allSubCategories.value = subData || []
+
     const { data: kitData } = await supabase.from('kitchens').select('id, name').order('name')
     kitchens.value = kitData || []
 
     const { data: menuData, error } = await supabase
       .from('menu_items')
       .select(
-        `id, company_id, category_id, kitchen_id, name, description, image_url, base_price, preparation_time_minutes, is_available, sort_order, categories(name), kitchens(name)`,
+        `id, company_id, category_id, sub_category_id, kitchen_id, name, description, image_url, base_price, preparation_time_minutes, is_available, sort_order, categories(name), menu_sub_categories(name), kitchens(name)`,
       )
       .order('name')
 
@@ -312,6 +396,7 @@ async function fetchData() {
     menuItems.value = (menuData || []).map((item) => ({
       ...item,
       category_name: item.categories?.name || 'Uncategorized',
+      sub_category_name: item.menu_sub_categories?.name || '-',
       kitchen_name: item.kitchens?.name || 'Unassigned',
     }))
   } catch (err) {
@@ -328,6 +413,11 @@ function clearErrors() {
   vErrors.category_id = ''
 }
 
+function onCategoryChange() {
+  vErrors.category_id = ''
+  form.sub_category_id = null // Reset sub-category when parent category changes
+}
+
 function openCreate() {
   Object.assign(form, emptyForm)
   clearErrors()
@@ -341,6 +431,7 @@ function openEdit(row) {
     description: row.description || '',
     base_price: row.base_price || 0,
     category_id: row.category_id,
+    sub_category_id: row.sub_category_id,
     kitchen_id: row.kitchen_id,
     is_available: row.is_available,
     is_veg: row.is_veg,
@@ -388,6 +479,7 @@ async function saveItem() {
       description: form.description,
       base_price: form.base_price,
       category_id: form.category_id,
+      sub_category_id: form.sub_category_id || null,
       kitchen_id: form.kitchen_id || null,
       is_available: form.is_available,
     }

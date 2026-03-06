@@ -68,7 +68,6 @@ defineProps({
     // Standardize children (usually QInput/QSelect)
     ::v-deep(.q-field) {
       .q-field__control {
-        height: 40px !important;
         background-color: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--erp-input-border);
         border-radius: 6px;
@@ -98,9 +97,23 @@ defineProps({
       .q-field__native,
       .q-field__input {
         font-family: 'Inter', sans-serif;
-        font-size: 13px;
+        font-size: 14px;
         color: var(--erp-text-primary);
         padding: 0 12px;
+
+        &::placeholder {
+          color: var(--erp-text-secondary) !important;
+          opacity: 0.5;
+        }
+      }
+
+      .q-field__prefix,
+      .q-field__suffix {
+        font-size: 13px;
+        color: var(--erp-text-secondary);
+        font-weight: 600;
+        margin-right: 8px;
+        opacity: 0.85;
       }
 
       .q-field__append,

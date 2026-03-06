@@ -57,7 +57,7 @@
             >
             <q-item-label caption class="text-primary text-weight-bold q-mt-xs price-font">
               LKR
-              {{ Number(item.unit_price).toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}
+              {{ Math.round(item.unit_price).toLocaleString('en-LK') }}
             </q-item-label>
 
             <div class="row items-center q-mt-sm">
@@ -99,7 +99,7 @@
 
           <q-item-section side top>
             <div class="text-weight-bold text-white price-font">
-              LKR {{ Number(item.total_price).toLocaleString('en-LK') }}
+              LKR {{ Math.round(item.total_price).toLocaleString('en-LK') }}
             </div>
             <q-btn
               flat
@@ -120,21 +120,17 @@
     <div class="q-pa-md bg-footer shadow-up border-top">
       <div class="row justify-between q-mb-sm text-grey-4 text-subtitle2">
         <span>Subtotal ({{ cartItems.length }} items)</span>
-        <span class="price-font"
-          >LKR {{ subtotal.toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}</span
-        >
+        <span class="price-font">LKR {{ Math.round(subtotal).toLocaleString('en-LK') }}</span>
       </div>
       <div v-if="loyaltyDiscount > 0" class="row justify-between q-mb-sm text-warning font-bold">
         <span>Loyalty Rewards (Tier)</span>
         <span class="price-font"
-          >- LKR {{ loyaltyDiscount.toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}</span
+          >- LKR {{ Math.round(loyaltyDiscount).toLocaleString('en-LK') }}</span
         >
       </div>
       <div class="row justify-between q-mb-md text-h5 text-white font-black">
         <span>Total</span>
-        <span class="price-font"
-          >LKR {{ total.toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}</span
-        >
+        <span class="price-font">LKR {{ Math.round(total).toLocaleString('en-LK') }}</span>
       </div>
 
       <q-btn
@@ -146,7 +142,7 @@
         :disable="cartItems.length === 0"
         @click="submitOrder"
       >
-        <span class="q-py-xs">Send to Kitchen</span>
+        <span class="q-py-xs">Place Order</span>
         <template v-slot:loading> <q-spinner-hourglass class="on-left" /> Processing... </template>
       </q-btn>
     </div>
@@ -157,20 +153,14 @@
 import { inject, computed, ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
+import { useTableSessionStore } from 'src/stores/tableSessionStore'
 
 const $q = useQuasar()
 const emit = defineEmits(['close'])
+const sessionStore = useTableSessionStore()
 
-const {
-  tableId,
-  sessionToken,
-  customerName,
-  cartItems,
-  updateQuantity,
-  removeFromCart,
-  clearCart,
-  openLogin,
-} = inject('touchMenuState')
+const { sessionToken, cartItems, updateQuantity, removeFromCart, clearCart, openLogin } =
+  inject('touchMenuState')
 
 const submitting = ref(false)
 
@@ -199,7 +189,10 @@ function confirmRemove(item) {
 }
 
 async function submitOrder() {
-  if (!sessionToken.value) {
+  // Prefer the authoritative token from the store; fall back to injected legacy value
+  const token = sessionStore.sessionToken || sessionToken.value
+
+  if (!token) {
     $q.notify({
       message: 'Please log in or start a session to place an order.',
       icon: 'person',
@@ -213,67 +206,55 @@ async function submitOrder() {
 
   $q.dialog({
     title: 'Confirm Order',
-    message: `Total is LKR ${total.value.toLocaleString('en-LK', { minimumFractionDigits: 2 })}. Send to kitchen?`,
+    message: `Total is LKR ${total.value.toLocaleString('en-LK', { minimumFractionDigits: 2 })}. Place this order?`,
     dark: true,
     cancel: true,
     persistent: true,
-    ok: { label: 'Yes, Send Now', color: 'primary' },
+    ok: { label: 'Yes, Place Order', color: 'primary' },
   }).onOk(async () => {
     submitting.value = true
     try {
-      // Find table ID UUID
-      let tableUUID = null
-      const { data: tableData } = await supabase
-        .from('restaurant_tables')
-        .select('id, branch_id, company_id')
-        .eq('table_number', tableId.value)
-        .limit(1)
-        .single()
+      // Map cart items → RPC shape: { menu_item_id, qty, notes }
+      const items = cartItems.value.map((item) => ({
+        menu_item_id: item.menu_item_id,
+        qty: item.quantity,
+        notes: item.notes || null,
+      }))
 
-      let branchId = null
-      let companyId = null
-
-      if (tableData) {
-        tableUUID = tableData.id
-        branchId = tableData.branch_id
-        companyId = tableData.company_id
-      } else {
-        throw new Error('Table not properly registered in system. Please call a waiter.')
-      }
-
-      // Using RPC function to create order seamlessly. Tax computation etc should ideally be done in fn_submit_touch_menu_order but passing total for now.
-      const taxAmount = 0
-
-      const { error } = await supabase.rpc('fn_submit_touch_menu_order', {
-        p_company_id: companyId,
-        p_branch_id: branchId,
-        p_table_id: tableUUID,
-        p_session_token: sessionToken.value,
-        p_customer_name: customerName.value || 'Wait-List Guest',
-        p_items: cartItems.value,
-        p_subtotal: subtotal.value,
-        p_tax: taxAmount,
-        p_discount: loyaltyDiscount.value,
-        p_total: total.value,
+      console.log('[MenuCartDrawer] Submitting Order:', {
+        token: token?.substring(0, 10) + '...',
+        itemsCount: items.length,
       })
 
-      if (error) throw error
+      const { data, error } = await supabase.rpc('create_order_from_session', {
+        p_session_token: token,
+        p_items: items,
+        p_source: 'qr',
+      })
+
+      if (error) {
+        console.error('[MenuCartDrawer] RPC Error Detail:', error)
+        throw error
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to place order')
+      }
 
       $q.notify({
-        message: 'Order sent successfully! Kitchen is preparing your food.',
+        message: 'Order placed! A waiter will attend to your table shortly. 🛎️',
         color: 'positive',
         icon: 'soup_kitchen',
         timeout: 4000,
         position: 'center',
       })
 
-      // Notify waiters real-time (optional if backend handles pg_notify, but UI can clear state)
       clearCart()
       emit('close')
     } catch (err) {
-      console.error(err)
+      console.error('[MenuCartDrawer] submitOrder caught exception:', err)
       $q.notify({
-        message: err.message || 'Failed to submit order. Please call a waiter.',
+        message: err.message || 'Failed to place order. Please call a waiter.',
         color: 'negative',
         icon: 'error',
         timeout: 5000,

@@ -28,6 +28,8 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/operations/tables',
     '/reports',
     '/hr',
+    '/admin/customers',
+    '/admin/loyalty',
   ],
   admin: ['*'],
   inventory: ['/inventory', '/reports/inventory'],
@@ -54,6 +56,7 @@ export const PERMISSION_ROUTE_ACCESS: Record<string, string[]> = {
   'admin:kitchens': ['/admin/kitchens'],
   'admin:printers': ['/admin/printers'],
   'admin:settings': ['/admin/settings'],
+  'admin:customers': ['/admin/customers', '/admin/loyalty'],
   'tables:manage': ['/operations/tables'],
 }
 
@@ -374,6 +377,22 @@ export const NAV_ITEMS: NavItem[] = [
   },
 
   // ─── SYSTEM ────────────────────────────────────────────────────────────────
+  {
+    label: 'Customers',
+    icon: 'people_alt',
+    to: '/admin/customers',
+    roles: ['admin', 'manager'],
+    permission: 'admin:customers',
+    section: 'SYSTEM',
+  },
+  {
+    label: 'Loyalty Program',
+    icon: 'card_giftcard',
+    to: '/admin/loyalty',
+    roles: ['admin', 'manager', 'cashier'],
+    permission: 'admin:customers',
+    section: 'SYSTEM',
+  },
   {
     label: 'Admin Settings',
     icon: 'admin_panel_settings',

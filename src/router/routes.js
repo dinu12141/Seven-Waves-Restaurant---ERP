@@ -117,6 +117,27 @@ const routes = [
         meta: { roles: ['admin'] },
       },
       {
+        path: 'admin/customers',
+        component: () => import('pages/admin/CustomersPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
+        path: 'admin/customers/:id',
+        component: () => import('pages/admin/CustomerDetailPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
+        // Loyalty Members Admin Module
+        path: 'admin/loyalty',
+        component: () => import('pages/admin/LoyaltyMembersPage.vue'),
+        meta: { roles: ['admin', 'manager', 'cashier'] },
+      },
+      {
+        path: 'admin/loyalty/:id',
+        component: () => import('pages/admin/LoyaltyCustomerDetailPage.vue'),
+        meta: { roles: ['admin', 'manager', 'cashier'] },
+      },
+      {
         path: 'operations/tables',
         component: () => import('pages/admin/TablesManagementPage.vue'),
         meta: { roles: ['admin', 'manager'] },
@@ -194,10 +215,23 @@ const routes = [
     children: [{ path: '', component: () => import('pages/touch-menu/MenuBookTablet.vue') }],
   },
   {
-    // Customer authentication (register + phone OTP)
+    // Customer authentication (email/password register + login)
+    // Also accessible at /customer/register and /customer/login as aliases
     path: '/customer/auth',
     component: () => import('pages/CustomerAuthPage.vue'),
     meta: { requiresAuth: false },
+  },
+  {
+    path: '/customer/register',
+    component: () => import('pages/CustomerAuthPage.vue'),
+    meta: { requiresAuth: false },
+    props: () => ({ defaultTab: 'register' }),
+  },
+  {
+    path: '/customer/login',
+    component: () => import('pages/CustomerAuthPage.vue'),
+    meta: { requiresAuth: false },
+    props: () => ({ defaultTab: 'login' }),
   },
   {
     // Loyalty digital card

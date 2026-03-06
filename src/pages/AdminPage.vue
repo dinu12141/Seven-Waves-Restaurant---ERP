@@ -100,6 +100,22 @@ const modules = ref([
     to: '/admin/settings',
     permission: 'admin:settings',
   },
+  {
+    title: 'Customer Directory',
+    description: 'View and manage all registered customers.',
+    icon: 'people_alt',
+    color: 'blue-grey',
+    to: '/admin/customers',
+    permission: 'admin:customers',
+  },
+  {
+    title: 'Loyalty Program',
+    description: 'Manage loyalty tiers, coins, and rewards.',
+    icon: 'card_giftcard',
+    color: 'amber-8',
+    to: '/admin/loyalty',
+    permission: 'admin:customers',
+  },
 ])
 
 const filteredModules = computed(() => {

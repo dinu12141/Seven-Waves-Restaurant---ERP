@@ -47,6 +47,11 @@
           <MenuItemsTab ref="tabRef" />
         </q-tab-panel>
 
+        <!-- Category Management -->
+        <q-tab-panel name="menu_categories" class="q-pa-none">
+          <CategoryManagementTab ref="tabRef" />
+        </q-tab-panel>
+
         <!-- Recipes / BOM -->
         <q-tab-panel name="recipes" class="q-pa-none">
           <RecipesTab ref="tabRef" />
@@ -114,6 +119,7 @@ import StockLedgerTab from 'components/inventory/StockLedgerTab.vue'
 import SuppliersTab from 'components/inventory/SuppliersTab.vue'
 import RecipesTab from 'components/inventory/RecipesTab.vue'
 import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
+import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
 import GoodRequestsTab from 'components/inventory/GoodRequestsTab.vue'
 
 const tab = ref('dashboard')
@@ -124,6 +130,7 @@ const tabs = [
   { name: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { name: 'items', label: 'Inventory Items', icon: 'category' },
   { name: 'menu_items', label: 'Menu Items', icon: 'restaurant' },
+  { name: 'menu_categories', label: 'Category Management', icon: 'list_alt' },
   { name: 'recipes', label: 'Recipes / BOM', icon: 'restaurant_menu' },
   { name: 'stock', label: 'Stock Levels', icon: 'inventory_2' },
   { name: 'warehouses', label: 'Warehouses', icon: 'warehouse' },

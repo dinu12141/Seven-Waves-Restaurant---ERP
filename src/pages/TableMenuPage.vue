@@ -563,16 +563,16 @@ async function loadTableMeta() {
 async function loadMenu() {
   loading.value = true
   try {
-    const { data: catData } = await supabase
-      .from('categories')
-      .select('*')
+    const { data: subCatData } = await supabase
+      .from('menu_sub_categories')
+      .select('*, categories(name, icon)')
       .eq('is_active', true)
       .order('sort_order')
 
-    if (catData) {
+    if (subCatData) {
       categories.value = [
-        { name: 'All', emoji: '🍽️' },
-        ...catData.map((c) => ({ name: c.name, emoji: '🍴', id: c.id })),
+        { name: 'All', emoji: '🍽️', id: 'all' },
+        ...subCatData.map((sc) => ({ name: sc.name, emoji: '🍴', id: sc.id })),
       ]
     }
 
@@ -583,19 +583,20 @@ async function loadMenu() {
       .order('sort_order')
 
     if (itemData) {
-      menuItems.value = itemData.map((i) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description ?? '',
-        price: Number(i.base_price),
-        category: catData
-          ? (catData.find((c) => c.id === i.category_id) || {}).name || 'Other'
-          : 'Other',
-        image:
-          i.image_url ||
-          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
-        kitchen_id: i.kitchen_id,
-      }))
+      menuItems.value = itemData.map((i) => {
+        const subCat = subCatData?.find((sc) => sc.id === i.sub_category_id)
+        return {
+          id: i.id,
+          name: i.name,
+          description: i.description ?? '',
+          price: Number(i.base_price),
+          category: subCat ? subCat.name : 'Other',
+          image:
+            i.image_url ||
+            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
+          kitchen_id: i.kitchen_id,
+        }
+      })
     }
   } catch (e) {
     console.error('[TableMenu] loadMenu error:', e)

@@ -162,21 +162,22 @@ async function fetchMenu() {
 
   loading.value = true
   try {
-    // 1. Fetch Categories
-    const { data: catData } = await supabase
-      .from('categories')
-      .select('*')
+    // 1. Fetch Sub-Categories instead of Main Categories
+    const { data: subCatData } = await supabase
+      .from('menu_sub_categories')
+      .select('*, categories(name, icon)')
       .eq('company_id', store.companyId)
       .eq('is_active', true)
       .order('sort_order')
 
-    if (catData) {
+    if (subCatData) {
       categories.value = [
-        { name: 'All', emoji: '🍽️' },
-        ...catData.map((c) => ({
-          name: c.name,
-          emoji: '🍴', // Default or map based on name if needed
-          id: c.id,
+        { name: 'All', emoji: '🍽️', id: 'all' },
+        ...subCatData.map((sc) => ({
+          name: sc.name,
+          emoji: '🍴',
+          id: sc.id,
+          parent_name: sc.categories?.name,
         })),
       ]
     }
@@ -190,18 +191,22 @@ async function fetchMenu() {
       .order('sort_order')
 
     if (itemData) {
-      menuItems.value = itemData.map((i) => ({
-        id: i.id,
-        name: i.name,
-        description: i.description,
-        price: Number(i.base_price),
-        category: catData?.find((c) => c.id === i.category_id)?.name || 'Other',
-        image:
-          i.image_url ||
-          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
-        kitchen_id: i.kitchen_id,
-        is_popular: i.sort_order < 3, // Mock popular if not in DB
-      }))
+      menuItems.value = itemData.map((i) => {
+        const subCat = subCatData?.find((sc) => sc.id === i.sub_category_id)
+        return {
+          id: i.id,
+          name: i.name,
+          description: i.description,
+          price: Number(i.base_price),
+          category: subCat ? subCat.name : 'Other',
+          sub_category_id: i.sub_category_id,
+          image:
+            i.image_url ||
+            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
+          kitchen_id: i.kitchen_id,
+          is_popular: i.sort_order < 3,
+        }
+      })
     }
   } catch (e) {
     console.error('Fetch menu failed:', e)
