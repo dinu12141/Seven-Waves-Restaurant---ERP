@@ -54,6 +54,7 @@ const routes = [
           { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue') },
           { path: 'performance', component: () => import('pages/hr/PerformancePage.vue') },
           { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue') },
+          { path: 'shifts', component: () => import('pages/hr/ShiftManagementPage.vue') },
         ],
       },
       {

@@ -24,35 +24,32 @@ BEGIN
         LIMIT 1;
 
         -- 1. Handle items WITH a kitchen_id (one KOT per kitchen)
-        FOR r IN
+        FOR r IN (
             SELECT DISTINCT kitchen_id
             FROM order_items
             WHERE order_id = NEW.id
               AND kitchen_id IS NOT NULL
               AND status = 'queued'
-        LOOP
-            -- Idempotency: skip if KOT already exists for this kitchen
-            PERFORM 1 FROM kot_tickets 
-            WHERE order_id = NEW.id AND kitchen_id = r.kitchen_id;
-            
-            IF NOT FOUND THEN
-                INSERT INTO kot_tickets(order_id, kitchen_id, status)
-                VALUES (NEW.id, r.kitchen_id, 'created')
-                RETURNING id INTO v_kot_id;
+        ) LOOP
+            -- Create the KOT ticket for this specific kitchen
+            INSERT INTO kot_tickets(order_id, kitchen_id, status)
+            VALUES (NEW.id, r.kitchen_id, 'created')
+            RETURNING id INTO v_kot_id;
 
-                INSERT INTO kot_items(kot_id, order_item_id, quantity)
-                SELECT v_kot_id, oi.id, oi.quantity
-                FROM order_items oi
-                WHERE oi.order_id = NEW.id
-                  AND oi.kitchen_id = r.kitchen_id
-                  AND oi.status = 'queued';
+            -- Insert the distinct items for this kitchen
+            INSERT INTO kot_items(kot_id, order_item_id, quantity)
+            SELECT v_kot_id, oi.id, oi.quantity
+            FROM order_items oi
+            WHERE oi.order_id = NEW.id
+              AND oi.kitchen_id = r.kitchen_id
+              AND oi.status = 'queued';
 
-                UPDATE order_items
-                SET status = 'sent_to_kitchen'
-                WHERE order_id = NEW.id
-                  AND kitchen_id = r.kitchen_id
-                  AND status = 'queued';
-            END IF;
+            -- Mark them sent
+            UPDATE order_items
+            SET status = 'sent_to_kitchen'
+            WHERE order_id = NEW.id
+              AND kitchen_id = r.kitchen_id
+              AND status = 'queued';
         END LOOP;
 
         -- 2. Handle items WITHOUT a kitchen_id → assign to default kitchen
@@ -63,31 +60,24 @@ BEGIN
                   AND kitchen_id IS NULL 
                   AND status = 'queued'
             ) THEN
-                -- Idempotency check
-                PERFORM 1 FROM kot_tickets 
-                WHERE order_id = NEW.id 
-                  AND kitchen_id = v_default_kitchen_id;
-                
-                IF NOT FOUND THEN
-                    INSERT INTO kot_tickets(order_id, kitchen_id, status)
-                    VALUES (NEW.id, v_default_kitchen_id, 'created')
-                    RETURNING id INTO v_kot_id;
+                INSERT INTO kot_tickets(order_id, kitchen_id, status)
+                VALUES (NEW.id, v_default_kitchen_id, 'created')
+                RETURNING id INTO v_kot_id;
 
-                    INSERT INTO kot_items(kot_id, order_item_id, quantity)
-                    SELECT v_kot_id, oi.id, oi.quantity
-                    FROM order_items oi
-                    WHERE oi.order_id = NEW.id
-                      AND oi.kitchen_id IS NULL
-                      AND oi.status = 'queued';
+                INSERT INTO kot_items(kot_id, order_item_id, quantity)
+                SELECT v_kot_id, oi.id, oi.quantity
+                FROM order_items oi
+                WHERE oi.order_id = NEW.id
+                  AND oi.kitchen_id IS NULL
+                  AND oi.status = 'queued';
 
-                    -- Assign kitchen_id and mark as sent
-                    UPDATE order_items
-                    SET status = 'sent_to_kitchen',
-                        kitchen_id = v_default_kitchen_id
-                    WHERE order_id = NEW.id
-                      AND kitchen_id IS NULL
-                      AND status = 'queued';
-                END IF;
+                -- Assign kitchen_id and mark as sent
+                UPDATE order_items
+                SET status = 'sent_to_kitchen',
+                    kitchen_id = v_default_kitchen_id
+                WHERE order_id = NEW.id
+                  AND kitchen_id IS NULL
+                  AND status = 'queued';
             END IF;
         END IF;
 

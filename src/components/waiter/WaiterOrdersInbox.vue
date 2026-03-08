@@ -47,7 +47,17 @@
         <div class="items-preview q-mx-md q-my-sm">
           <div v-for="item in order.items.slice(0, 4)" :key="item.id" class="item-row">
             <span class="item-qty">{{ item.quantity }}×</span>
-            <span class="item-name">{{ item.name }}</span>
+            <span class="item-name">
+              {{ item.name }}
+              <span v-if="item.kitchenName" class="kitchen-remark-sm">
+                • {{ item.kitchenName }}
+                <template
+                  v-if="item.categoryName && item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()"
+                >
+                  ({{ item.categoryName }})
+                </template>
+              </span>
+            </span>
             <span v-if="item.notes" class="item-note">
               <q-icon name="sticky_note_2" size="12px" /> {{ item.notes }}
             </span>
@@ -343,5 +353,15 @@ async function handleAccept(order) {
 .order-card-leave-to {
   opacity: 0;
   transform: translateX(30px) scale(0.95);
+}
+
+.kitchen-remark-sm {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #f97316;
+  opacity: 0.8;
+  margin-left: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 </style>

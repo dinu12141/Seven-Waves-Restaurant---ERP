@@ -86,11 +86,15 @@
               option-value="id"
               :rules="[(val) => !!val || 'Employee selection is required']"
               bg-color="white"
+              color="primary"
+              label-color="primary"
+              input-class="text-black"
+              popup-content-class="text-black"
               v-if="!isEditing"
             >
               <template v-slot:no-option>
                 <q-item>
-                  <q-item-section class="text-grey">
+                  <q-item-section class="text-grey-9">
                     No employees found without profiles
                   </q-item-section>
                 </q-item>
@@ -98,8 +102,10 @@
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
-                    <q-item-label>{{ scope.opt.full_name }}</q-item-label>
-                    <q-item-label caption>
+                    <q-item-label class="text-black text-weight-bold">{{
+                      scope.opt.full_name
+                    }}</q-item-label>
+                    <q-item-label caption class="text-grey-8">
                       {{ scope.opt.employee_code }} |
                       {{ scope.opt.designations?.title || 'No Title' }}
                     </q-item-label>
@@ -115,7 +121,9 @@
               dense
               readonly
               disable
-              bg-color="grey-2"
+              bg-color="grey-1"
+              label-color="grey-7"
+              input-class="text-black"
             />
             <q-input
               v-model="form.email"
@@ -127,20 +135,76 @@
               :rules="[(val) => !!val || 'Email is required']"
               :readonly="isEditing"
               :disable="isEditing"
+              bg-color="white"
+              color="primary"
+              label-color="primary"
+              input-class="text-black"
             />
 
             <q-input
               v-if="!isEditing"
               v-model="form.password"
               label="Initial Password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               outlined
               dense
               autocomplete="off"
               :rules="[(val) => !!val || 'Initial password is required']"
+              bg-color="white"
+              color="primary"
+              label-color="primary"
+              input-class="text-black"
+            >
+              <template v-slot:append>
+                <q-icon
+                  :name="showPassword ? 'visibility_off' : 'visibility'"
+                  class="cursor-pointer"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="form.phone"
+              label="Phone Number"
+              outlined
+              dense
+              autocomplete="off"
+              bg-color="white"
+              color="primary"
+              label-color="primary"
+              input-class="text-black"
             />
 
-            <q-input v-model="form.phone" label="Phone Number" outlined dense autocomplete="off" />
+            <!-- Role Selection (New) -->
+            <q-select
+              v-if="!isEditing"
+              v-model="form.roleId"
+              :options="rolesList"
+              option-label="name"
+              option-value="id"
+              emit-value
+              map-options
+              label="Assign Primary Role"
+              outlined
+              dense
+              bg-color="white"
+              color="primary"
+              label-color="primary"
+              :rules="[(val) => !!val || 'Primary role is required']"
+              input-class="text-black"
+              popup-content-class="text-black"
+            >
+              <template v-slot:option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label class="text-black">{{
+                      scope.opt.name.toUpperCase()
+                    }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
 
             <q-toggle
               v-model="form.is_active"
@@ -249,8 +313,10 @@ const search = ref('')
 const dialogVisible = ref(false)
 const credentialsDialogVisible = ref(false)
 const isEditing = ref(false)
+const showPassword = ref(false)
 const loading = ref(false)
 const saving = ref(false)
+const rolesList = ref([]) // For role selection
 
 const newlyCreatedUser = reactive({
   email: '',
@@ -282,6 +348,7 @@ const form = reactive({
   email: '',
   phone: '',
   password: '',
+  roleId: null,
   is_active: true,
 })
 
@@ -292,7 +359,18 @@ const selectedEmployee = ref(null)
 onMounted(async () => {
   await fetchUsers()
   await fetchAvailableEmployees()
+  await fetchRoles()
 })
+
+const fetchRoles = async () => {
+  try {
+    const { data, error } = await supabase.from('roles').select('id, name').order('name')
+    if (error) throw error
+    rolesList.value = data || []
+  } catch (err) {
+    console.error('Error fetching roles:', err)
+  }
+}
 
 const fetchUsers = async () => {
   loading.value = true
@@ -366,6 +444,7 @@ const openDialog = () => {
     email: '',
     phone: '',
     password: '',
+    roleId: null,
     is_active: true,
   })
   dialogVisible.value = true
@@ -415,6 +494,16 @@ const saveUser = async () => {
           .from('employees')
           .update({ profile_id: authData.user.id })
           .eq('id', selectedEmployee.value.id)
+      }
+
+      // ─── ADDED: Role Assignment ───
+      if (form.roleId) {
+        console.log('[UsersPage] Assigning role:', form.roleId, 'to user:', authData.user.id)
+        const { error: roleError } = await supabase.from('user_roles').insert({
+          user_id: authData.user.id,
+          role_id: form.roleId,
+        })
+        if (roleError) console.error('[UsersPage] Role assignment error:', roleError)
       }
 
       newlyCreatedUser.email = form.email

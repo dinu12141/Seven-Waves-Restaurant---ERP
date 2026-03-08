@@ -27,8 +27,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   let timerInterval = null
 
   // ── Getters ────────────────────────────────────────────────
-  const createdTickets = computed(() => tickets.value.filter((t) => t.status === 'created'))
-  const preparingTickets = computed(() => tickets.value.filter((t) => t.status === 'preparing'))
+  const preparingTickets = computed(() =>
+    tickets.value.filter((t) => ['created', 'pending', 'accepted', 'preparing'].includes(t.status)),
+  )
   const readyTickets = computed(() => tickets.value.filter((t) => t.status === 'ready'))
   const totalActive = computed(() => tickets.value.length)
 
@@ -44,6 +45,17 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   async function initialize() {
     loading.value = true
     try {
+      // Ensure branch is ready (wait up to 2 seconds if needed)
+      let branchId = authStore.currentBranch?.id
+      if (!branchId) {
+        // Simple poll/wait
+        for (let i = 0; i < 4; i++) {
+          await new Promise((r) => setTimeout(r, 500))
+          branchId = authStore.currentBranch?.id
+          if (branchId) break
+        }
+      }
+
       await fetchKitchens()
 
       // Check if this user is a kitchen-role user with an assigned kitchen
@@ -102,7 +114,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   async function fetchTickets() {
     if (!selectedKitchenId.value) return
 
-    const { data, error } = await supabase
+    const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
+
+    let query = supabase
       .from('kot_tickets')
       .select(
         `
@@ -122,7 +136,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_source,
           notes,
           status,
-          table:restaurant_tables ( table_number )
+          table:restaurant_tables ( table_number ),
+          waiter:profiles ( full_name )
         ),
         kot_items (
           id,
@@ -132,21 +147,29 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_item:order_items (
             menu_item:menu_items ( name )
           )
-        )
+        ),
+        kitchen:kitchens ( name )
       `,
       )
-      .eq('kitchen_id', selectedKitchenId.value)
-      .in('status', ['created', 'preparing', 'ready'])
+      .in('status', ['created', 'pending', 'accepted', 'preparing', 'ready'])
       .is('completed_at', null)
       .not('order.status', 'eq', 'pending_waiter')
       .order('created_at', { ascending: true })
+
+    if (!isCashierDisplay) {
+      query = query.eq('kitchen_id', selectedKitchenId.value)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('[KDS] Fetch tickets error:', error)
       return
     }
 
+    console.log('[KDS] Fetched tickets raw:', data?.length, data)
     tickets.value = (data || []).map(enrichTicket)
+    console.log('[KDS] Enriched tickets:', tickets.value.length)
   }
 
   // ── Realtime ───────────────────────────────────────────────
@@ -154,6 +177,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   function subscribeToTickets() {
     if (kotChannel) supabase.removeChannel(kotChannel)
     if (!selectedKitchenId.value) return
+
+    const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
+    const filter = isCashierDisplay ? undefined : `kitchen_id=eq.${selectedKitchenId.value}`
 
     kotChannel = supabase
       .channel(`kds-${selectedKitchenId.value}`)
@@ -163,7 +189,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           event: '*',
           schema: 'public',
           table: 'kot_tickets',
-          filter: `kitchen_id=eq.${selectedKitchenId.value}`,
+          filter: filter,
         },
         (payload) => {
           handleTicketChange(payload)
@@ -220,8 +246,11 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     const { eventType, new: newRow, old: oldRow } = payload
 
     if (eventType === 'INSERT') {
-      // New KOT created — could be 'created' status
-      if (['created', 'preparing', 'ready'].includes(newRow.status) && !newRow.completed_at) {
+      // New KOT created — could be 'created' or 'accepted' status
+      if (
+        ['created', 'pending', 'accepted', 'preparing', 'ready'].includes(newRow.status) &&
+        !newRow.completed_at
+      ) {
         refreshSingleTicket(newRow.id)
       }
     }
@@ -244,7 +273,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           accepted_at: newRow.accepted_at,
           updated_at: newRow.updated_at,
         }
-      } else if (['created', 'preparing', 'ready'].includes(newRow.status)) {
+      } else if (['created', 'pending', 'accepted', 'preparing', 'ready'].includes(newRow.status)) {
         // Not in list yet — fetch full details
         refreshSingleTicket(newRow.id)
       }
@@ -261,11 +290,15 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   // Called when an order updates (e.g. pending_waiter -> accepted)
   async function refreshTicketsForOrder(orderId) {
     if (!selectedKitchenId.value) return
-    const { data } = await supabase
-      .from('kot_tickets')
-      .select('id')
-      .eq('order_id', orderId)
-      .eq('kitchen_id', selectedKitchenId.value)
+    const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
+
+    let query = supabase.from('kot_tickets').select('id').eq('order_id', orderId)
+
+    if (!isCashierDisplay) {
+      query = query.eq('kitchen_id', selectedKitchenId.value)
+    }
+
+    const { data } = await query
 
     if (data) {
       data.forEach((t) => refreshSingleTicket(t.id))
@@ -293,7 +326,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_source,
           notes,
           status,
-          table:restaurant_tables ( table_number )
+          table:restaurant_tables ( table_number ),
+          waiter:profiles ( full_name )
         ),
         kot_items (
           id,
@@ -303,7 +337,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_item:order_items (
             menu_item:menu_items ( name )
           )
-        )
+        ),
+        kitchen:kitchens ( name )
       `,
       )
       .eq('id', kotId)
@@ -311,8 +346,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (error || !data) return
 
-    // Only add/update if it belongs to our kitchen and is active
-    if (data.kitchen_id !== selectedKitchenId.value) return
+    // Only add/update if it belongs to our kitchen (or we are Cashier display) and is active
+    const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
+    if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
     if (
       data.completed_at ||
       data.status === 'cancelled' ||
@@ -457,6 +493,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       orderType: formatOrderType(ticket.order?.order_type),
       orderSource: ticket.order?.order_source || 'pos',
       orderNotes: ticket.order?.notes || '',
+      waiterName: ticket.order?.waiter?.full_name || '',
+      kitchenName: ticket.kitchen?.name || '',
       items: (ticket.kot_items || []).map((ki) => ({
         id: ki.id,
         name: ki.order_item?.menu_item?.name || 'Unknown Item',
@@ -522,7 +560,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     loading,
     isConnected,
     printing,
-    createdTickets,
     preparingTickets,
     readyTickets,
     totalActive,

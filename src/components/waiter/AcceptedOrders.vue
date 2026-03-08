@@ -89,7 +89,17 @@
           <div class="items-compact q-mb-sm">
             <div v-for="item in order.items" :key="item.id" class="item-row-sm">
               <span class="qty-sm">{{ item.quantity }}×</span>
-              <span class="name-sm">{{ item.name }}</span>
+              <span class="name-sm">
+                {{ item.name }}
+                <span v-if="item.kitchenName" class="kitchen-remark">
+                  • {{ item.kitchenName }}
+                  <template
+                    v-if="item.categoryName && item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()"
+                  >
+                    ({{ item.categoryName }})
+                  </template>
+                </span>
+              </span>
               <q-badge
                 v-if="item.status && item.status !== 'queued'"
                 :color="getItemStatusColor(item.status)"
@@ -164,98 +174,17 @@
       </q-card>
     </div>
 
-    <!-- KOT Viewer Dialog (Receipt Template) -->
+    <!-- KOT Viewer Dialog -->
     <q-dialog v-model="kotDialogOpen" transition-show="scale" transition-hide="scale">
-      <q-card
-        class="bg-white text-dark q-pa-md kot-receipt-card"
-        style="width: 320px; border-radius: 8px"
-      >
-        <!-- KOT Header -->
-        <div class="text-center q-mb-md" style="font-family: monospace">
-          <div class="text-h6 text-weight-bolder">*** KOT ***</div>
-          <div class="text-subtitle1 text-weight-bold">
-            KOT #{{ selectedKOT?.kot_number || 'N/A' }}
-          </div>
-          <div class="text-caption text-grey-8">
-            {{ new Date().toLocaleString() }}
-          </div>
-        </div>
-
-        <q-separator
-          color="grey-4"
-          class="q-my-sm border-dashed"
-          style="border-top: 2px dashed #ccc"
-        />
-
-        <div
-          class="row justify-between q-mb-sm text-body2 text-weight-bold"
-          style="font-family: monospace"
-        >
-          <div>TABLE: {{ selectedOrder?.tableNumber }}</div>
-          <div>WAITER: {{ selectedOrder?.waiterName }}</div>
-        </div>
-        <div class="text-body2 text-weight-bold q-mb-sm" style="font-family: monospace">
-          TYPE: {{ selectedOrder?.order_type?.replace('_', ' ')?.toUpperCase() || 'DINE IN' }}
-        </div>
-
-        <q-separator
-          color="grey-4"
-          class="q-my-sm border-dashed"
-          style="border-top: 2px dashed #ccc"
-        />
-
-        <!-- Order Items -->
-        <div class="q-mt-md" style="font-family: monospace; font-size: 14px">
-          <div class="row justify-between text-weight-bolder q-mb-xs">
-            <div class="col-2">QTY</div>
-            <div class="col-10">ITEM</div>
-          </div>
-
-          <div v-for="item in activeKOTItems" :key="item.order_item_id" class="q-mb-xs">
-            <div class="row">
-              <div class="col-2 text-weight-bold">{{ item.quantity }}x</div>
-              <div class="col-10 text-weight-medium">{{ item.name }}</div>
-            </div>
-            <div v-if="item.notes" class="row">
-              <div class="col-2"></div>
-              <div class="col-10 text-italic text-grey-8" style="font-size: 12px">
-                * {{ item.notes }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <q-separator
-          color="grey-4"
-          class="q-my-md border-dashed"
-          style="border-top: 2px dashed #ccc"
-        />
-
-        <div
-          v-if="selectedOrder?.notes"
-          class="q-mb-md"
-          style="font-family: monospace; font-size: 13px"
-        >
-          <div class="text-weight-bold">ORDER NOTES:</div>
-          <div>{{ selectedOrder.notes }}</div>
-        </div>
-
-        <div class="text-center text-weight-bolder q-mt-md" style="font-family: monospace">
-          *** END KOT ***
-        </div>
-
-        <!-- Actions -->
-        <div class="q-mt-lg row justify-center">
-          <q-btn
-            unelevated
-            color="grey-3"
-            text-color="dark"
-            label="Close"
-            v-close-popup
-            class="full-width"
-          />
-        </div>
-      </q-card>
+      <KotReceipt
+        v-if="selectedOrderKot && selectedOrder"
+        :kot="selectedOrderKot"
+        :table-number="selectedOrder.tableNumber"
+        :waiter-name="selectedOrder.waiterName"
+        :order-type="selectedOrder.order_type"
+        :order-notes="selectedOrder.notes"
+        :order-items="selectedOrder.items"
+      />
     </q-dialog>
   </div>
 </template>
@@ -264,6 +193,7 @@
 import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
+import KotReceipt from 'src/components/common/KotReceipt.vue'
 
 const store = useWaiterOrderStore()
 const $q = useQuasar()
@@ -274,17 +204,10 @@ const kotDialogOpen = ref(false)
 const selectedKOT = ref(null)
 const selectedOrder = ref(null)
 
-const activeKOTItems = computed(() => {
-  if (!selectedKOT.value || !selectedOrder.value || !selectedKOT.value.kot_items) return []
-  return selectedKOT.value.kot_items.map((kotItem) => {
-    // Find the original order_item for the name and notes
-    const origItem = selectedOrder.value.items.find((i) => i.id === kotItem.order_item_id)
-    return {
-      ...kotItem,
-      name: origItem ? origItem.name : 'Unknown Item',
-      notes: origItem ? origItem.notes : '',
-    }
-  })
+const selectedOrderKot = computed(() => {
+  if (!selectedKOT.value || !selectedOrder.value) return null
+  // Just return the KOT from the order that matches the ID
+  return selectedOrder.value.kot_tickets.find((k) => k.id === selectedKOT.value.id) || selectedKOT.value
 })
 
 function viewKOT(kot, order) {
@@ -622,5 +545,17 @@ function getKotIcon(status) {
     box-shadow: 0 6px 24px rgba(34, 197, 94, 0.6);
     transform: translateY(-1px);
   }
+}
+
+.kitchen-remark {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fb923c;
+  background: rgba(249, 115, 22, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 </style>

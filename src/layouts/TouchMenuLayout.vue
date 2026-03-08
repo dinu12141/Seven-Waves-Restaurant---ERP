@@ -110,7 +110,7 @@
       :width="380"
       class="bg-dark text-white touch-cart-drawer"
     >
-      <OrderProgressDrawer @close="ordersOpen = false" />
+      <OrderProgressDrawer :open="ordersOpen" @close="ordersOpen = false" />
     </q-drawer>
 
     <!-- Cart Drawer -->
@@ -313,36 +313,81 @@ function onSignOutClick() {
 }
 
 async function resolveTableUuid() {
-  if (!tableId.value) return null
-  // Check if it's already a UUID
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    tableId.value,
-  )
-  if (isUuid) {
-    tableUuid.value = tableId.value
-    return tableUuid.value
+  let lookupTable =
+    tableId.value || localStorage.getItem('tm_table_id') || localStorage.getItem('tm_table')
+
+  // 1. If we have a lookup term, try interpreting it as a UUID or querying the table number
+  if (lookupTable) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      lookupTable,
+    )
+    if (isUuid) {
+      tableUuid.value = lookupTable
+      return tableUuid.value
+    }
+    // Lookup by table_number
+    const { data } = await supabase
+      .from('restaurant_tables')
+      .select('id')
+      .eq('table_number', lookupTable)
+      .single()
+    if (data) {
+      tableUuid.value = data.id
+      return tableUuid.value
+    }
   }
-  // Lookup by table_number
-  const { data } = await supabase
+
+  // 2. Fallback: if STILL no table is set (e.g. they hit /customer/menu directly without a table token),
+  // pick the lowest active table as a deterministic fallback.
+  const { data: anyTable } = await supabase
     .from('restaurant_tables')
     .select('id')
-    .eq('table_number', tableId.value)
+    .eq('is_active', true)
+    .order('table_number', { ascending: true })
+    .limit(1)
     .single()
-  if (data) {
-    tableUuid.value = data.id
+
+  if (anyTable) {
+    tableUuid.value = anyTable.id
+    // Always persist to localStorage so it doesn't change on fresh reload
+    localStorage.setItem('tm_table_id', anyTable.id)
   }
+
   return tableUuid.value
 }
 
 async function fetchActiveOrdersCount() {
-  if (!tableUuid.value) return
-  const { count } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('table_id', tableUuid.value)
-    .neq('status', 'completed')
-    .neq('status', 'cancelled')
-  activeOrdersCount.value = count || 0
+  const token = sessionToken?.value || localStorage.getItem('tm_session_token')
+  const tUuid = tableUuid?.value
+
+  if (!token && !tUuid) {
+    activeOrdersCount.value = 0
+    return
+  }
+
+  try {
+    let data, error
+    if (tUuid) {
+      ;({ data, error } = await supabase.rpc('get_kiosk_orders', {
+        p_table_id: tUuid,
+      }))
+    } else {
+      ;({ data, error } = await supabase.rpc('get_session_orders', {
+        p_session_token: token,
+      }))
+    }
+
+    if (!error && data?.success) {
+      activeOrdersCount.value = (data.orders || []).filter(
+        (o) => o.status !== 'completed' && o.status !== 'cancelled',
+      ).length
+    } else {
+      activeOrdersCount.value = 0
+    }
+  } catch (err) {
+    console.error('Failed to fetch active orders count:', err)
+    activeOrdersCount.value = 0
+  }
 }
 
 function subscribeToOrders() {

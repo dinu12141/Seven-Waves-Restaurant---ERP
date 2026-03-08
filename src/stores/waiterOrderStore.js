@@ -117,7 +117,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
         const [itemsResp, kotResp] = await Promise.all([
           supabase
             .from('order_items')
-            .select('id, quantity, unit_price, notes, menu_items ( name )')
+            .select(
+              'id, quantity, unit_price, notes, menu_items ( name, categories ( name ) ), kitchens ( name )',
+            )
             .eq('order_id', row.id),
           supabase
             .from('kot_tickets')
@@ -135,6 +137,8 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           items: items.map((oi) => ({
             ...oi,
             name: oi.menu_items?.name || 'Unknown Item',
+            categoryName: oi.menu_items?.categories?.name || '',
+            kitchenName: oi.kitchens?.name || '',
           })),
           kot_tickets: kotTickets,
           timeAgo: getTimeAgo(row.created_at),
@@ -183,7 +187,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
         const [itemsResp, kotResp] = await Promise.all([
           supabase
             .from('order_items')
-            .select('id, quantity, unit_price, status, notes, menu_items ( name )')
+            .select(
+              'id, quantity, unit_price, status, notes, menu_items ( name, categories ( name ) ), kitchens ( name )',
+            )
             .eq('order_id', row.id),
           supabase
             .from('kot_tickets')
@@ -204,6 +210,8 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           items: items.map((oi) => ({
             ...oi,
             name: oi.menu_items?.name || 'Unknown Item',
+            categoryName: oi.menu_items?.categories?.name || '',
+            kitchenName: oi.kitchens?.name || '',
           })),
           kot_tickets: kotTickets,
           timeAgo: getTimeAgo(row.created_at),

@@ -87,11 +87,13 @@
             <div class="text-caption text-grey-4 q-mb-xs">Items Recap:</div>
             <div class="items-list q-gutter-y-xs">
               <div
-                v-for="item in order.order_items"
+                v-for="item in order.items || order.order_items"
                 :key="item.id"
                 class="row justify-between text-caption"
               >
-                <span class="text-white">{{ item.quantity }}x {{ item.menu_items?.name }}</span>
+                <span class="text-white"
+                  >{{ item.quantity }}x {{ item.item_name || item.menu_items?.name }}</span
+                >
                 <span class="text-grey-5 font-mono"
                   >LKR
                   {{ Math.round(item.unit_price * item.quantity).toLocaleString('en-LK') }}</span
@@ -131,8 +133,15 @@ import { ref, watch, onUnmounted, inject } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { date } from 'quasar'
 
+const props = defineProps({
+  open: {
+    type: Boolean,
+    default: false,
+  },
+})
+
 // No emit needed if using @click="$emit('close')" in template
-const { tableUuid } = inject('touchMenuState')
+const { tableUuid, sessionToken } = inject('touchMenuState')
 
 const orders = ref([])
 const loading = ref(true)
@@ -190,36 +199,73 @@ function isStepActive(currentStatus, stepKey) {
 }
 
 async function fetchOrders() {
-  if (!tableUuid?.value) return
+  const token = sessionToken?.value
+  const tUuid = tableUuid?.value
+
+  // Also try reading from localStorage as fallback
+  const fallbackTableId = !tUuid ? localStorage.getItem('tm_table_id') : null
+
+  if (!token && !tUuid && !fallbackTableId) {
+    loading.value = false
+    return
+  }
 
   loading.value = true
   try {
-    // We fetch orders for this table that aren't 'completed' or 'cancelled'
-    const { data, error } = await supabase
-      .from('orders')
-      .select(
-        `
-        *,
-        order_items (
-          id, quantity, unit_price,
-          menu_items ( name )
-        ),
-        profiles:assigned_waiter_id ( full_name )
-      `,
+    let data, error
+    if (tUuid) {
+      ;({ data, error } = await supabase.rpc('get_kiosk_orders', {
+        p_table_id: tUuid,
+      }))
+    } else if (fallbackTableId) {
+      // Try resolving table UUID from localStorage table number
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        fallbackTableId,
       )
-      .eq('table_id', tableUuid.value)
-      .neq('status', 'completed')
-      .neq('status', 'cancelled')
-      .order('created_at', { ascending: false })
+      let resolvedUuid = isUuid ? fallbackTableId : null
+      if (!resolvedUuid) {
+        const { data: tableData } = await supabase
+          .from('restaurant_tables')
+          .select('id')
+          .eq('table_number', fallbackTableId)
+          .single()
+        resolvedUuid = tableData?.id
+      }
+      if (resolvedUuid) {
+        ;({ data, error } = await supabase.rpc('get_kiosk_orders', {
+          p_table_id: resolvedUuid,
+        }))
+      }
+    } else {
+      ;({ data, error } = await supabase.rpc('get_session_orders', {
+        p_session_token: token,
+      }))
+    }
 
     if (error) throw error
-    orders.value = data || []
+    if (data?.success) {
+      orders.value = (data.orders || []).filter(
+        (o) => o.status !== 'completed' && o.status !== 'cancelled',
+      )
+    } else {
+      orders.value = []
+    }
   } catch (err) {
     console.error('[OrderProgress] Fetch error:', err)
   } finally {
     loading.value = false
   }
 }
+
+// Fetch when drawer opens
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) {
+      fetchOrders()
+    }
+  },
+)
 
 function subscribeToOrders() {
   if (!tableUuid?.value) return
@@ -239,19 +285,19 @@ function subscribeToOrders() {
         filter: `table_id=eq.${tableUuid.value}`,
       },
       () => {
-        // Simple re-fetch on any change
         fetchOrders()
       },
     )
     .subscribe()
 }
 
+// Watch tableUuid and sessionToken changes
 watch(
-  () => tableUuid?.value,
-  (newUuid) => {
-    if (newUuid) {
+  [() => tableUuid?.value, () => sessionToken?.value],
+  ([newUuid, newToken]) => {
+    if (newUuid || newToken) {
       fetchOrders()
-      subscribeToOrders()
+      if (newUuid) subscribeToOrders()
     } else {
       loading.value = false
     }

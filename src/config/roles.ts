@@ -412,7 +412,8 @@ export function canAccessRoute(
   userPermissions: string[] = [],
 ): boolean {
   // Admin bypasses all checks, and everyone can access profile
-  if (routePath.startsWith('/profile')) return true
+  // Everyone can access profile and its subroutes
+  if (routePath === '/profile' || routePath.startsWith('/profile/')) return true
   if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
 
   // 1. Check Permissions (Direct/Custom Access)

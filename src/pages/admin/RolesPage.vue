@@ -114,12 +114,12 @@
           <div class="row q-col-gutter-lg">
             <!-- Left Side: Basic Roles -->
             <div class="col-12 col-md-4">
-              <div class="text-h6 q-mb-md flex items-center">
+              <div class="text-h6 q-mb-md flex items-center text-grey-9">
                 <q-icon name="group" class="q-mr-sm text-primary" />
                 Primary Roles
               </div>
               <q-card flat bordered class="q-pa-md bg-white">
-                <div class="text-caption q-mb-md text-grey-7">
+                <div class="text-caption q-mb-md text-grey-8">
                   Assign high-level roles for broad access.
                 </div>
                 <div class="row q-col-gutter-sm">
@@ -139,10 +139,12 @@
                         />
                       </q-item-section>
                       <q-item-section>
-                        <q-item-label class="text-weight-bold">{{
+                        <q-item-label class="text-weight-bold text-black">{{
                           role.name.toUpperCase()
                         }}</q-item-label>
-                        <q-item-label caption>{{ role.description }}</q-item-label>
+                        <q-item-label caption class="text-grey-7">{{
+                          role.description
+                        }}</q-item-label>
                       </q-item-section>
                     </q-item>
                   </div>
@@ -152,7 +154,7 @@
 
             <!-- Right Side: Fine-Grained Permissions -->
             <div class="col-12 col-md-8">
-              <div class="text-h6 q-mb-md flex items-center">
+              <div class="text-h6 q-mb-md flex items-center text-grey-9">
                 <q-icon name="tune" class="q-mr-sm text-primary" />
                 Granular Access Points (Custom Permissions)
               </div>
@@ -197,8 +199,10 @@
                             />
                           </q-item-section>
                           <q-item-section>
-                            <q-item-label>{{ perm.description }}</q-item-label>
-                            <q-item-label caption class="text-xs text-grey-5">{{
+                            <q-item-label class="text-black text-weight-medium">{{
+                              perm.description
+                            }}</q-item-label>
+                            <q-item-label caption class="text-xs text-grey-8">{{
                               perm.code
                             }}</q-item-label>
                           </q-item-section>

@@ -44,6 +44,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. auth_is_on_shift(p_branch_id)
 -- =====================================================
 
+DROP FUNCTION IF EXISTS public.auth_is_on_shift(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.auth_is_on_shift(p_branch_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -108,6 +109,7 @@ GRANT EXECUTE ON FUNCTION public.auth_is_on_shift(UUID) TO authenticated;
 -- 2. auth_get_shift_branches()
 -- =====================================================
 
+DROP FUNCTION IF EXISTS public.auth_get_shift_branches() CASCADE;
 CREATE OR REPLACE FUNCTION public.auth_get_shift_branches()
 RETURNS TABLE (
     branch_id UUID,
@@ -172,6 +174,7 @@ GRANT EXECUTE ON FUNCTION public.auth_get_shift_branches() TO authenticated;
 -- 3. get_pending_orders_for_shift()
 -- =====================================================
 
+DROP FUNCTION IF EXISTS public.get_pending_orders_for_shift() CASCADE;
 CREATE OR REPLACE FUNCTION public.get_pending_orders_for_shift()
 RETURNS TABLE (
     id UUID,
@@ -220,6 +223,7 @@ GRANT EXECUTE ON FUNCTION public.get_pending_orders_for_shift() TO authenticated
 -- 4. accept_order_as_waiter(p_order_id)
 -- =====================================================
 
+DROP FUNCTION IF EXISTS public.accept_order_as_waiter(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.accept_order_as_waiter(p_order_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql

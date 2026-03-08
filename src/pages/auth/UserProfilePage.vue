@@ -4,6 +4,7 @@
       title="My Profile"
       subtitle="Manage your personal information and security settings"
       show-back
+      :back-route="authStore.defaultLandingPage"
     />
 
     <div class="row q-col-gutter-lg q-mt-md">

@@ -59,6 +59,9 @@ const props = defineProps({
 const onBackClick = () => {
   if (props.backRoute) {
     router.push(props.backRoute)
+  } else if (window.history.state && window.history.state.back === null) {
+    // If there is no previous page in the Vue router history stack, fallback to home
+    router.push('/')
   } else {
     router.back()
   }

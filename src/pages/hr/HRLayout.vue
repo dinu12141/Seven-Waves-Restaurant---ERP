@@ -109,6 +109,13 @@ const allTabs = [
     path: '/hr/resignation',
     roles: ['admin', 'hr'],
   },
+  {
+    name: 'shifts',
+    label: 'Shifts',
+    icon: 'manage_history',
+    path: '/hr/shifts',
+    roles: ['admin', 'hr', 'manager'],
+  },
 ]
 
 const visibleTabs = computed(() => allTabs.filter((t) => t.roles.some((r) => authStore.hasRole(r))))

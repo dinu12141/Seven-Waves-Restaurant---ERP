@@ -143,10 +143,34 @@ BEGIN
     FROM user_roles ur
     JOIN roles r ON r.id = ur.role_id
     JOIN user_branches ub ON ub.user_id = ur.user_id
-    JOIN branches b ON b.id = ub.branch_id
+    -- Shift Check Join
+    LEFT JOIN employees e ON e.profile_id = ur.user_id
+    LEFT JOIN shift_assignments sa ON sa.employee_id = e.id 
+         AND sa.assignment_date = CURRENT_DATE 
+         AND sa.status = 'scheduled'
+    LEFT JOIN shifts s ON s.id = sa.shift_id
     WHERE r.name = p_role_name
-      AND b.id = p_branch_id
-      AND (p_exclude_user IS NULL OR ur.user_id != p_exclude_user);
+      AND ub.branch_id = p_branch_id
+      AND (p_exclude_user IS NULL OR ur.user_id != p_exclude_user)
+      AND (
+          -- Non-waiters get notified if assigned to branch
+          p_role_name NOT IN ('waiter', 'captain') 
+          OR 
+          -- Waiters/Captains must be on shift OR it is a system/test alert
+          (
+            sa.id IS NOT NULL AND (
+                CASE
+                    WHEN NOT s.is_overnight THEN
+                        CURRENT_TIME BETWEEN (s.start_time - INTERVAL '30 minutes') AND (s.end_time + INTERVAL '30 minutes')
+                    ELSE
+                        CURRENT_TIME >= (s.start_time - INTERVAL '30 minutes') OR CURRENT_TIME <= (s.end_time + INTERVAL '30 minutes')
+                END
+            )
+          )
+          OR
+          -- Managers and Admins always get notified if they have the role
+          EXISTS (SELECT 1 FROM user_roles ur2 JOIN roles r2 ON r2.id = ur2.role_id WHERE ur2.user_id = ur.user_id AND r2.name IN ('admin', 'manager'))
+      );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -161,9 +185,16 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_table_label TEXT;
     v_msg TEXT;
+    v_is_new BOOLEAN := false;
 BEGIN
-    IF TG_OP = 'INSERT' AND NEW.status = 'pending' THEN
+    -- Trigger on Insert (pending/pending_waiter) OR Update to these statuses
+    IF TG_OP = 'INSERT' AND NEW.status IN ('pending', 'pending_waiter') THEN
+        v_is_new := true;
+    ELSIF TG_OP = 'UPDATE' AND NEW.status IN ('pending', 'pending_waiter') AND OLD.status NOT IN ('pending', 'pending_waiter') THEN
+        v_is_new := true;
+    END IF;
 
+    IF v_is_new THEN
         -- Build table label
         IF NEW.table_id IS NOT NULL THEN
             SELECT 'Table ' || table_number INTO v_table_label
@@ -174,7 +205,7 @@ BEGIN
                  ' · ' || UPPER(REPLACE(NEW.order_type, '_', '-')) ||
                  ' · Order #' || NEW.order_number;
 
-        -- Notify all waiters in this branch
+        -- Notify all waiters in this branch (Shift-Aware)
         PERFORM notify_role(
             NEW.branch_id,
             'waiter',
@@ -211,7 +242,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_notify_new_order ON orders;
 CREATE TRIGGER trg_notify_new_order
-AFTER INSERT ON orders
+AFTER INSERT OR UPDATE OF status ON orders
 FOR EACH ROW EXECUTE FUNCTION notify_new_order();
 
 -- =====================================================

@@ -116,17 +116,17 @@
           <div class="kanban-column bg-dark-glass">
             <div class="column-header">
               <div class="row items-center justify-between q-mb-xs">
-                <span class="text-h6 text-weight-bold text-orange-4">PREPARING</span>
+                <span class="text-h6 text-weight-bold text-orange-4">NEW & PREPARING</span>
                 <q-chip size="sm" color="orange-9" text-color="white" class="text-weight-bold">
                   {{ filteredPreparing.length }}
                 </q-chip>
               </div>
-              <div class="header-bar bg-orange-5"></div>
+              <div class="header-bar bg-orange-7"></div>
             </div>
 
             <q-scroll-area
               class="column-scroll"
-              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#fb8c00' }"
+              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#e65100' }"
             >
               <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
                 <KitchenTicketCard
@@ -134,6 +134,7 @@
                   :key="ticket.id"
                   :ticket="ticket"
                   :is-printing="store.printing === ticket.id"
+                  @accept="handleAccept"
                   @mark-ready="handleMarkReady"
                   @print="handlePrint"
                   @view="handleView"
@@ -191,79 +192,33 @@
     </audio>
 
     <!-- KOT Viewer Dialog -->
-    <q-dialog
-      v-model="viewDialogOpen"
-      persistent
-      maximized
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card class="bg-dark text-white" style="border-radius: 12px 12px 0 0">
-        <q-toolbar class="bg-grey-10 text-white">
-          <q-toolbar-title class="text-subtitle1 text-weight-bold">
-            <q-icon name="receipt_long" size="20px" class="q-mr-sm" />
-            KOT #{{ selectedTicket?.kot_number || selectedTicket?.orderNumber }}
-          </q-toolbar-title>
-          <q-btn
-            flat
-            round
-            dense
-            icon="print"
-            @click="handlePrint(selectedTicket?.id)"
-            class="q-mr-sm"
-          />
-          <q-btn flat round dense icon="close" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-md">
-          <div class="row justify-between q-mb-md">
-            <div>
-              <div class="text-caption text-grey-5">Table</div>
-              <div class="text-body1 text-weight-bold">
-                {{
-                  selectedTicket?.tableNumber !== '—'
-                    ? 'Table ' + selectedTicket?.tableNumber
-                    : 'Takeaway'
-                }}
-              </div>
-            </div>
-            <div class="text-right">
-              <div class="text-caption text-grey-5">Type</div>
-              <q-badge color="primary">{{ selectedTicket?.orderType?.toUpperCase() }}</q-badge>
-            </div>
-          </div>
-
-          <div class="text-caption text-grey-5 q-mb-sm text-uppercase letter-spacing-1">
-            Order Items
-          </div>
-          <q-list bordered separator class="bg-grey-10" style="border-radius: 8px">
-            <q-item v-for="(item, idx) in selectedTicket?.items" :key="idx">
-              <q-item-section avatar>
-                <q-avatar color="primary" text-color="white" size="32px">
-                  {{ item.qty }}
-                </q-avatar>
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ item.name }}</q-item-label>
-                <q-item-label caption v-if="item.notes" class="text-amber-3">
-                  <q-icon name="edit_note" /> {{ item.notes }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div v-if="selectedTicket?.orderNotes" class="q-mt-lg">
-            <div class="text-caption text-grey-5 q-mb-xs">Order Notes</div>
-            <div
-              class="q-pa-sm bg-grey-9 text-grey-4"
-              style="border-radius: 4px; border-left: 3px solid #ff9800"
-            >
-              {{ selectedTicket.orderNotes }}
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
+    <q-dialog v-model="viewDialogOpen" transition-show="scale" transition-hide="scale">
+      <KotReceipt
+        v-if="selectedTicket"
+        ref="receiptRef"
+        :kot="selectedTicket"
+        :table-number="selectedTicket.tableNumber"
+        :waiter-name="selectedTicket.waiterName"
+        :order-type="selectedTicket.orderType"
+        :order-notes="selectedTicket.orderNotes"
+        :kitchen-name="store.selectedKitchen?.name"
+        @printed="viewDialogOpen = false"
+      />
     </q-dialog>
+
+    <!-- Hidden KotReceipt for background printing -->
+    <div v-if="selectedTicket && !viewDialogOpen" class="hidden">
+      <KotReceipt
+        ref="receiptRef"
+        :kot="selectedTicket"
+        :table-number="selectedTicket.tableNumber"
+        :waiter-name="selectedTicket.waiterName"
+        :order-type="selectedTicket.orderType"
+        :order-notes="selectedTicket.orderNotes"
+        :kitchen-name="store.selectedKitchen?.name"
+        :show-actions="false"
+      />
+    </div>
   </q-page>
 </template>
 
@@ -272,6 +227,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useKitchenDisplayStore } from 'src/stores/kitchenDisplayStore'
 import KitchenTicketCard from 'src/components/kitchen/KitchenTicketCard.vue'
+import KotReceipt from 'src/components/common/KotReceipt.vue'
 
 const $q = useQuasar()
 const store = useKitchenDisplayStore()
@@ -284,6 +240,7 @@ const selectedTicket = ref(null)
 
 // Kitchen selector
 const selectedKitchen = ref(null)
+const receiptRef = ref(null)
 
 const kitchenOptions = computed(() => store.kitchens.map((k) => ({ label: k.name, value: k.id })))
 
@@ -323,6 +280,15 @@ async function handleMarkReady(ticketId) {
   }
 }
 
+async function handleAccept(ticketId) {
+  const { success, error } = await store.acceptTicket(ticketId)
+  if (success) {
+    $q.notify({ type: 'positive', message: 'Ticket Accepted', icon: 'check_circle', timeout: 1000 })
+  } else {
+    $q.notify({ type: 'negative', message: error || 'Failed to accept', icon: 'error' })
+  }
+}
+
 async function handleDismiss(ticketId) {
   const { success, error } = await store.dismissTicket(ticketId)
   if (!success) {
@@ -353,74 +319,18 @@ async function handlePrint(ticketId) {
       timeout: 2000,
     })
 
-    // Actual POS print using an iframe print
-    performActualPrint(ticket)
+    // Actual POS print
+    selectedTicket.value = ticket
+    setTimeout(() => {
+      if (receiptRef.value) {
+        receiptRef.value.printReceipt()
+      }
+    }, 100)
   } else {
     $q.notify({ type: 'negative', message: error || 'Print failed', icon: 'error' })
   }
 }
 
-function performActualPrint(ticket) {
-  let itemsHtml = ''
-  for (const item of ticket.items) {
-    itemsHtml += `
-      <tr>
-        <td style="padding-right: 10px;">${item.qty}x</td>
-        <td>
-          <div>${item.name}</div>
-          ${item.notes ? `<div style="font-size: 12px; font-style: italic;">* ${item.notes}</div>` : ''}
-        </td>
-      </tr>
-    `
-  }
-
-  const printContent = `
-    <html>
-      <head>
-        <title>KOT #${ticket.kot_number || ticket.orderNumber}</title>
-        <style>
-          body { font-family: monospace; font-size: 14px; width: 80mm; margin: 0; padding: 10px; }
-          h2 { text-align: center; margin: 0 0 10px 0; font-size: 18px; }
-          .meta { font-size: 14px; margin-bottom: 5px; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-          table { width: 100%; text-align: left; }
-          th, td { vertical-align: top; }
-        </style>
-      </head>
-      <body>
-        <h2>*** KOT ***</h2>
-        <div class="meta"><strong>KOT:</strong> #${ticket.kot_number || ticket.orderNumber}</div>
-        <div class="meta"><strong>Table:</strong> ${ticket.tableNumber !== '—' ? ticket.tableNumber : 'Takeaway'}</div>
-        <div class="meta"><strong>Type:</strong> ${ticket.orderType}</div>
-        <div class="meta"><strong>Time:</strong> ${new Date().toLocaleTimeString()}</div>
-        ${ticket.orderNotes ? `<div class="divider"></div><div><strong>Notes:</strong><br>${ticket.orderNotes}</div>` : ''}
-        <div class="divider"></div>
-        <table>
-          ${itemsHtml}
-        </table>
-        <div class="divider"></div>
-        <div style="text-align:center;">*** END KOT ***</div>
-      </body>
-    </html>
-  `
-
-  const iframe = document.createElement('iframe')
-  iframe.style.display = 'none'
-  document.body.appendChild(iframe)
-
-  const doc = iframe.contentWindow.document
-  doc.open()
-  doc.write(printContent)
-  doc.close()
-
-  iframe.contentWindow.focus()
-  setTimeout(() => {
-    iframe.contentWindow.print()
-    setTimeout(() => {
-      document.body.removeChild(iframe)
-    }, 500)
-  }, 200)
-}
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {

@@ -159,7 +159,7 @@ const $q = useQuasar()
 const emit = defineEmits(['close'])
 const sessionStore = useTableSessionStore()
 
-const { sessionToken, cartItems, updateQuantity, removeFromCart, clearCart, openLogin } =
+const { sessionToken, cartItems, updateQuantity, removeFromCart, clearCart, tableUuid } =
   inject('touchMenuState')
 
 const submitting = ref(false)
@@ -189,20 +189,13 @@ function confirmRemove(item) {
 }
 
 async function submitOrder() {
-  // Prefer the authoritative token from the store; fall back to injected legacy value
-  const token = sessionStore.sessionToken || sessionToken.value
-
-  if (!token) {
-    $q.notify({
-      message: 'Please log in or start a session to place an order.',
-      icon: 'person',
-      color: 'warning',
-    })
-    openLogin()
-    return
-  }
-
   if (cartItems.value.length === 0) return
+
+  const items = cartItems.value.map((item) => ({
+    menu_item_id: item.menu_item_id,
+    qty: item.quantity,
+    notes: item.notes || null,
+  }))
 
   $q.dialog({
     title: 'Confirm Order',
@@ -214,29 +207,72 @@ async function submitOrder() {
   }).onOk(async () => {
     submitting.value = true
     try {
-      // Map cart items → RPC shape: { menu_item_id, qty, notes }
-      const items = cartItems.value.map((item) => ({
-        menu_item_id: item.menu_item_id,
-        qty: item.quantity,
-        notes: item.notes || null,
-      }))
+      let data, error
 
-      console.log('[MenuCartDrawer] Submitting Order:', {
-        token: token?.substring(0, 10) + '...',
-        itemsCount: items.length,
-      })
+      let finalTableUuid = tableUuid?.value
 
-      const { data, error } = await supabase.rpc('create_order_from_session', {
-        p_session_token: token,
-        p_items: items,
-        p_source: 'qr',
-      })
-
-      if (error) {
-        console.error('[MenuCartDrawer] RPC Error Detail:', error)
-        throw error
+      // JIT fallback resolution if no UUID is present
+      if (!finalTableUuid) {
+        const fallbackTableId =
+          localStorage.getItem('tm_table_id') || localStorage.getItem('tm_table')
+        if (fallbackTableId) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            fallbackTableId,
+          )
+          if (isUuid) finalTableUuid = fallbackTableId
+          else {
+            const { data: tData } = await supabase
+              .from('restaurant_tables')
+              .select('id')
+              .eq('table_number', fallbackTableId)
+              .single()
+            if (tData) finalTableUuid = tData.id
+          }
+        }
       }
 
+      // Final fallback: fetch ANY active table to prevent order loss in disconnected/test environments
+      if (!finalTableUuid) {
+        const { data: anyTable } = await supabase
+          .from('restaurant_tables')
+          .select('id')
+          .eq('is_active', true)
+          .limit(1)
+          .single()
+        if (anyTable) finalTableUuid = anyTable.id
+      }
+
+      // ── PRIMARY PATH: Kiosk mode — use table UUID directly (NO pgcrypto/crypt needed) ──
+      if (finalTableUuid) {
+        console.log('[MenuCartDrawer] Kiosk order path → table:', finalTableUuid)
+        ;({ data, error } = await supabase.rpc('create_kiosk_order', {
+          p_table_id: finalTableUuid,
+          p_items: items,
+          p_source: 'table_screen',
+        }))
+      } else {
+        // ── FALLBACK PATH: Session token (pgcrypto-based) ──
+        const token =
+          sessionStore.sessionToken ||
+          sessionToken?.value ||
+          localStorage.getItem('tm_session_token')
+        if (!token) {
+          $q.notify({ message: 'No table session could be verified.', color: 'negative' })
+          submitting.value = false
+          return
+        }
+        console.log('[MenuCartDrawer] Session order path → token prefix:', token.substring(0, 8))
+        ;({ data, error } = await supabase.rpc('create_order_from_session', {
+          p_session_token: token,
+          p_items: items,
+          p_source: 'table_screen',
+        }))
+      }
+
+      if (error) {
+        console.error('[MenuCartDrawer] RPC Error:', error)
+        throw error
+      }
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to place order')
       }

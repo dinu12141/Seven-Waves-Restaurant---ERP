@@ -563,7 +563,7 @@ async function finishAuth(isNew = false) {
   })
 
   // Redirect to menu
-  const token = session.sessionToken
+  const token = session.sessionToken || localStorage.getItem('tm_session_token')
   if (token) {
     router.replace('/touch')
   } else {
@@ -574,7 +574,7 @@ async function finishAuth(isNew = false) {
 // ── Skip Auth ──────────────────────────────────────────────────────────────────
 
 function skipAuth() {
-  const token = session.sessionToken
+  const token = session.sessionToken || localStorage.getItem('tm_session_token')
   if (token) {
     router.replace('/touch')
   } else {
