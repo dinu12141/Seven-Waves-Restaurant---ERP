@@ -78,7 +78,7 @@
 
               <!-- Line Total -->
               <div class="text-white text-weight-bold q-ml-sm line-total">
-                ${{ (item.price * item.qty).toFixed(2) }}
+                LKR {{ (item.price * item.qty).toFixed(2) }}
               </div>
 
               <!-- Remove -->
@@ -123,19 +123,19 @@
       <!-- Subtotal -->
       <div class="row justify-between q-mb-xs">
         <span class="text-grey-5 text-caption">Subtotal</span>
-        <span class="text-grey-4 text-caption">${{ store.subtotal.toFixed(2) }}</span>
+        <span class="text-grey-4 text-caption">LKR {{ store.subtotal.toFixed(2) }}</span>
       </div>
 
       <!-- Discount -->
       <div v-if="store.discount > 0" class="row justify-between q-mb-xs">
         <span class="text-grey-5 text-caption"> Discount ({{ store.discount }}%) </span>
-        <span class="text-green text-caption">-${{ store.discountAmount.toFixed(2) }}</span>
+        <span class="text-green text-caption">-LKR {{ store.discountAmount.toFixed(2) }}</span>
       </div>
 
       <!-- Tax -->
       <div class="row justify-between q-mb-sm">
         <span class="text-grey-5 text-caption">Tax ({{ store.taxRate }}%)</span>
-        <span class="text-grey-4 text-caption">${{ store.taxAmount.toFixed(2) }}</span>
+        <span class="text-grey-4 text-caption">LKR {{ store.taxAmount.toFixed(2) }}</span>
       </div>
 
       <q-separator color="grey-8" class="q-mb-sm" />
@@ -143,7 +143,7 @@
       <!-- Grand Total -->
       <div class="row justify-between q-mb-md">
         <span class="text-white text-h6 text-weight-bold">Total</span>
-        <span class="text-white text-h6 text-weight-bold">${{ store.total.toFixed(2) }}</span>
+        <span class="text-white text-h6 text-weight-bold">LKR {{ store.total.toFixed(2) }}</span>
       </div>
 
       <!-- Action Buttons -->

@@ -110,15 +110,15 @@
       </div>
 
       <!-- Main Kanban Board -->
-      <div v-else class="row q-col-gutter-md full-height-board">
-        <!-- NEW (CREATED) -->
+      <div v-else class="row q-col-gutter-md full-height-board justify-center">
+        <!-- NEW -->
         <div class="col-12 col-md-4 kanban-col-wrapper">
           <div class="kanban-column bg-dark-glass">
             <div class="column-header">
               <div class="row items-center justify-between q-mb-xs">
-                <span class="text-h6 text-weight-bold text-orange-4">NEW & PREPARING</span>
+                <span class="text-h6 text-weight-bold text-orange-4">NEW</span>
                 <q-chip size="sm" color="orange-9" text-color="white" class="text-weight-bold">
-                  {{ filteredPreparing.length }}
+                  {{ filteredNew.length }}
                 </q-chip>
               </div>
               <div class="header-bar bg-orange-7"></div>
@@ -130,11 +130,46 @@
             >
               <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
                 <KitchenTicketCard
-                  v-for="ticket in filteredPreparing"
+                  v-for="ticket in filteredNew"
                   :key="ticket.id"
                   :ticket="ticket"
                   :is-printing="store.printing === ticket.id"
                   @accept="handleAccept"
+                  @print="handlePrint"
+                  @view="handleView"
+                />
+              </transition-group>
+              <div v-if="filteredNew.length === 0" class="empty-placeholder">
+                <q-icon name="assignment" size="48px" color="grey-8" />
+                <div class="text-grey-7 q-mt-sm text-subtitle2">No new orders</div>
+              </div>
+            </q-scroll-area>
+          </div>
+        </div>
+
+        <!-- PREPARING -->
+        <div class="col-12 col-md-4 kanban-col-wrapper">
+          <div class="kanban-column bg-dark-glass">
+            <div class="column-header">
+              <div class="row items-center justify-between q-mb-xs">
+                <span class="text-h6 text-weight-bold text-blue-4">PREPARING</span>
+                <q-chip size="sm" color="blue-9" text-color="white" class="text-weight-bold">
+                  {{ filteredPreparing.length }}
+                </q-chip>
+              </div>
+              <div class="header-bar bg-blue-6"></div>
+            </div>
+
+            <q-scroll-area
+              class="column-scroll"
+              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#1e88e5' }"
+            >
+              <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
+                <KitchenTicketCard
+                  v-for="ticket in filteredPreparing"
+                  :key="ticket.id"
+                  :ticket="ticket"
+                  :is-printing="store.printing === ticket.id"
                   @mark-ready="handleMarkReady"
                   @print="handlePrint"
                   @view="handleView"
@@ -170,6 +205,7 @@
                   v-for="ticket in filteredReady"
                   :key="ticket.id"
                   :ticket="ticket"
+                  list-view
                   :is-printing="store.printing === ticket.id"
                   @dismiss="handleDismiss"
                   @print="handlePrint"
@@ -245,6 +281,7 @@ const receiptRef = ref(null)
 const kitchenOptions = computed(() => store.kitchens.map((k) => ({ label: k.name, value: k.id })))
 
 // Filtered columns
+const filteredNew = computed(() => filterByType(store.newTickets))
 const filteredPreparing = computed(() => filterByType(store.preparingTickets))
 const filteredReady = computed(() => filterByType(store.readyTickets))
 
@@ -253,9 +290,9 @@ function filterByType(tickets) {
   return tickets.filter((t) => t.orderType?.toLowerCase() === filterMode.value.toLowerCase())
 }
 
-// Watch for new preparing tickets → play alert (KOTs are now auto-accepted)
+// Watch for new tickets → play alert
 watch(
-  () => store.preparingTickets.length,
+  () => store.newTickets.length,
   (newVal, oldVal) => {
     if (newVal > oldVal) {
       $q.notify({
@@ -330,7 +367,6 @@ async function handlePrint(ticketId) {
     $q.notify({ type: 'negative', message: error || 'Print failed', icon: 'error' })
   }
 }
-
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { kitchenStartKot, kitchenMarkReady } from 'src/services/kotDispatchService'
 
 /**
  * Kitchen Display Store
@@ -27,10 +28,15 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   let timerInterval = null
 
   // ── Getters ────────────────────────────────────────────────
-  const preparingTickets = computed(() =>
-    tickets.value.filter((t) => ['created', 'pending', 'accepted', 'preparing'].includes(t.status)),
+  const newTickets = computed(() =>
+    tickets.value.filter((t) => ['created', 'pending', 'accepted'].includes(t.status)),
   )
-  const readyTickets = computed(() => tickets.value.filter((t) => t.status === 'ready'))
+  const preparingTickets = computed(() => tickets.value.filter((t) => t.status === 'preparing'))
+  const readyTickets = computed(() =>
+    [...tickets.value]
+      .filter((t) => t.status === 'ready')
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)),
+  )
   const totalActive = computed(() => tickets.value.length)
 
   const selectedKitchen = computed(() =>
@@ -136,8 +142,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_source,
           notes,
           status,
+          customer_name,
           table:restaurant_tables ( table_number ),
-          waiter:profiles ( full_name )
+          waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
         ),
         kot_items (
           id,
@@ -152,7 +159,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       `,
       )
       .in('status', ['created', 'pending', 'accepted', 'preparing', 'ready'])
-      .is('completed_at', null)
+      .or('completed_at.is.null,status.eq.ready')
+      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
       .not('order.status', 'eq', 'pending_waiter')
       .order('created_at', { ascending: true })
 
@@ -179,22 +187,22 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (!selectedKitchenId.value) return
 
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
-    const filter = isCashierDisplay ? undefined : `kitchen_id=eq.${selectedKitchenId.value}`
+
+    // Build the realtime config — omit filter entirely for CASHIER display
+    const kotTicketConfig = {
+      event: '*',
+      schema: 'public',
+      table: 'kot_tickets',
+    }
+    if (!isCashierDisplay) {
+      kotTicketConfig.filter = `kitchen_id=eq.${selectedKitchenId.value}`
+    }
 
     kotChannel = supabase
       .channel(`kds-${selectedKitchenId.value}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'kot_tickets',
-          filter: filter,
-        },
-        (payload) => {
-          handleTicketChange(payload)
-        },
-      )
+      .on('postgres_changes', kotTicketConfig, (payload) => {
+        handleTicketChange(payload)
+      })
       .on(
         'postgres_changes',
         {
@@ -259,7 +267,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       const idx = tickets.value.findIndex((t) => t.id === newRow.id)
 
       // Remove if completed/cancelled
-      if (newRow.completed_at || newRow.status === 'cancelled') {
+      // Remove if cancelled (always) or completed (unless ready)
+      if (newRow.status === 'cancelled' || (newRow.completed_at && newRow.status !== 'ready')) {
         if (idx !== -1) tickets.value.splice(idx, 1)
         return
       }
@@ -326,8 +335,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_source,
           notes,
           status,
+          customer_name,
           table:restaurant_tables ( table_number ),
-          waiter:profiles ( full_name )
+          waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
         ),
         kot_items (
           id,
@@ -346,11 +356,16 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (error || !data) return
 
+    // Today filter check
+    const todayStart = new Date().setHours(0, 0, 0, 0)
+    const ticketDate = new Date(data.created_at).getTime()
+    if (ticketDate < todayStart) return
+
     // Only add/update if it belongs to our kitchen (or we are Cashier display) and is active
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
     if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
     if (
-      data.completed_at ||
+      (data.completed_at && data.status !== 'ready') ||
       data.status === 'cancelled' ||
       data.order?.status === 'pending_waiter'
     ) {
@@ -380,18 +395,12 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     const prev = tickets.value[idx].status
     tickets.value[idx].status = 'preparing'
 
-    const { error } = await supabase
-      .from('kot_tickets')
-      .update({
-        status: 'preparing',
-        accepted_at: new Date().toISOString(),
-      })
-      .eq('id', ticketId)
-      .eq('status', 'created')
+    // ERP RPC Call: updates kot_tickets AND parent order table
+    const result = await kitchenStartKot(ticketId)
 
-    if (error) {
+    if (!result.success) {
       tickets.value[idx].status = prev
-      return { success: false, error: error.message }
+      return { success: false, error: result.error || 'Failed to accept ticket' }
     }
     return { success: true }
   }
@@ -408,19 +417,12 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     const prev = tickets.value[idx].status
     tickets.value[idx].status = 'ready'
 
-    const { error } = await supabase
-      .from('kot_tickets')
-      .update({
-        status: 'ready',
-        // completed_at intentionally NOT set here
-        // It gets set when the waiter clicks "Mark Served"
-      })
-      .eq('id', ticketId)
-      .eq('status', 'preparing')
+    // ERP RPC Call: updates kot_tickets AND parent order table (if all KOTs are ready)
+    const result = await kitchenMarkReady(ticketId)
 
-    if (error) {
+    if (!result.success) {
       tickets.value[idx].status = prev
-      return { success: false, error: error.message }
+      return { success: false, error: result.error || 'Failed to mark ready' }
     }
     return { success: true }
   }
@@ -494,6 +496,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       orderSource: ticket.order?.order_source || 'pos',
       orderNotes: ticket.order?.notes || '',
       waiterName: ticket.order?.waiter?.full_name || '',
+      customerName: ticket.order?.customer_name || '',
       kitchenName: ticket.kitchen?.name || '',
       items: (ticket.kot_items || []).map((ki) => ({
         id: ki.id,
@@ -560,6 +563,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     loading,
     isConnected,
     printing,
+    newTickets,
     preparingTickets,
     readyTickets,
     totalActive,

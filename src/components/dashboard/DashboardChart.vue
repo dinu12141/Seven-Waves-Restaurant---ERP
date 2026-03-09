@@ -9,7 +9,7 @@
         <q-spinner-dots size="40px" color="primary" />
       </q-inner-loading>
       <apexchart
-        v-if="!loading && computedOptions"
+        v-if="!loading && computedOptions && isMounted"
         :type="type"
         :height="height"
         :options="computedOptions"
@@ -20,8 +20,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
+
+const isMounted = ref(false)
+onMounted(() => {
+  isMounted.value = true
+})
+onBeforeUnmount(() => {
+  isMounted.value = false
+})
 
 const props = defineProps({
   title: String,

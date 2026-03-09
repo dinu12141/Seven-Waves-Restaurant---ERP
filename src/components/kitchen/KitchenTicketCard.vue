@@ -1,8 +1,10 @@
 <template>
-  <q-card class="kds-card" flat>
-    <div class="card-strip" :class="stripClass"></div>
+  <q-card class="kds-card" :class="{ 'list-view-card': listView }" flat>
+    <!-- Card Strip (Only for full view) -->
+    <div v-if="!listView" class="card-strip" :class="stripClass"></div>
 
-    <div class="q-pa-sm card-content column justify-between full-height">
+    <!-- FULL VIEW -->
+    <div v-if="!listView" class="q-pa-sm card-content column justify-between full-height">
       <!-- Header -->
       <div>
         <div class="row items-center justify-between no-wrap q-mb-xs">
@@ -34,6 +36,15 @@
             <q-icon name="schedule" size="14px" class="q-mr-xs" />
             <span class="text-weight-bold font-mono text-caption">{{ ticket.timeElapsed }}</span>
           </div>
+        </div>
+
+        <!-- Customer Name -->
+        <div
+          v-if="ticket.customerName"
+          class="text-subtitle2 text-weight-bold text-orange-4 q-mb-xs"
+        >
+          <q-icon name="person" size="14px" class="q-mr-xs" />
+          {{ ticket.customerName }}
         </div>
 
         <!-- Meta Info -->
@@ -169,6 +180,34 @@
         </template>
       </div>
     </div>
+
+    <!-- LIST VIEW (Compact) -->
+    <div v-else class="row items-center justify-between q-pa-sm full-width">
+      <div class="row items-center q-gutter-x-sm">
+        <div class="list-dot" :class="stripClass"></div>
+        <span class="text-subtitle1 text-weight-bold font-mono text-white"
+          >#{{ ticket.kot_number || ticket.orderNumber }}</span
+        >
+        <span v-if="ticket.customerName" class="text-caption text-orange-4 text-weight-medium">
+          ({{ ticket.customerName }})
+        </span>
+      </div>
+      <div class="row items-center q-gutter-x-xs">
+        <div class="text-caption font-mono text-grey-5 q-mr-sm">{{ ticket.timeElapsed }}</div>
+        <q-btn
+          flat
+          round
+          dense
+          color="grey-4"
+          icon="visibility"
+          size="sm"
+          @click="$emit('view', ticket.id)"
+          class="view-btn-compact"
+        >
+          <q-tooltip>View KOT</q-tooltip>
+        </q-btn>
+      </div>
+    </div>
   </q-card>
 </template>
 
@@ -179,6 +218,7 @@ const props = defineProps({
   ticket: { type: Object, required: true },
   accepting: { type: Boolean, default: false },
   isPrinting: { type: Boolean, default: false },
+  listView: { type: Boolean, default: false },
 })
 
 defineEmits(['accept', 'mark-ready', 'dismiss', 'print', 'view'])
@@ -237,7 +277,20 @@ const typeColor = computed(() => {
   display: flex;
   flex-direction: column;
 }
-.kds-card:hover {
+.list-view-card {
+  min-height: unset !important;
+  border-left: 4px solid transparent;
+  background: rgba(42, 42, 42, 0.4);
+}
+.list-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.view-btn-compact {
+  background: rgba(255, 255, 255, 0.05);
+}
+.kds-card:hover:not(.list-view-card) {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
   border-color: rgba(255, 255, 255, 0.1);

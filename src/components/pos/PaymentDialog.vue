@@ -10,7 +10,9 @@
         <div class="text-subtitle2 text-grey-5 q-mb-sm">Order Summary</div>
         <div class="row justify-between items-center q-mb-xs">
           <span>Total Amount</span>
-          <span class="text-h5 text-primary text-weight-bold">${{ totalAmount.toFixed(2) }}</span>
+          <span class="text-h5 text-primary text-weight-bold"
+            >LKR {{ totalAmount.toFixed(2) }}</span
+          >
         </div>
         <div class="text-caption text-grey-6">{{ itemCount }} items • {{ orderType }}</div>
       </q-card-section>

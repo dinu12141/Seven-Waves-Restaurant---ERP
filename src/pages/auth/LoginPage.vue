@@ -185,7 +185,7 @@ const handleLogin = async () => {
     }
 
     const redirect = router.currentRoute.value.query.redirect || authStore.defaultLandingPage
-    router.push(redirect)
+    router.push(redirect).catch(() => {})
 
     $q.notify({
       color: 'positive',

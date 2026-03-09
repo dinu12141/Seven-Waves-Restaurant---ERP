@@ -151,6 +151,56 @@ export async function payOrder(orderId, paymentMethod = 'cash', amountPaid = nul
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INVENTORY ACTIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Process inventory/BOM deduction for an order.
+ * - Idempotent (server guards duplicate processing)
+ * - Requires admin, manager, or inventory role
+ *
+ * @param {string} orderId
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function processInventory(orderId) {
+  const { data, error } = await supabase.rpc('rpc_process_inventory_for_order', {
+    p_order_id: orderId,
+  })
+
+  if (error) {
+    console.error('[KotDispatch] processInventory RPC error:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data?.success ?? false, data, error: data?.error }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FINANCE ACTIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Post financial data for a paid/invoiced order.
+ * - Idempotent (server guards duplicate posting)
+ * - Requires admin, manager, or finance role
+ *
+ * @param {string} orderId
+ * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+ */
+export async function processFinance(orderId) {
+  const { data, error } = await supabase.rpc('rpc_process_finance_for_order', {
+    p_order_id: orderId,
+  })
+
+  if (error) {
+    console.error('[KotDispatch] processFinance RPC error:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: data?.success ?? false, data, error: data?.error }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // QUEUE DATA FETCHERS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -282,6 +332,65 @@ export async function fetchKotDispatches(orderId) {
   }
 
   return data || []
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SUBCATEGORY KITCHEN MAP FETCHER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Fetch subcategory → kitchen mappings for a branch.
+ * Used by admin/manager UI to configure kitchen routing.
+ *
+ * @param {string} branchId
+ * @returns {Promise<Array>}
+ */
+export async function fetchSubcategoryKitchenMap(branchId) {
+  const { data, error } = await supabase
+    .from('subcategory_kitchen_map')
+    .select(
+      `id, is_active, created_at,
+       subcategory:menu_sub_categories ( id, name, category:categories ( name ) ),
+       kitchen:kitchens ( id, name )`,
+    )
+    .eq('branch_id', branchId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[KotDispatch] fetchSubcategoryKitchenMap error:', error)
+    return []
+  }
+
+  return data || []
+}
+
+/**
+ * Upsert a subcategory → kitchen mapping.
+ *
+ * @param {string} subcategoryId
+ * @param {string} kitchenId
+ * @param {string} branchId
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+export async function setSubcategoryKitchenMap(subcategoryId, kitchenId, branchId) {
+  const { error } = await supabase
+    .from('subcategory_kitchen_map')
+    .upsert(
+      {
+        subcategory_id: subcategoryId,
+        kitchen_id: kitchenId,
+        branch_id: branchId,
+        is_active: true,
+      },
+      { onConflict: 'subcategory_id,branch_id' },
+    )
+
+  if (error) {
+    console.error('[KotDispatch] setSubcategoryKitchenMap error:', error)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -242,9 +242,9 @@ const authStore = useAuthStore()
 const modulesStore = useModulesStore()
 const route = useRoute()
 
-/** POS Mode: Hide sidebar for Cashier/Waiter or when on POS page to maximize screen space */
+/** POS Mode: Hide sidebar for Cashier/Waiter or when on POS/Kitchen pages to maximize screen space */
 const isPOSMode = computed(() => {
-  if (route.path.startsWith('/pos')) return true
+  if (route.path.startsWith('/pos') || route.path.startsWith('/kitchen')) return true
 
   return (
     authStore.hasAnyRole(['cashier', 'waiter']) &&

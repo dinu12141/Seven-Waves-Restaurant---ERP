@@ -9,7 +9,7 @@
       <!-- Price Badge -->
       <div class="absolute-bottom-right q-pa-xs">
         <q-badge class="price-badge text-weight-bold" color="primary" text-color="white">
-          ${{ product.price.toFixed(2) }}
+          LKR {{ product.price.toFixed(2) }}
         </q-badge>
       </div>
 

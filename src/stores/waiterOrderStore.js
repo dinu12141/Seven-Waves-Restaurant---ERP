@@ -374,7 +374,31 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           schema: 'public',
           table: 'kot_tickets',
         },
-        () => {
+        (payload) => {
+          const { eventType, new: newRow } = payload
+
+          if (eventType === 'UPDATE' && newRow.status === 'ready') {
+            const myOrder = myOrders.value.find((o) => o.id === newRow.order_id)
+            if (myOrder) {
+              const kot = myOrder.kot_tickets?.find((k) => k.id === newRow.id)
+              if (kot && kot.status !== 'ready') {
+                // Trigger notification
+                playAlertSound()
+                Notify.create({
+                  type: 'positive',
+                  icon: 'task_alt',
+                  color: 'green-10',
+                  textColor: 'white',
+                  message: `KOT #${newRow.kot_number || ''} is READY! (Table ${myOrder.tableNumber})`,
+                  caption: `Order #${myOrder.order_number}`,
+                  position: 'top',
+                  timeout: 6000,
+                  classes: 'text-weight-bold',
+                  actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+                })
+              }
+            }
+          }
           // When KOT generated or status changed, sync My Orders
           fetchMyOrders()
         },
