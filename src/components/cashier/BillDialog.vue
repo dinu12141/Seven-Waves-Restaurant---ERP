@@ -53,7 +53,25 @@
                   <q-icon name="person" size="14px" class="q-mr-xs text-teal" />
                   <div>
                     <div class="meta-chip-label">Waiter</div>
-                    <div class="meta-chip-value">{{ order?.waiterName || '—' }}</div>
+                    <div class="meta-chip-value">
+                      {{ order?.waiterName || printInvoice?.orders?.waiter?.full_name || '—' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="meta-chip">
+                  <q-icon name="account_circle" size="14px" class="q-mr-xs text-amber" />
+                  <div>
+                    <div class="meta-chip-label">Customer</div>
+                    <div class="meta-chip-value">
+                      {{
+                        order?.customer_name ||
+                        printInvoice?.customer_name ||
+                        printInvoice?.orders?.customer_name ||
+                        '—'
+                      }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -77,10 +95,15 @@
                   </div>
                 </div>
               </div>
-            </div>
-            <div v-if="order?.customer_name" class="customer-row">
-              <q-icon name="account_circle" size="14px" class="q-mr-xs text-grey-5" />
-              <span>{{ order.customer_name }}</span>
+              <div v-if="order?.customer_phone" class="col-6">
+                <div class="meta-chip">
+                  <q-icon name="phone" size="14px" class="q-mr-xs text-light-blue" />
+                  <div>
+                    <div class="meta-chip-label">Phone</div>
+                    <div class="meta-chip-value">{{ order.customer_phone }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -301,30 +324,25 @@
             />
           </div>
 
-          <!-- ── STEP 3: Success + Print ── -->
+          <!-- ── STEP 3: Bill View / Payment Complete ── -->
           <div v-if="step === 3" class="step-panel step-success">
-            <div class="success-icon-wrap">
-              <q-icon name="check_circle" size="52px" color="green-4" />
+            <div class="bill-view-header">
+              <q-icon name="check_circle" size="20px" color="green-4" class="q-mr-sm" />
+              <span class="success-title-inline">Payment Complete</span>
+              <q-badge color="green" class="q-ml-sm">PAID</q-badge>
             </div>
-            <div class="success-title">Payment Complete</div>
-            <div class="success-sub">Invoice #{{ currentInvoice?.invoice_number }}</div>
 
-            <div class="success-summary-box">
-              <div class="success-row">
-                <span>Total Charged</span>
-                <span>{{ fmtCurrency(order?.total_amount || 0) }}</span>
+            <!-- Inline bill receipt view -->
+            <div class="bill-view-container">
+              <div v-if="!printInvoice" class="bill-loading">
+                <q-spinner-dots color="primary" size="30px" />
+                <div class="text-grey-5 text-caption q-mt-sm">Loading receipt...</div>
               </div>
-              <div class="success-row">
-                <span>Method</span>
-                <span>{{ selectedMethodName }}</span>
-              </div>
-              <div
-                v-if="selectedMethodName === 'Cash' && changeAmount > 0"
-                class="success-row change"
-              >
-                <span>Change Given</span>
-                <span>{{ fmtCurrency(changeAmount) }}</span>
-              </div>
+              <BillPrintTemplate
+                v-if="printInvoice"
+                :invoice="printInvoice"
+                :branch-name="branchName"
+              />
             </div>
 
             <div class="success-actions">
@@ -352,16 +370,21 @@
         </div>
       </div>
 
-      <!-- ── Print preview (hidden, rendered for window.print) ── -->
-      <div class="print-frame" id="print-frame-container">
-        <BillPrintTemplate v-if="printInvoice" :invoice="printInvoice" :branch-name="branchName" />
+      <!-- ── Print frame (hidden, used by popup print window) ── -->
+      <div class="print-frame" id="print-frame-container" style="display: none">
+        <BillPrintTemplate
+          ref="printTemplateRef"
+          v-if="printInvoice"
+          :invoice="printInvoice"
+          :branch-name="branchName"
+        />
       </div>
     </div>
   </q-dialog>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
@@ -394,6 +417,7 @@ const selectedMethodName = ref('')
 const cashReceived = ref(0)
 const transactionRef = ref('')
 const printInvoice = ref(null)
+const printTemplateRef = ref(null)
 
 const branchName = computed(() => authStore.currentBranch?.name || 'Restaurant')
 
@@ -418,7 +442,7 @@ const changeAmount = computed(() => {
   return received - due
 })
 
-// Watch: if order already has invoice, skip to step 2
+// Watch: if order already has invoice, skip to step 2; if paid, skip to step 3 (bill view)
 watch(
   () => props.order,
   (newOrder) => {
@@ -431,15 +455,28 @@ watch(
     transactionRef.value = ''
     printInvoice.value = null
 
-    // If invoice already exists on this order, go to step 2
+    // If invoice already exists on this order
     if (newOrder.invoices?.length > 0) {
       currentInvoice.value = newOrder.invoices[0]
       cashReceived.value = Math.ceil(currentInvoice.value.grand_total || 0)
-      step.value = 2
-      // Pre-fetch print invoice so 'Print Bill' works immediately
-      store.fetchInvoiceDetails(currentInvoice.value.id).then((inv) => {
-        printInvoice.value = inv
-      })
+
+      // If order is already paid, skip directly to bill view (step 3)
+      if (
+        newOrder.payment_status === 'paid' ||
+        newOrder.status === 'paid' ||
+        newOrder.status === 'completed'
+      ) {
+        step.value = 3
+        store.fetchInvoiceDetails(currentInvoice.value.id).then((inv) => {
+          printInvoice.value = inv
+        })
+      } else {
+        step.value = 2
+        // Pre-fetch print invoice so 'Print Bill' works immediately
+        store.fetchInvoiceDetails(currentInvoice.value.id).then((inv) => {
+          printInvoice.value = inv
+        })
+      }
     }
   },
   { immediate: true },
@@ -504,6 +541,13 @@ async function doRecordPayment() {
       icon: 'check_circle',
       timeout: 3000,
     })
+
+    // Auto-print the receipt after payment — wait for Vue to render the template
+    await nextTick()
+    await new Promise((r) => setTimeout(r, 300))
+    if (printTemplateRef.value) {
+      printTemplateRef.value.printReceipt()
+    }
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'Payment failed' })
   }
@@ -518,7 +562,11 @@ async function printBill() {
     }
     // Give Vue one tick to render the template
     await new Promise((r) => setTimeout(r, 100))
-    window.print()
+    if (printTemplateRef.value) {
+      printTemplateRef.value.printReceipt()
+    } else {
+      window.print()
+    }
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Print failed: ' + err.message })
   }
@@ -1055,6 +1103,40 @@ function getMethodIcon(name) {
 .success-actions {
   width: 100%;
   max-width: 300px;
+}
+
+/* ── Bill View (Step 3 - Paid order receipt preview) ── */
+.bill-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.success-title-inline {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.bill-view-container {
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 12px;
+  margin: 8px 0;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bill-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
 }
 
 /* ── Print Frame (hidden on screen, visible on print) ── */

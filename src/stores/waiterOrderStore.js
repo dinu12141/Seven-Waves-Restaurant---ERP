@@ -140,6 +140,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
             categoryName: oi.menu_items?.categories?.name || '',
             kitchenName: oi.kitchens?.name || '',
           })),
+          customerName: row.customer_name || '',
           kot_tickets: kotTickets,
           timeAgo: getTimeAgo(row.created_at),
         }
@@ -171,7 +172,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     const { data: ordersData, error } = await supabase
       .from('orders')
       .select(
-        'id, order_number, table_id, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, restaurant_tables ( table_number )',
+        'id, order_number, table_id, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, customer_name, restaurant_tables ( table_number )',
       )
       .eq('assigned_waiter_id', waiterId.value)
       .in('status', ['accepted', 'preparing', 'ready'])
@@ -206,6 +207,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           ...row,
           tableNumber: row.restaurant_tables?.table_number || '—',
           waiterName,
+          customerName: row.customer_name || '',
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0) || 0,
           items: items.map((oi) => ({
             ...oi,

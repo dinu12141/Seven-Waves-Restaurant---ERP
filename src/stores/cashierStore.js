@@ -127,13 +127,17 @@ export const useCashierStore = defineStore('cashier', () => {
         customer_name, customer_phone, subtotal, tax_amount, discount_amount,
         total_amount, notes, created_at, updated_at, accepted_at, waiter_id,
         table_id, branch_id,
-        restaurant_tables ( table_number ),
-        profiles ( full_name ),
+        restaurant_tables ( table_number, section ),
+        waiter:profiles!orders_waiter_id_fkey ( full_name ),
         order_items (
           id, quantity, unit_price, total_price, notes, status,
           menu_items ( id, name )
         ),
-        kot_tickets ( id, kot_number, status, kitchen_id )
+        kot_tickets (
+          id, kot_number, status, kitchen_id,
+          kot_items ( id, order_item_id, quantity, status )
+        ),
+        invoices ( id, invoice_number, grand_total, payment_status, status )
       `,
     )
 
@@ -153,6 +157,8 @@ export const useCashierStore = defineStore('cashier', () => {
         'ready',
         'served',
         'invoiced',
+        'paid',
+        'completed',
       ])
       .order('created_at', { ascending: false })
       .limit(50)
@@ -417,13 +423,27 @@ export const useCashierStore = defineStore('cashier', () => {
         `
         id,
         invoice_number,
+        subtotal,
+        tax_total,
+        discount_total,
         grand_total,
         status,
         payment_status,
+        customer_name,
+        customer_phone,
         created_at,
-        orders ( order_number, table_id ),
+        orders (
+          order_number,
+          table_id,
+          waiter_id,
+          customer_name,
+          restaurant_tables ( table_number, section ),
+          waiter:profiles!orders_waiter_id_fkey ( full_name )
+        ),
         invoice_items ( id, menu_item_name, quantity, unit_price, total_price ),
-        payments ( id, amount, payment_method, transaction_reference, created_at )
+        payments ( id, amount, payment_method, payment_method_id, transaction_reference, created_at,
+          payment_methods ( id, name )
+        )
       `,
       )
       .eq('id', invoiceId)
@@ -435,7 +455,7 @@ export const useCashierStore = defineStore('cashier', () => {
       invoice_items: data?.invoice_items || [],
       payments: (data?.payments || []).map((p) => ({
         ...p,
-        payment_method_name: p.payment_method || 'Other',
+        payment_method_name: p.payment_methods?.name || p.payment_method || 'Other',
       })),
     }
   }
@@ -550,6 +570,8 @@ export const useCashierStore = defineStore('cashier', () => {
           'ready',
           'served',
           'invoiced',
+          'paid',
+          'completed',
         ].includes(newRow.status)
         if (isValidForQueue) {
           console.log('[CashierStore] New active order detected via update, refreshing...')
@@ -639,7 +661,7 @@ export const useCashierStore = defineStore('cashier', () => {
       table_id: order.table_id,
       tableNumber: order.restaurant_tables?.table_number || '—',
       tableSection: order.restaurant_tables?.section || '',
-      waiterName: order.profiles?.full_name || '—',
+      waiterName: order.waiter?.full_name || '—',
       order_items: (order.order_items || []).map((oi) => ({
         ...oi,
         name: oi.menu_items?.name || 'Item',

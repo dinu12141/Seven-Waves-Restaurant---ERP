@@ -23,6 +23,7 @@
     >
       <div>TABLE: {{ tableNumber }}</div>
       <div v-if="waiterName">WAITER: {{ waiterName }}</div>
+      <div v-if="customerName">CUSTOMER: {{ customerName }}</div>
     </div>
     <div class="text-body2 text-weight-bold q-mb-sm" style="font-family: monospace">
       TYPE: {{ orderType?.replace('_', ' ')?.toUpperCase() || 'DINE IN' }}
@@ -96,6 +97,7 @@ const props = defineProps({
   kot: { type: Object, required: true },
   tableNumber: { type: String, default: '—' },
   waiterName: { type: String, default: '' },
+  customerName: { type: String, default: '' },
   orderType: { type: String, default: 'Dine-In' },
   orderNotes: { type: String, default: '' },
   kitchenName: { type: String, default: '' },
@@ -198,6 +200,7 @@ function printReceipt() {
             <div>TABLE: ${props.tableNumber}</div>
             ${props.waiterName ? `<div>WAITER: ${props.waiterName}</div>` : ''}
           </div>
+          ${props.customerName ? `<div>CUSTOMER: ${props.customerName}</div>` : ''}
           <div class="meta">TYPE: ${props.orderType?.replace('_', ' ')?.toUpperCase() || 'DINE IN'}</div>
 
           <div class="divider"></div>

@@ -94,7 +94,10 @@
                 <span v-if="item.kitchenName" class="kitchen-remark">
                   • {{ item.kitchenName }}
                   <template
-                    v-if="item.categoryName && item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()"
+                    v-if="
+                      item.categoryName &&
+                      item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()
+                    "
                   >
                     ({{ item.categoryName }})
                   </template>
@@ -181,6 +184,7 @@
         :kot="selectedOrderKot"
         :table-number="selectedOrder.tableNumber"
         :waiter-name="selectedOrder.waiterName"
+        :customer-name="selectedOrder.customerName"
         :order-type="selectedOrder.order_type"
         :order-notes="selectedOrder.notes"
         :order-items="selectedOrder.items"
@@ -207,7 +211,9 @@ const selectedOrder = ref(null)
 const selectedOrderKot = computed(() => {
   if (!selectedKOT.value || !selectedOrder.value) return null
   // Just return the KOT from the order that matches the ID
-  return selectedOrder.value.kot_tickets.find((k) => k.id === selectedKOT.value.id) || selectedKOT.value
+  return (
+    selectedOrder.value.kot_tickets.find((k) => k.id === selectedKOT.value.id) || selectedKOT.value
+  )
 })
 
 function viewKOT(kot, order) {

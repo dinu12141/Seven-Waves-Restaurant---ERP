@@ -27,6 +27,24 @@
 
     <q-separator color="grey-8" />
 
+    <!-- Customer Details -->
+    <div class="q-pa-sm" style="background: rgba(255, 255, 255, 0.02)">
+      <q-input
+        v-model="store.customerName"
+        dense
+        outlined
+        dark
+        placeholder="Customer Name (Optional)"
+        class="customer-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="person" size="18px" color="grey-5" />
+        </template>
+      </q-input>
+    </div>
+
+    <q-separator color="grey-8" />
+
     <!-- ═══ Cart Items ═══ -->
     <q-scroll-area class="col cart-scroll">
       <!-- Empty State -->

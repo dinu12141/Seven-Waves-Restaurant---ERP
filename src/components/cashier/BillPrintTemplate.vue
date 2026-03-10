@@ -1,117 +1,128 @@
 <template>
-  <!-- Print-ready receipt. Use window.print() to trigger. -->
-  <div class="bill-print-wrap" id="bill-print-template">
-    <!-- ── Header ── -->
+  <!-- Print-ready receipt matching POS thermal printer format -->
+  <div class="bill-print-wrap" id="bill-print-template" ref="billRoot">
+    <!-- ── Logo & Header ── -->
     <div class="bill-header">
-      <div class="restaurant-name">{{ branchName || 'Restaurant' }}</div>
-      <div v-if="branchAddress" class="restaurant-address">{{ branchAddress }}</div>
-      <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-      <div class="bill-meta">
-        <div class="meta-row">
-          <span class="meta-label">Invoice #</span>
-          <span class="meta-value">{{ invoice.invoice_number }}</span>
-        </div>
-        <div class="meta-row">
-          <span class="meta-label">Order #</span>
-          <span class="meta-value">{{ invoice.orders?.order_number }}</span>
-        </div>
-        <div class="meta-row">
-          <span class="meta-label">Date</span>
-          <span class="meta-value">{{ formatDate(invoice.created_at) }}</span>
-        </div>
-        <div class="meta-row">
-          <span class="meta-label">Time</span>
-          <span class="meta-value">{{ formatTime(invoice.created_at) }}</span>
-        </div>
-        <div v-if="tableNumber" class="meta-row">
-          <span class="meta-label">Table</span>
-          <span class="meta-value">{{ tableNumber }}</span>
-        </div>
-        <div v-if="invoice.orders?.profiles?.full_name" class="meta-row">
-          <span class="meta-label">Waiter</span>
-          <span class="meta-value">{{ invoice.orders.profiles.full_name }}</span>
-        </div>
-        <div v-if="invoice.customer_name" class="meta-row">
-          <span class="meta-label">Customer</span>
-          <span class="meta-value">{{ invoice.customer_name }}</span>
-        </div>
+      <img :src="logoUrl" alt="Seven Waves" class="bill-logo" crossorigin="anonymous" />
+      <div class="restaurant-name">SEVEN WAVES RESTAURANT (PVT) LTD.</div>
+      <div class="restaurant-address">NO 324, HIGH LEVEL ROAD, MAHARAGAMA</div>
+      <div class="restaurant-tel">TEL: 011 22 3970 | 077 717 9220</div>
+    </div>
+
+    <!-- ── Divider ── -->
+    <div class="bill-divider"></div>
+
+    <!-- ── Invoice Meta ── -->
+    <div class="bill-meta">
+      <div class="meta-row">
+        <span class="meta-label">Invoice No :</span>
+        <span class="meta-value">{{ invoice.invoice_number }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">KOT Ref. :</span>
+        <span class="meta-value">{{ kotNumber }}</span>
+      </div>
+      <div class="meta-row meta-row-split">
+        <span>
+          <span class="meta-label">Served By:</span>
+          <span class="meta-value">{{ waiterName }}</span>
+        </span>
+        <span>
+          <span class="meta-label">Pax :</span>
+          <span class="meta-value">{{ paxCount }}</span>
+        </span>
+      </div>
+      <div class="meta-row meta-row-split">
+        <span class="meta-value">{{ formatDateTime(invoice.created_at) }}</span>
+        <span class="meta-value">{{ tableDisplay }}</span>
+      </div>
+      <div v-if="invoice.invoice_number" class="meta-row">
+        <span class="meta-label">Bill #</span>
+        <span class="meta-value">{{ invoice.invoice_number }}</span>
       </div>
     </div>
 
     <!-- ── Divider ── -->
-    <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+    <div class="bill-divider"></div>
 
-    <!-- ── Items ── -->
+    <!-- ── Items Header ── -->
     <table class="items-table">
       <thead>
         <tr>
-          <th class="col-item">Item</th>
-          <th class="col-qty">Qty</th>
-          <th class="col-price">Price</th>
-          <th class="col-total">Total</th>
+          <th class="col-desc">DESCRIPTION</th>
+          <th class="col-qty">QTY</th>
+          <th class="col-amt">AMOUNT</th>
         </tr>
       </thead>
+    </table>
+
+    <div class="bill-divider-dashed"></div>
+
+    <!-- ── Items Body ── -->
+    <table class="items-table">
       <tbody>
         <tr v-for="item in invoice.invoice_items" :key="item.id">
-          <td class="col-item">{{ item.menu_item_name }}</td>
+          <td class="col-desc">
+            <div class="item-name">{{ item.menu_item_name }}</div>
+            <div class="item-code-line">{{ item.quantity }} @ {{ fmtNum(item.unit_price) }}</div>
+          </td>
           <td class="col-qty">{{ item.quantity }}</td>
-          <td class="col-price">{{ fmtCurrency(item.unit_price) }}</td>
-          <td class="col-total">{{ fmtCurrency(item.total_price) }}</td>
+          <td class="col-amt">{{ fmtNum(item.total_price) }}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- ── Divider ── -->
-    <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+    <div class="bill-divider-dashed"></div>
 
     <!-- ── Totals ── -->
     <div class="totals-section">
       <div class="total-row">
-        <span class="total-label">Subtotal</span>
-        <span class="total-value">{{ fmtCurrency(invoice.subtotal) }}</span>
+        <span class="total-label">Total Qty :</span>
+        <span class="total-value">{{ totalQty.toFixed(2) }}</span>
       </div>
-      <div v-if="invoice.discount_total > 0" class="total-row discount-row">
-        <span class="total-label">Discount</span>
-        <span class="total-value">-{{ fmtCurrency(invoice.discount_total) }}</span>
+      <div class="total-row total-row-bold">
+        <span class="total-label">Bill Amount :</span>
+        <span class="total-value">{{ fmtNum(invoice.grand_total) }}</span>
       </div>
-      <div v-if="invoice.tax_total > 0" class="total-row">
-        <span class="total-label">Tax</span>
-        <span class="total-value">{{ fmtCurrency(invoice.tax_total) }}</span>
+      <template v-if="invoice.payments?.length">
+        <div v-for="pmt in invoice.payments" :key="pmt.id" class="total-row">
+          <span class="total-label">PAID AMT.({{ paymentMethodLabel(pmt) }}) :</span>
+          <span class="total-value">{{ fmtNum(pmt.amount) }}</span>
+        </div>
+      </template>
+      <div class="total-row">
+        <span class="total-label">Bal. Amt.(LKR) :</span>
+        <span class="total-value">{{ fmtNum(Math.max(0, balanceAmount)) }}</span>
       </div>
     </div>
 
-    <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-
-    <div class="grand-total-row">
-      <span class="grand-label">TOTAL</span>
-      <span class="grand-value">{{ fmtCurrency(invoice.grand_total) }}</span>
-    </div>
-
-    <!-- ── Payment Methods ── -->
-    <div v-if="invoice.payments?.length" class="payments-section">
-      <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-      <div v-for="pmt in invoice.payments" :key="pmt.id" class="total-row">
-        <span class="total-label">{{ pmt.payment_methods?.name || 'Payment' }}</span>
-        <span class="total-value">{{ fmtCurrency(pmt.amount) }}</span>
+    <!-- ── Customer Info ── -->
+    <div v-if="customerName || customerPhone" class="customer-info">
+      <div v-if="customerPhone" class="meta-row">
+        <span class="meta-label">Phone</span>
+        <span class="meta-value">: {{ customerPhone }}</span>
       </div>
-      <!-- Change calculation -->
-      <div v-if="changeAmount > 0" class="total-row change-row">
-        <span class="total-label">Change</span>
-        <span class="total-value">{{ fmtCurrency(changeAmount) }}</span>
+      <div v-if="customerName" class="meta-row">
+        <span class="meta-label">Customer</span>
+        <span class="meta-value">: {{ customerName }}</span>
       </div>
     </div>
 
     <!-- ── Footer ── -->
-    <div class="bill-divider">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+    <div class="bill-divider"></div>
     <div class="bill-footer">
-      <div>Thank you for dining with us!</div>
-      <div class="footer-powered">Powered by Seven Waves ERP</div>
+      <div class="footer-thanks">THANK YOU FOR VISITING SEVEN WAVES</div>
+      <div class="footer-web">www.mycom.lk | 076 056 4257 - 53</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import logoImage from 'src/assets/seven-waves-logo-transparent.png'
+
+const billRoot = ref(null)
 
 const props = defineProps({
   invoice: {
@@ -132,92 +143,354 @@ const props = defineProps({
   },
 })
 
-const tableNumber = computed(() => {
+const logoUrl = computed(() => logoImage)
+
+const tableDisplay = computed(() => {
   const t = props.invoice.orders?.restaurant_tables
-  if (!t) return null
-  return t.section ? `${t.section} – ${t.table_number}` : t.table_number
+  if (!t) return ''
+  return t.section ? `${t.section}/${t.table_number}` : `T${t.table_number}`
 })
 
-const changeAmount = computed(() => {
+const kotNumber = computed(() => {
+  const order = props.invoice.orders
+  if (!order) return '—'
+  // Try to get from order.kot_tickets
+  if (order.kot_tickets?.length > 0) {
+    return order.kot_tickets.map((k) => k.kot_number).join(', ')
+  }
+  return '—'
+})
+
+const waiterName = computed(() => {
+  return props.invoice.orders?.waiter?.full_name || '—'
+})
+
+const customerName = computed(() => {
+  return props.invoice.customer_name || props.invoice.orders?.customer_name || ''
+})
+
+const customerPhone = computed(() => {
+  return props.invoice.customer_phone || props.invoice.orders?.customer_phone || ''
+})
+
+const paxCount = computed(() => {
+  return props.invoice.orders?.pax || 1
+})
+
+const totalQty = computed(() => {
+  return (props.invoice.invoice_items || []).reduce((sum, item) => sum + (item.quantity || 0), 0)
+})
+
+const balanceAmount = computed(() => {
   const paid = (props.invoice.payments || []).reduce((s, p) => s + parseFloat(p.amount || 0), 0)
   const due = parseFloat(props.invoice.grand_total || 0)
-  return paid > due ? paid - due : 0
+  return due - paid
 })
 
-function fmtCurrency(val) {
-  const num = parseFloat(val || 0).toFixed(2)
-  return `${props.currencySymbol} ${num}`
+function fmtNum(val) {
+  return parseFloat(val || 0).toFixed(2)
 }
 
-function formatDate(iso) {
+function paymentMethodLabel(pmt) {
+  return pmt.payment_methods?.name || pmt.payment_method_name || pmt.payment_method || 'Payment'
+}
+
+function formatDateTime(iso) {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-GB', {
     day: '2-digit',
+    month: 'short',
+    year: 'numeric',
   })
-}
-
-function formatTime(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('en-US', {
+  const time = d.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: true,
+  })
+  return `${date}  ${time}`
+}
+
+function getLogoBase64() {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve('')
+    img.src = logoImage
   })
 }
+
+async function printReceipt() {
+  if (!billRoot.value) return
+
+  // Convert logo to base64 for print window
+  const logoBase64 = await getLogoBase64()
+
+  // Get the HTML content but replace the logo src with base64
+  let content = billRoot.value.innerHTML
+  if (logoBase64) {
+    // Replace the original logo src with base64
+    content = content.replace(/src="[^"]*"/, `src="${logoBase64}"`)
+  }
+
+  const printContent = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice #${props.invoice?.invoice_number || 'N/A'}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      @page {
+        size: 80mm auto;
+        margin: 0mm;
+      }
+      html, body {
+        width: 80mm;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #000;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 11px;
+        line-height: 1.3;
+      }
+      .bill-print-wrap {
+        width: 80mm;
+        padding: 3mm 3mm 6mm 3mm;
+      }
+      .bill-header { text-align: center; margin-bottom: 4px; }
+      .bill-logo {
+        width: 50mm;
+        height: auto;
+        margin: 0 auto 2px;
+        display: block;
+      }
+      .restaurant-name {
+        font-size: 9px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 1px;
+      }
+      .restaurant-address {
+        font-size: 8px;
+        color: #333;
+        margin-bottom: 1px;
+      }
+      .restaurant-tel {
+        font-size: 8px;
+        color: #333;
+      }
+      .bill-divider {
+        border-top: 1px solid #000;
+        margin: 4px 0;
+      }
+      .bill-divider-dashed {
+        border-top: 1px dashed #888;
+        margin: 3px 0;
+      }
+      .bill-meta { margin: 3px 0; }
+      .meta-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        padding: 0.5px 0;
+      }
+      .meta-row-split {
+        display: flex;
+        justify-content: space-between;
+      }
+      .meta-label { color: #333; }
+      .meta-value { font-weight: 600; }
+      .items-table { width: 100%; border-collapse: collapse; }
+      .items-table thead tr th {
+        font-size: 9px;
+        font-weight: bold;
+        padding: 1px 0;
+        text-align: left;
+      }
+      .items-table tbody tr td {
+        padding: 2px 0;
+        font-size: 10px;
+        vertical-align: top;
+      }
+      .col-desc { text-align: left; width: 55%; }
+      .col-qty { text-align: center; width: 10%; }
+      .col-amt { text-align: right; width: 35%; }
+      .item-name { font-weight: 600; font-size: 10px; }
+      .item-code-line { font-size: 9px; color: #555; }
+      .totals-section { margin: 4px 0; }
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        padding: 1px 0;
+      }
+      .total-row-bold {
+        font-weight: bold;
+        font-size: 11px;
+      }
+      .customer-info {
+        margin: 4px 0;
+        font-size: 10px;
+      }
+      .bill-footer {
+        text-align: center;
+        font-size: 9px;
+        color: #333;
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+      .footer-thanks {
+        font-weight: bold;
+        font-size: 10px;
+        margin-bottom: 2px;
+      }
+      .footer-web {
+        font-size: 8px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    ${content}
+  </body>
+</html>`
+
+  // Use a popup window for reliable POS printing
+  const printWin = window.open(
+    '',
+    '_blank',
+    'width=320,height=600,toolbar=0,menubar=0,scrollbars=0',
+  )
+  if (!printWin) {
+    alert('Print popup was blocked. Please allow popups for this site.')
+    return
+  }
+
+  printWin.document.open()
+  printWin.document.write(printContent)
+  printWin.document.close()
+
+  // Wait for content to load then print
+  printWin.onload = () => {
+    printWin.focus()
+    printWin.print()
+    setTimeout(() => {
+      try {
+        printWin.close()
+      } catch {
+        /* ignore */
+      }
+    }, 1000)
+  }
+
+  // Fallback if onload doesn't fire (some browsers)
+  setTimeout(() => {
+    try {
+      if (!printWin.closed) {
+        printWin.focus()
+        printWin.print()
+        setTimeout(() => {
+          try {
+            printWin.close()
+          } catch {
+            /* ignore */
+          }
+        }, 1000)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, 800)
+}
+
+defineExpose({ printReceipt })
 </script>
 
 <style>
-/* These styles are intentionally NOT scoped so they apply inside the print frame */
+/* These styles are intentionally NOT scoped — used for on-screen preview */
 
 .bill-print-wrap {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: #000;
   background: #fff;
   width: 280px;
   margin: 0 auto;
-  padding: 12px 8px;
+  padding: 10px 8px;
   box-sizing: border-box;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
-.restaurant-name {
-  font-size: 18px;
-  font-weight: bold;
+.bill-header {
   text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 2px;
   margin-bottom: 4px;
 }
 
-.restaurant-address {
-  font-size: 10px;
+.bill-logo {
+  width: 160px;
+  height: auto;
+  margin: 0 auto 4px;
+  display: block;
+}
+
+.restaurant-name {
+  font-size: 9px;
+  font-weight: bold;
   text-align: center;
-  color: #444;
-  margin-bottom: 6px;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+.restaurant-address {
+  font-size: 8px;
+  text-align: center;
+  color: #333;
+  margin-bottom: 1px;
+}
+
+.restaurant-tel {
+  font-size: 8px;
+  text-align: center;
+  color: #333;
 }
 
 .bill-divider {
-  color: #888;
-  font-size: 10px;
-  margin: 6px 0;
-  letter-spacing: -1px;
-  overflow: hidden;
+  border-top: 1px solid #000;
+  margin: 4px 0;
+}
+
+.bill-divider-dashed {
+  border-top: 1px dashed #888;
+  margin: 3px 0;
 }
 
 .bill-meta {
-  margin: 6px 0;
+  margin: 3px 0;
 }
 
 .meta-row {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 10px;
+  padding: 0.5px 0;
+}
+
+.meta-row-split {
+  display: flex;
+  justify-content: space-between;
 }
 
 .meta-label {
-  color: #555;
+  color: #333;
 }
 
 .meta-value {
@@ -228,39 +501,43 @@ function formatTime(iso) {
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 4px 0;
 }
 
 .items-table thead tr th {
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #555;
-  padding: 2px 0;
-  border-bottom: 1px dashed #ccc;
+  padding: 1px 0;
+  text-align: left;
 }
 
 .items-table tbody tr td {
-  padding: 3px 0;
-  font-size: 11px;
+  padding: 2px 0;
+  font-size: 10px;
   vertical-align: top;
 }
 
-.col-item {
+.col-desc {
   text-align: left;
-  width: 50%;
+  width: 55%;
 }
 .col-qty {
   text-align: center;
   width: 10%;
 }
-.col-price {
+.col-amt {
   text-align: right;
-  width: 20%;
+  width: 35%;
 }
-.col-total {
-  text-align: right;
-  width: 20%;
+
+.item-name {
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.item-code-line {
+  font-size: 9px;
+  color: #555;
 }
 
 /* Totals */
@@ -271,50 +548,38 @@ function formatTime(iso) {
 .total-row {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 10px;
   padding: 1px 0;
 }
 
-.discount-row {
-  color: #c00;
+.total-row-bold {
+  font-weight: bold;
+  font-size: 11px;
 }
 
-.change-row {
-  color: #060;
-  font-weight: bold;
-}
-
-.grand-total-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 15px;
-  font-weight: bold;
+.customer-info {
   margin: 4px 0;
-}
-
-.grand-label,
-.grand-value {
-  letter-spacing: 0.5px;
-}
-
-/* Payments */
-.payments-section {
-  margin: 0;
+  font-size: 10px;
 }
 
 /* Footer */
 .bill-footer {
   text-align: center;
-  font-size: 10px;
-  color: #444;
-  margin-top: 10px;
-  line-height: 1.6;
+  font-size: 9px;
+  color: #333;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
-.footer-powered {
-  font-size: 9px;
-  color: #aaa;
-  margin-top: 2px;
+.footer-thanks {
+  font-weight: bold;
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.footer-web {
+  font-size: 8px;
+  color: #666;
 }
 
 /* ── Print styles ── */
@@ -334,7 +599,7 @@ function formatTime(iso) {
   }
   @page {
     size: 80mm auto;
-    margin: 4mm;
+    margin: 3mm;
   }
 }
 </style>

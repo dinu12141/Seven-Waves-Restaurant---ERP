@@ -146,16 +146,16 @@ export const useOrderStore = defineStore('posOrder', () => {
         payment_status: 'unpaid',
         table_id: selectedTable.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
+        customer_name: customerName.value || null,
+        subtotal: parseFloat(subtotal.value.toFixed(2)),
+        tax_amount: parseFloat(taxAmount.value.toFixed(2)),
+        discount_amount: parseFloat(discountAmount.value.toFixed(2)),
       }
 
-      // Extended fields (present in orders.sql full schema — include if company_id available)
+      // Extended fields
       if (companyId) {
         Object.assign(orderPayload, {
           company_id: companyId,
-          customer_name: customerName.value || null,
-          subtotal: parseFloat(subtotal.value.toFixed(2)),
-          tax_amount: parseFloat(taxAmount.value.toFixed(2)),
-          discount_amount: parseFloat(discountAmount.value.toFixed(2)),
         })
       }
 
@@ -271,15 +271,15 @@ export const useOrderStore = defineStore('posOrder', () => {
         payment_status: 'unpaid',
         table_id: selectedTable.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
+        customer_name: customerName.value || null,
+        subtotal: parseFloat(subtotal.value.toFixed(2)),
+        tax_amount: parseFloat(taxAmount.value.toFixed(2)),
+        discount_amount: parseFloat(discountAmount.value.toFixed(2)),
       }
 
       if (companyId) {
         Object.assign(orderPayload, {
           company_id: companyId,
-          customer_name: customerName.value || null,
-          subtotal: parseFloat(subtotal.value.toFixed(2)),
-          tax_amount: parseFloat(taxAmount.value.toFixed(2)),
-          discount_amount: parseFloat(discountAmount.value.toFixed(2)),
         })
       }
 
@@ -384,6 +384,8 @@ export const useOrderStore = defineStore('posOrder', () => {
       // 8. Success & Cleanup
       const result = {
         success: true,
+        orderId: order.id,
+        invoiceId: invoice.id,
         orderNumber: order.order_number,
         invoiceNumber: invoice.invoice_number,
         paymentMethod: paymentMethodName,

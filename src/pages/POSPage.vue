@@ -1,211 +1,305 @@
 <template>
-  <q-page class="pos-page row no-wrap">
-    <!-- ════════════════════════════════════════════════════════
-         LEFT PANEL — Menu Catalog
-         ════════════════════════════════════════════════════════ -->
-    <div class="col column left-panel">
-      <!-- ── Header Row: Title + Search ── -->
-      <div class="row items-center q-px-md q-pt-md q-pb-sm">
-        <div class="row items-center q-mr-md">
-          <q-icon name="point_of_sale" size="24px" color="primary" class="q-mr-sm" />
-          <span class="text-h6 text-white text-weight-bold">POS</span>
-
-          <q-btn
-            flat
-            dense
-            round
-            icon="receipt_long"
-            color="orange-8"
-            class="q-ml-md"
-            @click="queueDrawer = !queueDrawer"
-          >
-            <q-badge v-if="cashierStore.readyCount > 0" color="green" floating>
-              {{ cashierStore.readyCount }}
-            </q-badge>
-            <q-badge v-else-if="cashierStore.billingOrders.length > 0" color="red" floating>
-              {{ cashierStore.billingOrders.length }}
-            </q-badge>
-            <q-tooltip>Billing Queue (KOTs)</q-tooltip>
-          </q-btn>
-        </div>
-
-        <q-input
-          dark
-          dense
-          rounded
-          standout="bg-grey-9"
-          v-model="searchQuery"
-          placeholder="Search menu items..."
-          class="col search-input"
-          debounce="200"
-          clearable
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" color="grey-5" />
-          </template>
-        </q-input>
+  <q-page class="pos-terminal">
+    <!-- ══════════════════════════════════════════════════════
+         TOP STATUS BAR
+         ══════════════════════════════════════════════════════ -->
+    <div class="pos-top-bar">
+      <div class="top-bar-left">
+        <span class="top-version">SevenWaves POS v1.0</span>
+        <span class="top-sep">|</span>
+        <span class="top-branch">{{ branchName }}</span>
       </div>
-
-      <!-- ── Category Tabs ── -->
-      <div class="q-px-md q-pb-sm">
-        <q-tabs
-          v-model="selectedCategory"
-          dense
-          no-caps
-          align="left"
-          active-color="primary"
-          indicator-color="primary"
-          class="category-tabs text-grey-5"
-          outside-arrows
-          mobile-arrows
-        >
-          <q-tab v-for="cat in categories" :key="cat.id" :name="cat.name" class="category-tab">
-            <q-icon :name="cat.icon" size="18px" class="q-mr-xs" />
-            <span>{{ cat.name }}</span>
-            <q-badge
-              v-if="cat.name !== 'All'"
-              :label="getCategoryCount(cat.name)"
-              color="grey-8"
-              text-color="grey-4"
-              class="q-ml-xs"
-              rounded
-            />
-          </q-tab>
-        </q-tabs>
+      <div class="top-bar-center">
+        <span class="top-user-label">{{ userName }}</span>
       </div>
-
-      <q-separator color="grey-9" />
-
-      <!-- ── Product Grid ── -->
-      <q-scroll-area class="col product-scroll q-px-md q-pt-md">
-        <!-- Loading state -->
-        <div v-if="menuLoading" class="column items-center justify-center q-pa-xl text-grey-6">
-          <q-spinner-dots color="primary" size="40px" class="q-mb-sm" />
-          <div class="text-caption">Loading menu...</div>
+      <div class="top-bar-right">
+        <div class="top-info-grid">
+          <div class="info-row">
+            <span class="info-label">Paid</span>
+            <span class="info-value">{{ fmtCurrency(paidAmount) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Balance</span>
+            <span class="info-value">{{ fmtCurrency(balanceAmount) }}</span>
+          </div>
         </div>
-
-        <!-- Error state -->
-        <div v-else-if="menuError" class="column items-center justify-center q-pa-xl text-grey-6">
-          <q-icon name="error_outline" size="48px" color="red-4" class="q-mb-sm" />
-          <div class="text-subtitle2 text-red-4">Failed to load menu</div>
-          <div class="text-caption q-mb-md">{{ menuError }}</div>
-          <q-btn
-            unelevated
-            no-caps
-            color="primary"
-            label="Retry"
-            icon="refresh"
-            @click="fetchMenuItems"
-          />
+        <div class="top-total-box">
+          <div class="total-label-top">Total</div>
+          <div class="total-value-top">{{ fmtCurrency(store.total) }}</div>
         </div>
+      </div>
+    </div>
 
-        <!-- No results -->
-        <div
-          v-else-if="filteredProducts.length === 0"
-          class="column items-center justify-center q-pa-xl text-grey-6"
-        >
-          <q-icon name="search_off" size="48px" class="q-mb-sm" style="opacity: 0.3" />
-          <div class="text-subtitle2">No items found</div>
-          <div class="text-caption">Try a different search or category</div>
-        </div>
-
-        <!-- Grid -->
-        <div v-else class="row q-col-gutter-sm">
-          <div
-            v-for="product in filteredProducts"
-            :key="product.id"
-            class="col-6 col-sm-4 col-md-3 col-lg-2"
-          >
-            <MenuItemCard :product="product" @select="handleProductSelect" />
+    <!-- ══════════════════════════════════════════════════════
+         MAIN BODY — 3-column layout
+         ══════════════════════════════════════════════════════ -->
+    <div class="pos-body">
+      <!-- ═══ LEFT: Order Items List ═══ -->
+      <div class="pos-left-panel">
+        <!-- Customer row -->
+        <div class="customer-bar">
+          <div class="cust-field">
+            <span class="cust-label">Customer</span>
+            <input v-model="store.customerName" class="cust-input" placeholder="Walk-in" />
+          </div>
+          <div class="cust-field">
+            <span class="cust-label">Table</span>
+            <span class="cust-value">{{ store.selectedTable || '—' }}</span>
           </div>
         </div>
 
-        <!-- Bottom spacer -->
-        <div style="height: 24px" />
-      </q-scroll-area>
-    </div>
+        <!-- Order items table -->
+        <div class="order-items-table-wrap">
+          <table class="order-items-table">
+            <thead>
+              <tr>
+                <th class="th-num">#</th>
+                <th class="th-desc">Description</th>
+                <th class="th-qty">Qty</th>
+                <th class="th-amt">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, index) in store.cartItems"
+                :key="item.id"
+                :class="{ selected: selectedItemIndex === index }"
+                @click="selectItem(index)"
+              >
+                <td class="td-num">{{ index + 1 }}</td>
+                <td class="td-desc">
+                  {{ item.name
+                  }}<span v-if="item.variant" class="item-variant"> ({{ item.variant }})</span>
+                </td>
+                <td class="td-qty">{{ item.qty }}</td>
+                <td class="td-amt">{{ fmtCurrency(item.price * item.qty) }}</td>
+              </tr>
+              <!-- Empty rows to fill space -->
+              <tr v-for="n in emptyRows" :key="'empty-' + n" class="empty-row">
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-    <!-- ════════════════════════════════════════════════════════
-         RIGHT PANEL — Order Cart
-         ════════════════════════════════════════════════════════ -->
-    <div class="cart-panel">
-      <OrderCart
-        @send-to-kitchen="handleSendToKitchen"
-        @process-payment="handleProcessPayment"
-        @clear-cart="handleClearCart"
-      />
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════
-         VARIANT SELECTION DIALOG
-         ════════════════════════════════════════════════════════ -->
-    <q-dialog v-model="variantDialog" persistent>
-      <q-card class="variant-dialog-card" dark>
-        <q-card-section class="row items-center q-pb-none">
-          <q-avatar rounded size="48px" class="q-mr-md">
-            <q-img v-if="selectedProduct" :src="selectedProduct.image" />
-          </q-avatar>
-          <div>
-            <div class="text-h6 text-white">{{ selectedProduct?.name }}</div>
-            <div class="text-caption text-grey-5">Select a variant</div>
+      <!-- ═══ CENTER: Category Buttons + Function Buttons ═══ -->
+      <div class="pos-center-panel">
+        <!-- Search & Function Menu Row -->
+        <div class="center-top">
+          <!-- Item Search Bar -->
+          <div class="pos-search-bar">
+            <q-input
+              v-model="itemSearchQuery"
+              dense
+              outlined
+              dark
+              placeholder="Search Items..."
+              class="search-input"
+              @update:model-value="onSearchInput"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" size="18px" color="primary" />
+              </template>
+              <template v-slot:append v-if="itemSearchQuery">
+                <q-icon
+                  name="close"
+                  size="14px"
+                  class="cursor-pointer"
+                  @click="itemSearchQuery = ''"
+                />
+              </template>
+            </q-input>
           </div>
+
+          <!-- Scroll up -->
+          <button class="scroll-arrow-btn" @click="scrollCategoriesUp">▲</button>
+
+          <!-- Category Grid -->
+          <div class="category-grid" ref="categoryGridRef">
+            <!-- Search Results Mode -->
+            <template v-if="itemSearchQuery">
+              <button
+                v-for="item in filteredSearchItems"
+                :key="'search-' + item.id"
+                class="cat-btn search-res-btn"
+                @click="handleSearchResultClick(item)"
+              >
+                {{ item.name }}
+              </button>
+              <div
+                v-if="filteredSearchItems.length === 0"
+                class="text-grey-6 text-center q-pa-md col-span-2"
+              >
+                No items found
+              </div>
+            </template>
+
+            <!-- Categories Mode -->
+            <template v-else>
+              <button
+                v-for="cat in categories"
+                :key="cat.id"
+                class="cat-btn"
+                :class="{ active: selectedCategory === cat.name }"
+                @click="selectCategory(cat.name)"
+              >
+                {{ cat.name }}
+              </button>
+            </template>
+          </div>
+
+          <!-- Scroll down -->
+          <button class="scroll-arrow-btn" @click="scrollCategoriesDown">▼</button>
+
+          <!-- Function Menu Button -->
+          <button class="func-menu-btn" @click="toggleFunctionMenu">FUNCTION MENU</button>
+        </div>
+
+        <!-- Function buttons row -->
+        <div class="function-buttons">
+          <button class="fn-btn fn-blue" @click="handleVoid">VOID</button>
+          <button class="fn-btn fn-blue" @click="handleClearOrder">Clear Order</button>
+          <button class="fn-btn fn-blue" @click="handleBack">Back</button>
+
+          <button class="fn-btn fn-blue" @click="handlePrint">PRINT</button>
+          <button class="fn-btn fn-blue" @click="handleOther">Other</button>
+          <button class="fn-btn fn-blue" @click="handleEdit">Edit</button>
+
+          <button class="fn-btn fn-blue fn-wide" @click="handleModifier">Modifier</button>
+          <button class="fn-btn fn-blue fn-wide" @click="handleDivider">Divider</button>
+        </div>
+
+        <!-- Order type buttons -->
+        <div class="order-type-buttons">
+          <button
+            class="ot-btn"
+            :class="{ active: store.orderType === 'dine-in' }"
+            @click="setOrderType('dine-in')"
+          >
+            Table Order
+          </button>
+          <button
+            class="ot-btn"
+            :class="{ active: store.orderType === 'takeaway' }"
+            @click="setOrderType('takeaway')"
+          >
+            Take Away
+          </button>
+          <button
+            class="ot-btn"
+            :class="{ active: store.orderType === 'delivery' }"
+            @click="setOrderType('delivery')"
+          >
+            Delivery
+          </button>
+        </div>
+
+        <!-- Bottom action buttons -->
+        <div class="bottom-actions">
+          <button class="ba-btn ba-blue" @click="handleNewOrder">Order</button>
+          <button class="ba-btn ba-blue" @click="handleOrderLookup">Order<br />Lookup</button>
+          <button class="ba-btn ba-blue" @click="handleClear">Clear</button>
+          <button class="ba-btn ba-save" @click="handleSave">SAVE</button>
+          <button class="ba-btn ba-payment" @click="handlePayment">PAYMENT</button>
+        </div>
+      </div>
+
+      <!-- ═══ RIGHT: Numeric Keypad ═══ -->
+      <div class="pos-right-panel">
+        <div class="numpad-grid">
+          <button class="num-btn" @click="numInput('7')">7</button>
+          <button class="num-btn" @click="numInput('8')">8</button>
+          <button class="num-btn" @click="numInput('9')">9</button>
+          <button class="num-btn" @click="numInput('4')">4</button>
+          <button class="num-btn" @click="numInput('5')">5</button>
+          <button class="num-btn" @click="numInput('6')">6</button>
+          <button class="num-btn" @click="numInput('1')">1</button>
+          <button class="num-btn" @click="numInput('2')">2</button>
+          <button class="num-btn" @click="numInput('3')">3</button>
+          <button class="num-btn" @click="numInput('0')">0</button>
+          <button class="num-btn" @click="numInput('.')">●</button>
+          <button class="num-btn num-x" @click="numClear">X</button>
+        </div>
+        <button class="enter-btn" @click="numEnter">ENTER</button>
+        <button class="subtotal-btn" @click="handleSubtotal">Subtotal</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         BOTTOM BAR — Sub-category tabs + Logout
+         ══════════════════════════════════════════════════════ -->
+    <div class="pos-bottom-bar">
+      <div class="subcat-tabs">
+        <button
+          v-for="(sub, idx) in subCategories"
+          :key="sub.id || idx"
+          class="subcat-btn"
+          :class="{ active: selectedSubCategory === sub.name }"
+          @click="selectSubCategory(sub)"
+        >
+          {{ sub.label }}
+        </button>
+      </div>
+      <div class="bottom-right-actions">
+        <button class="logout-btn" @click="handleLogout">Log Out</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         ITEM PICKER OVERLAY (when sub-category selected)
+         ══════════════════════════════════════════════════════ -->
+    <q-dialog v-model="itemPickerOpen" position="bottom" maximized>
+      <q-card class="item-picker-card" dark>
+        <q-card-section class="row items-center q-pb-sm">
+          <q-icon name="restaurant_menu" color="primary" size="20px" class="q-mr-sm" />
+          <span class="text-subtitle1 text-white text-weight-bold">{{
+            selectedSubCategoryLabel
+          }}</span>
           <q-space />
-          <q-btn flat round icon="close" color="grey-5" v-close-popup />
+          <q-btn flat round dense icon="close" color="grey-5" v-close-popup />
         </q-card-section>
-
-        <q-card-section>
-          <div class="row q-gutter-sm">
-            <q-btn
-              v-for="variant in selectedProduct?.variants"
-              :key="variant"
-              unelevated
-              no-caps
-              :outline="selectedVariant !== variant"
-              :color="selectedVariant === variant ? 'primary' : 'grey-8'"
-              text-color="white"
-              :label="variant"
-              class="variant-option-btn"
-              @click="selectedVariant = variant"
-            />
+        <q-separator color="grey-8" />
+        <q-card-section class="item-picker-grid-section">
+          <div class="item-picker-grid">
+            <button
+              v-for="item in subCategoryItems"
+              :key="item.id"
+              class="item-pick-btn"
+              @click="addItemToOrder(item)"
+            >
+              <div class="ipb-name">{{ item.name }}</div>
+              <div class="ipb-price">LKR {{ item.price.toFixed(0) }}</div>
+            </button>
+          </div>
+          <div v-if="subCategoryItems.length === 0" class="text-grey-6 text-center q-pa-xl">
+            No items in this category
           </div>
         </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md q-pt-none">
-          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
-          <q-btn
-            unelevated
-            no-caps
-            label="Add to Order"
-            color="primary"
-            icon="add_shopping_cart"
-            :disable="!selectedVariant"
-            @click="confirmVariantSelection"
-          />
-        </q-card-actions>
       </q-card>
     </q-dialog>
-    <!-- ════════════════════════════════════════════════════════
-         BILLING QUEUE DRAWER (KOTs)
-         ════════════════════════════════════════════════════════ -->
+
+    <!-- ══════════════════════════════════════════════════════
+         BILLING QUEUE DRAWER
+         ══════════════════════════════════════════════════════ -->
     <q-drawer
       v-model="queueDrawer"
       side="left"
       overlay
       behavior="mobile"
-      :width="350"
+      :width="380"
       class="billing-queue-drawer"
     >
       <BillingQueue @select="openBilling" />
     </q-drawer>
 
-    <!-- ════════════════════════════════════════════════════════
-         BILL DIALOG (for Queue Orders)
-         ════════════════════════════════════════════════════════ -->
+    <!-- Bill Dialog -->
     <BillDialog v-model="billDialogOpen" :order="selectedQueueOrder" @paid="onOrderPaid" />
 
-    <!-- ════════════════════════════════════════════════════════
-         PAYMENT DIALOG (for Current POS Cart)
-         ════════════════════════════════════════════════════════ -->
+    <!-- Payment Dialog -->
     <PaymentDialog
       v-model="paymentDialog"
       :total-amount="store.total"
@@ -224,33 +318,32 @@ import { useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useCashierStore } from 'src/stores/cashierStore'
-import MenuItemCard from 'src/components/pos/MenuItemCard.vue'
-import OrderCart from 'src/components/pos/OrderCart.vue'
-import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
+import { useAuthStore } from 'src/stores/auth'
 import BillingQueue from 'src/components/pos/BillingQueue.vue'
 import BillDialog from 'src/components/cashier/BillDialog.vue'
+import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
 const store = useOrderStore()
 const cashierStore = useCashierStore()
+const authStore = useAuthStore()
 
-// ── Local State ──────────────────────────────────────────
-const searchQuery = ref('')
+// ── State ───────────────────────────────────────────────
 const selectedCategory = ref('All')
+const selectedSubCategory = ref('')
+const selectedSubCategoryLabel = ref('')
+const selectedItemIndex = ref(-1)
+const numBuffer = ref('')
+const itemPickerOpen = ref(false)
+const categoryGridRef = ref(null)
 
-// Menu data from Supabase
+// Menu data
 const menuProducts = ref([])
-const categories = ref([{ id: 'all', name: 'All', icon: 'store' }])
+const categories = ref([])
 const menuLoading = ref(false)
-const menuError = ref(null)
 
-// Variant dialog
-const variantDialog = ref(false)
-const selectedProduct = ref(null)
-const selectedVariant = ref(null)
-
-// Payment Dialog
+// Payment
 const paymentDialog = ref(false)
 const isProcessingPayment = ref(false)
 
@@ -259,85 +352,102 @@ const queueDrawer = ref(false)
 const billDialogOpen = ref(false)
 const selectedQueueOrder = ref(null)
 
-function openBilling(order) {
-  selectedQueueOrder.value = order
-  billDialogOpen.value = true
-  // We don't close queueDrawer here so user can easily switch back
-}
+// ── Computed ────────────────────────────────────────────
+const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES')
+const userName = computed(() => authStore.profile?.full_name || 'Cashier')
 
-function onOrderPaid() {
-  billDialogOpen.value = false
-  selectedQueueOrder.value = null
-  cashierStore.fetchBillingOrders()
-}
+// Search
+const itemSearchQuery = ref('')
+const filteredSearchItems = computed(() => {
+  if (!itemSearchQuery.value) return []
+  const q = itemSearchQuery.value.toLowerCase()
+  return menuProducts.value.filter(
+    (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
+  )
+})
+
+const paidAmount = computed(() => 0)
+const balanceAmount = computed(() => store.total)
+
+const emptyRows = computed(() => {
+  const maxRows = 10
+  const used = store.cartItems.length
+  return Math.max(0, maxRows - used)
+})
+
+const subCategories = computed(() => {
+  if (selectedCategory.value === 'All' || !selectedCategory.value) {
+    // Show all unique categories as sub-tabs
+    const seen = new Set()
+    const tabs = []
+    let idx = 1
+    for (const item of menuProducts.value) {
+      if (!seen.has(item.category)) {
+        seen.add(item.category)
+        tabs.push({
+          id: item.category,
+          name: item.category,
+          label: `${String(idx).padStart(2, '0')}-${item.category.toUpperCase()}`,
+        })
+        idx++
+      }
+    }
+    return tabs
+  }
+  // When a specific category is selected, show items as sub-tabs
+  const items = menuProducts.value.filter((p) => p.category === selectedCategory.value)
+  return items.map((item, i) => ({
+    id: item.id,
+    name: item.name,
+    label: `${String(i + 1).padStart(2, '0')}-${item.name.substring(0, 10).toUpperCase()}`,
+    isItem: true,
+    item,
+  }))
+})
+
+const subCategoryItems = computed(() => {
+  if (!selectedSubCategory.value) return []
+  return menuProducts.value.filter((p) => p.category === selectedSubCategory.value)
+})
+
+// ── Fetch Menu ──────────────────────────────────────────
 async function fetchMenuItems() {
   menuLoading.value = true
-  menuError.value = null
-
   try {
     const { data, error } = await supabase
       .from('menu_items')
-      .select(
-        `
-        id,
-        name,
-        base_price,
-        is_available,
-        kitchen_id,
-        categories(id, name)
-      `,
-      )
+      .select(`id, name, base_price, is_available, kitchen_id, categories(id, name)`)
       .eq('is_available', true)
       .order('name')
 
     if (error) throw error
 
-    // Map to the shape MenuItemCard expects
     menuProducts.value = (data || []).map((item) => ({
-      id: item.id, // real UUID — used as menu_item_id in order_items
+      id: item.id,
       name: item.name,
       price: parseFloat(item.base_price || 0),
       kitchen_id: item.kitchen_id,
-      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+      image: '',
       category: item.categories?.name || 'Other',
-      variants: [], // variants loaded separately if needed
+      variants: [],
     }))
 
-    // Build category list from unique categories in the data
+    // Build categories
     const seen = new Set()
     const cats = [{ id: 'all', name: 'All', icon: 'store' }]
     for (const item of menuProducts.value) {
       if (!seen.has(item.category)) {
         seen.add(item.category)
-        cats.push({
-          id: item.category,
-          name: item.category,
-          icon: _categoryIcon(item.category),
-        })
+        cats.push({ id: item.category, name: item.category })
       }
     }
     categories.value = cats
   } catch (err) {
-    console.error('[POS] Failed to load menu items:', err)
-    menuError.value = err.message || 'Unknown error'
+    console.error('[POS] Failed to load menu:', err)
+    Notify.create({ message: 'Failed to load menu', caption: err.message, color: 'red' })
   } finally {
     menuLoading.value = false
   }
-}
-
-function _categoryIcon(name) {
-  const icons = {
-    Burgers: 'lunch_dining',
-    Pizza: 'local_pizza',
-    Pasta: 'dinner_dining',
-    Appetizers: 'tapas',
-    Salads: 'restaurant',
-    Desserts: 'cake',
-    Drinks: 'local_bar',
-    Sides: 'fastfood',
-    Beverages: 'local_bar',
-  }
-  return icons[name] || 'restaurant_menu'
 }
 
 onMounted(() => {
@@ -345,147 +455,92 @@ onMounted(() => {
   cashierStore.initialize()
 })
 
-// ── Computed ─────────────────────────────────────────────
-const filteredProducts = computed(() => {
-  let products = menuProducts.value
-
-  if (selectedCategory.value !== 'All') {
-    products = products.filter((p) => p.category === selectedCategory.value)
-  }
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    products = products.filter(
-      (p) => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query),
-    )
-  }
-
-  return products
-})
-
-function getCategoryCount(categoryName) {
-  return menuProducts.value.filter((p) => p.category === categoryName).length
+// ── Item Selection ──────────────────────────────────────
+function onSearchInput() {
+  // Logic if needed
 }
 
-// ── Product Selection ────────────────────────────────────
-function handleProductSelect(product) {
-  if (product.variants && product.variants.length > 0) {
-    // Open variant dialog
-    selectedProduct.value = product
-    selectedVariant.value = product.variants[0]
-    variantDialog.value = true
+function handleSearchResultClick(item) {
+  addItemToOrder(item)
+  itemSearchQuery.value = ''
+}
+
+function selectItem(index) {
+  selectedItemIndex.value = index
+}
+
+function selectCategory(catName) {
+  selectedCategory.value = catName
+  selectedSubCategory.value = ''
+}
+
+function selectSubCategory(sub) {
+  if (sub.isItem && sub.item) {
+    // Direct item add
+    addItemToOrder(sub.item)
   } else {
-    // Add directly
+    // It's a category → show items as item picker
+    selectedSubCategory.value = sub.name
+    selectedSubCategoryLabel.value = sub.label || sub.name
+    itemPickerOpen.value = true
+  }
+}
+
+function addItemToOrder(product) {
+  const qty = parseInt(numBuffer.value) || 1
+  for (let i = 0; i < qty; i++) {
     store.addItem(product)
-    showAddNotification(product.name)
   }
-}
-
-function confirmVariantSelection() {
-  if (selectedProduct.value && selectedVariant.value) {
-    store.addItem(selectedProduct.value, selectedVariant.value)
-    showAddNotification(`${selectedProduct.value.name} (${selectedVariant.value})`)
-    variantDialog.value = false
-    selectedProduct.value = null
-    selectedVariant.value = null
-  }
-}
-
-function showAddNotification(itemName) {
+  numBuffer.value = ''
   Notify.create({
-    message: `${itemName} added`,
+    message: `${product.name} × ${qty} added`,
     color: 'positive',
     icon: 'check_circle',
     position: 'top',
-    timeout: 800,
-    classes: 'glossy',
+    timeout: 600,
   })
 }
 
-// ── Cart Actions ─────────────────────────────────────────
-async function handleSendToKitchen() {
-  if (store.isEmpty) return
+// ── Numeric Keypad ──────────────────────────────────────
+function numInput(char) {
+  numBuffer.value += char
+}
 
-  Loading.show({ message: 'Sending to kitchen...' })
+function numClear() {
+  numBuffer.value = ''
+}
 
-  try {
-    const result = await store.sendToKitchen()
-
-    if (result && result.success) {
-      Loading.hide()
-
-      Notify.create({
-        message: `Order #${result.order.order_number ?? result.order.id.slice(0, 8).toUpperCase()} sent to kitchen!`,
-        caption: `${store.cartItems.length} item(s) • ${store.orderType}`,
-        color: 'teal',
-        icon: 'soup_kitchen',
-        position: 'top-right',
-        timeout: 3000,
-      })
-
-      // Clear cart and redirect to Orders page
-      store.clearCart()
-      router.push('/orders')
-    }
-  } catch (err) {
-    Loading.hide()
-
-    Notify.create({
-      message: 'Failed to send order',
-      caption: err.message || 'Please try again',
-      color: 'negative',
-      icon: 'error_outline',
-      position: 'top-right',
-      timeout: 5000,
-      actions: [{ label: 'Dismiss', color: 'white', flat: true }],
-    })
-
-    console.error('[POS] sendToKitchen error:', err)
+function numEnter() {
+  if (selectedItemIndex.value >= 0 && numBuffer.value) {
+    const qty = parseInt(numBuffer.value) || 1
+    store.updateQuantity(selectedItemIndex.value, qty)
+    numBuffer.value = ''
   }
 }
 
-function handleProcessPayment() {
-  if (store.isEmpty) return
-  paymentDialog.value = true
-}
-
-async function handleConfirmPayment(method) {
-  isProcessingPayment.value = true
-
-  try {
-    const result = await store.processPayment(method)
-
-    if (result && result.success) {
-      paymentDialog.value = false
-
-      Notify.create({
-        message: `Payment Successful!`,
-        caption: `Invoice #${result.invoiceNumber} • Paid via ${method}`,
-        color: 'positive',
-        icon: 'verified',
-        position: 'top-right',
-        timeout: 4000,
-        actions: [{ label: 'Print Invoice', color: 'white', flat: true }],
-      })
-
-      // Optionally refresh or redirect? store.processPayment already clears the cart
-      // Maybe stay on POS for next order
-    }
-  } catch (err) {
-    console.error('Payment failed:', err)
+// ── Function Button Handlers ────────────────────────────
+function handleVoid() {
+  if (selectedItemIndex.value >= 0) {
+    store.removeItem(selectedItemIndex.value)
+    selectedItemIndex.value = -1
     Notify.create({
-      message: 'Payment Failed',
-      caption: err.message || 'Please try again',
-      color: 'negative',
-      icon: 'error_outline',
-      position: 'top-right',
+      message: 'Item voided',
+      color: 'orange',
+      icon: 'delete',
+      position: 'top',
+      timeout: 800,
     })
-  } finally {
-    isProcessingPayment.value = false
+  } else {
+    Notify.create({
+      message: 'Select an item to void',
+      color: 'grey-8',
+      position: 'top',
+      timeout: 800,
+    })
   }
 }
 
-function handleClearCart() {
+function handleClearOrder() {
   $q.dialog({
     title: 'Clear Order',
     message: 'Are you sure you want to clear the current order?',
@@ -494,75 +549,956 @@ function handleClearCart() {
     ok: { color: 'red', unelevated: true, noCaps: true, label: 'Clear' },
   }).onOk(() => {
     store.clearCart()
-    $q.notify({
+    selectedItemIndex.value = -1
+    Notify.create({
       message: 'Order cleared',
       color: 'grey-8',
       icon: 'delete_outline',
       position: 'top',
-      timeout: 1000,
+      timeout: 800,
     })
   })
 }
+
+function handleBack() {
+  selectedItemIndex.value = -1
+  numBuffer.value = ''
+}
+
+function handlePrint() {
+  queueDrawer.value = true
+}
+
+function handleOther() {
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+  // Apply a custom discount to the order
+  $q.dialog({
+    title: 'Order Discount',
+    message: 'Enter discount percentage (0-100):',
+    prompt: {
+      model: store.discount.toString(),
+      type: 'number',
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((data) => {
+    const val = parseFloat(data)
+    if (!isNaN(val) && val >= 0 && val <= 100) {
+      store.discount = val
+      Notify.create({ message: `Discount set to ${val}%`, color: 'positive', position: 'top' })
+    }
+  })
+}
+
+function handleEdit() {
+  if (selectedItemIndex.value < 0) {
+    Notify.create({
+      message: 'Select an item to edit',
+      color: 'orange',
+      position: 'top',
+      timeout: 800,
+    })
+    return
+  }
+  const item = store.cartItems[selectedItemIndex.value]
+  $q.dialog({
+    title: 'Edit Item Price',
+    message: `Enter new price for ${item.name}:`,
+    prompt: {
+      model: item.price.toString(),
+      type: 'number',
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((data) => {
+    const val = parseFloat(data)
+    if (!isNaN(val) && val >= 0) {
+      item.price = val
+      Notify.create({ message: 'Price updated', color: 'positive', position: 'top' })
+    }
+  })
+}
+
+function handleModifier() {
+  if (selectedItemIndex.value < 0) {
+    Notify.create({
+      message: 'Select an item to add notes/modifiers',
+      color: 'orange',
+      position: 'top',
+      timeout: 800,
+    })
+    return
+  }
+  const item = store.cartItems[selectedItemIndex.value]
+  $q.dialog({
+    title: 'Item Note / Modifier',
+    message: `Enter note for ${item.name}:`,
+    prompt: {
+      model: item.notes || '',
+      type: 'text',
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((data) => {
+    store.setItemNotes(selectedItemIndex.value, data)
+    Notify.create({ message: 'Note updated', color: 'positive', position: 'top' })
+  })
+}
+
+function handleDivider() {
+  // Can be used to open the cash drawer if integrated, for now just a generic action
+  Notify.create({
+    message: 'Open Cash Drawer signal sent',
+    color: 'teal',
+    icon: 'point_of_sale',
+    position: 'top',
+  })
+}
+
+function toggleFunctionMenu() {
+  Notify.create({ message: 'Function Menu ready', color: 'info', position: 'top', timeout: 800 })
+}
+
+function setOrderType(type) {
+  store.orderType = type
+  Notify.create({
+    message: `Order type: ${type === 'dine-in' ? 'Table Order' : type === 'takeaway' ? 'Take Away' : 'Delivery'}`,
+    color: 'primary',
+    position: 'top',
+    timeout: 600,
+  })
+}
+
+function handleNewOrder() {
+  store.clearCart()
+  selectedItemIndex.value = -1
+  numBuffer.value = ''
+}
+
+function handleOrderLookup() {
+  queueDrawer.value = true
+}
+
+function handleClear() {
+  numBuffer.value = ''
+  selectedItemIndex.value = -1
+}
+async function handleSave() {
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+
+  Loading.show({ message: 'Sending to kitchen...' })
+  try {
+    const result = await store.sendToKitchen()
+    if (result && result.success) {
+      Loading.hide()
+      Notify.create({
+        message: `Order #${result.order.order_number ?? result.order.id.slice(0, 8).toUpperCase()} saved!`,
+        color: 'teal',
+        icon: 'check_circle',
+        position: 'top',
+        timeout: 3000,
+      })
+      // store.clearCart() // User wants items to stay on screen until payment
+      selectedItemIndex.value = -1
+    }
+  } catch (err) {
+    Loading.hide()
+    Notify.create({
+      message: 'Failed to save',
+      caption: err.message,
+      color: 'red',
+      position: 'top',
+    })
+  }
+}
+
+function handlePayment() {
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+  paymentDialog.value = true
+}
+
+function handleSubtotal() {
+  // Focus on totals / show summary
+  Notify.create({
+    message: `Subtotal: LKR ${store.subtotal.toFixed(2)} | Total: LKR ${store.total.toFixed(2)}`,
+    color: 'primary',
+    position: 'top',
+    timeout: 2000,
+  })
+}
+
+async function handleConfirmPayment(method) {
+  isProcessingPayment.value = true
+  try {
+    const result = await store.processPayment(method)
+    if (result && result.success) {
+      paymentDialog.value = false
+      Notify.create({
+        message: `Payment Successful!`,
+        caption: `Invoice #${result.invoiceNumber} • Paid via ${method}`,
+        color: 'positive',
+        icon: 'verified',
+        position: 'top',
+        timeout: 2000,
+      })
+
+      // Fetch full order with items and invoice info for BillDialog
+      const { data: fullOrder } = await supabase
+        .from('orders')
+        .select(
+          `
+          *,
+          waiter:profiles!waiter_id(full_name),
+          order_items(*, menu_items(*)),
+          invoices(*, payments(*, payment_methods(*))),
+          tables(table_number)
+        `,
+        )
+        .eq('id', result.orderId)
+        .single()
+
+      if (fullOrder) {
+        selectedQueueOrder.value = {
+          ...fullOrder,
+          waiterName: fullOrder.waiter?.full_name,
+          tableNumber: fullOrder.tables?.table_number,
+        }
+        billDialogOpen.value = true
+
+        // Give time for dialog to open and then trigger print
+        setTimeout(() => {
+          const printBtn = document.querySelector('.action-btn')
+          if (printBtn) printBtn.click()
+        }, 800)
+      }
+    }
+  } catch (err) {
+    Notify.create({
+      message: 'Payment Failed',
+      caption: err.message,
+      color: 'red',
+      position: 'top',
+    })
+  } finally {
+    isProcessingPayment.value = false
+  }
+}
+
+// ── Billing Queue ───────────────────────────────────────
+function openBilling(order) {
+  selectedQueueOrder.value = order
+  billDialogOpen.value = true
+}
+
+function onOrderPaid() {
+  billDialogOpen.value = false
+  selectedQueueOrder.value = null
+  cashierStore.fetchBillingOrders()
+}
+
+function handleLogout() {
+  $q.dialog({
+    title: 'Log Out',
+    message: 'Are you sure you want to log out?',
+    dark: true,
+    cancel: { flat: true, color: 'grey-5', noCaps: true },
+    ok: { color: 'red', unelevated: true, noCaps: true, label: 'Log Out' },
+  }).onOk(async () => {
+    await authStore.logout()
+    router.push('/login')
+  })
+}
+
+function scrollCategoriesUp() {
+  if (categoryGridRef.value) {
+    categoryGridRef.value.scrollTop -= 80
+  }
+}
+
+function scrollCategoriesDown() {
+  if (categoryGridRef.value) {
+    categoryGridRef.value.scrollTop += 80
+  }
+}
+
+// ── Helpers ─────────────────────────────────────────────
+function fmtCurrency(val) {
+  return parseFloat(val || 0).toFixed(2)
+}
 </script>
 
-<style scoped lang="scss">
-.pos-page {
+<style scoped>
+/* ══════════════════════════════════════════════════════════
+   POS Terminal — CT Cloud POS Style
+   ══════════════════════════════════════════════════════════ */
+
+.pos-terminal {
   padding: 0 !important;
-  height: calc(100vh - 50px);
+  height: calc(100vh - 52px);
+  max-height: calc(100vh - 52px);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #0e1a2e;
+  font-family: 'Segoe UI', 'Arial', sans-serif;
+  user-select: none;
 }
 
-.left-panel {
-  min-width: 0; // allow flex shrink
+/* ── TOP STATUS BAR ── */
+.pos-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  min-height: 48px;
+  background: linear-gradient(180deg, #1a2e4a 0%, #0e1a2e 100%);
+  border-top: 3px solid #2196f3;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 8px;
+  gap: 8px;
 }
 
-.cart-panel {
-  width: 380px;
-  min-width: 380px;
-  max-width: 380px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 10, 10, 0.5);
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
 }
 
-.search-input {
-  max-width: 400px;
-
-  :deep(.q-field__control) {
-    height: 36px;
-    min-height: 36px;
-  }
+.top-version {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
 }
 
-// Category tabs
-.category-tabs {
-  :deep(.q-tabs__content) {
-    gap: 4px;
-  }
+.top-sep {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 10px;
 }
 
-.category-tab {
-  border-radius: 8px;
-  padding: 4px 12px;
-  min-height: 36px;
-  font-size: 0.8rem;
-  text-transform: none;
-
-  &.q-tab--active {
-    background: rgba(25, 118, 210, 0.12);
-  }
+.top-branch {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-// Variant Dialog
-.variant-dialog-card {
-  min-width: 360px;
-  max-width: 440px;
-  background: #1a1a1a;
+.top-bar-center {
+  flex: 0 0 auto;
+}
+
+.top-user-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 12px;
+  border-radius: 4px;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.top-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 48px;
+  text-align: right;
+}
+
+.info-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  min-width: 60px;
+  text-align: right;
+}
+
+.top-total-box {
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: 6px;
+  padding: 4px 14px;
+  text-align: center;
+  min-width: 100px;
 }
 
-.variant-option-btn {
-  border-radius: 8px;
+.total-label-top {
+  font-size: 10px;
+  color: #f44336;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.total-value-top {
+  font-size: 18px;
+  font-weight: 800;
+  color: #4caf50;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── MAIN BODY ── */
+.pos-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 2px;
+}
+
+/* ═══ LEFT PANEL — Order Items ═══ */
+.pos-left-panel {
+  width: 300px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: #0a1628;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.customer-bar {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cust-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cust-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+}
+
+.cust-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  outline: none;
+}
+
+.cust-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.cust-value {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.order-items-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.order-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.order-items-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.order-items-table th {
+  background: #1a2a4a;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  font-size: 10px;
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.th-num {
+  width: 24px;
+  text-align: center;
+}
+.th-qty {
+  width: 36px;
+  text-align: center;
+}
+.th-amt {
+  width: 70px;
+  text-align: right;
+}
+
+.order-items-table td {
+  padding: 4px 6px;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.td-num {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+}
+.td-qty {
+  text-align: center;
+  font-weight: 600;
+}
+.td-amt {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-items-table tr.selected {
+  background: rgba(33, 150, 243, 0.2);
+  outline: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.order-items-table tr:not(.empty-row):hover {
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.empty-row td {
+  height: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.item-variant {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══ CENTER PANEL — Categories + Functions ═══ */
+.pos-center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  min-width: 0;
+}
+
+.pos-search-bar {
+  margin-bottom: 4px;
+}
+
+.search-input :deep(.q-field__control) {
+  height: 34px !important;
+  min-height: 34px !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 6px !important;
+}
+
+.search-input :deep(.q-field__native) {
+  font-size: 11px !important;
+}
+.search-res-btn {
+  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%) !important;
+}
+
+.scroll-arrow-btn {
+  width: 100%;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.scroll-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+
+.category-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.cat-btn {
+  padding: 8px 6px;
+  background: linear-gradient(180deg, #7a9e2e 0%, #5a7e1e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+  min-height: 34px;
+}
+
+.cat-btn:hover {
+  filter: brightness(1.15);
+}
+
+.cat-btn.active {
+  background: linear-gradient(180deg, #96be3e 0%, #7a9e2e 100%);
+  border-color: #b8d555;
+  box-shadow: 0 0 8px rgba(150, 190, 62, 0.3);
+}
+
+.func-menu-btn {
+  width: 100%;
+  padding: 6px;
+  background: linear-gradient(180deg, #3a5a8e 0%, #2a4a7e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* ── Function Buttons ── */
+.function-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.fn-btn {
+  padding: 6px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+}
+
+.fn-blue {
+  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
+}
+
+.fn-blue:hover {
+  filter: brightness(1.2);
+}
+
+.fn-wide {
+  grid-column: span 1;
+}
+
+/* ── Order Type Buttons ── */
+.order-type-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.ot-btn {
+  padding: 10px 4px;
+  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+}
+
+.ot-btn.active {
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  border-color: #66bb6a;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+}
+
+.ot-btn:hover {
+  filter: brightness(1.2);
+}
+
+/* ── Bottom Action Buttons ── */
+.bottom-actions {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.ba-btn {
+  padding: 8px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+  line-height: 1.2;
+}
+
+.ba-blue {
+  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
+}
+
+.ba-save {
+  background: linear-gradient(180deg, #3a7ab4 0%, #2a62a4 100%);
+}
+
+.ba-payment {
+  background: linear-gradient(180deg, #7e8ea4 0%, #5e6e84 100%);
+  font-size: 10px;
+}
+
+.ba-btn:hover {
+  filter: brightness(1.2);
+}
+
+/* ═══ RIGHT PANEL — Numeric Keypad ═══ */
+.pos-right-panel {
+  width: 160px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.num-btn {
+  padding: 8px 4px;
+  background: linear-gradient(180deg, #c8d84e 0%, #a8b83e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #1a1a1a;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+}
+
+.num-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.num-btn:active {
+  transform: scale(0.95);
+}
+
+.num-x {
+  background: linear-gradient(180deg, #e8a84e 0%, #c8883e 100%);
+  color: #fff;
+}
+
+.enter-btn {
+  padding: 12px 4px;
+  background: linear-gradient(180deg, #8e9ec8 0%, #6e7ea8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.enter-btn:hover {
+  filter: brightness(1.15);
+}
+
+.subtotal-btn {
+  padding: 10px 4px;
+  background: linear-gradient(180deg, #9ea8c8 0%, #7e88a8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: auto;
+}
+
+.subtotal-btn:hover {
+  filter: brightness(1.15);
+}
+
+/* ── BOTTOM BAR ── */
+.pos-bottom-bar {
+  display: flex;
+  align-items: stretch;
+  height: 60px;
+  min-height: 60px;
+  background: #0a1220;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.subcat-tabs {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  overflow-x: auto;
+  align-items: stretch;
+  scrollbar-width: none;
+}
+
+.subcat-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.subcat-btn {
+  padding: 4px 10px;
+  background: linear-gradient(180deg, #1a2e4a 0%, #0e1a2e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
   min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+
+.subcat-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.subcat-btn.active {
+  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
+  color: #fff;
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.bottom-right-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 4px;
+  gap: 4px;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.15);
+}
+
+/* ── Item Picker Dialog ── */
+.item-picker-card {
+  background: #0e1a2e;
+  max-height: 60vh;
+}
+
+.item-picker-grid-section {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.item-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.item-pick-btn {
+  padding: 12px 8px;
+  background: linear-gradient(180deg, #7a9e2e 0%, #5a7e1e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.1s;
+}
+
+.item-pick-btn:hover {
+  filter: brightness(1.15);
+  transform: scale(1.02);
+}
+
+.item-pick-btn:active {
+  transform: scale(0.95);
+}
+
+.ipb-name {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.ipb-price {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
 }
 </style>

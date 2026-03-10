@@ -14,8 +14,22 @@
 
     <q-separator color="grey-9" />
 
-    <!-- ── Filter tabs ── -->
-    <div class="q-px-md q-pt-sm q-pb-xs">
+    <!-- ── Filter & Search tabs ── -->
+    <div class="q-px-md q-pt-sm q-pb-xs column q-gutter-y-sm">
+      <q-input
+        v-model="searchQuery"
+        dense
+        outlined
+        dark
+        placeholder="Search Table, KOT, Waiter, Customer..."
+        class="search-input"
+        clearable
+      >
+        <template v-slot:prepend>
+          <q-icon name="search" color="grey-5" />
+        </template>
+      </q-input>
+
       <q-btn-toggle
         v-model="filterStatus"
         dense
@@ -26,6 +40,7 @@
         text-color="grey-4"
         :options="filterOptions"
         class="filter-toggle"
+        spread
       />
     </div>
 
@@ -77,6 +92,11 @@
               <span class="q-mx-xs text-grey-8">·</span>
               <q-icon name="person" size="11px" class="q-mr-xs" />
               <span>{{ order.waiterName || 'POS' }}</span>
+              <template v-if="order.customer_name">
+                <span class="q-mx-xs text-grey-8">·</span>
+                <q-icon name="account_circle" size="11px" class="q-mr-xs" />
+                <span>{{ order.customer_name }}</span>
+              </template>
               <q-space />
               <span class="text-grey-7">{{ timeAgo(order.created_at) }}</span>
             </div>
@@ -132,26 +152,43 @@ const isNew = (order) => {
   return new Date(order.created_at) > new Date(store.lastViewedAt)
 }
 
-const filterStatus = ref('all')
+const filterStatus = ref('unpaid')
+const searchQuery = ref('')
 const filterOptions = computed(() => {
-  const all = store.billingOrders.length
-  const ready = store.billingOrders.filter((o) => ['ready', 'served'].includes(o.status)).length
-  const wip = store.billingOrders.filter((o) => ['accepted', 'preparing'].includes(o.status)).length
+  const unpaid = store.billingOrders.filter((o) => o.payment_status !== 'paid').length
+  const paid = store.billingOrders.filter((o) => o.payment_status === 'paid').length
   return [
-    { label: `All (${all})`, value: 'all' },
-    { label: `In Progress (${wip})`, value: 'wip' },
-    { label: `Ready/Served (${ready})`, value: 'ready' },
+    { label: `Unpaid (${unpaid})`, value: 'unpaid' },
+    { label: `Paid (${paid})`, value: 'paid' },
   ]
 })
 
 const filteredOrders = computed(() => {
-  if (filterStatus.value === 'ready') {
-    return store.billingOrders.filter((o) => ['ready', 'served'].includes(o.status))
+  let orders = store.billingOrders
+
+  if (filterStatus.value === 'paid') {
+    orders = orders.filter((o) => o.payment_status === 'paid')
+  } else {
+    orders = orders.filter((o) => o.payment_status !== 'paid')
   }
-  if (filterStatus.value === 'wip') {
-    return store.billingOrders.filter((o) => ['accepted', 'preparing'].includes(o.status))
+
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    orders = orders.filter((o) => {
+      if (o.tableNumber && String(o.tableNumber).toLowerCase().includes(q)) return true
+      if (o.waiterName && String(o.waiterName).toLowerCase().includes(q)) return true
+      if (o.customer_name && String(o.customer_name).toLowerCase().includes(q)) return true
+      if (o.order_number && String(o.order_number).toLowerCase().includes(q)) return true
+      if (
+        o.kot_tickets &&
+        o.kot_tickets.some((k) => k.kot_number && String(k.kot_number).toLowerCase().includes(q))
+      )
+        return true
+      return false
+    })
   }
-  return store.billingOrders
+
+  return orders
 })
 
 const newOrderCount = computed(() => {
