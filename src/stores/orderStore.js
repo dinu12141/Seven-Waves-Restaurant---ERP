@@ -142,7 +142,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         waiter_id: waiterId || null,
         order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
         order_source: 'pos',
-        status: 'pending', // Create as pending first so trigger doesn't fire before items exist
+        status: 'pending_waiter', // Route to waiter inbox; waiter accept triggers KOT
         payment_status: 'unpaid',
         table_id: selectedTable.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
@@ -209,22 +209,14 @@ export const useOrderStore = defineStore('posOrder', () => {
         throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
-      // ── Step 4: Update status to 'accepted' to trigger KOT generation ────
-      const { error: statusError } = await supabase
-        .from('orders')
-        .update({ status: 'accepted' })
-        .eq('id', order.id)
-
-      if (statusError) {
-        console.error(
-          '[POS] Failed to move order to accepted status (Stock/Trigger Error):',
-          statusError,
-        )
-        // Rollback: delete the order if status update (and stock deduction) fails
-        // This ensures the cart remains visible to the user so they can adjust items
-        await supabase.from('orders').delete().eq('id', order.id)
-        throw new Error(`Order failed: ${statusError.message}`)
-      }
+      // ── Step 4: Order is now `pending_waiter` with items ready ─────────
+      // The DB trigger `trg_fn_broadcast_new_order_to_waiters` fires on INSERT
+      // with status='pending_waiter', broadcasting to all on-shift waiters.
+      // When a waiter accepts, `process_waiter_accept` RPC handles:
+      //   - Setting status to 'accepted'
+      //   - Generating KOT tickets
+      //   - Creating dispatches & work queues
+      // No immediate status update needed here.
 
       return { success: true, order }
     } finally {
@@ -233,8 +225,18 @@ export const useOrderStore = defineStore('posOrder', () => {
   }
 
   /**
-   * Process payment for the current order.
-   * Creates the order, invoice, and payment records in a transaction-like flow.
+   * Process payment for the current order (Quick Pay / Cashier shortcut).
+   *
+   * Flow:
+   *   1. Create order + items (same as sendToKitchen)
+   *   2. Use process_waiter_accept RPC to assign order + generate KOTs atomically
+   *   3. Use process_cashier_payment RPC to mark as paid, post finance & stock
+   *
+   * This routes through the full KOT orchestration pipeline, ensuring:
+   *   - KOTs are generated
+   *   - cashier_queue / stock_queue / finance_queue are created
+   *   - Audit trail is complete
+   *   - All mutations are server-side atomic
    */
   async function processPayment(paymentMethodName) {
     if (isEmpty.value) return { success: false, reason: 'cart_empty' }
@@ -251,23 +253,13 @@ export const useOrderStore = defineStore('posOrder', () => {
     isSending.value = true
 
     try {
-      // 1. Get Payment Method ID
-      const { data: pmData, error: pmError } = await supabase
-        .from('payment_methods')
-        .select('id')
-        .ilike('name', paymentMethodName) // Case-insensitive match
-        .single()
-
-      if (pmError || !pmData) throw new Error(`Invalid payment method: ${paymentMethodName}`)
-      const paymentMethodId = pmData.id
-
-      // 2. Create Order (Status: 'pending' -> later 'paid')
+      // ── Step 1: Create order (status: pending_waiter) ────────────────────
       const orderPayload = {
         branch_id: branchId,
         waiter_id: userId || null,
         order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
         order_source: 'pos',
-        status: 'pending',
+        status: 'pending_waiter',
         payment_status: 'unpaid',
         table_id: selectedTable.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
@@ -276,12 +268,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
       }
-
-      if (companyId) {
-        Object.assign(orderPayload, {
-          company_id: companyId,
-        })
-      }
+      if (companyId) orderPayload.company_id = companyId
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -291,10 +278,10 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
-      // 2.5. Resolve default kitchen for items missing kitchen_id
-      let payKitchenId = null
-      const payHasNoKitchen = cartItems.value.some((item) => !item.kitchenId)
-      if (payHasNoKitchen) {
+      // ── Step 2: Resolve default kitchen & insert order items ─────────────
+      let defaultKitchenId = null
+      const hasItemsWithoutKitchen = cartItems.value.some((item) => !item.kitchenId)
+      if (hasItemsWithoutKitchen) {
         const { data: kData } = await supabase
           .from('kitchens')
           .select('id')
@@ -303,99 +290,73 @@ export const useOrderStore = defineStore('posOrder', () => {
           .order('created_at', { ascending: true })
           .limit(1)
           .single()
-        payKitchenId = kData?.id || null
+        defaultKitchenId = kData?.id || null
       }
 
-      // 3. Create Order Items
-      const itemsPayload = cartItems.value.map((item) => ({
-        order_id: order.id,
-        menu_item_id: item.productId,
-        kitchen_id: item.kitchenId || payKitchenId || null,
-        quantity: item.qty,
-        unit_price: item.price,
-        total_price: parseFloat((item.qty * item.price).toFixed(2)),
-        notes: item.notes || null,
-        status: 'queued',
-      }))
+      const itemsPayload = cartItems.value.map((item) => {
+        const qty = parseInt(item.qty) || 1
+        const price = parseFloat(item.price) || 0
+        return {
+          order_id: order.id,
+          menu_item_id: item.productId,
+          kitchen_id: item.kitchenId || defaultKitchenId || null,
+          quantity: qty,
+          unit_price: price,
+          total_price: parseFloat((qty * price).toFixed(2)),
+          notes: item.notes || null,
+          status: 'queued',
+        }
+      })
 
       const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload)
-
       if (itemsError) {
+        // Best-effort cleanup
         await supabase.from('orders').delete().eq('id', order.id)
-        throw new Error(`Failed to save items: ${itemsError.message}`)
+        throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
-      // 4. Trigger KOT (pending -> accepted)
-      // We update to 'accepted' so the KOT trigger fires.
-      // Then we will update to 'paid'.
-      const { error: acceptError } = await supabase
-        .from('orders')
-        .update({ status: 'accepted' })
-        .eq('id', order.id)
+      // ── Step 3: Accept order via orchestration RPC (generates KOTs + queues) ─
+      const { data: acceptData, error: acceptError } = await supabase.rpc(
+        'process_waiter_accept',
+        { p_order_id: order.id },
+      )
+      if (acceptError) throw new Error(`Accept RPC failed: ${acceptError.message}`)
+      if (!acceptData?.success) throw new Error(acceptData?.error || 'process_waiter_accept failed')
 
-      if (acceptError) throw new Error(`Failed to accept order: ${acceptError.message}`)
+      // ── Step 4: Mark as invoiced (cashier step) ──────────────────────────
+      const { data: invoiceData, error: invoiceRpcError } = await supabase.rpc(
+        'process_cashier_invoice',
+        { p_order_id: order.id },
+      )
+      if (invoiceRpcError) throw new Error(`Invoice RPC failed: ${invoiceRpcError.message}`)
+      if (!invoiceData?.success) throw new Error(invoiceData?.error || 'process_cashier_invoice failed')
 
-      // 5. Create Invoice
-      // invoice_number is SERIAL, so we just insert and select it back
-      const invoicePayload = {
-        company_id: companyId,
-        branch_id: branchId,
-        order_id: order.id,
-        customer_name: customerName.value || null,
-        subtotal: orderPayload.subtotal || 0,
-        tax_total: orderPayload.tax_amount || 0,
-        discount_total: orderPayload.discount_amount || 0,
-        grand_total: orderPayload.total_amount || 0,
-        payment_status: 'paid',
-        status: 'paid',
-      }
+      // ── Step 5: Record payment via orchestration RPC (posts finance + stock) ─
+      const { data: payData, error: payRpcError } = await supabase.rpc(
+        'process_cashier_payment',
+        {
+          p_order_id: order.id,
+          p_payment_method: paymentMethodName || 'cash',
+          p_amount_paid: parseFloat(total.value.toFixed(2)),
+        },
+      )
+      if (payRpcError) throw new Error(`Payment RPC failed: ${payRpcError.message}`)
+      if (!payData?.success) throw new Error(payData?.error || 'process_cashier_payment failed')
 
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert(invoicePayload)
-        .select('id, invoice_number')
-        .single()
-
-      if (invoiceError) throw new Error(`Failed to create invoice: ${invoiceError.message}`)
-
-      // 6. Create Payment
-      const paymentPayload = {
-        invoice_id: invoice.id,
-        payment_method_id: paymentMethodId,
-        amount: orderPayload.total_amount,
-        status: 'completed',
-        received_by: userId || null,
-      }
-
-      const { error: paymentError } = await supabase.from('payments').insert(paymentPayload)
-
-      if (paymentError) throw new Error(`Failed to record payment: ${paymentError.message}`)
-
-      // 7. Update Order to 'paid'
-      // This might trigger "Order Ready" checks or just mark it as paid.
-      // We also set payment_status = 'paid'.
-      const { error: finalError } = await supabase
-        .from('orders')
-        .update({ status: 'paid', payment_status: 'paid' })
-        .eq('id', order.id)
-
-      if (finalError) console.warn('Failed to update final order status', finalError)
-
-      // 8. Success & Cleanup
+      // ── Step 6: Success ──────────────────────────────────────────────────
       const result = {
         success: true,
         orderId: order.id,
-        invoiceId: invoice.id,
         orderNumber: order.order_number,
-        invoiceNumber: invoice.invoice_number,
         paymentMethod: paymentMethodName,
-        total: orderPayload.total_amount,
+        total: parseFloat(total.value.toFixed(2)),
+        kotCount: acceptData.kot_count,
       }
 
       clearCart()
       return result
     } catch (err) {
-      console.error('Process Payment Error:', err)
+      console.error('[POS] processPayment error:', err)
       throw err
     } finally {
       isSending.value = false

@@ -36,7 +36,7 @@
             <div class="text-white text-weight-bold text-subtitle2">#{{ order.order_number }}</div>
             <div class="text-caption text-grey-5">
               <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
-              Table {{ order.table_number || '—' }}
+              Table {{ order.tableNumber || order.table_number || '—' }}
               <span class="q-mx-xs text-grey-7">·</span>
               <q-icon name="schedule" size="11px" class="q-mr-xs" />
               {{ fmtTime(order.created_at) }}
@@ -50,15 +50,15 @@
         <!-- Items -->
         <div class="order-card__items">
           <div
-            v-for="item in order.order_items"
+            v-for="item in (order.items || order.order_items || [])"
             :key="item.id"
             class="item-row row items-center"
           >
             <q-badge color="grey-8" :label="item.quantity + 'x'" class="q-mr-sm item-qty" />
-            <span class="text-white text-body2">{{ item.menu_items?.name }}</span>
+            <span class="text-white text-body2">{{ item.name || item.menu_items?.name }}</span>
             <q-space />
             <span class="text-grey-4 text-caption">
-              Rs. {{ ((item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
+              Rs. {{ (((item.unit_price || item.menu_items?.price || 0)) * item.quantity).toFixed(0) }}
             </span>
           </div>
         </div>
@@ -84,13 +84,23 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
+import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useQuasar } from 'quasar'
 
-const store = useWaiterAppStore()
+const appStore = useWaiterAppStore()
+const orderStore = useWaiterOrderStore()
 const $q = useQuasar()
 const accepting = reactive({})
+
+// Use waiterOrderStore (shift-aware RPC) as primary source, fallback to appStore
+const store = computed(() => ({
+  loading: appStore.loading || orderStore.loading,
+  pendingCount: Math.max(appStore.pendingCount, orderStore.pendingCount),
+  pendingOrders: orderStore.pendingOrders.length > 0 ? orderStore.pendingOrders : appStore.pendingOrders,
+  loadPendingOrders: () => Promise.all([orderStore.fetchPendingOrders(), appStore.loadPendingOrders()]),
+}))
 
 function fmtTime(dt) {
   if (!dt) return ''
@@ -100,8 +110,13 @@ function fmtTime(dt) {
 async function accept(orderId) {
   accepting[orderId] = true
   try {
-    await store.acceptOrder(orderId)
-    $q.notify({ type: 'positive', message: '✅ Order accepted!', position: 'top' })
+    const result = await orderStore.acceptOrder(orderId)
+    if (result.success) {
+      $q.notify({ type: 'positive', message: '✅ Order accepted!', position: 'top' })
+      // Also refresh appStore lists
+      appStore.loadPendingOrders()
+      appStore.loadMyOrders()
+    }
   } catch (e) {
     $q.notify({ type: 'negative', message: e.message, position: 'top' })
   } finally {

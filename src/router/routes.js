@@ -222,6 +222,22 @@ const routes = [
       { path: 'profile', component: () => import('pages/waiter-app/MyProfilePage.vue') },
     ],
   },
+  // ── Manager App — standalone full-screen mobile PWA (NO MainLayout) ────────
+  {
+    path: '/manager-app',
+    component: () => import('layouts/ManagerAppLayout.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'manager'] },
+    children: [
+      { path: '', component: () => import('pages/manager-app/ManagerHomePage.vue') },
+      { path: 'floor', component: () => import('pages/manager-app/FloorOverviewPage.vue') },
+      { path: 'waiters', component: () => import('pages/manager-app/WaitersPage.vue') },
+      { path: 'waiters/:id', component: () => import('pages/manager-app/WaiterDetailPage.vue') },
+      { path: 'orders', component: () => import('pages/manager-app/OrdersMonitorPage.vue') },
+      { path: 'messages', component: () => import('pages/manager-app/MessagesPage.vue') },
+      { path: 'alerts', component: () => import('pages/manager-app/AlertsPage.vue') },
+      { path: 'profile', component: () => import('pages/manager-app/ManagerProfilePage.vue') },
+    ],
+  },
   {
     path: '/menu',
     component: () => import('layouts/CustomerLayout.vue'),

@@ -32,6 +32,7 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/admin/loyalty',
     '/waiter-app',
     '/manager',
+    '/manager-app',
   ],
   admin: ['*'],
   inventory: ['/inventory', '/reports/inventory'],
@@ -71,7 +72,7 @@ export const ROLE_LANDING: Record<UserRole, string> = {
   finance: '/finance',
   hr: '/hr',
   procurement: '/procurement/suppliers',
-  manager: '/dashboard',
+  manager: '/manager-app',
   admin: '/dashboard',
 }
 
@@ -179,6 +180,12 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/waiter-app',
     roles: ['admin', 'manager', 'waiter'],
     section: 'OPERATIONS',
+  },
+  {
+    label: 'Manager App',
+    icon: 'manage_accounts',
+    to: '/manager-app',
+    roles: ['admin', 'manager'],
   },
   {
     label: 'Table Management',

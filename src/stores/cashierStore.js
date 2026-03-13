@@ -5,27 +5,22 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 
 /**
- * Cashier Billing Store (v2 – cashier_queue driven)
- *
- * Source of truth: cashier_queue table
- *   - Row is created by accept_order() RPC when waiter accepts
- *   - Status lifecycle: open → invoiced → paid | cancelled
+ * Cashier Billing Store (v2 – orders-driven)
  *
  * Flow:
- *  1. fetchBillingQueue()  → cashier_queue JOIN orders JOIN order_items / invoices
+ *  1. fetchBillingQueue()  → orders JOIN order_items / invoices
  *  2. generateInvoice(orderId)  → INSERT invoice + invoice_items → order.status = 'invoiced'
- *                              → cashier_queue.status = 'invoiced'
  *  3. recordPayment(invoiceId, orderId, payments[])
  *       → calls record_payment_and_close_order(RPC)
- *       → order.status='paid', cashier_queue.status='paid'
+ *       → order.status='paid'
  *
- * Realtime: subscribes to cashier_queue + orders changes
+ * Realtime: subscribes to orders changes by branch_id
  */
 export const useCashierStore = defineStore('cashier', () => {
   const authStore = useAuthStore()
 
   // ── State ──────────────────────────────────────────────────
-  const billingOrders = ref([]) // normalized queue entries (cashier_queue + joined order)
+  const billingOrders = ref([]) // normalized queue entries
   const loading = ref(false)
   const processing = ref(false)
 
@@ -33,14 +28,15 @@ export const useCashierStore = defineStore('cashier', () => {
   const selectedOrderId = ref(null)
   const billDialogOpen = ref(false)
 
-  // Realtime channels
-  let queueChannel = null
+  // Realtime channel (single)
   let ordersChannel = null
+
+  // Boot guard — ensures we only boot once
+  let booted = false
 
   // Tracking for "new" notifications
   const lastViewedAt = ref(new Date())
 
-  // userId accessed via authStore inside RPC calls (server-side via auth.uid())
   const branchId = computed(() => {
     return authStore.currentBranch?.id || authStore.profile?.branch_id
   })
@@ -58,28 +54,20 @@ export const useCashierStore = defineStore('cashier', () => {
     () => billingOrders.value.filter((o) => o.status === 'invoiced').length,
   )
 
-  // ── Initialize ─────────────────────────────────────────────
+  // ── Initialize (idempotent) ────────────────────────────────
   async function initialize() {
-    if (loading.value) return
+    if (booted || !branchId.value) return
+    booted = true
     loading.value = true
 
     try {
-      console.log('[CashierStore] Initializing...')
-
-      // Setup realtime even before we have data
-      if (!ordersChannel) subscribeRealtime()
-
-      // If branch is already there, fetch immediately
-      if (branchId.value) {
-        await Promise.all([fetchBillingQueue(), fetchPaymentMethods()])
-      } else {
-        // Wait and watch for branch
-        console.log('[CashierStore] Waiting for branch data...')
-      }
-
+      console.log('[CashierStore] Initializing with branch:', branchId.value)
+      await Promise.all([fetchBillingQueue(), fetchPaymentMethods()])
+      subscribeRealtime()
       lastViewedAt.value = new Date()
     } catch (err) {
       console.error('[CashierStore] Init error:', err)
+      booted = false // Allow retry
       Notify.create({
         message: 'POS Initialization Failed',
         caption: err.message || 'Unknown error',
@@ -90,39 +78,34 @@ export const useCashierStore = defineStore('cashier', () => {
     }
   }
 
-  // Reactive watch to catch branch loads late
+  // ── Watch for branch availability ─────────────────────────
   watch(
     branchId,
     (newId) => {
-      if (newId) {
-        console.log('[CashierStore] Branch detected/changed reactive:', newId)
-        fetchBillingQueue()
-        fetchPaymentMethods()
-        subscribeRealtime() // Ensure we subscribe with the new branch ID
+      if (newId && !booted) {
+        console.log('[CashierStore] Branch available:', newId)
+        initialize()
       }
     },
     { immediate: true },
   )
 
   // ── Fetch Billing Queue ────────────────────────────────────
-  // Primary source: orders table
   async function fetchBillingQueue(forceRefresh = false) {
-    const idToUse = branchId.value || companyId.value
-    if (!idToUse) {
-      console.warn('[CashierStore] No branch or company ID available for fetchBillingQueue')
-      Notify.create({
-        message: 'Configuration Error',
-        caption: 'Branch info not found. Please re-login.',
-        color: 'red-8',
-        icon: 'error',
-      })
+    const bid = branchId.value
+    if (!bid) {
+      console.warn('[CashierStore] No branchId for fetchBillingQueue')
       return
     }
 
-    console.log(`[CashierStore] Fetching queue for id: ${idToUse} (Force: ${forceRefresh})`)
+    if (!forceRefresh) {
+      console.log(`[CashierStore] Fetching queue for branch: ${bid}`)
+    }
 
-    let query = supabase.from('orders').select(
-      `
+    const { data: qData, error } = await supabase
+      .from('orders')
+      .select(
+        `
         id, order_number, order_type, order_source, status, payment_status,
         customer_name, customer_phone, subtotal, tax_amount, discount_amount,
         total_amount, notes, created_at, updated_at, accepted_at, waiter_id,
@@ -139,16 +122,8 @@ export const useCashierStore = defineStore('cashier', () => {
         ),
         invoices!order_id ( id, invoice_number, total, payment_status, status )
       `,
-    )
-
-    // Apply filters based on what we have
-    if (branchId.value) {
-      query = query.eq('branch_id', branchId.value)
-    } else {
-      query = query.eq('company_id', companyId.value)
-    }
-
-    const { data: qData, error } = await query
+      )
+      .eq('branch_id', bid)
       .in('status', [
         'pending',
         'pending_waiter',
@@ -157,11 +132,9 @@ export const useCashierStore = defineStore('cashier', () => {
         'ready',
         'served',
         'invoiced',
-        'paid',
-        'completed',
       ])
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
 
     if (error) {
       console.error('[CashierStore] fetchBillingQueue error:', error)
@@ -169,45 +142,11 @@ export const useCashierStore = defineStore('cashier', () => {
       return
     }
 
-    console.log(`[CashierStore] Received ${qData?.length || 0} orders from DB`)
-
-    // Cross-check: If 0 orders for branch, check if any exist for company
-    if (qData?.length === 0 && branchId.value) {
-      const { count } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', companyId.value)
-        .in('status', ['accepted', 'preparing', 'ready', 'served'])
-
-      if (count > 0) {
-        console.warn(
-          `[CashierStore] Found ${count} orders for company but 0 for current branch (${branchId.value}). Possible branch mismatch.`,
-        )
-        if (forceRefresh) {
-          Notify.create({
-            message: 'Branch Mismatch Hook',
-            caption: `Found orders in other branches. Current: ${branchId.value.substring(0, 8)}`,
-            color: 'deep-orange',
-            icon: 'warning',
-            multiLine: true,
-          })
-        }
-      }
-    }
-
-    if (qData?.length === 0 && forceRefresh) {
-      Notify.create({
-        message: 'No Orders Found',
-        caption: `Checked for branch/company: ${idToUse.substring(0, 8)}...`,
-        color: 'orange-8',
-        icon: 'info',
-      })
-    }
-
+    console.log(`[CashierStore] Received ${qData?.length || 0} orders`)
     billingOrders.value = (qData || []).map(normalizeQueueEntry)
   }
 
-  // Keep alias for backward compat (used in CashierPage refresh btn)
+  // Keep alias for backward compat
   const fetchBillingOrders = fetchBillingQueue
 
   // ── Fetch Payment Methods ──────────────────────────────────
@@ -230,7 +169,7 @@ export const useCashierStore = defineStore('cashier', () => {
     const entry = billingOrders.value.find((o) => o.id === orderId)
     if (!entry) throw new Error('Order not found in billing queue')
 
-    const order = entry.orders || entry // handle both normalized shapes
+    const order = entry.orders || entry
 
     // Idempotency
     const existingInvoices = order.invoices || entry.invoices || []
@@ -240,11 +179,9 @@ export const useCashierStore = defineStore('cashier', () => {
 
     processing.value = true
     try {
-      // 1. Calculate actual items and totals based strictly on KOT
       const kotTickets = order.kot_tickets || entry.kot_tickets || []
       const validKotItems = []
 
-      // Only consider KOTs that were not cancelled
       kotTickets.forEach((kot) => {
         if (kot.status !== 'cancelled') {
           const items = kot.kot_items || []
@@ -256,7 +193,6 @@ export const useCashierStore = defineStore('cashier', () => {
         }
       })
 
-      // Aggregate quantities by order_item_id
       const billedQuantities = {}
       validKotItems.forEach((ki) => {
         if (!billedQuantities[ki.order_item_id]) {
@@ -288,14 +224,8 @@ export const useCashierStore = defineStore('cashier', () => {
         }
       })
 
-      // Fallback: If for some reason there are 0 KOT items (maybe direct billing items?),
-      // we fallback to order.total_amount logic to avoid a zero bill. BUT the user specifically
-      // requested "Bill eka print wenna ona KOT ekata anuwa", so we strictly use actualSubtotal.
-      // If there ARE no KOTs, the Subtotal will be 0.
-
-      // Assuming no complex tax/discount for now, or just proportional
       const actualGrandTotal = actualSubtotal
-      // 2. Create invoice header
+
       const { data: invoice, error: invError } = await supabase
         .from('invoices')
         .insert({
@@ -305,7 +235,7 @@ export const useCashierStore = defineStore('cashier', () => {
           customer_name: order.customer_name || null,
           customer_phone: order.customer_phone || null,
           subtotal: actualSubtotal,
-          tax: 0, // Should be calculated if taxes exist
+          tax: 0,
           discount: 0,
           total: actualGrandTotal,
           payment_status: 'unpaid',
@@ -316,7 +246,6 @@ export const useCashierStore = defineStore('cashier', () => {
 
       if (invError) throw new Error(`Invoice creation failed: ${invError.message}`)
 
-      // 3. Insert invoice items
       if (invoiceItemsData.length > 0) {
         const itemsPayload = invoiceItemsData.map((item) => ({
           ...item,
@@ -326,13 +255,11 @@ export const useCashierStore = defineStore('cashier', () => {
         if (itemsError) console.warn('[CashierStore] invoice_items insert warning:', itemsError)
       }
 
-      // 4. Update order status → 'invoiced'
       await supabase
         .from('orders')
         .update({ status: 'invoiced', updated_at: new Date().toISOString() })
         .eq('id', orderId)
 
-      // 5. Update local state
       const idx = billingOrders.value.findIndex((o) => o.id === orderId)
       if (idx !== -1) {
         billingOrders.value[idx] = {
@@ -350,11 +277,9 @@ export const useCashierStore = defineStore('cashier', () => {
   }
 
   // ── Record Payment ─────────────────────────────────────────
-  // Uses the atomic RPC: record_payment_and_close_order
   async function recordPayment(invoiceId, payments, orderId) {
     if (!invoiceId || !payments?.length) throw new Error('Invalid payment data')
 
-    // Resolve orderId if not passed
     let targetOrderId = orderId
     if (!targetOrderId) {
       const { data: invData, error: fetchErr } = await supabase
@@ -368,7 +293,6 @@ export const useCashierStore = defineStore('cashier', () => {
 
     processing.value = true
     try {
-      // Build payment rows JSONB array for RPC
       const paymentRows = payments.map((p) => ({
         invoice_id: invoiceId,
         payment_method_id: p.methodId,
@@ -385,7 +309,6 @@ export const useCashierStore = defineStore('cashier', () => {
 
       if (error) throw new Error(`Payment RPC failed: ${error.message}`)
 
-      // Remove from local billing queue (realtime will also handle this)
       billingOrders.value = billingOrders.value.filter((o) => o.id !== targetOrderId)
 
       return { success: true, orderId: targetOrderId }
@@ -452,11 +375,9 @@ export const useCashierStore = defineStore('cashier', () => {
     if (error) throw new Error(error.message)
     return {
       ...data,
-      // Normalize column names for UI backward compat
       grand_total: data?.total,
       tax_total: data?.tax,
       discount_total: data?.discount,
-      // Map DB column names to template-friendly names for backward compat
       invoice_items: (data?.invoice_items || []).map((ii) => ({
         ...ii,
         menu_item_name: ii.description,
@@ -470,51 +391,54 @@ export const useCashierStore = defineStore('cashier', () => {
     }
   }
 
-  // ── Realtime ───────────────────────────────────────────────
+  // ── Realtime (single channel, unique name) ─────────────────
   function subscribeRealtime() {
-    if (!branchId.value) {
-      console.warn('[CashierStore] Cannot subscribe to realtime: No branchId')
-      return
-    }
+    const bid = branchId.value
+    if (!bid) return
 
-    // Cleanup existing channels if any
+    // Cleanup existing channel
     if (ordersChannel) {
       supabase.removeChannel(ordersChannel)
+      ordersChannel = null
     }
 
-    console.log('[CashierStore] Subscribing to orders realtime for branch:', branchId.value)
+    const channelName = `cashier-orders-${bid}-${Date.now()}`
+    console.log('[CashierStore] Subscribing realtime:', channelName)
 
     ordersChannel = supabase
-      .channel('cashier-orders-rt')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'orders',
-          filter: `branch_id=eq.${branchId.value}`,
+          filter: `branch_id=eq.${bid}`,
         },
         (payload) => {
-          console.log(
-            '[CashierStore] Order RT Change:',
-            payload.eventType,
-            payload.new?.order_number,
-          )
           handleOrderChange(payload)
         },
       )
       .subscribe((status) => {
-        console.log('[CashierStore] RT Subscription Status:', status)
+        console.log('[CashierStore] RT Status:', status)
       })
+  }
+
+  // ── Debounced refresh ──────────────────────────────────────
+  let refreshTimer = null
+  function debouncedRefresh() {
+    if (refreshTimer) clearTimeout(refreshTimer)
+    refreshTimer = setTimeout(() => {
+      fetchBillingQueue(true)
+    }, 300)
   }
 
   function handleOrderChange(payload) {
     const { eventType, new: newRow, old: oldRow } = payload
 
-    // Full refresh handles deep relations (KOTs, items, etc) reliably
     if (eventType === 'INSERT') {
       if (!['paid', 'cancelled', 'completed', 'pending_waiter'].includes(newRow.status)) {
-        fetchBillingQueue()
+        debouncedRefresh()
       }
     } else if (eventType === 'UPDATE') {
       const idx = billingOrders.value.findIndex((o) => o.id === newRow.id)
@@ -522,7 +446,6 @@ export const useCashierStore = defineStore('cashier', () => {
       // Remove from queue if it moved to a closed status
       if (['paid', 'cancelled', 'completed'].includes(newRow.status)) {
         if (idx !== -1) {
-          console.log('[CashierStore] Removing order from queue:', newRow.order_number)
           billingOrders.value.splice(idx, 1)
         }
         return
@@ -540,28 +463,21 @@ export const useCashierStore = defineStore('cashier', () => {
             icon: 'room_service',
             position: 'top-right',
             timeout: 5000,
-            classes: 'glossy',
           })
         }
 
-        // Notify when a pending order is accepted (Waiters)
         if (oldState.status === 'pending_waiter' && newRow.status === 'accepted') {
           Notify.create({
             message: `Order Accepted! (#${newRow.order_number})`,
-            caption: 'Waiter has started processing the order.',
+            caption: 'Waiter has started processing.',
             color: 'orange-8',
             icon: 'check_circle',
             position: 'top-right',
             timeout: 5000,
-            classes: 'glossy',
           })
         }
 
-        // Update local state without full refresh for non-structural changes
-        const needsRefresh =
-          ['ready', 'served', 'invoiced'].includes(newRow.status) &&
-          oldState.status !== newRow.status
-
+        // Update local state
         billingOrders.value[idx] = {
           ...billingOrders.value[idx],
           status: newRow.status,
@@ -569,9 +485,15 @@ export const useCashierStore = defineStore('cashier', () => {
           updated_at: newRow.updated_at,
         }
 
-        if (needsRefresh) fetchBillingQueue()
+        // Full refresh for structural status changes
+        if (
+          ['ready', 'served', 'invoiced'].includes(newRow.status) &&
+          oldState.status !== newRow.status
+        ) {
+          debouncedRefresh()
+        }
       } else {
-        // Not in current queue, but status is now valid for queue?
+        // New active order not in list
         const isValidForQueue = [
           'pending',
           'pending_waiter',
@@ -580,32 +502,18 @@ export const useCashierStore = defineStore('cashier', () => {
           'ready',
           'served',
           'invoiced',
-          'paid',
-          'completed',
         ].includes(newRow.status)
         if (isValidForQueue) {
-          console.log('[CashierStore] New active order detected via update, refreshing...')
-          fetchBillingQueue()
+          debouncedRefresh()
 
           if (newRow.status === 'accepted') {
             Notify.create({
               message: `New Order Received! (#${newRow.order_number})`,
-              caption: 'A waiter just accepted a new order. Check Billing Queue.',
+              caption: 'Check Billing Queue.',
               color: 'orange-9',
               icon: 'receipt_long',
               position: 'top-right',
               timeout: 6000,
-              classes: 'glossy',
-              actions: [
-                {
-                  label: 'View',
-                  color: 'white',
-                  flat: true,
-                  handler: () => {
-                    billDialogOpen.value = true
-                  },
-                },
-              ],
             })
           }
         }
@@ -632,15 +540,16 @@ export const useCashierStore = defineStore('cashier', () => {
 
   // ── Cleanup ────────────────────────────────────────────────
   function cleanup() {
-    if (queueChannel) {
-      supabase.removeChannel(queueChannel)
-      queueChannel = null
-    }
     if (ordersChannel) {
       supabase.removeChannel(ordersChannel)
       ordersChannel = null
     }
+    if (refreshTimer) {
+      clearTimeout(refreshTimer)
+      refreshTimer = null
+    }
     billingOrders.value = []
+    booted = false
   }
 
   // ── Helpers ────────────────────────────────────────────────
@@ -648,7 +557,7 @@ export const useCashierStore = defineStore('cashier', () => {
     const order = entry.orders || entry
     return {
       id: order.id,
-      queue_id: order.id, // Fallback for components mapping to queue_id
+      queue_id: order.id,
       queue_status: order.status,
       queue_created_at: order.created_at,
       queue_updated_at: order.updated_at,
@@ -679,7 +588,7 @@ export const useCashierStore = defineStore('cashier', () => {
       kot_tickets: order.kot_tickets || [],
       invoices: (order.invoices || []).map((inv) => ({
         ...inv,
-        grand_total: inv.grand_total ?? inv.total, // DB col is `total`, alias for UI
+        grand_total: inv.grand_total ?? inv.total,
       })),
       itemCount: (order.order_items || []).reduce((s, i) => s + i.quantity, 0),
     }

@@ -65,11 +65,11 @@
             <button class="kpi-card kpi-card--orange" @click="$router.push('/waiter-app/inbox')">
               <div class="kpi-icon-wrap">
                 <q-icon name="move_to_inbox" size="26px" />
-                <q-badge v-if="store.pendingCount > 0" color="red" floating rounded>
-                  {{ store.pendingCount }}
+                <q-badge v-if="effectivePendingCount > 0" color="red" floating rounded>
+                  {{ effectivePendingCount }}
                 </q-badge>
               </div>
-              <div class="kpi-value">{{ store.pendingCount }}</div>
+              <div class="kpi-value">{{ effectivePendingCount }}</div>
               <div class="kpi-label">New Orders</div>
             </button>
           </div>
@@ -79,7 +79,7 @@
               <div class="kpi-icon-wrap">
                 <q-icon name="assignment_ind" size="26px" />
               </div>
-              <div class="kpi-value">{{ store.myOrderCount }}</div>
+              <div class="kpi-value">{{ effectiveMyOrderCount }}</div>
               <div class="kpi-label">My Orders</div>
             </button>
           </div>
@@ -162,15 +162,25 @@
 </template>
 
 <script setup>
-import { inject } from 'vue'
+import { inject, computed } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
+import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useRouter } from 'vue-router'
 
 const store = useWaiterAppStore()
+const orderStore = useWaiterOrderStore()
 const $router = useRouter()
 
 // Injected from WaiterAppLayout — true for admin/manager regardless of shift
 const isAdminOrManager = inject('isAdminOrManager', { value: false })
+
+// Use whichever store has more data — waiterOrderStore uses shift-aware RPCs
+const effectivePendingCount = computed(() => {
+  return Math.max(store.pendingCount, orderStore.pendingCount)
+})
+const effectiveMyOrderCount = computed(() => {
+  return Math.max(store.myOrderCount, orderStore.myOrderCount)
+})
 
 function initials(name) {
   if (!name) return '?'

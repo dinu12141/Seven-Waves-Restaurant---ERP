@@ -178,10 +178,12 @@
 import { computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter } from 'vue-router'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
+import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
 import { supabase } from 'src/boot/supabase'
 
 const store = useWaiterAppStore()
+const orderStore = useWaiterOrderStore()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -193,11 +195,12 @@ onMounted(async () => {
     router.replace('/auth/login')
     return
   }
-  // Ensure authStore is populated (may not be if user navigated directly to /waiter-app)
-  if (!authStore.initialized) {
+  // Ensure authStore is FULLY populated (branches, roles) before store.initialize().
+  // This prevents a race condition where loadPendingOrders() fires before currentBranch is set.
+  if (!authStore.initialized || !authStore.branches.length) {
     await authStore.fetchUserData()
   }
-  store.initialize()
+  await store.initialize()
 })
 onUnmounted(() => store.cleanup())
 
@@ -229,7 +232,7 @@ const tabs = computed(() => [
   { label: 'Home',    icon: 'home',                 to: '/waiter-app' },
   { label: 'Inbox',   icon: 'move_to_inbox',        to: '/waiter-app/inbox',   badge: { value: store.pendingCount } },
   { label: 'Orders',  icon: 'assignment_ind',       to: '/waiter-app/orders',  badge: { value: store.myOrderCount } },
-  { label: 'Alerts',  icon: 'notifications_active', to: '/waiter-app/alerts',  badge: { value: store.readyCount } },
+  { label: 'Alerts',  icon: 'notifications_active', to: '/waiter-app/alerts',  badge: { value: store.readyCount + orderStore.newOrderAlertCount } },
   { label: 'Profile', icon: 'person',               to: '/waiter-app/profile' },
 ])
 </script>

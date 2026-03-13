@@ -7,6 +7,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { useWaiterOrderStore } from 'stores/waiterOrderStore'
+import { Notify } from 'quasar'
 
 export const useWaiterAppStore = defineStore('waiterApp', () => {
   const authStore = useAuthStore()
@@ -44,6 +46,10 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   async function initialize() {
     loading.value = true
     try {
+      // Guard: ensure branches are loaded before we use currentBranch in queries.
+      if (!authStore.branches.length) {
+        await authStore.fetchUserData()
+      }
       await Promise.all([
         loadProfile(),
         loadShiftInfo(),
@@ -53,6 +59,12 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       ])
       await loadReadyAlerts()
       subscribeRealtime()
+
+      // Initialize the waiterOrderStore — this is the shift-aware RPC store
+      // that handles realtime order subscriptions, alerts, and sounds.
+      const orderStore = useWaiterOrderStore()
+      await orderStore.initialize()
+
       // Load all waiters for admin selector
       const roles = authStore.roles || []
       if (roles.includes('admin') || roles.includes('manager')) {
@@ -159,6 +171,33 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   }
 
   // ─── Shift ────────────────────────────────────────────────────────────────
+
+  /**
+   * Checks if currentTime falls within [start - buffer, end + buffer].
+   * Handles overnight / midnight-ending shifts (e.g. 16:00 → 00:00).
+   */
+  function _isWithinShiftTime(startTimeStr, endTimeStr, isOvernight) {
+    if (!startTimeStr || !endTimeStr) return true // can't determine, assume on shift
+
+    const BUFFER_MINUTES = 30
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+    const [sh, sm] = startTimeStr.split(':').map(Number)
+    const [eh, em] = endTimeStr.split(':').map(Number)
+    const startMin = sh * 60 + sm - BUFFER_MINUTES
+    const endMin = eh * 60 + em + BUFFER_MINUTES
+
+    // Overnight shift OR shift ending at midnight (end <= start, e.g. 16:00→00:00)
+    if (isOvernight || (eh * 60 + em) <= (sh * 60 + sm)) {
+      // On shift if currentTime >= (start - buffer) OR currentTime <= (end + buffer)
+      return currentMinutes >= startMin || currentMinutes <= endMin
+    }
+
+    // Normal daytime shift
+    return currentMinutes >= startMin && currentMinutes <= endMin
+  }
+
   async function loadShiftInfo() {
     // Wait for profile to be available (it loads in parallel)
     // If not available, do a quick lookup
@@ -183,25 +222,45 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .from('shift_assignments')
       .select(`
         id, assignment_date, status,
-        shifts ( id, name, start_time, end_time )
+        shifts ( id, name, start_time, end_time, is_overnight )
       `)
       .eq('employee_id', employeeId)
       .eq('assignment_date', today)        // ✅ correct column name
       .in('status', ['scheduled', 'active', 'present'])
-      .limit(1)
 
     // Filter by branch if available (not critical — employee_id is sufficient)
     const branchId = authStore.currentBranch?.id
     if (branchId) query = query.eq('branch_id', branchId)
 
-    const { data: sa, error } = await query.single()
+    const { data: assignments, error } = await query
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 = "no rows" — that's fine, means off shift
       console.warn('[WaiterApp] loadShiftInfo error:', error.message)
     }
 
-    if (sa) {
+    // Find the first assignment whose shift time range covers NOW
+    const activeAssignment = (assignments || []).find(sa => {
+      return _isWithinShiftTime(
+        sa.shifts?.start_time,
+        sa.shifts?.end_time,
+        sa.shifts?.is_overnight || false
+      )
+    })
+
+    if (activeAssignment) {
+      shiftInfo.value = {
+        id:           activeAssignment.id,
+        date:         activeAssignment.assignment_date,
+        shift_name:   activeAssignment.shifts?.name,
+        shift_start:  activeAssignment.shifts?.start_time,
+        shift_end:    activeAssignment.shifts?.end_time,
+        branch_name:  authStore.currentBranch?.name,
+      }
+      isOnShift.value = true
+    } else if (assignments && assignments.length > 0) {
+      // Has assignment today but outside shift hours — show shift info but mark off-shift
+      const sa = assignments[0]
       shiftInfo.value = {
         id:           sa.id,
         date:         sa.assignment_date,
@@ -210,7 +269,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         shift_end:    sa.shifts?.end_time,
         branch_name:  authStore.currentBranch?.name,
       }
-      isOnShift.value = true
+      isOnShift.value = false
     } else {
       shiftInfo.value = null
       isOnShift.value = false
@@ -220,20 +279,28 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── Orders ───────────────────────────────────────────────────────────────
   async function loadPendingOrders() {
-    const branchId = authStore.currentBranch?.id
+    // Primary: use authStore.currentBranch. Fallback: use the waiter profile's branch_id.
+    let branchId = authStore.currentBranch?.id
+    if (!branchId && profile.value?.branch_id) {
+      branchId = profile.value.branch_id
+    }
     if (!branchId) return
 
     const { data } = await supabase
       .from('orders')
       .select(`
-        id, order_number, status, created_at, table_number,
-        order_items ( id, quantity, menu_items ( name, price ) )
+        id, order_number, status, created_at, table_id,
+        restaurant_tables ( table_number ),
+        order_items ( id, quantity, unit_price, total_price, menu_items ( name, base_price ) )
       `)
       .eq('branch_id', branchId)
       .eq('status', 'pending_waiter')
       .order('created_at', { ascending: true })
 
-    pendingOrders.value = data || []
+    pendingOrders.value = (data || []).map(o => ({
+      ...o,
+      table_number: o.restaurant_tables?.table_number || null
+    }))
   }
 
   async function loadMyOrders() {
@@ -248,15 +315,20 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     const { data } = await supabase
       .from('orders')
       .select(`
-        id, order_number, status, created_at, table_number, accepted_at,
-        order_items ( id, quantity, status, menu_items ( name, price ) )
+        id, order_number, status, created_at, table_id, accepted_at, total_amount,
+        restaurant_tables ( table_number ),
+        order_items ( id, quantity, unit_price, total_price, status, notes, menu_items ( name, base_price ) ),
+        kot_tickets ( id, status, kot_number, kitchen_id, kitchens ( name ) )
       `)
       .eq('assigned_waiter_id', userId)
-      .in('status', ['accepted', 'sent_to_kitchen', 'ready', 'served'])
+      .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
       .order('created_at', { ascending: false })
       .limit(30)
 
-    myOrders.value = data || []
+    myOrders.value = (data || []).map(o => ({
+      ...o,
+      table_number: o.restaurant_tables?.table_number || null
+    }))
   }
 
   // ─── Ready Alerts ─────────────────────────────────────────────────────────
@@ -344,15 +416,103 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Realtime ─────────────────────────────────────────────────────────────
   let kotChannel = null
 
+  function _playAlertSound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      const playTone = (freq, type, startTime, dur) => {
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.type = type
+        osc.frequency.setValueAtTime(freq, startTime)
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur)
+        osc.start(startTime)
+        osc.stop(startTime + dur)
+      }
+      const doPlay = () => {
+        const now = audioCtx.currentTime
+        playTone(1318.51, 'sine', now,       0.3)
+        playTone(1046.50, 'sine', now + 0.2, 0.3)
+        playTone(1318.51, 'sine', now + 0.4, 0.5)
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume().then(doPlay)
+      else doPlay()
+    } catch { /* silent fail */ }
+  }
+
   function subscribeRealtime() {
-    const branchId = authStore.currentBranch?.id
+    let branchId = authStore.currentBranch?.id
+    if (!branchId && profile.value?.branch_id) {
+      branchId = profile.value.branch_id
+    }
     if (!branchId) return
 
     // Orders channel — covers pending + assigned order changes
     ordersChannel = supabase
       .channel('waiter-app-orders')
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
+        { event: 'INSERT', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
+        (payload) => {
+          const newRow = payload.new
+          // Only alert for orders that need a waiter.
+          // waiterAppStore is the SOLE owner of audio + toast alerts for new orders.
+          // waiterOrderStore only syncs data — it must NOT play audio for INSERT events.
+          if (newRow.status === 'pending_waiter' && !newRow.assigned_waiter_id) {
+            _playAlertSound()
+            loadPendingOrders()
+
+            // Push a persistent alert to waiterOrderStore so the Alerts page shows it
+            const pushAlert = (tableName) => {
+              try {
+                const orderStore = useWaiterOrderStore()
+                if (!orderStore.newOrderAlerts.find(a => a.order_id === newRow.id)) {
+                  orderStore.newOrderAlerts.unshift({
+                    id:           `new-${newRow.id}`,
+                    order_id:     newRow.id,
+                    order_number: newRow.order_number,
+                    table_name:   tableName,
+                    created_at:   newRow.created_at,
+                  })
+                }
+              } catch { /* orderStore not ready */ }
+
+              // 🔔 Fire toast
+              Notify.create({
+                type: 'info',
+                icon: 'room_service',
+                color: 'blue-9',
+                textColor: 'white',
+                message: `🛎 New Order from ${tableName}!`,
+                caption: newRow.order_number ? `Order #${newRow.order_number}` : 'Tap Alerts to view',
+                position: 'top',
+                timeout: 10000,
+                dense: true,
+                classes: 'text-weight-bold',
+                actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+              })
+            }
+
+            if (newRow.table_id) {
+              supabase
+                .from('restaurant_tables')
+                .select('table_number')
+                .eq('id', newRow.table_id)
+                .single()
+                .then(({ data }) => {
+                  const tNum = data?.table_number ? data.table_number.replace('Table', '').trim() : ''
+                  pushAlert(tNum ? `Table ${tNum}` : 'a Table')
+                })
+            } else {
+              pushAlert(newRow.order_type === 'takeaway' ? 'Takeaway' : 'a Table')
+            }
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => {
           loadPendingOrders()
           loadMyOrders()
@@ -367,6 +527,11 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
           if (payload.new?.status === 'ready') {
+            // Check this KOT belongs to one of MY orders before alerting
+            const myOrderIds = myOrders.value.map(o => o.id)
+            if (myOrderIds.includes(payload.new.order_id)) {
+              _playAlertSound()
+            }
             loadReadyAlerts()
           }
         }
@@ -408,15 +573,23 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     if (notifsChannel) supabase.removeChannel(notifsChannel)
     if (kotChannel)    supabase.removeChannel(kotChannel)
     if (pointsChannel) supabase.removeChannel(pointsChannel)
+    // Also cleanup the waiterOrderStore
+    try {
+      const orderStore = useWaiterOrderStore()
+      orderStore.cleanup()
+    } catch { /* ignore if not initialized */ }
   }
 
   async function refresh() {
+    const orderStore = useWaiterOrderStore()
     await Promise.all([
       loadPendingOrders(),
       loadMyOrders(),
       loadNotifications(),
       loadProfile(),
       loadShiftInfo(),
+      orderStore.fetchPendingOrders(),
+      orderStore.fetchMyOrders(),
     ])
     await Promise.all([loadReadyAlerts(), loadPointsLedger()])
   }

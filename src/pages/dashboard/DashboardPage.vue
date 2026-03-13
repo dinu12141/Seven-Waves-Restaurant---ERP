@@ -30,7 +30,7 @@
       <div class="col-12" :class="canViewFinance ? 'col-md-4' : 'col-md-6'">
         <DashboardChart
           title="Order Status Distribution"
-          subtitle="Today's active orders"
+          subtitle="All active + today's orders"
           type="donut"
           height="280"
           :series="orderStatusSeries"
@@ -116,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
@@ -128,6 +128,12 @@ const loading = ref(false)
 
 // Security
 const canViewFinance = computed(() => authStore.hasAnyRole(['admin', 'finance', 'manager']))
+
+// ── Active statuses (orders currently in pipeline) ─────────────────
+const ACTIVE_STATUSES = ['pending_waiter', 'accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served', 'invoiced']
+
+// ── Kitchen queue statuses ─────────────────────────────────────────
+const KITCHEN_STATUSES = ['accepted', 'sent_to_kitchen', 'preparing']
 
 // KPI State
 const kpis = ref([
@@ -156,10 +162,10 @@ const revenueOptions = ref({
   },
 })
 
-const orderStatusSeries = ref([0, 0, 0, 0])
+const orderStatusSeries = ref([0, 0, 0, 0, 0])
 const orderStatusOptions = ref({
-  labels: ['Pending', 'Preparing', 'Ready', 'Completed'],
-  colors: ['#f59e0b', '#3b82f6', '#10b981', '#6b7280'],
+  labels: ['Pending', 'In Kitchen', 'Ready', 'Served', 'Completed'],
+  colors: ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#6b7280'],
   legend: { position: 'bottom' },
   plotOptions: { pie: { donut: { size: '70%' } } },
 })
@@ -174,6 +180,9 @@ const systemHealth = ref([
   { name: 'Realtime Socket', status: 'Online' },
 ])
 
+// ── Realtime channel ─────────────────────────────────────────────
+let ordersChannel = null
+
 async function fetchDashboardData() {
   loading.value = true
   try {
@@ -182,29 +191,48 @@ async function fetchDashboardData() {
 
     if (!branchId) return
 
-    // Minimal optimized queries
-    const p1 = supabase
+    // Query 1: ALL active orders (regardless of date) + today's completed orders
+    // Active orders can be from any day — they're still in the pipeline
+    const pActive = supabase
+      .from('orders')
+      .select('id, status, total_amount, created_at')
+      .eq('branch_id', branchId)
+      .in('status', ACTIVE_STATUSES)
+
+    // Query 2: Today's completed/paid orders (for revenue + donut chart)
+    const pCompleted = supabase
       .from('orders')
       .select('status, total_amount')
       .eq('branch_id', branchId)
+      .in('status', ['paid', 'completed'])
       .gte('created_at', todayStr + 'T00:00:00')
 
-    // S1-1: Use live enterprise inventory (stock_on_hand + items) — NOT deprecated inventory_items
-    const p2 = supabase
+    // Query 3: Low stock
+    const pStock = supabase
       .from('stock_on_hand')
-      .select('quantity_on_hand, items!inner(reorder_level, company_id, name)')
+      .select('qty_on_hand, items!inner(reorder_level, company_id, name)')
       .eq('items.company_id', authStore.currentBranch?.company_id)
 
-    // S3-4: Wire activity feed from real audit_logs
-    const p3 = supabase
+    // Query 4: Activity feed
+    const pActivity = supabase
       .from('audit_logs')
       .select('id, action, user_id, created_at, severity')
       .order('created_at', { ascending: false })
       .limit(10)
 
-    const [ordersRes, invRes, activityRes] = await Promise.all([p1, p2, p3])
+    // Query 5: Staff on shift today
+    const pStaff = supabase
+      .from('shift_assignments')
+      .select('id')
+      .eq('branch_id', branchId)
+      .eq('assignment_date', todayStr)
+      .in('status', ['scheduled', 'active', 'present'])
 
-    // Wire activity feed
+    const [activeRes, completedRes, invRes, activityRes, staffRes] = await Promise.all([
+      pActive, pCompleted, pStock, pActivity, pStaff,
+    ])
+
+    // ── Wire activity feed ──
     if (activityRes.data && activityRes.data.length > 0) {
       const iconMap = { error: 'error', warning: 'warning', info: 'info', success: 'check_circle' }
       const colorMap = { error: 'red', warning: 'orange', info: 'blue', success: 'green' }
@@ -220,47 +248,73 @@ async function fetchDashboardData() {
       activities.value = []
     }
 
-    if (ordersRes.data) {
-      let active = 0,
-        queue = 0,
-        revenue = 0
-      let pending = 0,
-        prep = 0,
-        ready = 0,
-        comp = 0
+    // ── Process active orders (all time — these are in-progress) ──
+    const activeOrders = activeRes.data || []
+    let activeCount = 0
+    let kitchenQueue = 0
+    let pendingWaiter = 0
+    let inKitchen = 0
+    let readyCount = 0
+    let servedCount = 0
 
-      ordersRes.data.forEach((o) => {
-        // Revenue: only count paid/completed — exclude cancelled & pending unpaid
-        if (['completed', 'paid', 'served'].includes(o.status)) revenue += o.total_amount || 0
-        if (!['completed', 'cancelled', 'paid'].includes(o.status)) active++
-        if (['accepted', 'preparing', 'cooking'].includes(o.status)) queue++
+    activeOrders.forEach((o) => {
+      activeCount++
 
-        if (o.status === 'pending') pending++
-        else if (['accepted', 'preparing'].includes(o.status)) prep++
-        else if (o.status === 'ready') ready++
-        else if (['completed', 'paid', 'served'].includes(o.status)) comp++
-      })
+      if (KITCHEN_STATUSES.includes(o.status)) kitchenQueue++
 
-      orderStatusSeries.value = [pending, prep, ready, comp]
+      // For donut chart: group by status category
+      if (o.status === 'pending_waiter') pendingWaiter++
+      else if (['accepted', 'sent_to_kitchen', 'preparing'].includes(o.status)) inKitchen++
+      else if (o.status === 'ready') readyCount++
+      else if (['served', 'invoiced'].includes(o.status)) servedCount++
+    })
 
-      const revKpi = kpis.value.find((k) => k.title === 'Revenue')
-      if (revKpi) revKpi.value = `LKR ${revenue.toLocaleString()}`
+    // ── Process completed orders (today only — for revenue) ──
+    const completedOrders = completedRes.data || []
+    let revenue = 0
+    let completedCount = 0
 
-      const actKpi = kpis.value.find((k) => k.title === 'Active Orders')
-      if (actKpi) actKpi.value = active
+    completedOrders.forEach((o) => {
+      revenue += o.total_amount || 0
+      completedCount++
+    })
 
-      const qKpi = kpis.value.find((k) => k.title === 'Kitchen Queue')
-      if (qKpi) qKpi.value = queue
-    }
+    // Also add revenue from served orders today
+    activeOrders.forEach((o) => {
+      if (['served', 'invoiced'].includes(o.status)) {
+        const orderDate = new Date(o.created_at).toISOString().split('T')[0]
+        if (orderDate === todayStr) {
+          revenue += o.total_amount || 0
+        }
+      }
+    })
 
-    // S1-1: Low Stock from live stock_on_hand + items.reorder_level
+    // ── Update KPI cards ──
+    const revKpi = kpis.value.find((k) => k.title === 'Revenue')
+    if (revKpi) revKpi.value = `LKR ${revenue.toLocaleString()}`
+
+    const actKpi = kpis.value.find((k) => k.title === 'Active Orders')
+    if (actKpi) actKpi.value = activeCount
+
+    const qKpi = kpis.value.find((k) => k.title === 'Kitchen Queue')
+    if (qKpi) qKpi.value = kitchenQueue
+
+    // ── Update donut chart ──
+    orderStatusSeries.value = [pendingWaiter, inKitchen, readyCount, servedCount, completedCount]
+
+    // ── Low stock ──
     if (invRes.data) {
       const lowStock = invRes.data.filter(
-        (row) => (row.quantity_on_hand || 0) <= (row.items?.reorder_level || 0)
+        (row) => (row.qty_on_hand || 0) <= (row.items?.reorder_level || 0)
       ).length
       const lowKpi = kpis.value.find((k) => k.title === 'Low Stock')
       if (lowKpi) lowKpi.value = lowStock
     }
+
+    // ── Staff on shift ──
+    const staffKpi = kpis.value.find((k) => k.title === 'Staff On Shift')
+    if (staffKpi) staffKpi.value = staffRes.data?.length || 0
+
   } catch (err) {
     console.error('Dashboard Error:', err)
   } finally {
@@ -268,10 +322,83 @@ async function fetchDashboardData() {
   }
 }
 
-onMounted(() => {
-  if (authStore.user) {
-    fetchDashboardData()
+// ── Realtime: subscribe to orders table for live updates ──────────
+let dashRefreshTimer = null
+function subscribeRealtime() {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+
+  // Cleanup existing channel before creating new one
+  if (ordersChannel) {
+    supabase.removeChannel(ordersChannel)
+    ordersChannel = null
   }
+
+  const channelName = `dashboard-orders-${branchId}-${Date.now()}`
+  ordersChannel = supabase
+    .channel(channelName)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
+      () => {
+        // Debounced re-fetch to avoid storms from rapid changes
+        if (dashRefreshTimer) clearTimeout(dashRefreshTimer)
+        dashRefreshTimer = setTimeout(() => fetchDashboardData(), 500)
+      }
+    )
+    .subscribe((status) => {
+      console.log('[Dashboard] Realtime status:', status)
+      const rtHealth = systemHealth.value.find(s => s.name === 'Realtime Socket')
+      if (rtHealth) rtHealth.status = status === 'SUBSCRIBED' ? 'Online' : 'Connecting...'
+    })
+}
+
+// ── Boot: called once branch is available ──────────────────────────
+let booted = false
+async function bootDashboard() {
+  if (booted) return
+  const branchId = authStore.currentBranch?.id
+  if (!branchId || !authStore.user) return
+  booted = true
+  console.log('[Dashboard] Booting with branch:', branchId)
+  await fetchDashboardData()
+  subscribeRealtime()
+}
+
+// Watch for branch becoming available (handles async auth/branch loading)
+watch(
+  () => authStore.currentBranch?.id,
+  (newId) => {
+    if (newId) bootDashboard()
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  // If branch is already available, boot immediately
+  if (authStore.currentBranch?.id && authStore.user) {
+    bootDashboard()
+  } else {
+    // Fallback: wait up to 3 seconds for branch to become available
+    for (let i = 0; i < 6; i++) {
+      await new Promise(r => setTimeout(r, 500))
+      if (authStore.currentBranch?.id) {
+        bootDashboard()
+        break
+      }
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (ordersChannel) {
+    supabase.removeChannel(ordersChannel)
+    ordersChannel = null
+  }
+  if (dashRefreshTimer) {
+    clearTimeout(dashRefreshTimer)
+    dashRefreshTimer = null
+  }
+  booted = false
 })
 </script>
 

@@ -26,6 +26,10 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   const companyId = ref(null)
   const shiftInfo = ref(null) // { branch_name, shift_name, shift_start, shift_end }
 
+  // ── New Order Alerts (persistent, cleared on dismiss/accept) ────
+  // Each entry: { id, order_number, table_name, created_at, order_id }
+  const newOrderAlerts = ref([])
+
   // Realtime channels
   let ordersChannel = null
   let kotChannel = null
@@ -33,6 +37,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   // ── Getters ────────────────────────────────────────────────
   const pendingCount = computed(() => pendingOrders.value.length)
   const myOrderCount = computed(() => myOrders.value.length)
+  const newOrderAlertCount = computed(() => newOrderAlerts.value.length)
   const waiterId = computed(() => authStore.user?.id)
 
   // ── Initialize ─────────────────────────────────────────────
@@ -366,45 +371,21 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       })
     }
 
-    // S4-1: Subscribe to KOT tickets — BRANCH-SCOPED per shift branch
-    // Previously this subscribed to ALL KOT changes globally (no filter).
-    // Now we create one channel per shift branch for correct multi-branch isolation.
-    const kotBranchIds = branchIds.length > 0 ? branchIds : (branchId.value ? [branchId.value] : [])
-    if (kotBranchIds.length === 0) return
-
-    // Primary KOT channel for first branch
+    // KOT realtime — kot_tickets has NO branch_id column, so we subscribe
+    // without a branch filter. The handleKotChange() handler already validates
+    // that the KOT belongs to one of our orders, ensuring branch isolation.
     kotChannel = supabase
-      .channel(`waiter-kot-rt-${kotBranchIds[0]}`)
+      .channel('waiter-kot-rt')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'kot_tickets',
-          filter: `branch_id=eq.${kotBranchIds[0]}`,
         },
         (payload) => handleKotChange(payload),
       )
       .subscribe()
-
-    // Additional KOT channels for multi-branch waiters (S4-2)
-    if (kotBranchIds.length > 1) {
-      kotBranchIds.slice(1).forEach((bId) => {
-        supabase
-          .channel(`waiter-kot-rt-${bId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'kot_tickets',
-              filter: `branch_id=eq.${bId}`,
-            },
-            (payload) => handleKotChange(payload),
-          )
-          .subscribe()
-      })
-    }
   }
 
   // S4-3: Extracted KOT handler — no more setTimeout race condition
@@ -441,38 +422,12 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     const { eventType, new: newRow } = payload
 
     if (eventType === 'INSERT') {
-      // New order — add to pending if it matches
+      // New order arrived — refresh pending list from server (shift-filtered RPC).
+      // ⚠️  Audio alert + toast + persistent card are handled EXCLUSIVELY by
+      //     waiterAppStore.subscribeRealtime() to prevent double-alerts.
+      //     This store only keeps the data layer in sync (no sound here).
       if (newRow.status === 'pending_waiter' && !newRow.assigned_waiter_id) {
-        // 🔔 Play notification sound instantly
-        playAlertSound()
-
-        // Re-fetch from RPC to ensure shift check on server
         fetchPendingOrders()
-
-        // 🔔 Fire notification for New Order
-        if (newRow.table_id) {
-          supabase
-            .from('restaurant_tables')
-            .select('table_number')
-            .eq('id', newRow.table_id)
-            .single()
-            .then(({ data }) => {
-              const tNum = data?.table_number ? data.table_number.replace('Table', '').trim() : ''
-              const tableName = tNum ? `Table ${tNum}` : 'a Table'
-              Notify.create({
-                type: 'info',
-                icon: 'room_service',
-                color: 'blue-9',
-                textColor: 'white',
-                message: `New Order from ${tableName}!`,
-                position: 'top',
-                timeout: 8000,
-                dense: true,
-                classes: 'text-weight-bold',
-                actions: [{ icon: 'close', color: 'white', size: 'sm' }],
-              })
-            })
-        }
       }
     }
 
@@ -551,20 +506,34 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
         osc.stop(startTime + dur)
       }
 
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume()
+      // Resume suspended context (browser autoplay policy)
+      const doPlay = () => {
+        const now = audioCtx.currentTime
+        // Urgent triple-ding for new order
+        playTone(1318.51, 'sine', now,       0.3)  // E6
+        playTone(1046.50, 'sine', now + 0.2, 0.3)  // C6
+        playTone(1318.51, 'sine', now + 0.4, 0.5)  // E6 (long)
       }
 
-      const now = audioCtx.currentTime
-      // A bright "Ding - Ding" sequence suitable for restaurants
-      playTone(1046.5, 'sine', now, 0.4) // C6
-      playTone(1318.51, 'sine', now + 0.15, 0.6) // E6
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(doPlay)
+      } else {
+        doPlay()
+      }
     } catch (e) {
       console.error('[WaiterStore] Audio alert failed:', e)
     }
   }
 
   // ── Cleanup ────────────────────────────────────────────────
+
+  function dismissNewOrderAlert(alertId) {
+    newOrderAlerts.value = newOrderAlerts.value.filter(a => a.id !== alertId)
+  }
+
+  function clearNewOrderAlerts() {
+    newOrderAlerts.value = []
+  }
 
   function cleanup() {
     if (ordersChannel) {
@@ -582,6 +551,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   return {
     pendingOrders,
     myOrders,
+    newOrderAlerts,
     loading,
     accepting,
     isOnShift,
@@ -590,12 +560,15 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     shiftInfo,
     pendingCount,
     myOrderCount,
+    newOrderAlertCount,
     waiterId,
     initialize,
     fetchPendingOrders,
     fetchMyOrders,
     acceptOrder,
     markOrderServed,
+    dismissNewOrderAlert,
+    clearNewOrderAlerts,
     cleanup,
   }
 })

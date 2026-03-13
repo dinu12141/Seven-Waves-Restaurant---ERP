@@ -154,10 +154,12 @@ import { inject, computed, ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
 import { useTableSessionStore } from 'src/stores/tableSessionStore'
+import { useCustomerStore } from 'src/stores/customerStore'
 
 const $q = useQuasar()
 const emit = defineEmits(['close'])
 const sessionStore = useTableSessionStore()
+const customerStore = useCustomerStore()
 
 const { sessionToken, cartItems, updateQuantity, removeFromCart, clearCart, tableUuid } =
   inject('touchMenuState')
@@ -249,6 +251,9 @@ async function submitOrder() {
           p_table_id: finalTableUuid,
           p_items: items,
           p_source: 'table_screen',
+          p_customer_name: customerStore.isLoggedIn ? customerStore.displayName : null,
+          p_customer_phone: customerStore.isLoggedIn ? customerStore.phone : null,
+          p_customer_id: customerStore.isLoggedIn ? customerStore.customerId : null,
         }))
       } else {
         // ── FALLBACK PATH: Session token (pgcrypto-based) ──

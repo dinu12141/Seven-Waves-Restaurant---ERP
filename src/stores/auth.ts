@@ -311,7 +311,7 @@ export const useAuthStore = defineStore('auth', {
         Array.isArray(state.roles) && roles.some((role) => state.roles.includes(role))
     },
     canAccess: (state) => {
-      return (routePath: string) => canAccessRoute(state.roles, routePath)
+      return (routePath: string) => canAccessRoute(state.roles, routePath, state.permissions)
     },
     defaultLandingPage: (state) => {
       for (const role of state.roles) {

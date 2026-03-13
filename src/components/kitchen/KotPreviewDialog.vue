@@ -121,6 +121,10 @@
               <div class="meta-label">Time</div>
               <div class="meta-value">{{ formatTime(ticket.created_at) }}</div>
             </div>
+            <div v-if="ticket.order?.customer_name" class="meta-cell" style="grid-column: 1 / -1">
+              <div class="meta-label">Customer</div>
+              <div class="meta-value">{{ ticket.order.customer_name }}</div>
+            </div>
           </div>
 
           <div class="divider-thick"></div>
@@ -221,7 +225,7 @@ async function loadTicket(kotId) {
         `
         id, kot_number, status, printed_at, created_at,
         order:orders (
-          order_number, order_type, notes,
+          order_number, order_type, notes, customer_name,
           table:restaurant_tables ( table_number )
         ),
         kitchen:kitchens (
