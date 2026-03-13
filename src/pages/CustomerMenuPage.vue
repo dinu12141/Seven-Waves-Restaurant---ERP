@@ -41,7 +41,12 @@
             :class="{ active: selectedCategory === cat.name }"
             @click="selectedCategory = cat.name"
           >
-            <span class="cat-icon">{{ cat.emoji }}</span>
+            <div class="cat-img-wrapper">
+              <img v-if="cat.image" :src="cat.image" class="cat-img" />
+              <div v-else class="cat-img-placeholder">
+                <q-icon name="restaurant" size="18px" color="grey-6" />
+              </div>
+            </div>
             <span class="cat-label">{{ cat.name }}</span>
           </button>
         </div>
@@ -172,10 +177,10 @@ async function fetchMenu() {
 
     if (subCatData) {
       categories.value = [
-        { name: 'All', emoji: '🍽️', id: 'all' },
+        { name: 'All', image: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png', id: 'all' },
         ...subCatData.map((sc) => ({
           name: sc.name,
-          emoji: '🍴',
+          image: sc.image_url,
           id: sc.id,
           parent_name: sc.categories?.name,
         })),
@@ -315,18 +320,18 @@ function decrementItem(product) {
 
 .cat-pill {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 20px;
+  gap: 8px;
+  padding: 6px;
+  padding-bottom: 10px;
+  width: 85px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: #9ca3af;
-  font-size: 0.82rem;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.25s ease;
-  white-space: nowrap;
   font-family: 'Inter', 'Roboto', sans-serif;
 
   &:hover {
@@ -335,18 +340,48 @@ function decrementItem(product) {
   }
 
   &.active {
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(239, 68, 68, 0.2));
-    border-color: rgba(249, 115, 22, 0.4);
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(239, 68, 68, 0.1));
+    border-color: rgba(249, 115, 22, 0.5);
     color: #fb923c;
-    font-weight: 600;
   }
 }
 
-.cat-icon {
-  font-size: 1rem;
+.cat-img-wrapper {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--erp-bg-main, #1a1a24);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
+
+.cat-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cat-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .cat-label {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.1;
+  max-width: 100%;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .menu-content {

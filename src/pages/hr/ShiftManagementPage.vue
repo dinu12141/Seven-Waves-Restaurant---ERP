@@ -139,14 +139,15 @@
     <div v-if="viewMode === 'assignments'">
       <!-- Filters -->
       <div class="row q-mb-md q-gutter-sm items-end">
+        <!-- Date filters -->
         <q-input
           dark
           dense
           outlined
           v-model="assignFilter.dateFrom"
           type="date"
-          label="From"
-          style="width: 160px"
+          label="From Date"
+          style="width: 155px"
         />
         <q-input
           dark
@@ -154,9 +155,10 @@
           outlined
           v-model="assignFilter.dateTo"
           type="date"
-          label="To"
-          style="width: 160px"
+          label="To Date"
+          style="width: 155px"
         />
+        <!-- Shift filter -->
         <q-select
           dark
           dense
@@ -167,18 +169,66 @@
           option-value="id"
           emit-value
           map-options
-          label="Shift"
+          label="Filter by Shift"
           clearable
-          style="width: 200px"
+          style="width: 190px"
+        >
+          <template #prepend><q-icon name="schedule" size="18px" /></template>
+        </q-select>
+        <!-- Employee filter -->
+        <q-select
+          dark
+          dense
+          outlined
+          v-model="assignFilter.employeeId"
+          :options="employees"
+          option-label="full_name"
+          option-value="id"
+          emit-value
+          map-options
+          label="Filter by Employee"
+          clearable
+          use-input
+          input-debounce="0"
+          @filter="filterEmps"
+          style="min-width: 200px"
+        >
+          <template #prepend><q-icon name="person" size="18px" /></template>
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section avatar>
+                <q-avatar :color="avatarColor(scope.opt.full_name)" text-color="white" size="28px" style="font-size: 11px">
+                  {{ initials(scope.opt.full_name) }}
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ scope.opt.full_name }}</q-item-label>
+                <q-item-label caption>{{ scope.opt.employee_code }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <!-- Load button -->
+        <q-btn color="primary" icon="refresh" label="Load" no-caps unelevated @click="loadAssignments" />
+        <!-- Clear filters -->
+        <q-btn
+          v-if="assignFilter.shiftId || assignFilter.employeeId"
+          flat
+          dense
+          color="grey-5"
+          icon="clear"
+          label="Clear"
+          no-caps
+          @click="clearAssignFilters"
         />
-        <q-btn color="primary" icon="search" label="Load" no-caps @click="loadAssignments" />
         <q-space />
+        <!-- Text search -->
         <q-input
           dark
           dense
           outlined
           v-model="assignSearch"
-          placeholder="Search..."
+          placeholder="Quick search..."
           clearable
           style="width: 200px"
         >
@@ -542,7 +592,14 @@ const assignFilter = reactive({
     return d.toISOString().split('T')[0]
   })(),
   shiftId: null,
+  employeeId: null,
 })
+
+function clearAssignFilters() {
+  assignFilter.shiftId = null
+  assignFilter.employeeId = null
+  assignSearch.value = ''
+}
 
 // ─── Shift Dialog ──────────────────────────────────────────────────────────
 const shiftDialog = reactive({ open: false, isEdit: false })
@@ -677,13 +734,25 @@ const weekDays = computed(() => {
 })
 
 const filteredAssignments = computed(() => {
-  if (!assignSearch.value) return assignments.value
-  const s = assignSearch.value.toLowerCase()
-  return assignments.value.filter(
-    (a) =>
-      a.employees?.full_name?.toLowerCase().includes(s) ||
-      a.shifts?.name?.toLowerCase().includes(s),
-  )
+  let result = assignments.value
+
+  // Filter by employee (client-side for instant response)
+  if (assignFilter.employeeId) {
+    result = result.filter((a) => a.employee_id === assignFilter.employeeId)
+  }
+
+  // Text search
+  if (assignSearch.value) {
+    const s = assignSearch.value.toLowerCase()
+    result = result.filter(
+      (a) =>
+        a.employees?.full_name?.toLowerCase().includes(s) ||
+        a.shifts?.name?.toLowerCase().includes(s) ||
+        a.assignment_date?.includes(s),
+    )
+  }
+
+  return result
 })
 
 const assignColumns = [

@@ -11,6 +11,11 @@ const routes = [
         meta: { roles: ['admin', 'manager'] },
       },
       {
+        path: 'manager/floor',
+        component: () => import('pages/manager/ManagerFloorPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
         path: 'pos',
         component: () => import('pages/POSPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier', 'waiter'] },
@@ -144,10 +149,13 @@ const routes = [
         meta: { roles: ['admin', 'manager'] },
       },
       {
+        // Legacy redirect — desktop view retired
         path: 'waiter',
-        component: () => import('pages/WaiterPage.vue'),
+        redirect: '/waiter-app',
         meta: { roles: ['admin', 'manager', 'waiter'] },
       },
+      // NOTE: /waiter-app is a top-level standalone route (see below) — the
+      // sidebar link navigates there directly; no child route needed here.
       {
         path: 'profile',
         component: () => import('pages/auth/UserProfilePage.vue'),
@@ -198,6 +206,20 @@ const routes = [
         component: () => import('pages/reports/InventoryPerformanceReport.vue'),
         meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
       },
+    ],
+  },
+  // ── Waiter App — standalone full-screen mobile PWA (NO MainLayout) ──────────
+  {
+    path: '/waiter-app',
+    component: () => import('layouts/WaiterAppLayout.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'manager', 'waiter'] },
+    children: [
+      { path: '', component: () => import('pages/waiter-app/WaiterHomePage.vue') },
+      { path: 'inbox', component: () => import('pages/waiter-app/ShiftInboxPage.vue') },
+      { path: 'orders', component: () => import('pages/waiter-app/MyOrdersPage.vue') },
+      { path: 'alerts', component: () => import('pages/waiter-app/ReadyAlertsPage.vue') },
+      { path: 'notifs', component: () => import('pages/waiter-app/NotificationsPage.vue') },
+      { path: 'profile', component: () => import('pages/waiter-app/MyProfilePage.vue') },
     ],
   },
   {

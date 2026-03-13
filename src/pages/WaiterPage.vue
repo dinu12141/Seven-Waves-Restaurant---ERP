@@ -90,6 +90,12 @@
             </q-badge>
           </div>
         </q-tab>
+        <q-tab name="profile" class="tab-item">
+          <div class="row items-center no-wrap q-gutter-x-xs">
+            <q-icon name="person" size="18px" />
+            <span>My Profile</span>
+          </div>
+        </q-tab>
       </q-tabs>
     </div>
 
@@ -107,6 +113,9 @@
       <q-tab-panel name="mine" class="q-pa-none">
         <AcceptedOrders />
       </q-tab-panel>
+      <q-tab-panel name="profile" class="q-pa-none">
+        <WaiterProfileTab />
+      </q-tab-panel>
     </q-tab-panels>
   </q-page>
 </template>
@@ -116,6 +125,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import WaiterOrdersInbox from 'src/components/waiter/WaiterOrdersInbox.vue'
 import AcceptedOrders from 'src/components/waiter/AcceptedOrders.vue'
+import WaiterProfileTab from 'src/components/waiter/WaiterProfileTab.vue'
 
 const store = useWaiterOrderStore()
 const activeTab = ref('inbox')

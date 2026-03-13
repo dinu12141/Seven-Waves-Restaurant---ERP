@@ -77,6 +77,15 @@
       :filter="filter"
       :loading="loading"
     >
+      <template #body-cell-image="props">
+        <q-td :props="props">
+          <q-avatar size="40px" rounded bg-color="grey-9">
+            <img v-if="props.row.image_url" :src="props.row.image_url" />
+            <q-icon v-else name="restaurant" color="grey-6" />
+          </q-avatar>
+        </q-td>
+      </template>
+
       <template #body-cell-base_price="props">
         <q-td :props="props">
           <span class="text-weight-bold">{{ formatCurrency(props.value) }}</span>
@@ -167,7 +176,15 @@
                       />
                     </ERPFormField>
                   </div>
-                  <div class="col-4">
+                  <div class="col-4 flex flex-center">
+                     <q-avatar size="70px" rounded bg-color="grey-9" class="q-ma-sm shadow-3">
+                        <img v-if="form.image_url" :src="form.image_url" />
+                        <q-icon v-else name="hide_image" color="grey-6" />
+                     </q-avatar>
+                  </div>
+                </div>
+                <div class="row q-col-gutter-md">
+                   <div class="col-8">
                     <ERPFormField label="Base Price" required :error="vErrors.base_price">
                       <q-input
                         v-model.number="form.base_price"
@@ -295,6 +312,7 @@ const emptyForm = {
   name: '',
   description: '',
   base_price: 0,
+  image_url: '',
   category_id: null,
   sub_category_id: null,
   kitchen_id: null,
@@ -308,6 +326,7 @@ const form = reactive({ ...emptyForm })
 const vErrors = reactive({ name: '', base_price: '', category_id: '' })
 
 const columns = [
+  { name: 'image', label: 'Img', field: 'image', align: 'left', sortable: false },
   { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
   {
     name: 'category_name',
@@ -430,6 +449,7 @@ function openEdit(row) {
     name: row.name,
     description: row.description || '',
     base_price: row.base_price || 0,
+    image_url: row.image_url || '',
     category_id: row.category_id,
     sub_category_id: row.sub_category_id,
     kitchen_id: row.kitchen_id,

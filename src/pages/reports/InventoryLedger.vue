@@ -360,25 +360,37 @@ async function onFilterChange(filters) {
   await loadData()
 }
 
+// doc_type → movement badge mapping (enterprise system uses doc_type codes)
+const DOC_TYPE_TO_MOVEMENT = {
+  GRN: 'grn',
+  GIN: 'kot_issue',
+  ADJUSTMENT: 'adjustment',
+  TRANSFER: 'transfer',
+  RETURN: 'return',
+  OPENING: 'opening',
+  STOCK_COUNT: 'adjustment',
+  BOM_DEDUCT: 'kot_issue',
+  PO: 'grn',
+}
+
 async function loadData() {
   loading.value = true
   try {
+    // S1-2: Query live enterprise inventory_ledger instead of dead stock_movements
     let query = supabase
-      .from('stock_movements')
+      .from('inventory_ledger')
       .select(
         `
         id,
         created_at,
-        reference_no,
-        movement_type,
-        quantity_in,
-        quantity_out,
-        balance_after,
+        quantity,
+        direction,
         unit_cost,
         notes,
         warehouse_id,
-        inventory_items (name, sku, uom, category),
-        warehouses (name)
+        items ( name, sku, company_id, reorder_level, item_categories(name) ),
+        warehouses ( name ),
+        inventory_documents ( doc_number, doc_type, reference_no )
       `,
       )
       .order('created_at', { ascending: false })
@@ -389,14 +401,11 @@ async function loadData() {
     if (currentFilters.value.dateTo) {
       query = query.lte('created_at', currentFilters.value.dateTo + 'T23:59:59')
     }
-    if (currentFilters.value.branch) {
-      query = query.eq('branch_id', currentFilters.value.branch)
-    }
 
-    // Security: restrict non-admin users to their own branch
-    if (!authStore.isAdmin) {
-      const branchId = authStore.currentBranch?.id
-      if (branchId) query = query.eq('branch_id', branchId)
+    // Security: restrict non-admin users to their own company's items
+    const companyId = authStore.companyId
+    if (companyId) {
+      query = query.eq('items.company_id', companyId)
     }
 
     const { data, error } = await query.limit(1000)
@@ -406,28 +415,31 @@ async function loadData() {
     const whMap = {}
 
     rows.value = (data || []).map((r) => {
-      const cat = r.inventory_items?.category || '—'
+      const docType = r.inventory_documents?.doc_type || 'adjustment'
+      const movType = DOC_TYPE_TO_MOVEMENT[docType] || 'adjustment'
+      const cat = r.items?.item_categories?.name || '—'
       cats.add(cat)
       if (r.warehouse_id && r.warehouses?.name) {
         whMap[r.warehouse_id] = r.warehouses.name
       }
-      const qIn = Number(r.quantity_in || 0)
-      const qOut = Number(r.quantity_out || 0)
+      const qty = Number(r.quantity || 0)
+      const qIn = r.direction === 'IN' ? qty : 0
+      const qOut = r.direction === 'OUT' ? qty : 0
       const uc = Number(r.unit_cost || 0)
       return {
         id: r.id,
         date: r.created_at,
-        ref_no: r.reference_no || '—',
-        item_name: r.inventory_items?.name || '—',
-        sku: r.inventory_items?.sku || '—',
+        ref_no: r.inventory_documents?.doc_number || r.inventory_documents?.reference_no || '—',
+        item_name: r.items?.name || '—',
+        sku: r.items?.sku || '—',
         category: cat,
-        movement_type: r.movement_type,
+        movement_type: movType,
         qty_in: qIn,
         qty_out: qOut,
-        balance: r.balance_after ?? '—',
-        uom: r.inventory_items?.uom || '—',
+        balance: '—', // inventory_ledger is event-sourced; running balance computed on demand
+        uom: '—',
         unit_cost: uc,
-        total_value: uc * Math.max(qIn, qOut),
+        total_value: uc * qty,
         warehouse: r.warehouses?.name || '—',
         warehouse_id: r.warehouse_id,
         notes: r.notes || '',

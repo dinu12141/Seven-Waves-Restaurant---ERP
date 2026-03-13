@@ -1,0 +1,18 @@
+// waiter-shared.scss — shared base styles for all waiter-app pages
+
+.waiter-page-dark {
+  background: #090c14;
+  min-height: 100vh;
+  font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-align: center;
+}

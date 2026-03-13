@@ -366,46 +366,75 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       })
     }
 
-    // Subscribe to KOT tickets to refresh My Orders when trigger generates them
+    // S4-1: Subscribe to KOT tickets — BRANCH-SCOPED per shift branch
+    // Previously this subscribed to ALL KOT changes globally (no filter).
+    // Now we create one channel per shift branch for correct multi-branch isolation.
+    const kotBranchIds = branchIds.length > 0 ? branchIds : (branchId.value ? [branchId.value] : [])
+    if (kotBranchIds.length === 0) return
+
+    // Primary KOT channel for first branch
     kotChannel = supabase
-      .channel('waiter-kot-rt')
+      .channel(`waiter-kot-rt-${kotBranchIds[0]}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'kot_tickets',
+          filter: `branch_id=eq.${kotBranchIds[0]}`,
         },
-        (payload) => {
-          const { eventType, new: newRow } = payload
-
-          if (eventType === 'UPDATE' && newRow.status === 'ready') {
-            const myOrder = myOrders.value.find((o) => o.id === newRow.order_id)
-            if (myOrder) {
-              const kot = myOrder.kot_tickets?.find((k) => k.id === newRow.id)
-              if (kot && kot.status !== 'ready') {
-                // Trigger notification
-                playAlertSound()
-                Notify.create({
-                  type: 'positive',
-                  icon: 'task_alt',
-                  color: 'green-10',
-                  textColor: 'white',
-                  message: `KOT #${newRow.kot_number || ''} is READY! (Table ${myOrder.tableNumber})`,
-                  caption: `Order #${myOrder.order_number}`,
-                  position: 'top',
-                  timeout: 6000,
-                  classes: 'text-weight-bold',
-                  actions: [{ icon: 'close', color: 'white', size: 'sm' }],
-                })
-              }
-            }
-          }
-          // When KOT generated or status changed, sync My Orders
-          fetchMyOrders()
-        },
+        (payload) => handleKotChange(payload),
       )
       .subscribe()
+
+    // Additional KOT channels for multi-branch waiters (S4-2)
+    if (kotBranchIds.length > 1) {
+      kotBranchIds.slice(1).forEach((bId) => {
+        supabase
+          .channel(`waiter-kot-rt-${bId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'kot_tickets',
+              filter: `branch_id=eq.${bId}`,
+            },
+            (payload) => handleKotChange(payload),
+          )
+          .subscribe()
+      })
+    }
+  }
+
+  // S4-3: Extracted KOT handler — no more setTimeout race condition
+  function handleKotChange(payload) {
+    const { eventType, new: newRow } = payload
+
+    if (eventType === 'UPDATE' && newRow.status === 'ready') {
+      const myOrder = myOrders.value.find((o) => o.id === newRow.order_id)
+      if (myOrder) {
+        const kot = myOrder.kot_tickets?.find((k) => k.id === newRow.id)
+        if (kot && kot.status !== 'ready') {
+          playAlertSound()
+          Notify.create({
+            type: 'positive',
+            icon: 'task_alt',
+            color: 'green-10',
+            textColor: 'white',
+            message: `KOT #${newRow.kot_number || ''} is READY! (Table ${myOrder.tableNumber})`,
+            caption: `Order #${myOrder.order_number}`,
+            position: 'top',
+            timeout: 6000,
+            classes: 'text-weight-bold',
+            actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+          })
+        }
+      }
+    }
+
+    // Drive fetchMyOrders from the realtime event directly (S4-3: replaces setTimeout(800))
+    fetchMyOrders()
   }
 
   function handleOrderChange(payload) {

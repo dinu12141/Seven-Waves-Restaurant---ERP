@@ -82,9 +82,9 @@
             icon="delete"
             size="sm"
             color="negative"
-            @click="deactivate(props.row)"
+            @click="confirmDelete(props.row)"
           >
-            <q-tooltip>Deactivate item</q-tooltip>
+            <q-tooltip>Delete item permanently</q-tooltip>
           </q-btn>
         </q-td>
       </template>
@@ -195,7 +195,7 @@ import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useItemsList, useCategoryList, useUomList } from 'src/services/inventoryService'
 
 const $q = useQuasar()
-const { items, loading, listItems, createItem, updateItem, deactivateItem, generateNextItemCode } =
+const { items, loading, listItems, createItem, updateItem, deleteItem, generateNextItemCode } =
   useItemsList()
 const { categories, listCategories } = useCategoryList()
 const { uoms, listUoms } = useUomList()
@@ -319,14 +319,27 @@ async function saveItem() {
   }
 }
 
-async function deactivate(row) {
-  try {
-    await deactivateItem(row.id)
-    $q.notify({ type: 'info', message: `${row.name} deactivated.` })
-    await listItems()
-  } catch (e) {
-    $q.notify({ type: 'negative', message: e.message || 'Failed to deactivate.' })
-  }
+function confirmDelete(row) {
+  $q.dialog({
+    title: 'Delete Item Permanently',
+    message: `Are you sure you want to permanently delete "${row.name}"? This will remove all stock records, ledger entries, and related data. This action cannot be undone.`,
+    cancel: { label: 'Cancel', flat: true },
+    persistent: true,
+    dark: true,
+    color: 'negative',
+    ok: { label: 'Delete', color: 'negative', flat: true },
+  }).onOk(async () => {
+    try {
+      await deleteItem(row.id)
+      $q.notify({ type: 'positive', message: `"${row.name}" deleted successfully.` })
+    } catch (e) {
+      $q.notify({
+        type: 'negative',
+        message: e.message || 'Failed to delete item. It may be linked to historical data.',
+        timeout: 5000,
+      })
+    }
+  })
 }
 
 function formatCurrency(val) {

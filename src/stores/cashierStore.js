@@ -137,7 +137,7 @@ export const useCashierStore = defineStore('cashier', () => {
           id, kot_number, status, kitchen_id,
           kot_items ( id, order_item_id, quantity, status )
         ),
-        invoices ( id, invoice_number, grand_total, payment_status, status )
+        invoices!order_id ( id, invoice_number, total, payment_status, status )
       `,
     )
 
@@ -278,12 +278,12 @@ export const useCashierStore = defineStore('cashier', () => {
 
           invoiceItemsData.push({
             order_item_id: oi.id,
-            menu_item_name: oi.menu_items?.name || oi.name || 'Item',
-            quantity: billedQty,
+            description: oi.menu_items?.name || oi.name || 'Item',
+            qty: billedQty,
             unit_price: unitPrice,
-            total_price: totalPrice,
+            line_total: totalPrice,
             tax_amount: 0,
-            discount_amount: 0,
+            discount: 0,
           })
         }
       })
@@ -305,13 +305,13 @@ export const useCashierStore = defineStore('cashier', () => {
           customer_name: order.customer_name || null,
           customer_phone: order.customer_phone || null,
           subtotal: actualSubtotal,
-          tax_total: 0, // Should be calculated if taxes exist
-          discount_total: 0,
-          grand_total: actualGrandTotal,
+          tax: 0, // Should be calculated if taxes exist
+          discount: 0,
+          total: actualGrandTotal,
           payment_status: 'unpaid',
           status: 'issued',
         })
-        .select('id, invoice_number, grand_total, status, payment_status, created_at')
+        .select('id, invoice_number, total, status, payment_status, created_at')
         .single()
 
       if (invError) throw new Error(`Invoice creation failed: ${invError.message}`)
@@ -424,15 +424,15 @@ export const useCashierStore = defineStore('cashier', () => {
         id,
         invoice_number,
         subtotal,
-        tax_total,
-        discount_total,
-        grand_total,
+        tax,
+        discount,
+        total,
         status,
         payment_status,
         customer_name,
         customer_phone,
         created_at,
-        orders (
+        orders!order_id (
           order_number,
           table_id,
           waiter_id,
@@ -440,7 +440,7 @@ export const useCashierStore = defineStore('cashier', () => {
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name )
         ),
-        invoice_items ( id, menu_item_name, quantity, unit_price, total_price ),
+        invoice_items ( id, description, qty, unit_price, line_total ),
         payments ( id, amount, payment_method, payment_method_id, transaction_reference, created_at,
           payment_methods ( id, name )
         )
@@ -452,7 +452,17 @@ export const useCashierStore = defineStore('cashier', () => {
     if (error) throw new Error(error.message)
     return {
       ...data,
-      invoice_items: data?.invoice_items || [],
+      // Normalize column names for UI backward compat
+      grand_total: data?.total,
+      tax_total: data?.tax,
+      discount_total: data?.discount,
+      // Map DB column names to template-friendly names for backward compat
+      invoice_items: (data?.invoice_items || []).map((ii) => ({
+        ...ii,
+        menu_item_name: ii.description,
+        quantity: ii.qty,
+        total_price: ii.line_total,
+      })),
       payments: (data?.payments || []).map((p) => ({
         ...p,
         payment_method_name: p.payment_methods?.name || p.payment_method || 'Other',
@@ -667,7 +677,10 @@ export const useCashierStore = defineStore('cashier', () => {
         name: oi.menu_items?.name || 'Item',
       })),
       kot_tickets: order.kot_tickets || [],
-      invoices: order.invoices || [],
+      invoices: (order.invoices || []).map((inv) => ({
+        ...inv,
+        grand_total: inv.grand_total ?? inv.total, // DB col is `total`, alias for UI
+      })),
       itemCount: (order.order_items || []).reduce((s, i) => s + i.quantity, 0),
     }
   }

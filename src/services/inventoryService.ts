@@ -552,6 +552,15 @@ export function useItemsList() {
     return updateItem(id, { is_active: false })
   }
 
+  async function deleteItem(id: string) {
+    const { data, error } = await supabase.rpc('delete_item_cascade', { p_item_id: id })
+    if (error) throw error
+    if (data && !data.success) throw new Error(data.error || 'Delete failed')
+    // Remove from local list
+    items.value = items.value.filter((i: any) => i.id !== id)
+    return data
+  }
+
   async function generateNextItemCode() {
     const companyId = getCompanyId()
     if (!companyId) return ''
@@ -562,7 +571,7 @@ export function useItemsList() {
     return data
   }
 
-  return { items, loading, listItems, createItem, updateItem, deactivateItem, generateNextItemCode }
+  return { items, loading, listItems, createItem, updateItem, deactivateItem, deleteItem, generateNextItemCode }
 }
 
 /* ====================================================================

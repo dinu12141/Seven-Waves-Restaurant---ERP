@@ -189,40 +189,36 @@ async function fetchDashboardData() {
       .eq('branch_id', branchId)
       .gte('created_at', todayStr + 'T00:00:00')
 
+    // S1-1: Use live enterprise inventory (stock_on_hand + items) — NOT deprecated inventory_items
     const p2 = supabase
-      .from('inventory_items')
-      .select('quantity, reorder_level')
-      .eq('branch_id', branchId)
+      .from('stock_on_hand')
+      .select('quantity_on_hand, items!inner(reorder_level, company_id, name)')
+      .eq('items.company_id', authStore.currentBranch?.company_id)
 
-    // Activity mock (usually fetched from an audit log table)
-    activities.value = [
-      {
-        id: 1,
-        action: 'Order #ORD-1294 placed',
-        by: 'Waiter: John',
-        time: '2 mins ago',
-        icon: 'receipt',
-        color: 'blue',
-      },
-      {
-        id: 2,
-        action: 'Low stock alert: Tomatoes',
+    // S3-4: Wire activity feed from real audit_logs
+    const p3 = supabase
+      .from('audit_logs')
+      .select('id, action, user_id, created_at, severity')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    const [ordersRes, invRes, activityRes] = await Promise.all([p1, p2, p3])
+
+    // Wire activity feed
+    if (activityRes.data && activityRes.data.length > 0) {
+      const iconMap = { error: 'error', warning: 'warning', info: 'info', success: 'check_circle' }
+      const colorMap = { error: 'red', warning: 'orange', info: 'blue', success: 'green' }
+      activities.value = activityRes.data.map((log) => ({
+        id: log.id,
+        action: log.action,
         by: 'System',
-        time: '15 mins ago',
-        icon: 'warning',
-        color: 'orange',
-      },
-      {
-        id: 3,
-        action: 'Payroll processed',
-        by: 'HR Admin',
-        time: '1 hr ago',
-        icon: 'payments',
-        color: 'green',
-      },
-    ]
-
-    const [ordersRes, invRes] = await Promise.all([p1, p2])
+        time: new Date(log.created_at).toLocaleTimeString(),
+        icon: iconMap[log.severity] || 'history',
+        color: colorMap[log.severity] || 'grey',
+      }))
+    } else {
+      activities.value = []
+    }
 
     if (ordersRes.data) {
       let active = 0,
@@ -234,7 +230,8 @@ async function fetchDashboardData() {
         comp = 0
 
       ordersRes.data.forEach((o) => {
-        if (!['cancelled'].includes(o.status)) revenue += o.total_amount || 0
+        // Revenue: only count paid/completed — exclude cancelled & pending unpaid
+        if (['completed', 'paid', 'served'].includes(o.status)) revenue += o.total_amount || 0
         if (!['completed', 'cancelled', 'paid'].includes(o.status)) active++
         if (['accepted', 'preparing', 'cooking'].includes(o.status)) queue++
 
@@ -256,8 +253,11 @@ async function fetchDashboardData() {
       if (qKpi) qKpi.value = queue
     }
 
+    // S1-1: Low Stock from live stock_on_hand + items.reorder_level
     if (invRes.data) {
-      const lowStock = invRes.data.filter((i) => (i.quantity || 0) <= (i.reorder_level || 0)).length
+      const lowStock = invRes.data.filter(
+        (row) => (row.quantity_on_hand || 0) <= (row.items?.reorder_level || 0)
+      ).length
       const lowKpi = kpis.value.find((k) => k.title === 'Low Stock')
       if (lowKpi) lowKpi.value = lowStock
     }

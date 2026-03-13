@@ -230,7 +230,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
@@ -241,6 +241,7 @@ import { onMounted, onUnmounted } from 'vue'
 const authStore = useAuthStore()
 const modulesStore = useModulesStore()
 const route = useRoute()
+const router = useRouter()
 
 /** POS Mode: Hide sidebar for Cashier/Waiter or when on POS/Kitchen pages to maximize screen space */
 const isPOSMode = computed(() => {

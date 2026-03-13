@@ -183,14 +183,17 @@ export const useFinanceStore = defineStore('finance', () => {
       )
       .subscribe()
 
+    // payments table lacks branch_id, so we subscribe to invoices (which has branch_id)
+    // to trigger payment data refresh when our branch's invoices change
     paymentsChannel = supabase
-      .channel('finance-payments-rt')
+      .channel(`finance-invoices-rt-${branchId.value}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'payments',
+          table: 'invoices',
+          filter: `branch_id=eq.${branchId.value}`,
         },
         () => {
           fetchDailyData()

@@ -237,7 +237,6 @@ async function printReceipt() {
   // Get the HTML content but replace the logo src with base64
   let content = billRoot.value.innerHTML
   if (logoBase64) {
-    // Replace the original logo src with base64
     content = content.replace(/src="[^"]*"/, `src="${logoBase64}"`)
   }
 
@@ -248,27 +247,42 @@ async function printReceipt() {
     <title>Invoice #${props.invoice?.invoice_number || 'N/A'}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
+
       @page {
         size: 80mm auto;
         margin: 0mm;
       }
-      html, body {
+
+      html {
         width: 80mm;
         margin: 0;
         padding: 0;
+      }
+
+      body {
+        width: 80mm;
+        max-width: 80mm;
+        margin: 0 !important;
+        padding: 0 !important;
         background: #fff;
         color: #000;
         font-family: 'Courier New', Courier, monospace;
         font-size: 11px;
         line-height: 1.3;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
+
       .bill-print-wrap {
         width: 80mm;
-        padding: 3mm 3mm 6mm 3mm;
+        max-width: 80mm;
+        padding: 2mm 3mm 8mm 3mm;
+        overflow: hidden;
       }
+
       .bill-header { text-align: center; margin-bottom: 4px; }
       .bill-logo {
-        width: 50mm;
+        width: 44mm;
         height: auto;
         margin: 0 auto 2px;
         display: block;
@@ -279,23 +293,12 @@ async function printReceipt() {
         text-transform: uppercase;
         margin-bottom: 1px;
       }
-      .restaurant-address {
-        font-size: 8px;
-        color: #333;
-        margin-bottom: 1px;
-      }
-      .restaurant-tel {
-        font-size: 8px;
-        color: #333;
-      }
-      .bill-divider {
-        border-top: 1px solid #000;
-        margin: 4px 0;
-      }
-      .bill-divider-dashed {
-        border-top: 1px dashed #888;
-        margin: 3px 0;
-      }
+      .restaurant-address { font-size: 8px; color: #333; margin-bottom: 1px; }
+      .restaurant-tel { font-size: 8px; color: #333; }
+
+      .bill-divider { border-top: 1px solid #000; margin: 4px 0; }
+      .bill-divider-dashed { border-top: 1px dashed #888; margin: 3px 0; }
+
       .bill-meta { margin: 3px 0; }
       .meta-row {
         display: flex;
@@ -303,13 +306,11 @@ async function printReceipt() {
         font-size: 10px;
         padding: 0.5px 0;
       }
-      .meta-row-split {
-        display: flex;
-        justify-content: space-between;
-      }
+      .meta-row-split { display: flex; justify-content: space-between; }
       .meta-label { color: #333; }
       .meta-value { font-weight: 600; }
-      .items-table { width: 100%; border-collapse: collapse; }
+
+      .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .items-table thead tr th {
         font-size: 9px;
         font-weight: bold;
@@ -320,12 +321,14 @@ async function printReceipt() {
         padding: 2px 0;
         font-size: 10px;
         vertical-align: top;
+        word-break: break-word;
       }
       .col-desc { text-align: left; width: 55%; }
       .col-qty { text-align: center; width: 10%; }
       .col-amt { text-align: right; width: 35%; }
       .item-name { font-weight: 600; font-size: 10px; }
       .item-code-line { font-size: 9px; color: #555; }
+
       .totals-section { margin: 4px 0; }
       .total-row {
         display: flex;
@@ -333,14 +336,10 @@ async function printReceipt() {
         font-size: 10px;
         padding: 1px 0;
       }
-      .total-row-bold {
-        font-weight: bold;
-        font-size: 11px;
-      }
-      .customer-info {
-        margin: 4px 0;
-        font-size: 10px;
-      }
+      .total-row-bold { font-weight: bold; font-size: 11px; }
+
+      .customer-info { margin: 4px 0; font-size: 10px; }
+
       .bill-footer {
         text-align: center;
         font-size: 9px;
@@ -348,27 +347,19 @@ async function printReceipt() {
         margin-top: 6px;
         line-height: 1.5;
       }
-      .footer-thanks {
-        font-weight: bold;
-        font-size: 10px;
-        margin-bottom: 2px;
-      }
-      .footer-web {
-        font-size: 8px;
-        color: #666;
-      }
+      .footer-thanks { font-weight: bold; font-size: 10px; margin-bottom: 2px; }
+      .footer-web { font-size: 8px; color: #666; }
     </style>
   </head>
-  <body>
+  <body onload="window.focus(); window.print(); setTimeout(() => window.close(), 500);">
     ${content}
   </body>
 </html>`
 
-  // Use a popup window for reliable POS printing
   const printWin = window.open(
     '',
     '_blank',
-    'width=320,height=600,toolbar=0,menubar=0,scrollbars=0',
+    'width=320,height=700,toolbar=0,menubar=0,scrollbars=0,status=0',
   )
   if (!printWin) {
     alert('Print popup was blocked. Please allow popups for this site.')
@@ -378,38 +369,6 @@ async function printReceipt() {
   printWin.document.open()
   printWin.document.write(printContent)
   printWin.document.close()
-
-  // Wait for content to load then print
-  printWin.onload = () => {
-    printWin.focus()
-    printWin.print()
-    setTimeout(() => {
-      try {
-        printWin.close()
-      } catch {
-        /* ignore */
-      }
-    }, 1000)
-  }
-
-  // Fallback if onload doesn't fire (some browsers)
-  setTimeout(() => {
-    try {
-      if (!printWin.closed) {
-        printWin.focus()
-        printWin.print()
-        setTimeout(() => {
-          try {
-            printWin.close()
-          } catch {
-            /* ignore */
-          }
-        }, 1000)
-      }
-    } catch {
-      /* ignore */
-    }
-  }, 800)
 }
 
 defineExpose({ printReceipt })
@@ -582,24 +541,36 @@ defineExpose({ printReceipt })
   color: #666;
 }
 
-/* ── Print styles ── */
+/* ── Print styles (fallback if using window.print() on main page) ── */
 @media print {
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+
+  body {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body * {
     visibility: hidden;
   }
+
   #bill-print-template,
   #bill-print-template * {
     visibility: visible;
   }
+
   #bill-print-template {
     position: fixed;
     left: 0;
     top: 0;
-    width: 280px;
-  }
-  @page {
-    size: 80mm auto;
-    margin: 3mm;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    overflow: hidden;
   }
 }
 </style>

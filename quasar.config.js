@@ -161,15 +161,24 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
-      // swFilename: 'sw.js',
-      // manifestFilename: 'manifest.json',
-      // extendManifestJson (json) {},
-      // useCredentialsForManifestTag: true,
-      // injectPwaMetaTags: false,
-      // extendPWACustomSWConf (esbuildConf) {},
-      // extendGenerateSWOptions (cfg) {},
-      // extendInjectManifestOptions (cfg) {}
+      workboxMode: 'GenerateSW',
+      extendManifestJson (json) {
+        json.name = 'Seven Waves Waiter'
+        json.short_name = 'Waiter'
+        json.description = 'Seven Waves Restaurant — Waiter Station PWA'
+        json.display = 'standalone'
+        json.orientation = 'portrait'
+        json.background_color = '#090c14'
+        json.theme_color = '#f97316'
+        json.start_url = '/#/waiter-app'
+        json.scope = '/'
+        json.categories = ['food', 'productivity']
+        json.icons = [
+          { src: 'icons/favicon-128x128.png', sizes: '128x128', type: 'image/png' },
+          { src: 'icons/favicon-256x256.png', sizes: '256x256', type: 'image/png' },
+          { src: 'icons/favicon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ]
+      },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova

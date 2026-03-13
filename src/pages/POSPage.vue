@@ -271,8 +271,14 @@
               class="item-pick-btn"
               @click="addItemToOrder(item)"
             >
-              <div class="ipb-name">{{ item.name }}</div>
-              <div class="ipb-price">LKR {{ item.price.toFixed(0) }}</div>
+              <img v-if="item.image" :src="item.image" loading="lazy" class="item-card-img" />
+              <div v-else class="item-card-img-placeholder">
+                <q-icon name="restaurant" size="24px" color="grey-7" />
+              </div>
+              <div class="item-card-text">
+                <div class="ipb-name">{{ item.name }}</div>
+                <div class="ipb-price">LKR {{ item.price.toFixed(0) }}</div>
+              </div>
             </button>
           </div>
           <div v-if="subCategoryItems.length === 0" class="text-grey-6 text-center q-pa-xl">
@@ -416,7 +422,7 @@ async function fetchMenuItems() {
   try {
     const { data, error } = await supabase
       .from('menu_items')
-      .select(`id, name, base_price, is_available, kitchen_id, categories(id, name)`)
+      .select(`id, name, base_price, image_url, is_available, kitchen_id, categories(id, name)`)
       .eq('is_available', true)
       .order('name')
 
@@ -427,7 +433,7 @@ async function fetchMenuItems() {
       name: item.name,
       price: parseFloat(item.base_price || 0),
       kitchen_id: item.kitchen_id,
-      image: '',
+      image: item.image_url || '',
       category: item.categories?.name || 'Other',
       variants: [],
     }))
@@ -1472,7 +1478,7 @@ function fmtCurrency(val) {
 }
 
 .item-pick-btn {
-  padding: 12px 8px;
+  padding: 0;
   background: linear-gradient(180deg, #7a9e2e 0%, #5a7e1e 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -1480,6 +1486,9 @@ function fmtCurrency(val) {
   cursor: pointer;
   text-align: center;
   transition: all 0.1s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .item-pick-btn:hover {
@@ -1491,14 +1500,45 @@ function fmtCurrency(val) {
   transform: scale(0.95);
 }
 
+.item-card-img,
+.item-card-img-placeholder {
+  width: 100%;
+  height: 70px;
+  object-fit: cover;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.item-card-img-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.item-card-text {
+  padding: 6px;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .ipb-name {
   font-size: 11px;
   font-weight: 700;
   margin-bottom: 2px;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .ipb-price {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 700;
 }
 </style>

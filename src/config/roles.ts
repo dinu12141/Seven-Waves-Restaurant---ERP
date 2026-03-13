@@ -16,7 +16,7 @@ import type { UserRole } from 'src/stores/auth'
 
 /** Route paths each role is allowed to visit */
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
-  waiter: ['/pos', '/orders', '/waiter'],
+  waiter: ['/pos', '/orders', '/waiter', '/waiter-app'],
   kitchen: ['/kitchen'],
   cashier: ['/pos', '/orders', '/cashier'],
   manager: [
@@ -30,6 +30,8 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/hr',
     '/admin/customers',
     '/admin/loyalty',
+    '/waiter-app',
+    '/manager',
   ],
   admin: ['*'],
   inventory: ['/inventory', '/reports/inventory'],
@@ -62,7 +64,7 @@ export const PERMISSION_ROUTE_ACCESS: Record<string, string[]> = {
 
 /** The default landing page for each role after login */
 export const ROLE_LANDING: Record<UserRole, string> = {
-  waiter: '/waiter',
+  waiter: '/waiter-app',
   cashier: '/pos',
   kitchen: '/kitchen',
   inventory: '/inventory',
@@ -133,6 +135,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'nav:dashboard',
     section: 'MAIN',
   },
+  {
+    label: 'Floor Dashboard',
+    icon: 'supervisor_account',
+    to: '/manager/floor',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
 
   // ─── OPERATIONS ────────────────────────────────────────────────────────────
   {
@@ -167,9 +176,9 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: 'Waiter Station',
     icon: 'room_service',
-    to: '/waiter',
+    to: '/waiter-app',
     roles: ['admin', 'manager', 'waiter'],
-    permission: 'waiter:access',
+    section: 'OPERATIONS',
   },
   {
     label: 'Table Management',
@@ -372,6 +381,12 @@ export const NAV_ITEMS: NavItem[] = [
         icon: 'exit_to_app',
         to: '/hr/resignation',
         roles: ['admin', 'hr'],
+      },
+      {
+        label: 'Shift Management',
+        icon: 'schedule',
+        to: '/hr/shifts',
+        roles: ['admin', 'manager', 'hr'],
       },
     ],
   },

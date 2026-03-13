@@ -312,7 +312,15 @@ async function fetchData() {
     let loadedItems = itemRes.data || []
 
     // Ensure we have an "All Items" first choice in categories
-    categories.value = [{ id: 'all', name: 'All', image_description: 'menu' }, ...loadedCategories]
+    categories.value = [
+      {
+        id: 'all',
+        name: 'All Menu',
+        image_url:
+          'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+      },
+      ...loadedCategories,
+    ]
 
     // High-quality colorful food imagery from Unsplash and fallback prices for missing data
     items.value = loadedItems.map((i) => ({
@@ -487,6 +495,7 @@ onMounted(() => {
   line-height: 1.1;
   letter-spacing: -0.5px;
   background: linear-gradient(90deg, #f8fafc, #94a3b8);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
