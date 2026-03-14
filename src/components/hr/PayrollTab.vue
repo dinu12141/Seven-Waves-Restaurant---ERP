@@ -285,7 +285,7 @@ async function loadRuns() {
         .from('employees')
         .select('id')
         .eq('profile_id', authStore.user?.id)
-        .single()
+        .maybeSingle()
 
       if (myEmp) {
         const { data, error } = await supabase

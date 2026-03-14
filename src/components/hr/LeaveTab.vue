@@ -296,7 +296,7 @@ async function loadData() {
         .from('employees')
         .select('id')
         .eq('profile_id', authStore.user?.id)
-        .single()
+        .maybeSingle()
 
       if (myEmp) {
         leaveRequests.value = leaveRequests.value.filter((r) => r.employee_id === myEmp.id)

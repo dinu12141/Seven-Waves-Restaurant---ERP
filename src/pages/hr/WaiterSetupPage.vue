@@ -598,7 +598,7 @@ async function sendMessage() {
       .from('employees')
       .select('id')
       .eq('profile_id', authStore.user?.id)
-      .single()
+      .maybeSingle()
 
     if (!senderEmp) throw new Error('Your employee record not found')
 

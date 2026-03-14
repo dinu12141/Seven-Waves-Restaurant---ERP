@@ -344,7 +344,7 @@ async function loadWaiters() {
       .select('id', { count: 'exact', head: true })
       .eq('assigned_waiter_id', wp.employee?.profile_id)
       .eq('branch_id', branchId)
-      .in('status', ['accepted', 'preparing', 'sent_to_kitchen', 'ready'])
+      .in('status', ['accepted', 'preparing', 'ready'])
 
     // Unread notifications
     const { count: unreadAlerts } = await supabase
@@ -476,7 +476,7 @@ async function sendMessage() {
       .from('employees')
       .select('id')
       .eq('profile_id', user.id)
-      .single()
+      .maybeSingle()
 
     const { error } = await supabase.from('manager_messages').insert({
       sender_employee_id: senderEmp?.id,

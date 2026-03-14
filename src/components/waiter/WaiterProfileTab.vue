@@ -173,20 +173,20 @@ async function loadProfile() {
     if (!user) return
 
     // 1. Load waiter_profile (linked by user_id)
-    const { data: wp, error: wpErr } = await supabase
+    const { data: wp } = await supabase
       .from('waiter_profiles')
       .select('*')
       .eq('user_id', user.id)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
 
-    if (wpErr || !wp) {
+    if (!wp) {
       // Try to get employee name anyway for the "not set up" state
       const { data: emp } = await supabase
         .from('employees')
         .select('full_name')
         .eq('profile_id', user.id)
-        .single()
+        .maybeSingle()
       employeeName.value = emp?.full_name || user.email
       profile.value = null
       return
@@ -199,7 +199,7 @@ async function loadProfile() {
       .from('employees')
       .select('full_name, employee_code')
       .eq('id', wp.employee_id)
-      .single()
+      .maybeSingle()
     employeeName.value = emp?.full_name || ''
 
     // 3. Load manager hierarchy

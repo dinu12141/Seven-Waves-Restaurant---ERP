@@ -70,6 +70,7 @@
               'status-preparing': order.status === 'preparing',
               'status-accepted': order.status === 'accepted',
               'status-invoiced': order.status === 'invoiced',
+              'status-paid': order.status === 'paid',
             }"
             @click="onSelect(order)"
           >
@@ -154,9 +155,11 @@ const isNew = (order) => {
 
 const filterStatus = ref('unpaid')
 const searchQuery = ref('')
+const isPaid = (o) => o.status === 'paid' || o.payment_status === 'paid'
+
 const filterOptions = computed(() => {
-  const unpaid = store.billingOrders.filter((o) => o.payment_status !== 'paid').length
-  const paid = store.billingOrders.filter((o) => o.payment_status === 'paid').length
+  const paid = store.billingOrders.filter(isPaid).length
+  const unpaid = store.billingOrders.filter((o) => !isPaid(o)).length
   return [
     { label: `Unpaid (${unpaid})`, value: 'unpaid' },
     { label: `Paid (${paid})`, value: 'paid' },
@@ -167,9 +170,9 @@ const filteredOrders = computed(() => {
   let orders = store.billingOrders
 
   if (filterStatus.value === 'paid') {
-    orders = orders.filter((o) => o.payment_status === 'paid')
+    orders = orders.filter(isPaid)
   } else {
-    orders = orders.filter((o) => o.payment_status !== 'paid')
+    orders = orders.filter((o) => !isPaid(o))
   }
 
   if (searchQuery.value) {
@@ -225,6 +228,7 @@ function getStatusColor(status) {
     ready: 'green-8',
     served: 'teal-8',
     invoiced: 'indigo-8',
+    paid: 'green-9',
   }
   return map[status] || 'grey-8'
 }
@@ -236,6 +240,7 @@ function getStatusIcon(status) {
     ready: 'room_service',
     served: 'done_all',
     invoiced: 'receipt_long',
+    paid: 'payments',
   }
   return map[status] || 'circle'
 }
@@ -247,6 +252,7 @@ function getStatusLabel(status) {
     ready: 'Ready',
     served: 'Served',
     invoiced: 'Invoiced',
+    paid: 'Paid',
   }
   return labels[status] || status
 }
@@ -338,6 +344,11 @@ function timeAgo(dateStr) {
 
   &.status-invoiced {
     border-left: 3px solid #7c4dff;
+  }
+
+  &.status-paid {
+    border-left: 3px solid #4caf50;
+    opacity: 0.8;
   }
 }
 

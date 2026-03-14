@@ -112,7 +112,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .from('waiter_profiles')
         .select('*')
         .eq('id', impersonateProfileId.value)
-        .single()
+        .maybeSingle()
       wp = data
     } else {
       // Normal waiter — load own profile
@@ -123,7 +123,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
       wp = data
     }
 
@@ -211,7 +211,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .select('employee_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
       if (!wp?.employee_id) return
       employeeId = wp.employee_id
     }
@@ -321,7 +321,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         kot_tickets ( id, status, kot_number, kitchen_id, kitchens ( name ) )
       `)
       .eq('assigned_waiter_id', userId)
-      .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
+      .in('status', ['accepted', 'preparing', 'ready', 'served'])
       .order('created_at', { ascending: false })
       .limit(30)
 
@@ -360,7 +360,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .from('waiter_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
       if (!wp) return
       profile.value = { ...profile.value, id: wp.id }
     }

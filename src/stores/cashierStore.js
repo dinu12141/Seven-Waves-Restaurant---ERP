@@ -132,9 +132,11 @@ export const useCashierStore = defineStore('cashier', () => {
         'ready',
         'served',
         'invoiced',
+        'paid',
       ])
+      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
       .order('created_at', { ascending: false })
-      .limit(100)
+      .limit(200)
 
     if (error) {
       console.error('[CashierStore] fetchBillingQueue error:', error)
@@ -309,7 +311,15 @@ export const useCashierStore = defineStore('cashier', () => {
 
       if (error) throw new Error(`Payment RPC failed: ${error.message}`)
 
-      billingOrders.value = billingOrders.value.filter((o) => o.id !== targetOrderId)
+      // Update in-place so the order moves to the Paid tab instead of disappearing
+      const idx = billingOrders.value.findIndex((o) => o.id === targetOrderId)
+      if (idx !== -1) {
+        billingOrders.value[idx] = {
+          ...billingOrders.value[idx],
+          status: 'paid',
+          payment_status: 'paid',
+        }
+      }
 
       return { success: true, orderId: targetOrderId }
     } finally {
@@ -443,8 +453,8 @@ export const useCashierStore = defineStore('cashier', () => {
     } else if (eventType === 'UPDATE') {
       const idx = billingOrders.value.findIndex((o) => o.id === newRow.id)
 
-      // Remove from queue if it moved to a closed status
-      if (['paid', 'cancelled', 'completed'].includes(newRow.status)) {
+      // Remove from queue only if cancelled/completed; paid stays for the Paid tab
+      if (['cancelled', 'completed'].includes(newRow.status)) {
         if (idx !== -1) {
           billingOrders.value.splice(idx, 1)
         }
@@ -502,6 +512,7 @@ export const useCashierStore = defineStore('cashier', () => {
           'ready',
           'served',
           'invoiced',
+          'paid',
         ].includes(newRow.status)
         if (isValidForQueue) {
           debouncedRefresh()

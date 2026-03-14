@@ -108,12 +108,12 @@ function fmtTime(dt) {
 }
 
 async function accept(orderId) {
+  if (accepting[orderId]) return  // guard against double-tap / rapid re-render
   accepting[orderId] = true
   try {
     const result = await orderStore.acceptOrder(orderId)
     if (result.success) {
       $q.notify({ type: 'positive', message: '✅ Order accepted!', position: 'top' })
-      // Also refresh appStore lists
       appStore.loadPendingOrders()
       appStore.loadMyOrders()
     }

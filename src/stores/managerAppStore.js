@@ -70,7 +70,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
           .from('employees')
           .select('id')
           .eq('profile_id', user.id)
-          .single()
+          .maybeSingle()
         _myEmployeeId = emp?.id || null
       }
 
@@ -113,7 +113,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         .select('id', { count: 'exact', head: true })
         .eq('assigned_waiter_id', wp.employee?.profile_id)
         .eq('branch_id', branchId)
-        .in('status', ['accepted', 'preparing', 'sent_to_kitchen', 'ready'])
+        .in('status', ['accepted', 'preparing', 'ready'])
 
       const { count: unreadAlerts } = await supabase
         .from('waiter_notifications')
@@ -157,7 +157,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         .order('created_at', { ascending: true }),
       supabase
         .from('orders').select(orderSelect)
-        .eq('branch_id', branchId).in('status', ['accepted', 'sent_to_kitchen', 'preparing'])
+        .eq('branch_id', branchId).in('status', ['accepted', 'preparing'])
         .order('created_at', { ascending: false }).limit(50),
       supabase
         .from('orders').select(orderSelect)

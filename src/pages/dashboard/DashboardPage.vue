@@ -130,10 +130,10 @@ const loading = ref(false)
 const canViewFinance = computed(() => authStore.hasAnyRole(['admin', 'finance', 'manager']))
 
 // ── Active statuses (orders currently in pipeline) ─────────────────
-const ACTIVE_STATUSES = ['pending_waiter', 'accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served', 'invoiced']
+const ACTIVE_STATUSES = ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced']
 
 // ── Kitchen queue statuses ─────────────────────────────────────────
-const KITCHEN_STATUSES = ['accepted', 'sent_to_kitchen', 'preparing']
+const KITCHEN_STATUSES = ['accepted', 'preparing']
 
 // KPI State
 const kpis = ref([
@@ -264,7 +264,7 @@ async function fetchDashboardData() {
 
       // For donut chart: group by status category
       if (o.status === 'pending_waiter') pendingWaiter++
-      else if (['accepted', 'sent_to_kitchen', 'preparing'].includes(o.status)) inKitchen++
+      else if (['accepted', 'preparing'].includes(o.status)) inKitchen++
       else if (o.status === 'ready') readyCount++
       else if (['served', 'invoiced'].includes(o.status)) servedCount++
     })
