@@ -1,9 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { boot } from 'quasar/wrappers'
-import { Database } from 'src/types/supabase' // Assumes you might have generated types, or we use 'any' for now if not generated.
 
-// If you have generated types, use them here. Otherwise, we can use a generic client.
-// export const supabase = createClient<Database>(...)
 console.log('[Boot] Initializing Supabase...')
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -13,7 +10,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL or Anon Key not found in environment variables.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Exponential backoff: 2s, 4s, 8s, 16s, 30s (capped)
+// Prevents the WebSocket reconnection storm / console flood
+function realtimeBackoff(tries: number) {
+  return Math.min(Math.pow(2, tries) * 1000, 30000)
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+    reconnectAfterMs: realtimeBackoff,
+    // Heartbeat interval — keep connection alive every 30s
+    heartbeatIntervalMs: 30000,
+    // Timeout before declaring a connection dead
+    timeout: 20000,
+  },
+})
+
 console.log('[Boot] Supabase client initialized')
 
 export default boot(({ app }) => {

@@ -309,6 +309,12 @@ const routes = [
     meta: { requiresAuth: false },
   },
   {
+    // Dedicated POS Login Terminal
+    path: '/pos/login',
+    component: () => import('pages/auth/POSLoginPage.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: '/auth',
 
     component: () => import('layouts/AuthLayout.vue'),

@@ -189,9 +189,22 @@
             <div class="column-header">
               <div class="row items-center justify-between q-mb-xs">
                 <span class="text-h6 text-weight-bold text-green-4">READY</span>
-                <q-chip size="sm" color="green-9" text-color="white" class="text-weight-bold">
-                  {{ filteredReady.length }}
-                </q-chip>
+                <div class="row items-center q-gutter-x-xs">
+                  <q-btn
+                    v-if="filteredReady.length > 0"
+                    flat dense no-caps
+                    size="sm"
+                    color="red-4"
+                    icon="clear_all"
+                    label="Clear All"
+                    @click="handleClearAllReady"
+                  >
+                    <q-tooltip>Dismiss all ready orders</q-tooltip>
+                  </q-btn>
+                  <q-chip size="sm" color="green-9" text-color="white" class="text-weight-bold">
+                    {{ filteredReady.length }}
+                  </q-chip>
+                </div>
               </div>
               <div class="header-bar bg-green-5"></div>
             </div>
@@ -333,6 +346,24 @@ async function handleDismiss(ticketId) {
   if (!success) {
     $q.notify({ type: 'negative', message: error || 'Failed', icon: 'error' })
   }
+}
+
+async function handleClearAllReady() {
+  $q.dialog({
+    title: 'Clear All Ready Orders',
+    message: `Dismiss all ${filteredReady.value.length} ready orders from the display?`,
+    cancel: true,
+    ok: { label: 'Clear All', color: 'negative', flat: true },
+    dark: true,
+    persistent: true,
+  }).onOk(async () => {
+    const { success, error } = await store.dismissAllReady()
+    if (success) {
+      $q.notify({ type: 'positive', message: 'All ready orders cleared', icon: 'check_circle', timeout: 2000 })
+    } else {
+      $q.notify({ type: 'negative', message: error || 'Failed to clear', icon: 'error' })
+    }
+  })
 }
 
 function handleView(ticketId) {

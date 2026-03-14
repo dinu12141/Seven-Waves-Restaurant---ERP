@@ -67,11 +67,14 @@ export const useCashierStore = defineStore('cashier', () => {
       lastViewedAt.value = new Date()
     } catch (err) {
       console.error('[CashierStore] Init error:', err)
-      booted = false // Allow retry
+      // NOTE: Do NOT reset booted=false — that causes an infinite retry loop
+      // because the watcher immediately calls initialize() again after each crash.
+      // If init truly fails, the user must manually refresh.
       Notify.create({
         message: 'POS Initialization Failed',
         caption: err.message || 'Unknown error',
         color: 'red',
+        actions: [{ label: 'Retry', color: 'white', handler: () => { booted = false; initialize() } }],
       })
     } finally {
       loading.value = false
@@ -120,7 +123,7 @@ export const useCashierStore = defineStore('cashier', () => {
           id, kot_number, status, kitchen_id,
           kot_items ( id, order_item_id, quantity, status )
         ),
-        invoices!order_id ( id, invoice_number, total, payment_status, status )
+        invoices ( id, invoice_number, total, payment_status, status )
       `,
       )
       .eq('branch_id', bid)
@@ -174,7 +177,7 @@ export const useCashierStore = defineStore('cashier', () => {
     const order = entry.orders || entry
 
     // Idempotency
-    const existingInvoices = order.invoices || entry.invoices || []
+    const existingInvoices = toArray(entry.invoices ?? order.invoices)
     if (existingInvoices.length > 0) {
       return { success: true, invoice: existingInvoices[0], alreadyExisted: true }
     }
@@ -360,6 +363,7 @@ export const useCashierStore = defineStore('cashier', () => {
         tax,
         discount,
         total,
+        grand_total,
         status,
         payment_status,
         customer_name,
@@ -371,7 +375,8 @@ export const useCashierStore = defineStore('cashier', () => {
           waiter_id,
           customer_name,
           restaurant_tables ( table_number, section ),
-          waiter:profiles!orders_waiter_id_fkey ( full_name )
+          waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          kot_tickets ( id, kot_number, status, kitchen_id )
         ),
         invoice_items ( id, description, qty, unit_price, line_total ),
         payments ( id, amount, payment_method, payment_method_id, transaction_reference, created_at,
@@ -385,9 +390,21 @@ export const useCashierStore = defineStore('cashier', () => {
     if (error) throw new Error(error.message)
     return {
       ...data,
-      grand_total: data?.total,
+      // grand_total: prefer DB column, fall back to legacy total
+      grand_total: data?.grand_total ?? data?.total,
       tax_total: data?.tax,
       discount_total: data?.discount,
+      // orders is a single object from Supabase (unique FK) — ensure kot_tickets is array
+      orders: data?.orders
+        ? {
+            ...data.orders,
+            kot_tickets: Array.isArray(data.orders.kot_tickets)
+              ? data.orders.kot_tickets
+              : data.orders.kot_tickets
+              ? [data.orders.kot_tickets]
+              : [],
+          }
+        : null,
       invoice_items: (data?.invoice_items || []).map((ii) => ({
         ...ii,
         menu_item_name: ii.description,
@@ -564,6 +581,20 @@ export const useCashierStore = defineStore('cashier', () => {
   }
 
   // ── Helpers ────────────────────────────────────────────────
+
+  /**
+   * Safely coerce a Supabase relation to an array.
+   * Supabase returns a single object (not array) when the FK has UNIQUE constraint.
+   * null / undefined → []
+   * object (not array) → [object]
+   * array → array
+   */
+  function toArray(value) {
+    if (!value) return []
+    if (Array.isArray(value)) return value
+    return [value]
+  }
+
   function normalizeQueueEntry(entry) {
     const order = entry.orders || entry
     return {
@@ -597,7 +628,8 @@ export const useCashierStore = defineStore('cashier', () => {
         name: oi.menu_items?.name || 'Item',
       })),
       kot_tickets: order.kot_tickets || [],
-      invoices: (order.invoices || []).map((inv) => ({
+      // Supabase may return a single object (unique FK), null, or array — normalise to array
+      invoices: toArray(order.invoices).map((inv) => ({
         ...inv,
         grand_total: inv.grand_total ?? inv.total,
       })),

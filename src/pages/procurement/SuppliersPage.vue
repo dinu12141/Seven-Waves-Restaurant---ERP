@@ -60,7 +60,20 @@
             icon="edit"
             size="sm"
             @click="editSupplier(props.row)"
-          />
+          >
+            <q-tooltip>Edit</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            round
+            color="negative"
+            icon="delete"
+            size="sm"
+            @click="deleteSupplierAction(props.row)"
+            class="q-ml-sm"
+          >
+            <q-tooltip>Delete</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
 
@@ -204,7 +217,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { listSuppliers, upsertSupplier } from 'src/services/procurementService'
+import { listSuppliers, upsertSupplier, deleteSupplier } from 'src/services/procurementService'
 import ERPFormCard from 'components/erp/ERPFormCard.vue'
 import ERPFormSection from 'components/erp/ERPFormSection.vue'
 import ERPFormField from 'components/erp/ERPFormField.vue'
@@ -342,5 +355,27 @@ async function saveSupplier() {
   } finally {
     saving.value = false
   }
+}
+
+function deleteSupplierAction(row) {
+  $q.dialog({
+    title: 'Confirm Delete',
+    message: `Are you sure you want to delete supplier "${row.name}"?`,
+    cancel: true,
+    persistent: true,
+    color: 'negative'
+  }).onOk(async () => {
+    try {
+      await deleteSupplier(row.id)
+      $q.notify({ type: 'positive', message: 'Supplier deleted successfully' })
+      fetchSuppliers()
+    } catch (err) {
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to delete supplier',
+        caption: err.message,
+      })
+    }
+  })
 }
 </script>

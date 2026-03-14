@@ -105,7 +105,13 @@
 
         <!-- Footer -->
         <div class="form-footer">
-          &copy; {{ new Date().getFullYear() }} Seven Waves &middot; All rights reserved
+          <router-link to="/pos/login" class="pos-link">
+            <q-icon name="point_of_sale" size="14px" class="q-mr-xs" />
+            POS Terminal Login
+          </router-link>
+          <div class="q-mt-sm">
+            &copy; {{ new Date().getFullYear() }} Seven Waves &middot; All rights reserved
+          </div>
         </div>
       </div>
 
@@ -412,6 +418,24 @@ const handleLogin = async () => {
   color: #94a3b8;
   padding-top: 16px;
   margin-top: auto;
+}
+
+.pos-link {
+  display: inline-flex;
+  align-items: center;
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 16px;
+  border: 1px solid rgba(21, 101, 192, 0.2);
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.pos-link:hover {
+  background: rgba(21, 101, 192, 0.08);
+  border-color: rgba(21, 101, 192, 0.4);
 }
 
 /* ─── RIGHT PANEL ─────────────────────────────────── */

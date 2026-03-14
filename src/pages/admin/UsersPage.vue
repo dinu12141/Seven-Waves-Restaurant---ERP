@@ -52,11 +52,13 @@
             <q-btn
               flat
               round
-              color="negative"
-              icon="delete"
+              :color="props.row.is_active ? 'negative' : 'positive'"
+              :icon="props.row.is_active ? 'block' : 'check_circle'"
               size="sm"
-              @click="deleteUser(props.row)"
-            />
+              @click="toggleUserStatus(props.row)"
+            >
+              <q-tooltip>{{ props.row.is_active ? 'Deactivate Account' : 'Activate Account' }}</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
       </q-table>
@@ -85,16 +87,12 @@
               option-label="full_name"
               option-value="id"
               :rules="[(val) => !!val || 'Employee selection is required']"
-              bg-color="white"
-              color="primary"
-              label-color="primary"
-              input-class="text-black"
-              popup-content-class="text-black"
+              dark
               v-if="!isEditing"
             >
               <template v-slot:no-option>
                 <q-item>
-                  <q-item-section class="text-grey-9">
+                  <q-item-section class="text-grey-5">
                     No employees found without profiles
                   </q-item-section>
                 </q-item>
@@ -102,10 +100,10 @@
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
-                    <q-item-label class="text-black text-weight-bold">{{
+                    <q-item-label class="text-white text-weight-bold">{{
                       scope.opt.full_name
                     }}</q-item-label>
-                    <q-item-label caption class="text-grey-8">
+                    <q-item-label caption class="text-grey-5">
                       {{ scope.opt.employee_code }} |
                       {{ scope.opt.designations?.title || 'No Title' }}
                     </q-item-label>
@@ -121,9 +119,7 @@
               dense
               readonly
               disable
-              bg-color="grey-1"
-              label-color="grey-7"
-              input-class="text-black"
+              dark
             />
             <q-input
               v-model="form.email"
@@ -135,10 +131,7 @@
               :rules="[(val) => !!val || 'Email is required']"
               :readonly="isEditing"
               :disable="isEditing"
-              bg-color="white"
-              color="primary"
-              label-color="primary"
-              input-class="text-black"
+              dark
             />
 
             <q-input
@@ -150,10 +143,7 @@
               dense
               autocomplete="off"
               :rules="[(val) => !!val || 'Initial password is required']"
-              bg-color="white"
-              color="primary"
-              label-color="primary"
-              input-class="text-black"
+              dark
             >
               <template v-slot:append>
                 <q-icon
@@ -170,10 +160,7 @@
               outlined
               dense
               autocomplete="off"
-              bg-color="white"
-              color="primary"
-              label-color="primary"
-              input-class="text-black"
+              dark
             />
 
             <!-- Role Selection (New) -->
@@ -188,17 +175,13 @@
               label="Assign Primary Role"
               outlined
               dense
-              bg-color="white"
-              color="primary"
-              label-color="primary"
+              dark
               :rules="[(val) => !!val || 'Primary role is required']"
-              input-class="text-black"
-              popup-content-class="text-black"
             >
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
-                    <q-item-label class="text-black">{{
+                    <q-item-label class="text-white">{{
                       scope.opt.name.toUpperCase()
                     }}</q-item-label>
                   </q-item-section>
@@ -253,6 +236,7 @@
           <q-input
             readonly
             outlined
+            dark
             v-model="newlyCreatedUser.email"
             label="Email / Login ID"
             class="q-mb-md"
@@ -274,6 +258,7 @@
           <q-input
             readonly
             outlined
+            dark
             v-model="newlyCreatedUser.password"
             label="Initial Password"
             type="text"
@@ -487,6 +472,14 @@ const saveUser = async () => {
 
       if (authError) throw authError
 
+      // Automatically confirm the user so they can log in immediately
+      if (authData?.user?.id) {
+        const { error: confirmError } = await supabase.rpc('admin_confirm_user', {
+          target_user_id: authData.user.id
+        })
+        if (confirmError) console.error('[UsersPage] Error confirming user:', confirmError)
+      }
+
       // Note: Trigger usually handles profile creation, but let's make sure
       // Link employee to profile_id if needed
       if (selectedEmployee.value) {
@@ -521,26 +514,44 @@ const saveUser = async () => {
   }
 }
 
-const deleteUser = (user) => {
+const toggleUserStatus = (user) => {
+  const isCurrentlyActive = user.is_active
+  const actionText = isCurrentlyActive ? 'deactivate' : 'activate'
+  const actionPast = isCurrentlyActive ? 'deactivated' : 'activated'
+  const okLabel = isCurrentlyActive ? 'Deactivate Account' : 'Activate Account'
+  const okColor = isCurrentlyActive ? 'negative' : 'positive'
+
   $q.dialog({
-    title: 'Confirm Deactivation',
-    message: `Are you sure you want to disable ${user.full_name}? This will block their system access.`,
+    title: `Confirm ${isCurrentlyActive ? 'Deactivation' : 'Activation'}`,
+    message: `Are you sure you want to ${actionText} ${user.full_name}?<br><br>
+              ${isCurrentlyActive ? 'This will prevent them from logging into the system.' : 'This will grant them access to log in again.'}`,
+    html: true,
     cancel: true,
     persistent: true,
-    ok: { label: 'Disable Account', color: 'negative' },
+    ok: { label: okLabel, color: okColor, unelevated: true },
   }).onOk(async () => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('id', user.id)
+      loading.value = true
+      
+      const { error } = await supabase.rpc('admin_toggle_user_status', {
+        target_user_id: user.id,
+        new_status: !isCurrentlyActive
+      })
 
-      if (error) throw error
-      $q.notify({ type: 'info', message: 'User access disabled' })
+      if (error) {
+        throw new Error(error.message || 'Server error occurred')
+      }
+      
+      $q.notify({ type: 'positive', message: `User account successfully ${actionPast}` })
       await fetchUsers()
     } catch (err) {
-      console.error('Error disabling user:', err)
-      $q.notify({ type: 'negative', message: 'Failed to disable user' })
+      console.error(`Error trying to ${actionText} user:`, err)
+      $q.notify({ 
+        type: 'negative', 
+        message: err.message || `Failed to ${actionText} user`
+      })
+    } finally {
+      loading.value = false
     }
   })
 }

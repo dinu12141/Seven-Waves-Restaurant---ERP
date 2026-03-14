@@ -198,24 +198,18 @@ export const useAuthStore = defineStore('auth', {
         this.user = data.user
         this.session = data.session
 
-        // Fetch roles and permissions — critical for strict route guards
-        await Promise.all([this._fetchRoles(), this._fetchPermissions()])
+        // Fetch roles, permissions AND branches together before routing.
+        // Branches MUST be awaited so that every page's onMounted() has
+        // authStore.currentBranch available immediately — without this,
+        // pages open before branch data loads and show empty tables.
+        await Promise.all([
+          this._fetchRoles(),
+          this._fetchPermissions(),
+          this._fetchBranches(),
+        ])
 
-        // For kitchen-role users, profile must be loaded NOW (kitchen_id needed for KDS)
-        // For all others, profile & branches load in background (non-blocking)
-        if ((this.roles as string[]).includes('kitchen')) {
-          await this._fetchProfile()
-          // Fire branches, modules, notifications in background
-          this._fetchBranches().catch(() => {})
-          if (this.user?.id) {
-            import('src/stores/notifications').then(({ useNotificationStore }) => {
-              const notifStore = useNotificationStore()
-              notifStore.initialize(this.user?.id).catch(() => {})
-            })
-          }
-        } else {
-          this._backgroundFetchNonCritical()
-        }
+        // Profile, modules, notifications load in background (non-blocking)
+        this._backgroundFetchNonCritical()
 
         return { data, error: null }
       } catch (err: any) {
@@ -226,14 +220,15 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    /** Fetch profile + branches + modules + notifications without blocking */
+    /** Fetch profile + modules + notifications without blocking (branches already loaded) */
     _backgroundFetchNonCritical() {
-      Promise.all([this._fetchProfile(), this._fetchBranches()]).catch(() => {})
-      // Load system modules in background (non-blocking, separate promise)
+      // Profile is non-critical — load in background
+      this._fetchProfile().catch(() => {})
+      // Load system modules in background using already-loaded branch data
       import('src/stores/modules').then(({ useModulesStore }) => {
         const modulesStore = useModulesStore()
         const companyId = this.branches?.[0]?.branches?.company_id
-        modulesStore.fetchModules(companyId).catch(() => {})
+        if (companyId) modulesStore.fetchModules(companyId).catch(() => {})
       })
       // Initialize notification engine in background
       if (this.user?.id) {

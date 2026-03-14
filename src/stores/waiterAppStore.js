@@ -50,8 +50,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       if (!authStore.branches.length) {
         await authStore.fetchUserData()
       }
+      // MUST load profile first — shiftInfo + orders depend on profile.employee_id
+      await loadProfile()
       await Promise.all([
-        loadProfile(),
         loadShiftInfo(),
         loadPendingOrders(),
         loadMyOrders(),
@@ -125,26 +126,56 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .eq('is_active', true)
         .maybeSingle()
       wp = data
+
+      // FALLBACK: If no waiter_profiles entry exists, build a basic profile
+      // from the employees table so the waiter home page still works
+      if (!wp) {
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('id, full_name, employee_code, branch_id, profile_id')
+          .eq('profile_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (emp) {
+          wp = {
+            id: null, // no waiter_profiles id
+            user_id: user.id,
+            employee_id: emp.id,
+            branch_id: emp.branch_id,
+            display_name: emp.full_name,
+            waiter_code: emp.employee_code || '—',
+            is_active: true,
+            current_points: 0,
+            total_orders_served: 0,
+            _fromEmployeeFallback: true, // flag so we know this is synthetic
+          }
+        }
+      }
     }
 
     profile.value = wp || null
     if (!wp) return
 
-    // Load manager from hierarchy
-    const { data: hier } = await supabase
-      .from('employee_hierarchy_assignments')
-      .select(`
-        hierarchy_type,
-        manager_employee:manager_employee_id ( id, full_name, employee_code )
-      `)
-      .eq('employee_id', wp.employee_id)
-      .eq('is_active', true)
-      .limit(1)
-      .single()
-    managerInfo.value = hier || null
+    // Load manager from hierarchy (skip if no real employee_id)
+    if (wp.employee_id) {
+      const { data: hier } = await supabase
+        .from('employee_hierarchy_assignments')
+        .select(`
+          hierarchy_type,
+          manager_employee:manager_employee_id ( id, full_name, employee_code )
+        `)
+        .eq('employee_id', wp.employee_id)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+      managerInfo.value = hier || null
+    }
 
-    // Load points ledger via dedicated action
-    await loadPointsLedger(wp.id)
+    // Load points ledger via dedicated action (skip for synthetic profiles)
+    if (wp.id) {
+      await loadPointsLedger(wp.id)
+    }
   }
 
   // ─── All Waiters (admin selector) ─────────────────────────────────────────
@@ -206,14 +237,31 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     if (!employeeId) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      // Try waiter_profiles first
       const { data: wp } = await supabase
         .from('waiter_profiles')
         .select('employee_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .maybeSingle()
-      if (!wp?.employee_id) return
-      employeeId = wp.employee_id
+
+      if (wp?.employee_id) {
+        employeeId = wp.employee_id
+      } else {
+        // FALLBACK: Look up employee from employees table via profile_id
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('profile_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+        if (emp?.id) {
+          employeeId = emp.id
+        }
+      }
+
+      if (!employeeId) return
     }
 
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
@@ -225,7 +273,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         shifts ( id, name, start_time, end_time, is_overnight )
       `)
       .eq('employee_id', employeeId)
-      .eq('assignment_date', today)        // ✅ correct column name
+      .eq('assignment_date', today)
       .in('status', ['scheduled', 'active', 'present'])
 
     // Filter by branch if available (not critical — employee_id is sufficient)
@@ -235,7 +283,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     const { data: assignments, error } = await query
 
     if (error && error.code !== 'PGRST116') {
-      // PGRST116 = "no rows" — that's fine, means off shift
       console.warn('[WaiterApp] loadShiftInfo error:', error.message)
     }
 
@@ -279,6 +326,12 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── Orders ───────────────────────────────────────────────────────────────
   async function loadPendingOrders() {
+    // 🔒 SHIFT GUARD — never show pending orders to off-shift waiters
+    if (!isOnShift.value) {
+      pendingOrders.value = []
+      return
+    }
+
     // Primary: use authStore.currentBranch. Fallback: use the waiter profile's branch_id.
     let branchId = authStore.currentBranch?.id
     if (!branchId && profile.value?.branch_id) {
@@ -321,7 +374,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         kot_tickets ( id, status, kot_number, kitchen_id, kitchens ( name ) )
       `)
       .eq('assigned_waiter_id', userId)
-      .in('status', ['accepted', 'preparing', 'ready', 'served'])
+      .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
       .order('created_at', { ascending: false })
       .limit(30)
 
@@ -457,9 +510,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         { event: 'INSERT', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         (payload) => {
           const newRow = payload.new
-          // Only alert for orders that need a waiter.
-          // waiterAppStore is the SOLE owner of audio + toast alerts for new orders.
-          // waiterOrderStore only syncs data — it must NOT play audio for INSERT events.
+          // 🔒 SHIFT GUARD — never alert off-shift waiters about new orders
+          if (!isOnShift.value) return
+
           if (newRow.status === 'pending_waiter' && !newRow.assigned_waiter_id) {
             _playAlertSound()
             loadPendingOrders()
@@ -514,6 +567,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => {
+          // Only refresh live data if on shift
+          if (!isOnShift.value) return
           loadPendingOrders()
           loadMyOrders()
         }
@@ -526,6 +581,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
+          // 🔒 SHIFT GUARD — off-shift waiters get no KOT alerts
+          if (!isOnShift.value) return
           if (payload.new?.status === 'ready') {
             // Check this KOT belongs to one of MY orders before alerting
             const myOrderIds = myOrders.value.map(o => o.id)

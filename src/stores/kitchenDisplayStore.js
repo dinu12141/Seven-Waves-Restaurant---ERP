@@ -121,63 +121,85 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (!selectedKitchenId.value) return
 
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 
-    let query = supabase
-      .from('kot_tickets')
-      .select(
-        `
-        id,
-        order_id,
-        kitchen_id,
-        kot_number,
+    // Fetch today's active tickets (new + preparing) AND all ready tickets (any date, not yet dismissed)
+    // We do two queries and merge to avoid the date filter excluding old ready tickets
+    const selectFields = `
+      id,
+      order_id,
+      kitchen_id,
+      kot_number,
+      status,
+      printed_at,
+      accepted_at,
+      completed_at,
+      created_at,
+      updated_at,
+      order:orders!inner (
+        order_number,
+        order_type,
+        order_source,
+        notes,
         status,
-        printed_at,
-        accepted_at,
-        completed_at,
-        created_at,
-        updated_at,
-        order:orders!inner (
-          order_number,
-          order_type,
-          order_source,
-          notes,
-          status,
-          customer_name,
-          table:restaurant_tables ( table_number ),
-          waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
-        ),
-        kot_items (
-          id,
-          quantity,
-          notes,
-          status,
-          order_item:order_items (
-            menu_item:menu_items ( name )
-          )
-        ),
-        kitchen:kitchens ( name )
-      `,
-      )
-      .in('status', ['created', 'pending', 'accepted', 'preparing', 'ready'])
-      .or('completed_at.is.null,status.eq.ready')
-      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+        customer_name,
+        table:restaurant_tables ( table_number ),
+        waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
+      ),
+      kot_items (
+        id,
+        quantity,
+        notes,
+        status,
+        order_item:order_items (
+          menu_item:menu_items ( name )
+        )
+      ),
+      kitchen:kitchens ( name )
+    `
+
+    // Query 1: Today's non-ready tickets (new/preparing)
+    let todayQuery = supabase
+      .from('kot_tickets')
+      .select(selectFields)
+      .in('status', ['created', 'pending', 'accepted', 'preparing'])
+      .is('completed_at', null)
+      .gte('created_at', todayStart)
       .not('order.status', 'eq', 'pending_waiter')
       .order('created_at', { ascending: true })
 
+    // Query 2: ALL ready tickets that haven't been dismissed (completed_at IS NULL)
+    let readyQuery = supabase
+      .from('kot_tickets')
+      .select(selectFields)
+      .eq('status', 'ready')
+      .is('completed_at', null)
+      .not('order.status', 'eq', 'pending_waiter')
+      .order('created_at', { ascending: false })
+
     if (!isCashierDisplay) {
-      query = query.eq('kitchen_id', selectedKitchenId.value)
+      todayQuery = todayQuery.eq('kitchen_id', selectedKitchenId.value)
+      readyQuery = readyQuery.eq('kitchen_id', selectedKitchenId.value)
     }
 
-    const { data, error } = await query
+    const [todayResult, readyResult] = await Promise.all([todayQuery, readyQuery])
 
-    if (error) {
-      console.error('[KDS] Fetch tickets error:', error)
-      return
+    if (todayResult.error) {
+      console.error('[KDS] Fetch today tickets error:', todayResult.error)
+    }
+    if (readyResult.error) {
+      console.error('[KDS] Fetch ready tickets error:', readyResult.error)
     }
 
-    console.log('[KDS] Fetched tickets raw:', data?.length, data)
-    tickets.value = (data || []).map(enrichTicket)
-    console.log('[KDS] Enriched tickets:', tickets.value.length)
+    // Merge and deduplicate
+    const allData = [...(todayResult.data || []), ...(readyResult.data || [])]
+    const uniqueMap = new Map()
+    allData.forEach(t => uniqueMap.set(t.id, t))
+    const merged = Array.from(uniqueMap.values())
+
+    console.log('[KDS] Fetched tickets: today=%d, ready=%d, merged=%d',
+      todayResult.data?.length || 0, readyResult.data?.length || 0, merged.length)
+    tickets.value = merged.map(enrichTicket)
   }
 
   // ── Realtime ───────────────────────────────────────────────
@@ -267,8 +289,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       const idx = tickets.value.findIndex((t) => t.id === newRow.id)
 
       // Remove if completed/cancelled
-      // Remove if cancelled (always) or completed (unless ready)
-      if (newRow.status === 'cancelled' || (newRow.completed_at && newRow.status !== 'ready')) {
+      if (newRow.status === 'cancelled' || newRow.completed_at) {
         if (idx !== -1) tickets.value.splice(idx, 1)
         return
       }
@@ -356,16 +377,19 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (error || !data) return
 
-    // Today filter check
-    const todayStart = new Date().setHours(0, 0, 0, 0)
-    const ticketDate = new Date(data.created_at).getTime()
-    if (ticketDate < todayStart) return
+    // Today filter check — only for non-ready tickets
+    // Ready tickets should always show regardless of creation date
+    if (data.status !== 'ready') {
+      const todayStart = new Date().setHours(0, 0, 0, 0)
+      const ticketDate = new Date(data.created_at).getTime()
+      if (ticketDate < todayStart) return
+    }
 
     // Only add/update if it belongs to our kitchen (or we are Cashier display) and is active
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
     if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
     if (
-      (data.completed_at && data.status !== 'ready') ||
+      data.completed_at ||
       data.status === 'cancelled' ||
       data.order?.status === 'pending_waiter'
     ) {
@@ -439,6 +463,28 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (!error) {
       tickets.value = tickets.value.filter((t) => t.id !== ticketId)
+    }
+    return { success: !error, error: error?.message }
+  }
+
+  /**
+   * Dismiss ALL ready tickets at once (clear the ready column)
+   */
+  async function dismissAllReady() {
+    const readyIds = readyTickets.value.map(t => t.id)
+    if (readyIds.length === 0) return { success: true }
+
+    const { error } = await supabase
+      .from('kot_tickets')
+      .update({ completed_at: new Date().toISOString() })
+      .in('id', readyIds)
+
+    if (error) {
+      console.error('[KDS] dismissAllReady error:', error)
+    }
+
+    if (!error) {
+      tickets.value = tickets.value.filter(t => t.status !== 'ready')
     }
     return { success: !error, error: error?.message }
   }
@@ -573,6 +619,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     acceptTicket,
     markReady,
     dismissTicket,
+    dismissAllReady,
     printKot,
     cleanup,
   }

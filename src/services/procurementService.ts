@@ -323,6 +323,24 @@ export async function upsertSupplier(
 }
 
 /**
+ * Delete a supplier record.
+ */
+export async function deleteSupplier(supplierId: string) {
+  const { error } = await supabase
+    .from('suppliers')
+    .delete()
+    .eq('id', supplierId)
+
+  if (error) {
+    if (error.code === '23503') {
+      throw new Error('Cannot delete supplier - they have associated records (POs, invoices, etc.)')
+    }
+    throw new Error(error.message)
+  }
+  return { success: true }
+}
+
+/**
  * Fetch the current outstanding balance and ledger summary for a supplier.
  */
 export async function getSupplierBalance(supplierId: string) {

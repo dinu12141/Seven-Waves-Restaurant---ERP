@@ -147,7 +147,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     const orderSelect = `
       id, order_number, status, created_at, table_id, accepted_at, assigned_waiter_id,
       restaurant_tables ( table_number ),
-      order_items ( id, quantity, status, menu_items ( name, price ) )
+      order_items ( id, quantity, status, menu_items ( name, base_price ) )
     `
 
     const [pending, accepted, ready] = await Promise.all([
@@ -207,7 +207,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
   async function sendMessage(recipientEmployeeId, subject, body, priority = 'normal') {
     const branchId = authStore.currentBranch?.id
     const { error } = await supabase.from('manager_messages').insert({
-      sender_employee_id: _myEmployeeId,
+      sender_employee_id: _myEmployeeId || null,
       receiver_employee_id: recipientEmployeeId,
       branch_id: branchId,
       subject: subject || 'Direct Message',

@@ -162,6 +162,17 @@
             >
               <q-tooltip>View Details</q-tooltip>
             </q-btn>
+            <q-btn
+              flat
+              round
+              icon="delete"
+              color="negative"
+              size="sm"
+              @click="deleteCustomerAction(props.row)"
+              class="q-ml-sm"
+            >
+              <q-tooltip>Delete Customer</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
 
@@ -201,7 +212,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { date } from 'quasar'
 import PageHeader from 'components/common/PageHeader.vue'
-import { adminGetCustomers } from 'src/services/customerAuthService'
+import { adminGetCustomers, adminDeleteCustomer } from 'src/services/customerAuthService'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -319,6 +330,28 @@ function getTierColor(tier) {
 function getTierLabel(tier) {
   if (!tier) return 'Standard'
   return tier.charAt(0).toUpperCase() + tier.slice(1)
+}
+
+function deleteCustomerAction(customer) {
+  $q.dialog({
+    title: 'Confirm Delete',
+    message: `Are you sure you want to delete customer "${customer.full_name}"?`,
+    cancel: true,
+    persistent: true,
+    color: 'negative'
+  }).onOk(async () => {
+    const result = await adminDeleteCustomer(customer.id)
+    if (result.success) {
+      $q.notify({ type: 'positive', message: 'Customer deleted successfully' })
+      fetchCustomers()
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to delete customer',
+        caption: result.error,
+      })
+    }
+  })
 }
 
 onMounted(fetchCustomers)

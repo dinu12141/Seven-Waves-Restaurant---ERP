@@ -183,17 +183,20 @@
 
     <!-- LIST VIEW (Compact) -->
     <div v-else class="row items-center justify-between q-pa-sm full-width">
-      <div class="row items-center q-gutter-x-sm">
+      <div class="row items-center q-gutter-x-sm" style="flex:1;min-width:0">
         <div class="list-dot" :class="stripClass"></div>
         <span class="text-subtitle1 text-weight-bold font-mono text-white"
-          >#{{ ticket.kot_number || ticket.orderNumber }}</span
+          >#{{ ticket.orderNumber }}</span
         >
-        <span v-if="ticket.customerName" class="text-caption text-orange-4 text-weight-medium">
-          ({{ ticket.customerName }})
+        <span v-if="ticket.tableNumber && ticket.tableNumber !== '—'" class="text-caption text-cyan-4 text-weight-medium">
+          <q-icon name="table_restaurant" size="12px" class="q-mr-xs" />{{ ticket.tableNumber }}
+        </span>
+        <span v-if="ticket.waiterName" class="text-caption text-orange-4 text-weight-medium">
+          <q-icon name="person" size="12px" class="q-mr-xs" />{{ ticket.waiterName }}
         </span>
       </div>
-      <div class="row items-center q-gutter-x-xs">
-        <div class="text-caption font-mono text-grey-5 q-mr-sm">{{ ticket.timeElapsed }}</div>
+      <div class="row items-center q-gutter-x-xs" style="flex-shrink:0">
+        <div class="text-caption font-mono text-grey-5 q-mr-xs">{{ ticket.timeElapsed }}</div>
         <q-btn
           flat
           round
@@ -205,6 +208,18 @@
           class="view-btn-compact"
         >
           <q-tooltip>View KOT</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          dense
+          color="green-5"
+          icon="done"
+          size="sm"
+          @click="$emit('dismiss', ticket.id)"
+          class="view-btn-compact"
+        >
+          <q-tooltip>Dismiss</q-tooltip>
         </q-btn>
       </div>
     </div>

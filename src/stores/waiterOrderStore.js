@@ -180,7 +180,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
         'id, order_number, table_id, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, customer_name, restaurant_tables ( table_number )',
       )
       .eq('assigned_waiter_id', waiterId.value)
-      .in('status', ['accepted', 'preparing', 'ready'])
+      .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -390,6 +390,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
   // S4-3: Extracted KOT handler — no more setTimeout race condition
   function handleKotChange(payload) {
+    // 🔒 SHIFT GUARD — off-shift waiters get no KOT alerts
+    if (!isOnShift.value) return
+
     const { eventType, new: newRow } = payload
 
     if (eventType === 'UPDATE' && newRow.status === 'ready') {
@@ -422,6 +425,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     const { eventType, new: newRow } = payload
 
     if (eventType === 'INSERT') {
+      // 🔒 SHIFT GUARD — off-shift waiters must not receive new order alerts
+      if (!isOnShift.value) return
+
       // New order arrived — refresh pending list from server (shift-filtered RPC).
       // ⚠️  Audio alert + toast + persistent card are handled EXCLUSIVELY by
       //     waiterAppStore.subscribeRealtime() to prevent double-alerts.
@@ -469,7 +475,8 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       }
 
       // If status changed to terminal, remove from my list
-      if (['served', 'invoiced', 'paid', 'cancelled'].includes(newRow.status)) {
+      // Note: 'served' stays visible (waiter can see served orders)
+      if (['invoiced', 'paid', 'cancelled'].includes(newRow.status)) {
         myOrders.value = myOrders.value.filter((o) => o.id !== newRow.id)
       }
     }

@@ -182,7 +182,10 @@ export const useNotificationStore = defineStore('notifications', () => {
         },
       )
       .subscribe((status) => {
-        console.log('[Notifications] Realtime status:', status)
+        // Only log meaningful status changes — not routine CLOSED/TIMED_OUT churn
+        if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR') {
+          console.log('[Notifications] Realtime status:', status)
+        }
       })
   }
 

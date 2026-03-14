@@ -478,16 +478,30 @@ async function sendMessage() {
       .eq('profile_id', user.id)
       .maybeSingle()
 
-    const { error } = await supabase.from('manager_messages').insert({
-      sender_employee_id: senderEmp?.id,
-      recipient_employee_id: selectedWaiter.value.employee_id,
+    const { error: msgErr, data: msgData } = await supabase.from('manager_messages').insert({
+      sender_employee_id: senderEmp?.id || null,
+      receiver_employee_id: selectedWaiter.value.employee_id,
       branch_id: authStore.currentBranch?.id,
       subject: msgSubject.value || 'Direct Message',
-      body: msgBody.value,
+      message_body: msgBody.value,
       priority: msgPriority.value,
-    })
+    }).select('id').single()
 
-    if (error) throw error
+    if (msgErr) throw msgErr
+
+    // Dispatch to waiter notifications so it appears in their app
+    if (selectedWaiter.value.id) {
+      const { error: notifErr } = await supabase.from('waiter_notifications').insert({
+        waiter_profile_id: selectedWaiter.value.id,
+        notification_type: 'manager_message',
+        title: msgPriority.value === 'urgent' ? '🚨 URGENT: ' + (msgSubject.value || 'Manager Message') : (msgSubject.value || 'Manager Message'),
+        body: msgBody.value,
+        payload: { manager_message_id: msgData?.id, priority: msgPriority.value },
+        action_url: null
+      })
+      if (notifErr) console.error('Failed to notify waiter:', notifErr)
+    }
+
     $q.notify({ type: 'positive', message: `✅ Message sent to ${selectedWaiter.value.display_name || selectedWaiter.value.employee_name}`, position: 'top' })
     msgDrawerOpen.value = false
   } catch (e) {

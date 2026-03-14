@@ -133,6 +133,17 @@
           <q-btn flat round dense icon="edit" color="amber" size="sm" @click="openForm(props.row)">
             <q-tooltip>Edit</q-tooltip>
           </q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            icon="delete"
+            color="negative"
+            size="sm"
+            @click="confirmDelete(props.row)"
+          >
+            <q-tooltip>Delete</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -766,6 +777,29 @@ async function saveEmployee() {
   }
 }
 
+function confirmDelete(emp) {
+  $q.dialog({
+    title: 'Confirm Deletion',
+    message: `Are you sure you want to delete ${emp.full_name}? This action cannot be undone.`,
+    cancel: true,
+    persistent: true,
+    color: 'negative',
+  }).onOk(async () => {
+    try {
+      loading.value = true
+      const { error } = await supabase.from('employees').delete().eq('id', emp.id)
+      if (error) throw error
+      
+      $q.notify({ type: 'positive', message: 'Employee deleted successfully' })
+      loadEmployees()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err.message || 'Failed to delete' })
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
 async function uploadDoc(docType, file) {
   if (!file || !form.id) return
   try {
@@ -786,7 +820,9 @@ async function uploadDoc(docType, file) {
     existingDocs[docType] = true
     $q.notify({ type: 'positive', message: `${docType.replace('_', ' ')} uploaded` })
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    if (err.message !== 'canceled') {
+      $q.notify({ type: 'negative', message: err.message })
+    }
   }
 }
 

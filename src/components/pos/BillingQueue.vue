@@ -21,7 +21,7 @@
         dense
         outlined
         dark
-        placeholder="Search Table, KOT, Waiter, Customer..."
+        placeholder="Search Table, KOT#, Invoice#, Waiter, Customer..."
         class="search-input"
         clearable
       >
@@ -182,6 +182,13 @@ const filteredOrders = computed(() => {
       if (o.waiterName && String(o.waiterName).toLowerCase().includes(q)) return true
       if (o.customer_name && String(o.customer_name).toLowerCase().includes(q)) return true
       if (o.order_number && String(o.order_number).toLowerCase().includes(q)) return true
+      // Search by invoice number
+      if (
+        o.invoices &&
+        o.invoices.some((inv) => inv.invoice_number && String(inv.invoice_number).toLowerCase().includes(q))
+      )
+        return true
+      // Search by KOT number
       if (
         o.kot_tickets &&
         o.kot_tickets.some((k) => k.kot_number && String(k.kot_number).toLowerCase().includes(q))

@@ -181,7 +181,7 @@
           dense
           outlined
           v-model="assignFilter.employeeId"
-          :options="employees"
+          :options="employeeOptions"
           option-label="full_name"
           option-value="id"
           emit-value
@@ -682,13 +682,17 @@ function openAssignDialog() {
 }
 
 function editAssignment(row) {
+  // Parse the actual day of the assignment to pre-select it
+  const [y, m, d] = row.assignment_date.split('-').map(Number)
+  const actualDay = new Date(y, m - 1, d).getDay()
+
   Object.assign(assignForm, {
     id: row.id,
     employee_id: row.employee_id,
     shift_id: row.shift_id,
     date_from: row.assignment_date,
     date_to: row.assignment_date,
-    days: [1, 2, 3, 4, 5],
+    days: [actualDay], // Pre-select the actual day of this assignment
     notes: row.notes || '',
   })
   assignDialog.isEdit = true
@@ -769,15 +773,34 @@ const assignColumns = [
   { name: 'actions', label: '', align: 'center' },
 ]
 
+// ── Helper: parse 'YYYY-MM-DD' into local Date (avoids UTC timezone shift bug) ──
+function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number)
+  return new Date(y, m - 1, d) // local midnight
+}
+function formatLocalDate(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 // ─── API ───────────────────────────────────────────────────────────────────
 async function loadShifts() {
   loadingShifts.value = true
   const branchId = authStore.currentBranch?.id
-  const { data, error } = await supabase
+  
+  let q = supabase
     .from('shifts')
     .select('*')
-    .eq('branch_id', branchId)
     .order('start_time')
+    
+  if (branchId) {
+    q = q.eq('branch_id', branchId)
+  }
+  
+  const { data, error } = await q
+  
   if (error) console.error(error)
   else shifts.value = data || []
   loadingShifts.value = false
@@ -789,11 +812,13 @@ async function loadAssignments() {
   let q = supabase
     .from('shift_assignments')
     .select(`*, employees(full_name, employee_code), shifts(name, start_time, end_time)`)
-    .eq('branch_id', branchId)
     .gte('assignment_date', assignFilter.dateFrom)
     .lte('assignment_date', assignFilter.dateTo)
     .order('assignment_date')
+
+  if (branchId) q = q.eq('branch_id', branchId)
   if (assignFilter.shiftId) q = q.eq('shift_id', assignFilter.shiftId)
+  
   const { data, error } = await q
   if (error) console.error(error)
   else assignments.value = data || []
@@ -801,15 +826,25 @@ async function loadAssignments() {
 }
 
 async function loadEmployees() {
+  loadingAssignments.value = true // Just reusing this to indicate loading if needed, though not mapped
   const branchId = authStore.currentBranch?.id
-  const { data } = await supabase
+  
+  let q = supabase
     .from('employees')
     .select('id, full_name, employee_code')
-    .eq('branch_id', branchId)
     .eq('is_active', true)
     .order('full_name')
+    
+  if (branchId) {
+    q = q.eq('branch_id', branchId)
+  }
+    
+  const { data, error } = await q
+  if (error) console.error(error)
+  
   employees.value = data || []
   employeeOptions.value = data || []
+  loadingAssignments.value = false
 }
 
 function filterEmps(val, update) {
@@ -818,7 +853,9 @@ function filterEmps(val, update) {
     else {
       const s = val.toLowerCase()
       employeeOptions.value = employees.value.filter(
-        (e) => e.full_name.toLowerCase().includes(s) || e.employee_code.toLowerCase().includes(s),
+        (e) => 
+          (e.full_name && e.full_name.toLowerCase().includes(s)) || 
+          (e.employee_code && e.employee_code.toLowerCase().includes(s)),
       )
     }
   })
@@ -833,14 +870,14 @@ async function saveShift() {
   const branchId = authStore.currentBranch?.id
   const companyId = authStore.currentBranch?.company_id
   const payload = {
+    company_id: companyId,
+    branch_id: branchId,
     name: shiftForm.name,
     start_time: shiftForm.start_time,
     end_time: shiftForm.end_time,
     break_duration_minutes: shiftForm.break_duration_minutes || 0,
     is_overnight: shiftForm.is_overnight,
     is_active: shiftForm.is_active,
-    branch_id: branchId,
-    company_id: companyId,
   }
   try {
     if (shiftDialog.isEdit) {
@@ -905,8 +942,9 @@ async function saveAssignment() {
       $q.notify({ type: 'positive', message: 'Assignment updated' })
     } else {
       // Bulk insert for date range + selected days
-      const from = new Date(assignForm.date_from)
-      const to = new Date(assignForm.date_to)
+      // Use parseLocalDate to avoid UTC timezone shift bugs
+      const from = parseLocalDate(assignForm.date_from)
+      const to = parseLocalDate(assignForm.date_to)
       const inserts = []
       for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay()
@@ -916,14 +954,14 @@ async function saveAssignment() {
             branch_id: branchId,
             employee_id: assignForm.employee_id,
             shift_id: assignForm.shift_id,
-            assignment_date: d.toISOString().split('T')[0],
+            assignment_date: formatLocalDate(d),
             status: 'scheduled',
             notes: assignForm.notes || null,
           })
         }
       }
       if (inserts.length === 0) {
-        $q.notify({ type: 'warning', message: 'No dates matched your selected days of week' })
+        $q.notify({ type: 'warning', message: 'No dates matched your selected days of week. Check your date range and day selection.' })
         saving.value = false
         return
       }
