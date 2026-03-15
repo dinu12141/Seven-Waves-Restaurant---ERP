@@ -40,9 +40,6 @@ export const useCashierStore = defineStore('cashier', () => {
   const branchId = computed(() => {
     return authStore.currentBranch?.id || authStore.profile?.branch_id
   })
-  const companyId = computed(() => {
-    return authStore.currentBranch?.company_id || authStore.profile?.company_id
-  })
 
   const readyCount = computed(
     () => billingOrders.value.filter((o) => ['ready', 'served'].includes(o.status)).length,
@@ -170,13 +167,15 @@ export const useCashierStore = defineStore('cashier', () => {
   }
 
   // ── Generate Invoice ───────────────────────────────────────
-  async function generateInvoice(orderId) {
+  // Uses cashier_raise_invoice RPC so all charges (tax, discount,
+  // service_charge, tips, delivery_charge) are correctly applied.
+  async function generateInvoice(orderId, opts = {}) {
     const entry = billingOrders.value.find((o) => o.id === orderId)
     if (!entry) throw new Error('Order not found in billing queue')
 
     const order = entry.orders || entry
 
-    // Idempotency
+    // Idempotency: return existing invoice if already raised
     const existingInvoices = toArray(entry.invoices ?? order.invoices)
     if (existingInvoices.length > 0) {
       return { success: true, invoice: existingInvoices[0], alreadyExisted: true }
@@ -184,98 +183,44 @@ export const useCashierStore = defineStore('cashier', () => {
 
     processing.value = true
     try {
-      const kotTickets = order.kot_tickets || entry.kot_tickets || []
-      const validKotItems = []
-
-      kotTickets.forEach((kot) => {
-        if (kot.status !== 'cancelled') {
-          const items = kot.kot_items || []
-          items.forEach((ki) => {
-            if (ki.status !== 'cancelled') {
-              validKotItems.push(ki)
-            }
-          })
-        }
+      // Call the canonical RPC — it handles all charges correctly and
+      // creates invoice_items, updates cashier_queue, and fires audit events.
+      const { data: result, error: rpcErr } = await supabase.rpc('cashier_raise_invoice', {
+        p_order_id:          orderId,
+        p_customer_name:     opts.customerName ?? order.customer_name ?? null,
+        p_discount:          opts.discount       ?? 0,
+        p_service_charge:    opts.serviceCharge  ?? 0,
+        p_tips:              opts.tips            ?? 0,
+        p_delivery_charge:   opts.deliveryCharge ?? 0,
+        p_notes:             opts.notes          ?? null,
+        p_tax_breakdown:     opts.taxBreakdown   ?? {},
+        p_discount_breakdown: opts.discountBreakdown ?? {},
       })
 
-      const billedQuantities = {}
-      validKotItems.forEach((ki) => {
-        if (!billedQuantities[ki.order_item_id]) {
-          billedQuantities[ki.order_item_id] = 0
-        }
-        billedQuantities[ki.order_item_id] += ki.quantity
-      })
+      if (rpcErr) throw new Error(`Invoice RPC failed: ${rpcErr.message}`)
+      if (!result?.success) throw new Error(result?.error || 'Invoice creation failed')
 
-      const orderItems = order.order_items || entry.order_items || []
-      const invoiceItemsData = []
-      let actualSubtotal = 0
-
-      orderItems.forEach((oi) => {
-        const billedQty = billedQuantities[oi.id] || 0
-        if (billedQty > 0) {
-          const unitPrice = parseFloat(oi.unit_price || 0)
-          const totalPrice = unitPrice * billedQty
-          actualSubtotal += totalPrice
-
-          invoiceItemsData.push({
-            order_item_id: oi.id,
-            description: oi.menu_items?.name || oi.name || 'Item',
-            qty: billedQty,
-            unit_price: unitPrice,
-            line_total: totalPrice,
-            tax_amount: 0,
-            discount: 0,
-          })
-        }
-      })
-
-      const actualGrandTotal = actualSubtotal
-
-      const { data: invoice, error: invError } = await supabase
+      // Fetch the full invoice record for local state
+      const { data: invoice, error: fetchErr } = await supabase
         .from('invoices')
-        .insert({
-          company_id: companyId.value,
-          branch_id: branchId.value,
-          order_id: orderId,
-          customer_name: order.customer_name || null,
-          customer_phone: order.customer_phone || null,
-          subtotal: actualSubtotal,
-          tax: 0,
-          discount: 0,
-          total: actualGrandTotal,
-          payment_status: 'unpaid',
-          status: 'issued',
-        })
-        .select('id, invoice_number, total, status, payment_status, created_at')
+        .select('id, invoice_number, total, grand_total, status, payment_status, created_at, subtotal, tax, discount, service_charge, tips, delivery_charge')
+        .eq('id', result.invoice_id)
         .single()
 
-      if (invError) throw new Error(`Invoice creation failed: ${invError.message}`)
+      if (fetchErr) throw new Error(`Invoice fetch failed: ${fetchErr.message}`)
 
-      if (invoiceItemsData.length > 0) {
-        const itemsPayload = invoiceItemsData.map((item) => ({
-          ...item,
-          invoice_id: invoice.id,
-        }))
-        const { error: itemsError } = await supabase.from('invoice_items').insert(itemsPayload)
-        if (itemsError) console.warn('[CashierStore] invoice_items insert warning:', itemsError)
-      }
-
-      await supabase
-        .from('orders')
-        .update({ status: 'invoiced', updated_at: new Date().toISOString() })
-        .eq('id', orderId)
-
+      // Update local store
       const idx = billingOrders.value.findIndex((o) => o.id === orderId)
       if (idx !== -1) {
         billingOrders.value[idx] = {
           ...billingOrders.value[idx],
           status: 'invoiced',
           queue_status: 'invoiced',
-          invoices: [invoice],
+          invoices: [{ ...invoice, grand_total: invoice.grand_total ?? invoice.total }],
         }
       }
 
-      return { success: true, invoice }
+      return { success: true, invoice: { ...invoice, grand_total: invoice.grand_total ?? invoice.total } }
     } finally {
       processing.value = false
     }

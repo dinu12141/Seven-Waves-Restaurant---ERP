@@ -29,6 +29,14 @@ export const useTableSessionStore = defineStore('tableSession', () => {
   const sessionExpired = ref(false)
   const activeOrders = ref<string[]>([])
 
+  // Order history: array of { id, order_number, total_amount, paid_at }
+  const orderHistory = ref<Array<{
+    id: string
+    order_number?: number
+    total_amount?: number
+    paid_at?: string
+  }>>([])
+
   if (typeof window !== 'undefined') {
     try {
       const saved = localStorage.getItem('table_active_orders')
@@ -40,6 +48,18 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     } catch (e) {
       console.error('[TableSession] Failed to load active orders:', e)
       activeOrders.value = []
+    }
+
+    try {
+      const savedHistory = localStorage.getItem('table_order_history')
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory)
+        if (Array.isArray(parsed)) orderHistory.value = parsed
+        else orderHistory.value = []
+      }
+    } catch (e) {
+      console.error('[TableSession] Failed to load order history:', e)
+      orderHistory.value = []
     }
   }
 
@@ -100,6 +120,44 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     }
   }
 
+  /** Remove an order from the active list (after paid/cancelled) */
+  function removeActiveOrder(orderId: string) {
+    activeOrders.value = activeOrders.value.filter((id) => id !== orderId)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('table_active_orders', JSON.stringify(activeOrders.value))
+    }
+  }
+
+  /** Move a paid/completed order from activeOrders into orderHistory */
+  function moveOrderToHistory(orderData: {
+    id: string
+    order_number?: number
+    total_amount?: number
+    paid_at?: string
+  }) {
+    removeActiveOrder(orderData.id)
+
+    // Add to front of history if not already there
+    if (!orderHistory.value.find((o) => o.id === orderData.id)) {
+      orderHistory.value.unshift(orderData)
+      // Keep only last 10 orders in history
+      if (orderHistory.value.length > 10) {
+        orderHistory.value = orderHistory.value.slice(0, 10)
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('table_order_history', JSON.stringify(orderHistory.value))
+      }
+    }
+  }
+
+  /** Clear order history (e.g. when session ends) */
+  function clearOrderHistory() {
+    orderHistory.value = []
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('table_order_history')
+    }
+  }
+
   function startHeartbeat() {
     stopHeartbeat() // clear any previous timer
 
@@ -140,6 +198,7 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     remainingSec,
     sessionExpired,
     activeOrders,
+    orderHistory,
     // computed
     isAuthenticated,
     expiresDate,
@@ -150,5 +209,9 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     startHeartbeat,
     stopHeartbeat,
     addActiveOrder,
+    removeActiveOrder,
+    moveOrderToHistory,
+    clearOrderHistory,
   }
 })
+

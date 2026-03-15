@@ -856,7 +856,8 @@ async function generateQR(table) {
 }
 
 function getAppBaseUrl() {
-  return window.location.origin
+  const port = window.location.port ? `:${window.location.port}` : ''
+  return `http://192.168.1.31${port}`
 }
 
 async function viewQR(table) {

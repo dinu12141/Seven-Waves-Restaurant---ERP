@@ -131,79 +131,11 @@
       </div>
     </div>
 
-    <!-- ─── Points Leaderboard ─────────────────────────────────────────────── -->
-    <div class="section-title q-mt-xl q-mb-sm">
-      <q-icon name="emoji_events" size="14px" color="amber" class="q-mr-xs" />
-      POINTS LEADERBOARD
+    <!-- ─── Points Leaderboard (with period filter) ──────────────────────── -->
+    <div class="q-mt-xl">
+      <WaiterLeaderboard />
     </div>
-    <div v-if="leaderboard.length === 0" class="text-grey-6 text-caption text-center q-pa-md">
-      No waiter profiles found.
-    </div>
-    <div v-else>
-      <q-expansion-item
-        v-for="(w, idx) in leaderboard"
-        :key="w.id"
-        class="lb-row q-mb-sm"
-        expand-separator
-        dark
-        :header-class="'lb-header'"
-      >
-        <template #header>
-          <div class="row items-center full-width">
-            <!-- Rank medal -->
-            <div class="lb-rank q-mr-sm">
-              <span v-if="idx === 0">🥇</span>
-              <span v-else-if="idx === 1">🥈</span>
-              <span v-else-if="idx === 2">🥉</span>
-              <span v-else class="text-grey-6 text-caption">#{{ idx + 1 }}</span>
-            </div>
-            <!-- Avatar -->
-            <q-avatar size="36px" class="lb-avatar q-mr-sm text-weight-bold text-white">
-              {{ initials(w.display_name || w.employee_name) }}
-            </q-avatar>
-            <!-- Name & code -->
-            <div class="col">
-              <div class="text-white text-weight-bold" style="font-size:0.9rem">
-                {{ w.display_name || w.employee_name }}
-              </div>
-              <div class="text-caption text-grey-6">{{ w.waiter_code }}</div>
-            </div>
-            <!-- Points chip -->
-            <q-chip dense color="amber-9" text-color="dark" icon="stars" class="text-weight-bold q-mr-sm">
-              {{ w.current_points }} pts
-            </q-chip>
-            <!-- Orders badge -->
-            <q-chip dense color="blue-9" text-color="white" icon="task_alt" class="text-caption">
-              {{ w.total_orders_served }}
-            </q-chip>
-          </div>
-        </template>
 
-        <!-- Ledger inside expansion -->
-        <div class="q-pa-sm">
-          <div v-if="!w.ledger || w.ledger.length === 0" class="text-grey-6 text-caption text-center q-py-md">
-            No points history.
-          </div>
-          <div v-else>
-            <div v-for="entry in w.ledger" :key="entry.id" class="ledger-mini-row row items-center">
-              <q-icon
-                :name="ptIcon(entry.point_type)"
-                :color="entry.points >= 0 ? 'green-5' : 'red-5'"
-                size="14px" class="q-mr-sm"
-              />
-              <div class="col">
-                <span class="text-white text-caption">{{ ptLabel(entry.point_type) }}</span>
-                <span v-if="entry.note" class="text-grey-6 text-caption q-ml-sm">— {{ entry.note }}</span>
-              </div>
-              <span :class="entry.points >= 0 ? 'text-green-5' : 'text-red-5'" class="text-caption text-weight-bold q-mr-sm">
-                {{ entry.points >= 0 ? '+' : '' }}{{ entry.points }}
-              </span>
-              <span class="text-grey-7 text-caption">{{ fmtDate(entry.created_at) }}</span>
-            </div>
-          </div>
-        </div>
-      </q-expansion-item>
-    </div>
 
     <!-- Message Drawer -->
     <q-dialog v-model="msgDrawerOpen" position="right" full-height>
@@ -263,6 +195,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import { useQuasar } from 'quasar'
+import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
 
 const authStore = useAuthStore()
 const $q = useQuasar()
@@ -275,7 +208,7 @@ const waiterProfiles = ref([])
 const unacceptedOrders = ref([])
 const hierarchyMap = ref([])
 const servedOrdersToday = ref([])
-const leaderboard = ref([])
+
 
 // Realtime
 let profilesChannel = null
@@ -297,11 +230,8 @@ const totalServedToday = computed(() => servedOrdersToday.value.length)
 
 function initials(name) { return name ? name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') : '?' }
 function fmtTime(dt) { return dt ? new Date(dt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) : '' }
-function fmtDate(dt) { return dt ? new Date(dt).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' }
 function htLabel(t) { return { waiter_manager: 'W.Mgr', floor_manager: 'F.Mgr', shift_lead: 'Lead', general: 'GM' }[t] || t }
 function htColor(t) { return { waiter_manager: 'purple-8', floor_manager: 'blue-8', shift_lead: 'teal-8', general: 'orange-8' }[t] || 'grey-8' }
-function ptIcon(type) { return { served_order: 'restaurant', bonus: 'card_giftcard', adjustment: 'tune', penalty: 'warning', tip_received: 'payments', customer_rating: 'star' }[type] || 'stars' }
-function ptLabel(type) { return { served_order: 'Served Order', bonus: 'Bonus', adjustment: 'Adjustment', penalty: 'Penalty', tip_received: 'Tip', customer_rating: 'Rating' }[type] || type }
 
 // ─── Data Loading ───────────────────────────────────────────────────────────
 onMounted(() => {
@@ -494,9 +424,9 @@ async function sendMessage() {
       const { error: notifErr } = await supabase.from('waiter_notifications').insert({
         waiter_profile_id: selectedWaiter.value.id,
         notification_type: 'manager_message',
-        title: msgPriority.value === 'urgent' ? '🚨 URGENT: ' + (msgSubject.value || 'Manager Message') : (msgSubject.value || 'Manager Message'),
-        body: msgBody.value,
-        payload: { manager_message_id: msgData?.id, priority: msgPriority.value },
+        title: msgPriority.value === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
+        body: (msgSubject.value ? `📌 ${msgSubject.value}\n` : '') + msgBody.value,
+        payload: { manager_message_id: msgData?.id, priority: msgPriority.value, subject: msgSubject.value || 'Direct Message' },
         action_url: null
       })
       if (notifErr) console.error('Failed to notify waiter:', notifErr)

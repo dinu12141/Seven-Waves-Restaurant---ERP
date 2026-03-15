@@ -97,57 +97,99 @@
             <q-icon name="stars" size="20px" color="amber" />
             <q-tooltip>My Loyalty Card ({{ customer.pointsBalance }} pts)</q-tooltip>
           </q-btn>
-
-          <!-- Track active orders from the table session -->
+          <!-- Orders button: active + history -->
           <q-btn
-            v-if="session.activeOrders && session.activeOrders.length > 0"
+            v-if="session.activeOrders.length > 0 || session.orderHistory.length > 0"
             flat
             round
             dense
             class="q-ml-sm"
+            id="orders-menu-btn"
           >
             <q-icon name="receipt_long" size="22px" color="white" />
-            <q-badge color="red" floating rounded class="cart-badge">{{
-              session.activeOrders.length
-            }}</q-badge>
+            <q-badge v-if="session.activeOrders.length > 0" color="red" floating rounded class="cart-badge">
+              {{ session.activeOrders.length }}
+            </q-badge>
             <q-menu
               anchor="bottom right"
               self="top right"
               dark
-              class="bg-grey-10"
-              style="border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px"
+              class="orders-menu-popup bg-grey-10"
+              style="border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; min-width: 280px; max-width: 320px"
             >
-              <q-list style="min-width: 220px">
-                <q-item-label
-                  header
-                  class="text-grey-5 font-bold letter-spacing text-uppercase q-py-sm"
-                  style="font-size: 0.7rem; letter-spacing: 1px"
-                  >Active Orders</q-item-label
-                >
+              <!-- Tabs -->
+              <div class="orders-menu-tabs">
+                <button
+                  class="orders-tab-btn"
+                  :class="{ active: ordersTab === 'active' }"
+                  @click.stop="ordersTab = 'active'"
+                >Active ({{ session.activeOrders.length }})</button>
+                <button
+                  class="orders-tab-btn"
+                  :class="{ active: ordersTab === 'history' }"
+                  @click.stop="ordersTab = 'history'"
+                >History ({{ session.orderHistory.length }})</button>
+              </div>
+
+              <!-- Active Orders -->
+              <q-list v-if="ordersTab === 'active'" style="min-width: 240px">
+                <div v-if="session.activeOrders.length === 0" class="orders-empty-state">
+                  <q-icon name="check_circle" size="32px" color="green-5" />
+                  <div class="text-grey-5 text-caption q-mt-sm">No active orders</div>
+                </div>
                 <q-item
                   v-for="(oid, idx) in session.activeOrders"
                   :key="oid"
                   clickable
                   v-close-popup
-                  @click="
-                    $router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + oid)
-                  "
+                  @click="$router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + oid)"
+                  class="orders-menu-item"
                 >
-                  <q-item-section avatar style="min-width: 38px; padding-right: 8px">
-                    <div
-                      class="bg-orange-10 flex flex-center"
-                      style="width: 32px; height: 32px; border-radius: 8px"
-                    >
-                      <q-icon name="local_shipping" color="orange-3" size="18px" />
+                  <q-item-section avatar style="min-width: 38px; padding-right: 10px">
+                    <div class="order-avatar active-avatar">
+                      <q-icon name="timer" color="orange-3" size="17px" />
                     </div>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-white text-weight-medium" style="font-size: 0.9rem"
-                      >Order #{{ idx + 1 }}</q-item-label
-                    >
-                    <q-item-label caption class="text-grey-5" style="font-size: 0.75rem"
-                      >Track Order Status</q-item-label
-                    >
+                    <q-item-label class="text-white text-weight-semibold" style="font-size: 0.88rem">
+                      Order #{{ idx + 1 }}
+                    </q-item-label>
+                    <q-item-label caption class="text-orange-4" style="font-size: 0.72rem">
+                      In Progress · Tap to track
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-icon name="chevron_right" size="18px" color="grey-6" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+
+              <!-- Order History -->
+              <q-list v-else style="min-width: 240px">
+                <div v-if="session.orderHistory.length === 0" class="orders-empty-state">
+                  <q-icon name="history" size="32px" color="grey-7" />
+                  <div class="text-grey-5 text-caption q-mt-sm">No past orders yet</div>
+                </div>
+                <q-item
+                  v-for="hist in session.orderHistory"
+                  :key="hist.id"
+                  clickable
+                  v-close-popup
+                  @click="$router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + hist.id)"
+                  class="orders-menu-item"
+                >
+                  <q-item-section avatar style="min-width: 38px; padding-right: 10px">
+                    <div class="order-avatar history-avatar">
+                      <q-icon name="check_circle" color="green-4" size="17px" />
+                    </div>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-white text-weight-semibold" style="font-size: 0.88rem">
+                      Order #{{ hist.order_number ?? '—' }}
+                    </q-item-label>
+                    <q-item-label caption class="text-green-5" style="font-size: 0.72rem">
+                      Paid · LKR {{ hist.total_amount ? Number(hist.total_amount).toLocaleString() : '—' }}
+                    </q-item-label>
                   </q-item-section>
                   <q-item-section side>
                     <q-icon name="chevron_right" size="18px" color="grey-6" />
@@ -458,7 +500,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
@@ -486,6 +528,71 @@ const search = ref('')
 const selectedCategory = ref('All')
 const menuItems = ref([])
 const categories = ref([{ name: 'All', emoji: '🍽️' }])
+
+// ── Orders tab state (for the orders dropdown menu) ──────────────────────────
+const ordersTab = ref('active')
+
+// ── Realtime order subscription ───────────────────────────────────────────────
+let ordersChannel = null
+
+/** Subscribe to changes on the customer's active orders.
+ *  When an order becomes 'paid' or 'cancelled', move it to history. */
+function subscribeToActiveOrders() {
+  if (ordersChannel) {
+    supabase.removeChannel(ordersChannel)
+    ordersChannel = null
+  }
+  if (!session.activeOrders || session.activeOrders.length === 0) return
+
+  ordersChannel = supabase
+    .channel('customer-active-orders-' + Date.now())
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'orders' },
+      async (payload) => {
+        const updatedOrder = payload.new
+        if (!updatedOrder) return
+        const orderId = updatedOrder.id
+
+        // Only process orders we're tracking
+        if (!session.activeOrders.includes(orderId)) return
+
+        const status = updatedOrder.status
+        if (status === 'paid' || status === 'cancelled') {
+          session.moveOrderToHistory({
+            id: orderId,
+            order_number: updatedOrder.order_number,
+            total_amount: updatedOrder.total_amount,
+            paid_at: updatedOrder.updated_at,
+          })
+
+          if (status === 'paid') {
+            $q.notify({
+              type: 'positive',
+              icon: 'check_circle',
+              message: `Order #${updatedOrder.order_number} has been paid! Thank you! 🎉`,
+              position: 'top',
+              timeout: 5000,
+            })
+          }
+
+          // Re-subscribe for remaining active orders
+          subscribeToActiveOrders()
+        }
+      },
+    )
+    .subscribe()
+}
+
+// Re-subscribe whenever activeOrders changes
+watch(
+  () => [...(session.activeOrders || [])],
+  (newOrders, oldOrders) => {
+    if (newOrders.length !== oldOrders?.length) {
+      subscribeToActiveOrders()
+    }
+  },
+)
 
 // ── Cart state ────────────────────────────────────────────────────────────────
 const cartItems = ref([])
@@ -805,15 +912,84 @@ function goLogin() {
 onMounted(async () => {
   if (!guardSession()) return
   await Promise.all([loadTableMeta(), loadMenu()])
+  // Start watching active orders for payment
+  subscribeToActiveOrders()
 })
 
 onUnmounted(() => {
   // Heartbeat continues until session.clearSession() is called
+  if (ordersChannel) {
+    supabase.removeChannel(ordersChannel)
+    ordersChannel = null
+  }
 })
 </script>
 
 <style lang="scss" scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+// ── Orders Menu Popup ─────────────────────────────────────────────────────────
+.orders-menu-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 4px;
+}
+.orders-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 10px 8px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.3px;
+
+  &.active {
+    color: #fb923c;
+    border-bottom-color: #f97316;
+  }
+  &:hover:not(.active) {
+    color: #e5e7eb;
+  }
+}
+
+.orders-menu-item {
+  border-radius: 10px;
+  margin: 3px 6px;
+  transition: background 0.15s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+.order-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.active-avatar {
+    background: rgba(251, 146, 60, 0.12);
+    border: 1px solid rgba(251, 146, 60, 0.2);
+  }
+  &.history-avatar {
+    background: rgba(52, 211, 153, 0.1);
+    border: 1px solid rgba(52, 211, 153, 0.18);
+  }
+}
+
+.orders-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+}
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 .table-menu-root {

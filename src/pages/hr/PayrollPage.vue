@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <q-page class="q-pa-md">
+    <ERPToolbar
+      moduleName="hr"
+      title="Payroll"
+      breadcrumbs="Human Resources / Payroll"
+    />
+
+    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn
         color="primary"
@@ -173,10 +180,11 @@
         </q-card-section>
       </q-card>
     </q-dialog>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
+import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'

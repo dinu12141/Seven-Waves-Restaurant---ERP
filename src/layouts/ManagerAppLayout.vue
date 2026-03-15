@@ -51,11 +51,6 @@
               </div>
             </div>
             <q-separator dark />
-            <!-- Back to ERP -->
-            <q-item clickable v-close-popup class="mum-item" @click="$router.push('/dashboard')">
-              <q-item-section avatar><q-icon name="dashboard" size="16px" /></q-item-section>
-              <q-item-section>Back to ERP</q-item-section>
-            </q-item>
             <!-- Sign out -->
             <q-item clickable v-close-popup class="mum-item mum-item--danger" @click="logout">
               <q-item-section avatar><q-icon name="logout" size="16px" /></q-item-section>
@@ -135,10 +130,13 @@ onMounted(async () => {
   }
   // Verify manager/admin role
   const roles = authStore.roles || []
+  // Manager can only access manager-app — redirect non-managers to login
   if (!roles.includes('admin') && !roles.includes('manager')) {
-    router.replace('/dashboard')
+    router.replace('/auth/login')
     return
   }
+  // Admin can still access manager-app for preview, but pure managers stay here
+  // No ERP links shown for pure managers
   await store.initialize()
 })
 onUnmounted(() => store.cleanup())

@@ -84,6 +84,7 @@ export default defineConfig((ctx) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       // https: true,
+      host: '0.0.0.0', // Listen on all interfaces for LAN access (phone QR scanning)
       open: true, // opens browser window automatically
     },
 
@@ -122,19 +123,6 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/options/animations
     animations: [],
 
-    // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
-    //   router: 'src/router/index',
-    //   store: 'src/store/index',
-    //   pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
-    //   pwaServiceWorker: 'src-pwa/custom-service-worker',
-    //   pwaManifestFile: 'src-pwa/manifest.json',
-    //   electronMain: 'src-electron/electron-main',
-    //   electronPreload: 'src-electron/electron-preload'
-    //   bexManifestFile: 'src-bex/manifest.json
-    // },
-
     // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
     ssr: {
       prodPort: 3000, // The default port that the production server should use
@@ -144,25 +132,13 @@ export default defineConfig((ctx) => {
         'render', // keep this as last one
       ],
 
-      // extendPackageJson (json) {},
-      // extendSSRWebserverConf (esbuildConf) {},
-
-      // manualStoreSerialization: true,
-      // manualStoreSsrContextInjection: true,
-      // manualStoreHydration: true,
-      // manualPostHydrationTrigger: true,
-
       pwa: false,
-      // pwaOfflineHtmlFilename: 'offline.html', // do NOT use index.html as name!
-
-      // pwaExtendGenerateSWOptions (cfg) {},
-      // pwaExtendInjectManifestOptions (cfg) {}
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
       workboxMode: 'GenerateSW',
-      extendManifestJson (json) {
+      extendManifestJson(json) {
         json.name = 'Seven Waves Waiter'
         json.short_name = 'Waiter'
         json.description = 'Seven Waves Restaurant — Waiter Station PWA'
@@ -176,7 +152,12 @@ export default defineConfig((ctx) => {
         json.icons = [
           { src: 'icons/favicon-128x128.png', sizes: '128x128', type: 'image/png' },
           { src: 'icons/favicon-256x256.png', sizes: '256x256', type: 'image/png' },
-          { src: 'icons/favicon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          {
+            src: 'icons/favicon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
         ]
       },
     },
@@ -193,50 +174,42 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
     electron: {
-      // extendElectronMainConf (esbuildConf) {},
-      // extendElectronPreloadConf (esbuildConf) {},
-
-      // extendPackageJson (json) {},
-
-      // Electron preload scripts (if any) from /src-electron, WITHOUT file extension
       preloadScripts: ['electron-preload'],
-
-      // specify the debugging port to use for the Electron app when running in development mode
       inspectPort: 5858,
 
-      bundler: 'packager', // 'packager' or 'builder'
+      // Use electron-builder for NSIS installer
+      // IMPORTANT: Run build from an Administrator PowerShell to avoid symlink errors
+      bundler: 'builder',
 
       packager: {
-        // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
-        // OS X / Mac App Store
-        // appBundleId: '',
-        // appCategoryType: '',
-        // osxSign: '',
-        // protocol: 'myapp://path',
-        // Windows only
-        // win32metadata: { ... }
+        icon: 'src-electron/icons/icon',
+        name: 'Seven Waves ERP',
+        appCopyright: 'Copyright © 2026 Cosmo Solutions',
       },
 
       builder: {
-        // https://www.electron.build/configuration
+        appId: 'com.sevenwaves.erp',
+        productName: 'Seven Waves ERP',
+        copyright: 'Copyright © 2026 Cosmo Solutions',
+        forceCodeSigning: false,
 
-        appId: 'restaurant-erp',
+        win: {
+          target: [{ target: 'nsis', arch: ['x64'] }],
+          icon: 'src-electron/icons/icon.ico',
+        },
+
+        nsis: {
+          oneClick: false,
+          allowToChangeInstallationDirectory: true,
+          createDesktopShortcut: true,
+          createStartMenuShortcut: true,
+          artifactName: 'Seven_Waves_ERP_Setup.exe',
+        },
       },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-browser-extensions/configuring-bex
     bex: {
-      // extendBexScriptsConf (esbuildConf) {},
-      // extendBexManifestJson (json) {},
-
-      /**
-       * The list of extra scripts (js/ts) not in your bex manifest that you want to
-       * compile and use in your browser extension. Maybe dynamic use them?
-       *
-       * Each entry in the list should be a relative filename to /src-bex/
-       *
-       * @example [ 'my-script.ts', 'sub-folder/my-other-script.js' ]
-       */
       extraScripts: [],
     },
   }

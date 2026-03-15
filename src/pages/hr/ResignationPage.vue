@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <q-page class="q-pa-md">
+    <ERPToolbar
+      moduleName="hr"
+      title="Resignations"
+      breadcrumbs="Human Resources / Resignations"
+    />
+
+    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn
         color="deep-orange"
@@ -252,10 +259,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
+import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'

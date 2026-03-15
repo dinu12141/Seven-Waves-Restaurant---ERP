@@ -25,7 +25,7 @@
       <div
         v-for="msg in filtered" :key="msg.id"
         class="msg-card q-mb-sm"
-        :class="{ 'msg-card--unread': !msg.is_read && msg.receiver_employee_id !== 'self' }"
+        :class="{ 'msg-card--unread': !msg.is_read && !isSent(msg) }"
         @click="markRead(msg)"
       >
         <div class="row items-center q-pa-sm">
@@ -36,10 +36,28 @@
               {{ isSent(msg) ? `To: ${msg.receiver?.full_name || '—'}` : `From: ${msg.sender?.full_name || '—'}` }}
             </div>
           </div>
+          <!-- View Status Badge (for sent messages) -->
+          <div v-if="isSent(msg)" class="q-mr-sm">
+            <q-chip
+              dense size="sm" outline
+              :color="msg.is_read ? 'green-7' : 'grey-7'"
+              :text-color="msg.is_read ? 'green-4' : 'grey-5'"
+              :icon="msg.is_read ? 'visibility' : 'visibility_off'"
+            >
+              {{ msg.is_read ? 'Viewed' : 'Not Viewed' }}
+            </q-chip>
+          </div>
           <span class="text-caption text-grey-7">{{ fmtDate(msg.created_at) }}</span>
         </div>
         <div class="q-px-sm q-pb-sm text-caption text-grey-4" style="white-space:pre-wrap">
           {{ truncate(msg.message_body, 120) }}
+        </div>
+        <!-- Read At info for sent messages -->
+        <div v-if="isSent(msg) && msg.is_read && msg.read_at" class="q-px-sm q-pb-sm">
+          <span class="text-caption text-green-6">
+            <q-icon name="done_all" size="12px" class="q-mr-xs" />
+            Viewed {{ fmtDateFull(msg.read_at) }}
+          </span>
         </div>
       </div>
     </div>
@@ -125,6 +143,10 @@ function markRead(msg) {
 }
 
 function fmtDate(dt) { return dt ? new Date(dt).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' }
+function fmtDateFull(dt) {
+  if (!dt) return ''
+  return new Date(dt).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 function truncate(str, len) { return (str || '').length > len ? str.slice(0, len) + '…' : str || '' }
 </script>
 

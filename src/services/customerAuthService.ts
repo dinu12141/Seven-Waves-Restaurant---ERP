@@ -64,11 +64,11 @@ export async function registerCustomerWithEmail(
     if (authError.message.includes('already registered')) {
       return { success: false, error: 'This email is already registered. Please login instead.' }
     }
-    if (authError.message.includes('rate limit')) {
+    if (authError.message.includes('rate limit') || authError.message.includes('security purposes')) {
       return {
         success: false,
         error:
-          'Too many registration attempts (Security Rate Limit). Please wait 1 hour or change your email address to continue.',
+          'Too many registration attempts. Please wait a few minutes and try again.',
       }
     }
     return { success: false, error: authError.message }
@@ -76,6 +76,13 @@ export async function registerCustomerWithEmail(
 
   if (!authData.user) {
     return { success: false, error: 'Registration failed. Please try again.' }
+  }
+
+  // Supabase email enumeration protection: if email already exists,
+  // signUp returns a fake user with empty identities array instead of an error.
+  const identities = (authData.user as unknown as Record<string, unknown>).identities as unknown[]
+  if (!identities || identities.length === 0) {
+    return { success: false, error: 'This email is already registered. Please login instead.' }
   }
 
   // 2. Create customer profile in DB

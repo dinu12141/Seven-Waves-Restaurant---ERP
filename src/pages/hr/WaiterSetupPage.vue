@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <q-page class="q-pa-md">
+    <ERPToolbar
+      moduleName="hr"
+      title="Waiter Setup"
+      breadcrumbs="Human Resources / Waiter Setup"
+    />
+
+    
     <!-- ── Header ── -->
     <div class="row items-center q-mb-lg">
       <div>
@@ -336,10 +343,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
+import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
@@ -602,15 +610,29 @@ async function sendMessage() {
 
     if (!senderEmp) throw new Error('Your employee record not found')
 
-    const { error } = await supabase.from('manager_messages').insert({
+    const { error, data: msgData } = await supabase.from('manager_messages').insert({
       sender_employee_id: senderEmp.id,
       receiver_employee_id: selectedProfile.value.employee_id,
       branch_id: branchId,
       subject: messageForm.subject || '',
       message_body: messageForm.message_body,
       priority: messageForm.priority,
-    })
+    }).select('id').single()
     if (error) throw error
+
+    // Push waiter_notification so waiter sees it in their app
+    if (selectedProfile.value?.id && msgData?.id) {
+      const priority = messageForm.priority
+      await supabase.from('waiter_notifications').insert({
+        waiter_profile_id: selectedProfile.value.id,
+        notification_type: 'manager_message',
+        title: priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
+        body: (messageForm.subject ? `📌 ${messageForm.subject}\n` : '') + messageForm.message_body,
+        payload: { manager_message_id: msgData.id, priority, subject: messageForm.subject || 'Direct Message' },
+        action_url: null,
+      }).catch(e => console.error('Failed to notify waiter:', e))
+    }
+
     $q.notify({ type: 'positive', message: '✅ Message sent! Waiter will see a notification.' })
     showMessage.value = false
   } catch (err) {

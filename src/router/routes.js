@@ -11,6 +11,16 @@ const routes = [
         meta: { roles: ['admin', 'manager'] },
       },
       {
+        path: 'operations/dashboard',
+        component: () => import('pages/operations/OperationsDashboard.vue'),
+        meta: { roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen'] },
+      },
+      {
+        path: 'system/dashboard',
+        component: () => import('pages/admin/SystemDashboard.vue'),
+        meta: { roles: ['admin'] },
+      },
+      {
         path: 'manager/floor',
         component: () => import('pages/manager/ManagerFloorPage.vue'),
         meta: { roles: ['admin', 'manager'] },
@@ -23,7 +33,7 @@ const routes = [
       {
         path: 'kitchen',
         component: () => import('pages/KitchenPage.vue'),
-        meta: { roles: ['admin', 'manager', 'kitchen'] },
+        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'] },
       },
       {
         path: 'orders',
@@ -41,8 +51,18 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'inventory'] },
       },
       {
+        path: 'inventory/dashboard',
+        component: () => import('pages/inventory/InventoryDashboard.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory'] },
+      },
+      {
         path: 'finance',
         component: () => import('pages/FinancePage.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
+      {
+        path: 'finance/dashboard',
+        component: () => import('pages/finance/FinanceDashboard.vue'),
         meta: { roles: ['admin', 'manager', 'finance'] },
       },
       {
@@ -50,9 +70,9 @@ const routes = [
         component: () => import('pages/hr/HRLayout.vue'),
         meta: { roles: ['admin', 'manager', 'hr'] },
         children: [
-          { path: '', redirect: 'employees' },
+          { path: '', redirect: 'dashboard' },
+          { path: 'dashboard', component: () => import('pages/hr/HRDashboard.vue') },
           { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue') },
-          { path: 'salary-config', component: () => import('pages/hr/SalaryConfigPage.vue') },
           { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue') },
           { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue') },
           { path: 'commission', component: () => import('pages/hr/CommissionPage.vue') },
@@ -66,7 +86,8 @@ const routes = [
         path: 'procurement',
         component: () => import('pages/procurement/ProcurementLayout.vue'),
         children: [
-          { path: '', redirect: 'suppliers' },
+          { path: '', redirect: 'dashboard' },
+          { path: 'dashboard', component: () => import('pages/procurement/ProcurementDashboard.vue') },
           { path: 'suppliers', component: () => import('pages/procurement/SuppliersPage.vue') },
           {
             path: 'purchase-orders',
@@ -161,6 +182,11 @@ const routes = [
         component: () => import('pages/auth/UserProfilePage.vue'),
       },
       // ── Reports ───────────────────────────────────────────────────────────────
+      {
+        path: 'reports/dashboard',
+        component: () => import('pages/reports/ReportsDashboard.vue'),
+        meta: { roles: ['admin', 'manager', 'finance'] },
+      },
       {
         path: 'reports/sales',
         component: () => import('pages/reports/SalesReport.vue'),
@@ -308,12 +334,7 @@ const routes = [
     component: () => import('pages/OrderTrackingPage.vue'),
     meta: { requiresAuth: false },
   },
-  {
-    // Dedicated POS Login Terminal
-    path: '/pos/login',
-    component: () => import('pages/auth/POSLoginPage.vue'),
-    meta: { requiresAuth: false },
-  },
+
   {
     path: '/auth',
 

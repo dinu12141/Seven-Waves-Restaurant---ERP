@@ -7,7 +7,6 @@
       showSearch
       showBranchSelector
       showExport
-      showRefresh
       primaryAction
       primaryActionLabel="New Document"
       @primary-action="openCreateDocument"
@@ -15,21 +14,8 @@
       @export-excel="handleExport('excel')"
     />
 
-    <!-- Main tabs card -->
+    <!-- Main content card -->
     <q-card class="bg-dark text-white q-mt-md">
-      <q-tabs
-        v-model="tab"
-        dense
-        class="text-grey"
-        active-color="primary"
-        indicator-color="primary"
-        align="left"
-        narrow-indicator
-      >
-        <q-tab v-for="t in tabs" :key="t.name" :name="t.name" :label="t.label" :icon="t.icon" />
-      </q-tabs>
-
-      <q-separator dark />
 
       <q-tab-panels v-model="tab" animated class="bg-dark text-white">
         <!-- Dashboard -->
@@ -106,7 +92,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardTab from 'components/inventory/DashboardTab.vue'
@@ -122,23 +109,21 @@ import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
 import GoodRequestsTab from 'components/inventory/GoodRequestsTab.vue'
 
+const route = useRoute()
+const router = useRouter()
+
 const tab = ref('dashboard')
 const tabRef = ref(null)
 const editingDocument = ref(null)
 
-const tabs = [
-  { name: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { name: 'items', label: 'Inventory Items', icon: 'category' },
-  { name: 'menu_items', label: 'Menu Items', icon: 'restaurant' },
-  { name: 'menu_categories', label: 'Category Management', icon: 'list_alt' },
-  { name: 'recipes', label: 'Recipes / BOM', icon: 'restaurant_menu' },
-  { name: 'stock', label: 'Stock Levels', icon: 'inventory_2' },
-  { name: 'warehouses', label: 'Warehouses', icon: 'warehouse' },
-  { name: 'good_requests', label: 'Good Requests', icon: 'swap_horiz' },
-  { name: 'suppliers', label: 'Suppliers', icon: 'local_shipping' },
-  { name: 'documents', label: 'Documents', icon: 'description' },
-  { name: 'ledger', label: 'Stock Ledger', icon: 'menu_book' },
-]
+watch(() => route.query.tab, (newTab) => {
+  if (newTab) {
+    tab.value = newTab
+  } else {
+    tab.value = 'dashboard'
+  }
+}, { immediate: true })
+
 
 function handleExport(format) {
   if (!tabRef.value) return
@@ -160,20 +145,20 @@ function handleExport(format) {
 
 function openCreateDocument() {
   editingDocument.value = null
-  tab.value = 'doc-create'
+  router.push({ path: '/inventory', query: { tab: 'doc-create' } })
 }
 
 function viewDocument(doc) {
   editingDocument.value = { ...doc, lines: [] }
-  tab.value = 'doc-create'
+  router.push({ path: '/inventory', query: { tab: 'doc-create' } })
 }
 
 function editDocument(doc) {
   editingDocument.value = { ...doc, lines: [] }
-  tab.value = 'doc-create'
+  router.push({ path: '/inventory', query: { tab: 'doc-create' } })
 }
 
 function onDocumentSaved() {
-  tab.value = 'documents'
+  router.push({ path: '/inventory', query: { tab: 'documents' } })
 }
 </script>

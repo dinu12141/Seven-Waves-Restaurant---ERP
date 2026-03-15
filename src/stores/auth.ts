@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { supabase } from 'src/boot/supabase'
 import { Session, User } from '@supabase/supabase-js'
-import { ROLE_LANDING, canAccessRoute } from 'src/config/roles'
+import { ROLE_LANDING, ROLE_PRIORITY, canAccessRoute } from 'src/config/roles'
 
 export type UserRole =
   | 'admin'
@@ -309,8 +309,13 @@ export const useAuthStore = defineStore('auth', {
       return (routePath: string) => canAccessRoute(state.roles, routePath, state.permissions)
     },
     defaultLandingPage: (state) => {
-      for (const role of state.roles) {
-        if (ROLE_LANDING[role]) return ROLE_LANDING[role]
+      // Evaluate roles in priority order (admin → manager → ... → waiter),
+      // NOT in the random order the DB happens to return them.
+      // Without this, an admin who also has 'cashier' might land on /pos.
+      for (const role of ROLE_PRIORITY) {
+        if (state.roles.includes(role) && ROLE_LANDING[role]) {
+          return ROLE_LANDING[role]
+        }
       }
       return '/dashboard'
     },

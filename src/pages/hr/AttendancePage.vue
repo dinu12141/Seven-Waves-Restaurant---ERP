@@ -1,5 +1,11 @@
 <template>
-  <div>
+  <q-page class="q-pa-md">
+    <ERPToolbar
+      moduleName="hr"
+      title="Attendance"
+      breadcrumbs="Human Resources / Attendance"
+    />
+
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
         dark
@@ -27,29 +33,37 @@
 
     <!-- KPI Row -->
     <div class="row q-col-gutter-md q-mb-md">
-      <div class="col-3">
-        <q-card flat class="erp-stat-card q-pa-md"
-          ><div class="text-caption text-grey-5">Present</div>
-          <div class="text-h5 text-weight-bold text-green">{{ stats.present }}</div></q-card
-        >
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-card flat class="erp-stat-card">
+          <q-card-section class="q-pa-md">
+            <div class="text-caption text-grey-5">Present</div>
+            <div class="text-h5 text-weight-bold text-green">{{ stats.present }}</div>
+          </q-card-section>
+        </q-card>
       </div>
-      <div class="col-3">
-        <q-card flat class="erp-stat-card q-pa-md"
-          ><div class="text-caption text-grey-5">Absent</div>
-          <div class="text-h5 text-weight-bold text-red">{{ stats.absent }}</div></q-card
-        >
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-card flat class="erp-stat-card">
+          <q-card-section class="q-pa-md">
+            <div class="text-caption text-grey-5">Absent</div>
+            <div class="text-h5 text-weight-bold text-red">{{ stats.absent }}</div>
+          </q-card-section>
+        </q-card>
       </div>
-      <div class="col-3">
-        <q-card flat class="erp-stat-card q-pa-md"
-          ><div class="text-caption text-grey-5">Late</div>
-          <div class="text-h5 text-weight-bold text-amber">{{ stats.late }}</div></q-card
-        >
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-card flat class="erp-stat-card">
+          <q-card-section class="q-pa-md">
+            <div class="text-caption text-grey-5">Late</div>
+            <div class="text-h5 text-weight-bold text-amber">{{ stats.late }}</div>
+          </q-card-section>
+        </q-card>
       </div>
-      <div class="col-3">
-        <q-card flat class="erp-stat-card q-pa-md"
-          ><div class="text-caption text-grey-5">On Leave</div>
-          <div class="text-h5 text-weight-bold text-cyan">{{ stats.leave }}</div></q-card
-        >
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-card flat class="erp-stat-card">
+          <q-card-section class="q-pa-md">
+            <div class="text-caption text-grey-5">On Leave</div>
+            <div class="text-h5 text-weight-bold text-cyan">{{ stats.leave }}</div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
@@ -124,7 +138,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
@@ -132,6 +146,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()

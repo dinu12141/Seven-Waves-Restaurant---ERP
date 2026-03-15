@@ -18,7 +18,7 @@ import type { UserRole } from 'src/stores/auth'
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
   waiter: ['/pos', '/orders', '/waiter', '/waiter-app'],
   kitchen: ['/kitchen'],
-  cashier: ['/pos', '/orders', '/cashier'],
+  cashier: ['/pos', '/orders', '/cashier', '/kitchen'],
   manager: [
     '/dashboard',
     '/orders',
@@ -76,6 +76,24 @@ export const ROLE_LANDING: Record<UserRole, string> = {
   admin: '/dashboard',
 }
 
+/**
+ * Role priority order — highest privilege first.
+ * The defaultLandingPage getter uses this to resolve the correct
+ * landing page when a user has multiple roles (e.g. admin + cashier).
+ * Without this, whichever role the DB returns first wins — which is wrong.
+ */
+export const ROLE_PRIORITY: UserRole[] = [
+  'admin',
+  'manager',
+  'finance',
+  'hr',
+  'procurement',
+  'inventory',
+  'cashier',
+  'kitchen',
+  'waiter',
+]
+
 /** Role-specific feature restrictions within pages */
 export interface RolePageRestrictions {
   /** On the Orders page, waiter can only accept orders (no cancel, no advance beyond accept) */
@@ -118,6 +136,8 @@ export interface NavItem {
   roles: UserRole[]
   /** Optional separator label to show before this item */
   section?: string
+  /** Optional group label to organize items within the same section */
+  group?: string
   /** Optional module code — nav item hidden when this module is disabled */
   moduleCode?: string
   /** Fine-grained permission required for this item */
@@ -143,6 +163,62 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'manager'],
     section: 'MAIN',
   },
+  {
+    label: 'Sales Snapshot',
+    icon: 'trending_up',
+    to: '/dashboard#sales',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Inventory Alerts',
+    icon: 'error_outline',
+    to: '/dashboard#inventory',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Finance Snapshot',
+    icon: 'account_balance_wallet',
+    to: '/dashboard#finance',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Staff Snapshot',
+    icon: 'diversity_3',
+    to: '/dashboard#staff',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Procurement Snapshot',
+    icon: 'local_shipping',
+    to: '/dashboard#procurement',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'System Health',
+    icon: 'monitor_heart',
+    to: '/dashboard#health',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Recent Activity',
+    icon: 'history',
+    to: '/dashboard#activity',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
+  {
+    label: 'Quick Actions',
+    icon: 'bolt',
+    to: '/dashboard#actions',
+    roles: ['admin', 'manager'],
+    section: 'MAIN',
+  },
 
   // ─── OPERATIONS ────────────────────────────────────────────────────────────
   {
@@ -159,13 +235,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/orders',
     roles: ['admin', 'manager', 'waiter', 'cashier'],
     permission: 'orders:view',
+    section: 'OPERATIONS',
   },
   {
     label: 'Kitchen Display',
     icon: 'soup_kitchen',
     to: '/kitchen',
-    roles: ['admin', 'manager', 'kitchen'],
+    roles: ['admin', 'manager', 'kitchen', 'cashier'],
     permission: 'kitchen:access',
+    section: 'OPERATIONS',
   },
   {
     label: 'Cashier Station',
@@ -173,6 +251,7 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/cashier',
     roles: ['admin', 'manager', 'cashier'],
     permission: 'cashier:access',
+    section: 'OPERATIONS',
   },
   {
     label: 'Waiter Station',
@@ -186,6 +265,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'manage_accounts',
     to: '/manager-app',
     roles: ['admin', 'manager'],
+    section: 'OPERATIONS',
   },
   {
     label: 'Table Management',
@@ -193,11 +273,94 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/operations/tables',
     roles: ['admin', 'manager'],
     permission: 'tables:manage',
+    section: 'OPERATIONS',
+  },
+
+  {
+    label: 'Inventory Items',
+    icon: 'category',
+    to: '/inventory?tab=items',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
   },
   {
-    label: 'Inventory',
+    label: 'Menu Items',
+    icon: 'restaurant',
+    to: '/inventory?tab=menu_items',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Category Management',
+    icon: 'list_alt',
+    to: '/inventory?tab=menu_categories',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Recipes / BOM',
+    icon: 'restaurant_menu',
+    to: '/inventory?tab=recipes',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Stock Levels',
     icon: 'inventory_2',
-    to: '/inventory',
+    to: '/inventory?tab=stock',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Warehouses',
+    icon: 'warehouse',
+    to: '/inventory?tab=warehouses',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Good Requests',
+    icon: 'swap_horiz',
+    to: '/inventory?tab=good_requests',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Suppliers',
+    icon: 'local_shipping',
+    to: '/inventory?tab=suppliers',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Documents',
+    icon: 'description',
+    to: '/inventory?tab=documents',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+  },
+  {
+    label: 'Stock Ledger',
+    icon: 'menu_book',
+    to: '/inventory?tab=ledger',
     roles: ['admin', 'manager', 'inventory'],
     permission: 'inventory:view',
     section: 'INVENTORY',
@@ -206,55 +369,60 @@ export const NAV_ITEMS: NavItem[] = [
 
   // ─── PROCUREMENT ───────────────────────────────────────────────────────────
   {
-    label: 'Procurement',
-    icon: 'shopping_cart',
+    label: 'Suppliers',
+    icon: 'local_shipping',
+    to: '/procurement/suppliers',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+  },
+  {
+    label: 'Purchase Orders',
+    icon: 'assignment',
+    to: '/procurement/purchase-orders',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+  },
+  {
+    label: 'Goods Receipt',
+    icon: 'move_to_inbox',
+    to: '/procurement/grn',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+  },
+  {
+    label: 'AP Invoices',
+    icon: 'request_quote',
+    to: '/procurement/ap-invoices',
     roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'],
     permission: 'procurement:access',
     section: 'PROCUREMENT',
-    children: [
-      {
-        label: 'Suppliers',
-        icon: 'local_shipping',
-        to: '/procurement/suppliers',
-        roles: ['admin', 'manager', 'inventory', 'procurement'],
-      },
-      {
-        label: 'Purchase Orders',
-        icon: 'assignment',
-        to: '/procurement/purchase-orders',
-        roles: ['admin', 'manager', 'inventory', 'procurement'],
-      },
-      {
-        label: 'Goods Receipt',
-        icon: 'move_to_inbox',
-        to: '/procurement/grn',
-        roles: ['admin', 'manager', 'inventory', 'procurement'],
-      },
-      {
-        label: 'AP Invoices',
-        icon: 'request_quote',
-        to: '/procurement/ap-invoices',
-        roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'],
-      },
-      {
-        label: 'Supplier Payments',
-        icon: 'payments',
-        to: '/procurement/payments',
-        roles: ['admin', 'manager', 'finance', 'procurement'],
-      },
-      {
-        label: 'Purchase Returns',
-        icon: 'assignment_return',
-        to: '/procurement/returns',
-        roles: ['admin', 'manager', 'inventory', 'procurement'],
-      },
-      {
-        label: 'Reports',
-        icon: 'bar_chart',
-        to: '/procurement/reports',
-        roles: ['admin', 'manager', 'finance', 'procurement'],
-      },
-    ],
+  },
+  {
+    label: 'Supplier Payments',
+    icon: 'payments',
+    to: '/procurement/payments',
+    roles: ['admin', 'manager', 'finance', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+  },
+  {
+    label: 'Purchase Returns',
+    icon: 'assignment_return',
+    to: '/procurement/returns',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+  },
+  {
+    label: 'Reports',
+    icon: 'bar_chart',
+    to: '/procurement/reports',
+    roles: ['admin', 'manager', 'finance', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
   },
 
   // ─── FINANCE ───────────────────────────────────────────────────────────────
@@ -270,132 +438,141 @@ export const NAV_ITEMS: NavItem[] = [
 
   // ─── REPORTS ───────────────────────────────────────────────────────────────
   {
-    label: 'Reports',
-    icon: 'bar_chart',
-    roles: ['admin', 'manager', 'finance', 'inventory'],
+    label: 'Sales Report',
+    icon: 'receipt_long',
+    to: '/reports/sales',
+    roles: ['admin', 'manager', 'finance'],
     section: 'REPORTS',
-    children: [
-      {
-        label: 'Sales Report',
-        icon: 'receipt_long',
-        to: '/reports/sales',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Electronic Journal',
-        icon: 'auto_stories',
-        to: '/reports/electronic-journal',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Item Wise Sale',
-        icon: 'summarize',
-        to: '/reports/item-wise-sale',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Waiter Wise Sale',
-        icon: 'person_search',
-        to: '/reports/waiter-wise-sale',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Table Wise Sale',
-        icon: 'deck',
-        to: '/reports/table-wise-sale',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Sales Statement',
-        icon: 'analytics',
-        to: '/reports/sales-statement',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Group Summary',
-        icon: 'folder_shared',
-        to: '/reports/group-summary',
-        roles: ['admin', 'manager', 'finance'],
-      },
-      {
-        label: 'Inventory Performance',
-        icon: 'monitoring',
-        to: '/reports/inventory-performance',
-        roles: ['admin', 'manager', 'inventory', 'finance'],
-      },
-      {
-        label: 'Inventory Ledger',
-        icon: 'inventory_2',
-        to: '/reports/inventory',
-        roles: ['admin', 'manager', 'inventory', 'finance'],
-      },
-    ],
+  },
+  {
+    label: 'Electronic Journal',
+    icon: 'auto_stories',
+    to: '/reports/electronic-journal',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Item Wise Sale',
+    icon: 'summarize',
+    to: '/reports/item-wise-sale',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Waiter Wise Sale',
+    icon: 'person_search',
+    to: '/reports/waiter-wise-sale',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Table Wise Sale',
+    icon: 'deck',
+    to: '/reports/table-wise-sale',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Sales Statement',
+    icon: 'analytics',
+    to: '/reports/sales-statement',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Group Summary',
+    icon: 'folder_shared',
+    to: '/reports/group-summary',
+    roles: ['admin', 'manager', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Inventory Performance',
+    icon: 'monitoring',
+    to: '/reports/inventory-performance',
+    roles: ['admin', 'manager', 'inventory', 'finance'],
+    section: 'REPORTS',
+  },
+  {
+    label: 'Inventory Ledger',
+    icon: 'inventory_2',
+    to: '/reports/inventory',
+    roles: ['admin', 'manager', 'inventory', 'finance'],
+    section: 'REPORTS',
   },
 
   // ─── HR ────────────────────────────────────────────────────────────────────
   {
-    label: 'HR & Payroll',
-    icon: 'badge',
+    label: 'Employees',
+    icon: 'people',
+    to: '/hr/employees',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Attendance',
+    icon: 'fingerprint',
+    to: '/hr/attendance',
+    roles: ['admin', 'hr', 'manager'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Payroll',
+    icon: 'payments',
+    to: '/hr/payroll',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Commission',
+    icon: 'monetization_on',
+    to: '/hr/commission',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Salary Audit',
+    icon: 'fact_check',
+    to: '/hr/audit',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Performance',
+    icon: 'trending_up',
+    to: '/hr/performance',
+    roles: ['admin', 'hr', 'manager'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Resignation',
+    icon: 'exit_to_app',
+    to: '/hr/resignation',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+  },
+  {
+    label: 'Shift Management',
+    icon: 'schedule',
+    to: '/hr/shifts',
     roles: ['admin', 'manager', 'hr'],
     permission: 'hr:access',
     section: 'HR',
     moduleCode: 'HR',
-    children: [
-      {
-        label: 'Employees',
-        icon: 'people',
-        to: '/hr/employees',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Salary Config',
-        icon: 'tune',
-        to: '/hr/salary-config',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Attendance',
-        icon: 'fingerprint',
-        to: '/hr/attendance',
-        roles: ['admin', 'hr', 'manager'],
-      },
-      {
-        label: 'Payroll',
-        icon: 'payments',
-        to: '/hr/payroll',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Commission',
-        icon: 'monetization_on',
-        to: '/hr/commission',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Salary Audit',
-        icon: 'fact_check',
-        to: '/hr/audit',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Performance',
-        icon: 'trending_up',
-        to: '/hr/performance',
-        roles: ['admin', 'hr', 'manager'],
-      },
-      {
-        label: 'Resignation',
-        icon: 'exit_to_app',
-        to: '/hr/resignation',
-        roles: ['admin', 'hr'],
-      },
-      {
-        label: 'Shift Management',
-        icon: 'schedule',
-        to: '/hr/shifts',
-        roles: ['admin', 'manager', 'hr'],
-      },
-    ],
   },
 
   // ─── SYSTEM ────────────────────────────────────────────────────────────────

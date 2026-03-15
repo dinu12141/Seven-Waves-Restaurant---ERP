@@ -94,20 +94,38 @@ export default {
 
 <style scoped lang="scss">
 .erp-chart-card {
-  background: var(--erp-bg-form-card, #111827);
-  border: 1px solid var(--erp-input-border, #1f2937);
-  border-radius: var(--erp-radius-md, 8px);
+  background: linear-gradient(145deg, rgba(20, 25, 35, 0.7) 0%, rgba(15, 20, 28, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 48px;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
+  }
 
   &__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--erp-text-primary);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #ffffff;
   }
+  
   &__subtitle {
-    font-size: 12px;
+    font-size: 13px;
+    color: #9ca3af;
+    margin-top: 2px;
   }
 }
 </style>

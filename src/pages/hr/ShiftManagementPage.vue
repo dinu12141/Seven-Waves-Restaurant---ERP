@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <q-page class="q-pa-md">
     <!-- Sub-tabs: Shift Types vs Assignments -->
     <div class="row q-mb-md q-gutter-sm items-center">
       <q-btn-toggle
@@ -8,7 +8,9 @@
         color="dark"
         text-color="white"
         no-caps
-        rounded
+        dense
+        size="sm"
+        class="shift-toggle"
         :options="[
           { label: 'Shift Definitions', value: 'definitions', icon: 'schedule' },
           { label: 'Employee Assignments', value: 'assignments', icon: 'calendar_month' },
@@ -21,6 +23,9 @@
         icon="add"
         label="New Shift"
         no-caps
+        dense
+        size="sm"
+        unelevated
         @click="openShiftDialog()"
       />
       <q-btn
@@ -29,74 +34,78 @@
         icon="person_add"
         label="Assign Shift"
         no-caps
+        dense
+        size="sm"
+        unelevated
         @click="openAssignDialog()"
       />
     </div>
 
     <!-- ─── SHIFT DEFINITIONS VIEW ─── -->
     <div v-if="viewMode === 'definitions'">
-      <div class="row q-col-gutter-md">
-        <div v-for="shift in shifts" :key="shift.id" class="col-12 col-sm-6 col-md-4">
+      <div class="row q-col-gutter-sm">
+        <div v-for="shift in shifts" :key="shift.id" class="col-12 col-sm-6 col-md-4 col-lg-3">
           <q-card flat class="shift-card">
             <!-- Color bar based on shift type -->
             <div :class="`shift-bar shift-${getShiftType(shift)}`"></div>
-            <q-card-section class="q-pb-xs">
+            <q-card-section class="q-py-sm q-px-md">
               <div class="row items-center no-wrap">
                 <div class="col">
                   <div class="text-weight-bold text-white shift-name">{{ shift.name }}</div>
-                  <div class="text-caption text-grey-5">
+                  <div class="text-caption text-grey-5" style="font-size: 10px;">
                     {{ getShiftType(shift).toUpperCase() }} SHIFT
                   </div>
                 </div>
-                <q-badge :color="shift.is_active ? 'positive' : 'grey-7'" class="q-ml-sm">
+                <q-badge :color="shift.is_active ? 'positive' : 'grey-7'" class="q-ml-sm" style="font-size: 9px;">
                   {{ shift.is_active ? 'Active' : 'Inactive' }}
                 </q-badge>
               </div>
             </q-card-section>
 
-            <q-card-section class="q-pt-xs q-pb-sm">
-              <div class="row q-col-gutter-sm">
+            <q-card-section class="q-pt-none q-pb-xs q-px-md">
+              <div class="row q-col-gutter-xs">
                 <div class="col-6">
                   <div class="shift-time-block">
-                    <q-icon name="login" size="14px" class="text-green q-mr-xs" />
-                    <span class="text-caption text-grey-4">Start</span>
-                    <div class="text-weight-bold text-white text-body2">
+                    <q-icon name="login" size="12px" class="text-green q-mr-xs" />
+                    <span class="text-caption text-grey-4" style="font-size: 10px;">Start</span>
+                    <div class="text-weight-bold text-white" style="font-size: 12px;">
                       {{ formatTime(shift.start_time) }}
                     </div>
                   </div>
                 </div>
                 <div class="col-6">
                   <div class="shift-time-block">
-                    <q-icon name="logout" size="14px" class="text-red q-mr-xs" />
-                    <span class="text-caption text-grey-4">End</span>
-                    <div class="text-weight-bold text-white text-body2">
+                    <q-icon name="logout" size="12px" class="text-red q-mr-xs" />
+                    <span class="text-caption text-grey-4" style="font-size: 10px;">End</span>
+                    <div class="text-weight-bold text-white" style="font-size: 12px;">
                       {{ formatTime(shift.end_time) }}
                       <q-badge
                         v-if="shift.is_overnight"
                         color="purple"
                         dense
                         class="q-ml-xs"
-                        label="+1 day"
+                        label="+1"
+                        style="font-size: 9px;"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="row q-mt-sm q-col-gutter-sm text-caption text-grey-5">
+              <div class="row q-mt-xs q-col-gutter-xs text-grey-5" style="font-size: 10px;">
                 <div class="col-auto">
-                  <q-icon name="coffee" size="12px" class="q-mr-xs" />
-                  Break: {{ shift.break_duration_minutes }} min
+                  <q-icon name="coffee" size="10px" class="q-mr-xs" />
+                  {{ shift.break_duration_minutes }}min break
                 </div>
                 <div class="col-auto">
-                  <q-icon name="timer" size="12px" class="q-mr-xs" />
-                  {{ calculateHours(shift) }} hrs/day
+                  <q-icon name="timer" size="10px" class="q-mr-xs" />
+                  {{ calculateHours(shift) }}hrs
                 </div>
               </div>
             </q-card-section>
 
             <q-separator dark />
-            <q-card-actions class="q-px-md q-py-xs">
+            <q-card-actions class="q-px-sm q-py-xs">
               <q-btn
                 flat
                 dense
@@ -104,7 +113,7 @@
                 color="amber"
                 icon="edit"
                 label="Edit"
-                size="sm"
+                size="xs"
                 @click="openShiftDialog(shift)"
               />
               <q-space />
@@ -115,7 +124,7 @@
                 :color="shift.is_active ? 'negative' : 'positive'"
                 :icon="shift.is_active ? 'block' : 'check_circle'"
                 :label="shift.is_active ? 'Deactivate' : 'Activate'"
-                size="sm"
+                size="xs"
                 @click="toggleShiftActive(shift)"
               />
             </q-card-actions>
@@ -557,11 +566,11 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
@@ -1068,6 +1077,17 @@ function avatarColor(name) {
   return avatarColors[name.charCodeAt(0) % avatarColors.length]
 }
 
+watch(
+  () => authStore.currentBranch?.id,
+  (newId) => {
+    if (newId) {
+      loadShifts()
+      loadEmployees()
+      loadAssignments()
+    }
+  },
+)
+
 onMounted(async () => {
   await Promise.all([loadShifts(), loadEmployees()])
   await loadAssignments()
@@ -1075,10 +1095,22 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
+.shift-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  :deep(.q-btn) {
+    padding: 4px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 32px;
+  }
+}
+
 .shift-card {
   background: var(--erp-bg-form-card, #111827);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
+  border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.2s;
 
@@ -1109,9 +1141,9 @@ onMounted(async () => {
 }
 
 .shift-time-block {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 5px 8px;
 }
 
 .erp-data-grid {

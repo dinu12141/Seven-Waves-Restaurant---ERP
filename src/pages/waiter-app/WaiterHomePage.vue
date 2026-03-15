@@ -156,6 +156,11 @@
         </div>
       </div>
 
+      <!-- ── Waiter Rankings ──────────────────────────────────────────── -->
+      <div class="q-px-md q-mt-lg">
+        <WaiterLeaderboard :highlightProfileId="store.profile?.id" />
+      </div>
+
       <div style="height: 24px" />
     </q-pull-to-refresh>
   </q-page>
@@ -166,6 +171,7 @@ import { inject, computed } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useRouter } from 'vue-router'
+import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
 
 const store = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()

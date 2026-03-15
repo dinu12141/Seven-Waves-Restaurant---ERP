@@ -54,16 +54,6 @@
 
     <!-- Actions -->
     <q-btn
-      class="full-width q-mb-sm"
-      unelevated no-caps
-      icon="dashboard"
-      label="Back to ERP Dashboard"
-      color="blue-grey-9"
-      text-color="white"
-      style="border-radius:10px;height:48px;font-weight:600"
-      @click="$router.push('/dashboard')"
-    />
-    <q-btn
       class="full-width"
       unelevated no-caps
       icon="logout"

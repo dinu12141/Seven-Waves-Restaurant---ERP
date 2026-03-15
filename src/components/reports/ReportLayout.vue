@@ -56,15 +56,7 @@
           />
         </q-btn>
 
-        <q-btn
-          flat
-          dense
-          icon="refresh"
-          class="report-btn report-btn--icon q-ml-xs"
-          @click="$emit('refresh')"
-        >
-          <q-tooltip>Refresh</q-tooltip>
-        </q-btn>
+
       </div>
     </div>
 
@@ -219,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 
 const props = defineProps({
@@ -227,6 +219,7 @@ const props = defineProps({
   subtitle: { type: String, default: '' },
   kpis: { type: Array, default: () => [] },
   branches: { type: Array, default: () => [] },
+  autoRefreshInterval: { type: Number, default: 60000 },
 })
 
 const emit = defineEmits(['filter-change', 'export-csv', 'export-excel', 'refresh'])
@@ -364,10 +357,26 @@ function handlePrint() {
   window.print()
 }
 
-// Auto-apply default filters on mount
+// ── Auto-refresh ────────────────────────────────────────────────────
+let autoRefreshTimer = null
+
 onMounted(() => {
   appliedFilters.value = { ...filters.value }
   emit('filter-change', appliedFilters.value)
+
+  // Silently auto-refresh report data in background
+  if (props.autoRefreshInterval > 0) {
+    autoRefreshTimer = setInterval(() => {
+      emit('refresh')
+    }, props.autoRefreshInterval)
+  }
+})
+
+onUnmounted(() => {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
 })
 </script>
 

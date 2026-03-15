@@ -70,36 +70,8 @@
       </div>
     </div>
 
-    <!-- Top Waiters -->
-    <div class="section-title q-mb-sm">TOP PERFORMERS</div>
-    <div v-if="store.leaderboard.length === 0" class="text-grey-6 text-caption text-center q-pa-lg">
-      No waiter data available.
-    </div>
-    <div v-else>
-      <div
-        v-for="(w, idx) in store.leaderboard.slice(0, 3)"
-        :key="w.id"
-        class="performer-card q-mb-sm row items-center"
-      >
-        <div class="rank-medal q-mr-sm">
-          <span v-if="idx === 0">🥇</span>
-          <span v-else-if="idx === 1">🥈</span>
-          <span v-else>🥉</span>
-        </div>
-        <q-avatar size="36px" class="performer-avatar q-mr-sm text-weight-bold text-white">
-          {{ initials(w.display_name || w.employee_name) }}
-        </q-avatar>
-        <div class="col">
-          <div class="text-white text-weight-bold" style="font-size:0.85rem">
-            {{ w.display_name || w.employee_name }}
-          </div>
-          <div class="text-caption text-grey-6">{{ w.waiter_code }}</div>
-        </div>
-        <q-chip dense color="amber-9" text-color="dark" icon="stars" class="text-weight-bold">
-          {{ w.current_points }} pts
-        </q-chip>
-      </div>
-    </div>
+    <!-- Waiter Rankings (with period filter) -->
+    <WaiterLeaderboard />
   </q-page>
 </template>
 
@@ -107,6 +79,7 @@
 import { computed } from 'vue'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useAuthStore } from 'stores/auth'
+import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
 
 const store = useManagerAppStore()
 const authStore = useAuthStore()
@@ -121,11 +94,6 @@ const quickActions = [
   { label: 'View Waiters', icon: 'groups', to: '/manager-app/waiters' },
   { label: 'Alerts', icon: 'notifications_active', to: '/manager-app/alerts' },
 ]
-
-function initials(name) {
-  if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
-}
 </script>
 
 <style lang="scss" scoped>

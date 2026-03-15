@@ -5,7 +5,6 @@
       title="Orders Management"
       breadcrumbs="Operations / Orders"
       :roleBadge="restrictions.ordersAcceptOnly ? 'WAITER' : ''"
-      showRefresh
       primaryAction
       primaryActionLabel="New Order"
       @primary-action="$router.push('/pos')"

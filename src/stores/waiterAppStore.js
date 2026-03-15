@@ -168,7 +168,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         .eq('employee_id', wp.employee_id)
         .eq('is_active', true)
         .limit(1)
-        .single()
+        .maybeSingle()
       managerInfo.value = hier || null
     }
 
@@ -205,27 +205,48 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   /**
    * Checks if currentTime falls within [start - buffer, end + buffer].
-   * Handles overnight / midnight-ending shifts (e.g. 16:00 → 00:00).
+   * Handles overnight / midnight-crossing shifts (e.g. 22:00 → 06:00).
+   *
+   * Key rules:
+   *   - "Overnight" means the shift CROSSES midnight (start > end in raw minutes).
+   *   - A shift like 00:00→08:00 does NOT cross midnight — it's a regular shift.
+   *   - Buffer is clamped so startMin never goes below 0 and endMin never exceeds 1439.
    */
   function _isWithinShiftTime(startTimeStr, endTimeStr, isOvernight) {
     if (!startTimeStr || !endTimeStr) return true // can't determine, assume on shift
 
     const BUFFER_MINUTES = 30
+    const DAY = 1440 // minutes in a day
     const now = new Date()
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
     const [sh, sm] = startTimeStr.split(':').map(Number)
     const [eh, em] = endTimeStr.split(':').map(Number)
-    const startMin = sh * 60 + sm - BUFFER_MINUTES
-    const endMin = eh * 60 + em + BUFFER_MINUTES
+    const rawStart = sh * 60 + sm
+    const rawEnd   = eh * 60 + em
 
-    // Overnight shift OR shift ending at midnight (end <= start, e.g. 16:00→00:00)
-    if (isOvernight || (eh * 60 + em) <= (sh * 60 + sm)) {
-      // On shift if currentTime >= (start - buffer) OR currentTime <= (end + buffer)
-      return currentMinutes >= startMin || currentMinutes <= endMin
+    // Auto-detect overnight: shift crosses midnight when end <= start
+    // e.g. Evening 16:00→00:00 (960 > 0) or 22:00→06:00 (1320 > 360)
+    // But NOT 00:00→08:00 (0 < 480)
+    const crossesMidnight = isOvernight || (rawEnd <= rawStart && rawStart !== rawEnd)
+
+    if (crossesMidnight) {
+      // Overnight shift spans two calendar days.
+      // Convert to a continuous timeline by adding DAY to times after midnight.
+      // If current time is before the raw start, it's the "next day" portion.
+      const shiftStart = rawStart - BUFFER_MINUTES
+      const shiftEnd   = rawEnd + DAY + BUFFER_MINUTES  // end is next day
+
+      // Normalize current time: if before raw start, treat as next-day
+      const cur = currentMinutes < rawStart ? currentMinutes + DAY : currentMinutes
+
+      return cur >= shiftStart && cur <= shiftEnd
     }
 
-    // Normal daytime shift
+    // Normal daytime shift — clamp buffer so we don't go negative
+    const startMin = Math.max(0, rawStart - BUFFER_MINUTES)
+    const endMin   = Math.min(DAY - 1, rawEnd + BUFFER_MINUTES)
+
     return currentMinutes >= startMin && currentMinutes <= endMin
   }
 

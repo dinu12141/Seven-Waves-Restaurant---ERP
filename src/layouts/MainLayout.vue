@@ -2,7 +2,8 @@
   <q-layout view="lHh Lpr lFf">
     <!-- ─── Header ────────────────────────────────────────────────────── -->
     <q-header class="erp-header">
-      <q-toolbar class="erp-toolbar">
+      <!-- First Row: Search & Profile -->
+      <q-toolbar class="erp-toolbar erp-toolbar--top">
         <!-- Toggle sidebar -->
         <q-btn
           v-if="!isPOSMode"
@@ -11,15 +12,14 @@
           round
           icon="menu"
           aria-label="Toggle Menu"
-          class="erp-toolbar-btn"
+          class="erp-toolbar-btn q-mr-sm"
           @click="toggleLeftDrawer"
         />
 
-        <!-- Brand -->
-        <div class="erp-brand" :class="{ 'erp-brand--pos': isPOSMode }">
-          <q-icon name="restaurant" size="18px" class="erp-brand__icon" />
+        <!-- Brand only visible in POS mode where sidebar is hidden entirely -->
+        <div class="erp-brand erp-brand--pos" v-if="isPOSMode">
+          <img src="~assets/seven-waves-logo-transparent.png" alt="Seven Waves" style="width: 18px; height: auto;" />
           <span class="erp-brand__name">Seven Waves</span>
-          <span class="erp-brand__tag">ERP</span>
         </div>
 
         <!-- Global Search -->
@@ -44,29 +44,17 @@
         <q-space />
 
         <!-- Branch chip -->
-        <div v-if="authStore.currentBranch" class="erp-branch-chip">
+        <div v-if="authStore.currentBranch && $q.screen.gt.sm" class="erp-branch-chip">
           <q-icon name="store_mall_directory" size="14px" />
           <span>{{ authStore.currentBranch.name }}</span>
-        </div>
-
-        <!-- Role badges -->
-        <div class="erp-role-badges">
-          <span
-            v-for="role in authStore.roles"
-            :key="role"
-            class="erp-role-badge"
-            :class="`erp-role-badge--${role}`"
-          >
-            {{ role }}
-          </span>
         </div>
 
         <!-- Notification Bell -->
         <NotificationPanel />
 
         <!-- User Avatar & Menu -->
-        <q-btn flat round class="erp-avatar-btn">
-          <q-avatar size="30px" class="erp-user-avatar">
+        <q-btn flat round dense class="erp-avatar-btn q-ml-xs">
+          <q-avatar size="26px" class="erp-user-avatar">
             <span>{{ userInitials }}</span>
           </q-avatar>
           <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
@@ -122,6 +110,35 @@
           </q-menu>
         </q-btn>
       </q-toolbar>
+
+      <!-- Second Row: Categories Navigation Menu -->
+      <q-toolbar class="erp-toolbar erp-toolbar--bottom" v-if="!isPOSMode && topNavSections.length > 0">
+        <div class="erp-top-nav">
+          <q-tabs
+            v-model="activeSection"
+            dense
+            shrink
+            class="text-grey-4"
+            active-color="primary"
+            active-bg-color="primary-subtle"
+            indicator-color="transparent"
+            align="left"
+            inline-label
+            outside-arrows
+            mobile-arrows
+            style="width: 100%"
+          >
+            <q-tab
+              v-for="section in topNavSections"
+              :key="section"
+              :name="section"
+              :label="section"
+              class="erp-top-nav-tab"
+              @click="handleSectionClick(section)"
+            />
+          </q-tabs>
+        </div>
+      </q-toolbar>
     </q-header>
 
     <!-- ─── Sidebar ──────────────────────────────────────────────────── -->
@@ -135,7 +152,7 @@
     >
       <!-- Logo area -->
       <div class="erp-sidebar__logo">
-        <q-icon name="restaurant" size="20px" />
+        <img src="~assets/seven-waves-logo-transparent.png" alt="Seven Waves" style="width: 22px; height: auto;" />
         <div class="erp-sidebar__logo-text">
           <span class="erp-sidebar__logo-name">Seven Waves</span>
           <span class="erp-sidebar__logo-sub">Restaurant ERP</span>
@@ -144,68 +161,64 @@
 
       <q-scroll-area class="erp-sidebar__scroll">
         <nav class="erp-sidebar__nav">
-          <template v-for="(item, index) in filteredMenuItems" :key="item.label">
-            <!-- Section header -->
-            <div
-              v-if="
-                item.section &&
-                (index === 0 || item.section !== filteredMenuItems[index - 1]?.section)
-              "
-              class="erp-sidebar__section-label"
-            >
-              {{ item.section }}
+          <template v-for="(items, groupName) in groupedSidebarItems" :key="groupName">
+            <!-- Section header rendered conditionally based on item.group -->
+            <div v-if="groupName && groupName !== 'default'" class="erp-sidebar__section-label">
+              {{ groupName }}
             </div>
 
-            <!-- Leaf item -->
-            <router-link v-if="!item.children" :to="item.to" custom v-slot="{ isActive, navigate }">
-              <div
-                class="erp-sidebar__item"
-                :class="{ 'erp-sidebar__item--active': isActive }"
-                @click="navigate"
-                role="button"
-                :tabindex="0"
-              >
-                <q-icon :name="item.icon" size="18px" class="erp-sidebar__item-icon" />
-                <span class="erp-sidebar__item-label">{{ item.label }}</span>
-              </div>
-            </router-link>
-
-            <!-- Expandable group -->
-            <q-expansion-item
-              v-else
-              dense
-              class="erp-sidebar__expansion"
-              header-class="erp-sidebar__expansion-header"
-              expand-icon-class="erp-sidebar__expand-icon"
-            >
-              <template v-slot:header>
-                <div class="erp-sidebar__item-header-content">
+            <template v-for="item in items" :key="item.label">
+              <!-- Leaf item -->
+              <router-link v-if="!item.children" :to="item.to" custom v-slot="{ isActive, navigate }">
+                <div
+                  class="erp-sidebar__item"
+                  :class="{ 'erp-sidebar__item--active': isItemActive(item.to, isActive) }"
+                  @click="navigate"
+                  role="button"
+                  :tabindex="0"
+                >
                   <q-icon :name="item.icon" size="18px" class="erp-sidebar__item-icon" />
                   <span class="erp-sidebar__item-label">{{ item.label }}</span>
                 </div>
-              </template>
+              </router-link>
 
-              <div class="erp-sidebar__children">
-                <router-link
-                  v-for="child in item.children"
-                  :key="child.to"
-                  :to="child.to"
-                  custom
-                  v-slot="{ isActive, navigate }"
-                >
-                  <div
-                    class="erp-sidebar__child-item"
-                    :class="{ 'erp-sidebar__item--active': isActive }"
-                    @click="navigate"
-                    role="button"
-                    :tabindex="0"
-                  >
-                    <q-icon :name="child.icon" size="16px" class="erp-sidebar__item-icon" />
-                    <span class="erp-sidebar__item-label">{{ child.label }}</span>
+              <!-- Expandable group -->
+              <q-expansion-item
+                v-else
+                dense
+                class="erp-sidebar__expansion"
+                header-class="erp-sidebar__expansion-header"
+                expand-icon-class="erp-sidebar__expand-icon"
+              >
+                <template v-slot:header>
+                  <div class="erp-sidebar__item-header-content">
+                    <q-icon :name="item.icon" size="18px" class="erp-sidebar__item-icon" />
+                    <span class="erp-sidebar__item-label">{{ item.label }}</span>
                   </div>
-                </router-link>
-              </div>
-            </q-expansion-item>
+                </template>
+
+                <div class="erp-sidebar__children">
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.to"
+                    :to="child.to"
+                    custom
+                    v-slot="{ isActive, navigate }"
+                  >
+                    <div
+                      class="erp-sidebar__child-item"
+                      :class="{ 'erp-sidebar__item--active': isItemActive(child.to, isActive) }"
+                      @click="navigate"
+                      role="button"
+                      :tabindex="0"
+                    >
+                      <q-icon :name="child.icon" size="16px" class="erp-sidebar__item-icon" />
+                      <span class="erp-sidebar__item-label">{{ child.label }}</span>
+                    </div>
+                  </router-link>
+                </div>
+              </q-expansion-item>
+            </template>
           </template>
         </nav>
       </q-scroll-area>
@@ -236,7 +249,7 @@ import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 
 const authStore = useAuthStore()
 const modulesStore = useModulesStore()
@@ -256,8 +269,46 @@ const isPOSMode = computed(() => {
 
 const leftDrawerOpen = ref(!isPOSMode.value)
 
+const isItemActive = (itemTo, routerIsActive) => {
+  if (itemTo) {
+    if (itemTo.includes('#')) {
+      return route.path + route.hash === itemTo
+    }
+    if (itemTo === '/dashboard') {
+      return route.path === '/dashboard' && !route.hash
+    }
+  }
+  return routerIsActive
+}
+
 const searchQuery = ref('')
 const searchInputRef = ref(null)
+
+const activeSection = ref(null)
+
+const handleSectionClick = (section) => {
+  const dashboardRoutes = {
+    'MAIN': '/dashboard',
+    'OPERATIONS': '/operations/dashboard',
+    'INVENTORY': '/inventory/dashboard',
+    'PROCUREMENT': '/procurement/dashboard',
+    'FINANCE': '/finance/dashboard',
+    'REPORTS': '/reports/dashboard',
+    'HR': '/hr/dashboard',
+    'SYSTEM': '/system/dashboard'
+  }
+
+  const targetRoute = dashboardRoutes[section]
+  if (targetRoute) {
+    router.push(targetRoute)
+  } else {
+    // Fallback logic
+    const sectionItems = filteredMenuItems.value.filter(item => item.section === section)
+    if (sectionItems.length > 0 && sectionItems[0].to) {
+      router.push(sectionItems[0].to)
+    }
+  }
+}
 
 const handleKeyDown = (e) => {
   if (e.ctrlKey && e.key === 'k') {
@@ -325,6 +376,55 @@ const filteredMenuItems = computed(() => {
 
   return recursiveModuleFilter(roleFiltered)
 })
+
+/** Compute unique sections available for the top navigation */
+const topNavSections = computed(() => {
+  const sections = new Set()
+  filteredMenuItems.value.forEach(item => {
+    if (item.section) sections.add(item.section)
+  })
+  return Array.from(sections)
+})
+
+/** Fetch items only matching the selected active section and group them */
+const groupedSidebarItems = computed(() => {
+  if (!activeSection.value) return {}
+  const items = filteredMenuItems.value.filter(item => item.section === activeSection.value)
+  
+  const groups = {}
+  items.forEach(item => {
+    const g = item.group || 'default'
+    if (!groups[g]) groups[g] = []
+    groups[g].push(item)
+  })
+  return groups
+})
+
+/** Sync active section with the current route path */
+watch(
+  [() => route.path, topNavSections],
+  ([newPath, sections]) => {
+    if (!sections || sections.length === 0) return
+
+    let section = 'MAIN'
+    if (newPath.startsWith('/inventory')) section = 'INVENTORY'
+    else if (newPath.startsWith('/procurement')) section = 'PROCUREMENT'
+    else if (newPath.startsWith('/finance')) section = 'FINANCE'
+    else if (newPath.startsWith('/reports')) section = 'REPORTS'
+    else if (newPath.startsWith('/hr')) section = 'HR'
+    else if (newPath.startsWith('/admin') || newPath.startsWith('/system') || newPath === '/profile') section = 'SYSTEM'
+    else if (newPath === '/dashboard' || newPath === '/manager/floor') section = 'MAIN'
+    else section = 'OPERATIONS' // Default fallback for pos, kitchen, etc.
+
+    if (sections.includes(section)) {
+      activeSection.value = section
+    } else {
+      activeSection.value = sections[0]
+    }
+  },
+  { immediate: true }
+)
+
 </script>
 
 <style scoped lang="scss">
@@ -336,10 +436,19 @@ const filteredMenuItems = computed(() => {
 }
 
 .erp-toolbar {
-  height: 52px;
-  min-height: 52px;
   padding: 0 16px;
   gap: 8px;
+
+  &--top {
+    height: 44px;
+    min-height: 44px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+  }
+
+  &--bottom {
+    height: 36px;
+    min-height: 36px;
+  }
 }
 
 .erp-toolbar-btn {
@@ -391,12 +500,12 @@ const filteredMenuItems = computed(() => {
 
 // ─── Global Search ─────────────────────────────────────────────────────────────
 .erp-search-wrap {
-  flex: 0 1 300px;
+  flex: 0 1 200px;
   margin: 0 8px;
   transition: flex 0.3s ease;
 
   &:focus-within {
-    flex: 0 1 450px; /* Expand on focus */
+    flex: 0 1 350px; /* Expand on focus */
   }
 }
 
@@ -404,9 +513,9 @@ const filteredMenuItems = computed(() => {
   :deep(.q-field__control) {
     background-color: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid var(--erp-border) !important;
-    border-radius: 8px !important;
-    height: 36px !important;
-    min-height: 36px !important;
+    border-radius: 6px !important;
+    height: 30px !important;
+    min-height: 30px !important;
     padding: 0 12px !important;
     transition: border-color 0.15s;
 
@@ -438,6 +547,43 @@ const filteredMenuItems = computed(() => {
     border-radius: 4px;
     padding: 1px 5px;
     white-space: nowrap;
+  }
+}
+
+// ─── Top Nav ───────────────────────────────────────────────────────────────────
+.erp-top-nav {
+  display: flex;
+  align-items: center;
+  margin: 0 16px;
+  
+  :deep(.q-tabs) {
+    height: 40px;
+    min-height: 40px;
+  }
+
+  :deep(.q-tab) {
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 4px;
+    margin-right: 6px;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+  
+  :deep(.q-tab--active) {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.18) !important; // Gray/alu pata translucent look
+    font-weight: 700;
+    .q-tab__content {
+      color: #ffffff; // White text for better contrast
+    }
   }
 }
 
@@ -639,7 +785,9 @@ const filteredMenuItems = computed(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
+    padding: 0 16px;
+    height: 80px;
+    min-height: 80px;
     border-bottom: 1px solid var(--erp-border);
     flex-shrink: 0;
 
@@ -670,7 +818,7 @@ const filteredMenuItems = computed(() => {
 
   &__scroll {
     flex: 1;
-    height: calc(100% - 110px); // logo + footer heights
+    height: calc(100% - 120px); // logo (80) + footer heights
   }
 
   &__nav {

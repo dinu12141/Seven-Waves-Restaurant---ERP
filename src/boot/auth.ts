@@ -27,7 +27,28 @@ export default boot(async ({ router }) => {
       return next(authStore.defaultLandingPage || '/dashboard')
     }
 
-    // Role-based guard
+    // ── Manager-only guard ────────────────────────────────────────────────
+    // Pure managers (no admin role) can ONLY access /manager-app.
+    // Any attempt to reach a MainLayout ERP route is blocked → /manager-app.
+    const isPureManager =
+      authStore.isAuthenticated &&
+      authStore.roles.includes('manager') &&
+      !authStore.roles.includes('admin')
+
+    if (isPureManager) {
+      // Allow: /manager-app/**, /auth/login, /auth/**, public routes
+      const isManagerRoute = to.path.startsWith('/manager-app')
+      const isAuthRoute = to.path.startsWith('/auth')
+      const isPublicRoute = !to.matched.some((r) => r.meta.requiresAuth)
+
+      if (!isManagerRoute && !isAuthRoute && !isPublicRoute) {
+        // Blocked — send them back where they belong
+        return next('/manager-app')
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Role-based guard (for non-manager, non-admin roles)
     if (requiresAuth && authStore.isAuthenticated && !authStore.isAdmin) {
       // Check route meta roles
       const requiredRoles = to.matched.reduce<string[]>((roles, record) => {
@@ -56,3 +77,4 @@ export default boot(async ({ router }) => {
     next()
   })
 })
+

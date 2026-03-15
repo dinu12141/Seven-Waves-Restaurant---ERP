@@ -206,15 +206,36 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   async function sendMessage(recipientEmployeeId, subject, body, priority = 'normal') {
     const branchId = authStore.currentBranch?.id
-    const { error } = await supabase.from('manager_messages').insert({
+    const { error, data: msgData } = await supabase.from('manager_messages').insert({
       sender_employee_id: _myEmployeeId || null,
       receiver_employee_id: recipientEmployeeId,
       branch_id: branchId,
       subject: subject || 'Direct Message',
       message_body: body,
       priority,
-    })
+    }).select('id').single()
     if (error) throw error
+
+    // Also push a waiter_notification so the waiter sees it in their app
+    if (recipientEmployeeId && msgData?.id) {
+      const { data: wp } = await supabase
+        .from('waiter_profiles')
+        .select('id')
+        .eq('employee_id', recipientEmployeeId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (wp?.id) {
+        await supabase.from('waiter_notifications').insert({
+          waiter_profile_id: wp.id,
+          notification_type: 'manager_message',
+          title: priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
+          body: (subject ? `📌 ${subject}\n` : '') + body,
+          payload: { manager_message_id: msgData.id, priority, subject: subject || 'Direct Message' },
+          action_url: null,
+        }).catch(e => console.error('Failed to notify waiter:', e))
+      }
+    }
+
     await loadMessages()
   }
 
