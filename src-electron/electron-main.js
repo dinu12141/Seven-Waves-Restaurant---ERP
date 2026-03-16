@@ -1,21 +1,56 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+/**
+ * Electron Main Process — Seven Waves ERP
+ *
+ * Path strategy
+ * ─────────────
+ * • app.getAppPath() — avoids __dirname / import.meta.url ESM-CJS issues
+ * • Preload path is hardcoded for production ('preload/electron-preload.cjs')
+ *   because QUASAR_ELECTRON_PRELOAD env-vars are NOT inlined at build time
+ *   by esbuild when extendElectronMainConf overrides the config.
+ *   In dev Quasar still sets them correctly via its own define plugin.
+ */
+
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'node:path'
 import os from 'node:os'
-import { fileURLToPath } from 'node:url'
 
-// needed in case process is undefined under Linux
 const platform = process.platform || os.platform()
 
-const currentDir = fileURLToPath(new URL('.', import.meta.url))
+// Synchronously available before whenReady()
+// Dev:        <project root>
+// Production: <install>\resources\app
+const appDir = app.getAppPath()
+
+app.disableHardwareAcceleration()
+
+// Show a visible dialog on crash instead of silently dying
+process.on('uncaughtException', (err) => {
+  console.error('[Main] Uncaught Exception:', err)
+  dialog.showErrorBox('Seven Waves ERP — Error', `${err.message}\n\n${err.stack}`)
+  app.exit(1)
+})
 
 let mainWindow
 
-async function createWindow () {
-  /**
-   * Initial window options
-   */
+async function createWindow() {
+  // ── Preload path ──────────────────────────────────────────────
+  // In production the preload always lands at preload/electron-preload.cjs
+  // inside appDir (set by extendPackageJson + electron-builder files config).
+  // In dev mode Quasar inlines QUASAR_ELECTRON_PRELOAD_FOLDER &
+  // QUASAR_ELECTRON_PRELOAD_EXTENSION correctly via its define plugin.
+  const preloadPath = process.env.DEV
+    ? path.resolve(
+        appDir,
+        process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+        'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION,
+      )
+    : path.join(appDir, 'preload', 'electron-preload.cjs')
+
   mainWindow = new BrowserWindow({
-    icon: path.resolve(currentDir, 'icons/icon.png'), // tray icon
+    icon: path.join(
+      appDir,
+      app.isPackaged ? 'icons/icon.png' : 'src-electron/icons/icon.png',
+    ),
     width: 1280,
     height: 800,
     minWidth: 1024,
@@ -23,25 +58,19 @@ async function createWindow () {
     useContentSize: true,
     webPreferences: {
       contextIsolation: true,
-      // More info: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/electron-preload-script
-      preload: path.resolve(
-        currentDir,
-        path.join(process.env.QUASAR_ELECTRON_PRELOAD_FOLDER, 'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION)
-      )
-    }
+      preload: preloadPath,
+    },
   })
 
   if (process.env.DEV) {
     await mainWindow.loadURL(process.env.APP_URL)
   } else {
-    await mainWindow.loadFile(path.resolve(currentDir, 'index.html'))
+    await mainWindow.loadFile(path.join(appDir, 'index.html'))
   }
 
   if (process.env.DEBUGGING) {
-    // if on DEV or Production with debug enabled
     mainWindow.webContents.openDevTools()
   } else {
-    // we're on production; no access to devtools pls
     mainWindow.webContents.on('devtools-opened', () => {
       mainWindow.webContents.closeDevTools()
     })
@@ -52,47 +81,37 @@ async function createWindow () {
   })
 }
 
-// ── Silent Printing IPC Handler ──────────────────────────────────────
-// The renderer can call window.electronAPI.printSilent(options) to trigger
-// a silent print (no system dialog). Useful for POS receipt / KOT printing.
+// ── Silent Printing ────────────────────────────────────────────
 ipcMain.handle('print-silent', async (_event, options = {}) => {
   if (!mainWindow) return { success: false, error: 'No active window' }
-
   return new Promise((resolve) => {
     mainWindow.webContents.print(
       {
-        silent: true,                        // no dialog
-        printBackground: true,               // include CSS backgrounds
-        deviceName: options.printerName || '', // specific printer or default
+        silent: true,
+        printBackground: true,
+        deviceName: options.printerName || '',
         copies: options.copies || 1,
-        ...options,                          // allow caller overrides
+        ...options,
       },
       (success, failureReason) => {
-        resolve({
-          success,
-          error: success ? null : failureReason,
-        })
-      }
+        resolve({ success, error: success ? null : failureReason })
+      },
     )
   })
 })
 
-// ── Get list of available printers ───────────────────────────────────
 ipcMain.handle('get-printers', async () => {
   if (!mainWindow) return []
   return mainWindow.webContents.getPrintersAsync()
 })
 
+// ── App lifecycle ──────────────────────────────────────────────
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
-  if (platform !== 'darwin') {
-    app.quit()
-  }
+  if (platform !== 'darwin') app.quit()
 })
 
 app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow()
-  }
+  if (mainWindow === null) createWindow()
 })

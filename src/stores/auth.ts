@@ -27,6 +27,44 @@ interface AuthState {
   _fetchingUserData: boolean
 }
 
+// ── Auth cache helpers ─────────────────────────────────────────
+// Caches roles, permissions, branches in localStorage so repeat
+// logins are instant — one network call (signInWithPassword) instead of 4.
+const CACHE_KEY = (uid: string) => `erp_auth_${uid}`
+
+interface AuthCache {
+  roles: UserRole[]
+  permissions: string[]
+  branches: any[]
+  cachedAt: number
+}
+
+function saveAuthCache(uid: string, data: Omit<AuthCache, 'cachedAt'>) {
+  try {
+    localStorage.setItem(CACHE_KEY(uid), JSON.stringify({ ...data, cachedAt: Date.now() }))
+  } catch {}
+}
+
+function loadAuthCache(uid: string): AuthCache | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY(uid))
+    if (!raw) return null
+    const cache: AuthCache = JSON.parse(raw)
+    // Expire cache after 24 hours
+    if (Date.now() - cache.cachedAt > 86_400_000) {
+      localStorage.removeItem(CACHE_KEY(uid))
+      return null
+    }
+    return cache
+  } catch {
+    return null
+  }
+}
+
+function clearAuthCache(uid: string) {
+  try { localStorage.removeItem(CACHE_KEY(uid)) } catch {}
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
@@ -72,8 +110,18 @@ export const useAuthStore = defineStore('auth', {
         if (session) {
           this.session = session
           this.user = session.user
-          // Fetch user data (roles etc.) — needed before first render
-          await this.fetchUserData()
+
+          // Try cache first — avoids 3 DB calls on every app restart
+          const cache = loadAuthCache(session.user.id)
+          if (cache) {
+            this.roles = cache.roles
+            this.permissions = cache.permissions
+            this.branches = cache.branches
+            // Refresh silently in background
+            this._backgroundRefreshUserData()
+          } else {
+            await this.fetchUserData()
+          }
         }
       } catch (err) {
         console.error('[Auth] Init error:', err)
@@ -85,14 +133,20 @@ export const useAuthStore = defineStore('auth', {
     async fetchUserData() {
       if (!this.user || this._fetchingUserData) return
       this._fetchingUserData = true
+      const uid = this.user.id
       try {
-        // All 4 queries run in parallel — fastest possible
         await Promise.all([
           this._fetchRoles(),
           this._fetchPermissions(),
           this._fetchProfile(),
           this._fetchBranches(),
         ])
+        // Save to cache for fast future logins/restarts
+        saveAuthCache(uid, {
+          roles: this.roles,
+          permissions: this.permissions,
+          branches: this.branches,
+        })
       } finally {
         this._fetchingUserData = false
       }
@@ -101,13 +155,22 @@ export const useAuthStore = defineStore('auth', {
     /** Background fetch — doesn't block anything */
     _backgroundFetchUserData() {
       if (!this.user) return
-      // Fire and forget — no await
       Promise.all([
         this._fetchRoles(),
         this._fetchPermissions(),
         this._fetchProfile(),
         this._fetchBranches(),
-      ]).catch((err) => console.error('[Auth] Background fetch error:', err))
+      ])
+        .then(() => {
+          if (this.user) {
+            saveAuthCache(this.user.id, {
+              roles: this.roles,
+              permissions: this.permissions,
+              branches: this.branches,
+            })
+          }
+        })
+        .catch((err) => console.error('[Auth] Background fetch error:', err))
     },
 
     async _fetchRoles() {
@@ -174,10 +237,9 @@ export const useAuthStore = defineStore('auth', {
 
     /**
      * FAST Sign In:
-     * 1. Call Supabase signIn
-     * 2. Set user + session immediately
-     * 3. Fetch roles (critical for routing) — profile & branches in background
-     * 4. Return ASAP so the UI can navigate
+     * 1. signInWithPassword (unavoidable network call)
+     * 2. If cache exists for this user → restore instantly, navigate, refresh in background
+     * 3. If no cache → fetch roles+permissions+branches in parallel, cache result, navigate
      */
     async signIn(email: string, password: string): Promise<{ data: any; error: any }> {
       this.loading = true
@@ -194,21 +256,36 @@ export const useAuthStore = defineStore('auth', {
           return { data: null, error: { message: msg } }
         }
 
-        // Set immediately — no waiting
         this.user = data.user
         this.session = data.session
 
-        // Fetch roles, permissions AND branches together before routing.
-        // Branches MUST be awaited so that every page's onMounted() has
-        // authStore.currentBranch available immediately — without this,
-        // pages open before branch data loads and show empty tables.
-        await Promise.all([
-          this._fetchRoles(),
-          this._fetchPermissions(),
-          this._fetchBranches(),
-        ])
+        // ── Try cache first ───────────────────────────────────────
+        const cache = loadAuthCache(data.user.id)
 
-        // Profile, modules, notifications load in background (non-blocking)
+        if (cache) {
+          // Instant restore — no extra DB calls before navigating
+          this.roles = cache.roles
+          this.permissions = cache.permissions
+          this.branches = cache.branches
+
+          // Refresh all data silently in background
+          this._backgroundRefreshUserData()
+        } else {
+          // First login for this user — fetch in parallel (no cache yet)
+          await Promise.all([
+            this._fetchRoles(),
+            this._fetchPermissions(),
+            this._fetchBranches(),
+          ])
+          // Save to cache for next login
+          saveAuthCache(data.user.id, {
+            roles: this.roles,
+            permissions: this.permissions,
+            branches: this.branches,
+          })
+        }
+
+        // Profile, modules, notifications — always background
         this._backgroundFetchNonCritical()
 
         return { data, error: null }
@@ -218,6 +295,25 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false
       }
+    },
+
+    /** Refresh roles + permissions + branches in background and update cache */
+    _backgroundRefreshUserData() {
+      if (!this.user) return
+      const uid = this.user.id
+      Promise.all([
+        this._fetchRoles(),
+        this._fetchPermissions(),
+        this._fetchBranches(),
+      ])
+        .then(() => {
+          saveAuthCache(uid, {
+            roles: this.roles,
+            permissions: this.permissions,
+            branches: this.branches,
+          })
+        })
+        .catch((err) => console.error('[Auth] Background refresh error:', err))
     },
 
     /** Fetch profile + modules + notifications without blocking (branches already loaded) */
@@ -245,6 +341,8 @@ export const useAuthStore = defineStore('auth', {
      * 2. Call Supabase signOut in background (don't wait for it)
      */
     async signOut() {
+      const uid = this.user?.id
+
       // Cleanup notifications before clearing user data
       import('src/stores/notifications')
         .then(({ useNotificationStore }) => {
@@ -256,14 +354,16 @@ export const useAuthStore = defineStore('auth', {
       // Clear local state FIRST — instant logout feel
       this._clearUserData()
 
+      // Clear auth cache for this user
+      if (uid) clearAuthCache(uid)
+
       // Fire Supabase signOut and wait for it to clear local storage tokens
       await supabase.auth.signOut().catch((err) => {
         console.error('Background signOut error:', err)
       })
 
-      // Forcefully clear all browser storage specifically to ensure no auto-logins happen
+      // Forcefully clear all browser storage to ensure no auto-logins happen
       if (typeof window !== 'undefined') {
-        window.localStorage.clear()
         window.sessionStorage.clear()
       }
     },

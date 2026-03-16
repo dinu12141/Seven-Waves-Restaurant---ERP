@@ -124,8 +124,6 @@
             indicator-color="transparent"
             align="left"
             inline-label
-            outside-arrows
-            mobile-arrows
             style="width: 100%"
           >
             <q-tab
@@ -159,11 +157,11 @@
         </div>
       </div>
 
-      <q-scroll-area class="erp-sidebar__scroll">
+      <div class="erp-sidebar__scroll">
         <nav class="erp-sidebar__nav">
           <template v-for="(items, groupName) in groupedSidebarItems" :key="groupName">
-            <!-- Section header rendered conditionally based on item.group -->
-            <div v-if="groupName && groupName !== 'default'" class="erp-sidebar__section-label">
+            <!-- Section header — hide for 'Overview' group (redundant with tab nav) -->
+            <div v-if="groupName && groupName !== 'default' && groupName !== 'Overview'" class="erp-sidebar__section-label">
               {{ groupName }}
             </div>
 
@@ -221,7 +219,7 @@
             </template>
           </template>
         </nav>
-      </q-scroll-area>
+      </div>
 
       <!-- Version footer -->
       <div class="erp-sidebar__footer">
@@ -286,27 +284,16 @@ const searchInputRef = ref(null)
 
 const activeSection = ref(null)
 
+// Top nav tab click — switches sidebar section AND navigates to the
+// first accessible item in that section (its overview/dashboard page).
 const handleSectionClick = (section) => {
-  const dashboardRoutes = {
-    'MAIN': '/dashboard',
-    'OPERATIONS': '/operations/dashboard',
-    'INVENTORY': '/inventory/dashboard',
-    'PROCUREMENT': '/procurement/dashboard',
-    'FINANCE': '/finance/dashboard',
-    'REPORTS': '/reports/dashboard',
-    'HR': '/hr/dashboard',
-    'SYSTEM': '/system/dashboard'
-  }
-
-  const targetRoute = dashboardRoutes[section]
-  if (targetRoute) {
-    router.push(targetRoute)
-  } else {
-    // Fallback logic
-    const sectionItems = filteredMenuItems.value.filter(item => item.section === section)
-    if (sectionItems.length > 0 && sectionItems[0].to) {
-      router.push(sectionItems[0].to)
-    }
+  activeSection.value = section
+  // Find the first accessible nav item in this section
+  const firstItem = filteredMenuItems.value.find(
+    (item) => item.section === section && item.to
+  )
+  if (firstItem?.to && route.path !== firstItem.to) {
+    router.push(firstItem.to)
   }
 }
 
@@ -400,29 +387,60 @@ const groupedSidebarItems = computed(() => {
   return groups
 })
 
-/** Sync active section with the current route path */
+/**
+ * Maps a route path to its natural section.
+ * Used on initial load and direct URL navigation only.
+ */
+function sectionForPath(path) {
+  if (path.startsWith('/inventory')) return 'INVENTORY'
+  if (path.startsWith('/procurement')) return 'PROCUREMENT'
+  if (path.startsWith('/finance')) return 'FINANCE'
+  if (path.startsWith('/reports')) return 'REPORTS'
+  if (path.startsWith('/hr')) return 'HR'
+  if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile') return 'SYSTEM'
+  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter')) return 'OPERATIONS'
+  return 'MAIN'
+}
+
+// On initial load: set the active section from the URL.
+// Once the user manually clicks a tab, the tab stays on their choice
+// regardless of which page they navigate to via sidebar items.
 watch(
-  [() => route.path, topNavSections],
-  ([newPath, sections]) => {
+  topNavSections,
+  (sections) => {
     if (!sections || sections.length === 0) return
+    // Only auto-detect on first load (activeSection still null)
+    if (activeSection.value) return
 
-    let section = 'MAIN'
-    if (newPath.startsWith('/inventory')) section = 'INVENTORY'
-    else if (newPath.startsWith('/procurement')) section = 'PROCUREMENT'
-    else if (newPath.startsWith('/finance')) section = 'FINANCE'
-    else if (newPath.startsWith('/reports')) section = 'REPORTS'
-    else if (newPath.startsWith('/hr')) section = 'HR'
-    else if (newPath.startsWith('/admin') || newPath.startsWith('/system') || newPath === '/profile') section = 'SYSTEM'
-    else if (newPath === '/dashboard' || newPath === '/manager/floor') section = 'MAIN'
-    else section = 'OPERATIONS' // Default fallback for pos, kitchen, etc.
-
-    if (sections.includes(section)) {
-      activeSection.value = section
-    } else {
-      activeSection.value = sections[0]
-    }
+    const section = sectionForPath(route.path)
+    activeSection.value = sections.includes(section) ? section : sections[0]
   },
   { immediate: true }
+)
+
+// When the user navigates directly via browser URL (not sidebar click),
+// re-sync the tab. We detect this by checking if the new path's natural
+// section is completely different from what the sidebar currently shows.
+// We never auto-sync when the user is just clicking sidebar items — that
+// would undo their manual tab selection.
+watch(
+  () => route.path,
+  (newPath) => {
+    const sections = topNavSections.value
+    if (!sections || sections.length === 0) return
+
+    const natural = sectionForPath(newPath)
+    // Only override the active tab when the URL's section is a real,
+    // known section AND the currently-shown section has no items that
+    // lead to this path (meaning the user typed/pasted the URL directly).
+    const currentSectionHasPath = filteredMenuItems.value
+      .filter(item => item.section === activeSection.value)
+      .some(item => item.to && newPath.startsWith(item.to.split('?')[0]))
+
+    if (!currentSectionHasPath && sections.includes(natural)) {
+      activeSection.value = natural
+    }
+  }
 )
 
 </script>
@@ -440,14 +458,20 @@ watch(
   gap: 8px;
 
   &--top {
-    height: 44px;
-    min-height: 44px;
-    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    height: 48px !important;
+    min-height: 48px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   &--bottom {
-    height: 36px;
-    min-height: 36px;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
   }
 }
 
@@ -500,35 +524,52 @@ watch(
 
 // ─── Global Search ─────────────────────────────────────────────────────────────
 .erp-search-wrap {
-  flex: 0 1 200px;
-  margin: 0 8px;
+  flex: 0 1 320px;
+  margin: 0 12px;
   transition: flex 0.3s ease;
 
   &:focus-within {
-    flex: 0 1 350px; /* Expand on focus */
+    flex: 0 1 440px;
   }
 }
 
 .erp-search {
   :deep(.q-field__control) {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid var(--erp-border) !important;
-    border-radius: 6px !important;
-    height: 30px !important;
-    min-height: 30px !important;
-    padding: 0 12px !important;
-    transition: border-color 0.15s;
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 8px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 10px 0 8px !important;
+    transition: border-color 0.2s, background-color 0.2s;
+    display: flex;
+    align-items: center;
 
     &:focus-within {
       border-color: var(--erp-primary) !important;
-      background-color: rgba(67, 133, 245, 0.04) !important;
+      background-color: rgba(67, 133, 245, 0.06) !important;
     }
+  }
+
+  :deep(.q-field__prepend) {
+    height: 34px !important;
+    padding-right: 6px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  :deep(.q-field__append) {
+    height: 34px !important;
+    padding-left: 8px !important;
+    display: flex;
+    align-items: center;
   }
 
   :deep(.q-field__native) {
     font-size: 13px !important;
     color: var(--erp-text-primary) !important;
-    padding: 0 4px !important;
+    padding: 0 !important;
+    line-height: 34px !important;
     &::placeholder {
       color: var(--erp-text-tertiary);
     }
@@ -536,6 +577,7 @@ watch(
 
   &__icon {
     color: var(--erp-text-tertiary);
+    margin-top: 0 !important;
   }
 
   &__kbd {
@@ -543,10 +585,11 @@ watch(
     font-family: var(--erp-font-family);
     color: var(--erp-text-tertiary);
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--erp-border);
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 4px;
-    padding: 1px 5px;
+    padding: 2px 6px;
     white-space: nowrap;
+    line-height: 1.4;
   }
 }
 
@@ -554,36 +597,52 @@ watch(
 .erp-top-nav {
   display: flex;
   align-items: center;
-  margin: 0 16px;
-  
+  justify-content: flex-start;
+  width: 100%;
+  height: 36px;
+  padding: 0 16px;
+
   :deep(.q-tabs) {
-    height: 40px;
-    min-height: 40px;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+  }
+
+  :deep(.q-tabs__content) {
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  :deep(.q-tabs__arrow) {
+    display: none !important;
   }
 
   :deep(.q-tab) {
-    min-height: 26px;
+    min-height: 26px !important;
+    height: 26px !important;
     padding: 0 10px;
     border-radius: 4px;
-    margin-right: 6px;
+    margin-right: 4px;
     transition: all 0.2s ease;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     font-weight: 500;
     letter-spacing: 0.4px;
-    
+
+    .q-tab__content { padding: 0 !important; min-height: unset !important; height: 26px !important; display: flex !important; align-items: center !important; }
+    .q-tab__label   { font-size: 11px; line-height: 1; }
+
     &:hover {
       background: rgba(255, 255, 255, 0.05);
     }
   }
-  
+
   :deep(.q-tab--active) {
     color: #ffffff !important;
-    background: rgba(255, 255, 255, 0.18) !important; // Gray/alu pata translucent look
+    background: rgba(255, 255, 255, 0.14) !important;
     font-weight: 700;
-    .q-tab__content {
-      color: #ffffff; // White text for better contrast
-    }
+    .q-tab__label { color: #ffffff; }
   }
 }
 
@@ -781,13 +840,20 @@ watch(
   display: flex;
   flex-direction: column;
 
+  // Hide the q-drawer's own scrollbar
+  :deep(.q-drawer__content) {
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    &::-webkit-scrollbar { display: none !important; }
+  }
+
   &__logo {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 80px;
-    min-height: 80px;
+    height: 85px !important;
+    min-height: 85px !important;
     border-bottom: 1px solid var(--erp-border);
     flex-shrink: 0;
 
@@ -818,7 +884,14 @@ watch(
 
   &__scroll {
     flex: 1;
-    height: calc(100% - 120px); // logo (80) + footer heights
+    height: calc(100% - 120px);
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    // Hide scrollbar across all browsers
+    scrollbar-width: none;       // Firefox
+    -ms-overflow-style: none;    // IE/Edge
+    &::-webkit-scrollbar { display: none; } // Chrome/Safari
   }
 
   &__nav {

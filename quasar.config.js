@@ -1,5 +1,4 @@
 // Configuration for your app
-// Trigger DEV server restart
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
 import { defineConfig } from '#q-app/wrappers'
@@ -172,13 +171,14 @@ export default defineConfig((ctx) => {
       hideSplashscreen: true,
     },
 
-    // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
+    // ═══════════════════════════════════════════════════════════════
+    //  ELECTRON — Windows Installer (NSIS via electron-builder)
+    // ═══════════════════════════════════════════════════════════════
     electron: {
       preloadScripts: ['electron-preload'],
       inspectPort: 5858,
 
       // Use electron-builder for NSIS installer
-      // IMPORTANT: Run build from an Administrator PowerShell to avoid symlink errors
       bundler: 'builder',
 
       packager: {
@@ -187,15 +187,53 @@ export default defineConfig((ctx) => {
         appCopyright: 'Copyright © 2026 Cosmo Solutions',
       },
 
+      // ── Force CJS output for the electron main process ──────────
+      // Electron crashes (0xC0000005 Access Violation) when loading
+      // an ESM main process from inside an ASAR package. Compiling
+      // to CJS (.cjs) avoids this bug.
+      extendElectronMainConf(esbuildConf) {
+        esbuildConf.format = 'cjs'
+        // 'node' platform tells esbuild not to mangle __dirname / __filename
+        // and to treat Node built-ins as external — required for CJS output.
+        esbuildConf.platform = 'node'
+        esbuildConf.outfile = esbuildConf.outfile.replace(/\.js$/, '.cjs')
+      },
+
+      // ── Fix package.json main entry & strip "type":"module" ─────
+      // Quasar hardcodes main: './electron-main.js'. We override it
+      // to the .cjs file compiled above and remove "type":"module"
+      // so Node does not treat CJS files as ESM.
+      extendPackageJson(pkg) {
+        pkg.main = './electron-main.cjs'
+        delete pkg.type
+      },
+
       builder: {
         appId: 'com.sevenwaves.erp',
         productName: 'Seven Waves ERP',
         copyright: 'Copyright © 2026 Cosmo Solutions',
         forceCodeSigning: false,
 
+        // Only include the files the production app actually needs.
+        // node_modules are NOT needed — Vite already bundled
+        // everything into assets/.
+        files: [
+          '**/*',
+          '!node_modules/**',
+        ],
+
+        // ASAR disabled — Electron 41 crashes (0xC0000005 Access Violation)
+        // when loading a CJS main process from inside an ASAR archive on Windows.
+        // The UnPackaged app works perfectly; packaging without ASAR fixes it.
+        asar: false,
+
         win: {
           target: [{ target: 'nsis', arch: ['x64'] }],
           icon: 'src-electron/icons/icon.ico',
+          // Prevent pe-library from modifying the .exe binary.
+          // On some Windows builds the modification corrupts the
+          // PE headers causing 0xC0000005 Access Violation.
+          signAndEditExecutable: false,
         },
 
         nsis: {

@@ -1,21 +1,15 @@
 <template>
-  <div class="erp-chart-card">
-    <div class="erp-chart-card__header q-px-md q-pt-md">
-      <div class="erp-chart-card__title">{{ title }}</div>
-      <div v-if="subtitle" class="erp-chart-card__subtitle text-grey-5">{{ subtitle }}</div>
-    </div>
-    <div class="erp-chart-card__body q-pa-md" style="min-height: 250px; position: relative">
-      <q-inner-loading :showing="loading" dark>
-        <q-spinner-dots size="40px" color="primary" />
-      </q-inner-loading>
-      <apexchart
-        v-if="!loading && computedOptions && isMounted"
-        :type="type"
-        :height="height"
-        :options="computedOptions"
-        :series="series"
-      />
-    </div>
+  <div class="erp-chart-wrap" style="position: relative">
+    <q-inner-loading :showing="loading" dark>
+      <q-spinner-dots size="40px" color="primary" />
+    </q-inner-loading>
+    <apexchart
+      v-if="!loading && computedOptions && isMounted"
+      :type="type"
+      :height="height"
+      :options="computedOptions"
+      :series="series"
+    />
   </div>
 </template>
 
@@ -93,39 +87,7 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.erp-chart-card {
-  background: linear-gradient(145deg, rgba(20, 25, 35, 0.7) 0%, rgba(15, 20, 28, 0.9) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 48px;
-    left: 16px;
-    right: 16px;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
-  }
-
-  &__title {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #ffffff;
-  }
-  
-  &__subtitle {
-    font-size: 13px;
-    color: #9ca3af;
-    margin-top: 2px;
-  }
+.erp-chart-wrap {
+  width: 100%;
 }
 </style>

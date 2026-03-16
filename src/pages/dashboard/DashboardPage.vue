@@ -1,451 +1,489 @@
 <template>
-  <q-page class="neon-dashboard q-pa-xl">
-    <div class="row justify-between items-center q-mb-lg">
-      <div class="row items-center q-gutter-x-md">
-        <q-btn flat round class="bg-cyan-10 text-cyan neon-glow-text" icon="space_dashboard" size="sm" />
-        <div class="text-white text-h5 font-mono text-weight-bold letter-spacing-1">SEVEN_WAVES <span class="text-grey-6 font-14">// ERP v2.0</span></div>
+  <q-page class="dash-page">
+
+    <!-- ══════════════════════════════════════════════
+         HEADER ROW
+    ══════════════════════════════════════════════ -->
+    <div class="dash-header">
+      <div class="dash-header__left">
+        <div class="dash-header__brand">
+          <span class="dash-header__brand-name">Seven Waves</span>
+          <span class="dash-header__brand-tag">ERP v2.0</span>
+        </div>
+        <div class="dash-header__time-info">
+          <q-icon name="schedule" size="13px" class="q-mr-xs" />
+          {{ currentTime }} &nbsp;·&nbsp; {{ currentDate }}
+        </div>
       </div>
-      <div>
+      <div class="dash-header__right">
+        <div class="live-pulse-badge">
+          <span class="live-pulse-badge__dot"></span>
+          LIVE
+        </div>
         <q-btn-toggle
           v-model="timeFilter"
-          class="neon-toggle font-mono text-weight-bold"
-          no-caps
-          rounded
-          unelevated
-          toggle-color="cyan-5"
-          color="white"
-          text-color="dark"
+          class="dash-time-toggle"
+          no-caps unelevated dense
+          toggle-color="primary"
+          color="transparent"
+          text-color="grey-5"
           :options="[
-            {label: 'DAILY', value: 'daily'},
-            {label: 'WEEKLY', value: 'weekly'},
-            {label: 'MONTHLY', value: 'monthly'}
+            { label: 'Today',   value: 'daily'   },
+            { label: 'Week',    value: 'weekly'  },
+            { label: 'Month',   value: 'monthly' },
           ]"
         />
       </div>
     </div>
 
-    <div class="row q-col-gutter-lg q-mb-xl">
-      <!-- KPIs -->
-      <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="neon-panel panel-cyan full-height column justify-between" flat>
-          <div class="text-cyan-4 text-caption font-mono letter-spacing-1 text-weight-bold">GROSS_REVENUE</div>
-          <div class="q-mt-md">
-            <div class="text-h4 text-white text-weight-bold row items-baseline q-gutter-x-sm font-mono" style="line-height:0.9;">
-              <span class="text-subtitle1 text-grey-5">LKR</span><span>{{ kpi1 }}</span>
-            </div>
-            <div class="text-cyan-4 font-mono font-10 q-mt-md letter-spacing-1">
-              <q-icon name="trending_up" /> {{ timeFilter === 'daily' ? "TODAY'S" : timeFilter.toUpperCase() }} SALES
-            </div>
+    <!-- ══════════════════════════════════════════════
+         KPI CARDS
+    ══════════════════════════════════════════════ -->
+    <div class="kpi-grid">
+
+      <!-- Gross Revenue -->
+      <div class="kpi-card kpi-card--revenue">
+        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--revenue">
+          <q-icon name="payments" size="22px" />
+        </div>
+        <div class="kpi-card__body">
+          <div class="kpi-card__label">Gross Revenue</div>
+          <div class="kpi-card__value">
+            <span class="kpi-card__currency">LKR</span>
+            {{ kpi1 }}
           </div>
-        </q-card>
+          <div class="kpi-card__sub kpi-card__sub--up">
+            <q-icon name="trending_up" size="12px" class="q-mr-xs" />
+            {{ timeFilter === 'daily' ? "Today's" : timeFilter === 'weekly' ? "This Week's" : "This Month's" }} Sales
+          </div>
+        </div>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="neon-panel panel-pink full-height column justify-between" flat>
-          <div class="text-pink-4 text-caption font-mono letter-spacing-1 text-weight-bold">ACTIVE_ORDERS</div>
-          <div class="q-mt-md">
-            <div class="text-h3 text-white text-weight-bold row items-baseline q-gutter-x-sm font-mono" style="line-height:0.9;">
-              <span>{{ kpi2 }}</span><span class="text-subtitle1 text-grey-5">TICKETS</span>
-            </div>
-            <div class="text-pink-4 font-mono font-10 q-mt-md letter-spacing-1">
-              <q-icon name="warning" size="14px" /> PENDING ACTIONS
-            </div>
+      <!-- Active Orders -->
+      <div class="kpi-card kpi-card--orders">
+        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--orders">
+          <q-icon name="receipt_long" size="22px" />
+        </div>
+        <div class="kpi-card__body">
+          <div class="kpi-card__label">Active Orders</div>
+          <div class="kpi-card__value">{{ kpi2 }}</div>
+          <div class="kpi-card__sub kpi-card__sub--warn">
+            <q-icon name="pending_actions" size="12px" class="q-mr-xs" />
+            {{ kpi2 }} Pending Actions
           </div>
-        </q-card>
+        </div>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="neon-panel panel-cyan full-height column justify-between" flat>
-          <div class="text-cyan-4 text-caption font-mono letter-spacing-1 text-weight-bold">TABLE_OCCUPANCY</div>
-          <div class="q-mt-md">
-            <div class="text-h3 text-white text-weight-bold row items-baseline q-gutter-x-sm font-mono q-mb-sm" style="line-height:0.9;">
-              <span>{{ (kpi3 * 100).toFixed(1) }}</span><span class="text-subtitle1 text-grey-5">%</span>
-            </div>
-            <q-linear-progress :value="kpi3" color="cyan-4" track-color="transparent" class="q-mt-lg neon-progress" size="4px" />
+      <!-- Table Occupancy -->
+      <div class="kpi-card kpi-card--tables">
+        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--tables">
+          <q-icon name="table_restaurant" size="22px" />
+        </div>
+        <div class="kpi-card__body">
+          <div class="kpi-card__label">Table Occupancy</div>
+          <div class="kpi-card__value">
+            {{ (kpi3 * 100).toFixed(0) }}<span class="kpi-card__unit">%</span>
           </div>
-        </q-card>
+          <div class="kpi-card__progress-row">
+            <q-linear-progress :value="kpi3" color="teal-4" track-color="white-1" size="4px" rounded class="kpi-card__progress" />
+            <span class="kpi-card__sub kpi-card__sub--info q-ml-sm">{{ occupiedTablesCount }}/{{ totalTablesCount }}</span>
+          </div>
+        </div>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="neon-panel panel-cyan full-height column justify-between" flat>
-          <div class="text-cyan-4 text-caption font-mono letter-spacing-1 text-weight-bold">ACTIVE_STAFF</div>
-          <div class="q-mt-md">
-            <div class="text-h3 text-white text-weight-bold font-mono" style="line-height:0.9;">{{ kpi4 }}</div>
-            <div class="row q-mt-lg q-gutter-x-xs items-center">
-              <div class="peer-dot bg-cyan-2"></div>
-              <div class="peer-dot bg-cyan-4"></div>
-              <div class="peer-dot bg-cyan-6"></div>
-              <div class="text-grey-5 font-10 q-ml-sm letter-spacing-1">ON FLOOR</div>
-            </div>
+      <!-- Active Staff -->
+      <div class="kpi-card kpi-card--staff">
+        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--staff">
+          <q-icon name="groups" size="22px" />
+        </div>
+        <div class="kpi-card__body">
+          <div class="kpi-card__label">Active Staff</div>
+          <div class="kpi-card__value">{{ kpi4 }}</div>
+          <div class="kpi-card__avatars">
+            <div v-for="n in Math.min(Number(kpi4), 5)" :key="n" class="kpi-card__avatar-dot"></div>
+            <span class="kpi-card__sub kpi-card__sub--staff q-ml-xs">On Floor</span>
           </div>
-        </q-card>
+        </div>
       </div>
+
     </div>
 
-    <div class="row q-col-gutter-xl">
-      <div class="col-12 col-xl-8 column q-gutter-y-xl">
-        <!-- Chart -->
-        <q-card class="neon-panel bg-transparent col-auto" flat style="padding: 32px">
-          <div class="row justify-between items-start q-mb-lg">
+    <!-- ══════════════════════════════════════════════
+         MAIN CONTENT GRID
+    ══════════════════════════════════════════════ -->
+    <div class="dash-grid">
+
+      <!-- ── LEFT COLUMN ── -->
+      <div class="dash-grid__left">
+
+        <!-- Revenue Chart -->
+        <div class="dash-card">
+          <div class="dash-card__header">
             <div>
-              <div class="text-white text-h6 font-mono text-weight-bold letter-spacing-1">REVENUE_TREND</div>
-              <div class="text-grey-6 font-mono font-10 letter-spacing-1">SALES TELEMETRY // {{ timeFilter.toUpperCase() }}</div>
+              <div class="dash-card__title">Revenue Trend</div>
+              <div class="dash-card__sub">Sales performance · {{ timeFilter }}</div>
             </div>
-            <div class="row q-gutter-x-sm">
-              <div class="badge-cyan">LIVE</div>
+            <div class="dash-card__header-right">
+              <div class="legend-dot legend-dot--revenue"></div>
+              <span class="legend-label">Revenue</span>
             </div>
           </div>
           <DashboardChart
             type="area"
-            height="340"
+            height="220"
             :series="revenueSeries"
-            :options="neonChartOptions"
+            :options="chartOptions"
             :loading="loading"
           />
-        </q-card>
+        </div>
 
-        <!-- Active Processes Table -->
-        <q-card class="neon-panel bg-transparent col" flat style="padding: 32px">
-          <div class="row justify-between items-center q-mb-lg">
-            <div class="text-white text-subtitle1 font-mono text-weight-bold letter-spacing-1">LIVE_ORDER_FEED</div>
-            <q-btn to="/orders" flat dense class="text-cyan-4 font-mono font-10 letter-spacing-1 cursor-pointer" label="VIEW_ALL" />
+        <!-- Order Type Split -->
+        <div class="dash-card dash-split-row">
+
+          <!-- Dine In vs Takeaway donut -->
+          <div class="dash-split-row__donut">
+            <div class="dash-card__title dash-card__title--sm">Order Split</div>
+            <DashboardChart
+              type="donut"
+              height="160"
+              :series="donutSeries"
+              :options="donutOptions"
+              :loading="loading"
+            />
           </div>
-          <div class="neon-table">
-            <div class="row text-grey-6 font-mono font-10 letter-spacing-1 q-mb-sm q-pb-md" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-              <div class="col-2">ORDER_ID</div>
-              <div class="col-5">TYPE_/_TABLE</div>
-              <div class="col-2 text-right q-pr-lg">AMOUNT</div>
-              <div class="col-3 text-right">STATUS</div>
+
+          <!-- Live Order Feed -->
+          <div class="dash-split-row__feed">
+            <div class="dash-card__header">
+              <div class="dash-card__title dash-card__title--sm">Live Order Feed</div>
+              <q-btn to="/orders" flat dense no-caps class="view-all-btn" label="View All →" />
             </div>
-            <div class="column q-gutter-y-sm">
-              <div class="row items-center font-mono font-11 text-white q-py-sm" v-for="proc in activeProcesses" :key="proc.id">
-                <div class="col-2 text-grey-4">#{{ proc.pid }}</div>
-                <div class="col-5 row items-center q-gutter-x-sm">
-                  <div class="status-dot" :class="'bg-' + proc.coreColor"></div>
-                  <span class="text-grey-3">{{ proc.core }}</span>
+            <div class="order-feed">
+              <div
+                v-for="proc in activeProcesses"
+                :key="proc.id"
+                class="order-feed__row"
+              >
+                <div class="order-feed__dot" :class="`order-feed__dot--${proc.coreColor}`"></div>
+                <div class="order-feed__id">#{{ proc.pid.slice(-4) }}</div>
+                <div class="order-feed__type">{{ proc.core }}</div>
+                <div class="order-feed__amount">{{ proc.load }}</div>
+                <div class="order-feed__status" :class="`order-feed__status--${proc.statusColor}`">
+                  {{ proc.status }}
                 </div>
-                <div class="col-2 text-grey-4 text-right q-pr-lg">{{ proc.load }}</div>
-                <div class="col-3 text-right text-weight-bold letter-spacing-1" :class="'text-' + proc.statusColor">{{ proc.status }}</div>
               </div>
-              <div v-if="activeProcesses.length === 0" class="text-grey-6 text-center font-mono q-py-lg">NO ACTIVE ORDERS</div>
+              <div v-if="activeProcesses.length === 0" class="order-feed__empty">
+                <q-icon name="check_circle_outline" size="24px" class="q-mr-sm" />
+                No active orders
+              </div>
             </div>
           </div>
-        </q-card>
+        </div>
+
       </div>
 
-      <div class="col-12 col-xl-4 column q-gutter-y-xl">
-        <!-- NEURAL_APPS -->
-        <q-card class="neon-panel bg-transparent col-auto" flat style="padding: 32px">
-          <div class="text-white text-subtitle1 font-mono text-weight-bold letter-spacing-1 q-mb-xl">QUICK_MODULES</div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-btn to="/pos" stretch flat class="neon-app-btn full-width column flex-center">
-                <q-icon name="point_of_sale" size="28px" class="text-cyan-4 q-mb-md" />
-                <span class="font-mono font-10 letter-spacing-1 text-grey-4">P.O.S</span>
-              </q-btn>
-            </div>
-            <div class="col-6">
-              <q-btn to="/kitchen" stretch flat class="neon-app-btn full-width column flex-center">
-                <q-icon name="restaurant" size="28px" class="text-pink-5 q-mb-md" />
-                <span class="font-mono font-10 letter-spacing-1 text-grey-4">KITCHEN</span>
-              </q-btn>
-            </div>
-            <div class="col-6">
-              <q-btn to="/inventory" stretch flat class="neon-app-btn full-width column flex-center">
-                <q-icon name="inventory_2" size="28px" class="text-cyan-4 q-mb-md" />
-                <span class="font-mono font-10 letter-spacing-1 text-grey-4">INVENTORY</span>
-              </q-btn>
-            </div>
-            <div class="col-6">
-              <q-btn to="/hr" stretch flat class="neon-app-btn full-width column flex-center">
-                <q-icon name="people" size="28px" class="text-cyan-4 q-mb-md" />
-                <span class="font-mono font-10 letter-spacing-1 text-grey-4">STAFF</span>
-              </q-btn>
-            </div>
-          </div>
-        </q-card>
+      <!-- ── RIGHT COLUMN ── -->
+      <div class="dash-grid__right">
 
-        <!-- SYSTEM_MAP -> TABLE_MAP -->
-        <q-card class="neon-panel bg-transparent col" flat style="padding: 32px; min-height: 480px">
-          <div class="row justify-between items-center q-mb-md">
-             <div class="text-white text-subtitle1 text-weight-bold letter-spacing-1">LIVE TABLE CHART</div>
-             <div class="badge-cyan">{{ occupiedTablesCount }} / {{ totalTablesCount }} ACTIVE</div>
+        <!-- Quick Actions -->
+        <div class="dash-card">
+          <div class="dash-card__title dash-card__title--sm q-mb-md">Quick Actions</div>
+          <div class="quick-actions">
+            <router-link to="/pos" class="qa-btn qa-btn--pos">
+              <q-icon name="point_of_sale" size="24px" />
+              <span>POS</span>
+            </router-link>
+            <router-link to="/kitchen" class="qa-btn qa-btn--kitchen">
+              <q-icon name="soup_kitchen" size="24px" />
+              <span>Kitchen</span>
+            </router-link>
+            <router-link to="/orders" class="qa-btn qa-btn--orders">
+              <q-icon name="receipt_long" size="24px" />
+              <span>Orders</span>
+            </router-link>
+            <router-link to="/operations/tables" class="qa-btn qa-btn--tables">
+              <q-icon name="table_restaurant" size="24px" />
+              <span>Tables</span>
+            </router-link>
+            <router-link to="/reports/sales" class="qa-btn qa-btn--reports">
+              <q-icon name="bar_chart" size="24px" />
+              <span>Reports</span>
+            </router-link>
+            <router-link to="/inventory/dashboard" class="qa-btn qa-btn--inventory">
+              <q-icon name="inventory_2" size="24px" />
+              <span>Inventory</span>
+            </router-link>
           </div>
-          <div class="neon-map-container bg-grey-10 full-height relative-position overflow-hidden" style="border-radius: 8px;">
-            
-            <q-scroll-area class="full-height">
-              <div class="row q-gutter-sm justify-center align-center q-pa-sm relative-position" style="z-index: 10;">
-                 <div v-for="t in floorTables" :key="t.id">
-                    <div 
-                       class="floor-plan-box shadow-2" 
-                       :class="t.occupied ? 'bg-orange text-white box-locked' : 'bg-positive text-white box-available'"
-                    >
-                       <div class="text-center">
-                          <div class="text-weight-bolder" style="font-size: 13px; line-height: 1">
-                             {{ (t.table_number || '').replace('Table', '').trim() }}
-                          </div>
-                          <div class="row items-center justify-center q-mt-xs" style="font-size: 8px; opacity: 0.9">
-                             <q-icon name="people" size="8px" class="q-mr-xs" /> {{ t.capacity }}
-                          </div>
-                       </div>
-                    </div>
-                 </div>
+        </div>
+
+        <!-- Live Table Map -->
+        <div class="dash-card dash-card--table-map">
+          <div class="dash-card__header">
+            <div>
+              <div class="dash-card__title dash-card__title--sm">Live Table Map</div>
+              <div class="dash-card__sub">Real-time floor status</div>
+            </div>
+            <div class="table-map-badge">
+              {{ occupiedTablesCount }} / {{ totalTablesCount }}
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="table-legend">
+            <div class="table-legend__item">
+              <span class="table-legend__dot table-legend__dot--available"></span>Available
+            </div>
+            <div class="table-legend__item">
+              <span class="table-legend__dot table-legend__dot--occupied"></span>Occupied
+            </div>
+          </div>
+
+          <!-- Table Grid -->
+          <q-scroll-area class="table-map-scroll">
+            <div v-if="floorTables.length === 0" class="table-map-empty">
+              <q-icon name="table_restaurant" size="32px" class="q-mb-sm" />
+              <div>No tables configured</div>
+            </div>
+            <div v-else class="table-map-grid">
+              <div
+                v-for="t in floorTables"
+                :key="t.id"
+                class="table-cell"
+                :class="t.occupied ? 'table-cell--occupied' : 'table-cell--available'"
+              >
+                <div class="table-cell__number">
+                  {{ (t.table_number || '').replace(/table/i, '').trim() || t.id?.slice(-2) }}
+                </div>
+                <div class="table-cell__cap">
+                  <q-icon name="person" size="8px" />{{ t.capacity }}
+                </div>
               </div>
-            </q-scroll-area>
-            
-          </div>
-        </q-card>
+            </div>
+          </q-scroll-area>
+        </div>
+
       </div>
     </div>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
 const authStore = useAuthStore()
-const loading = ref(false)
+const loading    = ref(false)
 const timeFilter = ref('daily')
 
-const kpi1 = ref('0.0')
+// ── KPIs ────────────────────────────────────────────────────────
+const kpi1 = ref('0')
 const kpi2 = ref('0')
-const kpi3 = ref(0.0) // Table Occupancy percentage
+const kpi3 = ref(0)
 const kpi4 = ref('0')
-const activeProcesses = ref([])
-const floorTables = ref([])
+const activeProcesses     = ref([])
+const floorTables         = ref([])
 const occupiedTablesCount = ref(0)
-const totalTablesCount = ref(0)
+const totalTablesCount    = ref(0)
+const dineInCount         = ref(0)
+const takeawayCount       = ref(0)
 
-const revenueSeries = ref([{ name: 'Revenue', data: [0,0,0,0,0,0,0] }])
+// ── Live clock ──────────────────────────────────────────────────
+const currentTime = ref('')
+const currentDate = ref('')
+let clockTimer = null
+function tickClock() {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  currentDate.value = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+tickClock()
 
-const neonChartOptions = ref({
-  chart: { 
-    type: 'area', 
-    toolbar: { show: false },
-    background: 'transparent'
-  },
-  colors: ['#22d3ee'], // Cyan-4
-  dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 3 },
+// ── Charts ──────────────────────────────────────────────────────
+const revenueSeries = ref([{ name: 'Revenue', data: Array(7).fill(0) }])
+
+const chartOptions = ref({
+  chart:       { type: 'area', toolbar: { show: false }, background: 'transparent', sparkline: { enabled: false } },
+  colors:      ['#2563EB'],
+  dataLabels:  { enabled: false },
+  stroke:      { curve: 'smooth', width: 2.5 },
   fill: {
     type: 'gradient',
-    gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.0, stops: [0, 90, 100] },
+    gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.01, stops: [0, 90, 100] },
   },
   xaxis: {
-    categories: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
-    labels: { style: { colors: '#4b5563', fontSize: '10px' } },
+    categories: [],
+    labels:     { style: { colors: '#64748b', fontSize: '10px', fontFamily: 'inherit' } },
     axisBorder: { show: false },
-    axisTicks: { show: false }
+    axisTicks:  { show: false },
   },
-  yaxis: { labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
-  grid: { 
-    borderColor: 'transparent',
-    xaxis: { lines: { show: false } },
-    yaxis: { lines: { show: false } }
-  },
-  tooltip: { theme: 'dark' }
+  yaxis:  { labels: { show: false } },
+  grid:   { borderColor: 'rgba(255,255,255,0.04)', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+  tooltip: { theme: 'dark', x: { show: true } },
 })
 
-let ordersChannel = null
-let tablesChannel = null
-let dashRefreshTimer = null
+const donutSeries  = computed(() => [dineInCount.value || 0, takeawayCount.value || 0])
+const donutOptions = ref({
+  chart:   { type: 'donut', background: 'transparent' },
+  colors:  ['#2563EB', '#0EA5E9'],
+  labels:  ['Dine In', 'Takeaway'],
+  legend:  { show: true, position: 'bottom', fontSize: '11px', labels: { colors: '#94a3b8' } },
+  stroke:  { show: false },
+  dataLabels: { enabled: false },
+  plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', color: '#94a3b8', fontSize: '11px' } } } } },
+  tooltip: { theme: 'dark' },
+})
 
+// ── Data fetching ────────────────────────────────────────────────
 async function fetchDashboardData() {
   loading.value = true
   try {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
 
-    const now = new Date()
-    let startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    if (timeFilter.value === 'weekly') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
-    } else if (timeFilter.value === 'monthly') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
-    }
-    const startStr = startDate.toISOString()
+    const now  = new Date()
+    let start  = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    if (timeFilter.value === 'weekly')  start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
+    if (timeFilter.value === 'monthly') start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
+    const startStr = start.toISOString()
 
-    const pActive = supabase.from('orders').select('id, status, total_amount, created_at, table_id, order_type').eq('branch_id', branchId).in('status', ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced'])
-    const pCompleted = supabase.from('orders').select('status, total_amount').eq('branch_id', branchId).in('status', ['paid', 'completed']).gte('created_at', startStr)
-    const pTrend = supabase.from('orders').select('created_at, total_amount').eq('branch_id', branchId).in('status', ['paid', 'completed', 'served', 'invoiced']).gte('created_at', startStr)
-
-    const pTables = supabase.from('restaurant_tables').select('id, table_number, capacity').eq('branch_id', branchId).order('table_number', { ascending: true })
-    const todayStr = new Date().toISOString().split('T')[0]
-    const pStaff = supabase.from('shift_assignments').select('id').eq('branch_id', branchId).eq('assignment_date', todayStr).in('status', ['active', 'present'])
-
-    const [activeRes, completedRes, trendRes, tablesRes, staffRes] = await Promise.all([pActive, pCompleted, pTrend, pTables, pStaff])
+    const [activeRes, completedRes, trendRes, tablesRes, staffRes] = await Promise.all([
+      supabase.from('orders').select('id,status,total_amount,created_at,table_id,order_type')
+        .eq('branch_id', branchId)
+        .in('status', ['pending_waiter','accepted','preparing','ready','served','invoiced']),
+      supabase.from('orders').select('status,total_amount,order_type')
+        .eq('branch_id', branchId).in('status', ['paid','completed']).gte('created_at', startStr),
+      supabase.from('orders').select('created_at,total_amount')
+        .eq('branch_id', branchId).in('status', ['paid','completed','served','invoiced']).gte('created_at', startStr),
+      supabase.from('restaurant_tables').select('id,table_number,capacity')
+        .eq('branch_id', branchId).order('table_number', { ascending: true }),
+      supabase.from('shift_assignments').select('id')
+        .eq('branch_id', branchId)
+        .eq('assignment_date', now.toISOString().split('T')[0])
+        .in('status', ['active','present']),
+    ])
 
     const activeOrders = activeRes.data || []
+    const completedOrders = completedRes.data || []
+    const occupiedIds = new Set()
     let revenue = 0
-    let loadCount = 0
-    const occupiedTableIds = new Set()
 
-    ;(completedRes.data || []).forEach(o => { revenue += o.total_amount || 0; })
+    completedOrders.forEach(o => { revenue += o.total_amount || 0 })
     activeOrders.forEach(o => {
-      loadCount++
-      if (['served', 'invoiced'].includes(o.status) && new Date(o.created_at) >= new Date(startStr)) {
-        revenue += o.total_amount || 0
-      }
-      if (o.table_id) occupiedTableIds.add(o.table_id)
+      if (['served','invoiced'].includes(o.status)) revenue += o.total_amount || 0
+      if (o.table_id) occupiedIds.add(o.table_id)
     })
 
     kpi1.value = revenue.toLocaleString()
-    kpi2.value = loadCount.toString()
-    kpi4.value = staffRes.data?.length?.toString() || '0'
-    
-    // Map Tables
-    totalTablesCount.value = tablesRes.data?.length || 0
-    occupiedTablesCount.value = occupiedTableIds.size
-    kpi3.value = totalTablesCount.value > 0 ? (occupiedTablesCount.value / totalTablesCount.value) : 0
-    
-    floorTables.value = (tablesRes.data || []).map(t => ({
-       ...t,
-       occupied: occupiedTableIds.has(t.id)
-    }))
-    
-    // Map active orders to processes table
-    const mapped = []
-    activeOrders.slice(0, 10).forEach((o) => {
-      let coreColor = 'cyan-5'
-      let core = o.order_type === 'dine_in' ? 'DINE_IN' : 'TAKEAWAY'
-      let statusColor = 'green-4'
-      let statusStr = o.status.replace('_', ' ').toUpperCase()
+    kpi2.value = activeOrders.length.toString()
+    kpi4.value = (staffRes.data?.length || 0).toString()
 
-      if (['preparing', 'accepted'].includes(o.status)) {
-        coreColor = 'pink-5'
-        statusColor = 'pink-5'
-      } else if (o.status === 'pending_waiter') {
-        coreColor = 'blue-4'
-        statusColor = 'grey-5'
+    totalTablesCount.value    = tablesRes.data?.length || 0
+    occupiedTablesCount.value = occupiedIds.size
+    kpi3.value = totalTablesCount.value > 0 ? occupiedIds.size / totalTablesCount.value : 0
+
+    floorTables.value = (tablesRes.data || []).map(t => ({ ...t, occupied: occupiedIds.has(t.id) }))
+
+    // Order type split (active + completed)
+    const allOrders = [...activeOrders, ...completedOrders]
+    dineInCount.value   = allOrders.filter(o => o.order_type === 'dine_in').length
+    takeawayCount.value = allOrders.filter(o => o.order_type !== 'dine_in').length
+
+    // Process feed
+    activeProcesses.value = activeOrders.slice(0, 8).map(o => {
+      const isPreparing = ['preparing','accepted'].includes(o.status)
+      const isPending   = o.status === 'pending_waiter'
+      return {
+        id:          o.id,
+        pid:         o.id.toString(),
+        core:        o.order_type === 'dine_in' ? 'DINE IN' : 'TAKEAWAY',
+        coreColor:   isPreparing ? 'orange' : isPending ? 'blue' : 'teal',
+        load:        `LKR ${(o.total_amount || 0).toLocaleString()}`,
+        status:      o.status.replace(/_/g, ' ').toUpperCase(),
+        statusColor: isPreparing ? 'orange' : isPending ? 'blue' : 'teal',
       }
-
-      mapped.push({
-        id: o.id,
-        pid: o.id.toString(),
-        core: core,
-        coreColor: coreColor,
-        load: `LKR ${o.total_amount?.toLocaleString() || 0}`,
-        status: statusStr,
-        statusColor: statusColor
-      })
     })
 
-    activeProcesses.value = mapped
-
-    // Chart trend
+    // Chart
     const trendOrders = trendRes.data || []
-    const dataPoints = []
-    const dates = []
-
+    const dates = [], dataPoints = []
     if (timeFilter.value === 'daily') {
-      for (let i = 0; i <= 23; i+=2) { 
-         dates.push(`${i}:00`)
-         dataPoints.push(0)
+      for (let h = 0; h <= 23; h += 2) {
+        dates.push(`${String(h).padStart(2,'0')}:00`)
+        dataPoints.push(trendOrders.filter(o => new Date(o.created_at).getHours() === h || new Date(o.created_at).getHours() === h+1).reduce((s,o) => s+(o.total_amount||0), 0))
       }
-      trendOrders.forEach(o => {
-         const d = new Date(o.created_at)
-         const hour = d.getHours()
-         const bucket = Math.floor(hour / 2)
-         dataPoints[bucket] += (o.total_amount || 0)
-      })
     } else if (timeFilter.value === 'weekly') {
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+        const d   = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
         const key = d.toISOString().split('T')[0]
-        dates.push(d.toLocaleDateString('en', { weekday: 'short' }).toUpperCase())
-        dataPoints.push(trendOrders.filter(o => new Date(o.created_at).toISOString().split('T')[0] === key).reduce((sum, o) => sum + (o.total_amount || 0), 0))
+        dates.push(d.toLocaleDateString('en', { weekday: 'short' }))
+        dataPoints.push(trendOrders.filter(o => o.created_at.startsWith(key)).reduce((s,o) => s+(o.total_amount||0), 0))
       }
-    } else if (timeFilter.value === 'monthly') {
+    } else {
       for (let i = 29; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+        const d   = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
         const key = d.toISOString().split('T')[0]
-        dates.push(d.getDate().toString())
-        dataPoints.push(trendOrders.filter(o => new Date(o.created_at).toISOString().split('T')[0] === key).reduce((sum, o) => sum + (o.total_amount || 0), 0))
+        dates.push(String(d.getDate()))
+        dataPoints.push(trendOrders.filter(o => o.created_at.startsWith(key)).reduce((s,o) => s+(o.total_amount||0), 0))
       }
     }
-    
-    revenueSeries.value = [{ name: 'Revenue', data: dataPoints }]
-    neonChartOptions.value = { ...neonChartOptions.value, xaxis: { ...neonChartOptions.value.xaxis, categories: dates } }
+
+    revenueSeries.value  = [{ name: 'Revenue (LKR)', data: dataPoints }]
+    chartOptions.value   = { ...chartOptions.value, xaxis: { ...chartOptions.value.xaxis, categories: dates } }
 
   } catch (err) {
-    console.error('Neon Dashboard Error:', err)
+    console.error('[Dashboard] fetch error:', err)
   } finally {
     loading.value = false
   }
 }
 
-// Fast table occupancy refresh — only updates table map without refetching everything
 async function refreshTableOccupancy() {
   const branchId = authStore.currentBranch?.id
   if (!branchId) return
-
   try {
-    // Get all active orders with table_id
-    const { data: activeOrders } = await supabase
-      .from('orders')
-      .select('table_id')
+    const { data } = await supabase.from('orders').select('table_id')
       .eq('branch_id', branchId)
-      .in('status', ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced'])
+      .in('status', ['pending_waiter','accepted','preparing','ready','served','invoiced'])
       .not('table_id', 'is', null)
-
-    const occupiedTableIds = new Set((activeOrders || []).map(o => o.table_id))
-    occupiedTablesCount.value = occupiedTableIds.size
-    kpi3.value = totalTablesCount.value > 0 ? (occupiedTablesCount.value / totalTablesCount.value) : 0
-
-    floorTables.value = floorTables.value.map(t => ({
-      ...t,
-      occupied: occupiedTableIds.has(t.id)
-    }))
-  } catch (e) {
-    console.error('[Dashboard] refreshTableOccupancy error:', e)
+    const ids = new Set((data || []).map(o => o.table_id))
+    occupiedTablesCount.value = ids.size
+    kpi3.value = totalTablesCount.value > 0 ? ids.size / totalTablesCount.value : 0
+    floorTables.value = floorTables.value.map(t => ({ ...t, occupied: ids.has(t.id) }))
+  } catch {
+    // non-critical refresh — ignore errors
   }
 }
+
+// ── Realtime ────────────────────────────────────────────────────
+let ordersChannel = null, tablesChannel = null, debounce = null
 
 function subscribeRealtime() {
   const branchId = authStore.currentBranch?.id
   if (!branchId) return
-  if (ordersChannel) { supabase.removeChannel(ordersChannel); ordersChannel = null }
-  if (tablesChannel) { supabase.removeChannel(tablesChannel); tablesChannel = null }
+  if (ordersChannel) supabase.removeChannel(ordersChannel)
+  if (tablesChannel) supabase.removeChannel(tablesChannel)
 
-  // Orders channel — triggers full dashboard refresh + fast table update
-  const orderChName = `neon-orders-${branchId}-${Date.now()}`
-  ordersChannel = supabase.channel(orderChName)
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'orders',
-      filter: `branch_id=eq.${branchId}`
-    }, () => {
-      // Immediately refresh table occupancy for visual feedback
+  ordersChannel = supabase.channel(`dash-orders-${branchId}-${Date.now()}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders', filter:`branch_id=eq.${branchId}` }, () => {
       refreshTableOccupancy()
-      // Debounced full refresh for KPIs, chart, etc.
-      if (dashRefreshTimer) clearTimeout(dashRefreshTimer)
-      dashRefreshTimer = setTimeout(() => fetchDashboardData(), 300)
-    })
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'kot_tickets'
-    }, () => {
-      // KOT status changes affect order status → refresh
-      if (dashRefreshTimer) clearTimeout(dashRefreshTimer)
-      dashRefreshTimer = setTimeout(() => fetchDashboardData(), 500)
+      clearTimeout(debounce)
+      debounce = setTimeout(() => fetchDashboardData(), 350)
     })
     .subscribe()
 
-  // Tables channel — direct table status changes
-  const tableChName = `neon-tables-${branchId}-${Date.now()}`
-  tablesChannel = supabase.channel(tableChName)
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'restaurant_tables',
-      filter: `branch_id=eq.${branchId}`
-    }, () => {
+  tablesChannel = supabase.channel(`dash-tables-${branchId}-${Date.now()}`)
+    .on('postgres_changes', { event:'*', schema:'public', table:'restaurant_tables', filter:`branch_id=eq.${branchId}` }, () => {
       refreshTableOccupancy()
     })
     .subscribe()
 }
 
+// ── Boot ─────────────────────────────────────────────────────────
 let booted = false
-async function bootDashboard() {
+async function boot() {
   if (booted) return
   const branchId = authStore.currentBranch?.id
   if (!branchId || !authStore.user) return
@@ -454,226 +492,495 @@ async function bootDashboard() {
   subscribeRealtime()
 }
 
-watch(timeFilter, () => {
-  if (booted) fetchDashboardData()
-})
-
-watch(() => authStore.currentBranch?.id, (newId) => { if (newId) bootDashboard() }, { immediate: true })
+watch(timeFilter, () => { if (booted) fetchDashboardData() })
+watch(() => authStore.currentBranch?.id, id => { if (id) boot() }, { immediate: true })
 
 onMounted(async () => {
-  if (authStore.currentBranch?.id && authStore.user) {
-    bootDashboard()
-  } else {
-    for (let i = 0; i < 6; i++) {
+  clockTimer = setInterval(tickClock, 1000)
+  if (!authStore.currentBranch?.id) {
+    for (let i = 0; i < 8; i++) {
       await new Promise(r => setTimeout(r, 500))
-      if (authStore.currentBranch?.id) { bootDashboard(); break; }
+      if (authStore.currentBranch?.id) { boot(); break }
     }
   }
 })
 
 onUnmounted(() => {
+  clearInterval(clockTimer)
+  clearTimeout(debounce)
   if (ordersChannel) supabase.removeChannel(ordersChannel)
   if (tablesChannel) supabase.removeChannel(tablesChannel)
-  if (dashRefreshTimer) clearTimeout(dashRefreshTimer)
   booted = false
 })
 </script>
 
 <style scoped lang="scss">
-.neon-dashboard {
-  background-color: #0b1118 !important; /* Deep dark blue/black */
-  font-family: inherit;
+// ── Page ──────────────────────────────────────────────────────────────────────
+.dash-page {
+  background: #080e18;
   min-height: 100vh;
+  padding: 28px 32px 40px;
+  color: #e2e8f0;
+  font-family: inherit;
 }
 
-.neon-toggle {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(34, 211, 238, 0.3);
-  
-  :deep(.q-btn) {
+// ── Header ────────────────────────────────────────────────────────────────────
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+
+  &__left { display: flex; flex-direction: column; gap: 4px; }
+  &__right { display: flex; align-items: center; gap: 14px; }
+
+  &__brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  &__brand-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #f1f5f9;
+    letter-spacing: -0.4px;
+  }
+  &__brand-tag {
     font-size: 11px;
-    padding: 4px 16px;
+    font-weight: 600;
+    color: #2563EB;
+    background: rgba(37,99,235,0.12);
+    border: 1px solid rgba(37,99,235,0.25);
+    border-radius: 5px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  &__time-info {
+    font-size: 11px;
+    color: #475569;
+    display: flex;
+    align-items: center;
   }
 }
 
-.font-mono {
-  font-family: inherit !important;
+// Live badge
+.live-pulse-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #10b981;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 20px;
+  padding: 4px 12px;
+
+  &__dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+    animation: live-pulse 1.8s infinite;
+  }
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.7); }
 }
 
-.font-8 { font-size: 8px; }
-.font-10 { font-size: 10px; }
-.font-11 { font-size: 11px; }
-.font-14 { font-size: 14px; }
+.dash-time-toggle {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  :deep(.q-btn) {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 0 !important;
+  }
+  :deep(.q-btn--active) {
+    background: #2563EB !important;
+    color: #fff !important;
+  }
+}
 
-.letter-spacing-1 { letter-spacing: 1px; }
+// ── KPI Cards ─────────────────────────────────────────────────────────────────
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
 
-/* Panels */
-.neon-panel {
-  background: rgba(18, 25, 35, 0.4) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 600px)  { grid-template-columns: 1fr; }
+}
+
+.kpi-card {
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 20px 20px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
-  
-  &::before {
+
+  &::after {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    border-radius: 12px;
+    inset: 0;
+    border-radius: 14px;
     pointer-events: none;
-    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
   }
-}
 
-.panel-cyan {
-  padding: 24px;
-  border: 1px solid rgba(34, 211, 238, 0.2);
-  &:hover {
-    border-color: rgba(34, 211, 238, 0.5);
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
+  &:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+  // Accent glow top border per card
+  &--revenue { border-top: 2px solid #2563EB; &::after { box-shadow: inset 0 40px 30px -20px rgba(37,99,235,0.07); } }
+  &--orders  { border-top: 2px solid #f59e0b; &::after { box-shadow: inset 0 40px 30px -20px rgba(245,158,11,0.07); } }
+  &--tables  { border-top: 2px solid #0d9488; &::after { box-shadow: inset 0 40px 30px -20px rgba(13,148,136,0.07); } }
+  &--staff   { border-top: 2px solid #7c3aed; &::after { box-shadow: inset 0 40px 30px -20px rgba(124,58,237,0.07); } }
+
+  &__icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+
+    &--revenue { background: rgba(37,99,235,0.15);  color: #60a5fa; }
+    &--orders  { background: rgba(245,158,11,0.15); color: #fcd34d; }
+    &--tables  { background: rgba(13,148,136,0.15); color: #2dd4bf; }
+    &--staff   { background: rgba(124,58,237,0.15); color: #a78bfa; }
   }
-}
 
-.panel-pink {
-  padding: 24px;
-  border: 1px solid rgba(236, 72, 153, 0.2); /* Pink */
-  &:hover {
-    border-color: rgba(236, 72, 153, 0.5);
-    box-shadow: 0 0 15px rgba(236, 72, 153, 0.1);
+  &__body { flex: 1; min-width: 0; }
+
+  &__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
   }
-}
 
-.neon-glow-text {
-  text-shadow: 0 0 10px currentColor;
-}
-
-.badge-cyan {
-  background: rgba(34, 211, 238, 0.2);
-  color: #22d3ee;
-  border: 1px solid rgba(34, 211, 238, 0.5);
-  font-size: 10px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.badge-grey {
-  background: rgba(255, 255, 255, 0.1);
-  color: #9ca3af;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 10px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-/* Specific elements */
-.neon-progress {
-  border-radius: 2px;
-  background: rgba(255,255,255,0.05) !important;
-}
-
-.peer-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  margin-left: -8px;
-  border: 2px solid #0b1118;
-  position: relative;
-  &:first-child { margin-left: 0; }
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 5px currentColor;
-}
-
-/* Apps Grid */
-.neon-app-btn {
-  background: rgba(0,0,0,0.2) !important;
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 12px;
-  height: 100px;
-  transition: all 0.2s;
-  &:hover {
-    background: rgba(34, 211, 238, 0.05) !important;
-    border-color: rgba(34, 211, 238, 0.3);
+  &__value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
   }
-}
+  &__currency { font-size: 13px; font-weight: 600; color: #475569; }
+  &__unit     { font-size: 16px; font-weight: 600; color: #475569; margin-left: 2px; }
 
-/* Map placeholder */
-.neon-map-container {
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.05);
-  background-image: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.1) 0%, transparent 80%);
-  
-  .map-grid {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-size: 20px 20px;
-    background-image: 
-      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  &__sub {
+    font-size: 11px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    &--up   { color: #10b981; }
+    &--warn { color: #f59e0b; }
+    &--info { color: #38bdf8; }
+    &--staff{ color: #a78bfa; }
   }
-  
-  .map-pulse {
-    position: absolute;
-    top: 60%;
-    left: 45%;
-    width: 12px;
-    height: 12px;
-    background: #22d3ee;
+
+  &__progress-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  &__progress { flex: 1; }
+
+  &__avatars {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+  }
+  &__avatar-dot {
+    width: 20px; height: 20px;
     border-radius: 50%;
-    box-shadow: 0 0 10px #22d3ee, 0 0 20px #22d3ee;
-    &::after {
-      content: '';
-      position: absolute;
-      top: -10px; left: -10px; right: -10px; bottom: -10px;
-      border-radius: 50%;
-      border: 1px solid #22d3ee;
-      animation: pulse 2s infinite ease-out;
-    }
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    border: 2px solid #080e18;
+    margin-left: -6px;
+    &:first-child { margin-left: 0; }
   }
 }
 
-.floor-plan-box {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
+// ── Main Grid ─────────────────────────────────────────────────────────────────
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+
+  @media (max-width: 1200px) { grid-template-columns: 1fr; }
+
+  &__left  { display: flex; flex-direction: column; gap: 20px; }
+  &__right { display: flex; flex-direction: column; gap: 20px; }
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────────
+.dash-card {
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  &__header-right { display: flex; align-items: center; gap: 8px; }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: -0.2px;
+    &--sm { font-size: 13px; }
+  }
+  &__sub {
+    font-size: 11px;
+    color: #475569;
+    margin-top: 2px;
+  }
+
+  &--table-map { padding-bottom: 16px; }
+}
+
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  &--revenue { background: #2563EB; box-shadow: 0 0 6px #2563EB; }
+}
+.legend-label { font-size: 11px; color: #64748b; }
+
+// ── Split Row (donut + feed) ──────────────────────────────────────────────────
+.dash-split-row {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+
+  &__donut {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 22px 16px 22px 24px;
+    border-right: 1px solid rgba(255,255,255,0.10);
+  }
+  &__feed {
+    flex: 1;
+    padding: 22px 24px;
+    min-width: 0;
+  }
+}
+
+.view-all-btn {
+  font-size: 11px !important;
+  color: #2563EB !important;
+  padding: 2px 8px !important;
+  &:hover { background: rgba(37,99,235,0.1) !important; }
+}
+
+// ── Order Feed ────────────────────────────────────────────────────────────────
+.order-feed {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  user-select: none;
-}
-.floor-plan-box:hover {
-  transform: scale(1.08);
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.2),
-    0 4px 6px -2px rgba(0, 0, 0, 0.1);
-}
-.box-available {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-.box-locked {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  animation: pulse-lock 2s infinite;
-}
-@keyframes pulse-lock {
-  0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+    font-size: 12px;
+    transition: background 0.15s;
+    &:hover { background: rgba(255,255,255,0.04); }
+  }
+  &__dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    &--teal   { background: #2dd4bf; box-shadow: 0 0 4px #2dd4bf; }
+    &--orange { background: #fb923c; box-shadow: 0 0 4px #fb923c; }
+    &--blue   { background: #60a5fa; box-shadow: 0 0 4px #60a5fa; }
+  }
+  &__id     { color: #475569; width: 52px; flex-shrink: 0; font-size: 11px; }
+  &__type   { color: #94a3b8; flex: 1; }
+  &__amount { color: #e2e8f0; font-weight: 600; width: 100px; text-align: right; flex-shrink: 0; }
+  &__status {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    width: 100px;
+    text-align: right;
+    flex-shrink: 0;
+    &--teal   { color: #2dd4bf; }
+    &--orange { color: #fb923c; }
+    &--blue   { color: #60a5fa; }
+  }
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #334155;
+    font-size: 13px;
+    padding: 24px 0;
+  }
 }
 
-@keyframes pulse {
-  0% { transform: scale(0.5); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.qa-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  text-decoration: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s;
+  cursor: pointer;
+
+  span { color: #94a3b8; }
+  .q-icon { transition: color 0.2s; }
+
+  &:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+    transform: translateY(-2px);
+    span { color: #e2e8f0; }
+  }
+
+  &--pos       { &:hover { border-color: rgba(37,99,235,0.4);  .q-icon { color: #60a5fa; } } }
+  &--kitchen   { &:hover { border-color: rgba(245,158,11,0.4); .q-icon { color: #fcd34d; } } }
+  &--orders    { &:hover { border-color: rgba(16,185,129,0.4); .q-icon { color: #34d399; } } }
+  &--tables    { &:hover { border-color: rgba(13,148,136,0.4); .q-icon { color: #2dd4bf; } } }
+  &--reports   { &:hover { border-color: rgba(139,92,246,0.4); .q-icon { color: #a78bfa; } } }
+  &--inventory { &:hover { border-color: rgba(249,115,22,0.4); .q-icon { color: #fb923c; } } }
+}
+
+// ── Table Map ─────────────────────────────────────────────────────────────────
+.table-map-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0d9488;
+  background: rgba(13,148,136,0.12);
+  border: 1px solid rgba(13,148,136,0.25);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+
+.table-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #64748b;
+  }
+  &__dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    &--available { background: #059669; }
+    &--occupied  { background: #ea580c; }
+  }
+}
+
+.table-map-scroll {
+  height: 260px;
+}
+
+.table-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+
+.table-map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.table-cell {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+  user-select: none;
+
+  &:hover { transform: scale(1.08); }
+
+  &__number {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  &__cap {
+    font-size: 9px;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+  }
+
+  &--available {
+    background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #6ee7b7;
+    box-shadow: 0 2px 8px rgba(5,150,105,0.2);
+  }
+
+  &--occupied {
+    background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%);
+    border: 1px solid rgba(249,115,22,0.4);
+    color: #fed7aa;
+    box-shadow: 0 2px 8px rgba(234,88,12,0.25);
+    animation: occupied-pulse 2.5s infinite;
+  }
+}
+
+@keyframes occupied-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(234,88,12,0.25); }
+  50%       { box-shadow: 0 4px 16px rgba(234,88,12,0.5); }
 }
 </style>
