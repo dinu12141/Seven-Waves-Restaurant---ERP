@@ -1,7 +1,7 @@
 <template>
   <ReportLayout
     title="Item Wise Sale Report"
-    subtitle="Detailed analysis of quantity sold and margins per item"
+    subtitle="POS Sales Report By Item — Quantity sold per item, grouped by subgroup"
     :kpis="kpiData"
     @filter-change="loadData"
     @export-csv="exportCSV"
@@ -9,102 +9,123 @@
     @refresh="loadData"
   >
     <template #default>
+      <!-- SAP-style Report Header -->
+      <div class="iws-header">
+        <div class="iws-header__left">
+          <div class="iws-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+          <div class="iws-header__title">POS Sales Report By Item</div>
+          <div class="iws-header__meta">
+            <span>Location: <strong>{{ branchName }}</strong></span>
+            <span class="q-ml-lg">{{ reportDateRange }}</span>
+          </div>
+        </div>
+        <div class="iws-header__right">
+          <div class="iws-header__page">Page 1</div>
+          <div class="iws-header__date">{{ todayFormatted }}</div>
+        </div>
+      </div>
+
+      <!-- ── Data Table ───────────────────────────── -->
       <q-table
-        :rows="rows"
+        :rows="displayRows"
         :columns="columns"
-        row-key="item_code"
-        flat
-        class="report-table"
+        row-key="__rowKey"
+        flat dense
+        class="iws-table"
         :loading="loading"
-        :rows-per-page-options="[25, 50, 100]"
-        rows-per-page-label="Rows/page"
-        :pagination="{ rowsPerPage: 50 }"
+        :rows-per-page-options="[0]"
+        hide-pagination
+        separator="none"
       >
-        <!-- Custom Grouping representation (Assuming standard Vuetify/Quasar group, we will sort and display) -->
-        <!-- In Quasar, to truly group, we could format rows to have headers. Instead we show subgroup as first column or use grouping feature if preferred. The PDF requests grouped by subgroup, then subtotals. -->
-        <!-- We use standard table but sort by subgroup. Real grouping is best represented in Excel/PDF export. -->
+        <!-- Header -->
         <template #header="props">
-          <q-tr :props="props" class="report-table__header-row">
-            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="report-table__th">
+          <q-tr :props="props" class="iws-table__header">
+            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="iws-table__th">
               {{ col.label }}
             </q-th>
           </q-tr>
         </template>
 
+        <!-- Body -->
         <template #body="props">
-          <q-tr :props="props" class="report-table__row">
-            <q-td key="subgroup_name" :props="props">{{ props.row.subgroup_name }}</q-td>
-            <q-td key="item_code" :props="props">{{ props.row.item_code }}</q-td>
-            <q-td key="description" :props="props" class="text-weight-bold">{{
-              props.row.description
-            }}</q-td>
-            <q-td key="pack_qty" :props="props" class="report-table__td--num">{{
-              props.row.pack_qty
-            }}</q-td>
-            <q-td key="unit_price" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.unit_price)
-            }}</q-td>
-            <q-td key="cur_price" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.cur_price)
-            }}</q-td>
-            <q-td key="gross_amt" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.gross_amt)
-            }}</q-td>
-            <q-td key="disc_amt" :props="props" class="report-table__td--num text-red">{{
-              formatCurrency(props.row.disc_amt)
-            }}</q-td>
-            <q-td key="net_amt" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.net_amt)
-            }}</q-td>
-            <q-td key="tax_amt" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.tax_amt)
-            }}</q-td>
-            <q-td
-              key="amt_with_tax"
-              :props="props"
-              class="report-table__td--num text-weight-bolder text-green"
-              >{{ formatCurrency(props.row.amt_with_tax) }}</q-td
-            >
-            <q-td key="unit_cost" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.unit_cost)
-            }}</q-td>
-            <q-td key="total_cost" :props="props" class="report-table__td--num">{{
-              formatCurrency(props.row.total_cost)
-            }}</q-td>
-            <q-td key="gp_percent" :props="props" class="report-table__td--num">
+          <!-- Subgroup header row -->
+          <q-tr v-if="props.row.__type === 'group-header'" class="iws-table__group-header">
+            <q-td :colspan="columns.length" class="iws-table__group-name">
+              <q-icon name="folder_open" size="14px" class="q-mr-xs" />
+              {{ props.row.group_name }}
+            </q-td>
+          </q-tr>
+
+          <!-- Subgroup subtotal row -->
+          <q-tr v-else-if="props.row.__type === 'group-total'" class="iws-table__group-total">
+            <q-td class="text-weight-bold">Sub Group Total:</q-td>
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bold">{{ props.row.quantity }}</q-td>
+            <q-td />
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bold text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bold">{{ props.row.gp_pct }}%</q-td>
+          </q-tr>
+
+          <!-- Grand total row -->
+          <q-tr v-else-if="props.row.__type === 'grand-total'" class="iws-table__grand-total">
+            <q-td class="text-weight-bolder">GRAND TOTAL</q-td>
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bolder">{{ props.row.quantity }}</q-td>
+            <q-td />
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bolder text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td />
+            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td class="iws-table__td--num text-weight-bolder">{{ props.row.gp_pct }}%</q-td>
+          </q-tr>
+
+          <!-- Normal item row -->
+          <q-tr v-else :props="props" class="iws-table__row">
+            <q-td key="description" :props="props">{{ props.row.description }}</q-td>
+            <q-td key="item_code" :props="props" class="iws-table__td--mono">{{ props.row.item_code }}</q-td>
+            <q-td key="quantity" :props="props" class="iws-table__td--num">{{ props.row.quantity }}</q-td>
+            <q-td key="net_price" :props="props" class="iws-table__td--num">{{ fmtN(props.row.net_price) }}</q-td>
+            <q-td key="cur_price" :props="props" class="iws-table__td--num">{{ fmtN(props.row.cur_price) }}</q-td>
+            <q-td key="gross_amt" :props="props" class="iws-table__td--num">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td key="disc_amt" :props="props" class="iws-table__td--num text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td key="amount" :props="props" class="iws-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td key="tax_amt" :props="props" class="iws-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td key="amt_with_tax" :props="props" class="iws-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td key="del_cost" :props="props" class="iws-table__td--num">{{ fmtN(props.row.del_cost) }}</q-td>
+            <q-td key="cost" :props="props" class="iws-table__td--num">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td key="gp_pct" :props="props" class="iws-table__td--num">
               <q-badge
-                :color="
-                  props.row.gp_percent > 30 ? 'green' : props.row.gp_percent > 15 ? 'orange' : 'red'
-                "
-              >
-                {{ props.row.gp_percent }}%
-              </q-badge>
+                :color="props.row.gp_pct > 30 ? 'green' : props.row.gp_pct > 15 ? 'orange' : 'red'"
+                class="iws-gp-badge"
+              >{{ props.row.gp_pct }}%</q-badge>
             </q-td>
           </q-tr>
         </template>
 
-        <template #bottom-row>
-          <q-tr class="report-table__total-row bg-grey-10 text-white">
-            <q-td colspan="3" class="text-right text-subtitle2">GRAND TOTAL</q-td>
-            <q-td class="report-table__td--bold">{{ totalQty }}</q-td>
-            <q-td colspan="2"></q-td>
-            <q-td class="report-table__td--bold">{{ formatCurrency(totalGross) }}</q-td>
-            <q-td class="report-table__td--bold text-red">{{ formatCurrency(totalDisc) }}</q-td>
-            <q-td class="report-table__td--bold">{{ formatCurrency(totalNet) }}</q-td>
-            <q-td class="report-table__td--bold">{{ formatCurrency(totalTax) }}</q-td>
-            <q-td class="report-table__td--bold text-green">{{
-              formatCurrency(totalAmtWithTax)
-            }}</q-td>
-            <q-td></q-td>
-            <q-td class="report-table__td--bold">{{ formatCurrency(totalCost) }}</q-td>
-            <q-td class="report-table__td--bold"
-              >{{
-                totalGross > 0
-                  ? (((totalAmtWithTax - totalCost) / totalAmtWithTax) * 100).toFixed(2)
-                  : 0
-              }}%</q-td
-            >
-          </q-tr>
+        <!-- Loading -->
+        <template #loading>
+          <q-inner-loading showing>
+            <q-spinner-gears size="36px" color="primary" />
+          </q-inner-loading>
+        </template>
+
+        <!-- Empty -->
+        <template #no-data>
+          <div class="iws-empty">
+            <q-icon name="inventory_2" size="40px" class="q-mb-sm" />
+            <div>No item sales data for selected period</div>
+          </div>
         </template>
       </q-table>
     </template>
@@ -112,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
@@ -120,98 +141,490 @@ import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService
 
 const authStore = useAuthStore()
 const loading = ref(false)
-const rows = ref([])
-const kpiData = ref([])
+const rawItems = ref([])
+const currentFilters = ref({})
 
+// ── Column Definitions (SAP B1 format) ────────────────────
 const columns = [
-  {
-    name: 'subgroup_name',
-    label: 'Subgroup',
-    field: 'subgroup_name',
-    align: 'left',
-    sortable: true,
-  },
-  { name: 'item_code', label: 'Code', field: 'item_code', align: 'left' },
   { name: 'description', label: 'Description', field: 'description', align: 'left' },
-  { name: 'pack_qty', label: 'Pack Qty', field: 'pack_qty', align: 'right', sortable: true },
-  { name: 'unit_price', label: 'Unit Price', field: 'unit_price', align: 'right' },
-  { name: 'cur_price', label: 'Cur Price', field: 'cur_price', align: 'right' },
-  { name: 'gross_amt', label: 'Gross Amt', field: 'gross_amt', align: 'right', sortable: true },
-  { name: 'disc_amt', label: 'Disc Amt', field: 'disc_amt', align: 'right' },
-  { name: 'net_amt', label: 'Net Amt', field: 'net_amt', align: 'right' },
-  { name: 'tax_amt', label: 'Tax Amt', field: 'tax_amt', align: 'right' },
-  {
-    name: 'amt_with_tax',
-    label: 'Amt with Tax',
-    field: 'amt_with_tax',
-    align: 'right',
-    sortable: true,
-  },
-  { name: 'unit_cost', label: 'Unit Cost', field: 'unit_cost', align: 'right' },
-  { name: 'total_cost', label: 'Cost', field: 'total_cost', align: 'right' },
-  { name: 'gp_percent', label: 'GP %', field: 'gp_percent', align: 'right', sortable: true },
+  { name: 'item_code', label: 'Code', field: 'item_code', align: 'left', style: 'width:60px' },
+  { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'right', style: 'width:60px', sortable: true },
+  { name: 'net_price', label: 'Net Price', field: 'net_price', align: 'right', style: 'width:80px' },
+  { name: 'cur_price', label: 'Cur Price', field: 'cur_price', align: 'right', style: 'width:80px' },
+  { name: 'gross_amt', label: 'Gross Amt', field: 'gross_amt', align: 'right', style: 'width:90px', sortable: true },
+  { name: 'disc_amt', label: 'Disc Amt', field: 'disc_amt', align: 'right', style: 'width:80px' },
+  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', style: 'width:90px' },
+  { name: 'tax_amt', label: 'TAS Amt', field: 'tax_amt', align: 'right', style: 'width:80px' },
+  { name: 'amt_with_tax', label: 'Amt with TAS', field: 'amt_with_tax', align: 'right', style: 'width:100px', sortable: true },
+  { name: 'del_cost', label: 'Del.Cost', field: 'del_cost', align: 'right', style: 'width:70px' },
+  { name: 'cost', label: 'Cost', field: 'cost', align: 'right', style: 'width:80px' },
+  { name: 'gp_pct', label: 'GP %', field: 'gp_pct', align: 'right', style: 'width:55px', sortable: true },
 ]
 
-const totalQty = computed(() => rows.value.reduce((s, r) => s + Number(r.pack_qty), 0))
-const totalGross = computed(() => rows.value.reduce((s, r) => s + Number(r.gross_amt), 0))
-const totalDisc = computed(() => rows.value.reduce((s, r) => s + Number(r.disc_amt), 0))
-const totalNet = computed(() => rows.value.reduce((s, r) => s + Number(r.net_amt), 0))
-const totalTax = computed(() => rows.value.reduce((s, r) => s + Number(r.tax_amt), 0))
-const totalAmtWithTax = computed(() => rows.value.reduce((s, r) => s + Number(r.amt_with_tax), 0))
-const totalCost = computed(() => rows.value.reduce((s, r) => s + Number(r.total_cost), 0))
+// ── Helpers ────────────────────────────────────────────────
+const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+)
+const reportDateRange = computed(() => {
+  const f = currentFilters.value
+  if (f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)} To ${fmtDate(f.dateTo)}`
+  return fmtDate(new Date().toISOString().slice(0, 10))
+})
 
+function fmtDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function fmtN(val) {
+  const n = Number(val || 0)
+  return n.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+// ── Process raw data → grouped display rows ───────────────
+const displayRows = computed(() => {
+  if (rawItems.value.length === 0) return []
+
+  // Group items by category (subgroup)
+  const groups = {}
+  for (const item of rawItems.value) {
+    const group = item.subgroup || 'UNCATEGORIZED'
+    if (!groups[group]) groups[group] = []
+    groups[group].push(item)
+  }
+
+  const result = []
+  let grandQty = 0, grandGross = 0, grandDisc = 0, grandAmt = 0
+  let grandTax = 0, grandAmtTax = 0, grandCost = 0
+
+  const sortedGroups = Object.keys(groups).sort()
+
+  for (const groupName of sortedGroups) {
+    const items = groups[groupName]
+
+    // Group header row
+    result.push({
+      __type: 'group-header',
+      __rowKey: `gh-${groupName}`,
+      group_name: groupName,
+    })
+
+    // Item rows
+    let grpQty = 0, grpGross = 0, grpDisc = 0, grpAmt = 0
+    let grpTax = 0, grpAmtTax = 0, grpCost = 0
+
+    for (const item of items) {
+      const qty = Number(item.quantity || 0)
+      const netPrice = Number(item.net_price || 0)
+      const curPrice = Number(item.cur_price || 0)
+      const grossAmt = Number(item.gross_amt || 0)
+      const discAmt = Number(item.disc_amt || 0)
+      const amount = Number(item.amount || 0)
+      const taxAmt = Number(item.tax_amt || 0)
+      const amtWithTax = Number(item.amt_with_tax || 0)
+      const cost = Number(item.cost || 0)
+      const delCost = Number(item.del_cost || 0)
+      const gpPct = amtWithTax > 0 ? (((amtWithTax - cost) / amtWithTax) * 100).toFixed(0) : 0
+
+      grpQty += qty; grpGross += grossAmt; grpDisc += discAmt
+      grpAmt += amount; grpTax += taxAmt; grpAmtTax += amtWithTax; grpCost += cost
+
+      result.push({
+        __type: 'item',
+        __rowKey: `item-${item.menu_item_id}-${item.subgroup}`,
+        description: item.description,
+        item_code: item.item_code,
+        quantity: qty,
+        net_price: netPrice,
+        cur_price: curPrice,
+        gross_amt: grossAmt,
+        disc_amt: discAmt,
+        amount,
+        tax_amt: taxAmt,
+        amt_with_tax: amtWithTax,
+        del_cost: delCost,
+        cost,
+        gp_pct: gpPct,
+      })
+    }
+
+    // Group subtotal row
+    const grpGP = grpAmtTax > 0 ? (((grpAmtTax - grpCost) / grpAmtTax) * 100).toFixed(0) : 0
+    result.push({
+      __type: 'group-total',
+      __rowKey: `gt-${groupName}`,
+      quantity: grpQty,
+      gross_amt: grpGross,
+      disc_amt: grpDisc,
+      amount: grpAmt,
+      tax_amt: grpTax,
+      amt_with_tax: grpAmtTax,
+      cost: grpCost,
+      gp_pct: grpGP,
+    })
+
+    grandQty += grpQty; grandGross += grpGross; grandDisc += grpDisc
+    grandAmt += grpAmt; grandTax += grpTax; grandAmtTax += grpAmtTax; grandCost += grpCost
+  }
+
+  // Grand total row
+  const grandGP = grandAmtTax > 0 ? (((grandAmtTax - grandCost) / grandAmtTax) * 100).toFixed(0) : 0
+  result.push({
+    __type: 'grand-total',
+    __rowKey: 'grand-total',
+    quantity: grandQty,
+    gross_amt: grandGross,
+    disc_amt: grandDisc,
+    amount: grandAmt,
+    tax_amt: grandTax,
+    amt_with_tax: grandAmtTax,
+    cost: grandCost,
+    gp_pct: grandGP,
+  })
+
+  return result
+})
+
+// ── KPIs ──────────────────────────────────────────────────
+const kpiData = computed(() => {
+  const gt = displayRows.value.find(r => r.__type === 'grand-total')
+  if (!gt) return []
+  return [
+    { label: 'Total Items Sold', value: gt.quantity, icon: 'shopping_cart', color: 'blue' },
+    { label: 'Gross Sales', value: `LKR ${fmtN(gt.gross_amt)}`, icon: 'payments', color: 'green' },
+    { label: 'Total Discounts', value: `LKR ${fmtN(gt.disc_amt)}`, icon: 'local_offer', color: 'amber' },
+    { label: 'Net Revenue', value: `LKR ${fmtN(gt.amt_with_tax)}`, icon: 'trending_up', color: 'teal' },
+    { label: 'GP %', value: `${gt.gp_pct}%`, icon: 'pie_chart', color: 'purple' },
+  ]
+})
+
+// ── Data Loading ──────────────────────────────────────────
 async function loadData(filters = {}) {
   loading.value = true
+  currentFilters.value = filters
   try {
-    const companyId = authStore.currentBranch?.company_id || authStore.profile?.company_id
-    let query = supabase.from('v_rpt_item_wise_sale').select('*').eq('company_id', companyId)
+    // Query order_items with menu_items and item_categories
+    let query = supabase
+      .from('order_items')
+      .select(`
+        id,
+        menu_item_id,
+        quantity,
+        unit_price,
+        total_price,
+        status,
+        orders!inner (
+          id,
+          order_type,
+          status,
+          payment_status,
+          subtotal,
+          tax_amount,
+          discount_amount,
+          total_amount,
+          delivery_charge,
+          branch_id,
+          created_at
+        ),
+        menu_items (
+          id,
+          name,
+          base_price,
+          item_categories ( id, name )
+        )
+      `)
 
-    if (filters.dateFrom) query = query.gte('sale_date', filters.dateFrom)
-    if (filters.dateTo) query = query.lte('sale_date', filters.dateTo + 'T23:59:59')
-    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    // Date filters on orders.created_at
+    if (filters.dateFrom) query = query.gte('orders.created_at', filters.dateFrom + 'T00:00:00')
+    if (filters.dateTo) query = query.lte('orders.created_at', filters.dateTo + 'T23:59:59')
 
-    const { data, error } = await query
+    // Branch filter
+    if (filters.branch) {
+      query = query.eq('orders.branch_id', filters.branch)
+    } else if (!authStore.isAdmin) {
+      const branchId = authStore.currentBranch?.id
+      if (branchId) query = query.eq('orders.branch_id', branchId)
+    }
 
+    // Exclude cancelled order items
+    query = query.not('status', 'eq', 'cancelled')
+
+    const { data, error } = await query.limit(5000)
     if (error) throw error
-    rows.value = data || []
 
-    kpiData.value = [
-      { label: 'Total Qty Sold', value: totalQty.value },
-      { label: 'Total Revenue', value: formatCurrency(totalAmtWithTax.value), color: 'green' },
-      { label: 'Total Cost', value: formatCurrency(totalCost.value), color: 'red' },
-      {
-        label: 'Average GP',
-        value:
-          totalGross.value > 0
-            ? (((totalAmtWithTax.value - totalCost.value) / totalAmtWithTax.value) * 100).toFixed(
-                2,
-              ) + '%'
-            : '0%',
-        color: 'blue',
-      },
-    ]
+    // Aggregate by menu item + category
+    const itemMap = {}
+    for (const oi of (data || [])) {
+      const order = oi.orders
+      if (!order || order.status === 'cancelled') continue
+
+      const menuItem = oi.menu_items || {}
+      const category = menuItem.item_categories || {}
+      const key = `${oi.menu_item_id}__${category.name || 'UNCATEGORIZED'}`
+      const qty = Number(oi.quantity || 0)
+      const itemTotal = Number(oi.total_price || oi.quantity * oi.unit_price || 0)
+      const unitPrice = Number(oi.unit_price || menuItem.base_price || 0)
+
+      // Prorate order-level discount and tax to this item
+      const orderItemsTotal = Number(order.subtotal || order.total_amount || 1)
+      const ratio = orderItemsTotal > 0 ? itemTotal / orderItemsTotal : 0
+      const discShare = Number(order.discount_amount || 0) * ratio
+      const taxShare = Number(order.tax_amount || 0) * ratio
+      const deliveryShare = Number(order.delivery_charge || 0) * ratio
+
+      if (!itemMap[key]) {
+        itemMap[key] = {
+          menu_item_id: oi.menu_item_id,
+          description: menuItem.name || 'Unknown Item',
+          item_code: (oi.menu_item_id || '').toString().slice(0, 6).toUpperCase(),
+          subgroup: (category.name || 'UNCATEGORIZED').toUpperCase(),
+          quantity: 0,
+          net_price: unitPrice,
+          cur_price: unitPrice,
+          gross_amt: 0,
+          disc_amt: 0,
+          amount: 0,
+          tax_amt: 0,
+          amt_with_tax: 0,
+          del_cost: 0,
+          cost: 0,
+        }
+      }
+
+      itemMap[key].quantity += qty
+      itemMap[key].gross_amt += itemTotal
+      itemMap[key].disc_amt += discShare
+      itemMap[key].amount += (itemTotal - discShare)
+      itemMap[key].tax_amt += taxShare
+      itemMap[key].amt_with_tax += (itemTotal - discShare + taxShare)
+      itemMap[key].del_cost += deliveryShare
+      // Cost would come from inventory/recipe costing — for now use 0
+      // itemMap[key].cost += ...
+    }
+
+    rawItems.value = Object.values(itemMap).sort((a, b) => {
+      if (a.subgroup !== b.subgroup) return a.subgroup.localeCompare(b.subgroup)
+      return a.description.localeCompare(b.description)
+    })
   } catch (err) {
-    console.error(err)
+    console.error('[ItemWiseSale] Error:', err)
   } finally {
     loading.value = false
   }
 }
 
+// ── Export ─────────────────────────────────────────────────
 function exportCSV() {
-  exportTableToCSV(columns, rows.value, 'item_wise_sales')
+  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  exportTableToCSV(columns, exportRows, 'item_wise_sales')
 }
 function exportExcel() {
-  exportTableToExcel(columns, rows.value, 'item_wise_sales')
+  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  exportTableToExcel(columns, exportRows, 'item_wise_sales')
 }
-
-function formatCurrency(val) {
-  return Number(val || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
-
-onMounted(() => {
-  loadData()
-})
 </script>
+
+<style scoped lang="scss">
+@import 'src/pages/reports/report-common.scss';
+
+/* ── SAP Style Header ──────────────────────────────────────── */
+.iws-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.02);
+
+  &__left { flex: 1; }
+  &__company {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--erp-text-primary, #f8fafc);
+    letter-spacing: -0.2px;
+  }
+  &__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--erp-text-secondary, #94a3b8);
+    margin-top: 2px;
+  }
+  &__meta {
+    font-size: 11px;
+    color: var(--erp-text-muted, #64748b);
+    margin-top: 4px;
+  }
+  &__right { text-align: right; flex-shrink: 0; }
+  &__page {
+    font-size: 11px;
+    color: var(--erp-text-secondary, #94a3b8);
+  }
+  &__date {
+    font-size: 11px;
+    color: var(--erp-text-muted, #64748b);
+  }
+}
+
+/* ── Table ─────────────────────────────────────────────────── */
+.iws-table {
+  background: transparent !important;
+  font-size: 11px !important;
+
+  :deep(.q-table) { font-size: 11px !important; }
+}
+
+.iws-table__header { background: rgba(255, 255, 255, 0.03) !important; }
+
+.iws-table__th {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--erp-text-secondary, #94a3b8) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  padding: 6px 6px !important;
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  white-space: nowrap !important;
+}
+
+.iws-table__row {
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    color: var(--erp-text-primary, #f8fafc) !important;
+    padding: 4px 6px !important;
+    height: 28px !important;
+  }
+}
+
+.iws-table__td--num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+  font-family: 'SF Mono', 'Consolas', monospace !important;
+}
+
+.iws-table__td--mono {
+  font-family: 'SF Mono', 'Consolas', monospace !important;
+  font-size: 10px !important;
+}
+
+/* ── Group Header ──────────────────────────────────────────── */
+.iws-table__group-header {
+  background: rgba(37, 99, 235, 0.06) !important;
+  border-top: 1px solid rgba(37, 99, 235, 0.15) !important;
+}
+
+.iws-table__group-name {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--erp-primary, #2563eb) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 6px 10px !important;
+}
+
+/* ── Group Subtotal ────────────────────────────────────────── */
+.iws-table__group-total {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    padding: 5px 6px !important;
+    height: 28px !important;
+    color: var(--erp-text-secondary, #94a3b8) !important;
+  }
+}
+
+/* ── Grand Total ───────────────────────────────────────────── */
+.iws-table__grand-total {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
+
+  td, .q-td {
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+    color: var(--erp-text-primary, #f8fafc) !important;
+  }
+}
+
+/* ── GP Badge ──────────────────────────────────────────────── */
+.iws-gp-badge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+}
+
+/* ── Empty State ───────────────────────────────────────────── */
+.iws-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+  color: var(--erp-text-muted, #64748b);
+  font-size: 13px;
+}
+
+/* ── Print Overrides ───────────────────────────────────────── */
+@media print {
+  .iws-header {
+    background: none !important;
+    border-bottom: 2pt solid #1a1a2e !important;
+    padding: 6pt 0 !important;
+  }
+  .iws-header__company {
+    font-size: 12pt !important;
+    color: #1a1a2e !important;
+  }
+  .iws-header__title {
+    font-size: 10pt !important;
+    color: #333 !important;
+  }
+  .iws-header__meta,
+  .iws-header__page,
+  .iws-header__date {
+    color: #555 !important;
+    font-size: 8pt !important;
+  }
+  .iws-table__group-header {
+    background: #e8edf3 !important;
+    border-top: 1pt solid #1a1a2e !important;
+  }
+  .iws-table__group-name {
+    color: #1a1a2e !important;
+    font-size: 8pt !important;
+  }
+  .iws-table__group-total td {
+    font-size: 7pt !important;
+    color: #333 !important;
+  }
+  .iws-table__grand-total td {
+    font-size: 8pt !important;
+    color: #1a1a2e !important;
+    background: #e8edf3 !important;
+    border-top: 1.5pt solid #1a1a2e !important;
+    border-bottom: 1.5pt solid #1a1a2e !important;
+  }
+  .iws-table__row td {
+    font-size: 7pt !important;
+    padding: 2pt 3pt !important;
+    height: auto !important;
+    color: #222 !important;
+  }
+  .iws-table__th {
+    font-size: 6pt !important;
+    padding: 3pt 3pt !important;
+    color: #fff !important;
+    background: #1a1a2e !important;
+  }
+  .iws-gp-badge {
+    background: none !important;
+    color: #333 !important;
+    border: 0.5pt solid #999 !important;
+    font-size: 6pt !important;
+  }
+}
+</style>

@@ -390,9 +390,6 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
   // S4-3: Extracted KOT handler — no more setTimeout race condition
   function handleKotChange(payload) {
-    // 🔒 SHIFT GUARD — off-shift waiters get no KOT alerts
-    if (!isOnShift.value) return
-
     const { eventType, new: newRow } = payload
 
     if (eventType === 'UPDATE' && newRow.status === 'ready') {
@@ -425,10 +422,10 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     const { eventType, new: newRow } = payload
 
     if (eventType === 'INSERT') {
-      // 🔒 SHIFT GUARD — off-shift waiters must not receive new order alerts
-      if (!isOnShift.value) return
-
       // New order arrived — refresh pending list from server (shift-filtered RPC).
+      // NOTE: No client-side isOnShift guard here — the RPC auth_is_on_shift()
+      // already enforces the check server-side. Client guard was causing stale
+      // isOnShift=false to permanently block fetching even after DB fixes.
       // ⚠️  Audio alert + toast + persistent card are handled EXCLUSIVELY by
       //     waiterAppStore.subscribeRealtime() to prevent double-alerts.
       //     This store only keeps the data layer in sync (no sound here).

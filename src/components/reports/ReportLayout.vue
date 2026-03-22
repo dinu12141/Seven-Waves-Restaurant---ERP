@@ -354,7 +354,23 @@ function formatDate(d) {
 }
 
 function handlePrint() {
-  window.print()
+  // Set print metadata for the footer
+  const page = document.querySelector('.report-page')
+  if (page) {
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    page.setAttribute('data-print-date', `${dateStr} ${timeStr}`)
+  }
+  // Set document title for the print filename
+  const origTitle = document.title
+  document.title = `${props.title} — Seven Waves ERP`
+
+  // Brief delay to let attributes render, then print
+  setTimeout(() => {
+    window.print()
+    document.title = origTitle
+  }, 100)
 }
 
 // ── Auto-refresh ────────────────────────────────────────────────────
@@ -740,24 +756,6 @@ onUnmounted(() => {
 }
 
 /* ── Print Styles ─────────────────────────────────────────────────────── */
-@media print {
-  .report-toolbar__right,
-  .report-filter-panel,
-  .report-filter-bar,
-  .report-date-presets,
-  .report-filter-actions {
-    display: none !important;
-  }
+/* NOTE: All print styles are in src/css/report-print.css (global) */
 
-  .report-page {
-    padding: 0;
-    background: #fff;
-  }
-  .report-kpi-card {
-    border: 1px solid #ccc;
-  }
-  .report-content {
-    border: none;
-  }
-}
 </style>

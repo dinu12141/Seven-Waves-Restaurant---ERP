@@ -211,6 +211,10 @@ const paymentModeOptions = [
 const statusOptions = [
   { label: 'All', value: null },
   { label: 'Paid', value: 'paid' },
+  { label: 'Completed', value: 'completed' },
+  { label: 'Served', value: 'served' },
+  { label: 'Invoiced', value: 'invoiced' },
+  { label: 'Preparing', value: 'preparing' },
   { label: 'Pending', value: 'pending' },
   { label: 'Cancelled', value: 'cancelled' },
 ]
@@ -284,20 +288,28 @@ async function loadData() {
   loading.value = true
   try {
     let query = supabase
-      .from('bills')
+      .from('orders')
       .select(
         `
         id,
-        bill_number,
+        order_number,
         created_at,
         subtotal,
         discount_amount,
         tax_amount,
         total_amount,
-        payment_method,
         status,
+        payment_status,
+        order_type,
+        branch_id,
         branches (name),
-        profiles (full_name)
+        waiter:profiles!orders_waiter_id_fkey (full_name),
+        invoices (
+          payments (
+            amount,
+            payment_methods (name)
+          )
+        )
       `,
       )
       .order('created_at', { ascending: false })
@@ -310,9 +322,6 @@ async function loadData() {
     }
     if (currentFilters.value.branch) {
       query = query.eq('branch_id', currentFilters.value.branch)
-    }
-    if (extraFilters.value.paymentMode) {
-      query = query.eq('payment_method', extraFilters.value.paymentMode)
     }
     if (extraFilters.value.status) {
       query = query.eq('status', extraFilters.value.status)
@@ -327,19 +336,40 @@ async function loadData() {
     const { data, error } = await query.limit(500)
     if (error) throw error
 
-    rows.value = (data || []).map((r) => ({
-      id: r.id,
-      order_no: r.bill_number || `#${r.id?.slice(0, 8)}`,
-      created_at: r.created_at,
-      branch: r.branches?.name || '—',
-      subtotal: Number(r.subtotal || 0),
-      discount: Number(r.discount_amount || 0),
-      tax: Number(r.tax_amount || 0),
-      total: Number(r.total_amount || 0),
-      payment_mode: r.payment_method || '—',
-      cashier: r.profiles?.full_name || '—',
-      status: r.status || 'paid',
-    }))
+    rows.value = (data || []).map((r) => {
+      // Extract payment method from invoices → payments chain
+      let paymentMode = '—'
+      const invoices = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []
+      for (const inv of invoices) {
+        const payments = Array.isArray(inv.payments) ? inv.payments : inv.payments ? [inv.payments] : []
+        for (const p of payments) {
+          if (p.payment_methods?.name) {
+            paymentMode = p.payment_methods.name
+            break
+          }
+        }
+        if (paymentMode !== '—') break
+      }
+
+      // Filter by payment mode if set
+      if (extraFilters.value.paymentMode && paymentMode.toLowerCase() !== extraFilters.value.paymentMode) {
+        return null
+      }
+
+      return {
+        id: r.id,
+        order_no: r.order_number || `#${r.id?.slice(0, 8)}`,
+        created_at: r.created_at,
+        branch: r.branches?.name || '—',
+        subtotal: Number(r.subtotal || 0),
+        discount: Number(r.discount_amount || 0),
+        tax: Number(r.tax_amount || 0),
+        total: Number(r.total_amount || 0),
+        payment_mode: paymentMode,
+        cashier: r.waiter?.full_name || '—',
+        status: r.status || 'pending',
+      }
+    }).filter(Boolean)
   } catch (err) {
     console.error('[SalesReport] Error:', err)
   } finally {

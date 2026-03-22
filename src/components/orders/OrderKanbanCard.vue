@@ -1,20 +1,19 @@
 <template>
-  <q-card class="order-card q-mb-md cursor-pointer" :class="statusClass">
-    <q-card-section class="q-pb-none">
+  <q-card class="order-card q-mb-sm cursor-pointer" :class="statusClass" @click="$emit('view', order)">
+    <q-card-section class="q-pb-none q-pt-sm">
       <div class="row items-center justify-between no-wrap">
         <div class="row items-center">
-          <q-badge :color="tableColor" class="q-mr-sm text-bold" style="font-size: 1.1em">
-            {{ order.table !== '-' ? order.table : 'Takeaway' }}
+          <q-badge :color="tableColor" class="q-mr-sm text-bold" style="font-size: 0.85em">
+            {{ order.table !== '-' && order.table !== '—' ? order.table : 'N/A' }}
           </q-badge>
-          <div class="text-subtitle2 text-weight-bold">{{ order.id }}</div>
+          <div class="text-subtitle2 text-weight-bold">#{{ order.order_number || order.id?.slice(0, 8) }}</div>
           <q-badge
-            color="red"
-            rounded
-            class="q-ml-sm text-caption text-bold"
-            v-if="order.status !== 'completed'"
+            v-if="order.order_source === 'website'"
+            color="purple"
+            class="q-ml-sm text-caption"
+            dense
           >
-            LIVE
-            <q-icon name="fiber_manual_record" size="8px" class="q-ml-xs blink" />
+            WEB
           </q-badge>
         </div>
         <div class="text-caption text-grey-5">
@@ -23,44 +22,77 @@
       </div>
     </q-card-section>
 
-    <q-card-section class="q-py-sm">
-      <div class="text-body2 text-grey-4 ellipsis-2-lines">
-        {{ order.items }}
+    <q-card-section class="q-py-xs">
+      <!-- Items list -->
+      <div class="items-preview">
+        <div v-for="(item, idx) in displayItems" :key="idx" class="item-line">
+          <span class="item-qty">{{ item.quantity }}x</span>
+          <span class="item-name">{{ item.name }}</span>
+        </div>
+        <div v-if="extraItemCount > 0" class="item-line text-grey-6">
+          +{{ extraItemCount }} more items
+        </div>
       </div>
-      <div class="row items-center justify-between q-mt-sm">
+
+      <div class="row items-center justify-between q-mt-xs">
         <q-chip dense size="sm" :color="typeColor" text-color="white" icon="restaurant">
-          {{ order.type }}
+          {{ formatType(order.type || order.order_type) }}
         </q-chip>
-        <div class="text-bold text-primary">{{ order.total }}</div>
+        <div class="text-bold text-primary" style="font-size:0.95em">
+          LKR {{ parseFloat(order.total || 0).toLocaleString() }}
+        </div>
+      </div>
+
+      <!-- Customer name -->
+      <div v-if="order.customer_name" class="cust-row q-mt-xs">
+        <q-icon name="person" size="12px" color="grey-6" class="q-mr-xs" />
+        <span class="text-caption text-grey-5">{{ order.customer_name }}</span>
+      </div>
+
+      <!-- Status badge -->
+      <div class="q-mt-xs">
+        <q-badge :color="statusBadgeColor" dense class="status-badge">
+          <q-icon :name="statusIcon" size="10px" class="q-mr-xs" />
+          {{ statusLabel }}
+        </q-badge>
       </div>
     </q-card-section>
 
     <q-separator color="grey-8" />
 
-    <q-card-actions align="right">
-      <q-btn flat dense size="sm" color="grey-5" icon="visibility" @click="$emit('view', order)">
+    <!-- ACTION BUTTONS — scoped by column type -->
+    <q-card-actions class="q-py-xs q-px-sm" style="min-height:36px">
+      <!-- View Details — always available -->
+      <q-btn flat dense size="sm" color="grey-5" icon="visibility" @click.stop="$emit('view', order)">
         <q-tooltip>View Details</q-tooltip>
       </q-btn>
-      <q-space />
+
+      <!-- KOT — available in ALL columns (Active, Preparing, Ready, Completed) -->
+      <q-btn flat dense size="sm" color="orange-5" icon="soup_kitchen" @click.stop="$emit('view-kot', order)">
+        <q-tooltip>View KOT</q-tooltip>
+      </q-btn>
+
+      <!-- Invoice / Bill — ONLY in Completed column (served, invoiced, paid) -->
       <q-btn
-        v-if="nextActionLabel"
-        push
-        dense
-        size="sm"
-        :color="nextActionColor"
-        :label="nextActionLabel"
-        @click="$emit('next-stage', order)"
-      />
+        v-if="isCompletedStatus"
+        flat dense size="sm" color="blue-5" icon="receipt"
+        @click.stop="$emit('view-invoice', order)"
+      >
+        <q-tooltip>View Bill</q-tooltip>
+      </q-btn>
+
+      <q-space />
+
+      <!-- Payment status for completed orders -->
+      <q-badge v-if="isCompletedStatus" :color="order.payment_status === 'paid' ? 'green' : 'orange'" dense>
+        {{ order.payment_status === 'paid' ? 'PAID' : 'UNPAID' }}
+      </q-badge>
     </q-card-actions>
   </q-card>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useAuthStore } from 'src/stores/auth'
-import { getRoleRestrictions } from 'src/config/roles'
-
-const authStore = useAuthStore()
 
 const props = defineProps({
   order: {
@@ -69,108 +101,108 @@ const props = defineProps({
   },
 })
 
-defineEmits(['view', 'next-stage'])
+defineEmits(['view', 'view-kot', 'view-invoice', 'next-stage'])
 
-/** Compute role restrictions (e.g. ordersAcceptOnly for waiters) */
-const restrictions = computed(() => getRoleRestrictions(authStore.roles))
+// ── Status checks ──
+const isCompletedStatus = computed(() =>
+  ['served', 'invoiced', 'paid'].includes(props.order.status)
+)
+
+// ── Items display (show max 3) ──
+const orderItems = computed(() => {
+  if (props.order.order_items && Array.isArray(props.order.order_items)) {
+    return props.order.order_items.map(i => ({
+      quantity: i.quantity || 1,
+      name: i.menu_items?.name || i.name || 'Item',
+    }))
+  }
+  if (props.order.items && typeof props.order.items === 'string') {
+    return props.order.items.split(', ').map(s => {
+      const match = s.match(/(\d+)x (.+)/)
+      return match ? { quantity: parseInt(match[1]), name: match[2] } : { quantity: 1, name: s }
+    })
+  }
+  return []
+})
+
+const displayItems = computed(() => orderItems.value.slice(0, 3))
+const extraItemCount = computed(() => Math.max(0, orderItems.value.length - 3))
+
+function formatType(type) {
+  const map = { dine_in: 'Dine In', 'dine-in': 'Dine In', takeaway: 'Takeaway', delivery: 'Delivery' }
+  return map[type] || type || '—'
+}
 
 const statusClass = computed(() => {
   switch (props.order.status) {
-    case 'pending':
-    case 'pending_waiter':
-      return 'bg-grey-9'
-    case 'accepted':
-    case 'preparing':
-      return 'bg-blue-grey-10'
-    case 'ready':
-      return 'bg-green-10'
-    case 'served':
-    case 'completed':
-      return 'bg-grey-10'
-    default:
-      return 'bg-grey-9'
+    case 'pending': case 'pending_waiter': return 'bg-grey-9'
+    case 'accepted': case 'preparing': return 'bg-blue-grey-10'
+    case 'ready': return 'bg-green-10'
+    case 'served': case 'invoiced': case 'paid': return 'bg-grey-10'
+    default: return 'bg-grey-9'
   }
 })
 
-const tableColor = computed(() => {
-  return props.order.table !== '-' ? 'primary' : 'orange'
+const statusLabel = computed(() => {
+  const map = { pending: 'Pending', pending_waiter: 'Pending', accepted: 'Accepted',
+    preparing: 'Preparing', ready: 'Ready', served: 'Served', invoiced: 'Invoiced', paid: 'Paid' }
+  return map[props.order.status] || props.order.status
 })
+
+const statusIcon = computed(() => {
+  const map = { pending: 'schedule', pending_waiter: 'schedule', accepted: 'check_circle',
+    preparing: 'soup_kitchen', ready: 'room_service', served: 'done_all',
+    invoiced: 'receipt_long', paid: 'payments' }
+  return map[props.order.status] || 'circle'
+})
+
+const statusBadgeColor = computed(() => {
+  const map = { pending: 'orange-9', pending_waiter: 'orange-9', accepted: 'blue',
+    preparing: 'blue-8', ready: 'green', served: 'teal', invoiced: 'indigo', paid: 'green-8' }
+  return map[props.order.status] || 'grey'
+})
+
+const tableColor = computed(() =>
+  props.order.table !== '-' && props.order.table !== '—' ? 'primary' : 'orange'
+)
 
 const typeColor = computed(() => {
-  const type = props.order?.type?.toLowerCase() || ''
-  switch (type) {
-    case 'dine-in':
-    case 'dine_in':
-      return 'teal'
-    case 'takeaway':
-      return 'orange'
-    case 'delivery':
-      return 'purple'
-    default:
-      return 'grey'
-  }
-})
-
-/**
- * Determine next action label based on status AND RBAC.
- * Waiter (ordersAcceptOnly): ONLY sees "Accept" on pending orders.
- * Other roles: see full action flow.
- */
-const nextActionLabel = computed(() => {
-  const acceptOnly = restrictions.value.ordersAcceptOnly
-
-  switch (props.order.status) {
-    case 'pending':
-    case 'pending_waiter':
-      return 'Accept'
-    case 'accepted':
-    case 'preparing':
-      return null // Kitchen handles this, no action from order page
-    case 'ready':
-      // Waiter (accept-only) cannot mark as served — only full-access roles can
-      return acceptOnly ? null : 'Served'
-    default:
-      return null
-  }
-})
-
-const nextActionColor = computed(() => {
-  switch (props.order.status) {
-    case 'pending':
-    case 'pending_waiter':
-      return 'primary'
-    case 'accepted':
-    case 'preparing':
-      return 'secondary'
-    case 'ready':
-      return 'positive'
-    default:
-      return 'grey'
-  }
+  const type = (props.order?.type || props.order?.order_type || '').toLowerCase()
+  return { 'dine-in': 'teal', 'dine_in': 'teal', takeaway: 'orange', delivery: 'purple' }[type] || 'grey'
 })
 </script>
 
 <style scoped>
 .order-card {
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
 }
-
 .order-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.blink {
-  animation: blinker 1.5s linear infinite;
+.items-preview { margin: 4px 0; }
+.item-line {
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: rgba(255, 255, 255, 0.65);
 }
+.item-qty { font-weight: 700; color: #f59e0b; min-width: 22px; }
+.item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-@keyframes blinker {
-  50% {
-    opacity: 0;
-  }
+.cust-row { display: flex; align-items: center; }
+
+.status-badge {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 </style>

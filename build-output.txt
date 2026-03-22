@@ -1,0 +1,99 @@
+﻿
+ .d88888b.
+d88P" "Y88b
+888     888
+888     888 888  888  8888b.  .d8888b   8888b.  888d888
+888     888 888  888     "88b 88K          "88b 888P"
+888 Y8b 888 888  888 .d888888 "Y8888b. .d888888 888
+Y88b.Y8b88P Y88b 888 888  888      X88 888  888 888
+ "Y888888"   "Y88888 "Y888888  88888P' "Y888888 888
+       Y8b
+
+
+ Build mode............. spa
+ Pkg quasar............. v2.18.6
+ Pkg @quasar/app-vite... v2.4.1
+ Pkg vite............... v7.3.1
+ Debugging.............. no
+ Publishing............. no
+
+node.exe : node:intern
+al/modules/package_jso
+n_reader:301
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (node:inter   
+ nal/m...json_read    
+er:301:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  throw new ERR_MODULE
+_NOT_FOUND(packageName
+, 
+fileURLToPath(base), 
+null);
+        ^
+
+Error [ERR_MODULE_NOT_
+FOUND]: Cannot find 
+package 'vite' 
+imported from 
+C:\Users\ROG STRIX\Des
+ktop\Restaurant ERP ne
+w\node_modules\@quasar
+\vite-plugin\src\plugi
+n.js
+    at Object.getPacka
+geJSONURL (node:intern
+al/modules/package_jso
+n_reader:301:9)
+    at packageResolve 
+(node:internal/modules
+/esm/resolve:768:81)
+    at moduleResolve (
+node:internal/modules/
+esm/resolve:859:18)
+    at defaultResolve 
+(node:internal/modules
+/esm/resolve:991:11)
+    at 
+#cachedDefaultResolve 
+(node:internal/modules
+/esm/loader:719:20)
+    at #resolveAndMayb
+eBlockOnLoaderThread (
+node:internal/modules/
+esm/loader:736:38)
+    at ModuleLoader.re
+solveSync (node:intern
+al/modules/esm/loader:
+765:52)
+    at #resolve (node:
+internal/modules/esm/l
+oader:701:17)
+    at ModuleLoader.ge
+tOrCreateModuleJob (no
+de:internal/modules/es
+m/loader:621:35)
+    at 
+ModuleJob.syncLink (no
+de:internal/modules/es
+m/module_job:160:33) {
+  code: 
+'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v24.14.0

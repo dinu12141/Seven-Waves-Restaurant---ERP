@@ -1,0 +1,454 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ *  SEVEN WAVES ERP — Professional Report Print Stylesheet
+ *  SAP Business One HANA-inspired clean print layout
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ *  This stylesheet is ONLY active during print (@media print).
+ *  It hides all ERP navigation chrome and produces a professional,
+ *  enterprise-grade report output suitable for business documents.
+ */
+
+@media print {
+  /* ── 1. PAGE SETUP ─────────────────────────────────────────────── */
+  @page {
+    size: A4 landscape;
+    margin: 12mm 10mm 14mm 10mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #1a1a1a !important;
+    font-family: 'Segoe UI', 'Arial', sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* ── 2. HIDE ALL ERP CHROME ────────────────────────────────────── */
+
+  /* MainLayout: header, sidebar, nav tabs */
+  .erp-header,
+  .erp-sidebar,
+  .erp-toolbar,
+  .q-header,
+  .q-drawer,
+  .q-drawer__backdrop,
+  .q-footer,
+  header[role="banner"],
+  nav,
+  .erp-top-nav,
+  .erp-branch-chip,
+  .erp-search-wrap,
+  .erp-avatar-btn,
+  .erp-user-avatar,
+  .erp-sidebar__footer {
+    display: none !important;
+  }
+
+  /* ReportsLayout: reports sidebar drawer */
+  .reports-drawer,
+  .reports-drawer-toggle,
+  aside.q-drawer {
+    display: none !important;
+  }
+
+  /* ReportLayout: interactive controls */
+  .report-toolbar__right,
+  .report-filter-panel,
+  .report-filter-bar,
+  .report-date-presets,
+  .report-filter-actions,
+  .report-filter-advanced-toggle,
+  .report-btn,
+  .q-btn-dropdown,
+  .q-slide-transition {
+    display: none !important;
+  }
+
+  /* Quasar UI overlays / menus */
+  .q-menu,
+  .q-dialog,
+  .q-drawer,
+  .q-notify,
+  .q-notification,
+  .q-loading-bar {
+    display: none !important;
+  }
+
+  /* Pagination controls */
+  .q-table__bottom,
+  .q-table__middle + .q-table__bottom {
+    display: none !important;
+  }
+
+  /* ── 3. LAYOUT RESET ───────────────────────────────────────────── */
+
+  /* Remove all layout offsets from Quasar */
+  .q-layout,
+  .q-page-container,
+  .q-layout__section--marginal,
+  .q-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .q-page-container {
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* ── 4. REPORT PAGE ────────────────────────────────────────────── */
+  .report-page {
+    padding: 0 !important;
+    background: #fff !important;
+    min-height: 0 !important;
+  }
+
+  /* ── 5. PRINT HEADER (Company + Report Info) ───────────────────── */
+  .report-toolbar {
+    display: block !important;
+    margin-bottom: 8pt !important;
+    padding-bottom: 6pt !important;
+    border-bottom: 2pt solid #1a1a2e !important;
+    background: none !important;
+  }
+
+  .report-toolbar__left {
+    display: block !important;
+  }
+
+  .report-toolbar__breadcrumb {
+    display: flex !important;
+    gap: 6px !important;
+    margin-bottom: 4pt !important;
+  }
+
+  .report-toolbar__breadcrumb-item,
+  .report-toolbar__breadcrumb-sep {
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    color: #555 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+  }
+
+  .report-toolbar__breadcrumb-item--active {
+    color: #1a1a2e !important;
+    font-weight: 800 !important;
+  }
+
+  .report-toolbar__title {
+    font-size: 16pt !important;
+    font-weight: 800 !important;
+    color: #1a1a2e !important;
+    margin: 2pt 0 !important;
+    letter-spacing: -0.3px !important;
+  }
+
+  .report-toolbar__subtitle {
+    font-size: 8pt !important;
+    color: #666 !important;
+    margin: 2pt 0 0 !important;
+  }
+
+  /* ── 6. KPI SUMMARY ROW (compact for print) ────────────────────── */
+  .report-kpi-row {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(130pt, 1fr)) !important;
+    gap: 6pt !important;
+    margin-bottom: 10pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-kpi-card {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8pt !important;
+    padding: 6pt 8pt !important;
+    background: #f8f9fa !important;
+    border: 0.5pt solid #ddd !important;
+    border-radius: 3pt !important;
+    border-top: 1.5pt solid #1a1a2e !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-kpi-card__icon {
+    display: none !important;
+  }
+
+  .report-kpi-card__value {
+    font-size: 12pt !important;
+    font-weight: 700 !important;
+    color: #1a1a2e !important;
+    line-height: 1 !important;
+  }
+
+  .report-kpi-card__label {
+    font-size: 7pt !important;
+    font-weight: 600 !important;
+    color: #666 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+    margin-top: 2pt !important;
+  }
+
+  .report-kpi-card__sub {
+    font-size: 7pt !important;
+    color: #888 !important;
+  }
+
+  /* ── 7. DATA TABLE ─────────────────────────────────────────────── */
+  .report-content {
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Column group headers (SalesReport) */
+  .sales-col-groups {
+    display: none !important;
+  }
+
+  /* Q-Table wrapper */
+  .q-table__container,
+  .q-table__middle {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .q-table {
+    background: none !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  /* Table header */
+  .report-table__header-row,
+  .q-table thead tr {
+    background: #1a1a2e !important;
+  }
+
+  .report-table__th,
+  .q-table th {
+    font-size: 7pt !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    background: #1a1a2e !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border: none !important;
+    padding: 5pt 6pt !important;
+    white-space: nowrap !important;
+    text-align: left !important;
+  }
+
+  /* Right-aligned numeric headers */
+  .report-table__th[class*="--num"],
+  th.text-right,
+  th[style*="text-align: right"] {
+    text-align: right !important;
+  }
+
+  /* Table body rows */
+  .report-table__row,
+  .q-table tbody tr {
+    border-bottom: 0.5pt solid #e0e0e0 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-table__row:nth-child(even),
+  .q-table tbody tr:nth-child(even) {
+    background: #f8f9fc !important;
+  }
+
+  .report-table__row:hover,
+  .q-table tbody tr:hover {
+    background: inherit !important;
+  }
+
+  /* Table cells */
+  .q-table td,
+  .q-td {
+    font-size: 8pt !important;
+    color: #222 !important;
+    padding: 4pt 6pt !important;
+    border: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Numeric cells */
+  .report-table__td--num,
+  td.text-right {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums !important;
+    font-family: 'Segoe UI', 'Consolas', monospace !important;
+  }
+
+  /* Bold cells */
+  .report-table__td--bold,
+  .text-weight-bold,
+  .text-weight-bolder {
+    font-weight: 700 !important;
+  }
+
+  /* Mono / order number */
+  .report-table__td--mono {
+    font-family: 'Consolas', 'SF Mono', monospace !important;
+    font-size: 8pt !important;
+  }
+
+  /* Colored text */
+  .text-green {
+    color: #0d6832 !important;
+  }
+  .text-red,
+  .report-table__td--debit {
+    color: #c62828 !important;
+  }
+  .text-blue {
+    color: #1565c0 !important;
+  }
+
+  /* ── 8. TOTAL ROW ──────────────────────────────────────────────── */
+  .report-table__total-row,
+  .q-table tfoot tr {
+    background: #e8edf3 !important;
+    border-top: 1.5pt solid #1a1a2e !important;
+    border-bottom: 1.5pt solid #1a1a2e !important;
+    page-break-inside: avoid !important;
+    font-weight: 700 !important;
+  }
+
+  .report-table__total-row td,
+  .report-table__total-row .q-td {
+    font-weight: 700 !important;
+    font-size: 8.5pt !important;
+    color: #1a1a2e !important;
+    padding: 5pt 6pt !important;
+  }
+
+  /* ── 9. BADGES ─────────────────────────────────────────────────── */
+  .report-badge,
+  .q-badge,
+  .erp-badge {
+    font-size: 7pt !important;
+    font-weight: 600 !important;
+    padding: 1pt 4pt !important;
+    border-radius: 2pt !important;
+    background: #e8edf3 !important;
+    color: #333 !important;
+    border: 0.5pt solid #ccc !important;
+  }
+
+  /* Status-specific badge colors for print */
+  .report-badge--paid,
+  .erp-badge--paid,
+  .report-badge--completed {
+    background: #d4edda !important;
+    color: #155724 !important;
+    border-color: #c3e6cb !important;
+  }
+
+  .report-badge--cancelled,
+  .report-badge--void {
+    background: #f8d7da !important;
+    color: #721c24 !important;
+    border-color: #f5c6cb !important;
+  }
+
+  .report-badge--refunded {
+    background: #fff3cd !important;
+    color: #856404 !important;
+    border-color: #ffeeba !important;
+  }
+
+  /* ── 10. VISUAL BARS (hourly/payment share) ────────────────────── */
+  .hourly-bar,
+  .payment-bar {
+    display: inline-block !important;
+    height: 4pt !important;
+    background: #1a1a2e !important;
+    border-radius: 2pt !important;
+    min-width: 1pt !important;
+  }
+
+  /* ── 11. EMPTY STATE ───────────────────────────────────────────── */
+  .report-empty {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 30pt !important;
+    color: #888 !important;
+    font-size: 10pt !important;
+  }
+
+  .report-empty .q-icon {
+    display: none !important;
+  }
+
+  /* ── 12. FOOTER — Auto-generated on print ──────────────────────── */
+  .report-page::after {
+    content: "Seven Waves Restaurant ERP • Generated: " attr(data-print-date) " • Confidential";
+    display: block;
+    margin-top: 12pt;
+    padding-top: 6pt;
+    border-top: 0.5pt solid #ccc;
+    font-size: 7pt;
+    color: #999;
+    text-align: center;
+  }
+
+  /* ── 13. SCROLLBAR & OVERFLOW FIX ──────────────────────────────── */
+  .q-scrollarea,
+  .q-scrollarea__container,
+  .q-scrollarea__content {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Q-table scroll wrapper */
+  .q-table__middle.scroll {
+    overflow: visible !important;
+  }
+
+  /* ── 14. LOADING SPINNER ───────────────────────────────────────── */
+  .q-inner-loading,
+  .q-spinner,
+  .q-spinner-gears {
+    display: none !important;
+  }
+
+  /* ── 15. AVOID ORPHANS & WIDOWS ────────────────────────────────── */
+  h1, h2, h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  table, .q-table {
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+}

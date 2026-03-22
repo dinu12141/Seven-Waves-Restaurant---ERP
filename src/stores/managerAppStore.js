@@ -344,9 +344,11 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
 
+    const ts = Date.now()
+
     // Orders channel
     ordersChannel = supabase
-      .channel('mgr-orders')
+      .channel(`mgr-orders-${branchId}-${ts}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => { loadOrders(); loadServedToday() }
@@ -355,7 +357,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // KOT channel
     kotChannel = supabase
-      .channel('mgr-kot')
+      .channel(`mgr-kot-${branchId}-${ts}`)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
@@ -366,7 +368,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // Waiter profiles channel
     profilesChannel = supabase
-      .channel('mgr-waiter-profiles')
+      .channel(`mgr-waiter-profiles-${branchId}-${ts}`)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'waiter_profiles', filter: `branch_id=eq.${branchId}` },
         () => { loadOnShiftWaiters(); loadLeaderboard() }
@@ -376,7 +378,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     // Messages channel
     if (_myEmployeeId) {
       messagesChannel = supabase
-        .channel('mgr-messages')
+        .channel(`mgr-messages-${branchId}-${ts}`)
         .on('postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'manager_messages',
             filter: `receiver_employee_id=eq.${_myEmployeeId}` },
@@ -387,7 +389,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // Alerts channel
     alertsChannel = supabase
-      .channel('mgr-alerts')
+      .channel(`mgr-alerts-${branchId}-${ts}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'manager_alerts', filter: `branch_id=eq.${branchId}` },
         () => loadAlerts()

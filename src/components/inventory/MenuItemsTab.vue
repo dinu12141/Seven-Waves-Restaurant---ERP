@@ -71,7 +71,7 @@
 
     <!-- DataGrid -->
     <DataTable
-      title="Menu Master"
+      :title="'Menu Master (' + filteredItems.length + ' items)'"
       :rows="filteredItems"
       :columns="columns"
       :filter="filter"
@@ -177,18 +177,26 @@
                     </ERPFormField>
                   </div>
                   <div class="col-4 flex flex-center">
-                     <q-avatar size="70px" rounded bg-color="grey-9" class="q-ma-sm shadow-3">
-                        <img v-if="form.image_url" :src="form.image_url" />
-                        <q-icon v-else name="hide_image" color="grey-6" />
-                     </q-avatar>
+                    <div class="image-upload-area q-ma-sm" @click="triggerImageUpload">
+                      <q-avatar size="70px" rounded bg-color="grey-9" class="shadow-3">
+                        <img v-if="form.image_url" :src="form.image_url" style="object-fit:cover" />
+                        <q-icon v-else name="add_a_photo" color="grey-6" size="28px" />
+                      </q-avatar>
+                      <q-badge v-if="imageUploading" floating color="primary">
+                        <q-spinner size="10px" />
+                      </q-badge>
+                      <div class="text-caption text-grey-6 text-center q-mt-xs" style="font-size:10px">Click to upload</div>
+                    </div>
+                    <input ref="imageInputRef" type="file" accept="image/*" class="hidden" @change="uploadImage" />
                   </div>
                 </div>
                 <div class="row q-col-gutter-md">
                    <div class="col-8">
                     <ERPFormField label="Base Price" required :error="vErrors.base_price">
                       <q-input
-                        v-model.number="form.base_price"
+                        v-model="form.base_price"
                         type="number"
+                        step="1"
                         dark
                         dense
                         outlined
@@ -225,7 +233,13 @@
                         dense
                         placeholder="Select..."
                         @update:model-value="onCategoryChange"
-                      />
+                      >
+                        <template v-slot:after>
+                           <q-btn round dense flat icon="add" color="primary" @click="catDialog.show = true">
+                             <q-tooltip>Add New Category</q-tooltip>
+                           </q-btn>
+                        </template>
+                      </q-select>
                     </ERPFormField>
                   </div>
                   <div class="col-6">
@@ -244,7 +258,14 @@
                         clearable
                         :disable="!form.category_id"
                         placeholder="Select..."
-                      />
+                        @update:model-value="onSubCategoryChange"
+                      >
+                        <template v-slot:after>
+                           <q-btn round dense flat icon="add" color="primary" @click="subCatDialog.show = true" :disable="!form.category_id">
+                             <q-tooltip>Add New Sub Category</q-tooltip>
+                           </q-btn>
+                        </template>
+                      </q-select>
                     </ERPFormField>
                   </div>
                   <div class="col-6">
@@ -259,7 +280,13 @@
                         dense
                         clearable
                         placeholder="Select..."
-                      />
+                      >
+                         <template v-slot:after>
+                           <q-btn round dense flat icon="add" color="primary" @click="kitchenDialog.show = true">
+                             <q-tooltip>Add New Kitchen</q-tooltip>
+                           </q-btn>
+                        </template>
+                      </q-select>
                     </ERPFormField>
                   </div>
                 </div>
@@ -276,6 +303,57 @@
         </q-scroll-area>
       </div>
     </q-dialog>
+
+    <!-- Inline Add Dialogs -->
+    <q-dialog v-model="catDialog.show">
+      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">New Category</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input dark outlined v-model="catDialog.name" label="Category Name" autofocus @keyup.enter="saveNewCategory" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn flat label="Save" color="primary" :loading="catDialog.loading" @click="saveNewCategory" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="subCatDialog.show">
+      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">New Sub Category</div>
+          <div v-if="form.category_id" class="text-caption text-grey-5">
+            Under: {{ categoryOptions.find(c => c.value === form.category_id)?.label }}
+          </div>
+        </q-card-section>
+        <q-card-section>
+          <q-input dark outlined v-model="subCatDialog.name" label="Sub Category Name" autofocus @keyup.enter="saveNewSubCategory" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn flat label="Save" color="primary" :loading="subCatDialog.loading" @click="saveNewSubCategory" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="kitchenDialog.show">
+      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">New Kitchen Station</div>
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <q-input dark outlined v-model="kitchenDialog.name" label="Kitchen Name" autofocus />
+          <q-toggle dark color="green" v-model="kitchenDialog.is_cashier_display" label="Is Cashier Display" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn flat label="Save" color="primary" :loading="kitchenDialog.loading" @click="saveNewKitchen" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </div>
 </template>
 
@@ -301,11 +379,18 @@ const categoryFilter = ref(null)
 const subCategoryFilter = ref(null)
 
 const erpForm = ref(null)
+const imageInputRef = ref(null)
+const imageUploading = ref(false)
+
+const catDialog = reactive({ show: false, name: '', loading: false })
+const subCatDialog = reactive({ show: false, name: '', loading: false })
+const kitchenDialog = reactive({ show: false, name: '', loading: false, is_cashier_display: false })
 
 const menuItems = ref([])
 const categories = ref([])
 const kitchens = ref([])
 const allSubCategories = ref([])
+const kitchenMappings = ref([])
 
 const emptyForm = {
   id: null,
@@ -326,8 +411,9 @@ const form = reactive({ ...emptyForm })
 const vErrors = reactive({ name: '', base_price: '', category_id: '' })
 
 const columns = [
-  { name: 'image', label: 'Img', field: 'image', align: 'left', sortable: false },
-  { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
+  { name: 'image', label: '', field: 'image_url', align: 'left', sortable: false, style: 'width: 48px' },
+  { name: 'item_code', label: 'Item ID', field: 'item_code', align: 'left', sortable: true },
+  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   {
     name: 'category_name',
     label: 'Category',
@@ -403,10 +489,19 @@ async function fetchData() {
     const { data: kitData } = await supabase.from('kitchens').select('id, name').order('name')
     kitchens.value = kitData || []
 
+    // Fetch kitchen mappings for auto-fill
+    const branchId = authStore.currentBranch?.id
+    let mapQuery = supabase.from('kitchen_subcategory_map').select('subcategory_id, kitchen_id, category_id')
+    if (branchId) mapQuery = mapQuery.eq('branch_id', branchId)
+    const { data: mapData, error: mapError } = await mapQuery
+    if (mapError) console.warn('[MenuItems] Kitchen mappings fetch error:', mapError)
+    kitchenMappings.value = mapData || []
+    console.log('[MenuItems] Kitchen mappings loaded:', kitchenMappings.value.length, 'maps')
+
     const { data: menuData, error } = await supabase
       .from('menu_items')
       .select(
-        `id, company_id, category_id, sub_category_id, kitchen_id, name, description, image_url, base_price, preparation_time_minutes, is_available, sort_order, categories(name), menu_sub_categories(name), kitchens(name)`,
+        `id, company_id, category_id, sub_category_id, kitchen_id, name, description, image_url, base_price, item_code, preparation_time_minutes, is_available, sort_order, categories(name), menu_sub_categories(name), kitchens(name)`,
       )
       .order('name')
 
@@ -435,12 +530,66 @@ function clearErrors() {
 function onCategoryChange() {
   vErrors.category_id = ''
   form.sub_category_id = null // Reset sub-category when parent category changes
+  form.kitchen_id = null // Reset kitchen too
+}
+
+function onSubCategoryChange(subCatId) {
+  // Auto-select kitchen based on kitchen_subcategory_map
+  console.log('[MenuItems] Sub category changed to:', subCatId, '| Available mappings:', kitchenMappings.value.length)
+  if (!subCatId) {
+    form.kitchen_id = null
+    return
+  }
+  const mapping = kitchenMappings.value.find(m => m.subcategory_id === subCatId)
+  console.log('[MenuItems] Found mapping:', mapping)
+  if (mapping) {
+    form.kitchen_id = mapping.kitchen_id
+    console.log('[MenuItems] Auto-filled kitchen_id:', mapping.kitchen_id)
+  }
 }
 
 function openCreate() {
-  Object.assign(form, emptyForm)
+  Object.assign(form, { ...emptyForm })
+  // Pre-fill from active filter if set
+  if (categoryFilter.value) {
+    form.category_id = categoryFilter.value
+    if (subCategoryFilter.value) {
+      form.sub_category_id = subCategoryFilter.value
+      // Auto-fill kitchen from mapping
+      const mapping = kitchenMappings.value.find(m => m.subcategory_id === subCategoryFilter.value)
+      if (mapping) form.kitchen_id = mapping.kitchen_id
+    }
+  }
   clearErrors()
   showDialog.value = true
+}
+
+function triggerImageUpload() {
+  imageInputRef.value?.click()
+}
+
+async function uploadImage(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  imageUploading.value = true
+  try {
+    const ext = file.name.split('.').pop()
+    const fileName = `menu_${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('menu-images')
+      .upload(fileName, file, { upsert: true })
+    if (upErr) throw upErr
+    const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(fileName)
+    form.image_url = urlData.publicUrl
+    $q.notify({ type: 'positive', message: 'Image uploaded!', timeout: 800 })
+  } catch (err) {
+    console.error('[MenuItems] Image upload error:', err)
+    $q.notify({ type: 'negative', message: err.message || 'Image upload failed' })
+  } finally {
+    imageUploading.value = false
+    // Reset file input so same file can be re-selected
+    if (imageInputRef.value) imageInputRef.value.value = ''
+  }
 }
 
 function openEdit(row) {
@@ -497,11 +646,15 @@ async function saveItem() {
       company_id: companyId,
       name: form.name.trim(),
       description: form.description,
-      base_price: form.base_price,
+      base_price: Math.round(parseFloat(form.base_price) || 0),
+      image_url: form.image_url || null,
       category_id: form.category_id,
       sub_category_id: form.sub_category_id || null,
       kitchen_id: form.kitchen_id || null,
       is_available: form.is_available,
+      is_veg: form.is_veg || false,
+      is_spicy: form.is_spicy || false,
+      is_best_seller: form.is_best_seller || false,
     }
 
     if (form.id) {
@@ -551,8 +704,108 @@ async function deleteItem(row) {
 function formatCurrency(val) {
   return 'LKR ' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
 }
+
+// Inline Creators
+async function saveNewCategory() {
+  if (!catDialog.name.trim()) return
+  catDialog.loading = true
+  try {
+    const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
+    const payload = { company_id: companyId, name: catDialog.name.trim().toUpperCase() }
+    const { data, error } = await supabase.from('categories').insert([payload]).select().single()
+    if (error) throw error
+    
+    categories.value.push(data)
+    form.category_id = data.id
+    onCategoryChange()
+    
+    catDialog.show = false
+    catDialog.name = ''
+    $q.notify({ type: 'positive', message: 'Category created' })
+  } catch (err) {
+    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Category already exists' })
+    else $q.notify({ type: 'negative', message: err.message || 'Error creating category' })
+  } finally {
+    catDialog.loading = false
+  }
+}
+
+async function saveNewSubCategory() {
+  if (!subCatDialog.name.trim() || !form.category_id) return
+  subCatDialog.loading = true
+  try {
+    const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
+    const payload = { company_id: companyId, category_id: form.category_id, name: subCatDialog.name.trim().toUpperCase() }
+    const { data, error } = await supabase.from('menu_sub_categories').insert([payload]).select().single()
+    if (error) throw error
+    
+    allSubCategories.value.push(data)
+    form.sub_category_id = data.id
+    onSubCategoryChange(data.id)
+    
+    subCatDialog.show = false
+    subCatDialog.name = ''
+    $q.notify({ type: 'positive', message: 'Sub Category created' })
+  } catch (err) {
+    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Sub Category already exists' })
+    else $q.notify({ type: 'negative', message: err.message || 'Error creating sub category' })
+  } finally {
+    subCatDialog.loading = false
+  }
+}
+
+async function saveNewKitchen() {
+  if (!kitchenDialog.name.trim()) return
+  kitchenDialog.loading = true
+  try {
+    const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
+    const branchId = authStore.currentBranch?.id || authStore.branches?.[0]?.branches?.id
+    if (!branchId) throw new Error('Branch required')
+
+    const payload = { 
+      company_id: companyId, 
+      branch_id: branchId, 
+      name: kitchenDialog.name.trim().toUpperCase(), 
+      is_active: true, 
+      is_cashier_display: kitchenDialog.is_cashier_display 
+    }
+    const { data, error } = await supabase.from('kitchens').insert([payload]).select().single()
+    if (error) throw error
+    
+    kitchens.value.push(data)
+    form.kitchen_id = data.id
+    
+    kitchenDialog.show = false
+    kitchenDialog.name = ''
+    kitchenDialog.is_cashier_display = false
+    $q.notify({ type: 'positive', message: 'Kitchen created' })
+  } catch (err) {
+    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Kitchen already exists' })
+    else $q.notify({ type: 'negative', message: err.message || 'Error creating kitchen' })
+  } finally {
+    kitchenDialog.loading = false
+  }
+}
+
 defineExpose({
   columns,
   rows: filteredItems,
 })
 </script>
+
+<style scoped>
+.image-upload-area {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.2s;
+}
+.image-upload-area:hover {
+  opacity: 0.75;
+}
+.hidden {
+  display: none;
+}
+</style>

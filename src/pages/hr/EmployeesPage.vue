@@ -274,13 +274,20 @@
               </div>
 
               <div class="col-12 col-md-6">
-                <div class="text-caption">EPF No</div>
-                <q-input dark outlined dense v-model="form.epf_no" />
+                <q-checkbox dark v-model="form.epf_etf_eligible" label="EPF / ETF Eligible" dense color="amber-8" class="text-grey-3 q-mt-sm" />
               </div>
-              <div class="col-12 col-md-6">
-                <div class="text-caption">EPF Amount</div>
-                <q-input dark outlined dense v-model="form.epf_amount" />
-              </div>
+              <div class="col-12 col-md-6"></div>
+
+              <template v-if="form.epf_etf_eligible">
+                <div class="col-12 col-md-6">
+                  <div class="text-caption">EPF No</div>
+                  <q-input dark outlined dense v-model="form.epf_no" />
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="text-caption">EPF Amount</div>
+                  <q-input dark outlined dense v-model="form.epf_amount" />
+                </div>
+              </template>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Welfare Amount</div>
@@ -290,7 +297,7 @@
 
               <div class="col-12 col-md-6">
                 <div class="text-caption text-grey-5">Company Name:</div>
-                <q-select dark outlined dense v-model="form.internal_company" :options="['Manju Dew Super PVT LTD']" />
+                <q-select dark outlined dense v-model="form.internal_company" :options="['SEVEN WAVES (PVT) LTD']" />
               </div>
             </div>
 
@@ -323,15 +330,17 @@
                 <q-input dark outlined dense v-model.number="form.unit_rate" type="number" prefix="LKR" />
               </div>
 
-              <div class="col-12 col-md-4">
-                <div class="text-caption">Hourly Rate (LKR)</div>
-                <q-input dark outlined dense v-model.number="form.hourly_rate" type="number" />
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="text-caption">OT Multiplier</div>
-                <q-input dark outlined dense v-model.number="form.overtime_rate_multiplier" type="number" hint="Default: 1.5×" />
-              </div>
-              <div class="col-12 col-md-4">
+              <template v-if="form.ot === 'Eligible'">
+                <div class="col-12 col-md-4">
+                  <div class="text-caption">Hourly Rate (LKR)</div>
+                  <q-input dark outlined dense v-model.number="form.hourly_rate" type="number" />
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption">OT Multiplier</div>
+                  <q-input dark outlined dense v-model.number="form.overtime_rate_multiplier" type="number" hint="Default: 1.5×" />
+                </div>
+              </template>
+              <div class="col-12 col-md-4" v-if="form.epf_etf_eligible">
                 <div class="text-caption">EPF % (Employee)</div>
                 <q-input dark outlined dense v-model.number="form.epf_employee_pct" type="number" suffix="%" />
               </div>
@@ -365,16 +374,55 @@
 
               <div class="col-12">
                 <div class="text-caption">Bank:</div>
-                <q-input dark outlined dense v-model="form.bank_name" placeholder="Select Bank" color="amber-8" />
+                <q-select
+                  dark outlined dense
+                  v-model="form.bank_name"
+                  :options="bankFilteredOptions"
+                  color="amber-8"
+                  use-input
+                  input-debounce="0"
+                  @filter="filterBanks"
+                  emit-value
+                  map-options
+                  clearable
+                  placeholder="Search and select bank"
+                  @update:model-value="onBankChange(form)"
+                >
+                  <template #no-option>
+                    <q-item><q-item-section class="text-grey">No banks found</q-item-section></q-item>
+                  </template>
+                </q-select>
               </div>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Branch:</div>
-                <q-input dark outlined dense v-model="form.bank_branch" placeholder="Select Branch" color="amber-8" />
+                <q-select
+                  dark outlined dense
+                  v-model="form.bank_branch"
+                  :options="getBranchOptions(form.bank_name)"
+                  color="amber-8"
+                  use-input
+                  input-debounce="0"
+                  @filter="(val, update) => filterBranches(val, update, form.bank_name)"
+                  emit-value
+                  map-options
+                  clearable
+                  placeholder="Select branch"
+                  :disable="!form.bank_name"
+                >
+                  <template #no-option>
+                    <q-item><q-item-section class="text-grey">{{ form.bank_name ? 'No branches found' : 'Select a bank first' }}</q-item-section></q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="col-12 col-md-6">
+                <div class="text-caption">Account Name:</div>
+                <q-input dark outlined dense v-model="form.bank_account_name" color="amber-8" placeholder="Account holder name" />
+              </div>
+
+              <div class="col-12">
                 <div class="text-caption">Account No:</div>
-                <q-input dark outlined dense v-model="form.bank_account_number" color="amber-8" />
+                <q-input dark outlined dense v-model="form.bank_account_number" color="amber-8" placeholder="Enter account number" />
               </div>
             </div>
 
@@ -413,20 +461,28 @@
             <div class="col-12 col-md-4 col-lg-3">
               <q-card flat bordered style="background: var(--erp-bg-form-card, #111827); border-color: rgba(255,255,255,0.07)" class="q-mb-md">
                 <q-card-section class="q-pb-sm">
+                  <!-- Employee Photo -->
+                  <div class="text-center q-mb-md">
+                    <q-avatar size="100px" style="border: 3px solid rgba(249, 168, 37, 0.5)">
+                      <img v-if="viewEmpPhotoUrl" :src="viewEmpPhotoUrl" style="object-fit: cover" />
+                      <q-icon v-else name="person" size="60px" color="grey-6" />
+                    </q-avatar>
+                  </div>
+
                   <div class="text-subtitle1 text-weight-bold q-mb-sm text-grey-3">About Me</div>
                   
                   <div class="q-gutter-y-sm">
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Name: <span class="text-white text-weight-medium">{{ viewEmp?.full_name || viewEmp?.first_name }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">EMP NO: <span class="text-white text-weight-medium">{{ viewEmp?.employee_code }}</span></div>
-                    <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Basic Salary / Allowance: <span class="text-white text-weight-medium">{{ viewForm.salary || '0.00' }}</span></div>
+                    <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Basic Salary: <span class="text-white text-weight-medium">{{ viewEmpSalary?.basic_salary || '0.00' }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">NIC: <span class="text-white text-weight-medium">{{ viewEmp?.nic_number }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Address: <span class="text-white text-weight-medium">{{ viewEmp?.address_line1 || 'No Address' }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Personal Contact: <span class="text-white text-weight-medium">{{ viewEmp?.mobile || '' }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Office Contact: <span class="text-white text-weight-medium">{{ viewEmp?.residence_phone || '' }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Designation: <span class="text-white text-weight-medium">{{ viewEmp?.designations?.title || 'None' }}</span></div>
-                    <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Hour Rate: <span class="text-white text-weight-medium">0.00</span></div>
+                    <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Hour Rate: <span class="text-white text-weight-medium">{{ viewEmpSalary?.hourly_rate || '0.00' }}</span></div>
                     <div class="q-pa-sm text-caption rounded-borders text-grey-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">EPF No: <span class="text-white text-weight-medium">{{ viewEmp?.epf_no || '' }}</span></div>
-                    <div class="q-pa-sm text-caption rounded-borders text-grey-3 q-mb-md" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Company Name: <span class="text-white text-weight-medium">{{ authStore.currentBranch?.name }}</span></div>
+                    <div class="q-pa-sm text-caption rounded-borders text-grey-3 q-mb-md" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05)">Company Name: <span class="text-white text-weight-medium">SEVEN WAVES (PVT) LTD</span></div>
                   </div>
 
                   <div class="text-subtitle1 text-weight-bold q-pa-sm text-center q-mb-md" style="border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; color: #4ade80; background: rgba(34, 197, 94, 0.05)">
@@ -453,25 +509,38 @@
                 <q-card-section class="q-pa-sm q-px-md">
                   <div class="row items-center justify-between q-mb-sm">
                     <span class="text-subtitle2 text-grey-4">HR Allowance</span>
-                    <q-btn color="amber-8" outline size="sm" label="Add Allow" no-caps />
                   </div>
                   <q-markup-table dark flat bordered dense class="text-caption shadow-0" separator="cell" style="background: rgba(255,255,255,0.02)">
                     <thead>
                       <tr>
                         <th class="text-left text-weight-medium text-grey-4">Allowance Type</th>
                         <th class="text-right text-weight-medium text-grey-4">Amount</th>
-                        <th class="text-center text-weight-medium text-grey-4">#</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td class="text-grey-3">Total allowance :</td><td class="text-right text-white">0.00</td><td></td>
+                      <tr v-if="viewEmpSalary?.housing_allowance > 0">
+                        <td class="text-grey-3">Housing Allowance</td><td class="text-right text-white">{{ Number(viewEmpSalary.housing_allowance).toFixed(2) }}</td>
+                      </tr>
+                      <tr v-if="viewEmpSalary?.transport_allowance > 0">
+                        <td class="text-grey-3">Transport Allowance</td><td class="text-right text-white">{{ Number(viewEmpSalary.transport_allowance).toFixed(2) }}</td>
+                      </tr>
+                      <tr v-if="viewEmpSalary?.meal_allowance > 0">
+                        <td class="text-grey-3">Meal Allowance</td><td class="text-right text-white">{{ Number(viewEmpSalary.meal_allowance).toFixed(2) }}</td>
+                      </tr>
+                      <tr v-if="viewEmpSalary?.other_allowances > 0">
+                        <td class="text-grey-3">Other Allowances</td><td class="text-right text-white">{{ Number(viewEmpSalary.other_allowances).toFixed(2) }}</td>
+                      </tr>
+                      <tr v-if="!viewEmpSalary || (Number(viewEmpSalary.housing_allowance || 0) + Number(viewEmpSalary.transport_allowance || 0) + Number(viewEmpSalary.meal_allowance || 0) + Number(viewEmpSalary.other_allowances || 0)) === 0">
+                        <td colspan="2" class="text-center text-grey-5">No allowances configured</td>
                       </tr>
                       <tr>
-                        <td class="text-grey-3">Basic Salary :</td><td class="text-right text-white">0.00</td><td></td>
+                        <td class="text-grey-3">Total Allowances :</td><td class="text-right text-white">{{ viewEmpTotalAllowance.toFixed(2) }}</td>
+                      </tr>
+                      <tr>
+                        <td class="text-grey-3">Basic Salary :</td><td class="text-right text-white">{{ Number(viewEmpSalary?.basic_salary || 0).toFixed(2) }}</td>
                       </tr>
                       <tr class="text-weight-bold">
-                        <td class="text-amber-4">Total :</td><td class="text-right text-amber-4">0.00</td><td></td>
+                        <td class="text-amber-4">Total :</td><td class="text-right text-amber-4">{{ (Number(viewEmpSalary?.basic_salary || 0) + viewEmpTotalAllowance).toFixed(2) }}</td>
                       </tr>
                     </tbody>
                   </q-markup-table>
@@ -570,11 +639,16 @@
                       <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Salary</div>
                       <div class="col-9"><q-input dark outlined dense v-model="viewForm.salary" /></div>
 
-                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">EPF NO</div>
-                      <div class="col-9"><q-input dark outlined dense v-model="viewForm.epf_no" /></div>
+                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4"></div>
+                      <div class="col-9"><q-checkbox dark v-model="viewForm.epf_etf_eligible" label="EPF / ETF Eligible" dense color="amber-8" class="text-grey-3" /></div>
 
-                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">EPF Amount</div>
-                      <div class="col-9"><q-input dark outlined dense v-model="viewForm.epf_amount" /></div>
+                      <template v-if="viewForm.epf_etf_eligible">
+                        <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">EPF NO</div>
+                        <div class="col-9"><q-input dark outlined dense v-model="viewForm.epf_no" /></div>
+
+                        <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">EPF Amount</div>
+                        <div class="col-9"><q-input dark outlined dense v-model="viewForm.epf_amount" /></div>
+                      </template>
 
                       <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Welfare Amount</div>
                       <div class="col-9"><q-input dark outlined dense v-model="viewForm.welfare_amount" /></div>
@@ -592,15 +666,37 @@
                       <div class="col-9"><q-select dark outlined dense v-model="viewForm.pay_type" :options="['Cash', 'Bank', 'Cheque']" /></div>
 
                       <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Bank</div>
-                      <div class="col-9"><q-input dark outlined dense v-model="viewForm.bank_name" placeholder="Select Bank" /></div>
-
-                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Branch</div>
-                      <div class="col-9 row items-center no-wrap">
-                        <q-input dark class="col" outlined dense v-model="viewForm.bank_branch" placeholder="Select Branch" />
-                        <q-btn flat color="amber-4" label="+ Add New Branch" size="sm" class="q-ml-sm" no-caps />
+                      <div class="col-9">
+                        <q-select
+                          dark outlined dense
+                          v-model="viewForm.bank_name"
+                          :options="bankFilteredOptionsView"
+                          use-input input-debounce="0"
+                          @filter="filterBanksView"
+                          emit-value map-options clearable
+                          placeholder="Search and select bank"
+                          @update:model-value="onBankChange(viewForm)"
+                        />
                       </div>
 
-                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Account</div>
+                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Branch</div>
+                      <div class="col-9">
+                        <q-select
+                          dark outlined dense
+                          v-model="viewForm.bank_branch"
+                          :options="getBranchOptions(viewForm.bank_name)"
+                          use-input input-debounce="0"
+                          @filter="(val, update) => filterBranches(val, update, viewForm.bank_name)"
+                          emit-value map-options clearable
+                          placeholder="Select branch"
+                          :disable="!viewForm.bank_name"
+                        />
+                      </div>
+
+                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Account Name</div>
+                      <div class="col-9"><q-input dark outlined dense v-model="viewForm.bank_account_name" placeholder="Account holder name" /></div>
+
+                      <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Account No</div>
                       <div class="col-9"><q-input dark outlined dense v-model="viewForm.bank_account_number" /></div>
 
                       <div class="col-3 text-right q-pr-md text-weight-medium text-grey-4">Join Date</div>
@@ -614,10 +710,10 @@
 
                       <div class="col-3"></div>
                       <div class="col-9 column q-gutter-y-xs q-mt-sm">
-                        <q-checkbox dark v-model="viewForm.morning_ot" label="Morning OT Pay" dense size="sm" color="amber-8" class="text-grey-3" />
+                        <q-checkbox dark v-if="viewForm.ot === 'Eligible'" v-model="viewForm.morning_ot" label="Morning OT Pay" dense size="sm" color="amber-8" class="text-grey-3" />
                         <q-checkbox dark v-model="viewForm.late_deduct" label="Late Pay Deduct" dense size="sm" color="amber-8" class="text-grey-3" />
                         <q-checkbox dark v-model="viewForm.no_pay_deduct" label="No Pay Deduct" dense size="sm" color="amber-8" class="text-grey-3" />
-                        <q-checkbox dark v-model="viewForm.epf_attend" label="EPF Attend" dense size="sm" color="amber-8" class="text-grey-3" />
+                        <q-checkbox dark v-if="viewForm.epf_etf_eligible" v-model="viewForm.epf_attend" label="EPF Attend" dense size="sm" color="amber-8" class="text-grey-3" />
                       </div>
 
                       <div class="col-3 text-right q-pr-md text-weight-medium q-mt-md text-grey-4">User Pic</div>
@@ -720,8 +816,37 @@ const showForm = ref(false)
 const showDetail = ref(false)
 const isEditing = ref(false)
 const viewEmp = ref(null)
+const viewEmpPhotoUrl = ref('')
+const viewEmpSalary = ref(null)
+
+const viewEmpTotalAllowance = computed(() => {
+  if (!viewEmpSalary.value) return 0
+  const s = viewEmpSalary.value
+  return Number(s.housing_allowance || 0) + Number(s.transport_allowance || 0) + Number(s.meal_allowance || 0) + Number(s.other_allowances || 0)
+})
 
 const stats = ref({ total: 0, active: 0, probation: 0, contract: 0 })
+
+async function uploadEmployeePhoto(empId, file) {
+  try {
+    const ext = file.name.split('.').pop()
+    const path = `${empId}/photo.${ext}`
+    const { error: uploadErr } = await supabase.storage
+      .from('employee-photos')
+      .upload(path, file, { upsert: true })
+    if (uploadErr) throw uploadErr
+
+    const { data: urlData } = supabase.storage
+      .from('employee-photos')
+      .getPublicUrl(path)
+
+    const photoUrl = urlData.publicUrl
+    await supabase.from('employees').update({ photo_url: photoUrl }).eq('id', empId)
+  } catch (err) {
+    console.warn('[HR] Photo upload failed:', err.message)
+    $q.notify({ type: 'warning', message: 'Employee saved, but photo upload failed: ' + err.message })
+  }
+}
 
 const r = { req: (v) => (v !== null && v !== undefined && v !== '') || 'Required' }
 
@@ -737,6 +862,67 @@ const salaryMethodOptions = [
   { label: 'Commission (Recovery)', value: 'commission_recovery' },
 ]
 
+// ── Sri Lankan Banks ─────────────────────────────────────────────────
+const SRI_LANKAN_BANKS = {
+  'Bank of Ceylon': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Trincomalee', 'Batticaloa', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Polonnaruwa', 'Hambantota', 'Ampara', 'Monaragala', 'Nuwara Eliya', 'Puttalam', 'Chilaw', 'Embilipitiya', 'Hatton', 'Bandarawela', 'Kaduwela', 'Horana', 'Dehiwala', 'Mount Lavinia', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Kadawatha', 'Wattala', 'Ja-Ela', 'Borella', 'Pettah', 'Fort', 'Bambalapitiya', 'Wellawatte', 'Kollupitiya', 'Nugegoda', 'Kottawa', 'Avissawella', 'Matale', 'Dambulla'],
+  'People\'s Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Trincomalee', 'Batticaloa', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Polonnaruwa', 'Hambantota', 'Ampara', 'Monaragala', 'Nuwara Eliya', 'Puttalam', 'Chilaw', 'Embilipitiya', 'Hatton', 'Bandarawela', 'Kaduwela', 'Horana', 'Dehiwala', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Nugegoda', 'Fort', 'Pettah', 'Borella', 'Wellawatte', 'Kottawa', 'Kadawatha', 'Wattala', 'Matale', 'Dambulla'],
+  'Commercial Bank of Ceylon': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Hambantota', 'Nuwara Eliya', 'Puttalam', 'Chilaw', 'Hatton', 'Bandarawela', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Nugegoda', 'Fort', 'Pettah', 'Borella', 'Wellawatte', 'Kollupitiya', 'Bambalapitiya', 'Kottawa', 'Wattala', 'Ja-Ela', 'Matale', 'Dambulla', 'Embilipitiya'],
+  'Hatton National Bank (HNB)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Hambantota', 'Nuwara Eliya', 'Puttalam', 'Hatton', 'Bandarawela', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Wellawatte', 'Kollupitiya', 'Kottawa', 'Wattala', 'Matale'],
+  'Sampath Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Hambantota', 'Nuwara Eliya', 'Puttalam', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Wellawatte', 'Kottawa', 'Wattala', 'Matale', 'Chilaw'],
+  'Seylan Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Hambantota', 'Nuwara Eliya', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Piliyandala', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Wellawatte', 'Kottawa', 'Wattala', 'Matale'],
+  'National Savings Bank (NSB)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Jaffna', 'Ratnapura', 'Badulla', 'Negombo', 'Panadura', 'Kalutara', 'Gampaha', 'Kegalle', 'Polonnaruwa', 'Hambantota', 'Ampara', 'Monaragala', 'Nuwara Eliya', 'Puttalam', 'Chilaw', 'Hatton', 'Bandarawela', 'Dehiwala', 'Moratuwa', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Kottawa', 'Matale'],
+  'Nations Trust Bank (NTB)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Negombo', 'Gampaha', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Wellawatte', 'Kottawa', 'Wattala'],
+  'DFCC Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Negombo', 'Gampaha', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Kottawa', 'Wattala'],
+  'Pan Asia Banking Corporation (PABC)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Negombo', 'Gampaha', 'Dehiwala', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Kottawa', 'Wattala'],
+  'Union Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Negombo', 'Dehiwala', 'Nugegoda', 'Fort', 'Borella', 'Kottawa'],
+  'Amana Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Negombo', 'Kattankudy', 'Akurana', 'Dehiwala', 'Fort', 'Pettah'],
+  'National Development Bank (NDB)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Negombo', 'Gampaha', 'Kaduwela', 'Dehiwala', 'Moratuwa', 'Maharagama', 'Nugegoda', 'Fort', 'Borella', 'Kottawa', 'Wattala'],
+  'Cargills Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Negombo', 'Maharagama', 'Fort', 'Borella', 'Mawathagama', 'Old Moor Street'],
+  'Regional Development Bank (RDB/Sanasa)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Ratnapura', 'Badulla', 'Kegalle', 'Polonnaruwa', 'Hambantota', 'Ampara', 'Monaragala', 'Nuwara Eliya', 'Puttalam'],
+  'Housing Development Finance Corporation (HDFC)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Anuradhapura', 'Ratnapura', 'Badulla', 'Negombo', 'Gampaha'],
+  'State Mortgage & Investment Bank (SMIB)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Anuradhapura', 'Ratnapura', 'Negombo'],
+  'Lanka Orix Finance (LOLC)': ['Head Office - Colombo', 'Kandy', 'Galle', 'Matara', 'Kurunegala', 'Negombo', 'Gampaha', 'Dehiwala', 'Maharagama'],
+  'Sanasa Development Bank': ['Head Office - Colombo', 'Kandy', 'Galle', 'Kurunegala', 'Anuradhapura', 'Ratnapura', 'Badulla', 'Kegalle', 'Matale'],
+}
+
+const bankOptions = Object.keys(SRI_LANKAN_BANKS).map(b => ({ label: b, value: b }))
+const bankFilteredOptions = ref([...bankOptions])
+const bankFilteredOptionsView = ref([...bankOptions])
+
+function filterBanks(val, update) {
+  update(() => {
+    const q = (val || '').toLowerCase()
+    bankFilteredOptions.value = q
+      ? bankOptions.filter(b => b.label.toLowerCase().includes(q))
+      : [...bankOptions]
+  })
+}
+
+function filterBanksView(val, update) {
+  update(() => {
+    const q = (val || '').toLowerCase()
+    bankFilteredOptionsView.value = q
+      ? bankOptions.filter(b => b.label.toLowerCase().includes(q))
+      : [...bankOptions]
+  })
+}
+
+function getBranchOptions(bankName) {
+  if (!bankName || !SRI_LANKAN_BANKS[bankName]) return []
+  return SRI_LANKAN_BANKS[bankName].map(b => ({ label: b, value: b }))
+}
+
+function filterBranches(val, update) {
+  update(() => {
+    // The options are already computed by getBranchOptions
+    // The q-select's use-input handles the visual filtering
+  })
+}
+
+function onBankChange(formObj) {
+  // Clear branch when bank changes
+  formObj.bank_branch = ''
+}
 
 const defaultForm = {
   id: null,
@@ -762,7 +948,8 @@ const defaultForm = {
   epf_no: '',
   epf_amount: '',
   welfare_amount: '',
-  internal_company: 'Manju Dew Super PVT LTD',
+  internal_company: 'SEVEN WAVES (PVT) LTD',
+  epf_etf_eligible: false,
   morning_ot: false,
   late_deduct: false,
   no_pay_deduct: false,
@@ -785,6 +972,7 @@ const defaultForm = {
   bank_name: '',
   bank_branch: '',
   bank_code: '',
+  bank_account_name: '',
   bank_account_number: '',
   emergency_contact_name: '',
   emergency_contact_phone: '',
@@ -841,10 +1029,12 @@ const viewForm = reactive({
   pay_type: 'Cash',
   bank_name: '',
   bank_branch: '',
+  bank_account_name: '',
   bank_account_number: '',
   hire_date: '',
   shift_rate: '',
   shift: 'Select Shift',
+  epf_etf_eligible: false,
   morning_ot: false,
   late_deduct: false,
   no_pay_deduct: false,
@@ -978,7 +1168,7 @@ function openForm(emp) {
   showForm.value = true
 }
 
-function viewEmployee(emp) {
+async function viewEmployee(emp) {
   viewEmp.value = emp
   
   viewForm.first_name = emp.first_name || ''
@@ -996,8 +1186,26 @@ function viewEmployee(emp) {
   viewForm.epf_no = emp.epf_no || ''
   viewForm.bank_name = emp.bank_name || ''
   viewForm.bank_branch = emp.bank_branch || ''
+  viewForm.bank_account_name = emp.bank_account_name || ''
   viewForm.bank_account_number = emp.bank_account_number || ''
   viewForm.hire_date = emp.hire_date || ''
+
+  // Load photo URL
+  viewEmpPhotoUrl.value = emp.photo_url || ''
+
+  // Load salary structure
+  try {
+    const { data } = await supabase
+      .from('salary_structures')
+      .select('*')
+      .eq('employee_id', emp.id)
+      .eq('is_current', true)
+      .limit(1)
+      .single()
+    viewEmpSalary.value = data || null
+  } catch {
+    viewEmpSalary.value = null
+  }
   
   showDetail.value = true
 }
@@ -1036,7 +1244,9 @@ async function saveEmployee() {
       'epf_employee_pct']
     salaryKeys.forEach(k => delete payload[k])
 
-    // Strip other UI/unneeded fields
+    // Strip UI-only fields that do NOT exist in the employees table
+    delete payload.salary
+    delete payload.title
     delete payload.pay_type
     delete payload.ot
     delete payload.shift
@@ -1048,16 +1258,20 @@ async function saveEmployee() {
     delete payload.late_deduct
     delete payload.no_pay_deduct
     delete payload.etf_allowed
+    // Extract user_pic File before deleting from payload
+    const userPicFile = payload.user_pic
     delete payload.user_pic
+    delete payload.epf_etf_eligible
+    delete payload.shift_rate
+
+    // Map phone field
+    if (payload.mobile && !payload.phone) {
+      payload.phone = payload.mobile
+    }
 
     payload.company_id = authStore.currentBranch?.company_id
     payload.branch_id  = authStore.currentBranch?.id
     payload.created_by = authStore.user?.id
-
-    // Keep `salary` as a convenience field on the employee row
-    if (!payload.salary && salaryPayload.basic_salary > 0) {
-      payload.salary = String(salaryPayload.basic_salary)
-    }
 
     let targetEmpId = empId
 
@@ -1070,6 +1284,11 @@ async function saveEmployee() {
       if (error) throw error
       targetEmpId = data.id
       $q.notify({ type: 'positive', message: 'Employee added successfully' })
+    }
+
+    // ── Upload photo if provided ─────────────────────────────────────
+    if (userPicFile && targetEmpId) {
+      await uploadEmployeePhoto(targetEmpId, userPicFile)
     }
 
     // ── Auto-save salary structure ──────────────────────────────────
@@ -1118,6 +1337,7 @@ async function updateProfile() {
       designation_id: viewForm.designation_id || null,
       bank_name: viewForm.bank_name || '',
       bank_branch: viewForm.bank_branch || '',
+      bank_account_name: viewForm.bank_account_name || '',
       bank_account_number: viewForm.bank_account_number || '',
       hire_date: viewForm.hire_date || null,
       epf_no: viewForm.epf_no || ''
@@ -1125,6 +1345,15 @@ async function updateProfile() {
 
     const { error } = await supabase.from('employees').update(payload).eq('id', viewEmp.value.id)
     if (error) throw error
+
+    // Upload photo if a new file was selected
+    if (viewForm.user_pic && viewForm.user_pic instanceof File) {
+      await uploadEmployeePhoto(viewEmp.value.id, viewForm.user_pic)
+      // Refresh photo URL
+      const { data: empData } = await supabase.from('employees').select('photo_url').eq('id', viewEmp.value.id).single()
+      if (empData?.photo_url) viewEmpPhotoUrl.value = empData.photo_url
+      viewForm.user_pic = null
+    }
     
     $q.notify({ type: 'positive', message: 'Employee profile updated successfully' })
     Object.assign(viewEmp.value, payload)

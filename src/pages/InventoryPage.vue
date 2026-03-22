@@ -38,6 +38,16 @@
           <CategoryManagementTab ref="tabRef" />
         </q-tab-panel>
 
+        <!-- Menu Book -->
+        <q-tab-panel name="menu_book" class="q-pa-none">
+          <MenuBookTab ref="tabRef" />
+        </q-tab-panel>
+
+        <!-- Kitchen Mapping -->
+        <q-tab-panel name="kitchen_mapping" class="q-pa-none">
+          <KitchenMappingTab ref="tabRef" />
+        </q-tab-panel>
+
         <!-- Recipes / BOM -->
         <q-tab-panel name="recipes" class="q-pa-none">
           <RecipesTab ref="tabRef" />
@@ -107,6 +117,8 @@ import SuppliersTab from 'components/inventory/SuppliersTab.vue'
 import RecipesTab from 'components/inventory/RecipesTab.vue'
 import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
+import MenuBookTab from 'components/inventory/MenuBookTab.vue'
+import KitchenMappingTab from 'components/inventory/KitchenMappingTab.vue'
 import GoodRequestsTab from 'components/inventory/GoodRequestsTab.vue'
 
 const route = useRoute()

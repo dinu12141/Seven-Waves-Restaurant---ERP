@@ -217,8 +217,25 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     const BUFFER_MINUTES = 30
     const DAY = 1440 // minutes in a day
+
+    // IMPORTANT: Shift times are stored in Asia/Colombo timezone.
+    // We must compare using Asia/Colombo local time, NOT browser UTC time.
     const now = new Date()
-    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    let currentMinutes
+    try {
+      // Use Intl to get Sri Lanka local time reliably
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Colombo',
+        hour: 'numeric', minute: 'numeric', hour12: false
+      })
+      const parts = formatter.formatToParts(now)
+      const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+      const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
+      currentMinutes = hour * 60 + minute
+    } catch {
+      // Fallback: use browser local time (works if browser is in SL timezone)
+      currentMinutes = now.getHours() * 60 + now.getMinutes()
+    }
 
     const [sh, sm] = startTimeStr.split(':').map(Number)
     const [eh, em] = endTimeStr.split(':').map(Number)
@@ -232,10 +249,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     if (crossesMidnight) {
       // Overnight shift spans two calendar days.
-      // Convert to a continuous timeline by adding DAY to times after midnight.
-      // If current time is before the raw start, it's the "next day" portion.
       const shiftStart = rawStart - BUFFER_MINUTES
-      const shiftEnd   = rawEnd + DAY + BUFFER_MINUTES  // end is next day
+      const shiftEnd   = rawEnd + DAY + BUFFER_MINUTES
 
       // Normalize current time: if before raw start, treat as next-day
       const cur = currentMinutes < rawStart ? currentMinutes + DAY : currentMinutes
@@ -347,12 +362,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── Orders ───────────────────────────────────────────────────────────────
   async function loadPendingOrders() {
-    // 🔒 SHIFT GUARD — never show pending orders to off-shift waiters
-    if (!isOnShift.value) {
-      pendingOrders.value = []
-      return
-    }
-
     // Primary: use authStore.currentBranch. Fallback: use the waiter profile's branch_id.
     let branchId = authStore.currentBranch?.id
     if (!branchId && profile.value?.branch_id) {
@@ -531,8 +540,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         { event: 'INSERT', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         (payload) => {
           const newRow = payload.new
-          // 🔒 SHIFT GUARD — never alert off-shift waiters about new orders
-          if (!isOnShift.value) return
 
           if (newRow.status === 'pending_waiter' && !newRow.assigned_waiter_id) {
             _playAlertSound()
@@ -588,8 +595,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => {
-          // Only refresh live data if on shift
-          if (!isOnShift.value) return
           loadPendingOrders()
           loadMyOrders()
         }
@@ -602,8 +607,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
-          // 🔒 SHIFT GUARD — off-shift waiters get no KOT alerts
-          if (!isOnShift.value) return
           if (payload.new?.status === 'ready') {
             // Check this KOT belongs to one of MY orders before alerting
             const myOrderIds = myOrders.value.map(o => o.id)

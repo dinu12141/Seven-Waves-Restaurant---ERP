@@ -36,6 +36,11 @@
                     </q-item-section>
                     <q-item-section>{{ wh.is_active ? 'Deactivate' : 'Activate' }}</q-item-section>
                   </q-item>
+                  <q-separator dark />
+                  <q-item clickable v-close-popup @click="deleteWh(wh)">
+                    <q-item-section avatar><q-icon name="delete" color="negative" /></q-item-section>
+                    <q-item-section class="text-negative">Delete</q-item-section>
+                  </q-item>
                 </q-list>
               </q-btn-dropdown>
             </div>
@@ -188,7 +193,7 @@ import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useWarehouseList } from 'src/services/inventoryService'
 
 const $q = useQuasar()
-const { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse } = useWarehouseList()
+const { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } = useWarehouseList()
 
 const showDialog = ref(false)
 const editingWh = ref(null)
@@ -314,6 +319,30 @@ async function toggleActive(wh) {
     console.error('[WarehouseTab] Error toggling status:', e)
     $q.notify({ type: 'negative', message: e.message || 'Failed to update status.' })
   }
+}
+
+function deleteWh(wh) {
+  $q.dialog({
+    title: 'Delete Warehouse',
+    message: `Are you sure you want to delete "${wh.name}"? This cannot be undone. If this warehouse has stock or documents linked, the delete will fail.`,
+    cancel: true,
+    persistent: true,
+    dark: true,
+    color: 'negative',
+  }).onOk(async () => {
+    try {
+      await deleteWarehouse(wh.id)
+      $q.notify({ type: 'positive', message: `${wh.name} deleted.` })
+    } catch (e) {
+      console.error('[WarehouseTab] Error deleting warehouse:', e)
+      $q.notify({
+        type: 'negative',
+        message: e.message || 'Failed to delete warehouse.',
+        caption: 'It may have linked documents or stock records.',
+        timeout: 8000,
+      })
+    }
+  })
 }
 const columns = [
   { name: 'code', label: 'Code', field: 'code' },

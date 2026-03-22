@@ -28,12 +28,15 @@ export default boot(async ({ router }) => {
     }
 
     // ── Manager-only guard ────────────────────────────────────────────────
-    // Pure managers (no admin role) can ONLY access /manager-app.
+    // Pure managers (no admin role AND no operational roles like kitchen/cashier/waiter)
+    // can ONLY access /manager-app.
     // Any attempt to reach a MainLayout ERP route is blocked → /manager-app.
+    const hasOperationalRole = authStore.roles.some(r => ['kitchen', 'cashier', 'waiter'].includes(r))
     const isPureManager =
       authStore.isAuthenticated &&
       authStore.roles.includes('manager') &&
-      !authStore.roles.includes('admin')
+      !authStore.roles.includes('admin') &&
+      !hasOperationalRole
 
     if (isPureManager) {
       // Allow: /manager-app/**, /auth/login, /auth/**, public routes

@@ -300,30 +300,84 @@ const filteredItems = computed(() => {
 async function fetchData() {
   loading.value = true
   try {
-    const [catRes, itemRes] = await Promise.all([
-      supabase.from('menu_sub_categories').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('menu_items').select('*'),
-    ])
+    // 1. Load categories
+    const { data: catData, error: catErr } = await supabase
+      .from('menu_sub_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+    if (catErr) throw catErr
 
-    if (catRes.error) throw catRes.error
-    if (itemRes.error) throw itemRes.error
+    const loadedCategories = catData || []
 
-    let loadedCategories = catRes.data || []
-    let loadedItems = itemRes.data || []
+    // 2. Try to find an active menu book
+    const { data: books } = await supabase
+      .from('menu_books')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .order('sort_order')
+      .limit(1)
 
-    // Ensure we have an "All Items" first choice in categories
+    const activeBook = books?.[0]
+    let loadedItems = []
+
+    if (activeBook) {
+      // Load items from the menu book
+      const { data: bookItemsData, error: biErr } = await supabase
+        .from('menu_book_items')
+        .select('*, menu_items(id, name, description, base_price, image_url, sub_category_id, kitchen_id, is_available, is_veg, is_spicy, is_best_seller, preparation_time_mins, sort_order)')
+        .eq('menu_book_id', activeBook.id)
+        .eq('is_available', true)
+        .order('sort_order')
+
+      if (biErr) throw biErr
+
+      if (bookItemsData && bookItemsData.length > 0) {
+        // Menu book has items — use them
+        loadedItems = bookItemsData
+          .filter(bi => bi.menu_items && bi.menu_items.is_available !== false)
+          .map(bi => {
+            const mi = bi.menu_items
+            return {
+              ...mi,
+              price: Number(bi.override_price || mi.base_price),
+              image_url: mi.image_url || getPremiumFallbackImage(mi.name, mi.id),
+            }
+          })
+
+        // Only show categories that have items in the book
+        const usedSubCatIds = new Set(loadedItems.map(i => i.sub_category_id).filter(Boolean))
+        categories.value = [
+          {
+            id: 'all',
+            name: 'All Menu',
+            image_url: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+          },
+          ...loadedCategories.filter(c => usedSubCatIds.has(c.id)),
+        ]
+
+        items.value = loadedItems
+        return
+      }
+    }
+
+    // Fallback: no menu book or book has no items → load all items
     categories.value = [
       {
         id: 'all',
         name: 'All Menu',
-        image_url:
-          'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+        image_url: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
       },
       ...loadedCategories,
     ]
 
-    // High-quality colorful food imagery from Unsplash and fallback prices for missing data
-    items.value = loadedItems.map((i) => ({
+    const { data: itemData, error: itemErr } = await supabase
+      .from('menu_items')
+      .select('*')
+    if (itemErr) throw itemErr
+
+    items.value = (itemData || []).map(i => ({
       ...i,
       price: i.base_price != null ? Number(i.base_price) : i.price || i.name.length * 150 + 400,
       image_url: i.image_url || getPremiumFallbackImage(i.name, i.id),

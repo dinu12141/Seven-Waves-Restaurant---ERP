@@ -126,10 +126,10 @@ export const useOrderStore = defineStore('orders', () => {
       const orderIds = ordersData?.map((o) => o.id) ?? []
 
       if (orderIds.length) {
-        // ── Order Items ──────────────────────────────────────
+        // ── Order Items (with menu item names) ────────────────
         const { data: itemsData } = await supabase
           .from('order_items')
-          .select('*')
+          .select('*, menu_items ( id, name )')
           .in('order_id', orderIds)
 
         if (itemsData) {

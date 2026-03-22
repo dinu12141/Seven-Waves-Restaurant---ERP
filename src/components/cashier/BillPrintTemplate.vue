@@ -6,7 +6,7 @@
       <img :src="logoUrl" alt="Seven Waves" class="bill-logo" crossorigin="anonymous" />
       <div class="restaurant-name">SEVEN WAVES RESTAURANT (PVT) LTD.</div>
       <div class="restaurant-address">NO 324, HIGH LEVEL ROAD, MAHARAGAMA</div>
-      <div class="restaurant-tel">TEL: 011 22 3970 | 077 717 9220</div>
+      <div class="restaurant-tel">TEL: +94 74 200 7251</div>
     </div>
 
     <!-- ── Divider ── -->
@@ -39,6 +39,18 @@
       <div v-if="invoice.invoice_number" class="meta-row">
         <span class="meta-label">Bill #</span>
         <span class="meta-value">{{ invoice.invoice_number }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Type :</span>
+        <span class="meta-value order-type-value">{{ orderTypeLabel }}</span>
+      </div>
+      <div v-if="customerName" class="meta-row">
+        <span class="meta-label">Customer :</span>
+        <span class="meta-value">{{ customerName }}</span>
+      </div>
+      <div v-if="customerPhone" class="meta-row">
+        <span class="meta-label">Phone :</span>
+        <span class="meta-value">{{ customerPhone }}</span>
       </div>
     </div>
 
@@ -81,6 +93,14 @@
         <span class="total-label">Total Qty :</span>
         <span class="total-value">{{ totalQty.toFixed(2) }}</span>
       </div>
+      <div class="total-row">
+        <span class="total-label">Sub Total :</span>
+        <span class="total-value">{{ fmtNum(invoice.subtotal || itemsSubtotal) }}</span>
+      </div>
+      <div v-if="invoiceDeliveryCharge > 0" class="total-row">
+        <span class="total-label">Delivery Charge :</span>
+        <span class="total-value">{{ fmtNum(invoiceDeliveryCharge) }}</span>
+      </div>
       <div class="total-row total-row-bold">
         <span class="total-label">Bill Amount :</span>
         <span class="total-value">{{ fmtNum(invoice.grand_total) }}</span>
@@ -97,15 +117,11 @@
       </div>
     </div>
 
-    <!-- ── Customer Info ── -->
-    <div v-if="customerName || customerPhone" class="customer-info">
-      <div v-if="customerPhone" class="meta-row">
-        <span class="meta-label">Phone</span>
-        <span class="meta-value">: {{ customerPhone }}</span>
-      </div>
-      <div v-if="customerName" class="meta-row">
-        <span class="meta-label">Customer</span>
-        <span class="meta-value">: {{ customerName }}</span>
+    <!-- ── Delivery Info ── -->
+    <div v-if="deliveryAddress" class="customer-info">
+      <div class="meta-row">
+        <span class="meta-label">Delivery Address</span>
+        <span class="meta-value">: {{ deliveryAddress }}</span>
       </div>
     </div>
 
@@ -113,7 +129,7 @@
     <div class="bill-divider"></div>
     <div class="bill-footer">
       <div class="footer-thanks">THANK YOU FOR VISITING SEVEN WAVES</div>
-      <div class="footer-web">www.mycom.lk | 076 056 4257 - 53</div>
+      <div class="footer-web">www.echomediaa.com | +94 74 200 7251</div>
     </div>
   </div>
 </template>
@@ -165,6 +181,17 @@ const waiterName = computed(() => {
   return props.invoice.orders?.waiter?.full_name || '—'
 })
 
+const orderTypeLabel = computed(() => {
+  const type = props.invoice.orders?.order_type || ''
+  const map = {
+    delivery: 'DELIVERY',
+    dine_in: 'DINE IN',
+    takeaway: 'TAKEAWAY',
+    table_order: 'DINE IN',
+  }
+  return map[type] || type.replace(/_/g, ' ').toUpperCase() || 'DINE IN'
+})
+
 const customerName = computed(() => {
   return props.invoice.customer_name || props.invoice.orders?.customer_name || ''
 })
@@ -185,6 +212,36 @@ const balanceAmount = computed(() => {
   const paid = (props.invoice.payments || []).reduce((s, p) => s + parseFloat(p.amount || 0), 0)
   const due = parseFloat(props.invoice.grand_total || 0)
   return due - paid
+})
+
+const itemsSubtotal = computed(() => {
+  return (props.invoice.invoice_items || []).reduce(
+    (sum, item) => sum + parseFloat(item.total_price || 0), 0
+  )
+})
+
+const invoiceDeliveryCharge = computed(() => {
+  // From invoice directly
+  if (props.invoice.delivery_charge && parseFloat(props.invoice.delivery_charge) > 0) {
+    return parseFloat(props.invoice.delivery_charge)
+  }
+  // From the related order
+  const order = props.invoice.orders
+  if (order?.delivery_charge && parseFloat(order.delivery_charge) > 0) {
+    return parseFloat(order.delivery_charge)
+  }
+  // Calculate from difference for delivery orders
+  if (order?.order_type === 'delivery') {
+    const sub = parseFloat(props.invoice.subtotal || itemsSubtotal.value)
+    const grand = parseFloat(props.invoice.grand_total || 0)
+    const diff = grand - sub
+    return diff > 0 ? diff : 0
+  }
+  return 0
+})
+
+const deliveryAddress = computed(() => {
+  return props.invoice.orders?.delivery_address || ''
 })
 
 function fmtNum(val) {
@@ -282,7 +339,7 @@ async function printReceipt() {
 
       .bill-header { text-align: center; margin-bottom: 4px; }
       .bill-logo {
-        width: 44mm;
+        width: 30mm;
         height: auto;
         margin: 0 auto 2px;
         display: block;
@@ -317,6 +374,8 @@ async function printReceipt() {
         padding: 1px 0;
         text-align: left;
       }
+      .items-table thead tr th.col-amt { text-align: right; }
+      .items-table thead tr th.col-qty { text-align: center; }
       .items-table tbody tr td {
         padding: 2px 0;
         font-size: 10px;
@@ -328,6 +387,7 @@ async function printReceipt() {
       .col-amt { text-align: right; width: 35%; }
       .item-name { font-weight: 600; font-size: 10px; }
       .item-code-line { font-size: 9px; color: #555; }
+      .total-value { text-align: right; font-variant-numeric: tabular-nums; }
 
       .totals-section { margin: 4px 0; }
       .total-row {
@@ -395,7 +455,7 @@ defineExpose({ printReceipt })
 }
 
 .bill-logo {
-  width: 160px;
+  width: 110px;
   height: auto;
   margin: 0 auto 4px;
   display: block;
@@ -470,6 +530,14 @@ defineExpose({ printReceipt })
   text-align: left;
 }
 
+.items-table thead tr th.col-amt {
+  text-align: right;
+}
+
+.items-table thead tr th.col-qty {
+  text-align: center;
+}
+
 .items-table tbody tr td {
   padding: 2px 0;
   font-size: 10px;
@@ -514,6 +582,11 @@ defineExpose({ printReceipt })
 .total-row-bold {
   font-weight: bold;
   font-size: 11px;
+}
+
+.total-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .customer-info {

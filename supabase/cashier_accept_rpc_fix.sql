@@ -1,0 +1,24 @@
+-- ═══════════════════════════════════════════════════════════
+-- Fix: Allow cashiers to call rpc_waiter_accept_order
+-- Problem: POS processPayment() calls process_waiter_accept
+-- which delegates to rpc_waiter_accept_order. That RPC only
+-- allowed waiter/manager/admin → cashiers got "Insufficient role"
+-- Applied: 2026-03-21
+-- ═══════════════════════════════════════════════════════════
+
+-- The key change is in CHECK 2: added cashier role
+-- Original:
+--   IF    auth_has_role('waiter')  THEN v_actor_role := 'waiter';
+--   ELSIF auth_has_role('manager') THEN v_actor_role := 'manager';
+--   ELSIF auth_has_role('admin')   THEN v_actor_role := 'admin';
+--   ELSE ... FORBIDDEN
+--
+-- Fixed:
+--   IF    auth_has_role('waiter')  THEN v_actor_role := 'waiter';
+--   ELSIF auth_has_role('cashier') THEN v_actor_role := 'cashier';  ← NEW
+--   ELSIF auth_has_role('manager') THEN v_actor_role := 'manager';
+--   ELSIF auth_has_role('admin')   THEN v_actor_role := 'admin';
+--   ELSE ... FORBIDDEN
+
+-- Full function in migration: allow_cashier_in_waiter_accept_rpc
+-- (already applied via Supabase MCP migration)

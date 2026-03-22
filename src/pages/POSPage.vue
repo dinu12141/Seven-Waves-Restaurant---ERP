@@ -302,17 +302,26 @@
       <BillingQueue @select="openBilling" />
     </q-drawer>
 
-    <!-- Bill Dialog -->
-    <BillDialog v-model="billDialogOpen" :order="selectedQueueOrder" @paid="onOrderPaid" />
+    <!-- Bill Dialog removed — queue orders now use PaymentDialog -->
 
-    <!-- Payment Dialog -->
+    <!-- Payment Dialog (handles both POS manual and queue orders) -->
     <PaymentDialog
+      ref="paymentDialogRef"
       v-model="paymentDialog"
       :total-amount="store.total"
+      :subtotal-amount="store.subtotal"
+      :discount-percent="store.discount"
+      :discount-value="store.discountAmount"
+      :tax-value="store.taxAmount"
       :item-count="store.itemCount"
       :order-type="store.orderType"
+      :cart-items="store.cartItems"
+      :customer-name="store.customerName"
       :loading="isProcessingPayment"
+      :queue-order="selectedQueueOrder"
       @confirm="handleConfirmPayment"
+      @new-order="handleNewOrderAfterPayment"
+      @paid="onOrderPaid"
     />
   </q-page>
 </template>
@@ -326,7 +335,7 @@ import { useOrderStore } from 'src/stores/orderStore'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
 import BillingQueue from 'src/components/pos/BillingQueue.vue'
-import BillDialog from 'src/components/cashier/BillDialog.vue'
+// BillDialog removed — queue orders now use PaymentDialog
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 
 const $q = useQuasar()
@@ -355,8 +364,8 @@ const isProcessingPayment = ref(false)
 
 // Billing Queue
 const queueDrawer = ref(false)
-const billDialogOpen = ref(false)
 const selectedQueueOrder = ref(null)
+const paymentDialogRef = ref(null)
 
 // ── Computed ────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES')
@@ -420,23 +429,76 @@ const subCategoryItems = computed(() => {
 async function fetchMenuItems() {
   menuLoading.value = true
   try {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .select(`id, name, base_price, image_url, is_available, kitchen_id, categories(id, name)`)
-      .eq('is_available', true)
-      .order('name')
+    let products = []
 
-    if (error) throw error
+    // Step 1: Try to load from default menu book for this branch
+    const branchId = authStore.currentBranch?.id
+    let usedMenuBook = false
 
-    menuProducts.value = (data || []).map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: parseFloat(item.base_price || 0),
-      kitchen_id: item.kitchen_id,
-      image: item.image_url || '',
-      category: item.categories?.name || 'Other',
-      variants: [],
-    }))
+    if (branchId) {
+      const { data: bookData } = await supabase
+        .from('menu_books')
+        .select('id, name')
+        .eq('branch_id', branchId)
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .limit(1)
+        .maybeSingle()
+
+      if (bookData) {
+        // Load items through the menu book
+        const { data: bookItems, error: bookError } = await supabase
+          .from('menu_book_items')
+          .select(`
+            id, override_price, is_available, sort_order,
+            menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name))
+          `)
+          .eq('menu_book_id', bookData.id)
+          .eq('is_available', true)
+          .order('sort_order')
+
+        if (!bookError && bookItems && bookItems.length > 0) {
+          products = bookItems
+            .filter(bi => bi.menu_items && bi.menu_items.is_available)
+            .map(bi => ({
+              id: bi.menu_items.id,
+              name: bi.menu_items.name,
+              price: parseFloat(bi.override_price || bi.menu_items.base_price || 0),
+              kitchen_id: bi.menu_items.kitchen_id,
+              sub_category_id: bi.menu_items.sub_category_id,
+              image: bi.menu_items.image_url || '',
+              category: bi.menu_items.categories?.name || 'Other',
+              variants: [],
+            }))
+          usedMenuBook = true
+          console.log(`[POS] Loaded ${products.length} items from menu book: ${bookData.name}`)
+        }
+      }
+    }
+
+    // Step 2: Fallback — load all menu items directly (backward compatible)
+    if (!usedMenuBook) {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select(`id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name)`)
+        .eq('is_available', true)
+        .order('name')
+
+      if (error) throw error
+
+      products = (data || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: parseFloat(item.base_price || 0),
+        kitchen_id: item.kitchen_id,
+        sub_category_id: item.sub_category_id,
+        image: item.image_url || '',
+        category: item.categories?.name || 'Other',
+        variants: [],
+      }))
+    }
+
+    menuProducts.value = products
 
     // Build categories
     const seen = new Set()
@@ -729,63 +791,39 @@ function handlePayment() {
     Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
     return
   }
+  selectedQueueOrder.value = null // ensure manual POS mode
   paymentDialog.value = true
 }
 
 function handleSubtotal() {
-  // Focus on totals / show summary
-  Notify.create({
-    message: `Subtotal: LKR ${store.subtotal.toFixed(2)} | Total: LKR ${store.total.toFixed(2)}`,
-    color: 'primary',
-    position: 'top',
-    timeout: 2000,
-  })
+  // Open bill preview — same dialog but user can print before paying
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+  selectedQueueOrder.value = null // ensure manual POS mode
+  paymentDialog.value = true
 }
 
-async function handleConfirmPayment(method) {
+async function handleConfirmPayment(payload) {
   isProcessingPayment.value = true
   try {
-    const result = await store.processPayment(method)
+    const method = typeof payload === 'string' ? payload : payload.method
+    const methodName = method === 'cash' ? 'Cash' : method === 'card' ? 'Card' : 'Online'
+    const result = await store.processPayment(methodName)
     if (result && result.success) {
-      paymentDialog.value = false
+      // Mark the dialog as paid (shows success state + real invoice receipt)
+      if (paymentDialogRef.value) {
+        paymentDialogRef.value.markAsPaid(result.orderId)
+      }
       Notify.create({
         message: `Payment Successful!`,
-        caption: `Invoice #${result.invoiceNumber} • Paid via ${method}`,
+        caption: `Order paid via ${methodName}`,
         color: 'positive',
         icon: 'verified',
         position: 'top',
         timeout: 2000,
       })
-
-      // Fetch full order with items and invoice info for BillDialog
-      const { data: fullOrder } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          waiter:profiles!waiter_id(full_name),
-          order_items(*, menu_items(*)),
-          invoices(*, payments(*, payment_methods(*))),
-          tables(table_number)
-        `,
-        )
-        .eq('id', result.orderId)
-        .single()
-
-      if (fullOrder) {
-        selectedQueueOrder.value = {
-          ...fullOrder,
-          waiterName: fullOrder.waiter?.full_name,
-          tableNumber: fullOrder.tables?.table_number,
-        }
-        billDialogOpen.value = true
-
-        // Give time for dialog to open and then trigger print
-        setTimeout(() => {
-          const printBtn = document.querySelector('.action-btn')
-          if (printBtn) printBtn.click()
-        }, 800)
-      }
     }
   } catch (err) {
     Notify.create({
@@ -799,14 +837,21 @@ async function handleConfirmPayment(method) {
   }
 }
 
+function handleNewOrderAfterPayment() {
+  store.clearCart()
+  selectedItemIndex.value = -1
+  numBuffer.value = ''
+  selectedQueueOrder.value = null
+}
+
 // ── Billing Queue ───────────────────────────────────────
 function openBilling(order) {
   selectedQueueOrder.value = order
-  billDialogOpen.value = true
+  paymentDialog.value = true
 }
 
 function onOrderPaid() {
-  billDialogOpen.value = false
+  // Called when a queue order payment completes inside PaymentDialog
   selectedQueueOrder.value = null
   cashierStore.fetchBillingOrders()
 }

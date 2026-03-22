@@ -75,6 +75,7 @@ body.body--dark {
   font-size: var(--erp-font-size-base) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden !important;
 }
 
 /* ─── Headings ─── */
@@ -313,4 +314,27 @@ h3,
 :root {
   --erp-bg-form-card: #111827;
   --erp-input-border: #1f2937;
+}
+
+/* ─── Remove Drawer Scrollbar Gap ─── */
+.q-drawer {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow: hidden !important;
+
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+  }
+}
+
+.q-drawer__content {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow: hidden !important;
+
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+  }
 }

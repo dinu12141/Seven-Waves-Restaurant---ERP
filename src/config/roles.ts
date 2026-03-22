@@ -18,10 +18,12 @@ import type { UserRole } from 'src/stores/auth'
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
   waiter: ['/pos', '/orders', '/waiter', '/waiter-app'],
   kitchen: ['/kitchen'],
-  cashier: ['/pos', '/orders', '/cashier', '/kitchen'],
+  delivery: ['/delivery-app'],
+  cashier: ['/pos', '/orders', '/cashier', '/kitchen', '/website-orders'],
   manager: [
     '/dashboard',
     '/orders',
+    '/website-orders',
     '/inventory',
     '/finance',
     '/kitchen',
@@ -33,6 +35,7 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/waiter-app',
     '/manager',
     '/manager-app',
+    '/delivery-app',
   ],
   admin: ['*'],
   inventory: ['/inventory', '/reports/inventory'],
@@ -68,6 +71,7 @@ export const ROLE_LANDING: Record<UserRole, string> = {
   waiter: '/waiter-app',
   cashier: '/pos',
   kitchen: '/kitchen',
+  delivery: '/delivery-app',
   inventory: '/inventory',
   finance: '/finance',
   hr: '/hr',
@@ -89,8 +93,9 @@ export const ROLE_PRIORITY: UserRole[] = [
   'hr',
   'procurement',
   'inventory',
-  'cashier',
   'kitchen',
+  'delivery',
+  'cashier',
   'waiter',
 ]
 
@@ -324,6 +329,14 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Management',
   },
   {
+    label: 'Website Orders',
+    icon: 'language',
+    to: '/website-orders',
+    roles: ['admin', 'manager', 'cashier'],
+    section: 'OPERATIONS',
+    group: 'Management',
+  },
+  {
     label: 'Table Management',
     icon: 'table_restaurant',
     to: '/operations/tables',
@@ -373,6 +386,26 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'INVENTORY',
     moduleCode: 'INVENTORY',
     group: 'Catalog',
+  },
+  {
+    label: 'Menu Book',
+    icon: 'menu_book',
+    to: '/inventory?tab=menu_book',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+    group: 'Menu Management',
+  },
+  {
+    label: 'Kitchen Mapping',
+    icon: 'route',
+    to: '/inventory?tab=kitchen_mapping',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory:view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+    group: 'Menu Management',
   },
   {
     label: 'Recipes / BOM',
@@ -794,31 +827,23 @@ export function canAccessRoute(
   if (routePath === '/profile' || routePath.startsWith('/profile/')) return true
   if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
 
-  // 1. Check Permissions (Direct/Custom Access)
+  // 1. Check Roles FIRST (Primary Access) — roles should never be overridden
+  const roleAllows = userRoles.some((role) => {
+    const allowedPaths = ROLE_ROUTE_ACCESS[role]
+    if (!allowedPaths) return false
+    if (allowedPaths.includes('*')) return true
+    return allowedPaths.some((p) => routePath.startsWith(p))
+  })
+  if (roleAllows) return true
+
+  // 2. Check Permissions (Additive/Custom Access — grants extra access beyond roles)
   for (const [perm, paths] of Object.entries(PERMISSION_ROUTE_ACCESS)) {
     if (userPermissions.includes(perm)) {
       if (paths.some((p) => routePath.startsWith(p))) return true
     }
   }
 
-  // Strict check: if user has any custom permissions configured AND the route requires one, deny if not found.
-  // If userPermissions is completely empty, we assume legacy setup and fallback to role check.
-  if (userPermissions.length > 0) {
-    const isProtectedByPermissions = Object.values(PERMISSION_ROUTE_ACCESS)
-      .flat()
-      .some((p) => routePath.startsWith(p))
-    if (isProtectedByPermissions) {
-      return false
-    }
-  }
-
-  // 2. Check Roles (Group Access) - fallback
-  return userRoles.some((role) => {
-    const allowedPaths = ROLE_ROUTE_ACCESS[role]
-    if (!allowedPaths) return false
-    if (allowedPaths.includes('*')) return true
-    return allowedPaths.some((p) => routePath.startsWith(p))
-  })
+  return false
 }
 
 /**
@@ -834,13 +859,14 @@ export function getFilteredNavItems(
         // Admin wildcard
         if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
 
-        // Strict Check: if item requires a permission AND user has custom permissions configured
-        if (item.permission && userPermissions.length > 0) {
-          return userPermissions.includes(item.permission)
-        }
+        // 1. Check role access FIRST — roles should never be overridden by permissions
+        const roleAllows = item.roles.some((role) => userRoles.includes(role))
+        if (roleAllows) return true
 
-        // Fallback to role check
-        return item.roles.some((role) => userRoles.includes(role))
+        // 2. Check permission-based access (additive — grants extra visibility beyond roles)
+        if (item.permission && userPermissions.includes(item.permission)) return true
+
+        return false
       })
       .map((item) => {
         // Recursively filter children if they exist

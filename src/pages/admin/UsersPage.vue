@@ -459,41 +459,29 @@ const saveUser = async () => {
       if (error) throw error
       $q.notify({ type: 'positive', message: 'User profile updated' })
     } else {
-      // Create new user in Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: {
-            full_name: form.full_name,
-          },
-        },
+      // Create new user via server-side RPC (bypasses email confirmation)
+      const { data: newUserId, error: createError } = await supabase.rpc('admin_create_user', {
+        p_email: form.email,
+        p_password: form.password,
+        p_full_name: form.full_name,
+        p_phone: form.phone || ''
       })
 
-      if (authError) throw authError
+      if (createError) throw createError
 
-      // Automatically confirm the user so they can log in immediately
-      if (authData?.user?.id) {
-        const { error: confirmError } = await supabase.rpc('admin_confirm_user', {
-          target_user_id: authData.user.id
-        })
-        if (confirmError) console.error('[UsersPage] Error confirming user:', confirmError)
-      }
-
-      // Note: Trigger usually handles profile creation, but let's make sure
       // Link employee to profile_id if needed
-      if (selectedEmployee.value) {
+      if (selectedEmployee.value && newUserId) {
         await supabase
           .from('employees')
-          .update({ profile_id: authData.user.id })
+          .update({ profile_id: newUserId })
           .eq('id', selectedEmployee.value.id)
       }
 
-      // ─── ADDED: Role Assignment ───
-      if (form.roleId) {
-        console.log('[UsersPage] Assigning role:', form.roleId, 'to user:', authData.user.id)
+      // Assign role
+      if (form.roleId && newUserId) {
+        console.log('[UsersPage] Assigning role:', form.roleId, 'to user:', newUserId)
         const { error: roleError } = await supabase.from('user_roles').insert({
-          user_id: authData.user.id,
+          user_id: newUserId,
           role_id: form.roleId,
         })
         if (roleError) console.error('[UsersPage] Role assignment error:', roleError)

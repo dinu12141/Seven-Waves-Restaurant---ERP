@@ -23,6 +23,10 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   const isConnected = ref(false)
   const printing = ref(null) // ticket ID currently printing
 
+  // Kitchen-specific new ticket alert (consumed by KitchenPage for notifications)
+  // { id, tableNumber, orderNumber, items: [{name, qty}], kitchenName, timestamp }
+  const newTicketAlert = ref(null)
+
   // Subscriptions
   let kotChannel = null
   let timerInterval = null
@@ -281,7 +285,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
         ['created', 'pending', 'accepted', 'preparing', 'ready'].includes(newRow.status) &&
         !newRow.completed_at
       ) {
-        refreshSingleTicket(newRow.id)
+        // 🔔 This is a NEW ticket for THIS kitchen — trigger alert after fetching details
+        refreshSingleTicket(newRow.id, true)
       }
     }
 
@@ -335,7 +340,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     }
   }
 
-  async function refreshSingleTicket(kotId) {
+  async function refreshSingleTicket(kotId, isNewAlert = false) {
     const { data, error } = await supabase
       .from('kot_tickets')
       .select(
@@ -385,7 +390,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       if (ticketDate < todayStart) return
     }
 
-    // Only add/update if it belongs to our kitchen (or we are Cashier display) and is active
+    // 🔒 KITCHEN GUARD — Only add/update if it belongs to OUR kitchen
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
     if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
     if (
@@ -403,6 +408,25 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       tickets.value[idx] = enriched
     } else {
       tickets.value.push(enriched)
+
+      // 🔔 Fire kitchen-specific alert for genuinely NEW tickets
+      if (isNewAlert && ['created', 'pending', 'accepted'].includes(data.status)) {
+        const itemSummary = (data.kot_items || []).map(ki => ({
+          name: ki.order_item?.menu_item?.name || 'Item',
+          qty: ki.quantity
+        }))
+        newTicketAlert.value = {
+          id: data.id,
+          kotNumber: data.kot_number,
+          tableNumber: data.order?.table?.table_number || '—',
+          orderNumber: data.order?.order_number || '?',
+          kitchenName: data.kitchen?.name || selectedKitchen.value?.name || 'Kitchen',
+          items: itemSummary,
+          timestamp: Date.now()
+        }
+        // Play urgent repeating sound alert
+        startAlertRepeating()
+      }
     }
   }
 
@@ -531,7 +555,116 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────
+  // ── Sound Alert System ─────────────────────────────────────
+  // Persistent AudioContext — created once, resumed on user gesture
+  let _audioCtx = null
+  let _alertRepeatTimer = null
+  let _alertRepeatCount = 0
+  const MAX_ALERT_REPEATS = 3 // ring 3 times if not acknowledged
+
+  function getAudioContext() {
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    return _audioCtx
+  }
+
+  /**
+   * Warm up AudioContext on ANY user gesture (click, keypress, touch).
+   * Must be called once from onMounted in KitchenPage.
+   */
+  function warmUpAudio() {
+    const unlock = () => {
+      const ctx = getAudioContext()
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          console.log('[KDS] 🔊 AudioContext unlocked — sound alerts active')
+        })
+      }
+      // Play a silent buffer to fully unlock on iOS/Safari
+      const buf = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      src.connect(ctx.destination)
+      src.start(0)
+    }
+    // Attach to common user gestures
+    ;['click', 'touchstart', 'keydown'].forEach(evt => {
+      document.addEventListener(evt, unlock, { once: true })
+    })
+  }
+
+  function playKitchenAlert() {
+    try {
+      const audioCtx = getAudioContext()
+
+      // If suspended, force resume
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume()
+      }
+
+      const playTone = (freq, type, startTime, dur, vol = 0.8) => {
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.type = type
+        osc.frequency.setValueAtTime(freq, startTime)
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.02)
+        gain.gain.setValueAtTime(vol, startTime + dur * 0.7)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur)
+        osc.start(startTime)
+        osc.stop(startTime + dur)
+      }
+
+      const now = audioCtx.currentTime
+      // LOUD urgent kitchen bell: 3 rising tones + double-ding
+      playTone(880, 'square', now, 0.2, 0.9)            // A5 (square = louder)
+      playTone(1108.73, 'square', now + 0.2, 0.2, 0.9)  // C#6
+      playTone(1318.51, 'sine', now + 0.4, 0.5, 1.0)    // E6 (long, max volume)
+      // Second ding after pause
+      playTone(880, 'square', now + 1.0, 0.15, 0.7)
+      playTone(1318.51, 'sine', now + 1.2, 0.5, 0.9)    // E6 repeat
+
+      console.log('[KDS] 🔔 Kitchen alert sound played')
+    } catch (e) {
+      console.error('[KDS] Audio alert failed:', e)
+    }
+  }
+
+  /**
+   * Start repeating the alert sound until acknowledged or max repeats.
+   * Called when a new KOT arrives.
+   */
+  function startAlertRepeating() {
+    stopAlertRepeating()
+    _alertRepeatCount = 0
+    playKitchenAlert()
+    _alertRepeatCount++
+
+    _alertRepeatTimer = setInterval(() => {
+      if (_alertRepeatCount >= MAX_ALERT_REPEATS) {
+        stopAlertRepeating()
+        return
+      }
+      playKitchenAlert()
+      _alertRepeatCount++
+    }, 2500) // repeat every 2.5 seconds
+  }
+
+  function stopAlertRepeating() {
+    if (_alertRepeatTimer) {
+      clearInterval(_alertRepeatTimer)
+      _alertRepeatTimer = null
+    }
+    _alertRepeatCount = 0
+  }
+
+  function clearNewTicketAlert() {
+    newTicketAlert.value = null
+    stopAlertRepeating()
+  }
 
   function enrichTicket(ticket) {
     return {
@@ -595,6 +728,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       clearInterval(timerInterval)
       timerInterval = null
     }
+    stopAlertRepeating()
     tickets.value = []
     isConnected.value = false
   }
@@ -609,11 +743,13 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     loading,
     isConnected,
     printing,
+    newTicketAlert,
     newTickets,
     preparingTickets,
     readyTickets,
     totalActive,
     initialize,
+    warmUpAudio,
     selectKitchen,
     fetchTickets,
     acceptTicket,
@@ -621,6 +757,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     dismissTicket,
     dismissAllReady,
     printKot,
+    clearNewTicketAlert,
     cleanup,
   }
 })

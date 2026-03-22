@@ -630,7 +630,16 @@ export function useWarehouseList() {
     return data
   }
 
-  return { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse }
+  async function deleteWarehouse(id: string) {
+    const { error } = await supabase
+      .from('warehouses')
+      .delete()
+      .eq('id', id)
+    if (error) throw error
+    warehouses.value = warehouses.value.filter((w: any) => w.id !== id)
+  }
+
+  return { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse, deleteWarehouse }
 }
 
 /* ====================================================================

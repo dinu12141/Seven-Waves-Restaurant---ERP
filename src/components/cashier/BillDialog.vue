@@ -139,6 +139,10 @@
               <span class="totals-label">Tax</span>
               <span class="totals-value">{{ fmtCurrency(order?.tax_amount || 0) }}</span>
             </div>
+            <div v-if="orderDeliveryCharge > 0" class="totals-row delivery">
+              <span class="totals-label">🚴 Delivery Charge</span>
+              <span class="totals-value">{{ fmtCurrency(orderDeliveryCharge) }}</span>
+            </div>
             <div class="totals-divider" />
             <div class="totals-row grand">
               <span class="totals-label">Total Due</span>
@@ -203,6 +207,10 @@
               <div v-if="(order?.tax_amount || 0) > 0" class="preview-row">
                 <span>Tax</span>
                 <span>{{ fmtCurrency(order?.tax_amount || 0) }}</span>
+              </div>
+              <div v-if="orderDeliveryCharge > 0" class="preview-row delivery">
+                <span>🚴 Delivery Charge</span>
+                <span>{{ fmtCurrency(orderDeliveryCharge) }}</span>
               </div>
               <div class="preview-divider" />
               <div class="preview-row total">
@@ -421,6 +429,26 @@ const printTemplateRef = ref(null)
 
 const branchName = computed(() => authStore.currentBranch?.name || 'Restaurant')
 
+// Delivery charge: read from order column, or derive from total - subtotal for delivery orders
+const orderDeliveryCharge = computed(() => {
+  const o = props.order
+  if (!o) return 0
+  // If explicitly stored
+  if (o.delivery_charge && parseFloat(o.delivery_charge) > 0) {
+    return parseFloat(o.delivery_charge)
+  }
+  // For delivery orders, calculate difference
+  if (o.order_type === 'delivery') {
+    const sub = parseFloat(o.subtotal || 0)
+    const tax = parseFloat(o.tax_amount || 0)
+    const disc = parseFloat(o.discount_amount || 0)
+    const total = parseFloat(o.total_amount || 0)
+    const diff = total - sub - tax + disc
+    return diff > 0 ? diff : 0
+  }
+  return 0
+})
+
 // ── Computed ───────────────────────────────────────────────
 const timeAgo = computed(() => {
   if (!props.order?.created_at) return ''
@@ -486,7 +514,9 @@ watch(
 async function doGenerateInvoice() {
   if (!props.order) return
   try {
-    const { invoice } = await store.generateInvoice(props.order.id)
+    const { invoice } = await store.generateInvoice(props.order.id, {
+      deliveryCharge: orderDeliveryCharge.value,
+    })
     currentInvoice.value = invoice
     cashReceived.value = Math.ceil(invoice.grand_total || props.order.total_amount || 0)
     printInvoice.value = await store.fetchInvoiceDetails(invoice.id)
@@ -772,6 +802,14 @@ function getMethodIcon(name) {
 
 .totals-row.discount {
   color: #ef9a9a;
+}
+
+.totals-row.delivery {
+  color: #4dd0e1;
+}
+
+.preview-row.delivery {
+  color: #4dd0e1;
 }
 
 .totals-row.grand {

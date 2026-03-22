@@ -108,7 +108,7 @@ export const useCashierStore = defineStore('cashier', () => {
         `
         id, order_number, order_type, order_source, status, payment_status,
         customer_name, customer_phone, subtotal, tax_amount, discount_amount,
-        total_amount, notes, created_at, updated_at, accepted_at, waiter_id,
+        total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
         table_id, branch_id,
         restaurant_tables ( table_number, section ),
         waiter:profiles!orders_waiter_id_fkey ( full_name ),
@@ -171,7 +171,10 @@ export const useCashierStore = defineStore('cashier', () => {
   // service_charge, tips, delivery_charge) are correctly applied.
   async function generateInvoice(orderId, opts = {}) {
     const entry = billingOrders.value.find((o) => o.id === orderId)
-    if (!entry) throw new Error('Order not found in billing queue')
+    if (!entry) {
+      Notify.create({ message: 'Order not found in billing queue', color: 'red', icon: 'error' })
+      throw new Error('Order not found in billing queue')
+    }
 
     const order = entry.orders || entry
 
@@ -221,6 +224,15 @@ export const useCashierStore = defineStore('cashier', () => {
       }
 
       return { success: true, invoice: { ...invoice, grand_total: invoice.grand_total ?? invoice.total } }
+    } catch (err) {
+      Notify.create({
+        message: 'Invoice Generation Failed',
+        caption: err.message || 'Unknown error',
+        color: 'red',
+        icon: 'error',
+        timeout: 6000,
+      })
+      throw err
     } finally {
       processing.value = false
     }
@@ -284,16 +296,60 @@ export const useCashierStore = defineStore('cashier', () => {
 
   // ── Mark as Served ─────────────────────────────────────────
   async function markServed(orderId) {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'served', updated_at: new Date().toISOString() })
-      .eq('id', orderId)
-      .eq('status', 'ready')
-
-    if (error) throw new Error(error.message)
-
+    // Guard: only 'ready' orders can be marked as served
     const idx = billingOrders.value.findIndex((o) => o.id === orderId)
-    if (idx !== -1) billingOrders.value[idx].status = 'served'
+    if (idx === -1) {
+      Notify.create({ message: 'Order not found in queue', color: 'red', icon: 'error' })
+      return
+    }
+
+    const currentStatus = billingOrders.value[idx].status
+    if (currentStatus !== 'ready') {
+      Notify.create({
+        message: `Cannot mark as served`,
+        caption: `Order is currently "${currentStatus}" — only "ready" orders can be served.`,
+        color: 'orange-8',
+        icon: 'warning',
+      })
+      return
+    }
+
+    // Optimistic update
+    const previousStatus = billingOrders.value[idx].status
+    billingOrders.value[idx].status = 'served'
+
+    try {
+      const { error, count } = await supabase
+        .from('orders')
+        .update({ status: 'served', updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .eq('status', 'ready')
+        .select('id', { count: 'exact', head: true })
+
+      if (error) throw new Error(error.message)
+
+      // If no rows were matched, another user already changed the status
+      if (count === 0) {
+        billingOrders.value[idx].status = previousStatus
+        Notify.create({
+          message: 'Order status changed by another user',
+          caption: 'Please refresh the queue.',
+          color: 'orange-8',
+          icon: 'sync_problem',
+        })
+        debouncedRefresh()
+      }
+    } catch (err) {
+      // Rollback optimistic update
+      billingOrders.value[idx].status = previousStatus
+      Notify.create({
+        message: 'Failed to mark as served',
+        caption: err.message,
+        color: 'red',
+        icon: 'error',
+      })
+      throw err
+    }
   }
 
   // ── Fetch Full Invoice for Printing ───────────────────────
@@ -309,6 +365,8 @@ export const useCashierStore = defineStore('cashier', () => {
         discount,
         total,
         grand_total,
+        delivery_charge,
+        service_charge,
         status,
         payment_status,
         customer_name,
@@ -316,9 +374,14 @@ export const useCashierStore = defineStore('cashier', () => {
         created_at,
         orders!order_id (
           order_number,
+          order_type,
+          order_source,
           table_id,
           waiter_id,
           customer_name,
+          customer_phone,
+          delivery_address,
+          delivery_charge,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
           kot_tickets ( id, kot_number, status, kitchen_id )

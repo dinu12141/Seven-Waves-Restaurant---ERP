@@ -142,7 +142,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         waiter_id: waiterId || null,
         order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
         order_source: 'pos',
-        status: 'pending_waiter', // Route to waiter inbox; waiter accept triggers KOT
+        status: 'accepted', // POS manual orders skip waiter step → go directly to accepted
         payment_status: 'unpaid',
         table_id: selectedTable.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
@@ -150,6 +150,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
+        accepted_at: new Date().toISOString(),
       }
 
       // Extended fields
@@ -209,14 +210,24 @@ export const useOrderStore = defineStore('posOrder', () => {
         throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
-      // ── Step 4: Order is now `pending_waiter` with items ready ─────────
-      // The DB trigger `trg_fn_broadcast_new_order_to_waiters` fires on INSERT
-      // with status='pending_waiter', broadcasting to all on-shift waiters.
-      // When a waiter accepts, `process_waiter_accept` RPC handles:
-      //   - Setting status to 'accepted'
-      //   - Generating KOT tickets
-      //   - Creating dispatches & work queues
-      // No immediate status update needed here.
+      // ── Step 4: Auto-generate KOTs and dispatch to kitchen ─────────
+      // Call the generate_kots_for_order RPC which:
+      //   - Creates KOT tickets per kitchen
+      //   - Creates KOT items linked to order items
+      //   - Dispatches to KITCHEN, CASHIER, INVENTORY, FINANCE
+      //   - Creates cashier_queue, stock_queue, finance_queue entries
+      const { data: kotResult, error: kotError } = await supabase.rpc('generate_kots_for_order', {
+        p_order_id: order.id,
+        p_branch_id: branchId,
+        p_actor_id: waiterId || null,
+      })
+
+      if (kotError) {
+        console.error('[OrderStore] KOT generation warning:', kotError.message)
+        // Don't throw — order is still valid, KOTs can be created manually
+      } else {
+        console.log('[OrderStore] KOTs created:', kotResult?.kot_count, 'dispatches:', kotResult?.dispatch_count)
+      }
 
       return { success: true, order }
     } finally {

@@ -41,6 +41,11 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'waiter', 'cashier'] },
       },
       {
+        path: 'website-orders',
+        component: () => import('pages/WebsiteOrdersPage.vue'),
+        meta: { roles: ['admin', 'manager', 'cashier'] },
+      },
+      {
         path: 'cashier',
         component: () => import('pages/CashierPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier'] },
@@ -181,56 +186,63 @@ const routes = [
         path: 'profile',
         component: () => import('pages/auth/UserProfilePage.vue'),
       },
-      // ── Reports ───────────────────────────────────────────────────────────────
+      // ── Reports — nested under ReportsLayout for sidebar navigation ────────
       {
-        path: 'reports/dashboard',
-        component: () => import('pages/reports/ReportsDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/sales',
-        component: () => import('pages/reports/SalesReport.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/inventory',
-        component: () => import('pages/reports/InventoryLedger.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
-      },
-      {
-        path: 'reports/electronic-journal',
-        component: () => import('pages/reports/ElectronicJournal.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/item-wise-sale',
-        component: () => import('pages/reports/ItemWiseSale.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/waiter-wise-sale',
-        component: () => import('pages/reports/WaiterWiseSale.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/table-wise-sale',
-        component: () => import('pages/reports/TableWiseSale.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/sales-statement',
-        component: () => import('pages/reports/SalesStatement.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/group-summary',
-        component: () => import('pages/reports/GroupSummary.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'reports/inventory-performance',
-        component: () => import('pages/reports/InventoryPerformanceReport.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'finance'] },
+        path: 'reports',
+        component: () => import('layouts/ReportsLayout.vue'),
+        meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'] },
+        children: [
+          { path: '', redirect: 'dashboard' },
+          { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue') },
+          // ── Sales Reports ─────────────────────────────────
+          { path: 'sales', component: () => import('pages/reports/SalesReport.vue') },
+          { path: 'electronic-journal', component: () => import('pages/reports/ElectronicJournal.vue') },
+          { path: 'item-wise-sale', component: () => import('pages/reports/ItemWiseSale.vue') },
+          { path: 'waiter-wise-sale', component: () => import('pages/reports/WaiterWiseSale.vue') },
+          { path: 'table-wise-sale', component: () => import('pages/reports/TableWiseSale.vue') },
+          { path: 'sales-statement', component: () => import('pages/reports/SalesStatement.vue') },
+          { path: 'group-summary', component: () => import('pages/reports/GroupSummary.vue') },
+          { path: 'category-wise-sales', component: () => import('pages/reports/CategoryWiseSales.vue') },
+          { path: 'hourly-sales', component: () => import('pages/reports/HourlySalesReport.vue') },
+          { path: 'branch-wise-sales', component: () => import('pages/reports/BranchWiseSales.vue') },
+          { path: 'discount-report', component: () => import('pages/reports/DiscountReport.vue') },
+          { path: 'void-cancelled', component: () => import('pages/reports/VoidCancelledReport.vue') },
+          { path: 'refund-report', component: () => import('pages/reports/RefundReport.vue') },
+          { path: 'payment-summary', component: () => import('pages/reports/PaymentMethodSummary.vue') },
+          { path: 'tax-summary', component: () => import('pages/reports/TaxSummaryReport.vue') },
+          // ── Operations Reports ────────────────────────────
+          { path: 'kitchen-orders', component: () => import('pages/reports/KitchenOrderReport.vue') },
+          { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue') },
+          { path: 'delivery-performance', component: () => import('pages/reports/DeliveryPerformanceReport.vue') },
+          { path: 'rider-performance', component: () => import('pages/reports/RiderPerformanceReport.vue') },
+          { path: 'pickup-delivery', component: () => import('pages/reports/PickupDeliverySummary.vue') },
+          { path: 'reservation', component: () => import('pages/reports/ReservationReport.vue') },
+          { path: 'customer-history', component: () => import('pages/reports/CustomerOrderHistory.vue') },
+          // ── Inventory Reports ─────────────────────────────
+          { path: 'stock-on-hand', component: () => import('pages/reports/StockOnHand.vue') },
+          { path: 'inventory', component: () => import('pages/reports/InventoryLedger.vue') },
+          { path: 'wastage', component: () => import('pages/reports/WastageReport.vue') },
+          { path: 'ingredient-consumption', component: () => import('pages/reports/IngredientConsumption.vue') },
+          { path: 'reorder-level', component: () => import('pages/reports/ReorderLevelReport.vue') },
+          { path: 'purchase-consumption', component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue') },
+          { path: 'variance', component: () => import('pages/reports/VarianceReport.vue') },
+          { path: 'inventory-performance', component: () => import('pages/reports/InventoryPerformanceReport.vue') },
+          // ── Procurement Reports ───────────────────────────
+          { path: 'purchase-summary', component: () => import('pages/reports/PurchaseSummary.vue') },
+          { path: 'supplier-purchases', component: () => import('pages/reports/SupplierWisePurchases.vue') },
+          { path: 'grn-report', component: () => import('pages/reports/GRNReport.vue') },
+          // ── Finance Reports ───────────────────────────────
+          { path: 'revenue-summary', component: () => import('pages/reports/RevenueSummary.vue') },
+          { path: 'expense-summary', component: () => import('pages/reports/ExpenseSummary.vue') },
+          { path: 'daily-cash', component: () => import('pages/reports/DailyCashSummary.vue') },
+          // ── HR / Staff Reports ────────────────────────────
+          { path: 'staff-performance', component: () => import('pages/reports/StaffSalesPerformance.vue') },
+          { path: 'cashier-performance', component: () => import('pages/reports/CashierPerformance.vue') },
+          // ── System / Audit Reports ────────────────────────
+          { path: 'user-activity', component: () => import('pages/reports/UserActivityLog.vue') },
+          { path: 'price-change', component: () => import('pages/reports/PriceChangeLog.vue') },
+          { path: 'inventory-adjustments', component: () => import('pages/reports/InventoryAdjustmentLog.vue') },
+        ],
       },
     ],
   },
@@ -262,6 +274,18 @@ const routes = [
       { path: 'messages', component: () => import('pages/manager-app/MessagesPage.vue') },
       { path: 'alerts', component: () => import('pages/manager-app/AlertsPage.vue') },
       { path: 'profile', component: () => import('pages/manager-app/ManagerProfilePage.vue') },
+    ],
+  },
+  // ── Delivery App — standalone full-screen mobile PWA (NO MainLayout) ───────
+  {
+    path: '/delivery-app',
+    component: () => import('layouts/DeliveryAppLayout.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'manager', 'delivery'] },
+    children: [
+      { path: '', component: () => import('pages/delivery-app/DeliveryHomePage.vue') },
+      { path: 'active', component: () => import('pages/delivery-app/DeliveryActivePage.vue') },
+      { path: 'history', component: () => import('pages/delivery-app/DeliveryHistoryPage.vue') },
+      { path: 'profile', component: () => import('pages/auth/UserProfilePage.vue') },
     ],
   },
   {

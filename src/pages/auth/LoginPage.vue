@@ -185,12 +185,14 @@ const handleLogin = async () => {
     }
 
     let redirect = '/dashboard'
-    if (authStore.hasRole('cashier') && !authStore.isAdmin && !authStore.hasRole('manager')) {
+    // Kitchen role check FIRST — a kitchen user must land on kitchen display
+    // even if they also have cashier role
+    if (authStore.hasRole('kitchen') && !authStore.isAdmin && !authStore.hasRole('manager')) {
+      redirect = '/kitchen'
+    } else if (authStore.hasRole('cashier') && !authStore.isAdmin && !authStore.hasRole('manager')) {
       redirect = '/pos'
     } else if (authStore.hasRole('waiter') && !authStore.isAdmin && !authStore.hasRole('manager')) {
       redirect = '/waiter-app'
-    } else if (authStore.hasRole('kitchen') && !authStore.isAdmin && !authStore.hasRole('manager')) {
-      redirect = '/kitchen'
     }
     
     router.push(redirect).catch(() => {})

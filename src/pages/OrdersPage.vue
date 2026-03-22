@@ -118,100 +118,44 @@
         </div>
       </div>
 
-      <div class="row q-col-gutter-md kanban-board">
-        <div class="col-12 col-md-3" v-for="column in displayColumns" :key="column.id">
-          <div class="column full-height bg-grey-10 rounded-borders q-pa-sm">
-            <div class="row items-center justify-between q-mb-sm q-px-xs">
-              <div class="text-subtitle1 text-weight-bold row items-center">
-                <q-icon :name="column.icon" :color="column.color" class="q-mr-sm" />
-                {{ column.title }}
+      <div class="kanban-board">
+        <div class="kanban-column" v-for="column in displayColumns" :key="column.id">
+          <div class="kanban-column-inner">
+            <div class="kanban-header">
+              <div class="kanban-header-left">
+                <q-icon :name="column.icon" :color="column.color" size="18px" class="q-mr-sm" />
+                <span class="text-weight-bold">{{ column.title }}</span>
               </div>
               <q-badge :color="column.color" text-color="white" rounded>
                 {{ column.orders.length }}
               </q-badge>
             </div>
 
-            <q-scroll-area class="col" style="height: calc(100vh - 280px)">
-              <div v-if="column.orders.length === 0" class="text-center q-pa-md text-grey-6">
-                No orders
+            <div class="kanban-scroll">
+              <div v-if="column.orders.length === 0" class="kanban-empty">
+                <q-icon name="inbox" size="32px" style="opacity:0.15" />
+                <div class="text-caption text-grey-7 q-mt-xs">No orders</div>
               </div>
-              <transition-group
-                appear
-                enter-active-class="animated fadeIn"
-                leave-active-class="animated fadeOut"
-              >
-                <OrderKanbanCard
-                  v-for="order in column.orders"
-                  :key="order.id"
-                  :order="order"
-                  @view="viewOrder"
-                  @next-stage="advanceOrder"
-                />
-              </transition-group>
-            </q-scroll-area>
+              <OrderKanbanCard
+                v-for="order in column.orders"
+                :key="order.id"
+                :order="order"
+                @view="viewOrder"
+                @view-kot="viewOrderKot"
+                @view-invoice="viewOrderInvoice"
+                @next-stage="advanceOrder"
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Order Details Dialog -->
-    <q-dialog v-model="detailsOpen">
-      <q-card style="width: 700px; max-width: 80vw" class="bg-grey-9 text-white">
-        <q-card-section>
-          <div class="text-h6">Order Details - {{ selectedOrder?.id }}</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none">
-          <div class="row q-mb-md">
-            <div class="col-6">
-              <div class="text-caption text-grey-5">Customer</div>
-              <div class="text-body1">{{ selectedOrder?.customer }}</div>
-            </div>
-            <div class="col-6">
-              <div class="text-caption text-grey-5">Date</div>
-              <div class="text-body1">{{ selectedOrder?.date }}</div>
-            </div>
-          </div>
-          <div class="row q-mb-md">
-            <div class="col-6">
-              <div class="text-caption text-grey-5">Type</div>
-              <div class="text-body1">{{ selectedOrder?.type }}</div>
-            </div>
-            <div class="col-6">
-              <div class="text-caption text-grey-5">Table</div>
-              <div class="text-body1">{{ selectedOrder?.table }}</div>
-            </div>
-          </div>
-
-          <q-separator class="q-my-md" color="grey-8" />
-
-          <div class="text-subtitle2 q-mb-sm">Items</div>
-          <!-- Mock items list from string or specific structure -->
-          <div v-if="selectedOrder" class="text-grey-4">
-            {{ selectedOrder.items }}
-          </div>
-
-          <q-separator class="q-my-md" color="grey-8" />
-
-          <div class="row justify-end">
-            <div class="text-h6">Total: {{ selectedOrder?.total }}</div>
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right" class="bg-grey-10">
-          <!-- Waiter (accept-only) cannot cancel orders -->
-          <q-btn
-            v-if="selectedOrder?.status !== 'Cancelled' && !restrictions.ordersAcceptOnly"
-            flat
-            label="Cancel Order"
-            color="red"
-            v-close-popup
-            @click="cancelOrder(selectedOrder)"
-          />
-          <q-btn flat label="Close" color="primary" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <OrderDetailDialog
+      v-model="detailsOpen"
+      :order-id="selectedOrderId"
+    />
   </q-page>
 </template>
 
@@ -224,6 +168,7 @@ import { useQuasar } from 'quasar'
 import { getRoleRestrictions } from 'src/config/roles'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import OrderKanbanCard from 'src/components/orders/OrderKanbanCard.vue'
+import OrderDetailDialog from 'src/components/orders/OrderDetailDialog.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 
 const $q = useQuasar()
@@ -313,7 +258,7 @@ const allProcessedOrders = computed(() => {
   return orderStore.activeOrders.map((o) => {
     const fullOrder = orderStore.orderWithItems(o.id)
     const itemsText =
-      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_item_id}`).join(', ') || ''
+      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_items?.name || i.name || 'Item'}`).join(', ') || ''
     const table = orderStore.tables.get(o.table_id)
     return {
       ...o,
@@ -333,7 +278,7 @@ const filters = ref({
   search: '',
 })
 const detailsOpen = ref(false)
-const selectedOrder = ref(null)
+const selectedOrderId = ref(null)
 
 const branchOptions = computed(() => {
   const branches = authStore.branches.map((b) => b.branches?.name).filter(Boolean)
@@ -424,18 +369,20 @@ const displayColumns = computed(() => {
   const processedOrders = filteredOrders.value.map((o) => {
     // Get items for display
     const fullOrder = orderStore.orderWithItems(o.id)
-    const itemsText =
-      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_item_id}`).join(', ') ||
-      'Loading items...'
 
     // Get table number
     const table = orderStore.tables.get(o.table_id)
     const tableNum = table ? table.table_number : '-'
 
+    // Get KOT tickets for this order
+    const kots = [...orderStore.kotTickets.values()].filter(k => k.order_id === o.id)
+
     return {
       ...o,
-      type: o.order_type, // Map database column to prop name
-      items: itemsText, // Simplified for card display
+      type: o.order_type,
+      order_items: fullOrder?.items || [],
+      kot_tickets: kots,
+      invoices: [],  // Will be detected by status
       table: tableNum,
       timeAgo: getTimeAgo(o.created_at),
       total: o.total_amount,
@@ -460,8 +407,30 @@ const displayColumns = computed(() => {
 
 // --- Actions ---
 function viewOrder(order) {
-  selectedOrder.value = orderStore.orderWithItems(order.id) || order
+  selectedOrderId.value = order.id
   detailsOpen.value = true
+}
+
+function viewOrderKot(order) {
+  selectedOrderId.value = order.id
+  detailsOpen.value = true
+  // The dialog will open on 'details' tab — we pass a nextTick hint
+  // Use a small delay so the dialog opens first, then switch tab
+  setTimeout(() => {
+    const dlg = document.querySelector('.order-detail-fullscreen')
+    if (dlg) {
+      // Dispatch custom event to switch tab
+      window.__orderDetailTab = 'kot'
+    }
+  }, 100)
+}
+
+function viewOrderInvoice(order) {
+  selectedOrderId.value = order.id
+  detailsOpen.value = true
+  setTimeout(() => {
+    window.__orderDetailTab = 'invoice'
+  }, 100)
 }
 
 async function advanceOrder(order) {
@@ -501,7 +470,6 @@ async function cancelOrder(order) {
   border-radius: 6px;
   overflow: hidden;
 }
-
 .erp-view-btn {
   width: 32px;
   height: 32px;
@@ -512,18 +480,82 @@ async function cancelOrder(order) {
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.4);
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: background 0.15s, color 0.15s;
+}
+.erp-view-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+}
+.erp-view-btn--active {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+}
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.8);
+/* Kanban Board */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 0;
+}
+
+.kanban-column {
+  min-width: 0;
+}
+
+.kanban-column-inner {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 260px);
+  overflow: hidden;
+}
+
+.kanban-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.kanban-header-left {
+  display: flex;
+  align-items: center;
+  color: #e5e7eb;
+  font-size: 14px;
+}
+
+.kanban-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.kanban-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  color: #6b7280;
+}
+
+@media (max-width: 1024px) {
+  .kanban-board {
+    grid-template-columns: repeat(2, 1fr);
   }
+  .kanban-column-inner {
+    height: 400px;
+  }
+}
 
-  &--active {
-    background: rgba(37, 99, 235, 0.15);
-    color: #2563eb;
+@media (max-width: 600px) {
+  .kanban-board {
+    grid-template-columns: 1fr;
   }
 }
 </style>

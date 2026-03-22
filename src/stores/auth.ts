@@ -9,6 +9,7 @@ export type UserRole =
   | 'waiter'
   | 'cashier'
   | 'kitchen'
+  | 'delivery'
   | 'inventory'
   | 'finance'
   | 'hr'

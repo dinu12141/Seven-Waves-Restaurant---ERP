@@ -254,12 +254,12 @@ const modulesStore = useModulesStore()
 const route = useRoute()
 const router = useRouter()
 
-/** POS Mode: Hide sidebar for Cashier/Waiter or when on POS/Kitchen pages to maximize screen space */
+/** POS Mode: Hide sidebar for Cashier/Waiter/Kitchen or when on POS/Kitchen pages to maximize screen space */
 const isPOSMode = computed(() => {
   if (route.path.startsWith('/pos') || route.path.startsWith('/kitchen')) return true
 
   return (
-    authStore.hasAnyRole(['cashier', 'waiter']) &&
+    authStore.hasAnyRole(['cashier', 'waiter', 'kitchen']) &&
     !authStore.isAdmin &&
     !authStore.hasRole('manager')
   )
@@ -398,7 +398,7 @@ function sectionForPath(path) {
   if (path.startsWith('/reports')) return 'REPORTS'
   if (path.startsWith('/hr')) return 'HR'
   if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile') return 'SYSTEM'
-  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter')) return 'OPERATIONS'
+  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter') || path.startsWith('/website-orders')) return 'OPERATIONS'
   return 'MAIN'
 }
 
@@ -606,12 +606,15 @@ watch(
     height: 36px !important;
     min-height: 36px !important;
     max-height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
   :deep(.q-tabs__content) {
     height: 36px !important;
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
   }
 
   :deep(.q-tabs__arrow) {
@@ -629,9 +632,12 @@ watch(
     text-transform: uppercase;
     font-weight: 500;
     letter-spacing: 0.4px;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 
-    .q-tab__content { padding: 0 !important; min-height: unset !important; height: 26px !important; display: flex !important; align-items: center !important; }
-    .q-tab__label   { font-size: 11px; line-height: 1; }
+    .q-tab__content { padding: 0 !important; min-height: unset !important; height: 26px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+    .q-tab__label   { font-size: 11px; line-height: 1; display: flex; align-items: center; }
 
     &:hover {
       background: rgba(255, 255, 255, 0.05);
@@ -840,10 +846,17 @@ watch(
   display: flex;
   flex-direction: column;
 
-  // Hide the q-drawer's own scrollbar
+  // Hide the q-drawer's own scrollbar and gap
   :deep(.q-drawer__content) {
     overflow: hidden !important;
     scrollbar-width: none !important;
+    &::-webkit-scrollbar { display: none !important; }
+  }
+
+  // Remove the scrollbar gap between sidebar and main content
+  :deep(.q-drawer) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
     &::-webkit-scrollbar { display: none !important; }
   }
 
@@ -852,8 +865,8 @@ watch(
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 85px !important;
-    min-height: 85px !important;
+    height: 84px !important;
+    min-height: 84px !important;
     border-bottom: 1px solid var(--erp-border);
     flex-shrink: 0;
 

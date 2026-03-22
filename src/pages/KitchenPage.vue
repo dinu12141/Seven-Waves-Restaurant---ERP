@@ -235,11 +235,6 @@
       </div>
     </div>
 
-    <!-- Audio alert for new tickets -->
-    <audio ref="alertSound" preload="auto">
-      <source src="" type="audio/mpeg" />
-    </audio>
-
     <!-- KOT Viewer Dialog -->
     <q-dialog v-model="viewDialogOpen" transition-show="scale" transition-hide="scale">
       <KotReceipt
@@ -305,20 +300,32 @@ function filterByType(tickets) {
   return tickets.filter((t) => t.orderType?.toLowerCase() === filterMode.value.toLowerCase())
 }
 
-// Watch for new tickets → play alert
+// Watch for kitchen-specific new ticket alerts → show detailed notification
 watch(
-  () => store.newTickets.length,
-  (newVal, oldVal) => {
-    if (newVal > oldVal) {
-      $q.notify({
-        type: 'warning',
-        message: 'New KOT Ticket!',
-        icon: 'notification_important',
-        position: 'top',
-        timeout: 3000,
-      })
-    }
+  () => store.newTicketAlert,
+  (alert) => {
+    if (!alert) return
+
+    // Build items summary text
+    const itemsText = alert.items
+      .map(i => `${i.qty}x ${i.name}`)
+      .join(', ')
+
+    $q.notify({
+      type: 'warning',
+      message: `🔔 New KOT for ${alert.kitchenName}`,
+      caption: `Table ${alert.tableNumber} • #${alert.orderNumber}\n${itemsText}`,
+      icon: 'notification_important',
+      position: 'top',
+      timeout: 6000,
+      multiLine: true,
+      html: false,
+      actions: [
+        { label: 'OK', color: 'white', handler: () => store.clearNewTicketAlert() }
+      ],
+    })
   },
+  { deep: true }
 )
 
 async function onKitchenChange(kitchenId) {
@@ -413,6 +420,7 @@ function toggleFullscreen() {
 
 onMounted(() => {
   store.initialize()
+  store.warmUpAudio() // Unlock AudioContext on first user gesture
   window.addEventListener('online', store.fetchTickets)
   document.addEventListener('fullscreenchange', () => {
     isFullscreen.value = !!document.fullscreenElement
