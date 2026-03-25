@@ -30,6 +30,16 @@
           </q-chip>
         </template>
 
+        <!-- Theme Toggle -->
+        <q-btn
+          flat round dense
+          :icon="uiStore.themeIcon"
+          class="q-ml-sm theme-toggle-btn"
+          @click="uiStore.toggleDarkMode($q)"
+        >
+          <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
+        </q-btn>
+
         <!-- Notification Bell -->
         <q-btn flat round dense icon="notifications" color="grey-7" class="q-ml-sm" to="/waiter-app/notifs">
           <q-badge v-if="store.unreadNotifCount > 0" color="red" floating rounded>
@@ -55,6 +65,12 @@
                 </div>
               </div>
             </div>
+            <q-separator />
+            <!-- Theme Toggle -->
+            <q-item clickable v-close-popup class="wum-item" @click="uiStore.toggleDarkMode($q)">
+              <q-item-section avatar><q-icon :name="uiStore.themeIcon" size="16px" /></q-item-section>
+              <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
+            </q-item>
             <q-separator />
             <!-- Sign out -->
             <q-item clickable v-close-popup class="wum-item wum-item--danger" @click="logout">
@@ -177,15 +193,18 @@
 <script setup>
 import { computed, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar, Notify } from 'quasar'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
+import { useUIStore } from 'stores/ui'
 import { supabase } from 'src/boot/supabase'
-import { Notify } from 'quasar'
 
 const store = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
 const authStore = useAuthStore()
+const uiStore = useUIStore()
+const $q = useQuasar()
 const router = useRouter()
 
 // ── Auth guard ────────────────────────────────────────────────────────────────

@@ -34,6 +34,16 @@
           </q-badge>
         </q-btn>
 
+        <!-- Theme Toggle -->
+        <q-btn
+          flat round dense
+          :icon="uiStore.themeIcon"
+          class="q-ml-xs"
+          @click="uiStore.toggleDarkMode($q)"
+        >
+          <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
+        </q-btn>
+
         <!-- User avatar + logout menu -->
         <q-btn flat round dense class="q-ml-xs top-avatar-btn">
           <div class="top-avatar">
@@ -50,6 +60,12 @@
                 <div class="mum-role">Manager</div>
               </div>
             </div>
+            <q-separator dark />
+            <!-- Theme Toggle -->
+            <q-item clickable v-close-popup class="mum-item" @click="uiStore.toggleDarkMode($q)">
+              <q-item-section avatar><q-icon :name="uiStore.themeIcon" size="16px" /></q-item-section>
+              <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
+            </q-item>
             <q-separator dark />
             <!-- Sign out -->
             <q-item clickable v-close-popup class="mum-item mum-item--danger" @click="logout">
@@ -109,12 +125,16 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useAuthStore } from 'stores/auth'
+import { useUIStore } from 'stores/ui'
 import { supabase } from 'src/boot/supabase'
 
 const store = useManagerAppStore()
 const authStore = useAuthStore()
+const uiStore = useUIStore()
+const $q = useQuasar()
 const router = useRouter()
 
 // ── Auth guard ────────────────────────────────────────────────────────────────

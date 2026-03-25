@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
@@ -16,8 +16,17 @@ const $q = useQuasar()
 const authStore = useAuthStore()
 const uiStore = useUIStore()
 
-// Initialize theme from saved preference / system preference
+// Initialize theme without a user first (covers the login / guest pages).
 onMounted(() => {
-  uiStore.initTheme($q)
+  uiStore.initThemeForUser($q, authStore.user?.id || null)
 })
+
+// Re-initialize theme whenever the logged-in user changes.
+// This ensures each role/login uses their own saved preference.
+watch(
+  () => authStore.user?.id,
+  (userId) => {
+    uiStore.initThemeForUser($q, userId || null)
+  },
+)
 </script>

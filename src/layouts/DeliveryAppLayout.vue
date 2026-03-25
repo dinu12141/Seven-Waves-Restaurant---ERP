@@ -23,6 +23,16 @@
           {{ store.isConnected ? 'Live' : 'Offline' }}
         </q-chip>
 
+        <!-- Theme Toggle -->
+        <q-btn
+          flat round dense
+          :icon="uiStore.themeIcon"
+          class="q-ml-sm"
+          @click="uiStore.toggleDarkMode($q)"
+        >
+          <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
+        </q-btn>
+
         <!-- User avatar + logout -->
         <q-btn flat round dense class="q-ml-xs top-avatar-btn">
           <div class="top-avatar">
@@ -38,6 +48,12 @@
                 <div class="dum-role">Delivery Rider</div>
               </div>
             </div>
+            <q-separator dark />
+            <!-- Theme Toggle -->
+            <q-item clickable v-close-popup class="dum-item" @click="uiStore.toggleDarkMode($q)">
+              <q-item-section avatar><q-icon :name="uiStore.themeIcon" size="16px" /></q-item-section>
+              <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
+            </q-item>
             <q-separator dark />
             <q-item clickable v-close-popup class="dum-item dum-item--danger" @click="logout">
               <q-item-section avatar><q-icon name="logout" size="16px" /></q-item-section>
@@ -96,12 +112,16 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
 import { useAuthStore } from 'stores/auth'
+import { useUIStore } from 'stores/ui'
 import { supabase } from 'src/boot/supabase'
 
 const store = useDeliveryStore()
 const authStore = useAuthStore()
+const uiStore = useUIStore()
+const $q = useQuasar()
 const router = useRouter()
 
 // ── Auth guard ─────────────────────────
@@ -314,13 +334,6 @@ const tabs = computed(() => [
   opacity: 0;
 }
 
-// ═══════════════════════════════════════════════════
-// LIGHT THEME OVERRIDES
-// ═══════════════════════════════════════════════════
-:deep(body.body--light) &,
-body.body--light & {
-  // won't work with scoped, we need :global
-}
 </style>
 
 <style lang="scss">
