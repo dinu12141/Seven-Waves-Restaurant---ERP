@@ -48,15 +48,15 @@
         </div>
 
         <!-- Meta Info -->
-        <div class="row items-center text-grey-5 q-mb-sm text-caption" style="font-size: 0.75rem">
+        <div class="row items-center kds-meta-text q-mb-sm text-caption" style="font-size: 0.75rem">
           <q-icon name="table_restaurant" size="14px" class="q-mr-xs" />
           <span class="text-weight-medium">
             {{ ticket.tableNumber !== '—' ? `T${ticket.tableNumber}` : 'Takeaway' }}
           </span>
-          <div class="q-mx-xs text-grey-8">|</div>
-          <span class="text-grey-5">{{ itemCount }} items</span>
-          <div class="q-mx-xs text-grey-8">|</div>
-          <span class="text-grey-5">Ord #{{ ticket.orderNumber }}</span>
+          <div class="q-mx-xs kds-meta-divider">|</div>
+          <span>{{ itemCount }} items</span>
+          <div class="q-mx-xs kds-meta-divider">|</div>
+          <span>Ord #{{ ticket.orderNumber }}</span>
         </div>
 
         <div v-if="ticket.kitchenName" class="row items-center q-mb-sm">
@@ -66,7 +66,7 @@
           </q-badge>
         </div>
 
-        <q-separator dark class="q-mb-sm separator-dashed" />
+        <q-separator class="q-mb-sm separator-dashed" />
 
         <!-- Items List -->
         <div class="items-list q-gutter-y-sm">
@@ -74,7 +74,7 @@
             <div class="row no-wrap items-start">
               <div class="item-qty shadow-2">{{ item.qty }}</div>
               <div class="col q-pl-sm">
-                <div class="text-body2 text-weight-medium item-name text-grey-2">
+                <div class="text-body2 text-weight-medium item-name">
                   {{ item.name }}
                 </div>
                 <div v-if="item.notes" class="item-notes q-mt-xs">
@@ -185,7 +185,7 @@
     <div v-else class="row items-center justify-between q-pa-sm full-width">
       <div class="row items-center q-gutter-x-sm" style="flex:1;min-width:0">
         <div class="list-dot" :class="stripClass"></div>
-        <span class="text-subtitle1 text-weight-bold font-mono text-white"
+        <span class="text-subtitle1 text-weight-bold font-mono kds-list-order"
           >#{{ ticket.orderNumber }}</span
         >
         <span v-if="ticket.tableNumber && ticket.tableNumber !== '—'" class="text-caption text-cyan-4 text-weight-medium">
@@ -280,22 +280,22 @@ const typeColor = computed(() => {
 
 <style scoped>
 .kds-card {
-  background: #1e1e1e;
+  background: var(--erp-bg-card);
   border-radius: 8px;
   overflow: hidden;
   position: relative;
   transition:
     transform 0.2s,
     box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--erp-shadow-card);
+  border: 1px solid var(--erp-border);
   display: flex;
   flex-direction: column;
 }
 .list-view-card {
   min-height: unset !important;
   border-left: 4px solid transparent;
-  background: rgba(42, 42, 42, 0.4);
+  background: var(--erp-bg-card-hover);
 }
 .list-dot {
   width: 8px;
@@ -303,12 +303,12 @@ const typeColor = computed(() => {
   border-radius: 50%;
 }
 .view-btn-compact {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--erp-bg-hover);
 }
 .kds-card:hover:not(.list-view-card) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--erp-shadow-lg);
+  border-color: var(--erp-border-hover);
 }
 
 .card-strip {
@@ -317,7 +317,7 @@ const typeColor = computed(() => {
 }
 
 .card-content {
-  color: white;
+  color: var(--erp-text-primary);
   min-height: 180px;
 }
 
@@ -329,18 +329,19 @@ const typeColor = computed(() => {
   letter-spacing: -0.5px;
 }
 .separator-dashed {
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  border-bottom: 1px dashed var(--erp-border);
   background: transparent;
 }
 
 /* Timer */
 .timer-box {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--erp-bg-hover);
   padding: 4px 8px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   transition: all 0.3s;
+  color: var(--erp-text-secondary);
 }
 .timer-late {
   background: rgba(255, 152, 0, 0.15);
@@ -361,7 +362,7 @@ const typeColor = computed(() => {
 
 /* Items */
 .item-qty {
-  background: #2a2a2a;
+  background: var(--erp-bg-hover);
   min-width: 28px;
   height: 28px;
   border-radius: 6px;
@@ -369,12 +370,13 @@ const typeColor = computed(() => {
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  color: #fff;
+  color: var(--erp-text-primary);
   font-size: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--erp-border);
 }
 .item-name {
   line-height: 1.2;
+  color: var(--erp-text-primary);
 }
 .item-notes {
   background: rgba(255, 193, 7, 0.1);
@@ -387,7 +389,7 @@ const typeColor = computed(() => {
 
 .order-notes {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--erp-text-muted);
   background: rgba(245, 158, 11, 0.05);
   padding: 4px 8px;
   border-radius: 6px;
@@ -417,9 +419,9 @@ const typeColor = computed(() => {
 
 .btn-print,
 .btn-view {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #9ca3af !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--erp-bg-hover) !important;
+  color: var(--erp-text-muted) !important;
+  border: 1px solid var(--erp-border) !important;
   min-width: 40px;
 }
 
@@ -432,14 +434,25 @@ const typeColor = computed(() => {
   width: 3px;
 }
 .items-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--erp-text-tertiary);
   border-radius: 2px;
 }
 .kitchen-name-badge {
   font-size: 0.65rem;
   letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--erp-bg-hover);
   padding: 2px 8px;
   border-radius: 4px;
+}
+
+/* Theme-aware text */
+.kds-meta-text {
+  color: var(--erp-text-muted);
+}
+.kds-meta-divider {
+  color: var(--erp-border);
+}
+.kds-list-order {
+  color: var(--erp-text-primary);
 }
 </style>

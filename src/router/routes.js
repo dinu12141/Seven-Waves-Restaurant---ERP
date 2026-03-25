@@ -46,6 +46,21 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'cashier'] },
       },
       {
+        path: 'website/dashboard',
+        component: () => import('pages/website/WebsiteDashboard.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
+        path: 'website-messages',
+        component: () => import('pages/website/WebsiteMessagesPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
+        path: 'website-reservations',
+        component: () => import('pages/website/WebsiteReservationsPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
         path: 'cashier',
         component: () => import('pages/CashierPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier'] },
@@ -62,13 +77,27 @@ const routes = [
       },
       {
         path: 'finance',
-        component: () => import('pages/FinancePage.vue'),
+        component: () => import('pages/finance/FinanceLayout.vue'),
         meta: { roles: ['admin', 'manager', 'finance'] },
-      },
-      {
-        path: 'finance/dashboard',
-        component: () => import('pages/finance/FinanceDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
+        children: [
+          { path: '', redirect: 'dashboard' },
+          { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue') },
+          { path: 'chart-of-accounts', component: () => import('pages/finance/ChartOfAccountsPage.vue') },
+          { path: 'journal-entries', component: () => import('pages/finance/JournalEntriesPage.vue') },
+          { path: 'general-ledger', component: () => import('pages/finance/GeneralLedgerPage.vue') },
+          { path: 'trial-balance', component: () => import('pages/finance/TrialBalancePage.vue') },
+          { path: 'cash-bank', component: () => import('pages/finance/CashBankPage.vue') },
+          { path: 'receivables', component: () => import('pages/finance/ReceivablesPage.vue') },
+          { path: 'payables', component: () => import('pages/finance/PayablesPage.vue') },
+          { path: 'expenses', component: () => import('pages/finance/ExpensesPage.vue') },
+          { path: 'tax', component: () => import('pages/finance/TaxPage.vue') },
+          { path: 'payroll', component: () => import('pages/finance/PayrollPage.vue') },
+          { path: 'payroll/run', component: () => import('pages/finance/PayrollRunPage.vue') },
+          { path: 'payroll/payslips', component: () => import('pages/finance/PayslipsPage.vue') },
+          { path: 'payroll/salary-structure', component: () => import('pages/finance/SalaryStructurePage.vue') },
+          { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue') },
+          { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue') },
+        ],
       },
       {
         path: 'hr',
@@ -227,6 +256,7 @@ const routes = [
           { path: 'purchase-consumption', component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue') },
           { path: 'variance', component: () => import('pages/reports/VarianceReport.vue') },
           { path: 'inventory-performance', component: () => import('pages/reports/InventoryPerformanceReport.vue') },
+          { path: 'kot-deduction-log', component: () => import('pages/reports/KotDeductionLog.vue') },
           // ── Procurement Reports ───────────────────────────
           { path: 'purchase-summary', component: () => import('pages/reports/PurchaseSummary.vue') },
           { path: 'supplier-purchases', component: () => import('pages/reports/SupplierWisePurchases.vue') },
@@ -253,11 +283,13 @@ const routes = [
     meta: { requiresAuth: true, roles: ['admin', 'manager', 'waiter'] },
     children: [
       { path: '', component: () => import('pages/waiter-app/WaiterHomePage.vue') },
+      { path: 'tables', component: () => import('pages/waiter-app/WaiterTablesPage.vue') },
       { path: 'inbox', component: () => import('pages/waiter-app/ShiftInboxPage.vue') },
       { path: 'orders', component: () => import('pages/waiter-app/MyOrdersPage.vue') },
       { path: 'alerts', component: () => import('pages/waiter-app/ReadyAlertsPage.vue') },
       { path: 'notifs', component: () => import('pages/waiter-app/NotificationsPage.vue') },
       { path: 'profile', component: () => import('pages/waiter-app/MyProfilePage.vue') },
+      { path: 'pos', component: () => import('pages/waiter-app/WaiterPOSPage.vue') },
     ],
   },
   // ── Manager App — standalone full-screen mobile PWA (NO MainLayout) ────────
@@ -284,8 +316,9 @@ const routes = [
     children: [
       { path: '', component: () => import('pages/delivery-app/DeliveryHomePage.vue') },
       { path: 'active', component: () => import('pages/delivery-app/DeliveryActivePage.vue') },
+      { path: 'map', component: () => import('pages/delivery-app/DeliveryMapPage.vue') },
       { path: 'history', component: () => import('pages/delivery-app/DeliveryHistoryPage.vue') },
-      { path: 'profile', component: () => import('pages/auth/UserProfilePage.vue') },
+      { path: 'profile', component: () => import('pages/delivery-app/DeliveryProfilePage.vue') },
     ],
   },
   {

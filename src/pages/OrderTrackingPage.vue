@@ -201,7 +201,22 @@ let channel = null
 let pollTimer = null
 let clockTimer = null
 
-const statusSteps = ORDER_STATUS_STEPS.filter((s) => s.key !== 'invoiced')
+// Filter steps based on whether this is a delivery or dine-in order
+const isDeliveryOrder = computed(() => {
+  if (!order.value) return false
+  return order.value.order_type === 'delivery' || order.value.order_type === 'website_delivery'
+})
+
+const statusSteps = computed(() => {
+  if (isDeliveryOrder.value) {
+    // Delivery orders: show delivery-specific steps, hide 'served'
+    return ORDER_STATUS_STEPS.filter(s => s.key !== 'invoiced' && s.key !== 'served')
+  }
+  // Dine-in / takeaway: hide delivery-specific steps
+  return ORDER_STATUS_STEPS.filter(s =>
+    s.key !== 'invoiced' && s.key !== 'picked_up' && s.key !== 'out_for_delivery' && s.key !== 'delivered'
+  )
+})
 
 const currentStatusIdx = computed(() => {
   if (!order.value) return -1

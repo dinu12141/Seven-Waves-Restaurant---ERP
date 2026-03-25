@@ -309,3 +309,187 @@ export function useSuppliers() {
 
   return { suppliers, loading, fetchSuppliers, createSupplier, updateSupplier }
 }
+
+// =====================================================
+// RECIPES / BOM (Bill of Materials)
+// =====================================================
+
+interface RecipeIngredient {
+  item_id: string
+  qty_per_serving: number
+  uom_id?: string
+  notes?: string
+  wastage_percent?: number
+}
+
+interface SaveRecipePayload {
+  company_id: string
+  menu_item_id: string
+  variant_id?: string | null
+  name?: string | null
+  yield_qty?: number
+  yield_unit?: string | null
+  notes?: string | null
+  ingredients: RecipeIngredient[]
+}
+
+export function useRecipes() {
+  const recipes = ref<any[]>([])
+  const currentRecipe = ref<any>(null)
+  const recipeItems = ref<any[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  /**
+   * Fetch all recipes for a company, joined with menu_items for display names.
+   */
+  async function fetchRecipes(companyId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await supabase
+        .from('recipes')
+        .select(`
+          *,
+          menu_items!recipes_menu_item_id_fkey ( id, name, base_price ),
+          item_variants!recipes_variant_id_fkey ( id, name, price ),
+          recipe_items ( id, item_id, qty_per_serving, uom_id, notes, wastage_percent,
+            items!recipe_items_item_id_fkey ( id, name, code, avg_cost ),
+            uom!recipe_items_uom_id_fkey ( id, code, name )
+          )
+        `)
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      if (err) throw err
+      recipes.value = data || []
+    } catch (e: any) {
+      error.value = e.message
+      console.error('Fetch recipes error:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Fetch a single recipe with its BOM ingredient lines.
+   */
+  async function fetchRecipeWithItems(recipeId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await supabase
+        .from('recipes')
+        .select(`
+          *,
+          menu_items!recipes_menu_item_id_fkey ( id, name, base_price ),
+          item_variants!recipes_variant_id_fkey ( id, name, price ),
+          recipe_items ( id, item_id, qty_per_serving, uom_id, notes, wastage_percent,
+            items!recipe_items_item_id_fkey ( id, name, code, avg_cost, inventory_uom_id ),
+            uom!recipe_items_uom_id_fkey ( id, code, name )
+          )
+        `)
+        .eq('id', recipeId)
+        .single()
+
+      if (err) throw err
+      currentRecipe.value = data
+      recipeItems.value = data?.recipe_items || []
+      return data
+    } catch (e: any) {
+      error.value = e.message
+      console.error('Fetch recipe error:', e)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Save (create or update) a recipe via the hardened save_recipe RPC.
+   * The RPC validates all inputs and performs an atomic BOM replace.
+   */
+  async function saveRecipe(payload: SaveRecipePayload) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await supabase.rpc('save_recipe', {
+        p_company_id: payload.company_id,
+        p_menu_item_id: payload.menu_item_id,
+        p_variant_id: payload.variant_id || null,
+        p_name: payload.name || null,
+        p_yield_qty: payload.yield_qty || 1,
+        p_yield_unit: payload.yield_unit || null,
+        p_notes: payload.notes || null,
+        p_ingredients: payload.ingredients
+      })
+
+      if (err) throw err
+
+      // The RPC returns {success, recipe_id, message} or {success, error}
+      if (data && !data.success) {
+        throw new Error(data.error || 'Failed to save recipe')
+      }
+
+      return data
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Delete a recipe and its BOM items.
+   */
+  async function deleteRecipe(recipeId: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const { data, error: err } = await supabase.rpc('delete_recipe', {
+        p_recipe_id: recipeId
+      })
+
+      if (err) throw err
+      return data
+    } catch (e: any) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Calculate the total ingredient cost for a recipe.
+   * Uses avg_cost from items and uom_conversions for unit matching.
+   */
+  async function calculateRecipeCost(recipeId: string): Promise<number> {
+    try {
+      const { data, error: err } = await supabase.rpc('calculate_recipe_cost', {
+        p_recipe_id: recipeId
+      })
+
+      if (err) throw err
+      return data || 0
+    } catch (e: any) {
+      console.error('Calculate recipe cost error:', e)
+      return 0
+    }
+  }
+
+  return {
+    recipes,
+    currentRecipe,
+    recipeItems,
+    loading,
+    error,
+    fetchRecipes,
+    fetchRecipeWithItems,
+    saveRecipe,
+    deleteRecipe,
+    calculateRecipeCost
+  }
+}

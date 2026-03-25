@@ -5,8 +5,7 @@
       <q-btn-toggle
         v-model="viewMode"
         toggle-color="primary"
-        color="dark"
-        text-color="white"
+        text-color="grey-7"
         no-caps
         dense
         size="sm"
@@ -51,8 +50,8 @@
             <q-card-section class="q-py-sm q-px-md">
               <div class="row items-center no-wrap">
                 <div class="col">
-                  <div class="text-weight-bold text-white shift-name">{{ shift.name }}</div>
-                  <div class="text-caption text-grey-5" style="font-size: 10px;">
+                  <div class="text-weight-bold shift-name">{{ shift.name }}</div>
+                  <div class="text-caption shift-type-label" style="font-size: 10px;">
                     {{ getShiftType(shift).toUpperCase() }} SHIFT
                   </div>
                 </div>
@@ -67,8 +66,8 @@
                 <div class="col-6">
                   <div class="shift-time-block">
                     <q-icon name="login" size="12px" class="text-green q-mr-xs" />
-                    <span class="text-caption text-grey-4" style="font-size: 10px;">Start</span>
-                    <div class="text-weight-bold text-white" style="font-size: 12px;">
+                    <span class="text-caption shift-time-label" style="font-size: 10px;">Start</span>
+                    <div class="text-weight-bold shift-time-value" style="font-size: 12px;">
                       {{ formatTime(shift.start_time) }}
                     </div>
                   </div>
@@ -76,8 +75,8 @@
                 <div class="col-6">
                   <div class="shift-time-block">
                     <q-icon name="logout" size="12px" class="text-red q-mr-xs" />
-                    <span class="text-caption text-grey-4" style="font-size: 10px;">End</span>
-                    <div class="text-weight-bold text-white" style="font-size: 12px;">
+                    <span class="text-caption shift-time-label" style="font-size: 10px;">End</span>
+                    <div class="text-weight-bold shift-time-value" style="font-size: 12px;">
                       {{ formatTime(shift.end_time) }}
                       <q-badge
                         v-if="shift.is_overnight"
@@ -92,7 +91,7 @@
                 </div>
               </div>
 
-              <div class="row q-mt-xs q-col-gutter-xs text-grey-5" style="font-size: 10px;">
+              <div class="row q-mt-xs q-col-gutter-xs shift-meta-text" style="font-size: 10px;">
                 <div class="col-auto">
                   <q-icon name="coffee" size="10px" class="q-mr-xs" />
                   {{ shift.break_duration_minutes }}min break
@@ -104,7 +103,7 @@
               </div>
             </q-card-section>
 
-            <q-separator dark />
+            <q-separator />
             <q-card-actions class="q-px-sm q-py-xs">
               <q-btn
                 flat
@@ -150,7 +149,6 @@
       <div class="row q-mb-md q-gutter-sm items-end">
         <!-- Date filters -->
         <q-input
-          dark
           dense
           outlined
           v-model="assignFilter.dateFrom"
@@ -159,7 +157,6 @@
           style="width: 155px"
         />
         <q-input
-          dark
           dense
           outlined
           v-model="assignFilter.dateTo"
@@ -169,7 +166,6 @@
         />
         <!-- Shift filter -->
         <q-select
-          dark
           dense
           outlined
           v-model="assignFilter.shiftId"
@@ -186,7 +182,6 @@
         </q-select>
         <!-- Employee filter -->
         <q-select
-          dark
           dense
           outlined
           v-model="assignFilter.employeeId"
@@ -233,7 +228,6 @@
         <q-space />
         <!-- Text search -->
         <q-input
-          dark
           dense
           outlined
           v-model="assignSearch"
@@ -269,7 +263,6 @@
 
       <!-- Table View -->
       <q-table
-        dark
         flat
         bordered
         :rows="filteredAssignments"
@@ -350,7 +343,7 @@
 
     <!-- ─── SHIFT DEFINITION DIALOG ─── -->
     <q-dialog v-model="shiftDialog.open" persistent>
-      <q-card style="min-width: 480px; background: var(--erp-bg-form-card, #111827); color: #fff">
+      <q-card style="min-width: 480px">
         <q-toolbar class="bg-primary">
           <q-toolbar-title>{{
             shiftDialog.isEdit ? 'Edit Shift' : 'Create New Shift'
@@ -359,7 +352,6 @@
         </q-toolbar>
         <q-card-section class="q-gutter-md q-pa-lg">
           <q-input
-            dark
             outlined
             v-model="shiftForm.name"
             label="Shift Name *"
@@ -369,7 +361,6 @@
           <div class="row q-col-gutter-md">
             <div class="col-6">
               <q-input
-                dark
                 outlined
                 v-model="shiftForm.start_time"
                 type="time"
@@ -379,7 +370,6 @@
             </div>
             <div class="col-6">
               <q-input
-                dark
                 outlined
                 v-model="shiftForm.end_time"
                 type="time"
@@ -391,7 +381,6 @@
           <div class="row q-col-gutter-md items-center">
             <div class="col-8">
               <q-input
-                dark
                 outlined
                 v-model.number="shiftForm.break_duration_minutes"
                 type="number"
@@ -400,22 +389,22 @@
               />
             </div>
             <div class="col-4 q-pt-md">
-              <q-toggle dark v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
+              <q-toggle v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
             </div>
           </div>
-          <q-toggle dark v-model="shiftForm.is_active" label="Active" color="positive" />
+          <q-toggle v-model="shiftForm.is_active" label="Active" color="positive" />
 
           <!-- Preview -->
-          <q-card flat class="q-pa-md bg-grey-9 rounded-borders">
-            <div class="text-caption text-grey-5 q-mb-xs">SHIFT PREVIEW</div>
+          <q-card flat class="q-pa-md shift-preview-card rounded-borders">
+            <div class="text-caption shift-preview-label q-mb-xs">SHIFT PREVIEW</div>
             <div class="row q-gutter-md text-center">
               <div class="col">
-                <div class="text-caption text-grey-5">Duration</div>
-                <div class="text-h6 text-white text-weight-bold">{{ previewHours }} hrs</div>
+                <div class="text-caption shift-preview-label">Duration</div>
+                <div class="text-h6 text-weight-bold">{{ previewHours }} hrs</div>
               </div>
               <div class="col">
-                <div class="text-caption text-grey-5">Effective Hours</div>
-                <div class="text-h6 text-white text-weight-bold">{{ previewEffective }} hrs</div>
+                <div class="text-caption shift-preview-label">Effective Hours</div>
+                <div class="text-h6 text-weight-bold">{{ previewEffective }} hrs</div>
               </div>
             </div>
           </q-card>
@@ -437,29 +426,30 @@
 
     <!-- ─── ASSIGNMENT DIALOG ─── -->
     <q-dialog v-model="assignDialog.open" persistent>
-      <q-card style="min-width: 520px; background: var(--erp-bg-form-card, #111827); color: #fff">
+      <q-card style="min-width: 560px; max-width: 640px">
         <q-toolbar class="bg-primary">
-          <q-toolbar-title>{{
-            assignDialog.isEdit ? 'Edit Assignment' : 'Assign Shift to Employee'
+          <q-toolbar-title class="text-weight-bold">{{
+            assignDialog.isEdit ? 'Edit Assignment' : 'Assign Shift to Employees'
           }}</q-toolbar-title>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-gutter-md q-pa-lg">
-          <!-- Employee Select -->
+          <!-- Multi Employee Select -->
           <q-select
-            dark
             outlined
-            v-model="assignForm.employee_id"
+            v-model="assignForm.employee_ids"
             :options="employeeOptions"
             option-label="full_name"
             option-value="id"
             emit-value
             map-options
-            label="Employee *"
+            :label="assignDialog.isEdit ? 'Employee *' : 'Employees * (select multiple)'"
+            :multiple="!assignDialog.isEdit"
+            use-chips
             use-input
             input-debounce="0"
             @filter="filterEmps"
-            :rules="[(v) => !!v || 'Required']"
+            :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one employee']"
           >
             <template #option="scope">
               <q-item v-bind="scope.itemProps">
@@ -479,20 +469,34 @@
                 </q-item-section>
               </q-item>
             </template>
+            <template #selected-item="scope">
+              <q-chip
+                dense
+                removable
+                @remove="scope.removeAtIndex(scope.index)"
+                :color="avatarColor(scope.opt.full_name)"
+                text-color="white"
+                size="sm"
+                class="q-my-xs"
+              >
+                {{ scope.opt.full_name }}
+              </q-chip>
+            </template>
           </q-select>
 
-          <!-- Shift Select -->
+          <!-- Multi Shift Select -->
           <q-select
-            dark
             outlined
-            v-model="assignForm.shift_id"
+            v-model="assignForm.shift_ids"
             :options="activeShifts"
             option-label="name"
             option-value="id"
             emit-value
             map-options
-            label="Shift *"
-            :rules="[(v) => !!v || 'Required']"
+            :label="assignDialog.isEdit ? 'Shift *' : 'Shifts * (select multiple)'"
+            :multiple="!assignDialog.isEdit"
+            use-chips
+            :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one shift']"
           >
             <template #option="scope">
               <q-item v-bind="scope.itemProps">
@@ -505,13 +509,32 @@
                 </q-item-section>
               </q-item>
             </template>
+            <template #selected-item="scope">
+              <q-chip
+                dense
+                removable
+                @remove="scope.removeAtIndex(scope.index)"
+                :color="getShiftColor(scope.opt.name)"
+                text-color="white"
+                size="sm"
+                icon="schedule"
+                class="q-my-xs"
+              >
+                {{ scope.opt.name }}
+              </q-chip>
+            </template>
           </q-select>
+
+          <!-- Summary Banner -->
+          <div v-if="!assignDialog.isEdit && assignSummary" class="assign-summary-banner q-pa-sm rounded-borders">
+            <q-icon name="info" size="16px" class="q-mr-xs" />
+            {{ assignSummary }}
+          </div>
 
           <!-- Date Range -->
           <div class="row q-col-gutter-md">
             <div class="col-6">
               <q-input
-                dark
                 outlined
                 v-model="assignForm.date_from"
                 type="date"
@@ -521,7 +544,6 @@
             </div>
             <div class="col-6">
               <q-input
-                dark
                 outlined
                 v-model="assignForm.date_to"
                 type="date"
@@ -550,12 +572,12 @@
             </div>
           </div>
 
-          <q-input dark outlined v-model="assignForm.notes" label="Notes" autogrow />
+          <q-input outlined v-model="assignForm.notes" label="Notes" autogrow />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
           <q-btn
-            :label="assignDialog.isEdit ? 'Update' : 'Assign Shift'"
+            :label="assignDialog.isEdit ? 'Update' : 'Assign Shifts'"
             color="primary"
             icon="save"
             @click="saveAssignment"
@@ -652,8 +674,8 @@ function openShiftDialog(shift = null) {
 const assignDialog = reactive({ open: false, isEdit: false })
 const assignForm = reactive({
   id: null,
-  employee_id: null,
-  shift_id: null,
+  employee_ids: [],  // multi-select for create, single value for edit
+  shift_ids: [],     // multi-select for create, single value for edit
   date_from: new Date().toISOString().split('T')[0],
   date_to: new Date().toISOString().split('T')[0],
   days: [1, 2, 3, 4, 5], // Mon-Fri by default
@@ -670,6 +692,14 @@ const daysOfWeek = [
   { val: 6, short: 'Sat', label: 'Saturday' },
 ]
 
+// Summary of how many assignments will be created
+const assignSummary = computed(() => {
+  const empCount = Array.isArray(assignForm.employee_ids) ? assignForm.employee_ids.length : 0
+  const shiftCount = Array.isArray(assignForm.shift_ids) ? assignForm.shift_ids.length : 0
+  if (empCount === 0 || shiftCount === 0) return ''
+  return `${empCount} employee(s) × ${shiftCount} shift(s) will be assigned for selected dates`
+})
+
 function toggleDay(val) {
   const idx = assignForm.days.indexOf(val)
   if (idx === -1) assignForm.days.push(val)
@@ -679,8 +709,8 @@ function toggleDay(val) {
 function openAssignDialog() {
   Object.assign(assignForm, {
     id: null,
-    employee_id: null,
-    shift_id: null,
+    employee_ids: [],
+    shift_ids: [],
     date_from: new Date().toISOString().split('T')[0],
     date_to: new Date().toISOString().split('T')[0],
     days: [1, 2, 3, 4, 5],
@@ -697,8 +727,8 @@ function editAssignment(row) {
 
   Object.assign(assignForm, {
     id: row.id,
-    employee_id: row.employee_id,
-    shift_id: row.shift_id,
+    employee_ids: row.employee_id,   // single value for edit
+    shift_ids: row.shift_id,         // single value for edit
     date_from: row.assignment_date,
     date_to: row.assignment_date,
     days: [actualDay], // Pre-select the actual day of this assignment
@@ -923,12 +953,14 @@ async function toggleShiftActive(shift) {
 }
 
 async function saveAssignment() {
-  if (
-    !assignForm.employee_id ||
-    !assignForm.shift_id ||
-    !assignForm.date_from ||
-    !assignForm.date_to
-  ) {
+  const hasEmployees = assignDialog.isEdit
+    ? !!assignForm.employee_ids
+    : Array.isArray(assignForm.employee_ids) && assignForm.employee_ids.length > 0
+  const hasShifts = assignDialog.isEdit
+    ? !!assignForm.shift_ids
+    : Array.isArray(assignForm.shift_ids) && assignForm.shift_ids.length > 0
+
+  if (!hasEmployees || !hasShifts || !assignForm.date_from || !assignForm.date_to) {
     $q.notify({ type: 'warning', message: 'Please fill in all required fields' })
     return
   }
@@ -942,31 +974,38 @@ async function saveAssignment() {
       const { error } = await supabase
         .from('shift_assignments')
         .update({
-          employee_id: assignForm.employee_id,
-          shift_id: assignForm.shift_id,
+          employee_id: assignForm.employee_ids,
+          shift_id: assignForm.shift_ids,
           notes: assignForm.notes,
         })
         .eq('id', assignForm.id)
       if (error) throw error
       $q.notify({ type: 'positive', message: 'Assignment updated' })
     } else {
-      // Bulk insert for date range + selected days
-      // Use parseLocalDate to avoid UTC timezone shift bugs
+      // Bulk insert for date range + selected days × employees × shifts
       const from = parseLocalDate(assignForm.date_from)
       const to = parseLocalDate(assignForm.date_to)
+      const empIds = assignForm.employee_ids
+      const shiftIds = assignForm.shift_ids
       const inserts = []
+
       for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay()
         if (assignForm.days.includes(dayOfWeek)) {
-          inserts.push({
-            company_id: companyId,
-            branch_id: branchId,
-            employee_id: assignForm.employee_id,
-            shift_id: assignForm.shift_id,
-            assignment_date: formatLocalDate(d),
-            status: 'scheduled',
-            notes: assignForm.notes || null,
-          })
+          const dateStr = formatLocalDate(d)
+          for (const empId of empIds) {
+            for (const sId of shiftIds) {
+              inserts.push({
+                company_id: companyId,
+                branch_id: branchId,
+                employee_id: empId,
+                shift_id: sId,
+                assignment_date: dateStr,
+                status: 'scheduled',
+                notes: assignForm.notes || null,
+              })
+            }
+          }
         }
       }
       if (inserts.length === 0) {
@@ -974,10 +1013,10 @@ async function saveAssignment() {
         saving.value = false
         return
       }
-      // Upsert to avoid duplicate errors
+      // Upsert with the NEW 3-column unique constraint
       const { error } = await supabase
         .from('shift_assignments')
-        .upsert(inserts, { onConflict: 'employee_id,assignment_date' })
+        .upsert(inserts, { onConflict: 'employee_id,shift_id,assignment_date' })
       if (error) throw error
       $q.notify({ type: 'positive', message: `${inserts.length} shift assignment(s) created` })
     }
@@ -1108,14 +1147,14 @@ onMounted(async () => {
 }
 
 .shift-card {
-  background: var(--erp-bg-form-card, #111827);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.2s;
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.15);
+    border-color: var(--erp-border-hover);
   }
 }
 
@@ -1138,16 +1177,42 @@ onMounted(async () => {
 
 .shift-name {
   font-size: 1.05rem;
+  color: var(--erp-text-primary);
+}
+
+.shift-type-label {
+  color: var(--erp-text-muted);
+}
+
+.shift-time-label {
+  color: var(--erp-text-muted);
+}
+
+.shift-time-value {
+  color: var(--erp-text-primary);
+}
+
+.shift-meta-text {
+  color: var(--erp-text-muted);
 }
 
 .shift-time-block {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--erp-bg-hover);
   border-radius: 6px;
   padding: 5px 8px;
 }
 
+.shift-preview-card {
+  background: var(--erp-bg-hover);
+  border: 1px solid var(--erp-border);
+}
+
+.shift-preview-label {
+  color: var(--erp-text-muted);
+}
+
 .erp-data-grid {
-  background: var(--erp-bg-form-card, #111827);
+  background: var(--erp-bg-card);
   border-radius: 12px;
 }
 
@@ -1162,18 +1227,18 @@ onMounted(async () => {
   min-width: 100px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--erp-border);
 }
 .week-day-header {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--erp-bg-hover);
   padding: 6px 8px;
   text-align: center;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--erp-text-muted);
 
   &.today {
-    background: rgba(59, 130, 246, 0.2);
-    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
   }
 }
 .week-day-body {
@@ -1182,7 +1247,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: var(--erp-bg-form-card, #111827);
+  background: var(--erp-bg-card);
 }
 .asgn-chip {
   border-radius: 6px;
@@ -1190,6 +1255,7 @@ onMounted(async () => {
   font-size: 0.68rem;
   line-height: 1.3;
   border-left: 2px solid;
+  overflow: hidden;
 }
 .asgn-scheduled {
   background: rgba(59, 130, 246, 0.15);
@@ -1210,14 +1276,30 @@ onMounted(async () => {
 
 .asgn-emp {
   font-weight: 700;
-  color: #e2e8f0;
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .asgn-shift {
-  color: #94a3b8;
+  color: var(--erp-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assign-summary-banner {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
 }
 .week-day-empty {
   text-align: center;
-  color: #374151;
+  color: var(--erp-text-tertiary);
   font-size: 0.8rem;
   padding: 8px;
 }

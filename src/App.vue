@@ -8,14 +8,16 @@
 import { onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
+import { useUIStore } from 'stores/ui'
 import LoadingScreen from 'components/LoadingScreen.vue'
 import ToastContainer from 'components/common/ToastContainer.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const uiStore = useUIStore()
 
-// Set dark mode by default
+// Initialize theme from saved preference / system preference
 onMounted(() => {
-  $q.dark.set(true)
+  uiStore.initTheme($q)
 })
 </script>

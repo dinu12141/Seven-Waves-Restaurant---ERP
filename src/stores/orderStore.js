@@ -17,6 +17,7 @@ export const useOrderStore = defineStore('posOrder', () => {
   const cartItems = ref([])
   const orderType = ref('dine-in') // 'dine-in' | 'takeaway'
   const selectedTable = ref(null)
+  const tableNumber = ref(null) // simple integer table number (1-80)
   const customerName = ref('')
   const discount = ref(0) // percentage
   const taxRate = ref(10) // percentage
@@ -103,6 +104,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     cartItems.value = []
     customerName.value = ''
     selectedTable.value = null
+    tableNumber.value = null
     discount.value = 0
     orderNumber.value = _generateOrderNumber()
   }
@@ -136,15 +138,16 @@ export const useOrderStore = defineStore('posOrder', () => {
 
     try {
       // ── Step 1: Insert order ──────────────────────────────
-      // Core fields exist in both schema versions (schema.sql and orders.sql)
       const orderPayload = {
         branch_id: branchId,
         waiter_id: waiterId || null,
+        assigned_waiter_id: waiterId || null, // ensures this order appears in waiter's "My Orders"
         order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
         order_source: 'pos',
         status: 'accepted', // POS manual orders skip waiter step → go directly to accepted
         payment_status: 'unpaid',
-        table_id: selectedTable.value || null,
+        table_id: _isUUID(selectedTable.value) ? selectedTable.value : null,
+        table_number: tableNumber.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
         customer_name: customerName.value || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
@@ -155,9 +158,7 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       // Extended fields
       if (companyId) {
-        Object.assign(orderPayload, {
-          company_id: companyId,
-        })
+        orderPayload.company_id = companyId
       }
 
       const { data: order, error: orderError } = await supabase
@@ -168,31 +169,17 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
-      // ── Step 1.5: Resolve default kitchen for items with no kitchen_id ──
-      // The DB trigger `generate_kot_on_accept` requires kitchen_id on order_items.
-      // If an item has no kitchen assigned, we resolve the branch's default kitchen.
-      let defaultKitchenId = null
-      const hasItemsWithoutKitchen = cartItems.value.some((item) => !item.kitchenId)
-      if (hasItemsWithoutKitchen) {
-        const { data: kitchenData } = await supabase
-          .from('kitchens')
-          .select('id')
-          .eq('branch_id', branchId)
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .single()
-        defaultKitchenId = kitchenData?.id || null
-      }
-
       // ── Step 2: Insert order_items ────────────────────────
+      // NOTE: kitchen_id may be null for items without a direct pin.
+      // generate_kots_for_order (via resolve_kitchen_for_item_full) will
+      // route those items correctly via the subcategory → kitchen map.
       const itemsPayload = cartItems.value.map((item) => {
         const itemQty = parseInt(item.qty) || 1
         const itemPrice = parseFloat(item.price) || 0
         return {
           order_id: order.id,
           menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || defaultKitchenId || null,
+          kitchen_id: item.kitchenId || null,  // null = let RPC resolve via subcategory map
           quantity: itemQty,
           unit_price: itemPrice,
           total_price: parseFloat((itemQty * itemPrice).toFixed(2)),
@@ -272,7 +259,8 @@ export const useOrderStore = defineStore('posOrder', () => {
         order_source: 'pos',
         status: 'pending_waiter',
         payment_status: 'unpaid',
-        table_id: selectedTable.value || null,
+        table_id: _isUUID(selectedTable.value) ? selectedTable.value : null,
+        table_number: tableNumber.value || null,
         total_amount: parseFloat(total.value.toFixed(2)),
         customer_name: customerName.value || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
@@ -289,28 +277,15 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
-      // ── Step 2: Resolve default kitchen & insert order items ─────────────
-      let defaultKitchenId = null
-      const hasItemsWithoutKitchen = cartItems.value.some((item) => !item.kitchenId)
-      if (hasItemsWithoutKitchen) {
-        const { data: kData } = await supabase
-          .from('kitchens')
-          .select('id')
-          .eq('branch_id', branchId)
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .single()
-        defaultKitchenId = kData?.id || null
-      }
-
+      // NOTE: kitchen_id may be null for items without a direct pin.
+      // The accept/generate_kots RPC resolves routing via subcategory → kitchen map.
       const itemsPayload = cartItems.value.map((item) => {
         const qty = parseInt(item.qty) || 1
         const price = parseFloat(item.price) || 0
         return {
           order_id: order.id,
           menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || defaultKitchenId || null,
+          kitchen_id: item.kitchenId || null,  // null = let RPC resolve via subcategory map
           quantity: qty,
           unit_price: price,
           total_price: parseFloat((qty * price).toFixed(2)),
@@ -386,11 +361,18 @@ export const useOrderStore = defineStore('posOrder', () => {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
   }
 
+  /** Check if a string is a valid UUID v4 format */
+  function _isUUID(val) {
+    if (!val || typeof val !== 'string') return false
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+  }
+
   return {
     // state
     cartItems,
     orderType,
     selectedTable,
+    tableNumber,
     customerName,
     discount,
     taxRate,

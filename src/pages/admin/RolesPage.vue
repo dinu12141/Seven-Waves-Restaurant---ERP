@@ -1,12 +1,82 @@
 <template>
   <q-page class="q-pa-md">
     <PageHeader
-      title="User Role & Permissions"
-      subtitle="Fine-grained system access control for every user"
+      title="User Access Control"
+      subtitle="Overview of role-based system access and fine-grained permissions"
       show-back
       back-route="/admin"
     />
 
+    <!-- ═══ ROLE-PERMISSION MATRIX ═══ -->
+    <q-card flat bordered class="q-mt-md acm-matrix-card">
+      <q-card-section class="q-pb-none">
+        <div class="row items-center q-mb-sm">
+          <q-icon name="grid_view" size="22px" color="primary" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Access Control Overview</div>
+          <q-space />
+          <q-badge color="blue-1" text-color="blue-9" class="q-pa-xs">
+            <q-icon name="info" size="12px" class="q-mr-xs" />
+            Matrix shows default role access per module
+          </q-badge>
+        </div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-sm acm-scroll-container">
+        <div class="acm-table-wrap">
+          <table class="acm-table">
+            <thead>
+              <tr>
+                <th class="acm-th-corner" rowspan="2">
+                  <span class="acm-corner-label">Role</span>
+                </th>
+                <th :colspan="matrixModules.length" class="acm-th-group">
+                  Console Section
+                </th>
+              </tr>
+              <tr>
+                <th
+                  v-for="mod in matrixModules"
+                  :key="mod.key"
+                  class="acm-th-module"
+                >
+                  {{ mod.label }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="role in matrixRoles"
+                :key="role.key"
+                class="acm-row"
+              >
+                <td class="acm-td-role">
+                  <div class="acm-role-name">{{ role.label }}</div>
+                  <div v-if="role.caption" class="acm-role-caption">{{ role.caption }}</div>
+                </td>
+                <td
+                  v-for="mod in matrixModules"
+                  :key="mod.key"
+                  class="acm-td-access"
+                >
+                  <q-icon
+                    v-if="hasModuleAccess(role.key, mod.key)"
+                    name="check_circle"
+                    size="20px"
+                    class="acm-icon-allow"
+                  />
+                  <q-icon
+                    v-else
+                    name="cancel"
+                    size="20px"
+                    class="acm-icon-deny"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </q-card-section>
+    </q-card>
     <q-card flat bordered class="q-mt-md">
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
@@ -96,7 +166,7 @@
       </q-table>
     </q-card>
 
-    <!-- Manage User Access Dialog -->
+    <!-- ═══ MANAGE USER ACCESS DIALOG ═══ -->
     <q-dialog
       v-model="dialogVisible"
       persistent
@@ -104,31 +174,34 @@
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card class="bg-grey-1">
+      <q-card class="acm-dialog-card">
         <q-toolbar class="bg-primary text-white sticky-top">
-          <q-toolbar-title>Manage System Access for {{ selectedUser?.full_name }}</q-toolbar-title>
+          <q-icon name="security" size="24px" class="q-mr-sm" />
+          <q-toolbar-title>
+            Manage Access — {{ selectedUser?.full_name }}
+          </q-toolbar-title>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-toolbar>
 
         <q-card-section class="q-pa-lg">
-          <div class="row q-col-gutter-lg">
-            <!-- Left Side: Basic Roles -->
-            <div class="col-12 col-md-4">
-              <div class="text-h6 q-mb-md flex items-center text-grey-9">
-                <q-icon name="group" class="q-mr-sm text-primary" />
-                Primary Roles
-              </div>
-              <q-card flat bordered class="q-pa-md bg-white">
-                <div class="text-caption q-mb-md text-grey-8">
-                  Assign high-level roles for broad access.
+          <!-- Role Selector -->
+          <div class="row q-col-gutter-md items-start q-mb-lg">
+            <div class="col-12 col-md-5">
+              <q-card flat bordered class="q-pa-md">
+                <div class="row items-center q-mb-sm">
+                  <q-icon name="group" size="20px" color="primary" class="q-mr-sm" />
+                  <div class="text-subtitle2 text-weight-bold">Primary Roles</div>
                 </div>
-                <div class="row q-col-gutter-sm">
-                  <div v-for="role in allRoles" :key="role.id" class="col-12">
+                <div class="text-caption text-grey-7 q-mb-md">
+                  Select roles to auto-assign default module permissions.
+                </div>
+                <div class="row q-col-gutter-xs">
+                  <div v-for="role in allRoles" :key="role.id" class="col-6">
                     <q-item
                       tag="label"
                       v-ripple
                       dense
-                      class="rounded-borders border-grey-3 q-mb-xs"
+                      class="rounded-borders border-grey-3"
                     >
                       <q-item-section avatar>
                         <q-checkbox
@@ -139,86 +212,116 @@
                         />
                       </q-item-section>
                       <q-item-section>
-                        <q-item-label class="text-weight-bold text-black">{{
-                          role.name.toUpperCase()
-                        }}</q-item-label>
-                        <q-item-label caption class="text-grey-7">{{
-                          role.description
-                        }}</q-item-label>
+                        <q-item-label class="text-weight-bold" style="font-size: 0.78rem">
+                          {{ role.name.toUpperCase() }}
+                        </q-item-label>
                       </q-item-section>
                     </q-item>
                   </div>
                 </div>
               </q-card>
             </div>
-
-            <!-- Right Side: Fine-Grained Permissions -->
-            <div class="col-12 col-md-8">
-              <div class="text-h6 q-mb-md flex items-center text-grey-9">
-                <q-icon name="tune" class="q-mr-sm text-primary" />
-                Granular Access Points (Custom Permissions)
-              </div>
-
+            <div class="col-12 col-md-7">
               <div
-                v-if="
-                  form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')
-                "
-                class="q-pa-md bg-amber-1 border-amber rounded-borders q-mb-md text-amber-9 text-weight-bold"
+                v-if="form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')"
+                class="q-pa-md bg-amber-1 rounded-borders text-amber-9 text-weight-bold"
+                style="border: 1px solid #fbbf24"
               >
-                <q-icon name="warning" class="q-mr-sm" />
-                Note: USER HAS ADMIN ROLE. All granular permissions below are automatically granted.
+                <q-icon name="verified_user" class="q-mr-sm" />
+                Admin role grants <strong>full access</strong> to all modules and features.
               </div>
-
-              <!-- Categories -->
-              <div class="row q-col-gutter-md">
-                <div
-                  v-for="(group, gIndex) in groupedPermissions"
-                  :key="gIndex"
-                  class="col-12 col-sm-6"
-                >
-                  <q-card flat bordered class="bg-white full-height">
-                    <q-card-section
-                      class="bg-grey-2 q-py-xs text-weight-bold text-grey-8 uppercase letter-spacing-1"
-                    >
-                      {{ group.category }}
-                    </q-card-section>
-                    <q-card-section class="q-pa-sm">
-                      <q-list dense>
-                        <q-item
-                          v-for="perm in group.items"
-                          :key="perm.code"
-                          tag="label"
-                          v-ripple
-                          dense
-                        >
-                          <q-item-section avatar>
-                            <q-checkbox
-                              v-model="form.permissionCodes"
-                              :val="perm.code"
-                              color="secondary"
-                            />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label class="text-black text-weight-medium">{{
-                              perm.description
-                            }}</q-item-label>
-                            <q-item-label caption class="text-xs text-grey-8">{{
-                              perm.code
-                            }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-card-section>
-                  </q-card>
+              <q-card v-else flat bordered class="q-pa-md">
+                <div class="text-caption text-grey-8">
+                  <q-icon name="info" size="14px" class="q-mr-xs" color="blue" />
+                  Select roles on the left to auto-enable default permissions. Then fine-tune individual features in the matrix below.
                 </div>
-              </div>
+              </q-card>
             </div>
           </div>
+
+          <!-- Permission Matrix Table -->
+          <q-card flat bordered>
+            <q-card-section class="q-pb-xs">
+              <div class="row items-center">
+                <q-icon name="grid_view" size="20px" color="primary" class="q-mr-sm" />
+                <div class="text-subtitle2 text-weight-bold">Feature Access Matrix</div>
+                <q-space />
+                <q-badge color="blue-1" text-color="blue-9" class="q-pa-xs">
+                  {{ form.permissionCodes.length }} permissions enabled
+                </q-badge>
+              </div>
+            </q-card-section>
+
+            <q-card-section class="q-pt-xs acm-scroll-container">
+              <table class="acm-edit-table">
+                <thead>
+                  <tr>
+                    <th class="acm-et-section-th">Console Section</th>
+                    <th class="acm-et-feature-th">Feature / Permission</th>
+                    <th class="acm-et-access-th">Access</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-for="section in dialogSections" :key="section.key">
+                    <!-- Section Header Row -->
+                    <tr class="acm-et-section-row">
+                      <td class="acm-et-section-cell" :rowspan="section.perms.length + 1">
+                        <div class="row items-center no-wrap">
+                          <q-icon :name="section.icon" size="18px" class="q-mr-xs" :color="sectionHasAnyAccess(section) ? 'primary' : 'grey-5'" />
+                          <div>
+                            <div class="acm-et-section-name">{{ section.label }}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="acm-et-toggle-cell" colspan="2">
+                        <div class="row items-center justify-between">
+                          <span class="text-caption text-grey-7 text-italic">Toggle all features in this module</span>
+                          <q-toggle
+                            :model-value="sectionHasAllAccess(section)"
+                            @update:model-value="toggleSection(section, $event)"
+                            color="primary"
+                            dense
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <!-- Permission Feature Rows -->
+                    <tr
+                      v-for="perm in section.perms"
+                      :key="perm.code"
+                      class="acm-et-feature-row"
+                    >
+                      <td class="acm-et-feature-cell">
+                        <div class="acm-et-feature-name">{{ perm.description || perm.code }}</div>
+                        <div class="acm-et-feature-code">{{ perm.code }}</div>
+                      </td>
+                      <td class="acm-et-check-cell">
+                        <q-checkbox
+                          v-model="form.permissionCodes"
+                          :val="perm.code"
+                          color="green"
+                          dense
+                        />
+                      </td>
+                    </tr>
+                  </template>
+
+                  <!-- Empty state -->
+                  <tr v-if="dialogSections.length === 0">
+                    <td colspan="3" class="text-center q-pa-lg text-grey-5">
+                      <q-icon name="lock" size="32px" class="q-mb-sm" /><br>
+                      No permissions defined in the system yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </q-card-section>
+          </q-card>
         </q-card-section>
 
         <q-separator />
 
-        <q-card-actions align="right" class="q-pa-md bg-white">
+        <q-card-actions align="right" class="q-pa-md">
           <q-btn label="Cancel" color="grey" flat v-close-popup class="q-px-md" />
           <q-btn
             label="Save Access Settings"
@@ -271,36 +374,97 @@ const isAdmin = (user) => {
   )
 }
 
-const categorizedMap = {
-  'CORE OPERATIONS': ['pos:', 'orders:', 'kitchen:', 'waiter:', 'cashier:', 'tables:'],
-  MODULES: ['inventory:', 'procurement:', 'finance:', 'hr:'],
-  'SYSTEM CONFIG': ['admin:'],
+// ─── Role-Permission Matrix ────────────────────────────────────────────────
+const matrixModules = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'pos', label: 'Point of Sale' },
+  { key: 'orders', label: 'Order Mgmt' },
+  { key: 'kitchen', label: 'Kitchen Display' },
+  { key: 'inventory', label: 'Inventory' },
+  { key: 'procurement', label: 'Procurement' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'hr', label: 'HR & Payroll' },
+  { key: 'reports', label: 'Reports' },
+  { key: 'crm', label: 'CRM' },
+  { key: 'system', label: 'System Config' },
+]
+
+const matrixRoles = [
+  { key: 'waiter', label: 'Waiter', caption: 'basic floor access' },
+  { key: 'cashier', label: 'Cashier', caption: 'POS & payment access' },
+  { key: 'kitchen', label: 'Kitchen Staff', caption: 'kitchen display only' },
+  { key: 'inventory', label: 'Inventory Manager', caption: 'stock & recipes' },
+  { key: 'finance', label: 'Finance Officer', caption: 'accounts & payroll' },
+  { key: 'hr', label: 'HR Manager', caption: 'staff & shifts' },
+  { key: 'manager', label: 'Branch Manager', caption: 'broad operational access' },
+  { key: 'admin', label: 'Console Admin', caption: 'full system control' },
+]
+
+const roleModuleMap = {
+  waiter:     ['dashboard', 'orders'],
+  cashier:    ['dashboard', 'pos', 'orders'],
+  kitchen:    ['dashboard', 'kitchen'],
+  inventory:  ['dashboard', 'inventory', 'procurement'],
+  finance:    ['dashboard', 'finance', 'reports'],
+  hr:         ['dashboard', 'hr'],
+  manager:    ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm'],
+  admin:      ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm', 'system'],
 }
 
-const groupedPermissions = computed(() => {
-  const result = []
+function hasModuleAccess(roleKey, moduleKey) {
+  return (roleModuleMap[roleKey] || []).includes(moduleKey)
+}
 
-  // Create Groups
-  for (const [category, prefixes] of Object.entries(categorizedMap)) {
-    const items = allPermissions.value.filter((p) => prefixes.some((pre) => p.code.startsWith(pre)))
-    if (items.length) {
-      result.push({ category, items })
-    }
-  }
+// ─── Dialog Section Config ─────────────────────────────────
+// Maps each Console Section to its permission prefixes and icon
+const sectionConfig = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', prefixes: ['dashboard:'] },
+  { key: 'pos', label: 'Point of Sale', icon: 'point_of_sale', prefixes: ['pos:', 'cashier:'] },
+  { key: 'orders', label: 'Order Management', icon: 'receipt_long', prefixes: ['orders:'] },
+  { key: 'kitchen', label: 'Kitchen Display', icon: 'restaurant', prefixes: ['kitchen:'] },
+  { key: 'tables', label: 'Table Management', icon: 'table_restaurant', prefixes: ['tables:', 'waiter:'] },
+  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', prefixes: ['inventory:'] },
+  { key: 'procurement', label: 'Procurement', icon: 'local_shipping', prefixes: ['procurement:'] },
+  { key: 'finance', label: 'Finance', icon: 'account_balance', prefixes: ['finance:'] },
+  { key: 'hr', label: 'HR & Payroll', icon: 'badge', prefixes: ['hr:'] },
+  { key: 'reports', label: 'Reports', icon: 'assessment', prefixes: ['reports:'] },
+  { key: 'crm', label: 'CRM / Customers', icon: 'people', prefixes: ['crm:', 'loyalty:'] },
+  { key: 'system', label: 'System Config', icon: 'settings', prefixes: ['admin:'] },
+]
 
-  // Other group for anything remaining
-  const remaining = allPermissions.value.filter(
-    (p) =>
-      !Object.values(categorizedMap)
-        .flat()
-        .some((pre) => p.code.startsWith(pre)),
-  )
-  if (remaining.length) {
-    result.push({ category: 'OTHERS', items: remaining })
-  }
-
-  return result
+const dialogSections = computed(() => {
+  return sectionConfig
+    .map((sec) => {
+      const perms = allPermissions.value.filter((p) =>
+        sec.prefixes.some((pre) => p.code.startsWith(pre)),
+      )
+      return { ...sec, perms }
+    })
+    .filter((sec) => sec.perms.length > 0)
 })
+
+function sectionHasAnyAccess(section) {
+  return section.perms.some((p) => form.permissionCodes.includes(p.code))
+}
+
+function sectionHasAllAccess(section) {
+  return section.perms.length > 0 && section.perms.every((p) => form.permissionCodes.includes(p.code))
+}
+
+function toggleSection(section, val) {
+  if (val) {
+    // Enable all permissions in section
+    section.perms.forEach((p) => {
+      if (!form.permissionCodes.includes(p.code)) {
+        form.permissionCodes.push(p.code)
+      }
+    })
+  } else {
+    // Disable all permissions in section
+    const codes = new Set(section.perms.map((p) => p.code))
+    form.permissionCodes = form.permissionCodes.filter((c) => !codes.has(c))
+  }
+}
 
 const filteredUsers = computed(() => {
   if (!search.value) return users.value
@@ -408,7 +572,29 @@ const fetchData = async () => {
 const editUserAccess = (user) => {
   selectedUser.value = user
   form.roleIds = user.user_roles?.map((ur) => ur.role_id) || []
-  form.permissionCodes = user.user_permissions?.map((up) => up.permission_code) || []
+
+  // Start with saved custom permissions
+  const savedPerms = new Set(user.user_permissions?.map((up) => up.permission_code) || [])
+
+  // Auto-populate based on current roles
+  for (const ur of (user.user_roles || [])) {
+    const roleName = ur.roles?.name?.toLowerCase()
+    if (!roleName) continue
+
+    // Admin gets everything
+    if (roleName === 'admin') {
+      allPermissions.value.forEach((p) => savedPerms.add(p.code))
+      break
+    }
+
+    // Add matching permissions by role prefix
+    const prefixes = defaultRolePrefixes[roleName] || []
+    allPermissions.value
+      .filter((p) => prefixes.some((pre) => p.code.startsWith(pre)))
+      .forEach((p) => savedPerms.add(p.code))
+  }
+
+  form.permissionCodes = [...savedPerms]
   dialogVisible.value = true
 }
 
@@ -459,5 +645,201 @@ const saveUserAccess = async () => {
 }
 .border-grey-3 {
   border: 1px solid #e0e0e0;
+}
+
+/* ── Access Control Matrix ── */
+.acm-matrix-card {
+  background: var(--erp-bg-card);
+}
+
+.acm-scroll-container {
+  overflow-x: auto;
+}
+
+.acm-table-wrap {
+  min-width: 800px;
+}
+
+.acm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.acm-table th,
+.acm-table td {
+  border: 1px solid var(--erp-border, #e5e7eb);
+  padding: 8px 10px;
+}
+
+/* Corner cell */
+.acm-th-corner {
+  background: var(--erp-bg-card);
+  text-align: left;
+  font-weight: 700;
+  min-width: 180px;
+  vertical-align: middle;
+}
+
+.acm-corner-label {
+  color: var(--erp-text-secondary, #64748b);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Group header (Console Section) */
+.acm-th-group {
+  background: var(--erp-bg-hover, #f1f5f9);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--erp-text-primary, #1e293b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Module headers */
+.acm-th-module {
+  background: var(--erp-bg-hover, #f1f5f9);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--erp-text-secondary, #475569);
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+/* Role rows */
+.acm-row:hover {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.acm-td-role {
+  font-weight: 600;
+  color: var(--erp-text-primary, #1e293b);
+  background: var(--erp-bg-card);
+  min-width: 180px;
+}
+
+.acm-role-name {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--erp-text-primary, #1e293b);
+}
+
+.acm-role-caption {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--erp-text-muted, #94a3b8);
+  margin-top: 1px;
+}
+
+/* Access cells */
+.acm-td-access {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.acm-icon-allow {
+  color: #16a34a;
+}
+
+.acm-icon-deny {
+  color: #dc2626;
+  opacity: 0.65;
+}
+
+/* ── Edit Access Dialog ── */
+.acm-dialog-card {
+  background: var(--erp-bg-page, #f1f5f9);
+}
+
+.acm-edit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.acm-edit-table th,
+.acm-edit-table td {
+  border: 1px solid var(--erp-border, #e5e7eb);
+  padding: 6px 10px;
+}
+
+.acm-et-section-th {
+  background: var(--erp-bg-hover, #f1f5f9);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--erp-text-secondary, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 200px;
+}
+
+.acm-et-feature-th {
+  background: var(--erp-bg-hover, #f1f5f9);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--erp-text-secondary, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acm-et-access-th {
+  background: var(--erp-bg-hover, #f1f5f9);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--erp-text-secondary, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  width: 80px;
+}
+
+.acm-et-section-row td {
+  background: var(--erp-bg-card);
+}
+
+.acm-et-section-cell {
+  vertical-align: top;
+  padding-top: 10px !important;
+  border-left: 3px solid #3b82f6;
+}
+
+.acm-et-section-name {
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: var(--erp-text-primary, #1e293b);
+}
+
+.acm-et-toggle-cell {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.acm-et-feature-row:hover td {
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.acm-et-feature-cell {
+  padding-left: 16px !important;
+}
+
+.acm-et-feature-name {
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--erp-text-primary, #1e293b);
+}
+
+.acm-et-feature-code {
+  font-size: 0.68rem;
+  color: var(--erp-text-muted, #94a3b8);
+  font-family: monospace;
+}
+
+.acm-et-check-cell {
+  text-align: center;
+  vertical-align: middle;
 }
 </style>

@@ -11,6 +11,24 @@
       />
     </div>
 
+    <!-- ── Today's Summary ─────────────────────────── -->
+    <div class="summary-row">
+      <div class="summary-item">
+        <div class="summary-value">{{ todayCount }}</div>
+        <div class="summary-label">Today</div>
+      </div>
+      <div class="summary-divider" />
+      <div class="summary-item">
+        <div class="summary-value summary-value--green">{{ todayEarnings }}</div>
+        <div class="summary-label">Earnings</div>
+      </div>
+      <div class="summary-divider" />
+      <div class="summary-item">
+        <div class="summary-value summary-value--blue">{{ avgDeliveryTime }}</div>
+        <div class="summary-label">Avg Time</div>
+      </div>
+    </div>
+
     <!-- ── Loading ─────────────────────────────────── -->
     <div v-if="store.loading && !store.history.length" class="loading-wrap">
       <q-spinner-orbit size="48px" color="purple-4" />
@@ -69,11 +87,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
 
 const store = useDeliveryStore()
 const refreshing = ref(false)
+
+const todayStart = new Date()
+todayStart.setHours(0, 0, 0, 0)
+
+const todayItems = computed(() => store.history.filter(
+  h => h.delivered_at && new Date(h.delivered_at) >= todayStart
+))
+
+const todayCount = computed(() => todayItems.value.length)
+
+const todayEarnings = computed(() => {
+  const total = todayItems.value.reduce((s, h) => s + Number(h.orderTotal || 0), 0)
+  return total === 0 ? 'Rs. 0' : `Rs. ${total.toLocaleString()}`
+})
+
+const avgDeliveryTime = computed(() => {
+  const valid = todayItems.value.filter(h => h.assigned_at)
+  if (!valid.length) return '—'
+  const totalMins = valid.reduce((s, h) => {
+    return s + Math.round((new Date(h.delivered_at).getTime() - new Date(h.assigned_at).getTime()) / 60000)
+  }, 0)
+  return `${Math.round(totalMins / valid.length)}m`
+})
 
 async function refresh() {
   refreshing.value = true
@@ -121,6 +162,26 @@ function deliveryDuration(item) {
   color: #e8eaf0;
   margin: 0;
 }
+
+// ── Summary Row ─────────────────────────
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 8px;
+  margin-bottom: 16px;
+}
+.summary-item { text-align: center; flex: 1; }
+.summary-value {
+  font-size: 18px; font-weight: 800; color: #e8eaf0;
+  &--green { color: #a5d6a7; }
+  &--blue { color: #64b5f6; }
+}
+.summary-label { font-size: 10px; color: #757575; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+.summary-divider { width: 1px; height: 32px; background: rgba(255, 255, 255, 0.08); }
 
 .loading-wrap {
   display: flex;
@@ -191,3 +252,44 @@ function deliveryDuration(item) {
   color: #757575;
 }
 </style>
+
+<style lang="scss">
+body.body--light {
+  .delivery-history-page {
+    background: #f8fafc;
+  }
+
+  .page-title { color: #0f172a; }
+
+  // Summary row
+  .summary-row {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .summary-value {
+    color: #0f172a;
+    &--green { color: #16a34a; }
+    &--blue { color: #2563eb; }
+  }
+  .summary-label { color: #94a3b8; }
+  .summary-divider { background: #e2e8f0; }
+
+  // Empty
+  .empty-title { color: #64748b; }
+  .empty-sub { color: #94a3b8; }
+
+  // History cards
+  .history-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .order-number { color: #0f172a; }
+  .detail-row { color: #475569; }
+  .address-text { color: #334155; }
+  .total-amount { color: #16a34a; }
+  .card-timing { border-top-color: #f1f5f9; }
+  .timing-pill { color: #94a3b8; }
+}
+

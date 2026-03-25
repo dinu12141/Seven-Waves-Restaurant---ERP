@@ -59,11 +59,11 @@
     <!-- DataGrid -->
     <template #default>
       <!-- Column group headers -->
-      <div class="sales-col-groups">
-        <div class="sales-col-group" style="flex: 3">Order Details</div>
-        <div class="sales-col-group" style="flex: 2">Amount (LKR)</div>
-        <div class="sales-col-group" style="flex: 2">Payment</div>
-        <div class="sales-col-group" style="flex: 1">Status</div>
+      <div class="report-col-groups">
+        <div class="report-col-group" style="flex: 3">Order Details</div>
+        <div class="report-col-group" style="flex: 2">Amount (LKR)</div>
+        <div class="report-col-group" style="flex: 2">Payment</div>
+        <div class="report-col-group" style="flex: 1">Status</div>
       </div>
 
       <q-table
@@ -178,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
@@ -194,19 +194,53 @@ const extraFilters = ref({
   status: null,
 })
 
-const categoryOptions = [
-  { label: 'All Categories', value: null },
-  { label: 'Food', value: 'food' },
-  { label: 'Beverage', value: 'beverage' },
-  { label: 'Dessert', value: 'dessert' },
-]
+const categoryOptions = ref([{ label: 'All Categories', value: null }])
+const paymentModeOptions = ref([{ label: 'All Modes', value: null }])
 
-const paymentModeOptions = [
-  { label: 'All Modes', value: null },
-  { label: 'Cash', value: 'cash' },
-  { label: 'Card', value: 'card' },
-  { label: 'Online', value: 'online' },
-]
+async function loadFilterOptions() {
+  const companyId = authStore.currentBranch?.company_id
+
+  // Fetch categories
+  try {
+    let catQuery = supabase
+      .from('categories')
+      .select('id, name')
+      .order('name')
+    if (companyId) catQuery = catQuery.eq('company_id', companyId)
+
+    const { data: cats } = await catQuery
+    if (cats && cats.length) {
+      categoryOptions.value = [
+        { label: 'All Categories', value: null },
+        ...cats.map((c) => ({ label: c.name, value: c.name })),
+      ]
+    }
+  } catch (e) {
+    console.error('[SalesReport] Failed to load categories:', e)
+  }
+
+  // Fetch payment methods (global table — no company_id column)
+  try {
+    const { data: methods } = await supabase
+      .from('payment_methods')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name')
+
+    if (methods && methods.length) {
+      paymentModeOptions.value = [
+        { label: 'All Modes', value: null },
+        ...methods.map((m) => ({ label: m.name, value: m.name.toLowerCase() })),
+      ]
+    }
+  } catch (e) {
+    console.error('[SalesReport] Failed to load payment methods:', e)
+  }
+}
+
+onMounted(() => {
+  loadFilterOptions()
+})
 
 const statusOptions = [
   { label: 'All', value: null },
@@ -448,146 +482,5 @@ function downloadFile(content, filename, mime) {
 </script>
 
 <style scoped lang="scss">
-.report-filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.report-filter-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--erp-text-muted, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.report-filter-input {
-  font-size: 13px;
-}
-
-/* Column group dividers */
-.sales-col-groups {
-  display: flex;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-  padding: 4px 16px;
-}
-.sales-col-group {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--erp-text-muted, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  text-align: center;
-  border-right: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-  padding-right: 8px;
-  &:last-child {
-    border-right: none;
-  }
-}
-
-/* Table styles */
-.report-table {
-  background: transparent !important;
-
-  &__header-row {
-    background: rgba(255, 255, 255, 0.02) !important;
-  }
-
-  &__th {
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    color: var(--erp-text-secondary, #94a3b8) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.4px !important;
-    border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
-    padding: 8px 12px !important;
-    white-space: nowrap;
-  }
-
-  &__row {
-    border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.04)) !important;
-    transition: background 0.12s ease;
-    &:hover {
-      background: rgba(255, 255, 255, 0.02) !important;
-    }
-  }
-
-  &__td {
-    font-size: 12px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-    padding: 8px 12px !important;
-    height: 40px !important;
-
-    &--num {
-      text-align: right !important;
-      font-variant-numeric: tabular-nums;
-      font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    }
-
-    &--mono {
-      font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    }
-    &--bold {
-      font-weight: 700 !important;
-    }
-    &--debit {
-      color: var(--erp-danger, #dc2626) !important;
-    }
-  }
-
-  &__total-row {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1)) !important;
-  }
-}
-
-/* Badge */
-.report-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--erp-text-secondary, #94a3b8);
-  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-
-  &--cash {
-    background: rgba(22, 163, 74, 0.12);
-    color: var(--erp-success, #16a34a);
-    border-color: rgba(22, 163, 74, 0.2);
-  }
-  &--card {
-    background: rgba(37, 99, 235, 0.12);
-    color: var(--erp-primary, #2563eb);
-    border-color: rgba(37, 99, 235, 0.2);
-  }
-  &--online {
-    background: rgba(124, 58, 237, 0.12);
-    color: #7c3aed;
-    border-color: rgba(124, 58, 237, 0.2);
-  }
-}
-
-/* Empty state */
-.report-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  color: var(--erp-text-muted, #64748b);
-  font-size: 13px;
-}
-
-@media print {
-  .sales-col-groups {
-    display: none;
-  }
-  .report-table__td,
-  .report-table__th {
-    color: #000 !important;
-    font-size: 10px !important;
-  }
-}
+@import 'src/pages/reports/report-common.scss';
 </style>

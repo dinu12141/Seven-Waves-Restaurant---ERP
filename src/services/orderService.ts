@@ -107,7 +107,7 @@ export async function getOrderStatus(orderId: string): Promise<OrderStatus | nul
     .select(
       `
       id, status, order_number, total_amount, customer_name,
-      table_id, created_at, updated_at,
+      table_id, created_at, updated_at, order_type,
       kot_tickets(id, status, kitchen_id, created_at, updated_at),
       order_items(
         id, menu_item_id, quantity, unit_price, total_price, status, notes,
@@ -228,9 +228,12 @@ export interface StatusStep {
 
 export const ORDER_STATUS_STEPS: StatusStep[] = [
   { key: 'pending_waiter', label: 'Order Received', icon: 'receipt_long', color: '#f59e0b' },
-  { key: 'accepted', label: 'Accepted by Waiter', icon: 'person_check', color: '#3b82f6' },
+  { key: 'accepted', label: 'Accepted', icon: 'person_check', color: '#3b82f6' },
   { key: 'preparing', label: 'Being Prepared', icon: 'local_fire_department', color: '#8b5cf6' },
-  { key: 'ready', label: 'Ready to Serve', icon: 'done_all', color: '#10b981' },
+  { key: 'ready', label: 'Ready', icon: 'done_all', color: '#10b981' },
+  { key: 'picked_up', label: 'Picked Up', icon: 'local_shipping', color: '#06b6d4' },
+  { key: 'out_for_delivery', label: 'On the Way', icon: 'delivery_dining', color: '#0891b2' },
+  { key: 'delivered', label: 'Delivered', icon: 'where_to_vote', color: '#16a34a' },
   { key: 'served', label: 'Served', icon: 'restaurant', color: '#06b6d4' },
   { key: 'paid', label: 'Payment Complete', icon: 'payments', color: '#22c55e' },
 ]

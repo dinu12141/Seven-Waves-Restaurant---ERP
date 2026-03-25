@@ -505,8 +505,16 @@ onMounted(fetchCustomers)
 .loyalty-search {
   min-width: 280px;
   :deep(.q-field__control) {
-    background: white;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    color: #e5e7eb;
+  }
+  :deep(.q-field__native) {
+    color: #e5e7eb;
+  }
+  :deep(.q-field__native::placeholder) {
+    color: #6b7280;
   }
 }
 
@@ -517,13 +525,18 @@ onMounted(fetchCustomers)
   gap: 12px;
 }
 .stat-card {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 16px;
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: background 0.2s, border-color 0.2s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
 }
 .stat-icon {
   width: 42px;
@@ -533,6 +546,11 @@ onMounted(fetchCustomers)
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  // Override Quasar bg-* light classes with dark-theme versions
+  &.bg-blue-1  { background: rgba(59, 130, 246, 0.12) !important; }
+  &.bg-amber-1 { background: rgba(245, 158, 11, 0.12) !important; }
+  &.bg-green-1 { background: rgba(16, 185, 129, 0.12) !important; }
+  &.bg-grey-2  { background: rgba(148, 163, 184, 0.12) !important; }
 }
 .stat-value {
   font-size: 1.3rem;
@@ -541,23 +559,32 @@ onMounted(fetchCustomers)
 }
 .stat-label {
   font-size: 0.72rem;
-  color: #64748b;
+  color: #6b7280;
   margin-top: 3px;
   font-weight: 500;
 }
 
 .tier-filter-toggle {
-  border: 1px solid var(--q-primary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   overflow: hidden;
+  :deep(.q-btn) {
+    color: #9ca3af !important;
+    &.q-btn--active {
+      color: white !important;
+    }
+  }
 }
 
 .loyalty-table-card {
   border-radius: 12px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .loyalty-table {
+  background: transparent !important;
   :deep(.q-table__top) {
     display: none;
   }
@@ -566,19 +593,25 @@ onMounted(fetchCustomers)
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #64748b;
-    background: #f8fafc;
+    color: #6b7280;
+    background: rgba(255, 255, 255, 0.03);
     padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   }
   :deep(tbody tr) {
     cursor: pointer;
     &:hover {
-      background: rgba(67, 133, 245, 0.03) !important;
+      background: rgba(59, 130, 246, 0.06) !important;
     }
   }
   :deep(tbody tr td) {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #d1d5db;
+  }
+  :deep(.q-table__bottom) {
+    color: #6b7280;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -599,19 +632,20 @@ onMounted(fetchCustomers)
   font-family: 'SF Mono', 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
+  color: #9ca3af;
 }
 
 .action-cell {
   width: 80px;
 }
 
-// Adjust dialog
+// Adjust dialog — keep dark card style
 .adjust-balance-display {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 10px;
 }
 

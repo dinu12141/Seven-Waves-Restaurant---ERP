@@ -3,6 +3,7 @@
     title="Electronic Journal"
     subtitle="Complete audit trail of all bills entered into the system — SAP B1 format"
     :kpis="kpiData"
+    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -33,19 +34,19 @@
     <!-- ── Report Header (SAP style) ─────────────────────── -->
     <template #default>
       <!-- Location & Date header -->
-      <div class="ej-header">
-        <div class="ej-header__left">
-          <div class="ej-header__title">Electronic Journal / Bill Details</div>
-          <div class="ej-header__location">Location : {{ branchName }} Date : {{ reportDateRange }}</div>
+      <div class="sap-header">
+        <div class="sap-header__left">
+          <div class="sap-header__company">Electronic Journal / Bill Details</div>
+          <div class="sap-header__title">Location : {{ branchName }} Date : {{ reportDateRange }}</div>
         </div>
-        <div class="ej-header__right">
-          <div class="ej-header__page">Page 1</div>
-          <div class="ej-header__date">{{ todayFormatted }}</div>
+        <div class="sap-header__right">
+          <div class="sap-header__page">Page 1</div>
+          <div class="sap-header__date">{{ todayFormatted }}</div>
         </div>
       </div>
 
       <!-- Status filter label -->
-      <div v-if="extraFilters.billStatus !== 'all'" class="ej-filter-label">
+      <div v-if="extraFilters.billStatus !== 'all'" class="sap-filter-label">
         <q-icon name="filter_list" size="14px" class="q-mr-xs" />
         Filtered: <strong>{{ activeStatusLabel }}</strong>
       </div>
@@ -56,7 +57,7 @@
         :columns="columns"
         row-key="__rowKey"
         flat dense
-        class="ej-table"
+        class="sap-table"
         :loading="loading"
         :rows-per-page-options="[50, 100, 200, 0]"
         :pagination="{ rowsPerPage: 100 }"
@@ -65,8 +66,8 @@
       >
         <!-- Header -->
         <template #header="props">
-          <q-tr :props="props" class="ej-table__header">
-            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="ej-table__th">
+          <q-tr :props="props" class="sap-table__header">
+            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="sap-table__th">
               {{ col.label }}
             </q-th>
           </q-tr>
@@ -75,42 +76,42 @@
         <!-- Body -->
         <template #body="props">
           <!-- Bill subtotal separator row -->
-          <q-tr v-if="props.row.__type === 'subtotal'" class="ej-table__subtotal-row">
+          <q-tr v-if="props.row.__type === 'subtotal'" class="sap-table__bill-subtotal">
             <q-td colspan="10" />
-            <q-td class="ej-table__td--num text-weight-bold">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td class="ej-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="ej-table__td--num text-weight-bold text-green">{{ fmtN(props.row.sales_price) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.sales_price) }}</q-td>
             <q-td colspan="5" />
           </q-tr>
 
           <!-- Payment / CASH row -->
-          <q-tr v-else-if="props.row.__type === 'payment'" class="ej-table__payment-row">
-            <q-td :colspan="columns.length" class="ej-table__payment-cell">
+          <q-tr v-else-if="props.row.__type === 'payment'" class="sap-table__payment-row">
+            <q-td :colspan="columns.length" class="sap-table__payment-cell">
               <span class="text-weight-bold">{{ props.row.description }}</span>
             </q-td>
           </q-tr>
 
           <!-- Normal item row -->
-          <q-tr v-else :props="props" class="ej-table__row" :class="{ 'ej-table__row--void': props.row.void_marked === 'V' }">
-            <q-td key="bill_no" :props="props" class="ej-table__td--mono">{{ props.row.bill_no }}</q-td>
+          <q-tr v-else :props="props" class="sap-table__row" :class="{ 'sap-table__row--void': props.row.void_marked === 'V' }">
+            <q-td key="bill_no" :props="props" class="sap-table__td--mono">{{ props.row.bill_no }}</q-td>
             <q-td key="pos" :props="props">{{ props.row.pos }}</q-td>
             <q-td key="clerk" :props="props">{{ props.row.clerk }}</q-td>
             <q-td key="waiter" :props="props">{{ props.row.waiter }}</q-td>
             <q-td key="kot_no" :props="props">{{ props.row.kot_no }}</q-td>
             <q-td key="cust" :props="props">{{ props.row.cust }}</q-td>
-            <q-td key="item_code" :props="props" class="ej-table__td--mono">{{ props.row.item_code }}</q-td>
+            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{ props.row.item_code }}</q-td>
             <q-td key="dept" :props="props">{{ props.row.dept }}</q-td>
-            <q-td key="prod_ref" :props="props" class="ej-table__td--mono">{{ props.row.prod_ref }}</q-td>
+            <q-td key="prod_ref" :props="props" class="sap-table__td--mono">{{ props.row.prod_ref }}</q-td>
             <q-td key="description" :props="props">{{ props.row.description }}</q-td>
-            <q-td key="disc_amt" :props="props" class="ej-table__td--num">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td key="tax_amt" :props="props" class="ej-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td key="sales_price" :props="props" class="ej-table__td--num text-weight-bold">{{ fmtN(props.row.sales_price) }}</q-td>
-            <q-td key="qty" :props="props" class="ej-table__td--num">{{ props.row.qty }}</q-td>
+            <q-td key="disc_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td key="sales_price" :props="props" class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.sales_price) }}</q-td>
+            <q-td key="qty" :props="props" class="sap-table__td--num">{{ props.row.qty }}</q-td>
             <q-td key="time" :props="props">{{ props.row.time }}</q-td>
             <q-td key="type" :props="props">
-              <span class="ej-type-badge" :class="`ej-type-badge--${(props.row.type||'').toLowerCase()}`">{{ props.row.type }}</span>
+              <span class="sap-type-badge" :class="`sap-type-badge--${(props.row.type||'').toLowerCase()}`">{{ props.row.type }}</span>
             </q-td>
-            <q-td key="bill_ref" :props="props" class="ej-table__td--mono">{{ props.row.bill_ref }}</q-td>
+            <q-td key="bill_ref" :props="props" class="sap-table__td--mono">{{ props.row.bill_ref }}</q-td>
             <q-td key="void_marked" :props="props" :class="props.row.void_marked === 'V' ? 'text-red text-weight-bold' : ''">
               {{ props.row.void_marked }}
             </q-td>
@@ -119,12 +120,12 @@
 
         <!-- Grand Total -->
         <template #bottom-row>
-          <q-tr class="ej-table__grand-total">
+          <q-tr class="sap-table__grand-total">
             <q-td colspan="10" class="text-weight-bold">GRAND TOTAL ({{ billCount }} Bills)</q-td>
-            <q-td class="ej-table__td--num text-weight-bold">{{ fmtN(grandTotals.disc) }}</q-td>
-            <q-td class="ej-table__td--num text-weight-bold">{{ fmtN(grandTotals.tax) }}</q-td>
-            <q-td class="ej-table__td--num text-weight-bold text-green">{{ fmtN(grandTotals.sales) }}</q-td>
-            <q-td class="ej-table__td--num text-weight-bold">{{ grandTotals.qty }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.disc) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.tax) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(grandTotals.sales) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ grandTotals.qty }}</q-td>
             <q-td colspan="4" />
           </q-tr>
         </template>
@@ -138,7 +139,7 @@
 
         <!-- Empty -->
         <template #no-data>
-          <div class="ej-empty">
+          <div class="report-empty">
             <q-icon name="receipt_long" size="40px" class="q-mb-sm" />
             <div>No journal entries for selected period</div>
           </div>
@@ -509,233 +510,4 @@ function exportExcel() {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
-
-/* ── Report Header (SAP style) ────────────────────────────── */
-.ej-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 16px;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.02);
-
-  &__left {
-    flex: 1;
-  }
-  &__title {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--erp-text-primary, #f8fafc);
-    letter-spacing: -0.3px;
-  }
-  &__location {
-    font-size: 11px;
-    color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 2px;
-  }
-  &__right {
-    text-align: right;
-    flex-shrink: 0;
-  }
-  &__page {
-    font-size: 11px;
-    color: var(--erp-text-secondary, #94a3b8);
-  }
-  &__date {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-  }
-}
-
-.ej-filter-label {
-  display: flex;
-  align-items: center;
-  padding: 6px 16px;
-  background: rgba(37, 99, 235, 0.08);
-  border-bottom: 1px solid rgba(37, 99, 235, 0.15);
-  font-size: 11px;
-  color: var(--erp-text-secondary, #94a3b8);
-}
-
-/* ── Table ─────────────────────────────────────────────────── */
-.ej-table {
-  background: transparent !important;
-  font-size: 11px !important;
-
-  :deep(.q-table) {
-    font-size: 11px !important;
-  }
-}
-
-.ej-table__header {
-  background: rgba(255, 255, 255, 0.03) !important;
-}
-
-.ej-table__th {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  color: var(--erp-text-secondary, #94a3b8) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.3px !important;
-  padding: 6px 6px !important;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  white-space: nowrap !important;
-}
-
-.ej-table__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-    padding: 4px 6px !important;
-    height: 28px !important;
-  }
-
-  &--void td, &--void .q-td {
-    color: var(--erp-danger, #dc2626) !important;
-    text-decoration: line-through;
-    opacity: 0.7;
-  }
-}
-
-.ej-table__td--num {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums !important;
-  font-family: 'SF Mono', 'Consolas', monospace !important;
-}
-
-.ej-table__td--mono {
-  font-family: 'SF Mono', 'Consolas', monospace !important;
-  font-size: 10px !important;
-}
-
-/* ── Subtotal row ──────────────────────────────────────────── */
-.ej-table__subtotal-row {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    padding: 3px 6px !important;
-    height: 24px !important;
-    color: var(--erp-text-secondary, #94a3b8) !important;
-  }
-}
-
-/* ── Payment row ───────────────────────────────────────────── */
-.ej-table__payment-row {
-  background: rgba(22, 163, 74, 0.05) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    padding: 3px 6px !important;
-    height: 22px !important;
-  }
-}
-
-.ej-table__payment-cell {
-  padding-left: 60px !important;
-  color: var(--erp-text-secondary, #94a3b8) !important;
-  font-style: italic;
-}
-
-/* ── Grand Total ───────────────────────────────────────────── */
-.ej-table__grand-total {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12)) !important;
-
-  td, .q-td {
-    font-size: 12px !important;
-    padding: 8px 6px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-  }
-}
-
-/* ── Type Badge ────────────────────────────────────────────── */
-.ej-type-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--erp-text-secondary, #94a3b8);
-  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-
-  &--rs { background: rgba(37, 99, 235, 0.12); color: #60a5fa; border-color: rgba(37, 99, 235, 0.2); }
-  &--tk { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
-  &--we { background: rgba(124, 58, 237, 0.12); color: #a78bfa; border-color: rgba(124, 58, 237, 0.2); }
-  &--dl { background: rgba(22, 163, 74, 0.12); color: #4ade80; border-color: rgba(22, 163, 74, 0.2); }
-  &--pm { background: rgba(236, 72, 153, 0.12); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
-  &--ub { background: rgba(0, 0, 0, 0.15); color: #e5e7eb; border-color: rgba(255, 255, 255, 0.1); }
-}
-
-/* ── Empty State ───────────────────────────────────────────── */
-.ej-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  color: var(--erp-text-muted, #64748b);
-  font-size: 13px;
-}
-
-/* ── Print overrides (scoped) ──────────────────────────────── */
-@media print {
-  .ej-header {
-    background: none !important;
-    border-bottom: 2pt solid #1a1a2e !important;
-    padding: 6pt 0 !important;
-  }
-  .ej-header__title {
-    font-size: 12pt !important;
-    color: #1a1a2e !important;
-  }
-  .ej-header__location,
-  .ej-header__page,
-  .ej-header__date {
-    color: #555 !important;
-    font-size: 8pt !important;
-  }
-  .ej-filter-label {
-    background: none !important;
-    border: none !important;
-    color: #333 !important;
-    font-size: 8pt !important;
-    padding: 4pt 0 !important;
-  }
-  .ej-table__row td,
-  .ej-table__subtotal-row td,
-  .ej-table__payment-row td {
-    font-size: 7pt !important;
-    padding: 2pt 3pt !important;
-    height: auto !important;
-    color: #222 !important;
-  }
-  .ej-table__th {
-    font-size: 6pt !important;
-    padding: 3pt 3pt !important;
-    color: #fff !important;
-    background: #1a1a2e !important;
-  }
-  .ej-table__grand-total td {
-    font-size: 8pt !important;
-    color: #1a1a2e !important;
-  }
-  .ej-type-badge {
-    background: none !important;
-    border: 0.5pt solid #999 !important;
-    color: #333 !important;
-    font-size: 6pt !important;
-  }
-  .ej-table__row--void td {
-    color: #c62828 !important;
-  }
-}
 </style>

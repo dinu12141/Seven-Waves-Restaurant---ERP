@@ -177,7 +177,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     const { data: ordersData, error } = await supabase
       .from('orders')
       .select(
-        'id, order_number, table_id, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, customer_name, restaurant_tables ( table_number )',
+        'id, order_number, table_id, table_number, order_type, order_source, status, total_amount, notes, created_at, updated_at, branch_id, customer_name, restaurant_tables ( table_number )',
       )
       .eq('assigned_waiter_id', waiterId.value)
       .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
@@ -210,7 +210,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
         return {
           ...row,
-          tableNumber: row.restaurant_tables?.table_number || '—',
+          tableNumber: row.restaurant_tables?.table_number || row.table_number || '—',
           waiterName,
           customerName: row.customer_name || '',
           itemCount: items.reduce((sum, i) => sum + i.quantity, 0) || 0,
@@ -242,6 +242,10 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
    */
   async function acceptOrder(orderId) {
     if (!waiterId.value) return { success: false, error: 'Not authenticated' }
+    if (!isOnShift.value) {
+      Notify.create({ type: 'warning', icon: 'lock', message: 'You cannot accept orders while off shift', position: 'top', timeout: 3000 })
+      return { success: false, error: 'Off shift' }
+    }
     accepting.value = orderId
 
     try {
@@ -299,9 +303,15 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
   async function markOrderServed(orderId) {
     if (!waiterId.value) return { success: false, error: 'Not authenticated' }
+    if (!isOnShift.value) {
+      Notify.create({ type: 'warning', icon: 'lock', message: 'You cannot mark orders while off shift', position: 'top', timeout: 3000 })
+      return { success: false, error: 'Off shift' }
+    }
 
     try {
-      const { data, error: rpcError } = await supabase.rpc('mark_order_served', {
+      // Use process_waiter_mark_served (NOT mark_order_served) — this one
+      // awards points, updates item/KOT statuses, and sends cashier notification
+      const { data, error: rpcError } = await supabase.rpc('process_waiter_mark_served', {
         p_order_id: orderId,
       })
 
@@ -317,7 +327,18 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       // Remove from my orders list
       myOrders.value = myOrders.value.filter((o) => o.id !== orderId)
 
-      return { success: true }
+      // Show points awarded notification
+      if (data.points_awarded > 0) {
+        Notify.create({
+          type: 'positive',
+          icon: 'star',
+          message: `⭐ +${data.points_awarded} Point Earned!`,
+          position: 'top',
+          timeout: 3000,
+        })
+      }
+
+      return { success: true, data }
     } catch (e) {
       console.error('[WaiterStore] Mark served error:', e)
       return { success: false, error: e.message }

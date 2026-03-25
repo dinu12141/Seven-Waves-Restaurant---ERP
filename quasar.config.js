@@ -90,7 +90,7 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
       config: {
-        dark: true, // Enforce dark mode — ERP theme
+        dark: 'auto', // Theme controlled by UIStore — supports dark/light toggle
         brand: {
           primary: '#2563EB',
           secondary: '#94A3B8',

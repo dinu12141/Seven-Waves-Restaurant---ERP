@@ -1,7 +1,7 @@
 // waiter-shared.scss — shared base styles for all waiter-app pages
 
 .waiter-page-dark {
-  background: #090c14;
+  background: var(--erp-bg-page, #f1f5f9);
   min-height: 100vh;
   font-family: 'Inter', 'Roboto', sans-serif;
 }
@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: center;
   padding: 60px 24px;
-  color: #6b7280;
+  color: var(--erp-text-secondary, #64748b);
   font-size: 0.875rem;
   text-align: center;
 }

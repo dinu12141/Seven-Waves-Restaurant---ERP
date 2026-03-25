@@ -141,9 +141,12 @@
               <q-icon name="verified" size="64px" color="green-5" />
               <div class="paid-title">PAYMENT COMPLETE</div>
               <div class="paid-amount">LKR {{ fmt(effectiveTotalAmount) }}</div>
-              <div class="paid-method">Paid via {{ confirmedMethod }}</div>
+              <div class="paid-method">Paid via {{ displayPaymentMethod }}</div>
               <div class="paid-change" v-if="changeAmount > 0">
                 Change: <strong>LKR {{ fmt(changeAmount) }}</strong>
+              </div>
+              <div v-if="printInvoice?.invoice_number" class="paid-invoice-num">
+                Invoice #{{ printInvoice.invoice_number }}
               </div>
 
               <div class="paid-actions">
@@ -152,8 +155,8 @@
                   <span>PRINT RECEIPT</span>
                 </button>
                 <button class="paid-act-btn new-order-btn" @click="handleDone">
-                  <q-icon name="add_circle" size="20px" />
-                  <span>{{ isQueueOrder ? 'DONE' : 'NEW ORDER' }}</span>
+                  <q-icon :name="isQueueOrder ? 'close' : 'add_circle'" size="20px" />
+                  <span>{{ isQueueOrder ? 'CLOSE' : 'NEW ORDER' }}</span>
                 </button>
               </div>
             </div>
@@ -335,6 +338,15 @@ const canConfirm = computed(() => {
     return amountReceived.value >= effectiveTotalAmount.value
   }
   return true
+})
+
+// Display payment method — from real invoice if viewing a receipt, otherwise from local state
+const displayPaymentMethod = computed(() => {
+  if (printInvoice.value?.payments?.length > 0) {
+    const pm = printInvoice.value.payments[0]
+    return pm.payment_methods?.name || pm.method || confirmedMethod.value || 'Completed'
+  }
+  return confirmedMethod.value || 'Completed'
 })
 
 // Quick amount buttons
@@ -519,15 +531,25 @@ function handleClose() {
   }
 }
 
-// Reset when dialog opens
-watch(isOpen, (val) => {
+// Reset when dialog opens — but handle paid orders specially
+watch(isOpen, async (val) => {
   if (val) {
-    isPaid.value = false
     amountBuffer.value = ''
     selectedMethod.value = 'cash'
     confirmedMethod.value = ''
     printInvoice.value = null
     isProcessing.value = false
+
+    // ── If opening a PAID queue order, skip to receipt view ──
+    if (isQueueOrder.value && (props.queueOrder.status === 'paid' || props.queueOrder.payment_status === 'paid')) {
+      isPaid.value = true
+      confirmedMethod.value = 'Completed'
+
+      // Fetch the real invoice for the receipt
+      await fetchRealInvoice(props.queueOrder.id)
+    } else {
+      isPaid.value = false
+    }
   }
 })
 
@@ -813,6 +835,7 @@ defineExpose({ markAsPaid, printBill })
 .paid-amount { font-size: 36px; font-weight: 800; color: #fff; }
 .paid-method { font-size: 14px; color: #9ca3af; }
 .paid-change { font-size: 16px; color: #fbbf24; margin-top: 4px; }
+.paid-invoice-num { font-size: 12px; color: #6b7280; font-weight: 600; letter-spacing: 0.5px; margin-top: 2px; }
 .paid-actions { display: flex; gap: 12px; margin-top: 24px; }
 .paid-act-btn {
   display: flex; align-items: center; gap: 8px;
@@ -822,6 +845,6 @@ defineExpose({ markAsPaid, printBill })
 }
 .print-receipt-btn { background: #1e40af; color: #fff; }
 .print-receipt-btn:hover { background: #2563eb; }
-.new-order-btn { background: #059669; color: #fff; }
-.new-order-btn:hover { background: #047857; }
+.new-order-btn { background: #374151; color: #d1d5db; }
+.new-order-btn:hover { background: #4b5563; }
 </style>

@@ -3,6 +3,7 @@
     title="Waiter Wise Sale"
     subtitle="Waiter Wise Sales — Performance and table-level breakdown per waiter"
     :kpis="kpiData"
+    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -10,18 +11,18 @@
   >
     <template #default>
       <!-- SAP-style Report Header -->
-      <div class="wws-header">
-        <div class="wws-header__left">
-          <div class="wws-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="wws-header__title">Waiter Wise Sales</div>
-          <div class="wws-header__meta">
+      <div class="sap-header">
+        <div class="sap-header__left">
+          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+          <div class="sap-header__title">Waiter Wise Sales</div>
+          <div class="sap-header__meta">
             <div>Location : <strong>{{ branchName }}</strong></div>
             <div>Date From : <strong>{{ reportDateRange }}</strong></div>
           </div>
         </div>
-        <div class="wws-header__right">
-          <div class="wws-header__page">Page 1</div>
-          <div class="wws-header__date">{{ todayFormatted }}</div>
+        <div class="sap-header__right">
+          <div class="sap-header__page">Page 1</div>
+          <div class="sap-header__date">{{ todayFormatted }}</div>
         </div>
       </div>
 
@@ -31,7 +32,7 @@
         :columns="columns"
         row-key="__rowKey"
         flat dense
-        class="wws-table"
+        class="sap-table"
         :loading="loading"
         :rows-per-page-options="[0]"
         hide-pagination
@@ -39,8 +40,8 @@
       >
         <!-- Header -->
         <template #header="props">
-          <q-tr :props="props" class="wws-table__header">
-            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="wws-table__th">
+          <q-tr :props="props" class="sap-table__header">
+            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="sap-table__th">
               {{ col.label }}
             </q-th>
           </q-tr>
@@ -49,55 +50,55 @@
         <!-- Body -->
         <template #body="props">
           <!-- Bill Date header row -->
-          <q-tr v-if="props.row.__type === 'date-header'" class="wws-table__date-header">
-            <q-td :colspan="columns.length" class="wws-table__date-name">
+          <q-tr v-if="props.row.__type === 'date-header'" class="sap-table__date-header">
+            <q-td :colspan="columns.length" class="sap-table__date-name">
               <q-icon name="event" size="14px" class="q-mr-xs" />
               Bill Date : {{ props.row.date_label }}
             </q-td>
           </q-tr>
 
           <!-- Waiter header row -->
-          <q-tr v-else-if="props.row.__type === 'waiter-header'" class="wws-table__waiter-header">
-            <q-td :colspan="columns.length" class="wws-table__waiter-name">
+          <q-tr v-else-if="props.row.__type === 'waiter-header'" class="sap-table__sub-header">
+            <q-td :colspan="columns.length" class="sap-table__sub-name">
               <q-icon name="person" size="14px" class="q-mr-xs" />
               Waiter : {{ props.row.waiter_label }}
             </q-td>
           </q-tr>
 
           <!-- Waiter subtotal row -->
-          <q-tr v-else-if="props.row.__type === 'waiter-total'" class="wws-table__waiter-total">
+          <q-tr v-else-if="props.row.__type === 'waiter-total'" class="sap-table__subtotal">
             <q-td />
-            <q-td class="wws-table__td--num text-weight-bold">{{ props.row.no_customer }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bold">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bold">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ props.row.no_customer }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.avg_w_sales) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.avg_table_sal) }}</q-td>
           </q-tr>
 
           <!-- Date total row -->
-          <q-tr v-else-if="props.row.__type === 'date-total'" class="wws-table__date-total">
+          <q-tr v-else-if="props.row.__type === 'date-total'" class="sap-table__date-total">
             <q-td class="text-weight-bolder">Bill Date Total</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
           </q-tr>
 
           <!-- Grand total row -->
-          <q-tr v-else-if="props.row.__type === 'grand-total'" class="wws-table__grand-total">
+          <q-tr v-else-if="props.row.__type === 'grand-total'" class="sap-table__grand-total">
             <q-td class="text-weight-bolder">GRAND TOTAL</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="wws-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
           </q-tr>
 
           <!-- Normal table row -->
-          <q-tr v-else :props="props" class="wws-table__row">
-            <q-td key="table_no" :props="props" class="wws-table__td--num">{{ props.row.table_no }}</q-td>
-            <q-td key="no_customer" :props="props" class="wws-table__td--num">{{ props.row.no_customer }}</q-td>
-            <q-td key="amount" :props="props" class="wws-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td key="avg_w_sales" :props="props" class="wws-table__td--num">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td key="avg_table_sal" :props="props" class="wws-table__td--num">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+          <q-tr v-else :props="props" class="sap-table__row">
+            <q-td key="table_no" :props="props" class="sap-table__td--num">{{ props.row.table_no }}</q-td>
+            <q-td key="no_customer" :props="props" class="sap-table__td--num">{{ props.row.no_customer }}</q-td>
+            <q-td key="amount" :props="props" class="sap-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td key="avg_w_sales" :props="props" class="sap-table__td--num">{{ fmtN(props.row.avg_w_sales) }}</q-td>
+            <q-td key="avg_table_sal" :props="props" class="sap-table__td--num">{{ fmtN(props.row.avg_table_sal) }}</q-td>
           </q-tr>
         </template>
 
@@ -110,7 +111,7 @@
 
         <!-- Empty -->
         <template #no-data>
-          <div class="wws-empty">
+          <div class="report-empty">
             <q-icon name="person_off" size="40px" class="q-mb-sm" />
             <div>No waiter sales data for selected period</div>
           </div>
@@ -368,222 +369,4 @@ function exportExcel() {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
-
-/* ── SAP Style Header ──────────────────────────────────────── */
-.wws-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 14px 16px;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.02);
-
-  &__left { flex: 1; }
-  &__company {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--erp-text-primary, #f8fafc);
-    letter-spacing: -0.2px;
-    text-align: center;
-  }
-  &__title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--erp-text-secondary, #94a3b8);
-    text-align: center;
-    margin-top: 2px;
-  }
-  &__meta {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  &__right { text-align: right; flex-shrink: 0; }
-  &__page {
-    font-size: 11px;
-    color: var(--erp-text-secondary, #94a3b8);
-  }
-  &__date {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-  }
-}
-
-/* ── Table ─────────────────────────────────────────────────── */
-.wws-table {
-  background: transparent !important;
-  font-size: 11px !important;
-
-  :deep(.q-table) { font-size: 11px !important; }
-}
-
-.wws-table__header { background: rgba(255, 255, 255, 0.03) !important; }
-
-.wws-table__th {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  color: var(--erp-text-secondary, #94a3b8) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.3px !important;
-  padding: 6px 8px !important;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  white-space: nowrap !important;
-}
-
-.wws-table__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-    padding: 4px 8px !important;
-    height: 28px !important;
-  }
-}
-
-.wws-table__td--num {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums !important;
-  font-family: 'SF Mono', 'Consolas', monospace !important;
-}
-
-/* ── Bill Date Header ──────────────────────────────────────── */
-.wws-table__date-header {
-  background: rgba(245, 158, 11, 0.08) !important;
-  border-top: 2px solid rgba(245, 158, 11, 0.2) !important;
-}
-
-.wws-table__date-name {
-  font-size: 12px !important;
-  font-weight: 800 !important;
-  color: #fbbf24 !important;
-  letter-spacing: -0.2px !important;
-  padding: 8px 10px !important;
-}
-
-/* ── Waiter Header ─────────────────────────────────────────── */
-.wws-table__waiter-header {
-  background: rgba(37, 99, 235, 0.06) !important;
-  border-top: 1px solid rgba(37, 99, 235, 0.12) !important;
-}
-
-.wws-table__waiter-name {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  color: var(--erp-primary, #2563eb) !important;
-  padding: 5px 10px 5px 20px !important;
-}
-
-/* ── Waiter Subtotal ───────────────────────────────────────── */
-.wws-table__waiter-total {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    padding: 5px 8px !important;
-    height: 28px !important;
-    color: var(--erp-text-secondary, #94a3b8) !important;
-  }
-}
-
-/* ── Date Total ────────────────────────────────────────────── */
-.wws-table__date-total {
-  background: rgba(245, 158, 11, 0.05) !important;
-  border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
-  border-bottom: 2px solid rgba(245, 158, 11, 0.2) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    padding: 6px 8px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-  }
-}
-
-/* ── Grand Total ───────────────────────────────────────────── */
-.wws-table__grand-total {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
-
-  td, .q-td {
-    font-size: 12px !important;
-    padding: 8px 8px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-  }
-}
-
-/* ── Empty State ───────────────────────────────────────────── */
-.wws-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  color: var(--erp-text-muted, #64748b);
-  font-size: 13px;
-}
-
-/* ── Print Overrides ───────────────────────────────────────── */
-@media print {
-  .wws-header {
-    background: none !important;
-    border-bottom: 2pt solid #1a1a2e !important;
-    padding: 6pt 0 !important;
-  }
-  .wws-header__company {
-    font-size: 13pt !important;
-    color: #1a1a2e !important;
-  }
-  .wws-header__title {
-    font-size: 10pt !important;
-    color: #333 !important;
-  }
-  .wws-header__meta {
-    color: #555 !important;
-    font-size: 8pt !important;
-  }
-  .wws-table__date-header {
-    background: #f5f0e0 !important;
-    border-top: 1.5pt solid #333 !important;
-  }
-  .wws-table__date-name {
-    color: #333 !important;
-    font-size: 9pt !important;
-  }
-  .wws-table__waiter-header {
-    background: #eef2f7 !important;
-  }
-  .wws-table__waiter-name {
-    color: #1a1a2e !important;
-    font-size: 8pt !important;
-  }
-  .wws-table__waiter-total td,
-  .wws-table__date-total td {
-    font-size: 7pt !important;
-    color: #333 !important;
-  }
-  .wws-table__grand-total td {
-    font-size: 8pt !important;
-    color: #1a1a2e !important;
-    background: #e8edf3 !important;
-    border-top: 1.5pt solid #1a1a2e !important;
-    border-bottom: 1.5pt solid #1a1a2e !important;
-  }
-  .wws-table__row td {
-    font-size: 7pt !important;
-    padding: 2pt 4pt !important;
-    height: auto !important;
-    color: #222 !important;
-  }
-  .wws-table__th {
-    font-size: 7pt !important;
-    padding: 3pt 4pt !important;
-    color: #fff !important;
-    background: #1a1a2e !important;
-  }
-}
 </style>

@@ -49,6 +49,19 @@
           <span>{{ authStore.currentBranch.name }}</span>
         </div>
 
+        <!-- Theme Toggle -->
+        <q-btn
+          flat
+          dense
+          round
+          :icon="uiStore.themeIcon"
+          :aria-label="uiStore.themeLabel"
+          class="erp-theme-toggle"
+          @click="uiStore.toggleDarkMode($q)"
+        >
+          <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
+        </q-btn>
+
         <!-- Notification Bell -->
         <NotificationPanel />
 
@@ -242,7 +255,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
+import { useUIStore } from 'stores/ui'
 import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
@@ -250,11 +265,13 @@ import NotificationToast from 'components/common/NotificationToast.vue'
 import { onMounted, onUnmounted, watch } from 'vue'
 
 const authStore = useAuthStore()
+const uiStore = useUIStore()
+const $q = useQuasar()
 const modulesStore = useModulesStore()
 const route = useRoute()
 const router = useRouter()
 
-/** POS Mode: Hide sidebar for Cashier/Waiter/Kitchen or when on POS/Kitchen pages to maximize screen space */
+/** POS Mode: Hide sidebar + top nav for Cashier/Waiter/Kitchen or when on POS/Kitchen pages */
 const isPOSMode = computed(() => {
   if (route.path.startsWith('/pos') || route.path.startsWith('/kitchen')) return true
 
@@ -268,14 +285,32 @@ const isPOSMode = computed(() => {
 const leftDrawerOpen = ref(!isPOSMode.value)
 
 const isItemActive = (itemTo, routerIsActive) => {
-  if (itemTo) {
-    if (itemTo.includes('#')) {
-      return route.path + route.hash === itemTo
-    }
-    if (itemTo === '/dashboard') {
-      return route.path === '/dashboard' && !route.hash
-    }
+  if (!itemTo) return routerIsActive
+
+  // Handle hash-based routes (e.g. /page#section)
+  if (itemTo.includes('#')) {
+    return route.path + route.hash === itemTo
   }
+
+  // Handle dashboard specifically
+  if (itemTo === '/dashboard') {
+    return route.path === '/dashboard' && !route.hash
+  }
+
+  // Handle query-parameter based routes (e.g. /inventory?tab=stock)
+  // Vue Router's isActive only matches path, not query — so we compare manually
+  if (itemTo.includes('?')) {
+    const [itemPath, itemQuery] = itemTo.split('?')
+    if (route.path !== itemPath) return false
+
+    // Parse the item's query params and compare with current route
+    const itemParams = new URLSearchParams(itemQuery)
+    for (const [key, value] of itemParams.entries()) {
+      if (route.query[key] !== value) return false
+    }
+    return true
+  }
+
   return routerIsActive
 }
 
@@ -398,7 +433,8 @@ function sectionForPath(path) {
   if (path.startsWith('/reports')) return 'REPORTS'
   if (path.startsWith('/hr')) return 'HR'
   if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile') return 'SYSTEM'
-  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter') || path.startsWith('/website-orders')) return 'OPERATIONS'
+  if (path.startsWith('/website-orders') || path.startsWith('/website')) return 'WEBSITE'
+  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter')) return 'OPERATIONS'
   return 'MAIN'
 }
 
@@ -418,11 +454,10 @@ watch(
   { immediate: true }
 )
 
-// When the user navigates directly via browser URL (not sidebar click),
-// re-sync the tab. We detect this by checking if the new path's natural
-// section is completely different from what the sidebar currently shows.
-// We never auto-sync when the user is just clicking sidebar items — that
-// would undo their manual tab selection.
+// When the user navigates to a route, ensure the correct section tab is active.
+// This handles both direct URL navigation and sidebar shortcut clicks
+// (e.g. "Sales Reports" in MAIN section pointing to /reports/sales should
+// switch to the REPORTS tab).
 watch(
   () => route.path,
   (newPath) => {
@@ -430,14 +465,7 @@ watch(
     if (!sections || sections.length === 0) return
 
     const natural = sectionForPath(newPath)
-    // Only override the active tab when the URL's section is a real,
-    // known section AND the currently-shown section has no items that
-    // lead to this path (meaning the user typed/pasted the URL directly).
-    const currentSectionHasPath = filteredMenuItems.value
-      .filter(item => item.section === activeSection.value)
-      .some(item => item.to && newPath.startsWith(item.to.split('?')[0]))
-
-    if (!currentSectionHasPath && sections.includes(natural)) {
+    if (natural !== activeSection.value && sections.includes(natural)) {
       activeSection.value = natural
     }
   }
@@ -458,16 +486,16 @@ watch(
   gap: 8px;
 
   &--top {
-    height: 48px !important;
-    min-height: 48px !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    height: var(--erp-header-height) !important;
+    min-height: var(--erp-header-height) !important;
+    border-bottom: 1px solid var(--erp-border);
   }
 
   &--bottom {
-    height: 36px !important;
-    min-height: 36px !important;
-    max-height: 36px !important;
-    background: rgba(0, 0, 0, 0.15);
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    background: var(--erp-bg-toolbar-bottom);
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
@@ -479,7 +507,7 @@ watch(
   color: var(--erp-text-secondary) !important;
   &:hover {
     color: var(--erp-text-primary) !important;
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: var(--erp-bg-hover) !important;
   }
 }
 
@@ -535,8 +563,8 @@ watch(
 
 .erp-search {
   :deep(.q-field__control) {
-    background-color: rgba(255, 255, 255, 0.06) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
+    background-color: var(--erp-bg-active) !important;
+    border: 1px solid var(--erp-border-hover) !important;
     border-radius: 8px !important;
     height: 34px !important;
     min-height: 34px !important;
@@ -584,8 +612,8 @@ watch(
     font-size: 10px;
     font-family: var(--erp-font-family);
     color: var(--erp-text-tertiary);
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: var(--erp-bg-active);
+    border: 1px solid var(--erp-border-hover);
     border-radius: 4px;
     padding: 2px 6px;
     white-space: nowrap;
@@ -640,15 +668,15 @@ watch(
     .q-tab__label   { font-size: 11px; line-height: 1; display: flex; align-items: center; }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--erp-bg-hover);
     }
   }
 
   :deep(.q-tab--active) {
-    color: #ffffff !important;
-    background: rgba(255, 255, 255, 0.14) !important;
+    color: var(--erp-text-on-primary) !important;
+    background: var(--erp-primary) !important;
     font-weight: 700;
-    .q-tab__label { color: #ffffff; }
+    .q-tab__label { color: var(--erp-text-on-primary); }
   }
 }
 
@@ -660,7 +688,7 @@ watch(
   font-size: 12px;
   font-weight: 500;
   color: var(--erp-text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--erp-bg-card-hover);
   border: 1px solid var(--erp-border);
   border-radius: 6px;
   padding: 4px 10px;
@@ -865,8 +893,8 @@ watch(
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 84px !important;
-    min-height: 84px !important;
+    height: 72px !important;
+    min-height: 72px !important;
     border-bottom: 1px solid var(--erp-border);
     flex-shrink: 0;
 
@@ -897,7 +925,7 @@ watch(
 
   &__scroll {
     flex: 1;
-    height: calc(100% - 120px);
+    height: calc(100% - 72px);
     overflow-y: auto;
     overflow-x: hidden;
 
@@ -917,8 +945,8 @@ watch(
     text-transform: uppercase;
     letter-spacing: 0.8px;
     color: var(--erp-text-tertiary);
-    padding: 16px 16px 4px;
-    margin-top: 4px;
+    padding: 12px 12px 4px;
+    margin-top: 2px;
 
     &:first-child {
       margin-top: 0;
@@ -931,9 +959,9 @@ watch(
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px; /* 44px row height ERP standard */
-    padding: 0 16px;
-    margin: 4px 8px; /* 8px spacing grid */
+    min-height: 36px; /* SAP B1 compact row */
+    padding: 0 12px;
+    margin: 2px 6px;
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.15s ease;
@@ -941,7 +969,7 @@ watch(
     border-left: 3px solid transparent; /* left border for active state */
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.05);
+      background-color: var(--erp-bg-hover);
 
       .erp-sidebar__item-label {
         color: var(--erp-text-primary);
@@ -1032,7 +1060,7 @@ watch(
         }
 
         &:hover {
-          background-color: rgba(255, 255, 255, 0.05) !important;
+          background-color: var(--erp-bg-hover) !important;
         }
 
         .q-expansion-item__toggle-icon {

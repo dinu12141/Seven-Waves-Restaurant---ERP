@@ -936,11 +936,11 @@ export function useStockLedger() {
 export async function fetchDashboardStats() {
   const companyId = getCompanyId()
   if (!companyId) {
-    return { totalStockValue: 0, lowStockCount: 0, todayGRN: 0, todayGIN: 0 }
+    return { totalStockValue: 0, lowStockCount: 0, todayGRN: 0, todayGIN: 0, todayBOM: 0 }
   }
   const today = new Date().toISOString().split('T')[0]
 
-  const [stockRes, grnRes, ginRes] = await Promise.all([
+  const [stockRes, grnRes, ginRes, bomRes] = await Promise.all([
     supabase
       .from('v_stock_on_hand')
       .select('total_value, stock_status')
@@ -959,6 +959,13 @@ export async function fetchDashboardStats() {
       .eq('doc_type', 'GIN')
       .eq('status', 'posted')
       .eq('doc_date', today),
+    supabase
+      .from('inventory_documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('doc_type', 'BOM_DEDUCT')
+      .eq('status', 'posted')
+      .eq('doc_date', today),
   ])
 
   const stockRows = stockRes.data || []
@@ -972,5 +979,395 @@ export async function fetchDashboardStats() {
     lowStockCount,
     todayGRN: grnRes.count ?? 0,
     todayGIN: ginRes.count ?? 0,
+    todayBOM: bomRes.count ?? 0,
   }
+}
+
+/* ====================================================================
+   15.  RECIPE / BOM MANAGEMENT (CRUD)
+==================================================================== */
+
+export interface RecipeItemPayload {
+  item_id: string
+  qty_per_serving: number
+  uom_id: string
+  wastage_percent?: number
+  notes?: string
+}
+
+export interface RecipePayload {
+  menu_item_id: string
+  variant_id?: string | null
+  name?: string
+  yield_qty?: number
+  yield_unit?: string
+  notes?: string
+  items: RecipeItemPayload[]
+}
+
+export function useRecipeList() {
+  const recipes: Ref<any[]> = ref([])
+  const loading = ref(false)
+
+  async function listRecipes() {
+    loading.value = true
+    try {
+      const companyId = getCompanyId()
+      if (!companyId) throw new Error('No company context.')
+
+      const { data, error } = await supabase
+        .from('recipes')
+        .select(`
+          *,
+          menu_item:menu_items!recipes_menu_item_id_fkey(id, name, base_price, image_url,
+            category:categories(id, name),
+            kitchen:kitchens(id, name)
+          ),
+          variant:item_variants(id, name, price),
+          recipe_items(
+            id, item_id, qty_per_serving, uom_id, wastage_percent, notes,
+            item:items(id, code, name, avg_cost),
+            uom:uom(id, code, name)
+          )
+        `)
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      recipes.value = (data || []).map((r: any) => {
+        const items = r.recipe_items || []
+        const totalCost = items.reduce((s: number, ri: any) => {
+          const qty = ri.qty_per_serving * (1 + (ri.wastage_percent || 0) / 100)
+          return s + qty * (ri.item?.avg_cost || 0)
+        }, 0)
+        return {
+          ...r,
+          menu_item_name: r.menu_item?.name || '',
+          menu_item_price: r.menu_item?.base_price || 0,
+          category_name: r.menu_item?.category?.name || '',
+          kitchen_name: r.menu_item?.kitchen?.name || '',
+          variant_name: r.variant?.name || '',
+          ingredient_count: items.length,
+          total_cost: totalCost,
+          food_cost_pct: r.menu_item?.base_price
+            ? ((totalCost / r.menu_item.base_price) * 100).toFixed(1)
+            : '0.0',
+        }
+      })
+    } catch (e: any) {
+      console.error('[inventoryService] listRecipes error:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createRecipe(payload: RecipePayload) {
+    const companyId = getCompanyId()
+    if (!companyId) throw new Error('No company context.')
+
+    // Insert recipe header
+    const { data: recipe, error: err1 } = await supabase
+      .from('recipes')
+      .insert({
+        company_id: companyId,
+        menu_item_id: payload.menu_item_id,
+        variant_id: payload.variant_id || null,
+        name: payload.name || null,
+        yield_qty: payload.yield_qty || 1,
+        yield_unit: payload.yield_unit || null,
+        notes: payload.notes || null,
+      })
+      .select()
+      .single()
+    if (err1) throw err1
+
+    // Insert recipe items
+    if (payload.items.length > 0) {
+      const rows = payload.items.map((item) => ({
+        recipe_id: recipe.id,
+        item_id: item.item_id,
+        qty_per_serving: item.qty_per_serving,
+        uom_id: item.uom_id,
+        wastage_percent: item.wastage_percent || 0,
+        notes: item.notes || null,
+      }))
+      const { error: err2 } = await supabase.from('recipe_items').insert(rows)
+      if (err2) throw err2
+    }
+
+    await listRecipes()
+    return recipe
+  }
+
+  async function updateRecipe(recipeId: string, payload: RecipePayload) {
+    // Update header
+    const { error: err1 } = await supabase
+      .from('recipes')
+      .update({
+        menu_item_id: payload.menu_item_id,
+        variant_id: payload.variant_id || null,
+        name: payload.name || null,
+        yield_qty: payload.yield_qty || 1,
+        yield_unit: payload.yield_unit || null,
+        notes: payload.notes || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', recipeId)
+    if (err1) throw err1
+
+    // Replace items: delete old, insert new
+    const { error: delErr } = await supabase
+      .from('recipe_items')
+      .delete()
+      .eq('recipe_id', recipeId)
+    if (delErr) throw delErr
+
+    if (payload.items.length > 0) {
+      const rows = payload.items.map((item) => ({
+        recipe_id: recipeId,
+        item_id: item.item_id,
+        qty_per_serving: item.qty_per_serving,
+        uom_id: item.uom_id,
+        wastage_percent: item.wastage_percent || 0,
+        notes: item.notes || null,
+      }))
+      const { error: err2 } = await supabase.from('recipe_items').insert(rows)
+      if (err2) throw err2
+    }
+
+    await listRecipes()
+  }
+
+  async function deleteRecipe(recipeId: string) {
+    // Delete items first, then recipe
+    await supabase.from('recipe_items').delete().eq('recipe_id', recipeId)
+    const { error } = await supabase.from('recipes').delete().eq('id', recipeId)
+    if (error) throw error
+    recipes.value = recipes.value.filter((r: any) => r.id !== recipeId)
+  }
+
+  async function toggleRecipeActive(recipeId: string, isActive: boolean) {
+    const { error } = await supabase
+      .from('recipes')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('id', recipeId)
+    if (error) throw error
+    const idx = recipes.value.findIndex((r: any) => r.id === recipeId)
+    if (idx !== -1) recipes.value[idx].is_active = isActive
+  }
+
+  return { recipes, loading, listRecipes, createRecipe, updateRecipe, deleteRecipe, toggleRecipeActive }
+}
+
+/* ====================================================================
+   16.  KOT STOCK DEDUCTION / REVERSAL (RPC wrappers)
+==================================================================== */
+
+export async function deductStockForKOT(kotBatchId: string): Promise<any> {
+  const { data, error } = await supabase.rpc('fn_kot_deduct_stock', {
+    p_kot_batch_id: kotBatchId,
+  })
+  if (error) {
+    console.error('[inventoryService] deductStockForKOT error:', error)
+    throw error
+  }
+  return data
+}
+
+export async function reverseStockForKOT(kotBatchId: string): Promise<any> {
+  const { data, error } = await supabase.rpc('fn_kot_reverse_stock', {
+    p_kot_batch_id: kotBatchId,
+  })
+  if (error) {
+    console.error('[inventoryService] reverseStockForKOT error:', error)
+    throw error
+  }
+  return data
+}
+
+/* ====================================================================
+   17.  KOT DEDUCTION LOG (monitoring)
+==================================================================== */
+
+export function useKotDeductionLog() {
+  const logs: Ref<any[]> = ref([])
+  const loading = ref(false)
+
+  async function fetchDeductionLogs(filters: { dateFrom?: string; dateTo?: string } = {}) {
+    loading.value = true
+    try {
+      const branchId = getBranchId()
+      if (!branchId) return
+
+      let query = supabase
+        .from('kot_deduction_log')
+        .select(`
+          *,
+          inv_doc:inventory_documents!kot_deduction_log_inv_document_id_fkey(
+            id, doc_number, doc_date, total_qty, total_cost
+          ),
+          kitchen:kitchens!kot_deduction_log_kitchen_id_fkey(id, name),
+          warehouse:warehouses!kot_deduction_log_warehouse_id_fkey(id, name)
+        `)
+        .eq('branch_id', branchId)
+        .order('deducted_at', { ascending: false })
+        .limit(200)
+
+      if (filters.dateFrom) query = query.gte('deducted_at', filters.dateFrom)
+      if (filters.dateTo) query = query.lte('deducted_at', filters.dateTo + 'T23:59:59')
+
+      const { data, error } = await query
+      if (error) throw error
+      logs.value = (data || []).map((log: any) => ({
+        ...log,
+        doc_number: log.inv_doc?.doc_number || '',
+        total_qty: log.inv_doc?.total_qty || 0,
+        total_cost: log.inv_doc?.total_cost || 0,
+        kitchen_name: log.kitchen?.name || '',
+        warehouse_name: log.warehouse?.name || '',
+      }))
+    } catch (e: any) {
+      console.error('[inventoryService] fetchDeductionLogs error:', e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { logs, loading, fetchDeductionLogs }
+}
+
+/* ====================================================================
+   18.  INVENTORY REPORTS — reusable data fetchers
+==================================================================== */
+
+/** BOM Consumption Report: consumption by menu item based on BOM deductions */
+export async function fetchBOMConsumptionReport(dateFrom: string, dateTo: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  const { data, error } = await supabase
+    .from('inventory_ledger')
+    .select(`
+      item_id,
+      quantity,
+      unit_cost,
+      total_cost,
+      posted_at,
+      item:items(id, code, name),
+      warehouse:warehouses(id, name),
+      document:inventory_documents!inventory_ledger_document_id_fkey(
+        id, doc_number, remarks, reference_id
+      )
+    `)
+    .eq('company_id', companyId)
+    .eq('doc_type', 'BOM_DEDUCT')
+    .eq('direction', 'OUT')
+    .gte('posted_at', dateFrom)
+    .lte('posted_at', dateTo + 'T23:59:59')
+    .order('posted_at', { ascending: false })
+    .limit(1000)
+
+  if (error) throw error
+  return (data || []).map((r: any) => ({
+    ...r,
+    item_name: r.item?.name || '',
+    item_code: r.item?.code || '',
+    warehouse_name: r.warehouse?.name || '',
+    doc_number: r.document?.doc_number || '',
+    kot_remarks: r.document?.remarks || '',
+  }))
+}
+
+/** Daily Kitchen Consumption: aggregated ingredient usage per day */
+export async function fetchDailyConsumption(dateFrom: string, dateTo: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  const { data, error } = await supabase
+    .from('inventory_ledger')
+    .select(`
+      item_id,
+      quantity,
+      total_cost,
+      posted_at,
+      warehouse_id,
+      item:items(id, code, name),
+      warehouse:warehouses(id, name)
+    `)
+    .eq('company_id', companyId)
+    .eq('doc_type', 'BOM_DEDUCT')
+    .eq('direction', 'OUT')
+    .gte('posted_at', dateFrom)
+    .lte('posted_at', dateTo + 'T23:59:59')
+    .order('posted_at', { ascending: false })
+    .limit(2000)
+
+  if (error) throw error
+
+  // Group by date + item
+  const grouped: Record<string, any> = {}
+  for (const row of data || []) {
+    const date = (row.posted_at as string).split('T')[0]
+    const key = `${date}__${row.item_id}`
+    if (!grouped[key]) {
+      grouped[key] = {
+        date,
+        item_id: row.item_id,
+        item_name: (row as any).item?.name || '',
+        item_code: (row as any).item?.code || '',
+        warehouse_name: (row as any).warehouse?.name || '',
+        total_qty: 0,
+        total_cost: 0,
+      }
+    }
+    grouped[key].total_qty += row.quantity || 0
+    grouped[key].total_cost += row.total_cost || 0
+  }
+  return Object.values(grouped).sort((a: any, b: any) => b.date.localeCompare(a.date))
+}
+
+/** Ingredient Consumption Report: per-ingredient breakdown */
+export async function fetchIngredientConsumption(dateFrom: string, dateTo: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  const { data, error } = await supabase
+    .from('inventory_ledger')
+    .select(`
+      item_id,
+      quantity,
+      total_cost,
+      item:items(id, code, name, avg_cost, reorder_level,
+        inv_uom:uom!items_inventory_uom_id_fkey(code)
+      )
+    `)
+    .eq('company_id', companyId)
+    .eq('doc_type', 'BOM_DEDUCT')
+    .eq('direction', 'OUT')
+    .gte('posted_at', dateFrom)
+    .lte('posted_at', dateTo + 'T23:59:59')
+    .limit(2000)
+
+  if (error) throw error
+
+  // Aggregate by item
+  const agg: Record<string, any> = {}
+  for (const row of data || []) {
+    const id = row.item_id
+    if (!agg[id]) {
+      agg[id] = {
+        item_id: id,
+        item_name: (row as any).item?.name || '',
+        item_code: (row as any).item?.code || '',
+        uom: (row as any).item?.inv_uom?.code || '',
+        avg_cost: (row as any).item?.avg_cost || 0,
+        total_qty: 0,
+        total_cost: 0,
+      }
+    }
+    agg[id].total_qty += row.quantity || 0
+    agg[id].total_cost += row.total_cost || 0
+  }
+  return Object.values(agg).sort((a: any, b: any) => b.total_cost - a.total_cost)
 }

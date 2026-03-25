@@ -467,6 +467,8 @@ onMounted(loadDetail)
 // Profile card
 .profile-card {
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 .detail-avatar {
   width: 72px;
@@ -487,17 +489,18 @@ onMounted(loadDetail)
 .profile-stat {
   flex: 1;
   padding: 10px;
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
 }
 .profile-stat-value {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #e5e7eb;
 }
 .profile-stat-label {
   font-size: 0.68rem;
-  color: #64748b;
+  color: #6b7280;
   margin-top: 3px;
 }
 
@@ -598,8 +601,8 @@ onMounted(loadDetail)
   gap: 10px;
 }
 .stat-box {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -607,15 +610,19 @@ onMounted(loadDetail)
   align-items: center;
   gap: 6px;
   text-align: center;
+  transition: background 0.2s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
 }
 .stat-box-value {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #1e293b;
+  color: #e5e7eb;
 }
 .stat-box-label {
   font-size: 0.65rem;
-  color: #64748b;
+  color: #6b7280;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -624,6 +631,8 @@ onMounted(loadDetail)
 // Tier progress
 .tier-progress-admin {
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 .tier-chip {
   display: inline-flex;
@@ -641,7 +650,7 @@ onMounted(loadDetail)
 }
 .milestone-item {
   font-size: 0.68rem;
-  color: #94a3b8;
+  color: #4b5563;
   font-weight: 600;
   &.milestone-active {
     color: #f59e0b;
@@ -654,7 +663,7 @@ onMounted(loadDetail)
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   &:last-child {
     border-bottom: none;
   }
@@ -668,16 +677,16 @@ onMounted(loadDetail)
   justify-content: center;
   flex-shrink: 0;
   &.earn {
-    background: #d1fae5;
+    background: rgba(16, 185, 129, 0.12);
   }
   &.redeem {
-    background: #fee2e2;
+    background: rgba(239, 68, 68, 0.12);
   }
   &.adjust {
-    background: #dbeafe;
+    background: rgba(59, 130, 246, 0.12);
   }
   &.expire {
-    background: #f3f4f6;
+    background: rgba(107, 114, 128, 0.12);
   }
 }
 .tx-content {
@@ -687,18 +696,18 @@ onMounted(loadDetail)
 .tx-type {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1e293b;
+  color: #e5e7eb;
 }
 .tx-note {
   font-size: 0.72rem;
-  color: #64748b;
+  color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .tx-meta {
   font-size: 0.68rem;
-  color: #94a3b8;
+  color: #4b5563;
   margin-top: 2px;
 }
 
@@ -718,7 +727,7 @@ onMounted(loadDetail)
     color: #3b82f6;
   }
   &.expire {
-    color: #9ca3af;
+    color: #6b7280;
   }
 }
 .tx-coin-sub {
@@ -727,13 +736,21 @@ onMounted(loadDetail)
   margin-left: 2px;
 }
 
+// Transaction History card
+:deep(.q-card--bordered) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+:deep(.q-card.q-card--flat) {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
 // Dialog
 .adjust-balance-display {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 10px;
 }
 </style>

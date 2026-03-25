@@ -3,6 +3,7 @@
     title="Group Summary"
     subtitle="Department Summary — Sales broken down by menu category groups"
     :kpis="kpiData"
+    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -10,99 +11,99 @@
   >
     <template #default>
       <!-- SAP-style Report Header -->
-      <div class="gs-header">
-        <div class="gs-header__top">
-          <div class="gs-header__left">
-            <div class="gs-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-            <div class="gs-header__title">Group Summary</div>
+      <div class="sap-header">
+        <div class="sap-header__left">
+          <div class="sap-header__center">
+            <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+            <div class="sap-header__title sap-header__title--underline">Group Summary</div>
           </div>
-          <div class="gs-header__right">
-            <div class="gs-header__page">Page 1 of 1</div>
-            <div class="gs-header__date">{{ todayFormatted }}</div>
+          <div class="sap-header__meta">
+            <div>Location: <strong>{{ branchName }}</strong></div>
+            <div>From Date : <strong>{{ reportDateRange }}</strong></div>
           </div>
         </div>
-        <div class="gs-header__meta">
-          <div>Location: <strong>{{ branchName }}</strong></div>
-          <div>From Date : <strong>{{ reportDateRange }}</strong></div>
+        <div class="sap-header__right">
+          <div class="sap-header__page">Page 1 of 1</div>
+          <div class="sap-header__date">{{ todayFormatted }}</div>
         </div>
       </div>
 
       <!-- ── Data Table ───────────────────────────── -->
-      <table class="gs-table">
+      <table class="sap-native-table">
         <thead>
-          <tr class="gs-table__header">
-            <th class="gs-table__th">Code</th>
-            <th class="gs-table__th">Description</th>
-            <th class="gs-table__th gs-table__th--num">Qty</th>
-            <th class="gs-table__th gs-table__th--num">Gross Amount</th>
-            <th class="gs-table__th gs-table__th--num">Return Amount</th>
-            <th class="gs-table__th gs-table__th--num">Disc Amt</th>
-            <th class="gs-table__th gs-table__th--num">Net Amount</th>
-            <th class="gs-table__th gs-table__th--num">Tax Amt</th>
-            <th class="gs-table__th gs-table__th--num">Amt with Tax</th>
-            <th class="gs-table__th gs-table__th--num">Wastage Amt</th>
-            <th class="gs-table__th gs-table__th--num">% of Sale</th>
+          <tr>
+            <th class="sap-native-table__th">Code</th>
+            <th class="sap-native-table__th">Description</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Qty</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Gross Amount</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Return Amount</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Disc Amt</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Net Amount</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Tax Amt</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Amt with Tax</th>
+            <th class="sap-native-table__th sap-native-table__th--num">Wastage Amt</th>
+            <th class="sap-native-table__th sap-native-table__th--num">% of Sale</th>
           </tr>
         </thead>
         <tbody v-if="loading">
           <tr>
-            <td colspan="11" class="gs-table__loading">
+            <td colspan="11" class="sap-native-table__loading">
               <q-spinner-gears size="30px" color="primary" />
             </td>
           </tr>
         </tbody>
         <tbody v-else-if="groupRows.length === 0">
           <tr>
-            <td colspan="11" class="gs-table__empty">
+            <td colspan="11" class="sap-native-table__empty">
               <q-icon name="category" size="36px" class="q-mb-sm" />
               <div>No group data for selected period</div>
             </td>
           </tr>
         </tbody>
         <tbody v-else>
-          <tr v-for="row in groupRows" :key="row.code" class="gs-table__row">
-            <td class="gs-table__td gs-table__td--code">{{ row.code }}</td>
-            <td class="gs-table__td gs-table__td--desc">{{ row.description }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ row.qty }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.grossAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.returnAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.discAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.netAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.taxAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bold">{{ fmtN(row.amtWithTax) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ fmtN(row.wastageAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num">{{ row.pctSale }}</td>
+          <tr v-for="row in groupRows" :key="row.code" class="sap-native-table__row">
+            <td class="sap-native-table__td sap-native-table__td--code">{{ row.code }}</td>
+            <td class="sap-native-table__td sap-native-table__td--desc">{{ row.description }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ row.qty }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.grossAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.returnAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.discAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.netAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.taxAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bold">{{ fmtN(row.amtWithTax) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.wastageAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">{{ row.pctSale }}</td>
           </tr>
         </tbody>
         <tfoot v-if="groupRows.length > 0">
-          <tr class="gs-table__grand-total">
-            <td colspan="2" class="gs-table__td text-weight-bolder">Grand Total</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ grandTotals.qty }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.grossAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.returnAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.discAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.netAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.taxAmt) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder text-green">{{ fmtN(grandTotals.amtWithTax) }}</td>
-            <td class="gs-table__td gs-table__td--num text-weight-bolder">{{ fmtN(grandTotals.wastageAmt) }}</td>
-            <td class="gs-table__td" />
+          <tr class="sap-native-table__total">
+            <td colspan="2" class="sap-native-table__td text-weight-bolder">Grand Total</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ grandTotals.qty }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.grossAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.returnAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.discAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.netAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.taxAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder text-green">{{ fmtN(grandTotals.amtWithTax) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.wastageAmt) }}</td>
+            <td class="sap-native-table__td" />
           </tr>
         </tfoot>
       </table>
 
       <!-- ── Footer Summaries (matching SAP) ──────── -->
-      <div v-if="groupRows.length > 0" class="gs-footer">
-        <div class="gs-footer__row">
-          <span class="gs-footer__label">Complementary :</span>
-          <span class="gs-footer__value">{{ fmtN(0) }}</span>
+      <div v-if="groupRows.length > 0" class="sap-footer">
+        <div class="sap-footer__row">
+          <span class="sap-footer__label">Complementary :</span>
+          <span class="sap-footer__value">{{ fmtN(0) }}</span>
         </div>
-        <div class="gs-footer__row">
-          <span class="gs-footer__label">Manual Minus(Disc) :</span>
-          <span class="gs-footer__value">{{ fmtN(0) }}</span>
+        <div class="sap-footer__row">
+          <span class="sap-footer__label">Manual Minus(Disc) :</span>
+          <span class="sap-footer__value">{{ fmtN(0) }}</span>
         </div>
-        <div class="gs-footer__row gs-footer__row--bold">
-          <span class="gs-footer__label">Net Amount Tot :</span>
-          <span class="gs-footer__value text-green">{{ fmtN(grandTotals.amtWithTax) }}</span>
+        <div class="sap-footer__row sap-footer__row--bold">
+          <span class="sap-footer__label">Net Amount Tot :</span>
+          <span class="sap-footer__value text-green">{{ fmtN(grandTotals.amtWithTax) }}</span>
         </div>
       </div>
     </template>
@@ -287,182 +288,5 @@ function exportExcel() { exportTableToExcel(exportColumns, groupRows.value, 'gro
 </script>
 
 <style scoped lang="scss">
-/* ── SAP Header ────────────────────────────────────────────── */
-.gs-header {
-  padding: 14px 16px 10px;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.02);
-
-  &__top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-  &__left { flex: 1; text-align: center; }
-  &__company {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--erp-text-primary, #f8fafc);
-  }
-  &__title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 2px;
-    text-decoration: underline;
-  }
-  &__right { text-align: right; flex-shrink: 0; }
-  &__page { font-size: 11px; color: var(--erp-text-secondary, #94a3b8); }
-  &__date { font-size: 11px; color: var(--erp-text-muted, #64748b); }
-  &__meta {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-    margin-top: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-}
-
-/* ── Table ─────────────────────────────────────────────────── */
-.gs-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-  margin-top: 4px;
-}
-
-.gs-table__header { background: rgba(255, 255, 255, 0.04); }
-
-.gs-table__th {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--erp-text-secondary, #94a3b8);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 6px 6px;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-  text-align: left;
-  white-space: nowrap;
-
-  &--num { text-align: right; }
-}
-
-.gs-table__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03));
-
-  &:hover { background: rgba(255, 255, 255, 0.02); }
-}
-
-.gs-table__td {
-  font-size: 11px;
-  color: var(--erp-text-primary, #f8fafc);
-  padding: 5px 6px;
-  height: 28px;
-
-  &--num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    font-family: 'SF Mono', 'Consolas', monospace;
-  }
-  &--code {
-    font-weight: 700;
-    color: var(--erp-primary, #2563eb);
-    font-family: 'SF Mono', 'Consolas', monospace;
-  }
-  &--desc {
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-}
-
-.gs-table__grand-total {
-  background: rgba(255, 255, 255, 0.05);
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12));
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12));
-
-  td {
-    font-size: 12px !important;
-    padding: 8px 6px !important;
-  }
-}
-
-.gs-table__loading,
-.gs-table__empty {
-  text-align: center;
-  padding: 40px;
-  color: var(--erp-text-muted, #64748b);
-  font-size: 13px;
-}
-
-/* ── Footer Summaries ──────────────────────────────────────── */
-.gs-footer {
-  padding: 10px 16px;
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-}
-
-.gs-footer__row {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 3px 0;
-  font-size: 11px;
-  color: var(--erp-text-secondary, #94a3b8);
-
-  &--bold {
-    font-weight: 800;
-    font-size: 12px;
-    color: var(--erp-text-primary, #f8fafc);
-    border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-    padding-top: 6px;
-    margin-top: 2px;
-  }
-}
-
-.gs-footer__label {
-  text-align: right;
-  min-width: 160px;
-}
-
-.gs-footer__value {
-  text-align: right;
-  min-width: 120px;
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Print Overrides ───────────────────────────────────────── */
-@media print {
-  .gs-header {
-    background: none !important;
-    border-bottom: 2pt solid #1a1a2e !important;
-    padding: 6pt 0 !important;
-  }
-  .gs-header__company { font-size: 13pt !important; color: #1a1a2e !important; }
-  .gs-header__title { font-size: 10pt !important; color: #333 !important; }
-  .gs-header__meta, .gs-header__page, .gs-header__date { color: #555 !important; font-size: 8pt !important; }
-
-  .gs-table__th {
-    font-size: 7pt !important;
-    background: #1a1a2e !important;
-    color: #fff !important;
-    padding: 3pt 4pt !important;
-  }
-  .gs-table__td {
-    font-size: 7pt !important;
-    color: #222 !important;
-    padding: 2pt 4pt !important;
-    height: auto !important;
-  }
-  .gs-table__grand-total td {
-    font-size: 8pt !important;
-    color: #1a1a2e !important;
-    background: #e8edf3 !important;
-    border-top: 1.5pt solid #1a1a2e !important;
-    border-bottom: 1.5pt solid #1a1a2e !important;
-  }
-  .gs-footer { padding: 4pt 0 !important; }
-  .gs-footer__row { font-size: 7pt !important; color: #333 !important; }
-  .gs-footer__row--bold { font-size: 8pt !important; color: #1a1a2e !important; }
-}
+@import 'src/pages/reports/report-common.scss';
 </style>

@@ -31,7 +31,7 @@
         <q-btn
           v-if="!restrictions.ordersAcceptOnly"
           outline
-          color="white"
+          :color="$q.dark.isActive ? 'white' : 'grey-8'"
           class="erp-toolbar__secondary-btn q-ml-sm"
           icon="history"
           label="History"
@@ -80,7 +80,7 @@
             label="Branch"
             dense
             outlined
-            dark
+            :dark="$q.dark.isActive"
             options-dense
           >
             <template v-slot:prepend>
@@ -95,7 +95,7 @@
             label="Source"
             dense
             outlined
-            dark
+            :dark="$q.dark.isActive"
             options-dense
           >
             <template v-slot:prepend>
@@ -109,7 +109,7 @@
             placeholder="Search by Order ID or Table..."
             dense
             outlined
-            dark
+            :dark="$q.dark.isActive"
           >
             <template v-slot:prepend>
               <q-icon name="search" />
@@ -466,10 +466,16 @@ async function cancelOrder(order) {
 /* View mode toggle */
 .erp-view-toggle {
   display: flex;
-  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.12));
   border-radius: 6px;
   overflow: hidden;
 }
+.body--dark .erp-view-toggle {
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.12));
+}
+.body--light .erp-view-toggle {
+  border: 1px solid #e5e7eb;
+}
+
 .erp-view-btn {
   width: 32px;
   height: 32px;
@@ -479,15 +485,29 @@ async function cancelOrder(order) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
   transition: background 0.15s, color 0.15s;
 }
-.erp-view-btn:hover {
+.body--dark .erp-view-btn {
+  color: rgba(255, 255, 255, 0.4);
+}
+.body--dark .erp-view-btn:hover {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.8);
 }
-.erp-view-btn--active {
+.body--dark .erp-view-btn--active {
   background: rgba(37, 99, 235, 0.15);
+  color: #3b82f6;
+}
+
+.body--light .erp-view-btn {
+  color: #9ca3af;
+}
+.body--light .erp-view-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+.body--light .erp-view-btn--active {
+  background: #eff6ff;
   color: #2563eb;
 }
 
@@ -504,13 +524,19 @@ async function cancelOrder(order) {
 }
 
 .kanban-column-inner {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 260px);
   overflow: hidden;
+}
+.body--dark .kanban-column-inner {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.body--light .kanban-column-inner {
+  background: #fdfdfd;
+  border: 1px solid #e5e7eb;
 }
 
 .kanban-header {
@@ -518,16 +544,18 @@ async function cancelOrder(order) {
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
 }
+.body--dark .kanban-header { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.body--light .kanban-header { border-bottom: 1px solid #e5e7eb; }
 
 .kanban-header-left {
   display: flex;
   align-items: center;
-  color: #e5e7eb;
   font-size: 14px;
 }
+.body--dark .kanban-header-left { color: #e5e7eb; }
+.body--light .kanban-header-left { color: #374151; }
 
 .kanban-scroll {
   flex: 1;

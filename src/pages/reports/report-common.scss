@@ -1,4 +1,11 @@
-/* ── Shared Report Table & Badge Styles ──────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   UNIFIED ERP REPORT DESIGN SYSTEM — SAP B1 HANA INSPIRED
+   ═══════════════════════════════════════════════════════════════════════
+   All report pages must import this single file.
+   No report-specific styling should duplicate these tokens.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Shared Report Table & Cells ──────────────────────────────────── */
 .report-table {
   background: transparent !important;
 
@@ -59,7 +66,7 @@
   }
 }
 
-/* ── Badges ─────────────────────────────────────────────────────────── */
+/* ── 2. Badges ─────────────────────────────────────────────────────────── */
 .report-badge {
   display: inline-flex;
   align-items: center;
@@ -70,17 +77,25 @@
   background: rgba(255, 255, 255, 0.06);
   color: var(--erp-text-secondary, #94a3b8);
   border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+  white-space: nowrap;
 
-  &--cash { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
+  &--cash, &--paid { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
   &--card { background: rgba(37, 99, 235, 0.12); color: #2563eb; border-color: rgba(37, 99, 235, 0.2); }
   &--online { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
-  &--paid { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
   &--pending { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
   &--cancelled, &--void { background: rgba(220, 38, 38, 0.12); color: #dc2626; border-color: rgba(220, 38, 38, 0.2); }
   &--refunded { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
+
+  // Inventory movement types
+  &--grn { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
+  &--kot_issue { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+  &--adjustment { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
+  &--transfer { background: rgba(37, 99, 235, 0.12); color: #2563eb; border-color: rgba(37, 99, 235, 0.2); }
+  &--return { background: rgba(220, 38, 38, 0.12); color: #dc2626; border-color: rgba(220, 38, 38, 0.2); }
+  &--opening { background: rgba(100, 116, 139, 0.12); color: #94a3b8; border-color: rgba(100, 116, 139, 0.2); }
 }
 
-/* ── Filter Groups (for extra-filters slot) ────────────────────────── */
+/* ── 3. Filter Groups (for extra-filters slot) ─────────────────────────── */
 .report-filter-group {
   display: flex;
   flex-direction: column;
@@ -97,7 +112,7 @@
   font-size: 13px;
 }
 
-/* ── Empty State ───────────────────────────────────────────────────── */
+/* ── 4. Empty State ───────────────────────────────────────────────────── */
 .report-empty {
   display: flex;
   flex-direction: column;
@@ -107,11 +122,586 @@
   font-size: 13px;
 }
 
-/* ── Print ──────────────────────────────────────────────────────────── */
+/* ── 5. Text Truncation ───────────────────────────────────────────────── */
+.report-truncate {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SAP B1 HANA GROUPED REPORT STYLES
+   Used by: ItemWiseSale, WaiterWiseSale, TableWiseSale,
+            ElectronicJournal, GroupSummary, SalesStatement
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 6. SAP Report Header ──────────────────────────────────────────────── */
+.sap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.02);
+
+  &__left { flex: 1; }
+  &__center { flex: 1; text-align: center; }
+  &__company {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--erp-text-primary, #f8fafc);
+    letter-spacing: -0.2px;
+  }
+  &__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--erp-text-secondary, #94a3b8);
+    margin-top: 2px;
+  }
+  &__title--underline {
+    text-decoration: underline;
+  }
+  &__meta {
+    font-size: 11px;
+    color: var(--erp-text-muted, #64748b);
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  &__right {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  &__page {
+    font-size: 11px;
+    color: var(--erp-text-secondary, #94a3b8);
+  }
+  &__date {
+    font-size: 11px;
+    color: var(--erp-text-muted, #64748b);
+  }
+}
+
+/* ── 7. SAP Compact Dense Table ────────────────────────────────────────── */
+.sap-table {
+  background: transparent !important;
+  font-size: 11px !important;
+
+  :deep(.q-table) { font-size: 11px !important; }
+}
+
+.sap-table__header { background: rgba(255, 255, 255, 0.03) !important; }
+
+.sap-table__th {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--erp-text-secondary, #94a3b8) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  padding: 6px 6px !important;
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  white-space: nowrap !important;
+}
+
+.sap-table__row {
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    color: var(--erp-text-primary, #f8fafc) !important;
+    padding: 4px 6px !important;
+    height: 28px !important;
+  }
+
+  &--void td, &--void .q-td {
+    color: var(--erp-danger, #dc2626) !important;
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+}
+
+.sap-table__td--num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+  font-family: 'SF Mono', 'Consolas', monospace !important;
+}
+
+.sap-table__td--mono {
+  font-family: 'SF Mono', 'Consolas', monospace !important;
+  font-size: 10px !important;
+}
+
+/* ── 8. Date Header Rows (amber) ────────────────────────────────────── */
+.sap-table__date-header {
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-top: 2px solid rgba(245, 158, 11, 0.2) !important;
+}
+
+.sap-table__date-name {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #fbbf24 !important;
+  letter-spacing: -0.2px !important;
+  padding: 8px 10px !important;
+}
+
+/* ── 9. Group Header Rows (blue) ────────────────────────────────────── */
+.sap-table__group-header {
+  background: rgba(37, 99, 235, 0.06) !important;
+  border-top: 1px solid rgba(37, 99, 235, 0.15) !important;
+}
+
+.sap-table__group-name {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--erp-primary, #2563eb) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 6px 10px !important;
+}
+
+/* ── 10. Sub-Group / Waiter Header (blue, lighter) ─────────────────── */
+.sap-table__sub-header {
+  background: rgba(37, 99, 235, 0.06) !important;
+  border-top: 1px solid rgba(37, 99, 235, 0.12) !important;
+}
+
+.sap-table__sub-name {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--erp-primary, #2563eb) !important;
+  padding: 5px 10px 5px 20px !important;
+}
+
+/* ── 11. Table Group Header (blue, lighter) ─────────────────────────── */
+.sap-table__table-header {
+  background: rgba(37, 99, 235, 0.05) !important;
+  border-top: 1px solid rgba(37, 99, 235, 0.1) !important;
+
+  td, .q-td {
+    padding: 4px 10px !important;
+    height: 28px !important;
+  }
+}
+
+.sap-table__table-name {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--erp-primary, #2563eb) !important;
+  padding-left: 20px !important;
+}
+
+/* ── 12. Subtotal Rows ─────────────────────────────────────────────── */
+.sap-table__subtotal {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    padding: 5px 6px !important;
+    height: 28px !important;
+    color: var(--erp-text-secondary, #94a3b8) !important;
+  }
+}
+
+/* ── 13. Date Total Rows (amber tint) ──────────────────────────────── */
+.sap-table__date-total {
+  background: rgba(245, 158, 11, 0.05) !important;
+  border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
+  border-bottom: 2px solid rgba(245, 158, 11, 0.2) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+    color: var(--erp-text-primary, #f8fafc) !important;
+  }
+}
+
+/* ── 14. Grand Total Row ───────────────────────────────────────────── */
+.sap-table__grand-total {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
+
+  td, .q-td {
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+    color: var(--erp-text-primary, #f8fafc) !important;
+  }
+}
+
+/* ── 15. Payment Row (for e-journal) ───────────────────────────────── */
+.sap-table__payment-row {
+  background: rgba(22, 163, 74, 0.05) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    padding: 3px 6px !important;
+    height: 22px !important;
+  }
+}
+
+.sap-table__payment-cell {
+  padding-left: 60px !important;
+  color: var(--erp-text-secondary, #94a3b8) !important;
+  font-style: italic;
+}
+
+/* ── 16. Bill Subtotal Row (for e-journal) ─────────────────────────── */
+.sap-table__bill-subtotal {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
+
+  td, .q-td {
+    font-size: 11px !important;
+    padding: 3px 6px !important;
+    height: 24px !important;
+    color: var(--erp-text-secondary, #94a3b8) !important;
+  }
+}
+
+/* ── 17. Type Badge (for e-journal: RS, TK, WE, DL, PM, UB) ───────── */
+.sap-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--erp-text-secondary, #94a3b8);
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+
+  &--rs { background: rgba(37, 99, 235, 0.12); color: #60a5fa; border-color: rgba(37, 99, 235, 0.2); }
+  &--tk { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
+  &--we { background: rgba(124, 58, 237, 0.12); color: #a78bfa; border-color: rgba(124, 58, 237, 0.2); }
+  &--dl { background: rgba(22, 163, 74, 0.12); color: #4ade80; border-color: rgba(22, 163, 74, 0.2); }
+  &--pm { background: rgba(236, 72, 153, 0.12); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
+  &--ub { background: rgba(0, 0, 0, 0.15); color: #e5e7eb; border-color: rgba(255, 255, 255, 0.1); }
+}
+
+/* ── 18. GP % Badge ────────────────────────────────────────────────── */
+.sap-gp-badge {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+}
+
+/* ── 19. SAP Native Table (for non-q-table reports) ────────────────── */
+.sap-native-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.sap-native-table__th {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--erp-text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  text-align: left;
+  white-space: nowrap;
+
+  &--num { text-align: right; }
+}
+
+.sap-native-table__row {
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03));
+  &:hover { background: rgba(255, 255, 255, 0.02); }
+}
+
+.sap-native-table__td {
+  font-size: 11px;
+  color: var(--erp-text-primary, #f8fafc);
+  padding: 3px 6px;
+  height: 24px;
+
+  &--num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Consolas', monospace;
+  }
+  &--code {
+    font-weight: 700;
+    color: var(--erp-primary, #2563eb);
+    font-family: 'SF Mono', 'Consolas', monospace;
+  }
+  &--desc {
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+}
+
+.sap-native-table__total {
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12));
+  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.12));
+
+  td {
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+  }
+}
+
+.sap-native-table__subtotal {
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sap-native-table__extra {
+  td {
+    font-size: 10px !important;
+    color: var(--erp-text-muted, #64748b) !important;
+    padding: 3px 6px !important;
+  }
+}
+
+.sap-native-table__loading,
+.sap-native-table__empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--erp-text-muted, #64748b);
+  font-size: 13px;
+}
+
+/* ── 20. SAP Footer Summaries ──────────────────────────────────────── */
+.sap-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+}
+
+.sap-footer__row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 11px;
+  color: var(--erp-text-secondary, #94a3b8);
+
+  &--bold {
+    font-weight: 800;
+    font-size: 12px;
+    color: var(--erp-text-primary, #f8fafc);
+    border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+    padding-top: 6px;
+    margin-top: 2px;
+  }
+}
+
+.sap-footer__label {
+  text-align: right;
+  min-width: 160px;
+}
+
+.sap-footer__value {
+  text-align: right;
+  min-width: 120px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 21. SAP Filter Label Bar ──────────────────────────────────────── */
+.sap-filter-label {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: rgba(37, 99, 235, 0.08);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.15);
+  font-size: 11px;
+  color: var(--erp-text-secondary, #94a3b8);
+}
+
+/* ── 22. Column Group Dividers (for SalesReport) ───────────────────── */
+.report-col-groups {
+  display: flex;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+  padding: 4px 16px;
+}
+.report-col-group {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--erp-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  text-align: center;
+  border-right: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+  padding-right: 8px;
+  &:last-child { border-right: none; }
+}
+
+/* ── 23. SAP Two-Column Statement Layout ───────────────────────────── */
+.sap-columns {
+  display: flex;
+  gap: 2px;
+  padding: 8px;
+}
+.sap-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 24. SAP Analysis Section ──────────────────────────────────────── */
+.sap-analysis {
+  margin-top: 12px;
+  padding: 0 8px 8px;
+}
+.sap-analysis__title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--erp-text-primary, #f8fafc);
+  text-align: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRINT STYLES — UNIFIED FOR ALL REPORTS
+   ═══════════════════════════════════════════════════════════════════════ */
 @media print {
+  /* Flat report tables */
   .report-table__td,
   .report-table__th {
     color: #000 !important;
     font-size: 10px !important;
   }
+
+  /* SAP headers */
+  .sap-header {
+    background: none !important;
+    border-bottom: 2pt solid #1a1a2e !important;
+    padding: 6pt 0 !important;
+  }
+  .sap-header__company {
+    font-size: 12pt !important;
+    color: #1a1a2e !important;
+  }
+  .sap-header__title {
+    font-size: 10pt !important;
+    color: #333 !important;
+  }
+  .sap-header__meta,
+  .sap-header__page,
+  .sap-header__date {
+    color: #555 !important;
+    font-size: 8pt !important;
+  }
+
+  /* SAP table headers */
+  .sap-table__th,
+  .sap-native-table__th {
+    font-size: 6pt !important;
+    padding: 3pt 3pt !important;
+    color: #fff !important;
+    background: #1a1a2e !important;
+  }
+
+  /* SAP normal rows */
+  .sap-table__row td {
+    font-size: 7pt !important;
+    padding: 2pt 3pt !important;
+    height: auto !important;
+    color: #222 !important;
+  }
+
+  /* SAP native rows */
+  .sap-native-table__td,
+  .sap-native-table__row td {
+    font-size: 7pt !important;
+    color: #222 !important;
+    padding: 2pt 4pt !important;
+    height: auto !important;
+  }
+
+  /* SAP group headers */
+  .sap-table__group-header,
+  .sap-table__sub-header {
+    background: #eef2f7 !important;
+  }
+  .sap-table__group-name,
+  .sap-table__sub-name,
+  .sap-table__table-name {
+    color: #1a1a2e !important;
+    font-size: 8pt !important;
+  }
+
+  /* SAP date headers */
+  .sap-table__date-header {
+    background: #f5f0e0 !important;
+    border-top: 1.5pt solid #333 !important;
+  }
+  .sap-table__date-name {
+    color: #333 !important;
+    font-size: 9pt !important;
+  }
+
+  /* SAP subtotals & totals */
+  .sap-table__subtotal td,
+  .sap-table__date-total td {
+    font-size: 7pt !important;
+    color: #333 !important;
+  }
+  .sap-table__grand-total td,
+  .sap-native-table__total td {
+    font-size: 8pt !important;
+    color: #1a1a2e !important;
+    background: #e8edf3 !important;
+    border-top: 1.5pt solid #1a1a2e !important;
+    border-bottom: 1.5pt solid #1a1a2e !important;
+  }
+
+  /* SAP payment row */
+  .sap-table__payment-row td,
+  .sap-table__bill-subtotal td {
+    font-size: 7pt !important;
+    padding: 2pt 3pt !important;
+    height: auto !important;
+    color: #222 !important;
+  }
+
+  /* Badges in print */
+  .sap-type-badge,
+  .sap-gp-badge {
+    background: none !important;
+    color: #333 !important;
+    border: 0.5pt solid #999 !important;
+    font-size: 6pt !important;
+  }
+
+  /* Void rows */
+  .sap-table__row--void td {
+    color: #c62828 !important;
+  }
+
+  /* Filter label */
+  .sap-filter-label {
+    background: none !important;
+    border: none !important;
+    color: #333 !important;
+    font-size: 8pt !important;
+    padding: 4pt 0 !important;
+  }
+
+  /* Footer */
+  .sap-footer { padding: 4pt 0 !important; }
+  .sap-footer__row { font-size: 7pt !important; color: #333 !important; }
+  .sap-footer__row--bold { font-size: 8pt !important; color: #1a1a2e !important; }
+
+  /* Column groups */
+  .report-col-groups { display: none; }
+
+  /* Statement */
+  .sap-columns { gap: 10pt; padding: 4pt 0; }
+  .sap-analysis__title { font-size: 10pt !important; color: #1a1a2e !important; }
 }

@@ -1,5 +1,5 @@
 <template>
-  <q-page class="reports-hub">
+  <div class="reports-hub">
     <!-- ── Header ──────────────────────────────────────────────────── -->
     <div class="reports-hub__header">
       <div>
@@ -92,7 +92,7 @@
         <q-icon name="chevron_right" size="16px" class="reports-hub__quick-arrow" />
       </div>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script setup>

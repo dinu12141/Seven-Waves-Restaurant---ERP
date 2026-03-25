@@ -5,7 +5,7 @@
     <q-header class="waiter-top-bar">
       <q-toolbar class="waiter-toolbar">
         <!-- Brand -->
-        <q-icon name="restaurant" size="20px" color="orange-5" />
+        <q-icon name="restaurant" size="20px" color="orange-8" />
         <div class="waiter-brand q-ml-sm">
           <span class="brand-name">Seven Waves</span>
           <span class="brand-tag">WAITER</span>
@@ -31,7 +31,7 @@
         </template>
 
         <!-- Notification Bell -->
-        <q-btn flat round dense icon="notifications" color="grey-4" class="q-ml-sm" to="/waiter-app/notifs">
+        <q-btn flat round dense icon="notifications" color="grey-7" class="q-ml-sm" to="/waiter-app/notifs">
           <q-badge v-if="store.unreadNotifCount > 0" color="red" floating rounded>
             {{ store.unreadNotifCount > 9 ? '9+' : store.unreadNotifCount }}
           </q-badge>
@@ -55,7 +55,7 @@
                 </div>
               </div>
             </div>
-            <q-separator dark />
+            <q-separator />
             <!-- Sign out -->
             <q-item clickable v-close-popup class="wum-item wum-item--danger" @click="logout">
               <q-item-section avatar><q-icon name="logout" size="16px" /></q-item-section>
@@ -69,17 +69,17 @@
 
     <!-- ── Admin Waiter Selector ──────────────────────────────────────────── -->
     <div v-if="isAdminOrManager" class="waiter-selector-bar">
-      <q-icon name="swap_horiz" size="16px" color="purple-4" class="q-mr-sm" />
+      <q-icon name="swap_horiz" size="16px" color="purple-7" class="q-mr-sm" />
       <span class="selector-label">View as:</span>
       <q-btn-dropdown
         flat dense no-caps
         class="selector-dropdown"
         :label="store.profile?.display_name || 'Select Waiter'"
         icon="person"
-        color="purple-3"
+        color="purple-7"
         dropdown-icon="expand_more"
       >
-        <q-list dark class="waiter-selector-list">
+        <q-list class="waiter-selector-list">
           <!-- Reset to admin's own view -->
           <q-item
             clickable v-close-popup
@@ -87,14 +87,14 @@
             @click="store.initializeAs(null)"
           >
             <q-item-section avatar>
-              <q-icon name="admin_panel_settings" color="purple-4" size="18px" />
+              <q-icon name="admin_panel_settings" color="purple-7" size="18px" />
             </q-item-section>
             <q-item-section>
-              <q-item-label class="text-purple-3">Admin View (Own)</q-item-label>
+              <q-item-label class="text-purple-8">Admin View (Own)</q-item-label>
             </q-item-section>
           </q-item>
 
-          <q-separator dark />
+          <q-separator />
 
           <!-- Waiter list -->
           <q-item
@@ -111,8 +111,8 @@
               </div>
             </q-item-section>
             <q-item-section>
-              <q-item-label class="text-white">{{ w.display_name }}</q-item-label>
-              <q-item-label caption class="text-grey-5">{{ w.waiter_code }}</q-item-label>
+              <q-item-label>{{ w.display_name }}</q-item-label>
+              <q-item-label caption class="text-grey-7">{{ w.waiter_code }}</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
@@ -181,6 +181,7 @@ import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
 import { supabase } from 'src/boot/supabase'
+import { Notify } from 'quasar'
 
 const store = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
@@ -202,7 +203,10 @@ onMounted(async () => {
   }
   await store.initialize()
 })
-onUnmounted(() => store.cleanup())
+onUnmounted(() => {
+  store.cleanup()
+  if (removeShiftGuard) removeShiftGuard()
+})
 
 function initials(name) {
   if (!name) return '?'
@@ -227,28 +231,53 @@ const isEffectivelyOnShift = computed(() => isAdminOrManager.value || store.isOn
 provide('isEffectivelyOnShift', isEffectivelyOnShift)
 provide('isAdminOrManager', isAdminOrManager)
 
+// ── Off-shift route guard ────────────────────────────────────────────────────
+// Block off-shift waiters from accessing functional pages
+
+const removeShiftGuard = router.beforeEach((to, from, next) => {
+  // Only guard waiter-app routes
+  if (!to.path.startsWith('/waiter-app')) return next()
+  // Allow home and profile always
+  if (to.path === '/waiter-app' || to.path === '/waiter-app/profile' || to.path === '/waiter-app/notifs') return next()
+  // Admin/manager bypass
+  if (isAdminOrManager.value) return next()
+  // If not on shift, block
+  if (!store.isOnShift && !store.loading) {
+    Notify.create({
+      type: 'warning',
+      icon: 'lock',
+      message: 'You are off shift',
+      caption: 'You cannot access this feature while off shift.',
+      position: 'top',
+      timeout: 3000,
+    })
+    return next('/waiter-app')
+  }
+  next()
+})
+
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
 const tabs = computed(() => [
   { label: 'Home',    icon: 'home',                 to: '/waiter-app' },
+  { label: 'POS',     icon: 'point_of_sale',        to: '/waiter-app/pos' },
+  { label: 'Tables',  icon: 'table_restaurant',     to: '/waiter-app/tables' },
   { label: 'Inbox',   icon: 'move_to_inbox',        to: '/waiter-app/inbox',   badge: { value: store.pendingCount } },
   { label: 'Orders',  icon: 'assignment_ind',       to: '/waiter-app/orders',  badge: { value: store.myOrderCount } },
   { label: 'Alerts',  icon: 'notifications_active', to: '/waiter-app/alerts',  badge: { value: store.readyCount + orderStore.newOrderAlertCount } },
-  { label: 'Profile', icon: 'person',               to: '/waiter-app/profile' },
 ])
 </script>
 
 <style lang="scss" scoped>
 // ─── Layout ──────────────────────────────────────────────────────────────────
 .waiter-app-layout {
-  background: #090c14;
-  // No max-width — takes full screen as a standalone route
+  background: var(--erp-bg-page, #f1f5f9);
 }
 
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 .waiter-top-bar {
-  background: rgba(10, 14, 22, 0.97) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  box-shadow: none !important;
+  background: #fff !important;
+  border-bottom: 1px solid var(--erp-border, #e2e8f0) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
 }
 
 .waiter-toolbar {
@@ -266,7 +295,7 @@ const tabs = computed(() => [
 .brand-name {
   font-size: 14px;
   font-weight: 700;
-  color: #e5e7eb;
+  color: var(--erp-text-primary, #1e293b);
   letter-spacing: -0.2px;
 }
 
@@ -274,9 +303,9 @@ const tabs = computed(() => [
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: #f97316;
-  background: rgba(249, 115, 22, 0.12);
-  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.1);
+  border: 1px solid rgba(234, 88, 12, 0.25);
   border-radius: 4px;
   padding: 1px 5px;
   text-transform: uppercase;
@@ -309,11 +338,12 @@ const tabs = computed(() => [
 
 // ─── User Menu Dropdown ───────────────────────────────────────────────────────
 :deep(.waiter-user-menu) {
-  background: #111827 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #fff !important;
+  border: 1px solid var(--erp-border, #e2e8f0) !important;
   border-radius: 12px !important;
   overflow: hidden;
   min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
 }
 
 .wum-header {
@@ -322,22 +352,22 @@ const tabs = computed(() => [
 }
 .wum-info { flex: 1; min-width: 0; }
 .wum-name {
-  font-size: 13px; font-weight: 700; color: #f3f4f6;
+  font-size: 13px; font-weight: 700; color: var(--erp-text-primary, #1e293b);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .wum-code {
-  font-size: 11px; color: #6b7280; margin-top: 2px; font-weight: 500;
+  font-size: 11px; color: var(--erp-text-muted, #94a3b8); margin-top: 2px; font-weight: 500;
 }
 .wum-item {
   min-height: 44px !important;
   font-size: 13px !important;
-  color: #e5e7eb !important;
+  color: var(--erp-text-primary, #1e293b) !important;
   padding: 0 16px !important;
   gap: 10px;
   &--danger {
-    color: #f87171 !important;
-    :deep(.q-icon) { color: #f87171 !important; }
-    &:hover { background: rgba(239, 68, 68, 0.08) !important; }
+    color: #dc2626 !important;
+    :deep(.q-icon) { color: #dc2626 !important; }
+    &:hover { background: rgba(239, 68, 68, 0.06) !important; }
   }
 }
 
@@ -346,14 +376,14 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   padding: 6px 14px;
-  background: rgba(127, 86, 217, 0.06);
-  border-bottom: 1px solid rgba(127, 86, 217, 0.15);
+  background: rgba(127, 86, 217, 0.05);
+  border-bottom: 1px solid rgba(127, 86, 217, 0.12);
   min-height: 38px;
 }
 .selector-label {
   font-size: 11px;
   font-weight: 600;
-  color: #9ca3af;
+  color: #64748b;
   margin-right: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -364,19 +394,20 @@ const tabs = computed(() => [
   :deep(.q-btn__content) { gap: 6px; }
 }
 :deep(.waiter-selector-list) {
-  background: #111827 !important;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #fff !important;
+  border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 10px;
   min-width: 220px;
   max-height: 360px;
   overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 .selector-item {
   min-height: 48px !important;
   padding: 6px 14px !important;
-  &--active { background: rgba(127, 86, 217, 0.1) !important; }
-  &--reset { border-bottom: 1px solid rgba(255,255,255, 0.04); }
-  &:hover { background: rgba(255, 255, 255, 0.04) !important; }
+  &--active { background: rgba(127, 86, 217, 0.08) !important; }
+  &--reset { border-bottom: 1px solid var(--erp-border, #e2e8f0); }
+  &:hover { background: rgba(0, 0, 0, 0.03) !important; }
 }
 .selector-avatar {
   width: 32px; height: 32px; border-radius: 50%;
@@ -390,9 +421,9 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.15);
+  color: #dc2626;
   font-size: 0.78rem;
   padding: 10px 16px;
   min-height: 40px;
@@ -414,10 +445,9 @@ const tabs = computed(() => [
   display: flex;
   align-items: stretch;
   height: 64px;
-  background: rgba(10, 14, 22, 0.98);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #fff;
+  border-top: 1px solid var(--erp-border, #e2e8f0);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -432,7 +462,7 @@ const tabs = computed(() => [
   border: none;
   outline: none;
   cursor: pointer;
-  color: #6b7280;
+  color: #94a3b8;
   transition: color 0.15s ease;
   position: relative;
   -webkit-tap-highlight-color: transparent;
@@ -454,7 +484,7 @@ const tabs = computed(() => [
   }
 
   &--active {
-    color: #f97316;
+    color: #ea580c;
 
     &::before {
       content: '';
@@ -464,7 +494,7 @@ const tabs = computed(() => [
       transform: translateX(-50%);
       width: 32px;
       height: 2px;
-      background: #f97316;
+      background: #ea580c;
       border-radius: 0 0 3px 3px;
     }
   }

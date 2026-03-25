@@ -62,6 +62,50 @@
         </div>
       </div>
 
+      <!-- Quick Action Buttons -->
+      <div class="quick-actions q-mb-md">
+        <q-btn
+          unelevated no-caps
+          color="blue-8"
+          icon="map"
+          label="Open Map"
+          class="quick-action-btn"
+          @click="$router.push('/delivery-app/map')"
+        />
+        <q-btn
+          unelevated no-caps
+          color="green-8"
+          icon="phone"
+          label="Call Customer"
+          class="quick-action-btn"
+          :disable="!currentDelivery?.customer_phone"
+          @click="callCustomer"
+        />
+      </div>
+
+      <!-- Live GPS Tracking Indicator -->
+      <div v-if="trackingActive || currentDelivery?.status === 'picked_up'" class="tracking-section">
+        <div class="tracking-header">
+          <div class="tracking-dot" :class="{ 'tracking-dot--active': trackingActive }" />
+          <span class="tracking-label">{{ trackingActive ? 'Live Tracking Active' : 'Tracking Stopped' }}</span>
+          <q-chip v-if="upsertCount > 0" dense size="sm" color="blue-grey-8" text-color="cyan-4" class="tracking-count">
+            {{ upsertCount }} updates
+          </q-chip>
+        </div>
+        <div v-if="lastCoords" class="tracking-coords">
+          <q-icon name="my_location" size="14px" color="cyan-4" />
+          <span>{{ lastCoords.lat.toFixed(6) }}, {{ lastCoords.lng.toFixed(6) }}</span>
+        </div>
+        <div v-if="trackingError" class="tracking-error">
+          <q-icon name="warning" size="14px" color="amber" />
+          <span>{{ trackingError }}</span>
+        </div>
+        <div v-if="permissionState === 'denied'" class="tracking-error">
+          <q-icon name="gps_off" size="14px" color="red-4" />
+          <span>Location permission denied. Please enable GPS in device settings.</span>
+        </div>
+      </div>
+
       <!-- Customer Details -->
       <div class="info-section">
         <div class="section-heading">
@@ -135,9 +179,9 @@
           color="green-8"
           label="Mark Delivered"
           icon="check_circle"
-          class="action-btn"
+          class="action-btn action-btn--deliver"
           :loading="store.processing"
-          @click="handleDeliver"
+          @click="showDeliveryConfirm = true"
         />
       </div>
 
@@ -157,14 +201,54 @@
         </div>
       </div>
     </template>
+
+    <!-- ── Delivery Confirmation Dialog ──── -->
+    <q-dialog v-model="showDeliveryConfirm" persistent>
+      <q-card class="confirm-dialog">
+        <q-card-section class="confirm-header">
+          <q-icon name="check_circle" size="48px" color="green" />
+          <div class="confirm-title">Confirm Delivery</div>
+          <div class="confirm-sub">
+            Are you sure order <b>#{{ currentDelivery?.orderNumber }}</b> has been
+            successfully handed over to <b>{{ currentDelivery?.customer_name || 'the customer' }}</b>?
+          </div>
+        </q-card-section>
+
+        <q-card-section class="confirm-details" v-if="currentDelivery">
+          <div class="confirm-row">
+            <q-icon name="location_on" size="16px" color="grey-5" />
+            <span>{{ currentDelivery.delivery_address || 'N/A' }}</span>
+          </div>
+          <div class="confirm-row">
+            <q-icon name="payments" size="16px" color="amber" />
+            <span class="confirm-amount">Rs. {{ Number(currentDelivery.orderTotal || 0).toFixed(2) }}</span>
+          </div>
+        </q-card-section>
+
+        <q-card-actions class="confirm-actions">
+          <q-btn flat no-caps label="Cancel" color="grey" v-close-popup class="confirm-cancel-btn" />
+          <q-btn
+            unelevated no-caps
+            color="green-8"
+            icon="check"
+            label="Yes, Mark Delivered"
+            class="confirm-deliver-btn"
+            :loading="store.processing"
+            @click="handleConfirmDeliver"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
+import { useDeliveryTracking } from 'src/composables/useDeliveryTracking'
 
 const store = useDeliveryStore()
+const showDeliveryConfirm = ref(false)
 
 // If no active delivery is set, try to find one from accepted assignments
 onMounted(() => {
@@ -180,6 +264,19 @@ const currentDelivery = computed(() => {
   if (store.acceptedAssignments.length) return store.acceptedAssignments[0]
   return null
 })
+
+// Reactive refs for the tracking composable
+const currentOrderId = computed(() => currentDelivery.value?.order_id || null)
+const currentStatus = computed(() => currentDelivery.value?.status || null)
+
+// GPS Delivery Tracking — auto-starts on 'picked_up', auto-stops on 'delivered'
+const {
+  isActive: trackingActive,
+  lastCoords,
+  trackingError,
+  upsertCount,
+  permissionState,
+} = useDeliveryTracking(currentOrderId, currentStatus)
 
 const orderIsReady = computed(() => {
   if (!currentDelivery.value) return false
@@ -268,9 +365,16 @@ async function handlePickUp() {
   await store.pickUp(currentDelivery.value.id)
 }
 
-async function handleDeliver() {
+
+async function handleConfirmDeliver() {
   if (!currentDelivery.value) return
   await store.deliver(currentDelivery.value.id)
+  showDeliveryConfirm.value = false
+}
+
+function callCustomer() {
+  const phone = currentDelivery.value?.customer_phone
+  if (phone) window.location.href = `tel:${phone}`
 }
 </script>
 
@@ -522,6 +626,20 @@ async function handleDeliver() {
 }
 .total-value { color: #a5d6a7; }
 
+// ── Quick Actions ───────────────────────
+.quick-actions {
+  display: flex;
+  gap: 8px;
+}
+.quick-action-btn {
+  flex: 1;
+  height: 42px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 10px;
+  letter-spacing: 0.2px;
+}
+
 // ── Action Section ──────────────────────
 .action-section {
   margin: 20px 0;
@@ -560,4 +678,176 @@ async function handleDeliver() {
   color: #bdbdbd;
   font-weight: 600;
 }
+// ── Live Tracking Indicator ────────────
+.tracking-section {
+  background: rgba(0, 188, 212, 0.06);
+  border: 1px solid rgba(0, 188, 212, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.tracking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tracking-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #616161;
+  transition: background 0.3s;
+
+  &--active {
+    background: #00e676;
+    box-shadow: 0 0 8px rgba(0, 230, 118, 0.6);
+    animation: trackPulse 1.5s ease-in-out infinite;
+  }
+}
+@keyframes trackPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(0, 230, 118, 0.3); }
+  50% { box-shadow: 0 0 14px rgba(0, 230, 118, 0.8); }
+}
+.tracking-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b2ebf2;
+  flex: 1;
+}
+.tracking-count {
+  font-size: 10px !important;
+}
+.tracking-coords {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #80cbc4;
+  margin-top: 6px;
+  font-family: 'Roboto Mono', monospace;
+}
+.tracking-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #ffb74d;
+  margin-top: 6px;
+}
+
+.action-btn--deliver {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+// ── Confirmation Dialog ────────────────
+.confirm-dialog {
+  background: #1a1e2e !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px !important;
+  min-width: 320px; max-width: 400px;
+}
+.confirm-header { text-align: center; padding: 24px 20px 12px; }
+.confirm-title { font-size: 20px; font-weight: 800; color: #e8eaf0; margin-top: 12px; }
+.confirm-sub { font-size: 13px; color: #9e9e9e; margin-top: 8px; line-height: 1.5; b { color: #e0e0e0; } }
+.confirm-details { padding: 0 20px 12px; }
+.confirm-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #bdbdbd; padding: 4px 0; }
+.confirm-amount { font-weight: 800; color: #a5d6a7; }
+.confirm-actions { padding: 12px 20px 20px; justify-content: flex-end; gap: 8px; }
+.confirm-cancel-btn { border-radius: 10px; }
+.confirm-deliver-btn { border-radius: 10px; height: 42px; font-weight: 700; }
 </style>
+
+<style lang="scss">
+body.body--light {
+  .delivery-active-page {
+    background: #f8fafc;
+  }
+
+  // Empty
+  .empty-title { color: #64748b; }
+  .empty-sub { color: #94a3b8; }
+
+  // Order header
+  .order-number { color: #0f172a; }
+  .source-badge { color: #7c3aed; background: rgba(124, 58, 237, 0.08); }
+
+  // Progress stepper
+  .progress-stepper {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .step__circle {
+    border-color: #cbd5e1;
+    color: #94a3b8;
+    background: #ffffff;
+  }
+  .step__label { color: #94a3b8; }
+  .step__connector { background: #e2e8f0; }
+  .step--done {
+    .step__circle { background: #16a34a; border-color: #16a34a; color: #fff; }
+    .step__label { color: #16a34a; }
+    .step__connector { background: #16a34a; }
+  }
+  .step--current {
+    .step__circle { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .step__label { color: #2563eb; }
+  }
+
+  // Kitchen alert
+  .kitchen-alert {
+    background: #f0fdf4;
+    border-color: #86efac;
+  }
+  .kitchen-alert__title { color: #16a34a; }
+  .kitchen-alert__sub { color: #22c55e; }
+
+  // Info sections
+  .info-section {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .section-heading { color: #475569; }
+  .info-label { color: #94a3b8; }
+  .info-value { color: #334155; }
+  .info-value--link { color: #2563eb; }
+  .info-value--note { color: #64748b; }
+
+  // Items
+  .item-row { border-bottom-color: #f1f5f9; }
+  .item-qty { color: #7c3aed; }
+  .item-name { color: #334155; }
+  .item-price { color: #16a34a; }
+  .order-total {
+    border-top-color: #e2e8f0;
+    color: #0f172a;
+  }
+  .total-value { color: #16a34a; }
+
+  // Timing
+  .timing-section { background: #f8fafc; }
+  .timing-label { color: #94a3b8; }
+  .timing-value { color: #475569; }
+
+  // Tracking indicator
+  .tracking-section {
+    background: #f0fdfa;
+    border-color: #99f6e4;
+  }
+  .tracking-label { color: #0d9488; }
+  .tracking-coords { color: #0f766e; }
+  .tracking-error { color: #d97706; }
+
+  // Confirm dialog
+  .confirm-dialog {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+  }
+  .confirm-title { color: #0f172a; }
+  .confirm-sub { color: #64748b; b { color: #334155; } }
+  .confirm-row { color: #475569; }
+  .confirm-amount { color: #16a34a; }
+}
+

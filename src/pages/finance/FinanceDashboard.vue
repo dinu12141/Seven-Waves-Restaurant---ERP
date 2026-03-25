@@ -1,126 +1,219 @@
 <template>
-  <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="finance"
-      title="Finance Dashboard"
-      breadcrumbs="Finance / Overview"
-    />
+  <q-page class="q-pa-md finance-page">
+    <ERPToolbar moduleName="finance" title="Finance Dashboard" breadcrumbs="Finance / Overview" showRefresh @refresh="fetchAll" />
 
     <!-- KPI Cards -->
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div v-for="(stat, i) in kpis" :key="i" class="col-12 col-sm-6 col-md-4 col-lg-2">
-        <DashboardCard v-bind="stat" />
+    <div class="row q-col-gutter-md q-mb-md">
+      <div v-for="(kpi, i) in kpis" :key="i" class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <div class="fin-kpi-card">
+          <div class="fin-kpi-card__icon" :style="{ background: kpi.bg }">
+            <q-icon :name="kpi.icon" size="20px" :color="kpi.color" />
+          </div>
+          <div class="fin-kpi-card__body">
+            <div class="fin-kpi-card__label">{{ kpi.label }}</div>
+            <div class="fin-kpi-card__value">{{ kpi.isCurrency ? formatCurrency(kpi.value) : kpi.value }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="row q-col-gutter-md">
-      <!-- Finance Chart -->
+    <!-- Main Content Row -->
+    <div class="row q-col-gutter-md q-mb-md">
+      <!-- Revenue & Expense Chart -->
       <div class="col-12 col-md-8">
-        <DashboardChart
-          title="Revenue & Expenses"
-          subtitle="Daily trend over current month"
-          type="area"
-          :series="financeSeries"
-          :options="financeOptions"
-          :loading="loading"
-        />
+        <div class="fin-panel">
+          <div class="fin-panel__header">
+            <span class="fin-panel__title">Revenue vs Expenses</span>
+            <span class="fin-panel__subtitle">Last 7 days</span>
+          </div>
+          <div class="fin-panel__body">
+            <DashboardChart v-if="chartReady" title="" type="area" :series="chartSeries" :options="chartOptions" :loading="loading" />
+            <div v-else class="text-center text-grey-6 q-pa-xl">Loading chart data...</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Unpaid AP -->
+      <!-- Quick Actions & Recent Activity -->
       <div class="col-12 col-md-4">
-        <q-card class="erp-dashboard-panel bg-dark text-white shadow-1 column full-height">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-subtitle1 text-weight-bold">Pending Postings</div>
-          </q-card-section>
-          <q-card-section class="col q-pt-sm">
-            <q-list class="erp-activity-list" padding>
-              <q-item v-for="posting in postings" :key="posting.id" class="q-pa-sm erp-activity-item">
-                <q-item-section avatar top>
-                  <q-avatar size="32px" color="blue-grey-8" text-color="white" icon="receipt_long" />
+        <div class="fin-panel">
+          <div class="fin-panel__header">
+            <span class="fin-panel__title">Quick Actions</span>
+          </div>
+          <div class="fin-panel__body q-pa-sm">
+            <q-list dense class="fin-action-list">
+              <q-item v-for="action in quickActions" :key="action.to" clickable class="fin-action-item" @click="$router.push(action.to)">
+                <q-item-section avatar>
+                  <q-avatar size="32px" :color="action.color" text-color="white" :icon="action.icon" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-body2 text-weight-medium">{{ posting.ref }}</q-item-label>
-                  <q-item-label caption class="text-grey-5">{{ posting.type }}</q-item-label>
+                  <q-item-label class="text-body2 text-weight-medium text-white">{{ action.label }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <div class="text-caption text-right text-white">{{ posting.amount }}</div>
+                  <q-icon name="chevron_right" color="grey-6" size="18px" />
                 </q-item-section>
               </q-item>
-              <div v-if="postings.length === 0" class="text-grey-6 text-center q-pa-md">
-                No pending postings.
-              </div>
             </q-list>
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
+
+        <!-- Pending Items -->
+        <div class="fin-panel q-mt-md">
+          <div class="fin-panel__header">
+            <span class="fin-panel__title">Recent Journal Entries</span>
+            <q-btn flat dense size="sm" color="primary" label="View All" @click="$router.push('/finance/journal-entries')" />
+          </div>
+          <div class="fin-panel__body q-pa-sm">
+            <q-list dense>
+              <q-item v-for="je in recentJournals" :key="je.id" class="fin-activity-item">
+                <q-item-section avatar>
+                  <q-avatar size="28px" color="blue-grey-8" text-color="white" icon="receipt" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-caption text-white">{{ je.description || je.reference_type }}</q-item-label>
+                  <q-item-label caption class="text-grey-5">{{ formatDate(je.doc_date) }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <div class="text-caption text-right text-white">{{ formatCurrency(je.total_dr) }}</div>
+                </q-item-section>
+              </q-item>
+              <div v-if="recentJournals.length === 0" class="text-grey-6 text-center q-pa-md text-caption">No recent entries</div>
+            </q-list>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Account Summary -->
+    <div class="row q-col-gutter-md">
+      <div class="col-12 col-md-6">
+        <div class="fin-panel">
+          <div class="fin-panel__header">
+            <span class="fin-panel__title">Account Balances</span>
+            <q-btn flat dense size="sm" color="primary" label="Full Ledger" @click="$router.push('/finance/general-ledger')" />
+          </div>
+          <div class="fin-panel__body">
+            <q-table :rows="accountBalances" :columns="balanceCols" row-key="code" flat dark dense hide-bottom :rows-per-page-options="[0]"
+              class="fin-table" no-data-label="No account data" :loading="loading" />
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="fin-panel">
+          <div class="fin-panel__header">
+            <span class="fin-panel__title">Expense Breakdown</span>
+            <q-btn flat dense size="sm" color="primary" label="All Expenses" @click="$router.push('/finance/expenses')" />
+          </div>
+          <div class="fin-panel__body">
+            <q-table :rows="recentExpenses" :columns="expenseCols" row-key="id" flat dark dense hide-bottom :rows-per-page-options="[0]"
+              class="fin-table" no-data-label="No expenses recorded" :loading="loading" />
+          </div>
+        </div>
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
+import { fetchDashboardKPIs, fetchJournalEntries, fetchAccountBalances, fetchExpenses } from 'src/services/financeService'
 
 const loading = ref(false)
-let timer = null
-
+const chartReady = ref(false)
 const kpis = ref([
-  { title: 'Today Revenue', value: '0', icon: 'account_balance', color: 'green', isCurrency: true },
-  { title: 'Payment Summary', value: '0', icon: 'payments', color: 'blue', isCurrency: true },
-  { title: 'Unpaid Invoices', value: '0', icon: 'request_quote', color: 'red', isCurrency: true },
-  { title: 'Net Margin', value: '0%', icon: 'trending_up', color: 'teal', isCurrency: false },
-  { title: 'Cashier Totals', value: '0', icon: 'local_atm', color: 'purple', isCurrency: true },
-  { title: 'Expense Today', value: '0', icon: 'shopping_cart', color: 'orange', isCurrency: true },
+  { label: 'Today Revenue', value: 0, icon: 'trending_up', color: 'green', bg: 'rgba(16,185,129,0.12)', isCurrency: true },
+  { label: 'Today Expenses', value: 0, icon: 'trending_down', color: 'red', bg: 'rgba(239,68,68,0.12)', isCurrency: true },
+  { label: 'Bank Balance', value: 0, icon: 'account_balance', color: 'blue', bg: 'rgba(59,130,246,0.12)', isCurrency: true },
+  { label: 'Receivables', value: 0, icon: 'request_quote', color: 'orange', bg: 'rgba(245,158,11,0.12)', isCurrency: true },
+  { label: 'Payables', value: 0, icon: 'receipt_long', color: 'purple', bg: 'rgba(139,92,246,0.12)', isCurrency: true },
+  { label: 'Payroll Due', value: 0, icon: 'payments', color: 'teal', bg: 'rgba(20,184,166,0.12)', isCurrency: true },
 ])
 
-const postings = ref([])
+const quickActions = [
+  { label: 'New Journal Entry', icon: 'add_circle', color: 'blue-8', to: '/finance/journal-entries' },
+  { label: 'Record Expense', icon: 'money_off', color: 'red-8', to: '/finance/expenses' },
+  { label: 'Cash Transaction', icon: 'account_balance_wallet', color: 'green-8', to: '/finance/cash-bank' },
+  { label: 'Run Payroll', icon: 'play_circle', color: 'purple-8', to: '/finance/payroll/run' },
+  { label: 'Financial Reports', icon: 'assessment', color: 'orange-8', to: '/finance/reports' },
+]
 
-const financeSeries = ref([{ name: 'Revenue', data: [] }, { name: 'Expense', data: [] }])
-const financeOptions = ref({})
+const recentJournals = ref([])
+const accountBalances = ref([])
+const recentExpenses = ref([])
 
-const fetchData = async () => {
-  loading.value = true
-  setTimeout(() => {
-    kpis.value[0].value = '850000'
-    kpis.value[1].value = '800000'
-    kpis.value[2].value = '150000'
-    kpis.value[3].value = '45%'
-    kpis.value[4].value = '420000'
-    kpis.value[5].value = '50000'
+const balanceCols = [
+  { name: 'code', label: 'Code', field: 'code', align: 'left', style: 'width: 80px' },
+  { name: 'name', label: 'Account', field: 'name', align: 'left' },
+  { name: 'type', label: 'Type', field: 'account_type', align: 'left' },
+  { name: 'balance', label: 'Balance', field: 'balance', align: 'right', format: v => formatCurrency(v) },
+]
 
-    postings.value = [
-      { id: 1, ref: 'GJ-40192', type: 'AP Invoice', amount: '25,000' },
-      { id: 2, ref: 'GJ-40193', type: 'Payroll', amount: '450,000' }
-    ]
+const expenseCols = [
+  { name: 'date', label: 'Date', field: 'expense_date', align: 'left' },
+  { name: 'category', label: 'Category', field: row => row.expense_categories?.name || '-', align: 'left' },
+  { name: 'description', label: 'Description', field: 'description', align: 'left' },
+  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', format: v => formatCurrency(v) },
+  { name: 'status', label: 'Status', field: 'status', align: 'center' },
+]
 
-    financeSeries.value = [
-      { name: 'Revenue', data: [150, 200, 180, 220, 300, 450, 400] },
-      { name: 'Expense', data: [50, 60, 40, 80, 100, 120, 90] }
-    ]
-    financeOptions.value = {
-      chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
-      theme: { mode: 'dark' },
-      xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { colors: '#9ca3af' } } },
-      yaxis: { labels: { style: { colors: '#9ca3af' } } },
-      colors: ['#10b981', '#ef4444'],
-      grid: { borderColor: '#374151', strokeDashArray: 4 },
-      dataLabels: { enabled: false },
-      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } }
-    }
+const chartSeries = ref([{ name: 'Revenue', data: [] }, { name: 'Expenses', data: [] }])
+const chartOptions = ref({
+  chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
+  theme: { mode: 'dark' },
+  xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { colors: '#9ca3af' } } },
+  yaxis: { labels: { style: { colors: '#9ca3af' } } },
+  colors: ['#10b981', '#ef4444'],
+  grid: { borderColor: '#1f2937', strokeDashArray: 4 },
+  dataLabels: { enabled: false },
+  stroke: { curve: 'smooth', width: 2 },
+  fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
+})
 
-    loading.value = false
-  }, 600)
+function formatCurrency(val) {
+  return Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+function formatDate(d) {
+  if (!d) return '-'
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-onMounted(() => {
-  fetchData()
-  timer = setInterval(fetchData, 30000)
-})
+async function fetchAll() {
+  loading.value = true
+  try {
+    const [kpiRes, jeRes, balRes, expRes] = await Promise.all([
+      fetchDashboardKPIs(),
+      fetchJournalEntries({ limit: 5 }),
+      fetchAccountBalances(),
+      fetchExpenses({ limit: 8 }),
+    ])
 
-onUnmounted(() => {
-  clearInterval(timer)
-})
+    if (kpiRes) {
+      kpis.value[0].value = kpiRes.todayRevenue
+      kpis.value[1].value = kpiRes.todayExpenses
+      kpis.value[2].value = kpiRes.bankBalance
+      kpis.value[3].value = kpiRes.outstandingAR
+      kpis.value[4].value = kpiRes.outstandingAP
+      kpis.value[5].value = kpiRes.payrollDue
+    }
+
+    recentJournals.value = jeRes.data || []
+    accountBalances.value = (balRes.data || []).slice(0, 10)
+    recentExpenses.value = expRes.data || []
+
+    chartSeries.value = [
+      { name: 'Revenue', data: [150, 200, 180, 220, 300, 450, 400] },
+      { name: 'Expenses', data: [50, 60, 40, 80, 100, 120, 90] },
+    ]
+    chartReady.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchAll)
 </script>
+
+<style scoped lang="scss">
+@import 'src/css/finance-common.scss';
+</style>

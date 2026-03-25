@@ -3,7 +3,7 @@
     <div class="row q-col-gutter-lg">
       <!-- Left: Sub Categories List -->
       <div class="col-12 col-md-5">
-        <q-card class="bg-dark text-white border-subtle erp-card">
+        <q-card class="erp-card" flat bordered>
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Sub Categories</div>
             <q-space />
@@ -15,7 +15,7 @@
           <q-card-section class="q-pa-md">
             <!-- Filter by category -->
             <q-select
-              dark outlined dense
+              outlined dense
               v-model="selectedCategoryId"
               :options="categoryOptions"
               emit-value
@@ -25,7 +25,7 @@
               class="q-mb-md"
             />
 
-            <q-list dark separator class="subcategory-list">
+            <q-list separator class="subcategory-list">
               <q-item
                 v-for="sub in filteredSubCategories"
                 :key="sub.id"
@@ -64,7 +64,7 @@
 
       <!-- Right: Kitchen Assignment -->
       <div class="col-12 col-md-7">
-        <q-card class="bg-dark text-white border-subtle erp-card" :class="{ 'disabled-overlay': !selectedSubId }">
+        <q-card class="erp-card" flat bordered :class="{ 'disabled-overlay': !selectedSubId }">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-secondary">
               Kitchen Assignment
@@ -84,7 +84,7 @@
                 Select which kitchen should receive KOT tickets for items in <strong class="text-primary">{{ selectedSub?.name }}</strong>:
               </div>
 
-              <q-list dark separator>
+              <q-list separator>
                 <q-item
                   v-for="kitchen in kitchens"
                   :key="kitchen.id"
@@ -135,10 +135,10 @@
         </q-card>
 
         <!-- Summary Card -->
-        <q-card class="bg-dark text-white border-subtle q-mt-md" v-if="enrichedSubs.length > 0">
+        <q-card flat bordered class="q-mt-md" v-if="enrichedSubs.length > 0">
           <q-card-section>
             <div class="text-subtitle2 text-primary q-mb-sm">KOT Routing Summary</div>
-            <q-markup-table dark dense flat class="text-grey-3">
+            <q-markup-table dense flat>
               <thead>
                 <tr>
                   <th class="text-left">Category</th>
@@ -163,7 +163,7 @@
 
     <!-- Add Kitchen Dialog -->
     <q-dialog v-model="kitchenDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="min-width: 400px">
+      <q-card style="min-width: 400px">
         <q-card-section class="row items-center">
           <div class="text-h6">Add Kitchen Station</div>
           <q-space />
@@ -171,14 +171,13 @@
         </q-card-section>
         <q-card-section class="q-gutter-md">
           <q-input
-            dark outlined
+            outlined
             v-model="kitchenDialog.name"
             label="Kitchen Name"
             placeholder="e.g. PASTRY STATION"
             :rules="[v => !!v || 'Name is required']"
           />
           <q-toggle
-            dark
             v-model="kitchenDialog.isCashierDisplay"
             label="Cashier Display (not a cooking station)"
             color="amber"
@@ -199,7 +198,7 @@
 
     <!-- Add Sub Category Dialog -->
     <q-dialog v-model="subCatDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="min-width: 400px">
+      <q-card style="min-width: 400px">
         <q-card-section class="row items-center">
           <div class="text-h6">Add Sub Category</div>
           <q-space />
@@ -207,7 +206,7 @@
         </q-card-section>
         <q-card-section class="q-gutter-md">
           <q-select
-            dark outlined
+            outlined
             v-model="subCatDialog.categoryId"
             :options="categories.map(c => ({ label: c.name, value: c.id }))"
             emit-value
@@ -216,7 +215,7 @@
             :rules="[v => !!v || 'Category is required']"
           />
           <q-input
-            dark outlined
+            outlined
             v-model="subCatDialog.name"
             label="Sub Category Name"
             placeholder="e.g. PASTA"
@@ -495,7 +494,7 @@ async function createSubCategory() {
   overflow-y: auto;
 }
 .border-subtle {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--erp-border);
 }
 .selected-sub {
   border-left: 3px solid var(--q-primary);

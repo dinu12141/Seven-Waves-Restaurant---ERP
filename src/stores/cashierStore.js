@@ -109,7 +109,7 @@ export const useCashierStore = defineStore('cashier', () => {
         id, order_number, order_type, order_source, status, payment_status,
         customer_name, customer_phone, subtotal, tax_amount, discount_amount,
         total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
-        table_id, branch_id,
+        table_id, table_number, branch_id,
         restaurant_tables ( table_number, section ),
         waiter:profiles!orders_waiter_id_fkey ( full_name ),
         order_items (
@@ -472,8 +472,27 @@ export const useCashierStore = defineStore('cashier', () => {
     const { eventType, new: newRow, old: oldRow } = payload
 
     if (eventType === 'INSERT') {
-      if (!['paid', 'cancelled', 'completed', 'pending_waiter'].includes(newRow.status)) {
+      // Always refresh for any new order (including pending_waiter from website)
+      // so the cashier sees it immediately in the queue
+      const isValidForQueue = [
+        'pending', 'pending_waiter', 'accepted', 'preparing',
+        'ready', 'served', 'invoiced',
+      ].includes(newRow.status)
+      if (isValidForQueue) {
         debouncedRefresh()
+        // Notify cashier of new website/delivery orders
+        if (newRow.status === 'pending_waiter' || newRow.status === 'accepted') {
+          Notify.create({
+            message: `New Order Received! (#${newRow.order_number})`,
+            caption: newRow.status === 'pending_waiter'
+              ? '⚡ Awaiting waiter acceptance — check Billing Queue.'
+              : '✅ Order accepted — check Billing Queue.',
+            color: 'orange-9',
+            icon: 'receipt_long',
+            position: 'top-right',
+            timeout: 6000,
+          })
+        }
       }
     } else if (eventType === 'UPDATE') {
       const idx = billingOrders.value.findIndex((o) => o.id === newRow.id)
@@ -504,15 +523,18 @@ export const useCashierStore = defineStore('cashier', () => {
         if (oldState.status === 'pending_waiter' && newRow.status === 'accepted') {
           Notify.create({
             message: `Order Accepted! (#${newRow.order_number})`,
-            caption: 'Waiter has started processing.',
+            caption: 'Waiter/Delivery boy accepted — billing queue updated.',
             color: 'orange-8',
             icon: 'check_circle',
             position: 'top-right',
             timeout: 5000,
           })
+          // Always do a full refresh when accepted — we need complete order data (items, KOTs)
+          debouncedRefresh()
+          return
         }
 
-        // Update local state
+        // Update local state in-place
         billingOrders.value[idx] = {
           ...billingOrders.value[idx],
           status: newRow.status,
@@ -528,23 +550,16 @@ export const useCashierStore = defineStore('cashier', () => {
           debouncedRefresh()
         }
       } else {
-        // New active order not in list
+        // Order not in local list yet — add it via full refresh
         const isValidForQueue = [
-          'pending',
-          'pending_waiter',
-          'accepted',
-          'preparing',
-          'ready',
-          'served',
-          'invoiced',
-          'paid',
+          'pending', 'pending_waiter', 'accepted', 'preparing',
+          'ready', 'served', 'invoiced', 'paid',
         ].includes(newRow.status)
         if (isValidForQueue) {
           debouncedRefresh()
-
           if (newRow.status === 'accepted') {
             Notify.create({
-              message: `New Order Received! (#${newRow.order_number})`,
+              message: `New Order in Queue! (#${newRow.order_number})`,
               caption: 'Check Billing Queue.',
               color: 'orange-9',
               icon: 'receipt_long',
@@ -628,7 +643,7 @@ export const useCashierStore = defineStore('cashier', () => {
       accepted_at: order.accepted_at,
       waiter_id: order.waiter_id,
       table_id: order.table_id,
-      tableNumber: order.restaurant_tables?.table_number || '—',
+      tableNumber: order.restaurant_tables?.table_number || order.table_number || '—',
       tableSection: order.restaurant_tables?.section || '',
       waiterName: order.waiter?.full_name || '—',
       order_items: (order.order_items || []).map((oi) => ({

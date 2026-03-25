@@ -1,5 +1,5 @@
 <template>
-  <q-page class="touch-menu-page column no-wrap window-height bg-dark text-white p-x-md">
+  <q-page class="touch-menu-page column no-wrap window-height">
     <!-- Hero / Smart Section Area -->
     <div
       class="q-px-md q-py-sm touch-hero border-bottom row items-center no-wrap justify-between overflow-hidden"
@@ -18,15 +18,14 @@
         style="min-width: 350px"
       >
         <!-- Search Input -->
-        <div class="col relative-position touch-search bg-grey-10 rounded-borders border-accent">
+        <div class="col relative-position touch-search rounded-borders tm-search-wrap">
           <q-input
             v-model="searchQuery"
             borderless
             dense
-            dark
             color="primary"
             placeholder="What are you craving?"
-            class="q-px-md font-medium text-white search-input shadow-inner"
+            class="q-px-md font-medium search-input shadow-inner"
             debounce="300"
           >
             <template v-slot:prepend>
@@ -45,18 +44,16 @@
         <!-- Filter Dropdown Button -->
         <q-btn
           outline
-          color="grey-5"
           :class="{
             'text-primary border-primary bg-primary-transparent': activeCategoryId !== 'all',
           }"
           icon="filter_alt"
-          class="shadow-5 bg-dark border-accent hover-primary transition-03"
+          class="tm-filter-btn shadow-5 hover-primary transition-03"
           style="width: 40px; height: 40px; border-radius: 8px"
         >
           <q-menu
-            fit
             auto-close
-            class="bg-dark border-accent text-white shadow-10"
+            class="tm-menu shadow-10"
             style="border-radius: 12px; min-width: 200px"
           >
             <q-list padding class="font-medium">
@@ -73,7 +70,7 @@
                 <q-item-section class="text-subtitle2">All Menu</q-item-section>
               </q-item>
 
-              <q-separator dark class="q-my-xs transparency-05" />
+              <q-separator class="q-my-xs transparency-05" />
 
               <q-item
                 v-for="cat in categories"
@@ -186,7 +183,7 @@
     <q-dialog v-model="detailsModalOpen" persistent backdrop-filter="blur(10px)">
       <q-card
         v-if="selectedItem"
-        class="bg-dark text-white shadow-24 border-accent"
+        class="tm-detail-card shadow-24"
         style="width: 500px; max-width: 90vw; border-radius: 20px"
       >
         <q-img :src="selectedItem.image_url" height="300px">
@@ -238,7 +235,7 @@
           </div>
         </q-card-section>
 
-        <q-card-actions class="q-pa-md border-top bg-black-03">
+        <q-card-actions class="q-pa-md border-top tm-actions-bg">
           <q-btn
             color="primary"
             class="full-width touch-confirm-btn font-extrabold text-h6"
@@ -515,80 +512,143 @@ onMounted(() => {
 <style scoped lang="scss">
 .touch-menu-page {
   font-family: 'Inter', sans-serif;
-  background-color: #0b0e14; /* ERP specific dark theme */
-  height: calc(100vh - 70px) !important; /* Adjust for header height */
+  height: calc(100vh - 70px) !important;
   max-width: 100vw;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-.bg-card {
-  background: rgba(30, 41, 59, 0.4);
-}
-.border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-.border-right {
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-}
-.border-top {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-.border-accent {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.transparency-05 {
-  opacity: 0.5;
-}
+// ── Theme-adaptive backgrounds ─────────────────────────────────────────────
+:global(.body--dark) .touch-menu-page { background-color: #0b0e14; color: #f8fafc; }
+:global(.body--light) .touch-menu-page { background-color: #f8fafc; color: #0f172a; }
 
+// Hero section
 .touch-hero {
   height: 60px;
+}
+:global(.body--dark) .touch-hero {
   background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 60%);
+}
+:global(.body--light) .touch-hero {
+  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.06), transparent 60%);
 }
 
 .touch-hero-title {
   font-size: 18px;
   line-height: 1.1;
   letter-spacing: -0.5px;
+}
+:global(.body--dark) .touch-hero-title {
   background: linear-gradient(90deg, #f8fafc, #94a3b8);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-
-.search-input:focus-within {
-  background: rgba(30, 41, 59, 1);
-  border-color: var(--q-primary);
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+:global(.body--light) .touch-hero-title {
+  background: linear-gradient(90deg, #0f172a, #64748b);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.smart-card {
-  border-radius: 12px;
-  min-width: 250px;
-
-  &:active {
-    transform: scale(0.97);
-  }
-  &:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(37, 99, 235, 0.3);
-  }
+// Search bar
+.tm-search-wrap {
+  transition: background 0.2s, border-color 0.2s;
+}
+:global(.body--dark) .tm-search-wrap {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+:global(.body--light) .tm-search-wrap {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
+// Filter button
+.tm-filter-btn {
+  transition: all 0.2s;
+}
+:global(.body--dark) .tm-filter-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+:global(.body--light) .tm-filter-btn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #475569;
+}
+
+// Filter dropdown menu
+.tm-menu {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+:global(.body--dark) .tm-menu {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+}
+:global(.body--light) .tm-menu {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+// Category filter bar
 .category-filter-bar {
+  transition: background 0.25s;
+}
+:global(.body--dark) .category-filter-bar {
   background: rgba(15, 23, 42, 0.4);
 }
+:global(.body--light) .category-filter-bar {
+  background: rgba(241, 245, 249, 0.8);
+}
 
+// Borders
+.border-bottom {
+  border-bottom: 1px solid rgba(128,128,128,0.12);
+}
+.border-right {
+  border-right: 1px solid rgba(128,128,128,0.12);
+}
+.border-top {
+  border-top: 1px solid rgba(128,128,128,0.12);
+}
+.border-accent {
+  border: 1px solid rgba(128,128,128,0.12);
+}
+
+.transparency-05 { opacity: 0.5; }
+
+// Item detail card
+.tm-detail-card {
+  transition: background 0.2s;
+}
+:global(.body--dark) .tm-detail-card {
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+:global(.body--light) .tm-detail-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+
+.tm-actions-bg {
+  background: rgba(0, 0, 0, 0.04);
+}
+:global(.body--dark) .tm-actions-bg { background: rgba(0, 0, 0, 0.2); }
+:global(.body--light) .tm-actions-bg { background: rgba(0, 0, 0, 0.02); }
+
+// Category slide cards
 .category-slide-card {
   width: 48px;
   opacity: 0.7;
-
-  &:hover {
-    opacity: 1;
-    transform: translateY(-2px);
-  }
-
+  &:hover { opacity: 1; transform: translateY(-2px); }
   &--active {
     opacity: 1;
-
     .cat-img-wrapper {
       border-color: var(--q-primary);
       box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
@@ -614,116 +674,62 @@ onMounted(() => {
   display: flex;
   width: max-content;
   animation: scrollLeft 120s linear infinite;
-
-  &.paused {
-    animation-play-state: paused;
-  }
+  &.paused { animation-play-state: paused; }
 }
 
-.marquee-content {
-  display: flex;
-}
+.marquee-content { display: flex; }
 
 @keyframes scrollLeft {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-16.66666%); /* Translates exactly 1 block of the 6 loops */
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-16.66666%); }
 }
 
-.custom-slide-caption {
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 100%);
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-}
-
-.bg-dark-glass {
-  background: rgba(30, 41, 59, 0.8);
-}
-
-.object-cover {
-  object-fit: cover;
-}
-
-.shadow-glow {
-  box-shadow: 0 0 10px var(--q-primary);
-}
-
-.shadow-text {
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-.drop-shadow-warning {
-  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5));
-}
-
+// Bottom gradient
 .bg-gradient-bottom {
+  pointer-events: none;
+}
+:global(.body--dark) .bg-gradient-bottom {
   background: linear-gradient(180deg, rgba(11, 14, 20, 0) 0%, rgba(11, 14, 20, 1) 100%);
 }
-.bg-black-06 {
-  background: rgba(0, 0, 0, 0.6);
-}
-.bg-black-03 {
-  background: rgba(0, 0, 0, 0.3);
+:global(.body--light) .bg-gradient-bottom {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 1) 100%);
 }
 
-/* Typography Standard ERP */
-.font-medium {
-  font-weight: 500;
-}
-.font-bold {
-  font-weight: 700;
-}
-.font-extrabold {
-  font-weight: 800;
-}
-.font-black {
-  font-weight: 900;
-}
-.letter-spacing-1 {
-  letter-spacing: 1px;
-}
-.letter-spacing-05 {
-  letter-spacing: 0.5px;
-}
-.font-mono {
-  font-family: 'SF Mono', 'JetBrains Mono', monospace;
-}
-.line-height-1 {
-  line-height: 1.2;
-}
-.line-height-1-5 {
-  line-height: 1.5;
+.search-input:focus-within {
+  border-color: var(--q-primary);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
 }
 
-/* Effects */
-.transition-02 {
-  transition: all 0.2s ease;
-}
-.transition-03 {
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-}
+.bg-black-06 { background: rgba(0, 0, 0, 0.6); }
+.bg-black-03 { background: rgba(0, 0, 0, 0.3); }
+.bg-primary-transparent { background: rgba(37, 99, 235, 0.1); }
 
-/* Hide scrollbars for cleaner UI but allow scroll */
+/* Typography */
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+.letter-spacing-1 { letter-spacing: 1px; }
+.font-mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; }
+.line-height-1 { line-height: 1.2; }
+.line-height-1-5 { line-height: 1.5; }
+
+/* Transitions */
+.transition-02 { transition: all 0.2s ease; }
+.transition-03 { transition: all 0.3s cubic-bezier(0.2, 0, 0, 1); }
+
+/* Hide scrollbars */
 .hide-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
-}
-.hide-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .touch-confirm-btn {
   border-radius: 12px;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-
-.touch-confirm-btn:active {
-  transform: scale(0.97);
+  transition: transform 0.2s, box-shadow 0.2s;
+  &:active { transform: scale(0.97); }
 }
 </style>

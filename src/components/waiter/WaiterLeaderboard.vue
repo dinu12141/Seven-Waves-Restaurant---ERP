@@ -59,10 +59,10 @@
 
           <!-- Name & Code -->
           <div class="col">
-            <div class="text-white text-weight-bold" style="font-size:0.88rem">
+            <div class="rank-name">
               {{ w.display_name || w.employee_name }}
               <q-badge v-if="highlightProfileId && w.id === highlightProfileId"
-                color="cyan-9" label="YOU" class="q-ml-xs" style="font-size:0.55rem;padding:1px 5px" />
+                color="orange-9" label="YOU" class="q-ml-xs" style="font-size:0.55rem;padding:1px 5px" />
             </div>
             <div class="text-caption text-grey-6">{{ w.waiter_code }}</div>
           </div>
@@ -227,12 +227,12 @@ defineExpose({ refresh: loadRankings })
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: #fbbf24;
+  color: #d97706;
 }
 
 .lb-period-toggle {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 8px;
   padding: 1px;
   :deep(.q-btn) {
@@ -245,28 +245,29 @@ defineExpose({ refresh: loadRankings })
 }
 
 .rank-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #fff;
+  border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 12px;
   transition: all 0.15s ease;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 
   &--gold {
-    background: rgba(251,191,36,0.06);
-    border-color: rgba(251,191,36,0.25);
-    box-shadow: 0 0 12px rgba(251,191,36,0.08);
+    background: #fffbeb;
+    border-color: #fde68a;
+    box-shadow: 0 0 12px rgba(251,191,36,0.12);
   }
   &--silver {
-    background: rgba(192,192,192,0.05);
-    border-color: rgba(192,192,192,0.2);
+    background: #f8fafc;
+    border-color: #cbd5e1;
   }
   &--bronze {
-    background: rgba(205,127,50,0.05);
-    border-color: rgba(205,127,50,0.2);
+    background: #fff7ed;
+    border-color: #fed7aa;
   }
   &--me {
-    border-color: rgba(34,211,238,0.35) !important;
-    background: rgba(34,211,238,0.04) !important;
+    border-color: #fb923c !important;
+    background: #fff7ed !important;
   }
 }
 
@@ -281,7 +282,7 @@ defineExpose({ refresh: loadRankings })
 .rank-num {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .rank-avatar {
@@ -290,19 +291,25 @@ defineExpose({ refresh: loadRankings })
   flex-shrink: 0;
 }
 
+.rank-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--erp-text-primary, #1e293b);
+}
+
 .rank-points-col {
   min-width: 48px;
 }
 .rank-points-value {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #fbbf24;
+  color: #d97706;
   line-height: 1;
 }
 .rank-points-label {
   font-size: 0.6rem;
   font-weight: 600;
-  color: #6b7280;
+  color: #94a3b8;
   text-transform: uppercase;
 }
 
@@ -311,7 +318,7 @@ defineExpose({ refresh: loadRankings })
 }
 .rank-progress-bar {
   height: 3px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.04);
   border-radius: 2px;
   overflow: hidden;
 }

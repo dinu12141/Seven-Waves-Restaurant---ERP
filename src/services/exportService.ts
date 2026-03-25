@@ -97,12 +97,16 @@ export function exportTableToCSV(columns: any[], rows: any[], filename: string) 
     })
     .join('\n')
 
+  const dateStr = new Date().toISOString().slice(0, 10)
+  const baseName = filename.replace(/\.csv$/i, '')
+  const finalName = `${baseName}_${dateStr}.csv`
+
   const content = headers + '\n' + csvRows
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', filename.endsWith('.csv') ? filename : `${filename}.csv`)
+  link.setAttribute('download', finalName)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -121,9 +125,12 @@ export function exportTableToExcel(columns: any[], rows: any[], filename: string
     return obj
   })
 
+  const dateStr = new Date().toISOString().slice(0, 10)
+  const baseName = filename.replace(/\.xlsx$/i, '')
+  const finalName = `${baseName}_${dateStr}.xlsx`
+
   const ws = XLSX.utils.json_to_sheet(data)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Data')
-  const finalFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`
-  XLSX.writeFile(wb, finalFilename)
+  XLSX.writeFile(wb, finalName)
 }

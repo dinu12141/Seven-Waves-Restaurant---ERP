@@ -1,17 +1,17 @@
-// Quasar SCSS Variables — ERP Design System
-// Updated to match premium dark enterprise theme
+// Quasar SCSS Variables — ERP Design System (SAP HANA Aligned)
+// These values MUST match the CSS custom properties in erp-theme.scss
 
 // ─── Brand Colors ──────────────────────────────────────────────────────────────
-$primary: #4385f5; // Google Blue — clean, trustworthy
+$primary: #2563eb;   // ERP Primary — matches --erp-primary
 $secondary: #6c757d; // Neutral grey
-$accent: #8ab4f8; // Light blue accent
+$accent: #7c3aed;    // Purple accent — matches --erp-accent
 
 // ─── Dark Theme ────────────────────────────────────────────────────────────────
-$dark: #1c2028; // Surface/card background
-$dark-page: #0f1117; // Page background
+$dark: #1e293b;      // Card/surface bg — matches --erp-bg-card
+$dark-page: #0f172a; // Page background  — matches --erp-bg-main
 
 // ─── Status Colors ─────────────────────────────────────────────────────────────
-$positive: #34a853; // Google Green
-$negative: #ea4335; // Google Red
-$info: #4385f5; // Same as primary
-$warning: #f9ab00; // Amber
+$positive: #16a34a;  // matches --erp-success
+$negative: #dc2626;  // matches --erp-danger
+$info: #0ea5e9;      // matches --erp-info
+$warning: #f59e0b;   // matches --erp-warning

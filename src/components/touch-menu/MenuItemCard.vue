@@ -1,5 +1,5 @@
 <template>
-  <q-card class="menu-item-card bg-card text-white overflow-hidden shadow-touch" flat bordered>
+  <q-card class="menu-item-card overflow-hidden shadow-touch" flat bordered>
     <div class="card-img-wrapper" @click="$emit('request-add', item)">
       <q-img
         :src="
@@ -96,58 +96,57 @@ defineEmits(['add-to-cart', 'request-add'])
 
 <style scoped lang="scss">
 .menu-item-card {
-  border-color: rgba(255, 255, 255, 0.05);
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
   border-radius: 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  transition:
-    transform 0.2s cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 0.2s;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s, background 0.25s;
   cursor: pointer;
 
-  &:active {
-    transform: scale(0.97);
-  }
-
+  &:active { transform: scale(0.97); }
   &:hover {
-    box-shadow:
-      0 10px 25px -5px rgba(37, 99, 235, 0.1),
-      0 8px 10px -6px rgba(37, 99, 235, 0.1);
-    border-color: rgba(37, 99, 235, 0.2);
-
-    .menu-img {
-      transform: scale(1.05);
-    }
+    box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.12), 0 8px 10px -6px rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.25);
+    .menu-img { transform: scale(1.05); }
   }
+}
+
+:global(.body--dark) .menu-item-card {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+:global(.body--light) .menu-item-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
 }
 
 .card-img-wrapper {
   overflow: hidden;
   border-radius: 16px 16px 0 0;
+}
+
+:global(.body--dark) .card-img-wrapper {
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
-
-.menu-img {
-  transition: transform 0.4s ease-out;
+:global(.body--light) .card-img-wrapper {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.bg-black-06 {
-  background: rgba(0, 0, 0, 0.65);
-}
+.menu-img { transition: transform 0.4s ease-out; }
 
-.transform-center {
-  transform: rotate(-15deg);
-}
+.bg-black-06 { background: rgba(0, 0, 0, 0.65); }
+
+.transform-center { transform: rotate(-15deg); }
 
 .name-text {
   font-size: 11px;
   line-height: 1.1;
-  color: #f8fafc;
   letter-spacing: -0.1px;
   min-height: 24px;
 }
+:global(.body--dark) .name-text { color: #f8fafc; }
+:global(.body--light) .name-text { color: #0f172a; }
 
 .price-text {
   font-size: 11px;
@@ -155,30 +154,17 @@ defineEmits(['add-to-cart', 'request-add'])
   letter-spacing: -0.2px;
 }
 
-.flex-grow {
-  flex-grow: 1;
-}
+.flex-grow { flex-grow: 1; }
 
 .shadow-touch {
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+:global(.body--light) .shadow-touch {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.shadow-top-glow {
-  box-shadow: 0 -2px 10px rgba(37, 99, 235, 0.4);
-}
+.shadow-top-glow { box-shadow: 0 -2px 10px rgba(37, 99, 235, 0.4); }
 
-.font-mono {
-  font-family: 'SF Mono', 'JetBrains Mono', monospace;
-}
-.letter-spacing-1 {
-  letter-spacing: 1px;
-}
-.letter-spacing-05 {
-  letter-spacing: 0.5px;
-}
-.grayscale {
-  filter: grayscale(100%);
-}
+.font-mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; }
+.grayscale { filter: grayscale(100%); }
 </style>

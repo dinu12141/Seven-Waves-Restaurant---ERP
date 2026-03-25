@@ -5,18 +5,18 @@
       <div class="row items-center justify-between q-mb-md">
         <div class="row items-center q-gutter-x-sm">
           <q-icon name="kitchen" size="32px" color="primary" />
-          <div class="text-h5 text-weight-bold text-white">Kitchen Display System</div>
+          <div class="text-h5 text-weight-bold kds-title">Kitchen Display System</div>
           <q-badge color="accent" class="q-ml-sm text-caption">LIVE</q-badge>
         </div>
 
         <div class="row items-center q-gutter-x-md">
           <!-- Connection Status -->
-          <div class="row items-center bg-dark-soft q-px-md q-py-sm rounded-borders">
+          <div class="row items-center kds-status-box q-px-md q-py-sm rounded-borders">
             <div
               class="connection-dot q-mr-sm"
               :class="{ 'status-online': store.isConnected, 'status-offline': !store.isConnected }"
             ></div>
-            <span class="text-caption text-grey-4">{{
+            <span class="text-caption kds-status-text">{{
               store.isConnected ? 'ONLINE' : 'OFFLINE'
             }}</span>
           </div>
@@ -28,9 +28,7 @@
             :options="kitchenOptions"
             dense
             outlined
-            dark
             options-dense
-            bg-color="grey-9"
             class="kitchen-select"
             style="min-width: 200px"
             behavior="menu"
@@ -46,10 +44,10 @@
           <!-- Locked badge: shows assigned kitchen for kitchen-role users -->
           <div
             v-if="store.isKitchenLocked"
-            class="row items-center bg-dark-soft q-px-md q-py-sm rounded-borders"
+            class="row items-center kds-status-box q-px-md q-py-sm rounded-borders"
           >
             <q-icon name="soup_kitchen" size="18px" color="primary" class="q-mr-sm" />
-            <span class="text-weight-bold text-white">{{
+            <span class="text-weight-bold kds-title">{{
               store.selectedKitchen?.name || 'Kitchen'
             }}</span>
             <q-chip dense size="xs" color="primary" text-color="white" class="q-ml-sm"
@@ -63,9 +61,7 @@
             :options="['All', 'Dine-in', 'Takeaway', 'Delivery']"
             dense
             outlined
-            dark
             options-dense
-            bg-color="grey-9"
             class="filter-select"
             style="min-width: 150px"
             behavior="menu"
@@ -89,7 +85,7 @@
       <div v-if="store.selectedKitchen" class="kitchen-banner q-mb-md">
         <q-icon name="soup_kitchen" size="20px" class="q-mr-sm" />
         {{ store.selectedKitchen.name }}
-        <q-chip dense size="sm" color="grey-8" text-color="grey-4" class="q-ml-md">
+        <q-chip dense size="sm" class="q-ml-md kds-active-chip">
           {{ store.totalActive }} active tickets
         </q-chip>
       </div>
@@ -361,7 +357,6 @@ async function handleClearAllReady() {
     message: `Dismiss all ${filteredReady.value.length} ready orders from the display?`,
     cancel: true,
     ok: { label: 'Clear All', color: 'negative', flat: true },
-    dark: true,
     persistent: true,
   }).onOk(async () => {
     const { success, error } = await store.dismissAllReady()
@@ -443,9 +438,28 @@ watch(
 
 <style scoped>
 .kds-page {
-  background: radial-gradient(circle at 50% -20%, #2a2a2a, #121212);
+  background: var(--erp-bg-page);
   min-height: 100vh;
-  color: #e0e0e0;
+  color: var(--erp-text-primary);
+}
+
+.kds-title {
+  color: var(--erp-text-primary);
+}
+
+.kds-status-box {
+  background: var(--erp-bg-hover);
+  border: 1px solid var(--erp-border);
+}
+
+.kds-status-text {
+  color: var(--erp-text-secondary);
+}
+
+.kds-active-chip {
+  background: var(--erp-bg-hover) !important;
+  color: var(--erp-text-secondary) !important;
+  border: 1px solid var(--erp-border);
 }
 
 .full-height-container {
@@ -462,13 +476,13 @@ watch(
 .kitchen-banner {
   display: flex;
   align-items: center;
-  color: #d1d5db;
+  color: var(--erp-text-secondary);
   font-size: 0.95rem;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--erp-bg-hover);
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--erp-border);
 }
 
 .kanban-col-wrapper {
@@ -482,16 +496,15 @@ watch(
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  background: rgba(30, 30, 30, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  box-shadow: var(--erp-shadow-card);
   overflow: hidden;
 }
 
 .column-header {
   padding: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--erp-bg-card-hover);
 }
 
 .header-bar {
@@ -499,7 +512,6 @@ watch(
   width: 100%;
   border-radius: 2px;
   margin-top: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .column-scroll {

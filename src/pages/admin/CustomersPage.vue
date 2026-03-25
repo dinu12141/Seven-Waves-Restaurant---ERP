@@ -366,23 +366,40 @@ onMounted(fetchCustomers)
 .customer-search {
   min-width: 280px;
   :deep(.q-field__control) {
-    background: white;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    color: #e5e7eb;
+  }
+  :deep(.q-field__native) {
+    color: #e5e7eb;
+  }
+  :deep(.q-field__native::placeholder) {
+    color: #6b7280;
   }
 }
 
 .status-filter-toggle {
-  border: 1px solid var(--q-primary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   overflow: hidden;
+  :deep(.q-btn) {
+    color: #9ca3af !important;
+    &.q-btn--active {
+      color: white !important;
+    }
+  }
 }
 
 .customers-table-card {
   border-radius: 12px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .customers-table {
+  background: transparent !important;
   :deep(.q-table__top) {
     display: none;
   }
@@ -391,19 +408,25 @@ onMounted(fetchCustomers)
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--erp-text-secondary, #64748b);
-    background: var(--erp-bg-subtle, #f8fafc);
+    color: #6b7280;
+    background: rgba(255, 255, 255, 0.03);
     padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   }
   :deep(tbody tr) {
     cursor: pointer;
     &:hover {
-      background: rgba(67, 133, 245, 0.03) !important;
+      background: rgba(59, 130, 246, 0.06) !important;
     }
   }
   :deep(tbody tr td) {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: #d1d5db;
+  }
+  :deep(.q-table__bottom) {
+    color: #6b7280;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -425,6 +448,7 @@ onMounted(fetchCustomers)
   font-family: 'SF Mono', 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
+  color: #9ca3af;
 }
 
 .action-cell {

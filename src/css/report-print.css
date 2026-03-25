@@ -4,9 +4,8 @@
  *  SAP Business One HANA-inspired clean print layout
  * ═══════════════════════════════════════════════════════════════════
  *
- *  This stylesheet is ONLY active during print (@media print).
- *  It hides all ERP navigation chrome and produces a professional,
- *  enterprise-grade report output suitable for business documents.
+ *  PRINT OUTPUT: Only the SAP header + data table + totals.
+ *  Everything else (sidebar, header, toolbar, KPIs, filters) is hidden.
  */
 
 @media print {
@@ -35,7 +34,7 @@
 
   /* ── 2. HIDE ALL ERP CHROME ────────────────────────────────────── */
 
-  /* MainLayout: header, sidebar, nav tabs */
+  /* MainLayout: header, sidebar, nav tabs, top bar */
   .erp-header,
   .erp-sidebar,
   .erp-toolbar,
@@ -54,39 +53,64 @@
     display: none !important;
   }
 
-  /* ReportsLayout: reports sidebar drawer */
+  /* ReportsLayout: reports sidebar */
   .reports-drawer,
   .reports-drawer-toggle,
+  .reports-sidebar,
   aside.q-drawer {
     display: none !important;
   }
 
-  /* ReportLayout: interactive controls */
-  .report-toolbar__right,
+  /* ReportLayout: toolbar area (breadcrumbs, title, icon strip) */
+  .report-toolbar {
+    display: none !important;
+  }
+
+  /* ReportLayout: filter panel, filter bar, date presets */
   .report-filter-panel,
   .report-filter-bar,
   .report-date-presets,
   .report-filter-actions,
   .report-filter-advanced-toggle,
-  .report-btn,
-  .q-btn-dropdown,
   .q-slide-transition {
+    display: none !important;
+  }
+
+  /* SAP icon toolbar strip */
+  .sap-icon-strip {
+    display: none !important;
+  }
+
+  /* KPI summary cards — hide for clean document print */
+  .report-kpi-row {
+    display: none !important;
+  }
+
+  /* All interactive buttons */
+  .report-btn,
+  .q-btn,
+  .q-btn-dropdown {
     display: none !important;
   }
 
   /* Quasar UI overlays / menus */
   .q-menu,
   .q-dialog,
-  .q-drawer,
   .q-notify,
   .q-notification,
-  .q-loading-bar {
+  .q-loading-bar,
+  .q-tooltip {
     display: none !important;
   }
 
   /* Pagination controls */
   .q-table__bottom,
   .q-table__middle + .q-table__bottom {
+    display: none !important;
+  }
+
+  /* Column group headers (SalesReport decorative row) */
+  .sales-col-groups {
     display: none !important;
   }
 
@@ -116,100 +140,41 @@
     min-height: 0 !important;
   }
 
-  /* ── 5. PRINT HEADER (Company + Report Info) ───────────────────── */
-  .report-toolbar {
-    display: block !important;
-    margin-bottom: 8pt !important;
-    padding-bottom: 6pt !important;
+  /* ── 5. SAP COMPANY HEADER (the actual document header) ────────── */
+  .sap-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 8pt 0 !important;
     border-bottom: 2pt solid #1a1a2e !important;
-    background: none !important;
-  }
-
-  .report-toolbar__left {
-    display: block !important;
-  }
-
-  .report-toolbar__breadcrumb {
-    display: flex !important;
-    gap: 6px !important;
-    margin-bottom: 4pt !important;
-  }
-
-  .report-toolbar__breadcrumb-item,
-  .report-toolbar__breadcrumb-sep {
-    font-size: 8pt !important;
-    font-weight: 700 !important;
-    color: #555 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 1px !important;
-  }
-
-  .report-toolbar__breadcrumb-item--active {
-    color: #1a1a2e !important;
-    font-weight: 800 !important;
-  }
-
-  .report-toolbar__title {
-    font-size: 16pt !important;
-    font-weight: 800 !important;
-    color: #1a1a2e !important;
-    margin: 2pt 0 !important;
-    letter-spacing: -0.3px !important;
-  }
-
-  .report-toolbar__subtitle {
-    font-size: 8pt !important;
-    color: #666 !important;
-    margin: 2pt 0 0 !important;
-  }
-
-  /* ── 6. KPI SUMMARY ROW (compact for print) ────────────────────── */
-  .report-kpi-row {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(130pt, 1fr)) !important;
-    gap: 6pt !important;
-    margin-bottom: 10pt !important;
+    margin-bottom: 8pt !important;
     page-break-inside: avoid !important;
   }
 
-  .report-kpi-card {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8pt !important;
-    padding: 6pt 8pt !important;
-    background: #f8f9fa !important;
-    border: 0.5pt solid #ddd !important;
-    border-radius: 3pt !important;
-    border-top: 1.5pt solid #1a1a2e !important;
-    page-break-inside: avoid !important;
-  }
-
-  .report-kpi-card__icon {
-    display: none !important;
-  }
-
-  .report-kpi-card__value {
+  .sap-header__company {
     font-size: 12pt !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     color: #1a1a2e !important;
-    line-height: 1 !important;
   }
 
-  .report-kpi-card__label {
-    font-size: 7pt !important;
+  .sap-header__title {
+    font-size: 9pt !important;
     font-weight: 600 !important;
-    color: #666 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.4px !important;
-    margin-top: 2pt !important;
+    color: #333 !important;
   }
 
-  .report-kpi-card__sub {
-    font-size: 7pt !important;
-    color: #888 !important;
+  .sap-header__meta {
+    font-size: 8pt !important;
+    color: #555 !important;
   }
 
-  /* ── 7. DATA TABLE ─────────────────────────────────────────────── */
+  .sap-header__page,
+  .sap-header__date {
+    font-size: 8pt !important;
+    color: #555 !important;
+    text-align: right !important;
+  }
+
+  /* ── 6. REPORT CONTENT WRAPPER ─────────────────────────────────── */
   .report-content {
     background: none !important;
     border: none !important;
@@ -217,10 +182,7 @@
     overflow: visible !important;
   }
 
-  /* Column group headers (SalesReport) */
-  .sales-col-groups {
-    display: none !important;
-  }
+  /* ── 7. DATA TABLE ─────────────────────────────────────────────── */
 
   /* Q-Table wrapper */
   .q-table__container,

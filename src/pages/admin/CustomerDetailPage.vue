@@ -381,6 +381,8 @@ onMounted(loadDetail)
 // Profile Card
 .profile-card {
   border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .profile-avatar {
@@ -401,7 +403,7 @@ onMounted(loadDetail)
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 
   &:last-child {
     border-bottom: none;
@@ -411,7 +413,7 @@ onMounted(loadDetail)
 .info-label {
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   min-width: 80px;
@@ -420,7 +422,7 @@ onMounted(loadDetail)
 .info-value {
   font-size: 14px;
   font-weight: 500;
-  color: #1e293b;
+  color: #d1d5db;
   flex: 1;
   word-break: break-all;
 }
@@ -428,7 +430,8 @@ onMounted(loadDetail)
 // Loyalty Card
 .loyalty-detail-card {
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.04), rgba(239, 68, 68, 0.02));
+  background: rgba(249, 115, 22, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .stat-block {
@@ -444,12 +447,13 @@ onMounted(loadDetail)
   font-weight: 800;
   line-height: 1.2;
   margin-bottom: 2px;
+  color: #e5e7eb;
 }
 
 .stat-label {
   font-size: 11px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -458,11 +462,14 @@ onMounted(loadDetail)
   font-family: 'SF Mono', 'JetBrains Mono', monospace;
   font-size: 13px;
   letter-spacing: 1px;
+  color: #9ca3af;
 }
 
 // Tabs
 .data-tabs-card {
   border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .data-tabs {
@@ -471,7 +478,19 @@ onMounted(loadDetail)
     font-weight: 600;
     text-transform: none;
     min-height: 48px;
+    color: #9ca3af;
+    &.q-tab--active {
+      color: var(--q-primary);
+    }
   }
+}
+
+// Tab panels dark bg
+:deep(.q-tab-panels) {
+  background: transparent !important;
+}
+:deep(.q-tab-panel) {
+  background: transparent !important;
 }
 
 // Order / Session items
@@ -481,7 +500,7 @@ onMounted(loadDetail)
   border-radius: 8px;
   transition: background 0.15s;
   &:hover {
-    background: rgba(67, 133, 245, 0.04);
+    background: rgba(59, 130, 246, 0.06);
   }
 }
 
@@ -495,10 +514,11 @@ onMounted(loadDetail)
 
 .meta-chip {
   font-size: 11px;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   padding: 2px 8px;
-  color: #64748b;
+  color: #9ca3af;
 }
 
 .empty-state {
@@ -506,5 +526,15 @@ onMounted(loadDetail)
   flex-direction: column;
   align-items: center;
   padding: 48px;
+}
+
+// Override Quasar separator to be dark-themed
+:deep(.q-separator) {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+// Override list separators
+:deep(.q-list--separator > .q-item-type + .q-item-type) {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 </style>

@@ -249,7 +249,11 @@
                 v-for="t in floorTables"
                 :key="t.id"
                 class="table-cell"
-                :class="t.occupied ? 'table-cell--occupied' : 'table-cell--available'"
+                :class="[
+                  t.occupied ? 'table-cell--occupied' : 'table-cell--available',
+                  t.occupied ? 'table-cell--clickable' : '',
+                ]"
+                @click="t.occupied ? openTableOrder(t) : null"
               >
                 <div class="table-cell__number">
                   {{ (t.table_number || '').replace(/table/i, '').trim() || t.id?.slice(-2) }}
@@ -264,6 +268,122 @@
 
       </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════
+         TABLE ORDER DIALOG
+    ══════════════════════════════════════════════ -->
+    <q-dialog v-model="showTableOrderDialog" position="right" maximized>
+      <q-card class="table-order-panel">
+        <q-card-section class="table-order-panel__header">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="table_restaurant" size="24px" color="orange-8" />
+            <div>
+              <div class="text-h6 text-weight-bold">{{ selectedTableName }}</div>
+              <div class="text-caption text-grey-6">Order details &amp; tracking</div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" @click="showTableOrderDialog = false" />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section v-if="tableOrderLoading" class="column items-center q-pa-xl">
+          <q-spinner-orbit size="40px" color="primary" />
+          <div class="text-grey-6 q-mt-md">Loading order details...</div>
+        </q-card-section>
+
+        <q-card-section v-else-if="!tableOrderData" class="column items-center q-pa-xl">
+          <q-icon name="info" size="40px" color="grey-5" />
+          <div class="text-grey-6 q-mt-md">No active order found for this table.</div>
+        </q-card-section>
+
+        <q-scroll-area v-else style="height: calc(100vh - 80px)">
+          <q-card-section>
+            <!-- Order Header -->
+            <div class="tod-order-header">
+              <div>
+                <div class="tod-order-number">Order #{{ tableOrderData.order_number }}</div>
+                <div class="text-caption text-grey-6">{{ formatOrderTime(tableOrderData.created_at) }}</div>
+              </div>
+              <q-chip
+                :color="orderStatusColorMap[tableOrderData.status] || 'grey-7'"
+                text-color="white"
+                dense
+                class="text-weight-bold"
+              >
+                {{ (tableOrderData.status || '').replace(/_/g, ' ').toUpperCase() }}
+              </q-chip>
+            </div>
+
+            <!-- Waiter Info -->
+            <div v-if="tableOrderData.waiter_name" class="tod-section">
+              <div class="tod-section__label">Assigned Waiter</div>
+              <div class="tod-waiter-chip">
+                <q-icon name="person" size="16px" color="blue-8" class="q-mr-xs" />
+                {{ tableOrderData.waiter_name }}
+              </div>
+            </div>
+
+            <!-- Order Status Timeline -->
+            <div class="tod-section">
+              <div class="tod-section__label">Order Progress</div>
+              <div class="tod-timeline">
+                <div
+                  v-for="step in orderTimeline"
+                  :key="step.key"
+                  class="tod-timeline__step"
+                  :class="{ 'tod-timeline__step--done': step.done, 'tod-timeline__step--active': step.active }"
+                >
+                  <div class="tod-timeline__dot">
+                    <q-icon v-if="step.done" name="check" size="12px" />
+                    <q-spinner-dots v-else-if="step.active" size="12px" color="blue" />
+                  </div>
+                  <div class="tod-timeline__info">
+                    <div class="tod-timeline__label">{{ step.label }}</div>
+                    <div v-if="step.time" class="tod-timeline__time">{{ step.time }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KOT Status -->
+            <div v-if="tableOrderData.kot_tickets?.length" class="tod-section">
+              <div class="tod-section__label">Kitchen Tickets (KOT)</div>
+              <div class="tod-kot-list">
+                <div v-for="kot in tableOrderData.kot_tickets" :key="kot.id" class="tod-kot-card">
+                  <div class="tod-kot-card__header">
+                    <span class="text-weight-bold">KOT #{{ kot.kot_number }}</span>
+                    <q-chip dense size="sm"
+                      :color="kotStatusColor(kot.status)" text-color="white"
+                    >{{ kot.status?.toUpperCase() }}</q-chip>
+                  </div>
+                  <div v-if="kot.kitchens?.name" class="text-caption text-grey-6">
+                    <q-icon name="soup_kitchen" size="12px" class="q-mr-xs" />
+                    {{ kot.kitchens.name }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="tod-section">
+              <div class="tod-section__label">Items ({{ tableOrderData.order_items?.length || 0 }})</div>
+              <div class="tod-items-list">
+                <div v-for="item in tableOrderData.order_items" :key="item.id" class="tod-item-row">
+                  <div class="tod-item-row__qty">{{ item.quantity }}×</div>
+                  <div class="tod-item-row__name">{{ item.menu_items?.name || 'Item' }}</div>
+                  <div class="tod-item-row__price">LKR {{ (item.total_price || 0).toLocaleString() }}</div>
+                </div>
+              </div>
+              <div class="tod-total-row">
+                <span>Total</span>
+                <span class="tod-total-row__value">LKR {{ (tableOrderData.total_amount || 0).toLocaleString() }}</span>
+              </div>
+            </div>
+          </q-card-section>
+        </q-scroll-area>
+      </q-card>
+    </q-dialog>
 
   </q-page>
 </template>
@@ -357,7 +477,7 @@ async function fetchDashboardData() {
         .eq('branch_id', branchId).in('status', ['paid','completed']).gte('created_at', startStr),
       supabase.from('orders').select('created_at,total_amount')
         .eq('branch_id', branchId).in('status', ['paid','completed','served','invoiced']).gte('created_at', startStr),
-      supabase.from('restaurant_tables').select('id,table_number,capacity')
+      supabase.from('restaurant_tables').select('id,table_number,capacity,status')
         .eq('branch_id', branchId).order('table_number', { ascending: true }),
       supabase.from('shift_assignments').select('id')
         .eq('branch_id', branchId)
@@ -381,10 +501,12 @@ async function fetchDashboardData() {
     kpi4.value = (staffRes.data?.length || 0).toString()
 
     totalTablesCount.value    = tablesRes.data?.length || 0
-    occupiedTablesCount.value = occupiedIds.size
-    kpi3.value = totalTablesCount.value > 0 ? occupiedIds.size / totalTablesCount.value : 0
+    const occupiedCount = (tablesRes.data || []).filter(t => t.status === 'occupied').length
+    occupiedTablesCount.value = occupiedCount
+    kpi3.value = totalTablesCount.value > 0 ? occupiedCount / totalTablesCount.value : 0
 
-    floorTables.value = (tablesRes.data || []).map(t => ({ ...t, occupied: occupiedIds.has(t.id) }))
+    // Use restaurant_tables.status directly (maintained by trg_orders_sync_table_status trigger)
+    floorTables.value = (tablesRes.data || []).map(t => ({ ...t, occupied: t.status === 'occupied' }))
 
     // Order type split (active + completed)
     const allOrders = [...activeOrders, ...completedOrders]
@@ -444,14 +566,19 @@ async function refreshTableOccupancy() {
   const branchId = authStore.currentBranch?.id
   if (!branchId) return
   try {
-    const { data } = await supabase.from('orders').select('table_id')
+    // Read directly from restaurant_tables.status — kept in sync by trg_orders_sync_table_status
+    const { data } = await supabase
+      .from('restaurant_tables')
+      .select('id, table_number, capacity, status')
       .eq('branch_id', branchId)
-      .in('status', ['pending_waiter','accepted','preparing','ready','served','invoiced'])
-      .not('table_id', 'is', null)
-    const ids = new Set((data || []).map(o => o.table_id))
-    occupiedTablesCount.value = ids.size
-    kpi3.value = totalTablesCount.value > 0 ? ids.size / totalTablesCount.value : 0
-    floorTables.value = floorTables.value.map(t => ({ ...t, occupied: ids.has(t.id) }))
+      .order('table_number', { ascending: true })
+
+    if (!data) return
+    const occupiedCount = data.filter(t => t.status === 'occupied').length
+    totalTablesCount.value    = data.length
+    occupiedTablesCount.value = occupiedCount
+    kpi3.value = data.length > 0 ? occupiedCount / data.length : 0
+    floorTables.value = data.map(t => ({ ...t, occupied: t.status === 'occupied' }))
   } catch {
     // non-critical refresh — ignore errors
   }
@@ -505,6 +632,98 @@ onMounted(async () => {
   }
 })
 
+// ── Table Order Dialog ──────────────────────────────────────────
+const showTableOrderDialog = ref(false)
+const tableOrderData = ref(null)
+const tableOrderLoading = ref(false)
+const selectedTableName = ref('')
+
+const orderStatusColorMap = {
+  pending_waiter: 'orange-8',
+  accepted: 'blue-8',
+  sent_to_kitchen: 'indigo-8',
+  preparing: 'deep-purple-8',
+  ready: 'amber-9',
+  served: 'green-8',
+  invoiced: 'teal-8',
+  paid: 'green-9',
+}
+
+function kotStatusColor(status) {
+  const map = { created: 'blue-grey-6', cooking: 'orange-8', ready: 'amber-9', served: 'green-8' }
+  return map[status] || 'grey-6'
+}
+
+function formatOrderTime(dateStr) {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleString('en-US', {
+    hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric',
+  })
+}
+
+const orderTimeline = computed(() => {
+  if (!tableOrderData.value) return []
+  const status = tableOrderData.value.status
+  const steps = [
+    { key: 'placed',    label: 'Order Placed',     statuses: ['pending_waiter','accepted','sent_to_kitchen','preparing','ready','served','invoiced','paid'] },
+    { key: 'accepted',  label: 'Waiter Accepted',   statuses: ['accepted','sent_to_kitchen','preparing','ready','served','invoiced','paid'] },
+    { key: 'preparing', label: 'Kitchen Preparing', statuses: ['preparing','ready','served','invoiced','paid'] },
+    { key: 'ready',     label: 'Food Ready',        statuses: ['ready','served','invoiced','paid'] },
+    { key: 'served',    label: 'Served to Table',   statuses: ['served','invoiced','paid'] },
+    { key: 'invoiced',  label: 'Bill Generated',    statuses: ['invoiced','paid'] },
+    { key: 'paid',      label: 'Payment Complete',  statuses: ['paid'] },
+  ]
+  return steps.map(s => ({
+    ...s,
+    done:   s.statuses.includes(status) && s.key !== status,
+    active: s.key === status || (s.key === 'placed' && status === 'pending_waiter'),
+    time:   null,
+  }))
+})
+
+async function openTableOrder(table) {
+  selectedTableName.value = table.table_number || `Table ${table.id?.slice(-4)}`
+  showTableOrderDialog.value = true
+  tableOrderLoading.value = true
+  tableOrderData.value = null
+
+  try {
+    const branchId = authStore.currentBranch?.id
+    const { data } = await supabase
+      .from('orders')
+      .select(`
+        id, order_number, status, total_amount, created_at, updated_at,
+        order_type, notes, assigned_waiter_id, payment_status,
+        order_items ( id, quantity, unit_price, total_price, status, menu_items ( name ) ),
+        kot_tickets ( id, kot_number, status, kitchen_id, kitchens ( name ) )
+      `)
+      .eq('branch_id', branchId)
+      .eq('table_id', table.id)
+      .in('status', ['pending_waiter','accepted','sent_to_kitchen','preparing','ready','served','invoiced'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data) {
+      // Fetch waiter name
+      let waiterName = null
+      if (data.assigned_waiter_id) {
+        const { data: wp } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', data.assigned_waiter_id)
+          .maybeSingle()
+        waiterName = wp?.full_name
+      }
+      tableOrderData.value = { ...data, waiter_name: waiterName }
+    }
+  } catch (err) {
+    console.error('[Dashboard] Table order fetch error:', err)
+  } finally {
+    tableOrderLoading.value = false
+  }
+}
+
 onUnmounted(() => {
   clearInterval(clockTimer)
   clearTimeout(debounce)
@@ -517,10 +736,10 @@ onUnmounted(() => {
 <style scoped lang="scss">
 // ── Page ──────────────────────────────────────────────────────────────────────
 .dash-page {
-  background: #080e18;
+  background: var(--erp-dash-bg);
   min-height: 100vh;
   padding: 28px 32px 40px;
-  color: #e2e8f0;
+  color: var(--erp-dash-text);
   font-family: inherit;
 }
 
@@ -542,7 +761,7 @@ onUnmounted(() => {
   &__brand-name {
     font-size: 22px;
     font-weight: 800;
-    color: #f1f5f9;
+    color: var(--erp-dash-brand-name);
     letter-spacing: -0.4px;
   }
   &__brand-tag {
@@ -557,10 +776,7 @@ onUnmounted(() => {
     letter-spacing: 0.6px;
   }
   &__time-info {
-    font-size: 11px;
-    color: #475569;
-    display: flex;
-    align-items: center;
+    color: var(--erp-dash-time);
   }
 }
 
@@ -592,7 +808,7 @@ onUnmounted(() => {
 }
 
 .dash-time-toggle {
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--erp-dash-toggle-border);
   border-radius: 8px;
   overflow: hidden;
   :deep(.q-btn) {
@@ -602,7 +818,7 @@ onUnmounted(() => {
     border-radius: 0 !important;
   }
   :deep(.q-btn--active) {
-    background: #2563EB !important;
+    background: var(--erp-primary) !important;
     color: #fff !important;
   }
 }
@@ -611,21 +827,21 @@ onUnmounted(() => {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 16px;
 
   @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
   @media (max-width: 600px)  { grid-template-columns: 1fr; }
 }
 
 .kpi-card {
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
-  padding: 20px 20px 18px;
+  background: var(--erp-bg-main);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  padding: 14px 16px 12px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
   transition: border-color 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
@@ -634,17 +850,17 @@ onUnmounted(() => {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 14px;
+    border-radius: var(--erp-radius-lg);
     pointer-events: none;
   }
 
-  &:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  &:hover { box-shadow: var(--erp-shadow-card); }
 
   // Accent glow top border per card
-  &--revenue { border-top: 2px solid #2563EB; &::after { box-shadow: inset 0 40px 30px -20px rgba(37,99,235,0.07); } }
-  &--orders  { border-top: 2px solid #f59e0b; &::after { box-shadow: inset 0 40px 30px -20px rgba(245,158,11,0.07); } }
-  &--tables  { border-top: 2px solid #0d9488; &::after { box-shadow: inset 0 40px 30px -20px rgba(13,148,136,0.07); } }
-  &--staff   { border-top: 2px solid #7c3aed; &::after { box-shadow: inset 0 40px 30px -20px rgba(124,58,237,0.07); } }
+  &--revenue { border-top: 2px solid var(--erp-primary); &::after { box-shadow: inset 0 40px 30px -20px rgba(37,99,235,0.07); } }
+  &--orders  { border-top: 2px solid var(--erp-warning); &::after { box-shadow: inset 0 40px 30px -20px rgba(245,158,11,0.07); } }
+  &--tables  { border-top: 2px solid var(--erp-teal); &::after { box-shadow: inset 0 40px 30px -20px rgba(13,148,136,0.07); } }
+  &--staff   { border-top: 2px solid var(--erp-accent); &::after { box-shadow: inset 0 40px 30px -20px rgba(124,58,237,0.07); } }
 
   &__icon-wrap {
     width: 44px; height: 44px;
@@ -652,45 +868,45 @@ onUnmounted(() => {
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 
-    &--revenue { background: rgba(37,99,235,0.15);  color: #60a5fa; }
-    &--orders  { background: rgba(245,158,11,0.15); color: #fcd34d; }
-    &--tables  { background: rgba(13,148,136,0.15); color: #2dd4bf; }
-    &--staff   { background: rgba(124,58,237,0.15); color: #a78bfa; }
+    &--revenue { background: var(--erp-primary-subtle);  color: var(--erp-primary-light); }
+    &--orders  { background: var(--erp-warning-subtle); color: var(--erp-warning-light); }
+    &--tables  { background: var(--erp-teal-subtle); color: var(--erp-teal-light); }
+    &--staff   { background: var(--erp-accent-subtle); color: var(--erp-accent-light); }
   }
 
   &__body { flex: 1; min-width: 0; }
 
   &__label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
+    font-size: var(--erp-font-size-caption);
+    font-weight: var(--erp-font-weight-semibold);
+    color: var(--erp-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.6px;
     margin-bottom: 6px;
   }
 
   &__value {
-    font-size: 26px;
-    font-weight: 800;
-    color: #f1f5f9;
+    font-size: var(--erp-font-size-kpi);
+    font-weight: var(--erp-font-weight-black);
+    color: var(--erp-text-primary);
     line-height: 1;
     margin-bottom: 8px;
     display: flex;
     align-items: baseline;
     gap: 4px;
   }
-  &__currency { font-size: 13px; font-weight: 600; color: #475569; }
-  &__unit     { font-size: 16px; font-weight: 600; color: #475569; margin-left: 2px; }
+  &__currency { font-size: var(--erp-font-size-table); font-weight: var(--erp-font-weight-semibold); color: var(--erp-text-tertiary); }
+  &__unit     { font-size: 16px; font-weight: var(--erp-font-weight-semibold); color: var(--erp-text-tertiary); margin-left: 2px; }
 
   &__sub {
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--erp-font-size-caption);
+    font-weight: var(--erp-font-weight-medium);
     display: flex;
     align-items: center;
-    &--up   { color: #10b981; }
-    &--warn { color: #f59e0b; }
-    &--info { color: #38bdf8; }
-    &--staff{ color: #a78bfa; }
+    &--up   { color: var(--erp-success-light); }
+    &--warn { color: var(--erp-warning); }
+    &--info { color: var(--erp-info-light); }
+    &--staff{ color: var(--erp-accent-light); }
   }
 
   &__progress-row {
@@ -709,7 +925,7 @@ onUnmounted(() => {
     width: 20px; height: 20px;
     border-radius: 50%;
     background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    border: 2px solid #080e18;
+    border: 2px solid var(--erp-dash-avatar-ring);
     margin-left: -6px;
     &:first-child { margin-left: 0; }
   }
@@ -718,7 +934,7 @@ onUnmounted(() => {
 // ── Main Grid ─────────────────────────────────────────────────────────────────
 .dash-grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 400px;
   gap: 20px;
 
   @media (max-width: 1200px) { grid-template-columns: 1fr; }
@@ -729,11 +945,11 @@ onUnmounted(() => {
 
 // ── Cards ─────────────────────────────────────────────────────────────────────
 .dash-card {
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
-  padding: 22px 24px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  background: var(--erp-bg-main);
+  border: 1px solid var(--erp-border-strong);
+  border-radius: var(--erp-radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--erp-shadow-card);
 
   &__header {
     display: flex;
@@ -744,15 +960,15 @@ onUnmounted(() => {
   &__header-right { display: flex; align-items: center; gap: 8px; }
 
   &__title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #e2e8f0;
+    font-size: var(--erp-font-size-h4);
+    font-weight: var(--erp-font-weight-bold);
+    color: var(--erp-text-primary);
     letter-spacing: -0.2px;
-    &--sm { font-size: 13px; }
+    &--sm { font-size: var(--erp-font-size-table); }
   }
   &__sub {
-    font-size: 11px;
-    color: #475569;
+    font-size: var(--erp-font-size-caption);
+    color: var(--erp-text-tertiary);
     margin-top: 2px;
   }
 
@@ -761,9 +977,9 @@ onUnmounted(() => {
 
 .legend-dot {
   width: 10px; height: 10px; border-radius: 50%;
-  &--revenue { background: #2563EB; box-shadow: 0 0 6px #2563EB; }
+  &--revenue { background: var(--erp-primary); box-shadow: 0 0 6px var(--erp-primary); }
 }
-.legend-label { font-size: 11px; color: #64748b; }
+.legend-label { font-size: var(--erp-font-size-caption); color: var(--erp-text-muted); }
 
 // ── Split Row (donut + feed) ──────────────────────────────────────────────────
 .dash-split-row {
@@ -776,7 +992,7 @@ onUnmounted(() => {
     width: 200px;
     flex-shrink: 0;
     padding: 22px 16px 22px 24px;
-    border-right: 1px solid rgba(255,255,255,0.10);
+    border-right: 1px solid var(--erp-border-strong);
   }
   &__feed {
     flex: 1;
@@ -786,10 +1002,10 @@ onUnmounted(() => {
 }
 
 .view-all-btn {
-  font-size: 11px !important;
-  color: #2563EB !important;
+  font-size: var(--erp-font-size-caption) !important;
+  color: var(--erp-primary) !important;
   padding: 2px 8px !important;
-  &:hover { background: rgba(37,99,235,0.1) !important; }
+  &:hover { background: var(--erp-primary-subtle) !important; }
 }
 
 // ── Order Feed ────────────────────────────────────────────────────────────────
@@ -806,37 +1022,37 @@ onUnmounted(() => {
     gap: 10px;
     padding: 7px 10px;
     border-radius: 8px;
-    background: rgba(255,255,255,0.02);
-    font-size: 12px;
+    background: var(--erp-bg-stripe);
+    font-size: var(--erp-font-size-small);
     transition: background 0.15s;
-    &:hover { background: rgba(255,255,255,0.04); }
+    &:hover { background: var(--erp-bg-card-hover); }
   }
   &__dot {
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    &--teal   { background: #2dd4bf; box-shadow: 0 0 4px #2dd4bf; }
-    &--orange { background: #fb923c; box-shadow: 0 0 4px #fb923c; }
-    &--blue   { background: #60a5fa; box-shadow: 0 0 4px #60a5fa; }
+    &--teal   { background: var(--erp-teal-light); box-shadow: 0 0 4px var(--erp-teal-light); }
+    &--orange { background: var(--erp-orange-light); box-shadow: 0 0 4px var(--erp-orange-light); }
+    &--blue   { background: var(--erp-primary-light); box-shadow: 0 0 4px var(--erp-primary-light); }
   }
-  &__id     { color: #475569; width: 52px; flex-shrink: 0; font-size: 11px; }
-  &__type   { color: #94a3b8; flex: 1; }
-  &__amount { color: #e2e8f0; font-weight: 600; width: 100px; text-align: right; flex-shrink: 0; }
+  &__id     { color: var(--erp-text-tertiary); width: 52px; flex-shrink: 0; font-size: var(--erp-font-size-caption); }
+  &__type   { color: var(--erp-text-secondary); flex: 1; }
+  &__amount { color: var(--erp-text-primary); font-weight: var(--erp-font-weight-semibold); width: 100px; text-align: right; flex-shrink: 0; }
   &__status {
-    font-size: 10px;
-    font-weight: 700;
+    font-size: var(--erp-font-size-tiny);
+    font-weight: var(--erp-font-weight-bold);
     letter-spacing: 0.4px;
     width: 100px;
     text-align: right;
     flex-shrink: 0;
-    &--teal   { color: #2dd4bf; }
-    &--orange { color: #fb923c; }
-    &--blue   { color: #60a5fa; }
+    &--teal   { color: var(--erp-teal-light); }
+    &--orange { color: var(--erp-orange-light); }
+    &--blue   { color: var(--erp-primary-light); }
   }
   &__empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #334155;
-    font-size: 13px;
+    color: var(--erp-text-tertiary);
+    font-size: var(--erp-font-size-table);
     padding: 24px 0;
   }
 }
@@ -853,45 +1069,45 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 8px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: var(--erp-radius-lg);
+  background: var(--erp-bg-stripe);
+  border: 1px solid var(--erp-border);
   text-decoration: none;
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--erp-text-secondary);
+  font-size: var(--erp-font-size-caption);
+  font-weight: var(--erp-font-weight-semibold);
   letter-spacing: 0.3px;
   transition: all 0.2s;
   cursor: pointer;
 
-  span { color: #94a3b8; }
+  span { color: var(--erp-text-secondary); }
   .q-icon { transition: color 0.2s; }
 
   &:hover {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.12);
+    background: var(--erp-bg-active);
+    border-color: var(--erp-border-hover);
     transform: translateY(-2px);
-    span { color: #e2e8f0; }
+    span { color: var(--erp-text-primary); }
   }
 
-  &--pos       { &:hover { border-color: rgba(37,99,235,0.4);  .q-icon { color: #60a5fa; } } }
-  &--kitchen   { &:hover { border-color: rgba(245,158,11,0.4); .q-icon { color: #fcd34d; } } }
-  &--orders    { &:hover { border-color: rgba(16,185,129,0.4); .q-icon { color: #34d399; } } }
-  &--tables    { &:hover { border-color: rgba(13,148,136,0.4); .q-icon { color: #2dd4bf; } } }
-  &--reports   { &:hover { border-color: rgba(139,92,246,0.4); .q-icon { color: #a78bfa; } } }
-  &--inventory { &:hover { border-color: rgba(249,115,22,0.4); .q-icon { color: #fb923c; } } }
+  &--pos       { &:hover { border-color: rgba(37,99,235,0.4);  .q-icon { color: var(--erp-primary-light); } } }
+  &--kitchen   { &:hover { border-color: rgba(245,158,11,0.4); .q-icon { color: var(--erp-warning-light); } } }
+  &--orders    { &:hover { border-color: rgba(16,185,129,0.4); .q-icon { color: var(--erp-success-light); } } }
+  &--tables    { &:hover { border-color: rgba(13,148,136,0.4); .q-icon { color: var(--erp-teal-light); } } }
+  &--reports   { &:hover { border-color: rgba(139,92,246,0.4); .q-icon { color: var(--erp-accent-light); } } }
+  &--inventory { &:hover { border-color: rgba(249,115,22,0.4); .q-icon { color: var(--erp-orange-light); } } }
 }
 
 // ── Table Map ─────────────────────────────────────────────────────────────────
 .table-map-badge {
-  font-size: 11px;
-  font-weight: 700;
-  color: #0d9488;
-  background: rgba(13,148,136,0.12);
+  font-size: var(--erp-font-size-caption);
+  font-weight: var(--erp-font-weight-bold);
+  color: var(--erp-teal);
+  background: var(--erp-teal-subtle);
   border: 1px solid rgba(13,148,136,0.25);
-  border-radius: 6px;
+  border-radius: var(--erp-radius-md);
   padding: 3px 10px;
 }
 
@@ -904,8 +1120,8 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
-    color: #64748b;
+    font-size: var(--erp-font-size-caption);
+    color: var(--erp-text-muted);
   }
   &__dot {
     width: 10px; height: 10px; border-radius: 3px;
@@ -915,12 +1131,12 @@ onUnmounted(() => {
 }
 
 .table-map-scroll {
-  height: 260px;
+  height: 320px;
 }
 
 .table-map-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   padding: 4px 2px 8px;
 }
@@ -931,13 +1147,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #334155;
-  font-size: 13px;
+  color: var(--erp-text-tertiary);
+  font-size: var(--erp-font-size-table);
 }
 
 .table-cell {
-  width: 52px;
-  height: 52px;
+  aspect-ratio: 1;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -947,6 +1162,7 @@ onUnmounted(() => {
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: default;
   user-select: none;
+  min-width: 0;
 
   &:hover { transform: scale(1.08); }
 
@@ -977,10 +1193,209 @@ onUnmounted(() => {
     box-shadow: 0 2px 8px rgba(234,88,12,0.25);
     animation: occupied-pulse 2.5s infinite;
   }
+
+  &--clickable {
+    cursor: pointer;
+    &:hover { transform: scale(1.1); }
+  }
 }
 
 @keyframes occupied-pulse {
   0%, 100% { box-shadow: 0 2px 8px rgba(234,88,12,0.25); }
   50%       { box-shadow: 0 4px 16px rgba(234,88,12,0.5); }
+}
+
+// ── Table Order Dialog ────────────────────────────────────────────────────────
+.table-order-panel {
+  width: 440px;
+  max-width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  background: var(--erp-bg-page, #f8fafc) !important;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #fff;
+  }
+}
+
+.tod-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.tod-order-number {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--erp-text-primary, #1e293b);
+}
+
+.tod-section {
+  margin-bottom: 20px;
+  &__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--erp-text-muted, #94a3b8);
+    margin-bottom: 10px;
+  }
+}
+
+.tod-waiter-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+// Timeline
+.tod-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+
+  &__step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    position: relative;
+
+    &:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 28px;
+      bottom: -8px;
+      width: 2px;
+      background: #e2e8f0;
+    }
+
+    &--done:not(:last-child)::before {
+      background: #10b981;
+    }
+    &--active:not(:last-child)::before {
+      background: linear-gradient(to bottom, #3b82f6, #e2e8f0);
+    }
+  }
+
+  &__dot {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background: #f1f5f9;
+    border: 2px solid #e2e8f0;
+    color: #94a3b8;
+
+    .tod-timeline__step--done & {
+      background: #10b981;
+      border-color: #10b981;
+      color: #fff;
+    }
+    .tod-timeline__step--active & {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+  }
+
+  &__info { flex: 1; }
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--erp-text-tertiary, #94a3b8);
+
+    .tod-timeline__step--done & { color: var(--erp-text-primary, #1e293b); }
+    .tod-timeline__step--active & { color: #2563eb; font-weight: 700; }
+  }
+  &__time {
+    font-size: 0.72rem;
+    color: var(--erp-text-muted, #94a3b8);
+  }
+}
+
+// KOT
+.tod-kot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tod-kot-card {
+  background: #fff;
+  border: 1px solid var(--erp-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 10px 14px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+}
+
+// Items
+.tod-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tod-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--erp-border, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.85rem;
+
+  &__qty {
+    font-weight: 700;
+    color: var(--erp-text-muted, #94a3b8);
+    min-width: 28px;
+  }
+  &__name {
+    flex: 1;
+    color: var(--erp-text-primary, #1e293b);
+    font-weight: 600;
+  }
+  &__price {
+    font-weight: 700;
+    color: var(--erp-text-secondary, #64748b);
+  }
+}
+
+.tod-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid var(--erp-border, #e2e8f0);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--erp-text-primary, #1e293b);
+
+  &__value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #059669;
+  }
 }
 </style>

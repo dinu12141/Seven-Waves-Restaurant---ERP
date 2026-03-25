@@ -327,9 +327,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useQuasar, Loading, Notify } from 'quasar'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useCashierStore } from 'src/stores/cashierStore'
@@ -340,6 +340,7 @@ import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
+const route = useRoute()
 const store = useOrderStore()
 const cashierStore = useCashierStore()
 const authStore = useAuthStore()
@@ -518,10 +519,82 @@ async function fetchMenuItems() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchMenuItems()
-  cashierStore.initialize()
+  await cashierStore.initialize()
+
+  // ── Auto-open billing from notification click ─────────────
+  // When navigated via notification with ?order_id=xxx, auto-open the billing dialog
+  const notifOrderId = route.query.order_id
+  if (notifOrderId) {
+    autoOpenBillingForOrder(notifOrderId)
+  }
 })
+
+// Watch for same-page navigation (user already on POS, clicks another notification)
+watch(
+  () => route.query.order_id,
+  (newOrderId) => {
+    if (newOrderId) {
+      autoOpenBillingForOrder(newOrderId)
+    }
+  },
+)
+
+/**
+ * Auto-open billing dialog for an order from notification click.
+ * Retries up to 5 times (1s apart) in case the cashierStore hasn't loaded the order yet.
+ */
+async function autoOpenBillingForOrder(orderId, attempt = 0) {
+  const MAX_ATTEMPTS = 5
+
+  // Find order in the billing queue
+  let order = cashierStore.billingOrders.find(o => o.id === orderId)
+
+  if (!order && attempt < MAX_ATTEMPTS) {
+    // Order may not be loaded yet — wait and retry
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Refresh the queue in case it wasn't loaded
+    if (attempt === 1) await cashierStore.fetchBillingQueue(true)
+    return autoOpenBillingForOrder(orderId, attempt + 1)
+  }
+
+  if (order) {
+    // Clear the query param so reloads don't re-trigger
+    router.replace({ query: {} }).catch(() => {})
+
+    await nextTick()
+    selectedQueueOrder.value = order
+    paymentDialog.value = true
+
+    Notify.create({
+      message: `Billing opened for Order #${order.order_number}`,
+      caption: order.order_type === 'delivery' ? '🛵 Delivery Order' : order.order_type === 'takeaway' ? '🥡 Takeaway' : '🍽️ Dine-in',
+      color: 'deep-orange',
+      icon: 'receipt_long',
+      position: 'top',
+      timeout: 3000,
+    })
+
+    // Auto-print bill after dialog fully renders (350ms for dialog animation + render)
+    setTimeout(async () => {
+      if (paymentDialogRef.value?.printBill) {
+        await paymentDialogRef.value.printBill()
+      }
+    }, 350)
+  } else {
+    // Order not found after retries — notify
+    router.replace({ query: {} }).catch(() => {})
+    Notify.create({
+      message: 'Order not found in billing queue',
+      caption: 'It may have already been processed or is still being prepared.',
+      color: 'orange-8',
+      icon: 'info',
+      position: 'top',
+      timeout: 5000,
+    })
+  }
+}
 
 // ── Item Selection ──────────────────────────────────────
 function onSearchInput() {
@@ -848,6 +921,16 @@ function handleNewOrderAfterPayment() {
 function openBilling(order) {
   selectedQueueOrder.value = order
   paymentDialog.value = true
+
+  // Auto-print bill when opening an unpaid order from the queue
+  const isPaid = order.status === 'paid' || order.payment_status === 'paid'
+  if (!isPaid) {
+    setTimeout(async () => {
+      if (paymentDialogRef.value?.printBill) {
+        await paymentDialogRef.value.printBill()
+      }
+    }, 350)
+  }
 }
 
 function onOrderPaid() {

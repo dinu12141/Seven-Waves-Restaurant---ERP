@@ -3,6 +3,7 @@
     title="Sales Statement"
     subtitle="Comprehensive breakdown of total sales, settlements, and collections"
     :kpis="kpiData"
+    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -13,50 +14,50 @@
         <q-spinner-gears size="40px" color="primary" />
       </div>
 
-      <div v-else class="ss-container">
+      <div v-else>
         <!-- ── SAP Header ───────────────────────────────── -->
-        <div class="ss-header">
-          <div class="ss-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="ss-header__meta">
+        <div class="sap-header" style="flex-direction: column; text-align: center">
+          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+          <div class="sap-header__meta" style="text-align: left; margin-top: 4px">
             <span>Location : <strong>{{ branchName }}</strong></span>
             <span class="q-ml-lg">Date From:<strong>{{ reportDateRange }}</strong></span>
           </div>
-          <div class="ss-header__title">Sales Statement</div>
+          <div class="sap-header__title sap-header__title--underline" style="margin-top: 6px">Sales Statement</div>
         </div>
 
         <!-- ════════════════════════════════════════════════ -->
         <!--  SECTION 1: Two-column Statement Layout        -->
         <!-- ════════════════════════════════════════════════ -->
-        <div class="ss-columns">
+        <div class="sap-columns">
           <!-- LEFT: Revenue & Deductions (CREDIT side) -->
-          <div class="ss-col ss-col--left">
-            <table class="ss-statement">
+          <div class="sap-col">
+            <table class="sap-native-table">
               <thead>
                 <tr>
-                  <th class="ss-statement__th">Description</th>
-                  <th class="ss-statement__th ss-statement__th--num">Amount</th>
-                  <th class="ss-statement__th ss-statement__th--num">TAX</th>
-                  <th class="ss-statement__th ss-statement__th--num">Amt. with TAX</th>
+                  <th class="sap-native-table__th">Description</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">Amount</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">TAX</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">Amt. with TAX</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in creditItems" :key="item.label" class="ss-statement__row">
-                  <td class="ss-statement__td">{{ item.label }}</td>
-                  <td class="ss-statement__td ss-statement__td--num">{{ fmtN(item.amount) }}</td>
-                  <td class="ss-statement__td ss-statement__td--num">{{ fmtN(item.tax) }}</td>
-                  <td class="ss-statement__td ss-statement__td--num">{{ fmtN(item.amtWithTax) }}</td>
+                <tr v-for="item in creditItems" :key="item.label" class="sap-native-table__row">
+                  <td class="sap-native-table__td">{{ item.label }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(item.amount) }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(item.tax) }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(item.amtWithTax) }}</td>
                 </tr>
               </tbody>
               <tfoot>
-                <tr class="ss-statement__total">
-                  <td class="ss-statement__td text-weight-bolder">TOTAL CREDIT</td>
-                  <td class="ss-statement__td ss-statement__td--num text-weight-bolder">{{ fmtN(totalCredit) }}</td>
-                  <td class="ss-statement__td ss-statement__td--num text-weight-bolder">{{ fmtN(totalCreditTax) }}</td>
-                  <td class="ss-statement__td ss-statement__td--num text-weight-bolder">{{ fmtN(totalCreditWithTax) }}</td>
+                <tr class="sap-native-table__total">
+                  <td class="sap-native-table__td text-weight-bolder">TOTAL CREDIT</td>
+                  <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(totalCredit) }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(totalCreditTax) }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(totalCreditWithTax) }}</td>
                 </tr>
-                <tr class="ss-statement__extra">
-                  <td class="ss-statement__td">Others :</td>
-                  <td class="ss-statement__td ss-statement__td--num">Wastage : .000</td>
+                <tr class="sap-native-table__extra">
+                  <td class="sap-native-table__td">Others :</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">Wastage : .000</td>
                   <td colspan="2" />
                 </tr>
               </tfoot>
@@ -64,35 +65,35 @@
           </div>
 
           <!-- RIGHT: Collections / Settlements (DEBIT side) -->
-          <div class="ss-col ss-col--right">
-            <table class="ss-statement">
+          <div class="sap-col">
+            <table class="sap-native-table">
               <thead>
                 <tr>
-                  <th class="ss-statement__th">Description</th>
-                  <th class="ss-statement__th ss-statement__th--num">Amount</th>
+                  <th class="sap-native-table__th">Description</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in debitItems" :key="item.label" class="ss-statement__row">
-                  <td class="ss-statement__td">{{ item.label }}</td>
-                  <td class="ss-statement__td ss-statement__td--num">{{ fmtN(item.amount) }}</td>
+                <tr v-for="item in debitItems" :key="item.label" class="sap-native-table__row">
+                  <td class="sap-native-table__td">{{ item.label }}</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(item.amount) }}</td>
                 </tr>
-                <tr class="ss-statement__subtotal">
-                  <td class="ss-statement__td text-weight-bold">Total Collection</td>
-                  <td class="ss-statement__td ss-statement__td--num text-weight-bold text-green">{{ fmtN(totalCollection) }}</td>
+                <tr class="sap-native-table__subtotal">
+                  <td class="sap-native-table__td text-weight-bold">Total Collection</td>
+                  <td class="sap-native-table__td sap-native-table__td--num text-weight-bold text-green">{{ fmtN(totalCollection) }}</td>
                 </tr>
-                <tr class="ss-statement__row">
-                  <td class="ss-statement__td">Loyalty Redemption</td>
-                  <td class="ss-statement__td ss-statement__td--num">.000</td>
+                <tr class="sap-native-table__row">
+                  <td class="sap-native-table__td">Loyalty Redemption</td>
+                  <td class="sap-native-table__td sap-native-table__td--num">.000</td>
                 </tr>
               </tbody>
               <tfoot>
-                <tr class="ss-statement__total">
-                  <td class="ss-statement__td text-weight-bolder">TOTAL DEBIT</td>
-                  <td class="ss-statement__td ss-statement__td--num text-weight-bolder">{{ fmtN(totalCollection) }}</td>
+                <tr class="sap-native-table__total">
+                  <td class="sap-native-table__td text-weight-bolder">TOTAL DEBIT</td>
+                  <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(totalCollection) }}</td>
                 </tr>
-                <tr class="ss-statement__extra">
-                  <td class="ss-statement__td" colspan="2">Bang Invoice : .000</td>
+                <tr class="sap-native-table__extra">
+                  <td class="sap-native-table__td" colspan="2">Bang Invoice : .000</td>
                 </tr>
               </tfoot>
             </table>
@@ -102,50 +103,50 @@
         <!-- ════════════════════════════════════════════════ -->
         <!--  SECTION 2: Sales Analysis By Type              -->
         <!-- ════════════════════════════════════════════════ -->
-        <div class="ss-analysis">
-          <div class="ss-analysis__title">Sales Analysis By Type</div>
-          <table class="ss-analysis-table">
+        <div class="sap-analysis">
+          <div class="sap-analysis__title">Sales Analysis By Type</div>
+          <table class="sap-native-table" style="margin-top: 4px">
             <thead>
               <tr>
-                <th class="ss-analysis__th">Order Type</th>
-                <th class="ss-analysis__th ss-analysis__th--num">Gross Sales</th>
-                <th class="ss-analysis__th ss-analysis__th--num">% of Ttl</th>
-                <th class="ss-analysis__th ss-analysis__th--num">Guests</th>
-                <th class="ss-analysis__th ss-analysis__th--num">% of Ttl</th>
-                <th class="ss-analysis__th ss-analysis__th--num">Checks</th>
-                <th class="ss-analysis__th ss-analysis__th--num">% of Ttl</th>
-                <th class="ss-analysis__th ss-analysis__th--num">Tables</th>
-                <th class="ss-analysis__th ss-analysis__th--num">% of Ttl</th>
+                <th class="sap-native-table__th">Order Type</th>
+                <th class="sap-native-table__th sap-native-table__th--num">Gross Sales</th>
+                <th class="sap-native-table__th sap-native-table__th--num">% of Ttl</th>
+                <th class="sap-native-table__th sap-native-table__th--num">Guests</th>
+                <th class="sap-native-table__th sap-native-table__th--num">% of Ttl</th>
+                <th class="sap-native-table__th sap-native-table__th--num">Checks</th>
+                <th class="sap-native-table__th sap-native-table__th--num">% of Ttl</th>
+                <th class="sap-native-table__th sap-native-table__th--num">Tables</th>
+                <th class="sap-native-table__th sap-native-table__th--num">% of Ttl</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in analysisRows" :key="row.type" class="ss-analysis__row">
-                <td class="ss-analysis__td">{{ row.type }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ fmtN(row.gross) }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.grossPct }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.guests }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.guestPct }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.checks }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.checkPct }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.tables }}</td>
-                <td class="ss-analysis__td ss-analysis__td--num">{{ row.tablePct }}</td>
+              <tr v-for="row in analysisRows" :key="row.type" class="sap-native-table__row">
+                <td class="sap-native-table__td">{{ row.type }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.gross) }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.grossPct }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.guests }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.guestPct }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.checks }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.checkPct }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.tables }}</td>
+                <td class="sap-native-table__td sap-native-table__td--num">{{ row.tablePct }}</td>
               </tr>
             </tbody>
             <tfoot>
-              <tr class="ss-analysis__total">
-                <td class="ss-analysis__td text-weight-bolder">Total</td>
-                <td class="ss-analysis__td ss-analysis__td--num text-weight-bolder">{{ fmtN(analysisTotals.gross) }}</td>
-                <td class="ss-analysis__td" />
-                <td class="ss-analysis__td ss-analysis__td--num text-weight-bolder">{{ analysisTotals.guests }}</td>
-                <td class="ss-analysis__td" />
-                <td class="ss-analysis__td ss-analysis__td--num text-weight-bolder">{{ analysisTotals.checks }}</td>
-                <td class="ss-analysis__td" />
-                <td class="ss-analysis__td ss-analysis__td--num text-weight-bolder">{{ analysisTotals.tables }}</td>
-                <td class="ss-analysis__td" />
+              <tr class="sap-native-table__total">
+                <td class="sap-native-table__td text-weight-bolder">Total</td>
+                <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(analysisTotals.gross) }}</td>
+                <td class="sap-native-table__td" />
+                <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ analysisTotals.guests }}</td>
+                <td class="sap-native-table__td" />
+                <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ analysisTotals.checks }}</td>
+                <td class="sap-native-table__td" />
+                <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ analysisTotals.tables }}</td>
+                <td class="sap-native-table__td" />
               </tr>
-              <tr class="ss-analysis__total">
-                <td class="ss-analysis__td text-weight-bolder">Total w/o Refund</td>
-                <td class="ss-analysis__td ss-analysis__td--num text-weight-bolder">{{ fmtN(analysisTotals.gross) }}</td>
+              <tr class="sap-native-table__total">
+                <td class="sap-native-table__td text-weight-bolder">Total w/o Refund</td>
+                <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(analysisTotals.gross) }}</td>
                 <td colspan="7" />
               </tr>
             </tfoot>
@@ -200,7 +201,6 @@ const voidRefundAmount = computed(() =>
 )
 
 const serviceCharge = computed(() => {
-  // Service charge = total_amount - subtotal - tax + discount (if any)
   return rawOrders.value.reduce((s, o) => {
     const sc = Number(o.total_amount || 0) - Number(o.subtotal || 0) - Number(o.tax_amount || 0) + Number(o.discount_amount || 0) - Number(o.delivery_charge || 0)
     return s + Math.max(0, sc)
@@ -373,212 +373,5 @@ function exportExcel() { exportCSV() }
 </script>
 
 <style scoped lang="scss">
-/* ── Container ─────────────────────────────────────────────── */
-.ss-container {
-  padding: 0;
-}
-
-/* ── SAP Header ────────────────────────────────────────────── */
-.ss-header {
-  text-align: center;
-  padding: 14px 16px 10px;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.02);
-
-  &__company {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--erp-text-primary, #f8fafc);
-  }
-  &__meta {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-    margin-top: 4px;
-    text-align: left;
-  }
-  &__title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 6px;
-    text-decoration: underline;
-  }
-}
-
-/* ── Two Column Layout ─────────────────────────────────────── */
-.ss-columns {
-  display: flex;
-  gap: 2px;
-  padding: 8px;
-}
-
-.ss-col {
-  flex: 1;
-  min-width: 0;
-}
-
-/* ── Statement Table ───────────────────────────────────────── */
-.ss-statement {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-}
-
-.ss-statement__th {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--erp-text-secondary, #94a3b8);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 5px 6px;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-  text-align: left;
-  white-space: nowrap;
-
-  &--num { text-align: right; }
-}
-
-.ss-statement__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03));
-}
-
-.ss-statement__td {
-  font-size: 11px;
-  color: var(--erp-text-primary, #f8fafc);
-  padding: 3px 6px;
-  height: 24px;
-
-  &--num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    font-family: 'SF Mono', 'Consolas', monospace;
-  }
-}
-
-.ss-statement__subtotal {
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.ss-statement__total {
-  background: rgba(255, 255, 255, 0.04);
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-
-  td {
-    padding: 6px !important;
-    font-size: 12px !important;
-  }
-}
-
-.ss-statement__extra {
-  td {
-    font-size: 10px !important;
-    color: var(--erp-text-muted, #64748b) !important;
-    padding: 3px 6px !important;
-  }
-}
-
-/* ── Sales Analysis Section ────────────────────────────────── */
-.ss-analysis {
-  margin-top: 12px;
-  padding: 0 8px 8px;
-}
-
-.ss-analysis__title {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--erp-text-primary, #f8fafc);
-  text-align: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-  text-decoration: underline;
-}
-
-.ss-analysis-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-  margin-top: 4px;
-}
-
-.ss-analysis__th {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--erp-text-secondary, #94a3b8);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 5px 6px;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
-  text-align: left;
-  white-space: nowrap;
-
-  &--num { text-align: right; }
-}
-
-.ss-analysis__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03));
-}
-
-.ss-analysis__td {
-  font-size: 11px;
-  color: var(--erp-text-primary, #f8fafc);
-  padding: 3px 6px;
-  height: 24px;
-
-  &--num {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    font-family: 'SF Mono', 'Consolas', monospace;
-  }
-}
-
-.ss-analysis__total {
-  background: rgba(255, 255, 255, 0.04);
-  border-top: 1.5px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-
-  td {
-    padding: 5px 6px !important;
-  }
-}
-
-/* ── Print Overrides ───────────────────────────────────────── */
-@media print {
-  .ss-header {
-    background: none !important;
-    border-bottom: 2pt solid #1a1a2e !important;
-    padding: 6pt 0 !important;
-  }
-  .ss-header__company { font-size: 13pt !important; color: #1a1a2e !important; }
-  .ss-header__title { font-size: 10pt !important; color: #333 !important; }
-  .ss-header__meta { color: #555 !important; font-size: 8pt !important; }
-
-  .ss-columns { gap: 10pt; padding: 4pt 0; }
-
-  .ss-statement__th,
-  .ss-analysis__th {
-    font-size: 7pt !important;
-    background: #1a1a2e !important;
-    color: #fff !important;
-    padding: 3pt 4pt !important;
-  }
-  .ss-statement__td,
-  .ss-analysis__td {
-    font-size: 7pt !important;
-    color: #222 !important;
-    padding: 2pt 4pt !important;
-    height: auto !important;
-  }
-  .ss-statement__total td,
-  .ss-analysis__total td {
-    font-size: 8pt !important;
-    color: #1a1a2e !important;
-    background: #e8edf3 !important;
-    border-top: 1.5pt solid #1a1a2e !important;
-  }
-  .ss-analysis__title {
-    font-size: 10pt !important;
-    color: #1a1a2e !important;
-  }
-}
+@import 'src/pages/reports/report-common.scss';
 </style>

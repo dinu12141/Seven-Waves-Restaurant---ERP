@@ -265,6 +265,36 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     return currentMinutes >= startMin && currentMinutes <= endMin
   }
 
+  /**
+   * Helper: Get today's + yesterday's date in Sri Lanka timezone (YYYY-MM-DD).
+   * IMPORTANT: We must use Asia/Colombo, NOT UTC, because shift assignments
+   * are created by HR using local dates. At 01:00 AM SL time, UTC is still
+   * the PREVIOUS day, which would cause shift lookups to fail.
+   */
+  function _getSriLankaDate() {
+    const now = new Date()
+    try {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Colombo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      })
+      const today = fmt.format(now) // 'YYYY-MM-DD'
+
+      // Yesterday for overnight shift lookups
+      const yesterday = new Date(now.getTime() - 86400000)
+      const yesterdayStr = fmt.format(yesterday)
+
+      return { today, yesterday: yesterdayStr }
+    } catch {
+      // Fallback to browser local time
+      const pad = (n) => String(n).padStart(2, '0')
+      const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+      const yesterday = new Date(now.getTime() - 86400000)
+      const yStr = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`
+      return { today, yesterday: yStr }
+    }
+  }
+
   async function loadShiftInfo() {
     // Wait for profile to be available (it loads in parallel)
     // If not available, do a quick lookup
@@ -300,8 +330,11 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       if (!employeeId) return
     }
 
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    // ── Use Sri Lanka local date, NOT UTC ──
+    const { today, yesterday } = _getSriLankaDate()
 
+    // Query today's AND yesterday's assignments (yesterday covers overnight shifts
+    // that started last evening and continue into today)
     let query = supabase
       .from('shift_assignments')
       .select(`
@@ -309,7 +342,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         shifts ( id, name, start_time, end_time, is_overnight )
       `)
       .eq('employee_id', employeeId)
-      .eq('assignment_date', today)
+      .in('assignment_date', [today, yesterday])
       .in('status', ['scheduled', 'active', 'present'])
 
     // Filter by branch if available (not critical — employee_id is sufficient)
@@ -341,21 +374,23 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         branch_name:  authStore.currentBranch?.name,
       }
       isOnShift.value = true
-    } else if (assignments && assignments.length > 0) {
-      // Has assignment today but outside shift hours — show shift info but mark off-shift
-      const sa = assignments[0]
-      shiftInfo.value = {
-        id:           sa.id,
-        date:         sa.assignment_date,
-        shift_name:   sa.shifts?.name,
-        shift_start:  sa.shifts?.start_time,
-        shift_end:    sa.shifts?.end_time,
-        branch_name:  authStore.currentBranch?.name,
-      }
-      isOnShift.value = false
     } else {
-      shiftInfo.value = null
-      isOnShift.value = false
+      // Check if there's at least a today assignment (even if outside shift hours)
+      const todayAssignment = (assignments || []).find(sa => sa.assignment_date === today)
+      if (todayAssignment) {
+        shiftInfo.value = {
+          id:           todayAssignment.id,
+          date:         todayAssignment.assignment_date,
+          shift_name:   todayAssignment.shifts?.name,
+          shift_start:  todayAssignment.shifts?.start_time,
+          shift_end:    todayAssignment.shifts?.end_time,
+          branch_name:  authStore.currentBranch?.name,
+        }
+        isOnShift.value = false
+      } else {
+        shiftInfo.value = null
+        isOnShift.value = false
+      }
     }
   }
 
@@ -480,6 +515,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── Accept Order ─────────────────────────────────────────────────────────
   async function acceptOrder(orderId) {
+    if (!isOnShift.value) throw new Error('You cannot accept orders while off shift.')
     const { data, error } = await supabase.rpc('process_waiter_accept', { p_order_id: orderId })
     if (error) throw error
     if (data?.success === false) throw new Error(data.error || 'Accept failed')
@@ -489,6 +525,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── Mark Served ──────────────────────────────────────────────────────────
   async function markServed(orderId) {
+    if (!isOnShift.value) throw new Error('You cannot mark orders while off shift.')
     const { data, error } = await supabase.rpc('process_waiter_mark_served', { p_order_id: orderId })
     if (error) throw error
     if (data?.success === false) throw new Error(data.error || 'Mark served failed')

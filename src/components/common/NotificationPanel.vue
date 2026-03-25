@@ -23,7 +23,7 @@
           <div class="notif-header-icon">
             <q-icon name="notifications_active" size="18px" />
           </div>
-          <span class="text-subtitle1 text-weight-bold text-white">Notifications</span>
+          <span class="text-subtitle1 text-weight-bold notif-header-title">Notifications</span>
           <q-badge v-if="unreadCount > 0" color="red" rounded class="unread-header-badge">
             {{ unreadCount }}
           </q-badge>
@@ -252,7 +252,13 @@ function onMenuOpen() {
 function handleClick(notif) {
   store.markRead(notif.id)
   if (notif.action_url) {
-    router.push(notif.action_url).catch(() => {})
+    // When clicking a delivery/order notification bound for POS,
+    // pass the order_id as a query param so POS auto-opens billing
+    if (notif.ref_type === 'order' && notif.ref_id && notif.action_url === '/pos') {
+      router.push({ path: '/pos', query: { order_id: notif.ref_id } }).catch(() => {})
+    } else {
+      router.push(notif.action_url).catch(() => {})
+    }
   }
 }
 
@@ -287,6 +293,7 @@ function getIcon(type) {
   const icons = {
     order_new: 'restaurant_menu',
     order_accepted: 'thumb_up_alt',
+    delivery_accepted: 'delivery_dining',
     kitchen_ready: 'check_circle',
     payment_complete: 'payments',
     warning: 'warning_amber',
@@ -301,6 +308,7 @@ function getGradient(type) {
   const gradients = {
     order_new: 'linear-gradient(135deg, #2196F3, #42A5F5)',
     order_accepted: 'linear-gradient(135deg, #FF9800, #FFB74D)',
+    delivery_accepted: 'linear-gradient(135deg, #FF5722, #FF7043)',
     kitchen_ready: 'linear-gradient(135deg, #4CAF50, #66BB6A)',
     payment_complete: 'linear-gradient(135deg, #009688, #4DB6AC)',
     warning: 'linear-gradient(135deg, #FFC107, #FFD54F)',
@@ -315,6 +323,7 @@ function getIconBg(type) {
   const bgs = {
     order_new: 'rgba(33, 150, 243, 0.2)',
     order_accepted: 'rgba(255, 152, 0, 0.2)',
+    delivery_accepted: 'rgba(255, 87, 34, 0.2)',
     kitchen_ready: 'rgba(76, 175, 80, 0.2)',
     payment_complete: 'rgba(0, 150, 136, 0.2)',
     warning: 'rgba(255, 193, 7, 0.2)',
@@ -404,13 +413,11 @@ onUnmounted(() => {
 
 /* ── Menu Container ── */
 .notif-menu {
-  background: #12121a !important;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--erp-bg-elevated) !important;
+  border: 1px solid var(--erp-border) !important;
   border-radius: 16px !important;
   overflow: hidden;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  box-shadow: var(--erp-shadow-lg) !important;
   backdrop-filter: blur(20px);
 }
 
@@ -420,8 +427,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--erp-bg-card-hover);
+  border-bottom: 1px solid var(--erp-border);
 }
 
 .notif-header-icon {
@@ -435,6 +442,10 @@ onUnmounted(() => {
   color: #42a5f5;
 }
 
+.notif-header-title {
+  color: var(--erp-text-primary);
+}
+
 .unread-header-badge {
   font-size: 10px;
   font-weight: 700;
@@ -442,7 +453,7 @@ onUnmounted(() => {
 }
 
 .header-action-btn {
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--erp-text-muted) !important;
   transition: all 0.2s ease;
 }
 .header-action-btn:hover {
@@ -459,8 +470,8 @@ onUnmounted(() => {
   display: flex;
   gap: 4px;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.015);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--erp-bg-card-hover);
+  border-bottom: 1px solid var(--erp-border);
   overflow-x: auto;
 }
 
@@ -472,7 +483,7 @@ onUnmounted(() => {
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.2px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--erp-text-muted);
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -480,8 +491,8 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .tab-pill:hover {
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--erp-text-secondary);
+  background: var(--erp-bg-hover);
 }
 .tab-pill.active {
   color: #42a5f5;
@@ -512,7 +523,7 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #12121a;
+  background: var(--erp-bg-elevated);
 }
 
 .date-label {
@@ -520,7 +531,7 @@ onUnmounted(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--erp-text-muted);
 }
 
 /* ── Notification Card ── */
@@ -537,7 +548,7 @@ onUnmounted(() => {
 }
 
 .notif-card:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--erp-bg-hover);
 }
 
 .notif-card.unread {
@@ -588,7 +599,7 @@ onUnmounted(() => {
 .notif-title {
   font-size: 0.78rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--erp-text-primary);
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -596,23 +607,25 @@ onUnmounted(() => {
 }
 
 .notif-card.unread .notif-title {
-  color: #ffffff;
+  color: var(--erp-text-primary);
+  font-weight: 700;
 }
 
 .notif-time {
   font-size: 0.62rem;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--erp-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .notif-message {
   font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--erp-text-secondary);
   line-height: 1.4;
   margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -650,7 +663,7 @@ onUnmounted(() => {
 
 .dismiss-btn {
   opacity: 0;
-  color: rgba(255, 255, 255, 0.3) !important;
+  color: var(--erp-text-muted) !important;
   transition: all 0.15s ease;
 }
 .notif-card:hover .dismiss-btn {
@@ -674,7 +687,7 @@ onUnmounted(() => {
   width: 64px;
   height: 64px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--erp-bg-hover);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -683,13 +696,13 @@ onUnmounted(() => {
 /* ── Footer ── */
 .notif-footer {
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(255, 255, 255, 0.015);
+  border-top: 1px solid var(--erp-border);
+  background: var(--erp-bg-card-hover);
 }
 
 .footer-btn {
   width: 100%;
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--erp-text-muted) !important;
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.3px;

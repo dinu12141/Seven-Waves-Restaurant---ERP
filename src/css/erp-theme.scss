@@ -1,74 +1,265 @@
-/* 
-  Global ERP Design System Theme
-  Centralized variables for all ERP components
+/*
+  Global ERP Design System Theme — SAP Business One HANA Inspired
+  Centralized tokens for ALL ERP components
+  ─────────────────────────────────────────────────────────────────
+  RULE: Every visual property in the ERP MUST reference these tokens.
+        No hardcoded colors in component-scoped CSS.
+
+  DUAL THEME: body.body--dark  → Dark palette
+              body.body--light → Light palette
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SHARED TOKENS — identical in both themes
+   ═══════════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* ─── Typography ─── */
-  --erp-font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  --erp-font-size-base: 14px;
-  --erp-font-size-h1: 22px;
-  --erp-font-size-h2: 18px;
-  --erp-font-size-h3: 16px;
-  --erp-font-size-small: 12px;
-  --erp-font-size-table: 13px;
+  /* ═══ Typography ═══════════════════════════════════════════════════════════ */
+  --erp-font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --erp-font-size-base: 13px;
+  --erp-font-size-h1: 20px;
+  --erp-font-size-h2: 16px;
+  --erp-font-size-h3: 14px;
+  --erp-font-size-h4: 13px;
+  --erp-font-size-table: 12px;
+  --erp-font-size-small: 11px;
+  --erp-font-size-caption: 10px;
+  --erp-font-size-tiny: 9px;
+  --erp-font-size-kpi: 22px;
 
-  /* ─── Base Font Weights ─── */
   --erp-font-weight-regular: 400;
   --erp-font-weight-medium: 500;
   --erp-font-weight-semibold: 600;
   --erp-font-weight-bold: 700;
+  --erp-font-weight-black: 800;
 
-  /* ─── Semantic Colors ─── */
+  /* ═══ Spacing (compact 4px grid) ═══════════════════════════════════════ */
+  --erp-spacing-xs: 2px;
+  --erp-spacing-sm: 4px;
+  --erp-spacing-md: 8px;
+  --erp-spacing-md2: 12px;
+  --erp-spacing-lg: 16px;
+  --erp-spacing-xl: 24px;
+
+  /* ═══ Radius (SAP B1: minimal rounding) ════════════════════════════════ */
+  --erp-radius-xs: 2px;
+  --erp-radius-sm: 3px;
+  --erp-radius-md: 4px;
+  --erp-radius-lg: 6px;
+  --erp-radius-xl: 8px;
+  --erp-radius-pill: 9999px;
+
+  /* ═══ Dimensions (SAP B1: compact) ═════════════════════════════════════ */
+  --erp-input-height: 32px;
+  --erp-btn-height: 30px;
+  --erp-row-height: 36px;
+  --erp-sidebar-width: 220px;
+  --erp-header-height: 42px;
+
+  /* ─── Dialog Sizing ─── */
+  --erp-dialog-w-sm: 520px;
+  --erp-dialog-w-md: 720px;
+  --erp-dialog-w-lg: 960px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DARK THEME TOKENS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+body.body--dark {
+  /* ═══ Semantic Colors ═════════════════════════════════════════════════════ */
   --erp-primary: #2563eb;
   --erp-primary-hover: #1d4ed8;
   --erp-primary-subtle: rgba(37, 99, 235, 0.1);
   --erp-success: #16a34a;
+  --erp-success-subtle: rgba(22, 163, 74, 0.12);
   --erp-warning: #f59e0b;
+  --erp-warning-subtle: rgba(245, 158, 11, 0.12);
   --erp-danger: #dc2626;
+  --erp-danger-subtle: rgba(220, 38, 38, 0.12);
   --erp-info: #0ea5e9;
+  --erp-info-subtle: rgba(14, 165, 233, 0.12);
+  --erp-accent: #7c3aed;
+  --erp-accent-subtle: rgba(124, 58, 237, 0.12);
+  --erp-teal: #0d9488;
+  --erp-teal-subtle: rgba(13, 148, 136, 0.12);
+  --erp-orange: #ea580c;
+  --erp-orange-subtle: rgba(234, 88, 12, 0.12);
 
-  /* ─── Backgrounds (Dark ERP Theme) ─── */
+  /* ─── Derived light tints (for KPI icons, chart legends) ─── */
+  --erp-primary-light: #60a5fa;
+  --erp-success-light: #34d399;
+  --erp-warning-light: #fcd34d;
+  --erp-danger-light: #f87171;
+  --erp-accent-light: #a78bfa;
+  --erp-teal-light: #2dd4bf;
+  --erp-orange-light: #fb923c;
+  --erp-info-light: #38bdf8;
+
+  /* ═══ Backgrounds ════════════════════════════════════════════════════════ */
   --erp-bg-main: #0f172a;
+  --erp-bg-page: #080e18;
   --erp-bg-card: #1e293b;
   --erp-bg-card-hover: rgba(255, 255, 255, 0.04);
+  --erp-bg-elevated: #1e293b;
   --erp-bg-sidebar: #0b1220;
   --erp-bg-header: #0f172a;
+  --erp-bg-input: #111827;
+  --erp-bg-form-card: #111827;
+  --erp-bg-stripe: rgba(255, 255, 255, 0.015);
+  --erp-bg-hover: rgba(255, 255, 255, 0.05);
+  --erp-bg-active: rgba(255, 255, 255, 0.06);
+  --erp-bg-toolbar-bottom: rgba(0, 0, 0, 0.18);
 
-  /* ─── Borders ─── */
+  /* ═══ Borders ═════════════════════════════════════════════════════════════ */
   --erp-border: rgba(255, 255, 255, 0.06);
   --erp-border-hover: rgba(255, 255, 255, 0.12);
+  --erp-border-focus: #2563eb;
+  --erp-border-strong: rgba(255, 255, 255, 0.10);
 
-  /* ─── Text Colors ─── */
+  /* ═══ Text Colors ═════════════════════════════════════════════════════════ */
   --erp-text-primary: #f8fafc;
   --erp-text-secondary: #94a3b8;
   --erp-text-muted: #64748b;
+  --erp-text-tertiary: #475569;
   --erp-text-placeholder: #475569;
+  --erp-text-on-primary: #ffffff;
 
-  /* ─── Dimensions & Spacing (8px Grid Rules) ─── */
-  --erp-spacing-xs: 4px;
-  --erp-spacing-sm: 8px;
-  --erp-spacing-md: 16px;
-  --erp-spacing-lg: 24px;
-  --erp-spacing-xl: 32px;
-
-  --erp-radius-sm: 4px;
-  --erp-radius-md: 6px;
-  --erp-radius-lg: 8px; /* Max 8px */
-
-  --erp-input-height: 38px;
-  --erp-btn-height: 36px;
-  --erp-row-height: 44px;
-
-  /* ─── Shadows ─── */
+  /* ═══ Shadows ══════════════════════════════════════════════════════════ */
   --erp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --erp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --erp-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --erp-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+
+  /* ═══ Focus ring ═══════════════════════════════════════════════════════ */
+  --erp-focus-ring: 0 0 0 1px rgba(37, 99, 235, 0.15);
+
+  /* ═══ Finance-module specific tokens ═══════════════════════════════════ */
+  --erp-fin-bg-page: #0d1117;
+  --erp-fin-bg-panel: #161b22;
+  --erp-fin-border: #21262d;
+  --erp-fin-bg-panel-header: rgba(22, 27, 34, 0.8);
+  --erp-fin-text-primary: #e6edf3;
+  --erp-fin-text-secondary: #8b949e;
+  --erp-fin-text-body: #c9d1d9;
+  --erp-fin-bg-form-control: #0d1117;
+  --erp-fin-form-border: #30363d;
+  --erp-fin-bg-dialog: #161b22;
+  --erp-fin-dialog-border: #30363d;
+  --erp-fin-bg-summary: #0d1117;
+  --erp-fin-hover-accent: rgba(56, 139, 253, 0.06);
+  --erp-fin-hover-accent-strong: rgba(56, 139, 253, 0.08);
+  --erp-fin-row-border: rgba(33, 38, 45, 0.6);
+
+  /* ═══ Dashboard-specific tokens ═══════════════════════════════════════ */
+  --erp-dash-bg: #080e18;
+  --erp-dash-text: #e2e8f0;
+  --erp-dash-brand-name: #f1f5f9;
+  --erp-dash-time: #475569;
+  --erp-dash-toggle-border: rgba(255, 255, 255, 0.08);
+  --erp-dash-avatar-ring: #080e18;
 }
 
-/* ─── Global Base Settings ─── */
-body.body--dark {
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIGHT THEME TOKENS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+body.body--light {
+  /* ═══ Semantic Colors ═════════════════════════════════════════════════════ */
+  --erp-primary: #2563eb;
+  --erp-primary-hover: #1d4ed8;
+  --erp-primary-subtle: rgba(37, 99, 235, 0.08);
+  --erp-success: #16a34a;
+  --erp-success-subtle: rgba(22, 163, 74, 0.10);
+  --erp-warning: #d97706;
+  --erp-warning-subtle: rgba(217, 119, 6, 0.10);
+  --erp-danger: #dc2626;
+  --erp-danger-subtle: rgba(220, 38, 38, 0.08);
+  --erp-info: #0284c7;
+  --erp-info-subtle: rgba(2, 132, 199, 0.08);
+  --erp-accent: #7c3aed;
+  --erp-accent-subtle: rgba(124, 58, 237, 0.08);
+  --erp-teal: #0d9488;
+  --erp-teal-subtle: rgba(13, 148, 136, 0.08);
+  --erp-orange: #ea580c;
+  --erp-orange-subtle: rgba(234, 88, 12, 0.08);
+
+  /* ─── Derived tints (for KPI icons, chart legends) ─── */
+  --erp-primary-light: #3b82f6;
+  --erp-success-light: #22c55e;
+  --erp-warning-light: #f59e0b;
+  --erp-danger-light: #ef4444;
+  --erp-accent-light: #8b5cf6;
+  --erp-teal-light: #14b8a6;
+  --erp-orange-light: #f97316;
+  --erp-info-light: #0ea5e9;
+
+  /* ═══ Backgrounds ════════════════════════════════════════════════════════ */
+  --erp-bg-main: #f1f5f9;
+  --erp-bg-page: #f8fafc;
+  --erp-bg-card: #ffffff;
+  --erp-bg-card-hover: rgba(0, 0, 0, 0.02);
+  --erp-bg-elevated: #ffffff;
+  --erp-bg-sidebar: #ffffff;
+  --erp-bg-header: #ffffff;
+  --erp-bg-input: #f8fafc;
+  --erp-bg-form-card: #f8fafc;
+  --erp-bg-stripe: rgba(0, 0, 0, 0.015);
+  --erp-bg-hover: rgba(0, 0, 0, 0.04);
+  --erp-bg-active: rgba(0, 0, 0, 0.05);
+  --erp-bg-toolbar-bottom: rgba(0, 0, 0, 0.03);
+
+  /* ═══ Borders ═════════════════════════════════════════════════════════════ */
+  --erp-border: #e2e8f0;
+  --erp-border-hover: #cbd5e1;
+  --erp-border-focus: #2563eb;
+  --erp-border-strong: #cbd5e1;
+
+  /* ═══ Text Colors ═════════════════════════════════════════════════════════ */
+  --erp-text-primary: #0f172a;
+  --erp-text-secondary: #475569;
+  --erp-text-muted: #64748b;
+  --erp-text-tertiary: #94a3b8;
+  --erp-text-placeholder: #94a3b8;
+  --erp-text-on-primary: #ffffff;
+
+  /* ═══ Shadows ══════════════════════════════════════════════════════════ */
+  --erp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --erp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --erp-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.10);
+  --erp-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  /* ═══ Focus ring ═══════════════════════════════════════════════════════ */
+  --erp-focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.20);
+
+  /* ═══ Finance-module specific tokens ═══════════════════════════════════ */
+  --erp-fin-bg-page: #f1f5f9;
+  --erp-fin-bg-panel: #ffffff;
+  --erp-fin-border: #e2e8f0;
+  --erp-fin-bg-panel-header: rgba(248, 250, 252, 0.9);
+  --erp-fin-text-primary: #0f172a;
+  --erp-fin-text-secondary: #64748b;
+  --erp-fin-text-body: #334155;
+  --erp-fin-bg-form-control: #f8fafc;
+  --erp-fin-form-border: #e2e8f0;
+  --erp-fin-bg-dialog: #ffffff;
+  --erp-fin-dialog-border: #e2e8f0;
+  --erp-fin-bg-summary: #f8fafc;
+  --erp-fin-hover-accent: rgba(37, 99, 235, 0.04);
+  --erp-fin-hover-accent-strong: rgba(37, 99, 235, 0.06);
+  --erp-fin-row-border: #f1f5f9;
+
+  /* ═══ Dashboard-specific tokens ═══════════════════════════════════════ */
+  --erp-dash-bg: #f8fafc;
+  --erp-dash-text: #1e293b;
+  --erp-dash-brand-name: #0f172a;
+  --erp-dash-time: #64748b;
+  --erp-dash-toggle-border: #e2e8f0;
+  --erp-dash-avatar-ring: #f8fafc;
+}
+
+/* ═══ Global Base ═══════════════════════════════════════════════════════════ */
+body.body--dark,
+body.body--light {
   background-color: var(--erp-bg-main) !important;
   color: var(--erp-text-primary) !important;
   font-family: var(--erp-font-family) !important;
@@ -78,35 +269,30 @@ body.body--dark {
   overflow-x: hidden !important;
 }
 
-/* ─── Headings ─── */
-h1,
-.text-h1 {
+/* ═══ Headings (SAP B1: tight margins) ═══════════════════════════════════ */
+h1, .text-h1 {
   font-size: var(--erp-font-size-h1) !important;
-  font-weight: var(--erp-font-weight-semibold) !important;
+  font-weight: var(--erp-font-weight-bold) !important;
   line-height: 1.2 !important;
-  margin: 0 0 var(--erp-spacing-md) 0;
+  margin: 0 0 6px 0;
   color: var(--erp-text-primary);
 }
-
-h2,
-.text-h2 {
+h2, .text-h2 {
   font-size: var(--erp-font-size-h2) !important;
   font-weight: var(--erp-font-weight-semibold) !important;
   line-height: 1.3 !important;
-  margin: 0 0 var(--erp-spacing-sm) 0;
+  margin: 0 0 4px 0;
   color: var(--erp-text-primary);
 }
-
-h3,
-.text-h3 {
+h3, .text-h3 {
   font-size: var(--erp-font-size-h3) !important;
   font-weight: var(--erp-font-weight-semibold) !important;
-  line-height: 1.4 !important;
-  margin: 0 0 var(--erp-spacing-sm) 0;
+  line-height: 1.3 !important;
+  margin: 0 0 2px 0;
   color: var(--erp-text-primary);
 }
 
-/* ─── Cards ─── */
+/* ═══ Cards ═════════════════════════════════════════════════════════════ */
 .erp-card {
   background-color: var(--erp-bg-card) !important;
   border: 1px solid var(--erp-border) !important;
@@ -114,13 +300,12 @@ h3,
   box-shadow: var(--erp-shadow-sm) !important;
 }
 
-/* ─── Tables ─── */
+/* ═══ Tables ════════════════════════════════════════════════════════════ */
 .erp-table {
   background: transparent !important;
 }
-
 .erp-table thead tr th {
-  background-color: rgba(255, 255, 255, 0.02) !important;
+  background-color: var(--erp-bg-stripe) !important;
   font-size: var(--erp-font-size-small) !important;
   font-weight: var(--erp-font-weight-semibold) !important;
   color: var(--erp-text-secondary) !important;
@@ -128,32 +313,29 @@ h3,
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--erp-border) !important;
 }
-
 .erp-table tbody tr {
   border-bottom: 1px solid var(--erp-border) !important;
   transition: background-color 0.15s ease;
 }
-
 .erp-table tbody tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.01) !important;
+  background-color: var(--erp-bg-stripe) !important;
 }
-
 .erp-table tbody tr:hover {
   background-color: var(--erp-bg-card-hover) !important;
 }
-
 .erp-table tbody td {
   font-size: var(--erp-font-size-table) !important;
   color: var(--erp-text-primary) !important;
-  padding: 8px 16px !important;
+  padding: 6px 12px !important;
   height: var(--erp-row-height) !important;
 }
 
-/* ─── Buttons ─── */
+/* ═══ Buttons (SAP B1: compact) ═════════════════════════════════════════ */
 .q-btn {
   text-transform: none !important;
   font-weight: var(--erp-font-weight-medium) !important;
-  font-size: var(--erp-font-size-base) !important;
+  font-size: var(--erp-font-size-small) !important;
+  letter-spacing: 0;
 }
 
 .erp-btn-primary,
@@ -161,41 +343,35 @@ h3,
 .erp-btn-danger {
   height: var(--erp-btn-height) !important;
   min-height: var(--erp-btn-height) !important;
-  border-radius: var(--erp-radius-md) !important; /* 6px */
+  border-radius: var(--erp-radius-md) !important;
   padding: 0 var(--erp-spacing-md) !important;
 }
-
 .erp-btn-primary {
   background-color: var(--erp-primary) !important;
-  color: #ffffff !important;
+  color: var(--erp-text-on-primary) !important;
 }
-
 .erp-btn-secondary {
-  background-color: var(--erp-bg-card-hover) !important; /* Gray */
+  background-color: var(--erp-bg-card-hover) !important;
   color: var(--erp-text-primary) !important;
   border: 1px solid var(--erp-border) !important;
 }
-
 .erp-btn-danger {
   background-color: var(--erp-danger) !important;
-  color: #ffffff !important;
+  color: var(--erp-text-on-primary) !important;
 }
-
-/* ─── Ghost / Flat Button ─── */
 .erp-btn-ghost {
   background-color: transparent !important;
   border: 1px solid var(--erp-border) !important;
   color: var(--erp-text-secondary) !important;
   height: var(--erp-btn-height) !important;
   border-radius: var(--erp-radius-md) !important;
-
   &:hover {
-    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-color: var(--erp-bg-hover) !important;
     color: var(--erp-text-primary) !important;
   }
 }
 
-/* ─── ERP Tab Bar (used across list pages) ─── */
+/* ═══ ERP Tab Bar ═══════════════════════════════════════════════════════ */
 .erp-tab-bar {
   display: flex;
   gap: 4px;
@@ -203,7 +379,6 @@ h3,
   border-bottom: 1px solid var(--erp-border);
   padding-bottom: 0;
 }
-
 .erp-tab {
   display: inline-flex;
   align-items: center;
@@ -212,27 +387,23 @@ h3,
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--erp-font-size-table);
+  font-weight: var(--erp-font-weight-medium);
   font-family: var(--erp-font-family);
   color: var(--erp-text-secondary);
   cursor: pointer;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
   margin-bottom: -1px;
 
   &:hover {
     color: var(--erp-text-primary);
     border-bottom-color: var(--erp-border);
   }
-
   &--active {
     color: var(--erp-primary);
     border-bottom-color: var(--erp-primary);
-    font-weight: 600;
+    font-weight: var(--erp-font-weight-semibold);
   }
-
   &__count {
     display: inline-flex;
     align-items: center;
@@ -241,100 +412,330 @@ h3,
     height: 18px;
     padding: 0 5px;
     border-radius: 9px;
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(255, 255, 255, 0.08);
+    font-size: var(--erp-font-size-caption);
+    font-weight: var(--erp-font-weight-bold);
+    background: var(--erp-bg-active);
     color: var(--erp-text-muted);
 
     .erp-tab--active & {
-      background: rgba(37, 99, 235, 0.15);
+      background: var(--erp-primary-subtle);
       color: var(--erp-primary);
     }
   }
 }
 
-/* ─── ERP Badge Variants ─── */
+/* ═══ ERP Badge System ═════════════════════════════════════════════════ */
 .erp-badge {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: var(--erp-radius-sm);
+  font-size: var(--erp-font-size-caption);
+  font-weight: var(--erp-font-weight-semibold);
   line-height: 18px;
   white-space: nowrap;
 
   &--pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
+    background: var(--erp-warning-subtle);
+    color: var(--erp-warning);
     border: 1px solid rgba(245, 158, 11, 0.25);
   }
-
   &--preparing {
-    background: rgba(37, 99, 235, 0.15);
+    background: var(--erp-primary-subtle);
     color: var(--erp-primary);
     border: 1px solid rgba(37, 99, 235, 0.25);
   }
-
-  &--ready {
-    background: rgba(22, 163, 74, 0.15);
+  &--ready, &--paid, &--completed {
+    background: var(--erp-success-subtle);
     color: var(--erp-success);
     border: 1px solid rgba(22, 163, 74, 0.25);
   }
-
-  &--paid {
-    background: rgba(22, 163, 74, 0.2);
-    color: var(--erp-success);
-    border: 1px solid rgba(22, 163, 74, 0.3);
-  }
-
-  &--cancelled {
-    background: rgba(220, 38, 38, 0.12);
+  &--cancelled, &--void {
+    background: var(--erp-danger-subtle);
     color: var(--erp-danger);
     border: 1px solid rgba(220, 38, 38, 0.2);
   }
-
+  &--info {
+    background: var(--erp-info-subtle);
+    color: var(--erp-info);
+    border: 1px solid rgba(14, 165, 233, 0.25);
+  }
   &--default {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--erp-bg-active);
     color: var(--erp-text-secondary);
     border: 1px solid var(--erp-border);
   }
 }
 
-/* ─── Typography overrides ─── */
+/* ═══ Typography utilities ═════════════════════════════════════════════ */
 .erp-h1 {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.4;
-  margin: 0 0 var(--erp-spacing-sm) 0;
+  font-size: var(--erp-font-size-h1);
+  font-weight: var(--erp-font-weight-bold);
+  line-height: 1.2;
+  margin: 0 0 4px 0;
   color: var(--erp-text-primary);
 }
 
-/* %%% ERP Form Card System %%% */
-:root {
-  --erp-bg-form-card: #111827;
-  --erp-input-border: #1f2937;
+/* ═══ Quasar Global Overrides (SAP B1 compact) ════════════════════════ */
+body.body--dark,
+body.body--light {
+  /* Inputs */
+  .q-field--outlined .q-field__control {
+    border-radius: var(--erp-radius-md);
+    background: var(--erp-bg-input);
+    min-height: var(--erp-input-height) !important;
+    height: var(--erp-input-height) !important;
+  }
+  .q-field--dense .q-field__control { min-height: var(--erp-input-height) !important; }
+  .q-field__native,
+  .q-field__input {
+    font-size: var(--erp-font-size-base);
+    color: var(--erp-text-primary);
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .q-field__label { font-size: var(--erp-font-size-small) !important; }
+  .q-field--focused .q-field__control:after {
+    border-color: var(--erp-border-focus);
+    border-width: 1px;
+    box-shadow: var(--erp-focus-ring);
+  }
+
+  /* Tables — global compact */
+  .q-table th {
+    font-size: var(--erp-font-size-caption) !important;
+    font-weight: var(--erp-font-weight-semibold) !important;
+    color: var(--erp-text-secondary) !important;
+    padding: 6px 12px !important;
+    height: 32px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  .q-table td {
+    font-size: var(--erp-font-size-table) !important;
+    padding: 5px 12px !important;
+    height: var(--erp-row-height) !important;
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  .q-table tbody tr:hover td {
+    background: var(--erp-bg-card-hover) !important;
+  }
+  .q-table__bottom {
+    font-size: var(--erp-font-size-caption) !important;
+    min-height: 36px !important;
+    border-top: 1px solid var(--erp-border) !important;
+  }
+
+  /* Menus & Dropdowns */
+  .q-menu {
+    border-radius: var(--erp-radius-md) !important;
+    border: 1px solid var(--erp-border) !important;
+    box-shadow: var(--erp-shadow-md) !important;
+    background: var(--erp-bg-elevated) !important;
+  }
+  .q-item {
+    min-height: 32px !important;
+    font-size: var(--erp-font-size-base) !important;
+    color: var(--erp-text-primary) !important;
+  }
+  .q-item__label { font-size: var(--erp-font-size-base) !important; }
+
+  /* Chips */
+  .q-chip {
+    font-size: var(--erp-font-size-caption) !important;
+    height: 22px !important;
+    border-radius: var(--erp-radius-sm) !important;
+  }
+
+  /* Cards */
+  .q-card {
+    border-radius: var(--erp-radius-lg) !important;
+    background: var(--erp-bg-card) !important;
+    color: var(--erp-text-primary) !important;
+  }
+
+  /* Tabs compact */
+  .q-tab {
+    min-height: 32px !important;
+    font-size: var(--erp-font-size-small) !important;
+  }
+
+  /* Dialogs */
+  .erp-dialog-card {
+    background: var(--erp-bg-elevated);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-lg);
+    border-radius: var(--erp-radius-xl) !important;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+  }
+
+  /* Pagination compact */
+  .q-table__bottom .q-btn { font-size: var(--erp-font-size-caption) !important; }
+
+  /* Separator */
+  .q-separator { background: var(--erp-border) !important; }
+
+  /* Quasar dark-page bg (for q-page) */
+  .q-page {
+    color: var(--erp-text-primary);
+  }
+
+  /* Expansion items */
+  .q-expansion-item .q-item {
+    color: var(--erp-text-primary) !important;
+  }
+
+  /* Quasar select popup */
+  .q-virtual-scroll__content {
+    color: var(--erp-text-primary);
+  }
+
+  /* Quasar list items */
+  .q-item--active,
+  .q-item.q-router-link--active {
+    color: var(--erp-primary) !important;
+  }
 }
 
-/* ─── Remove Drawer Scrollbar Gap ─── */
+/* ═══ Drawer scrollbar hide ═══════════════════════════════════════════ */
 .q-drawer {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
   overflow: hidden !important;
-
-  &::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-  }
+  &::-webkit-scrollbar { display: none !important; width: 0 !important; }
 }
-
 .q-drawer__content {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
   overflow: hidden !important;
+  &::-webkit-scrollbar { display: none !important; width: 0 !important; }
+}
 
-  &::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
+/* ═══ Global Scrollbar Theming ════════════════════════════════════════ */
+/* Dark mode scrollbars */
+body.body--dark {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-width: thin;
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    border: 1px solid transparent;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Light mode scrollbars */
+body.body--light {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-width: thin;
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+    border: 1px solid #f1f5f9;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  *::-webkit-scrollbar-corner {
+    background: #f1f5f9;
+  }
+}
+
+/* ═══ Utility: Semantic text colors ═══════════════════════════════════ */
+.text-erp-success { color: var(--erp-success) !important; }
+.text-erp-warning { color: var(--erp-warning) !important; }
+.text-erp-danger  { color: var(--erp-danger) !important; }
+.text-erp-info    { color: var(--erp-info) !important; }
+.text-erp-accent  { color: var(--erp-accent) !important; }
+.text-erp-muted   { color: var(--erp-text-muted) !important; }
+.text-erp-secondary { color: var(--erp-text-secondary) !important; }
+
+/* ═══ Light-mode specific overrides for Quasar components ═════════════ */
+body.body--light {
+  /* Quasar internally sets dark backgrounds on some components; override them */
+  .q-table {
+    color: var(--erp-text-primary);
+  }
+
+  .q-toolbar {
+    color: var(--erp-text-primary);
+  }
+
+  .q-drawer {
+    color: var(--erp-text-primary);
+  }
+
+  .q-field__control {
+    color: var(--erp-text-primary);
+  }
+
+  .q-field--dark .q-field__native,
+  .q-field--dark .q-field__input {
+    color: var(--erp-text-primary) !important;
+  }
+
+  /* Dialog backdrop */
+  .q-dialog__backdrop {
+    background: rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Notify */
+  .q-notification {
+    color: var(--erp-text-primary);
+  }
+}
+
+/* ═══ Theme Toggle Button ═════════════════════════════════════════════ */
+.erp-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--erp-radius-md);
+  border: 1px solid var(--erp-border);
+  background: var(--erp-bg-hover);
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: var(--erp-bg-active);
+    color: var(--erp-text-primary);
+    border-color: var(--erp-border-hover);
+  }
+
+  .q-icon {
+    transition: transform 0.3s ease;
+  }
+
+  &:hover .q-icon {
+    transform: rotate(15deg);
   }
 }

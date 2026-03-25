@@ -29,7 +29,7 @@
 
       <!-- Pending Actions -->
       <div class="col-12 col-md-4">
-        <q-card class="erp-dashboard-panel bg-dark text-white shadow-1 column full-height">
+        <q-card class="erp-dashboard-panel shadow-1 column full-height" style="background: var(--erp-bg-card); color: var(--erp-text-primary);">
           <q-card-section class="row items-center justify-between q-pb-none">
             <div class="text-h6 text-subtitle1 text-weight-bold">Pending Actions</div>
           </q-card-section>
@@ -41,7 +41,7 @@
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-body2 text-weight-medium">{{ action.title }}</q-item-label>
-                  <q-item-label caption class="text-grey-5">{{ action.desc }}</q-item-label>
+                  <q-item-label caption style="color: var(--erp-text-muted)">{{ action.desc }}</q-item-label>
                 </q-item-section>
               </q-item>
               <div v-if="pendingActions.length === 0" class="text-grey-6 text-center q-pa-md">
@@ -56,10 +56,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
+
+const $q = useQuasar()
+const isDark = computed(() => $q.dark.isActive)
 
 const loading = ref(false)
 let timer = null
@@ -96,11 +100,11 @@ const fetchData = async () => {
     orderSeries.value = [{ name: 'Orders', data: [5, 8, 3, 2, 1] }]
     orderOptions.value = {
       chart: { type: 'bar', toolbar: { show: false }, background: 'transparent' },
-      theme: { mode: 'dark' },
+      theme: { mode: isDark.value ? 'dark' : 'light' },
       xaxis: { categories: ['Draft', 'Placed', 'Preparing', 'Ready', 'Served'], labels: { style: { colors: '#9ca3af' } } },
       yaxis: { labels: { style: { colors: '#9ca3af' } } },
       colors: ['#3b82f6'],
-      grid: { borderColor: '#374151', strokeDashArray: 4 },
+      grid: { borderColor: isDark.value ? '#374151' : '#e5e7eb', strokeDashArray: 4 },
       dataLabels: { enabled: false },
     }
 

@@ -69,6 +69,7 @@
               'status-ready': order.status === 'ready',
               'status-preparing': order.status === 'preparing',
               'status-accepted': order.status === 'accepted',
+              'status-pending_waiter': order.status === 'pending_waiter',
               'status-invoiced': order.status === 'invoiced',
               'status-paid': order.status === 'paid',
             }"
@@ -127,10 +128,10 @@
               </div>
             </div>
 
-            <!-- ── Tap to bill CTA ── -->
+            <!-- ── Tap CTA ── -->
             <div class="tap-cta">
-              <q-icon name="touch_app" size="11px" class="q-mr-xs" />
-              Tap to open billing
+              <q-icon :name="isPaid(order) ? 'receipt_long' : 'touch_app'" size="11px" class="q-mr-xs" />
+              {{ isPaid(order) ? 'Tap to view receipt' : 'Tap to open billing' }}
             </div>
           </div>
         </transition-group>
@@ -230,6 +231,7 @@ function onRefresh() {
 
 function getStatusColor(status) {
   const map = {
+    pending_waiter: 'blue-grey-7',
     accepted: 'orange-9',
     preparing: 'blue-8',
     ready: 'green-8',
@@ -242,6 +244,7 @@ function getStatusColor(status) {
 
 function getStatusIcon(status) {
   const map = {
+    pending_waiter: 'hourglass_empty',
     accepted: 'check_circle_outline',
     preparing: 'soup_kitchen',
     ready: 'room_service',
@@ -254,6 +257,7 @@ function getStatusIcon(status) {
 
 function getStatusLabel(status) {
   const labels = {
+    pending_waiter: 'Pending',
     accepted: 'Accepted',
     preparing: 'Preparing',
     ready: 'Ready',
@@ -347,6 +351,10 @@ function timeAgo(dateStr) {
 
   &.status-accepted {
     border-left: 3px solid #ff9800;
+  }
+
+  &.status-pending_waiter {
+    border-left: 3px solid #607d8b;
   }
 
   &.status-invoiced {

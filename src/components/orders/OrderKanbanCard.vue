@@ -16,7 +16,7 @@
             WEB
           </q-badge>
         </div>
-        <div class="text-caption text-grey-5">
+        <div class="text-caption card-text-muted">
           {{ order.timeAgo || 'Just now' }}
         </div>
       </div>
@@ -29,7 +29,7 @@
           <span class="item-qty">{{ item.quantity }}x</span>
           <span class="item-name">{{ item.name }}</span>
         </div>
-        <div v-if="extraItemCount > 0" class="item-line text-grey-6">
+        <div v-if="extraItemCount > 0" class="item-line card-text-muted">
           +{{ extraItemCount }} more items
         </div>
       </div>
@@ -43,10 +43,9 @@
         </div>
       </div>
 
-      <!-- Customer name -->
       <div v-if="order.customer_name" class="cust-row q-mt-xs">
-        <q-icon name="person" size="12px" color="grey-6" class="q-mr-xs" />
-        <span class="text-caption text-grey-5">{{ order.customer_name }}</span>
+        <q-icon name="person" size="12px" class="card-icon-muted q-mr-xs" />
+        <span class="text-caption card-text-muted">{{ order.customer_name }}</span>
       </div>
 
       <!-- Status badge -->
@@ -58,12 +57,12 @@
       </div>
     </q-card-section>
 
-    <q-separator color="grey-8" />
+    <q-separator class="card-separator" />
 
     <!-- ACTION BUTTONS — scoped by column type -->
     <q-card-actions class="q-py-xs q-px-sm" style="min-height:36px">
       <!-- View Details — always available -->
-      <q-btn flat dense size="sm" color="grey-5" icon="visibility" @click.stop="$emit('view', order)">
+      <q-btn flat dense size="sm" class="card-btn-view" icon="visibility" @click.stop="$emit('view', order)">
         <q-tooltip>View Details</q-tooltip>
       </q-btn>
 
@@ -135,11 +134,11 @@ function formatType(type) {
 
 const statusClass = computed(() => {
   switch (props.order.status) {
-    case 'pending': case 'pending_waiter': return 'bg-grey-9'
-    case 'accepted': case 'preparing': return 'bg-blue-grey-10'
-    case 'ready': return 'bg-green-10'
-    case 'served': case 'invoiced': case 'paid': return 'bg-grey-10'
-    default: return 'bg-grey-9'
+    case 'pending': case 'pending_waiter': return 'order-status-pending'
+    case 'accepted': case 'preparing': return 'order-status-preparing'
+    case 'ready': return 'order-status-ready'
+    case 'served': case 'invoiced': case 'paid': return 'order-status-completed'
+    default: return 'order-status-pending'
   }
 })
 
@@ -175,13 +174,30 @@ const typeColor = computed(() => {
 <style scoped>
 .order-card {
   transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
 }
-.order-card:hover {
+
+.body--dark .order-card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.body--dark .order-card.order-status-pending { background: #212121; }
+.body--dark .order-card.order-status-preparing { background: #263238; }
+.body--dark .order-card.order-status-ready { background: #1b5e20; }
+.body--dark .order-card.order-status-completed { background: #1a1a1a; }
+.body--dark .order-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.1);
+}
+
+.body--light .order-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+.body--light .order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #d1d5db;
 }
 
 .items-preview { margin: 4px 0; }
@@ -191,8 +207,22 @@ const typeColor = computed(() => {
   align-items: center;
   gap: 6px;
   padding: 2px 0;
-  color: rgba(255, 255, 255, 0.65);
 }
+.body--dark .item-line { color: rgba(255, 255, 255, 0.65); }
+.body--light .item-line { color: #4b5563; }
+
+.body--dark .card-text-muted { color: #9e9e9e !important; }
+.body--light .card-text-muted { color: #6b7280 !important; }
+
+.body--dark .card-icon-muted { color: #757575 !important; }
+.body--light .card-icon-muted { color: #9ca3af !important; }
+
+.body--dark .card-separator { background: rgba(255, 255, 255, 0.1) !important; }
+.body--light .card-separator { background: #e5e7eb !important; }
+
+.body--dark .card-btn-view { color: #9e9e9e !important; }
+.body--light .card-btn-view { color: #6b7280 !important; }
+
 .item-qty { font-weight: 700; color: #f59e0b; min-width: 22px; }
 .item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

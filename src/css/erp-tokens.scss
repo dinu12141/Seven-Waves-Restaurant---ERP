@@ -1,73 +1,53 @@
-/* 
-  Global ERP Design Tokens
-  Implements SAP/Oracle/Odoo enterprise style design 
+/*
+  ERP Design Tokens — Backward Compatibility Layer
+  ──────────────────────────────────────────────────
+  All canonical tokens are defined in erp-theme.scss.
+  This file preserves old --sp-N / --surface / --border aliases
+  for any components that still reference them.
+
+  NOTE: These aliases now resolve correctly in BOTH dark and light modes
+  because the canonical tokens are defined per-theme in erp-theme.scss.
 */
 
 :root {
-  /* ─ Spacing (8px grid) ─ */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
+  /* Legacy spacing aliases → erp-theme tokens */
+  --sp-1: var(--erp-spacing-xs);
+  --sp-2: var(--erp-spacing-sm);
+  --sp-3: var(--erp-spacing-md2);
+  --sp-4: var(--erp-spacing-md);
   --sp-5: 20px;
-  --sp-6: 24px;
+  --sp-6: var(--erp-spacing-lg);
 
-  /* ─ Radius ─ */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  /* Legacy radius aliases */
+  --radius-sm: var(--erp-radius-md);
+  --radius-md: var(--erp-radius-xl);
 
-  /* ─ Input Sizing ─ */
-  --input-h: 40px;
-  --input-font: 14px;
-  --label-font: 12px;
-  --helper-font: 12px;
+  /* Legacy sizing aliases */
+  --input-h: var(--erp-input-height);
+  --input-font: var(--erp-font-size-base);
+  --label-font: var(--erp-font-size-small);
+  --helper-font: var(--erp-font-size-small);
 
-  /* ─ Dialog Sizing ─ */
-  --dialog-w-sm: 520px;
-  --dialog-w-md: 720px;
-  --dialog-w-lg: 960px;
-
-  /* ─ Colors (Dark Theme) ─ */
-  --surface: #1e293b;
-  --surface-2: #162033;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-focus: #2563eb;
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
-
-  /* ─ Shadow ─ */
-  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+  /* Legacy dialog sizing */
+  --dialog-w-sm: var(--erp-dialog-w-sm);
+  --dialog-w-md: var(--erp-dialog-w-md);
+  --dialog-w-lg: var(--erp-dialog-w-lg);
 }
 
-/* Global Quasar Overrides for ERP Input Sizing */
-body.body--dark {
-  /* Use Quasar's native dense heights, just inject our colors and radius */
-  .q-field--outlined .q-field__control {
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-  }
+/* Legacy color aliases — scoped per theme */
+body.body--dark,
+body.body--light {
+  --surface: var(--erp-bg-card);
+  --surface-2: var(--erp-bg-input);
+  --border: var(--erp-border);
+  --border-focus: var(--erp-border-focus);
+  --text: var(--erp-text-primary);
+  --text-muted: var(--erp-text-secondary);
 
-  .q-field__native,
-  .q-field__input {
-    font-size: var(--input-font);
-    color: var(--text);
-  }
+  /* Legacy shadow */
+  --shadow-card: var(--erp-shadow-lg);
 
-  /* Elegant Focus Ring */
-  .q-field--focused .q-field__control:after {
-    border-color: var(--border-focus);
-    border-width: 1px;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  }
-
-  /* Base Dialog Overrides */
-  .erp-dialog-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-card);
-    border-radius: var(--radius-md) !important;
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-  }
+  /* Legacy form card */
+  --erp-bg-form-card: var(--erp-bg-input);
+  --erp-input-border: var(--erp-border);
 }

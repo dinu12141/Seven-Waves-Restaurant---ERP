@@ -3,6 +3,7 @@
     title="Item Wise Sale Report"
     subtitle="POS Sales Report By Item — Quantity sold per item, grouped by subgroup"
     :kpis="kpiData"
+    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -10,18 +11,18 @@
   >
     <template #default>
       <!-- SAP-style Report Header -->
-      <div class="iws-header">
-        <div class="iws-header__left">
-          <div class="iws-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="iws-header__title">POS Sales Report By Item</div>
-          <div class="iws-header__meta">
+      <div class="sap-header">
+        <div class="sap-header__left">
+          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+          <div class="sap-header__title">POS Sales Report By Item</div>
+          <div class="sap-header__meta">
             <span>Location: <strong>{{ branchName }}</strong></span>
             <span class="q-ml-lg">{{ reportDateRange }}</span>
           </div>
         </div>
-        <div class="iws-header__right">
-          <div class="iws-header__page">Page 1</div>
-          <div class="iws-header__date">{{ todayFormatted }}</div>
+        <div class="sap-header__right">
+          <div class="sap-header__page">Page 1</div>
+          <div class="sap-header__date">{{ todayFormatted }}</div>
         </div>
       </div>
 
@@ -31,7 +32,7 @@
         :columns="columns"
         row-key="__rowKey"
         flat dense
-        class="iws-table"
+        class="sap-table"
         :loading="loading"
         :rows-per-page-options="[0]"
         hide-pagination
@@ -39,8 +40,8 @@
       >
         <!-- Header -->
         <template #header="props">
-          <q-tr :props="props" class="iws-table__header">
-            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="iws-table__th">
+          <q-tr :props="props" class="sap-table__header">
+            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="sap-table__th">
               {{ col.label }}
             </q-th>
           </q-tr>
@@ -49,65 +50,65 @@
         <!-- Body -->
         <template #body="props">
           <!-- Subgroup header row -->
-          <q-tr v-if="props.row.__type === 'group-header'" class="iws-table__group-header">
-            <q-td :colspan="columns.length" class="iws-table__group-name">
+          <q-tr v-if="props.row.__type === 'group-header'" class="sap-table__group-header">
+            <q-td :colspan="columns.length" class="sap-table__group-name">
               <q-icon name="folder_open" size="14px" class="q-mr-xs" />
               {{ props.row.group_name }}
             </q-td>
           </q-tr>
 
           <!-- Subgroup subtotal row -->
-          <q-tr v-else-if="props.row.__type === 'group-total'" class="iws-table__group-total">
+          <q-tr v-else-if="props.row.__type === 'group-total'" class="sap-table__subtotal">
             <q-td class="text-weight-bold">Sub Group Total:</q-td>
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bold">{{ props.row.quantity }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ props.row.quantity }}</q-td>
             <q-td />
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bold text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bold">{{ fmtN(props.row.cost) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bold">{{ props.row.gp_pct }}%</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{ props.row.gp_pct }}%</q-td>
           </q-tr>
 
           <!-- Grand total row -->
-          <q-tr v-else-if="props.row.__type === 'grand-total'" class="iws-table__grand-total">
+          <q-tr v-else-if="props.row.__type === 'grand-total'" class="sap-table__grand-total">
             <q-td class="text-weight-bolder">GRAND TOTAL</q-td>
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bolder">{{ props.row.quantity }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.quantity }}</q-td>
             <q-td />
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bolder text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
             <q-td />
-            <q-td class="iws-table__td--num text-weight-bolder">{{ fmtN(props.row.cost) }}</q-td>
-            <q-td class="iws-table__td--num text-weight-bolder">{{ props.row.gp_pct }}%</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.gp_pct }}%</q-td>
           </q-tr>
 
           <!-- Normal item row -->
-          <q-tr v-else :props="props" class="iws-table__row">
+          <q-tr v-else :props="props" class="sap-table__row">
             <q-td key="description" :props="props">{{ props.row.description }}</q-td>
-            <q-td key="item_code" :props="props" class="iws-table__td--mono">{{ props.row.item_code }}</q-td>
-            <q-td key="quantity" :props="props" class="iws-table__td--num">{{ props.row.quantity }}</q-td>
-            <q-td key="net_price" :props="props" class="iws-table__td--num">{{ fmtN(props.row.net_price) }}</q-td>
-            <q-td key="cur_price" :props="props" class="iws-table__td--num">{{ fmtN(props.row.cur_price) }}</q-td>
-            <q-td key="gross_amt" :props="props" class="iws-table__td--num">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td key="disc_amt" :props="props" class="iws-table__td--num text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td key="amount" :props="props" class="iws-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td key="tax_amt" :props="props" class="iws-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td key="amt_with_tax" :props="props" class="iws-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
-            <q-td key="del_cost" :props="props" class="iws-table__td--num">{{ fmtN(props.row.del_cost) }}</q-td>
-            <q-td key="cost" :props="props" class="iws-table__td--num">{{ fmtN(props.row.cost) }}</q-td>
-            <q-td key="gp_pct" :props="props" class="iws-table__td--num">
+            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{ props.row.item_code }}</q-td>
+            <q-td key="quantity" :props="props" class="sap-table__td--num">{{ props.row.quantity }}</q-td>
+            <q-td key="net_price" :props="props" class="sap-table__td--num">{{ fmtN(props.row.net_price) }}</q-td>
+            <q-td key="cur_price" :props="props" class="sap-table__td--num">{{ fmtN(props.row.cur_price) }}</q-td>
+            <q-td key="gross_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.gross_amt) }}</q-td>
+            <q-td key="disc_amt" :props="props" class="sap-table__td--num text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td key="amount" :props="props" class="sap-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
+            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
+            <q-td key="amt_with_tax" :props="props" class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td key="del_cost" :props="props" class="sap-table__td--num">{{ fmtN(props.row.del_cost) }}</q-td>
+            <q-td key="cost" :props="props" class="sap-table__td--num">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td key="gp_pct" :props="props" class="sap-table__td--num">
               <q-badge
                 :color="props.row.gp_pct > 30 ? 'green' : props.row.gp_pct > 15 ? 'orange' : 'red'"
-                class="iws-gp-badge"
+                class="sap-gp-badge"
               >{{ props.row.gp_pct }}%</q-badge>
             </q-td>
           </q-tr>
@@ -122,7 +123,7 @@
 
         <!-- Empty -->
         <template #no-data>
-          <div class="iws-empty">
+          <div class="report-empty">
             <q-icon name="inventory_2" size="40px" class="q-mb-sm" />
             <div>No item sales data for selected period</div>
           </div>
@@ -427,204 +428,4 @@ function exportExcel() {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
-
-/* ── SAP Style Header ──────────────────────────────────────── */
-.iws-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 16px;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
-  background: rgba(255, 255, 255, 0.02);
-
-  &__left { flex: 1; }
-  &__company {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--erp-text-primary, #f8fafc);
-    letter-spacing: -0.2px;
-  }
-  &__title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 2px;
-  }
-  &__meta {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-    margin-top: 4px;
-  }
-  &__right { text-align: right; flex-shrink: 0; }
-  &__page {
-    font-size: 11px;
-    color: var(--erp-text-secondary, #94a3b8);
-  }
-  &__date {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
-  }
-}
-
-/* ── Table ─────────────────────────────────────────────────── */
-.iws-table {
-  background: transparent !important;
-  font-size: 11px !important;
-
-  :deep(.q-table) { font-size: 11px !important; }
-}
-
-.iws-table__header { background: rgba(255, 255, 255, 0.03) !important; }
-
-.iws-table__th {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  color: var(--erp-text-secondary, #94a3b8) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.3px !important;
-  padding: 6px 6px !important;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  white-space: nowrap !important;
-}
-
-.iws-table__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-    padding: 4px 6px !important;
-    height: 28px !important;
-  }
-}
-
-.iws-table__td--num {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums !important;
-  font-family: 'SF Mono', 'Consolas', monospace !important;
-}
-
-.iws-table__td--mono {
-  font-family: 'SF Mono', 'Consolas', monospace !important;
-  font-size: 10px !important;
-}
-
-/* ── Group Header ──────────────────────────────────────────── */
-.iws-table__group-header {
-  background: rgba(37, 99, 235, 0.06) !important;
-  border-top: 1px solid rgba(37, 99, 235, 0.15) !important;
-}
-
-.iws-table__group-name {
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  color: var(--erp-primary, #2563eb) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  padding: 6px 10px !important;
-}
-
-/* ── Group Subtotal ────────────────────────────────────────── */
-.iws-table__group-total {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
-
-  td, .q-td {
-    font-size: 11px !important;
-    padding: 5px 6px !important;
-    height: 28px !important;
-    color: var(--erp-text-secondary, #94a3b8) !important;
-  }
-}
-
-/* ── Grand Total ───────────────────────────────────────────── */
-.iws-table__grand-total {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
-
-  td, .q-td {
-    font-size: 12px !important;
-    padding: 8px 6px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
-  }
-}
-
-/* ── GP Badge ──────────────────────────────────────────────── */
-.iws-gp-badge {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  padding: 1px 5px !important;
-}
-
-/* ── Empty State ───────────────────────────────────────────── */
-.iws-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px;
-  color: var(--erp-text-muted, #64748b);
-  font-size: 13px;
-}
-
-/* ── Print Overrides ───────────────────────────────────────── */
-@media print {
-  .iws-header {
-    background: none !important;
-    border-bottom: 2pt solid #1a1a2e !important;
-    padding: 6pt 0 !important;
-  }
-  .iws-header__company {
-    font-size: 12pt !important;
-    color: #1a1a2e !important;
-  }
-  .iws-header__title {
-    font-size: 10pt !important;
-    color: #333 !important;
-  }
-  .iws-header__meta,
-  .iws-header__page,
-  .iws-header__date {
-    color: #555 !important;
-    font-size: 8pt !important;
-  }
-  .iws-table__group-header {
-    background: #e8edf3 !important;
-    border-top: 1pt solid #1a1a2e !important;
-  }
-  .iws-table__group-name {
-    color: #1a1a2e !important;
-    font-size: 8pt !important;
-  }
-  .iws-table__group-total td {
-    font-size: 7pt !important;
-    color: #333 !important;
-  }
-  .iws-table__grand-total td {
-    font-size: 8pt !important;
-    color: #1a1a2e !important;
-    background: #e8edf3 !important;
-    border-top: 1.5pt solid #1a1a2e !important;
-    border-bottom: 1.5pt solid #1a1a2e !important;
-  }
-  .iws-table__row td {
-    font-size: 7pt !important;
-    padding: 2pt 3pt !important;
-    height: auto !important;
-    color: #222 !important;
-  }
-  .iws-table__th {
-    font-size: 6pt !important;
-    padding: 3pt 3pt !important;
-    color: #fff !important;
-    background: #1a1a2e !important;
-  }
-  .iws-gp-badge {
-    background: none !important;
-    color: #333 !important;
-    border: 0.5pt solid #999 !important;
-    font-size: 6pt !important;
-  }
-}
 </style>

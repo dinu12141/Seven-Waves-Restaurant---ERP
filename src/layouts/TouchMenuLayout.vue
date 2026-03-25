@@ -56,6 +56,19 @@
             />
           </div>
 
+          <!-- Theme Toggle -->
+          <q-btn
+            flat
+            round
+            dense
+            :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+            class="touch-cart-btn"
+            size="md"
+            @click="toggleTheme"
+          >
+            <q-tooltip>{{ $q.dark.isActive ? 'Light Mode' : 'Dark Mode' }}</q-tooltip>
+          </q-btn>
+
           <!-- Tracking / My Orders Button -->
           <q-btn
             flat
@@ -108,7 +121,7 @@
       overlay
       bordered
       :width="380"
-      class="bg-dark text-white touch-cart-drawer"
+      class="touch-cart-drawer"
     >
       <OrderProgressDrawer :open="ordersOpen" @close="ordersOpen = false" />
     </q-drawer>
@@ -120,19 +133,19 @@
       overlay
       bordered
       :width="380"
-      class="bg-dark text-white touch-cart-drawer"
+      class="touch-cart-drawer"
     >
       <MenuCartDrawer @close="cartOpen = false" />
     </q-drawer>
 
     <!-- Page Content -->
-    <q-page-container class="bg-dark-page">
+    <q-page-container class="touch-page-bg">
       <router-view />
     </q-page-container>
 
     <!-- Loyalty Info Popup -->
     <q-dialog v-model="showLoyaltyPopup" position="top">
-      <q-card class="loyalty-popup bg-dark text-white" style="min-width: 320px; max-width: 90vw">
+      <q-card class="loyalty-popup" style="min-width: 320px; max-width: 90vw">
         <q-card-section class="q-pa-md">
           <div class="row items-center no-wrap q-mb-md">
             <div class="loyalty-popup__avatar">
@@ -211,6 +224,18 @@ const route = useRoute()
 const router = useRouter()
 const customerStore = useCustomerStore()
 const sessionStore = useTableSessionStore()
+
+// Theme toggle — persisted in localStorage
+function toggleTheme() {
+  $q.dark.toggle()
+  localStorage.setItem('tm_dark_mode', $q.dark.isActive ? '1' : '0')
+}
+
+// Restore persisted theme on load
+const savedTheme = localStorage.getItem('tm_dark_mode')
+if (savedTheme !== null) {
+  $q.dark.set(savedTheme === '1')
+}
 
 const cartOpen = ref(false)
 const ordersOpen = ref(false)
@@ -429,32 +454,50 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .touch-menu-layout {
-  background-color: #0b0e14;
   font-family: 'Inter', sans-serif;
 }
 
 .touch-menu-header {
-  background: rgba(11, 14, 20, 0.95);
   backdrop-filter: blur(16px);
+}
+
+// Light mode header
+:global(.body--light) .touch-menu-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+// Dark mode header
+:global(.body--dark) .touch-menu-header {
+  background: rgba(11, 14, 20, 0.95) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.touch-page-bg {
+  transition: background-color 0.25s ease;
+}
+
+:global(.body--light) .touch-page-bg {
+  background-color: #f8fafc;
+}
+:global(.body--dark) .touch-page-bg {
+  background-color: #0b0e14;
 }
 
 .header-brand {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.5px;
-  color: #f8fafc;
   line-height: 1.1;
 }
+
+:global(.body--dark) .header-brand { color: #f8fafc; }
+:global(.body--light) .header-brand { color: #0f172a; }
 
 .header-table {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-
-.bg-dark-page {
-  background-color: #0b0e14;
 }
 
 .touch-btn {
@@ -466,16 +509,21 @@ onUnmounted(() => {
 
 // Loyalty Badge
 .loyalty-badge {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 6px 10px;
   gap: 6px;
   transition: background 0.2s;
+}
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.09);
-  }
+:global(.body--dark) .loyalty-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  &:hover { background: rgba(255, 255, 255, 0.09); }
+}
+:global(.body--light) .loyalty-badge {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  &:hover { background: rgba(0, 0, 0, 0.07); }
 }
 
 .loyalty-avatar {
@@ -495,32 +543,32 @@ onUnmounted(() => {
 .loyalty-name {
   font-size: 12px;
   font-weight: 700;
-  color: #f1f5f9;
   line-height: 1.2;
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+:global(.body--dark) .loyalty-name { color: #f1f5f9; }
+:global(.body--light) .loyalty-name { color: #0f172a; }
 
 .loyalty-pts {
   font-size: 10px;
-  color: #94a3b8;
   display: flex;
   align-items: center;
   line-height: 1;
+  color: #94a3b8;
 }
 
 .touch-cart-btn {
-  color: #cbd5e1;
   transition: all 0.2s ease;
-
-  &:hover,
-  &:active {
+  &:hover, &:active {
     color: var(--q-primary);
     background: rgba(37, 99, 235, 0.1);
   }
 }
+:global(.body--dark) .touch-cart-btn { color: #cbd5e1; }
+:global(.body--light) .touch-cart-btn { color: #475569; }
 
 .cart-badge {
   padding: 4px 6px;
@@ -530,24 +578,17 @@ onUnmounted(() => {
 
 // Loyalty Popup
 .loyalty-popup {
-  background: rgba(15, 20, 35, 0.98) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   backdrop-filter: blur(20px);
-
-  &__avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f97316, #ef4444);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
-    color: white;
-    flex-shrink: 0;
-  }
+}
+:global(.body--dark) .loyalty-popup {
+  background: rgba(15, 20, 35, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+:global(.body--light) .loyalty-popup {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #0f172a !important;
 }
 
 .loyalty-card-display {
@@ -555,10 +596,7 @@ onUnmounted(() => {
   border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 16px;
   padding: 16px;
-
-  &__inner {
-    font-family: 'Inter', sans-serif;
-  }
+  &__inner { font-family: 'Inter', sans-serif; }
 }
 
 .font-mono {

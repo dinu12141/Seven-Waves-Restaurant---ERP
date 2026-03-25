@@ -148,6 +148,11 @@ const tabs = computed(() => [
     badge: { value: store.activeCount },
   },
   {
+    label: 'Map',
+    icon: 'map',
+    to: '/delivery-app/map',
+  },
+  {
     label: 'History',
     icon: 'history',
     to: '/delivery-app/history',
@@ -307,5 +312,64 @@ const tabs = computed(() => [
 .tab-fade-enter-from,
 .tab-fade-leave-to {
   opacity: 0;
+}
+
+// ═══════════════════════════════════════════════════
+// LIGHT THEME OVERRIDES
+// ═══════════════════════════════════════════════════
+:deep(body.body--light) &,
+body.body--light & {
+  // won't work with scoped, we need :global
+}
+</style>
+
+<style lang="scss">
+body.body--light {
+  .delivery-app-layout {
+    background: #f8fafc;
+  }
+
+  .delivery-top-bar {
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .brand-name {
+    color: #0f172a;
+  }
+
+  .brand-tag {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+  }
+
+  .top-avatar {
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  }
+
+  .delivery-user-menu {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .dum-name { color: #0f172a; }
+  .dum-role { color: #64748b; }
+  .dum-item { color: #475569; }
+
+  .delivery-bottom-nav {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .nav-tab {
+    color: #94a3b8;
+
+    &--active {
+      color: #7c3aed !important;
+    }
+  }
 }
 </style>

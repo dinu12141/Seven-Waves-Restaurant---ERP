@@ -14,49 +14,96 @@
         <p v-if="subtitle" class="report-toolbar__subtitle">{{ subtitle }}</p>
       </div>
       <div class="report-toolbar__right">
-        <!-- Export Controls -->
-        <q-btn-dropdown
-          flat
-          dense
-          icon="file_download"
-          label="Export"
-          class="report-btn report-btn--ghost"
-          no-caps
-        >
-          <q-list dense class="report-export-menu">
-            <q-item clickable v-close-popup @click="$emit('export-csv')">
-              <q-item-section avatar><q-icon name="table_view" size="16px" /></q-item-section>
-              <q-item-section>Export CSV</q-item-section>
-            </q-item>
-            <q-item clickable v-close-popup @click="$emit('export-excel')">
-              <q-item-section avatar><q-icon name="grid_on" size="16px" /></q-item-section>
-              <q-item-section>Export Excel</q-item-section>
-            </q-item>
-            <q-item clickable v-close-popup @click="handlePrint">
-              <q-item-section avatar><q-icon name="print" size="16px" /></q-item-section>
-              <q-item-section>Print Report</q-item-section>
-            </q-item>
-          </q-list>
-        </q-btn-dropdown>
+        <!-- SAP B1-style Icon Toolbar Strip -->
+        <div class="sap-icon-strip">
+          <!-- Filter toggle -->
+          <q-btn
+            flat dense round
+            :icon="filtersOpen ? 'filter_list_off' : 'filter_list'"
+            class="sap-icon-strip__btn"
+            :class="{ 'sap-icon-strip__btn--active': filtersOpen }"
+            @click="filtersOpen = !filtersOpen"
+          >
+            <q-badge
+              v-if="activeFilterCount > 0 && !filtersOpen"
+              floating
+              color="primary"
+              :label="activeFilterCount"
+              class="sap-icon-strip__badge"
+            />
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">
+              {{ filtersOpen ? 'Hide Filters' : 'Show Filters' }}
+            </q-tooltip>
+          </q-btn>
 
-        <q-btn
-          flat
-          dense
-          icon="tune"
-          :label="filtersOpen ? 'Hide Filters' : 'Filters'"
-          class="report-btn report-btn--ghost q-ml-sm"
-          no-caps
-          @click="filtersOpen = !filtersOpen"
-        >
-          <q-badge
-            v-if="activeFilterCount > 0"
-            floating
-            color="primary"
-            :label="activeFilterCount"
-          />
-        </q-btn>
+          <!-- Refresh -->
+          <q-btn
+            flat dense round
+            icon="refresh"
+            class="sap-icon-strip__btn"
+            @click="handleRefresh"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Refresh Data</q-tooltip>
+          </q-btn>
 
+          <!-- Separator -->
+          <div class="sap-icon-strip__sep" />
 
+          <!-- Print -->
+          <q-btn
+            flat dense round
+            icon="print"
+            class="sap-icon-strip__btn"
+            @click="handlePrint"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Print Report</q-tooltip>
+          </q-btn>
+
+          <!-- Export PDF -->
+          <q-btn
+            flat dense round
+            icon="picture_as_pdf"
+            class="sap-icon-strip__btn"
+            @click="handleExportPDF"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Download PDF</q-tooltip>
+          </q-btn>
+
+          <!-- Export CSV -->
+          <q-btn
+            flat dense round
+            icon="table_view"
+            class="sap-icon-strip__btn"
+            @click="$emit('export-csv')"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Export CSV</q-tooltip>
+          </q-btn>
+
+          <!-- Export Excel -->
+          <q-btn
+            flat dense round
+            icon="grid_on"
+            class="sap-icon-strip__btn"
+            @click="$emit('export-excel')"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Export Excel</q-tooltip>
+          </q-btn>
+
+          <!-- Separator -->
+          <div class="sap-icon-strip__sep" />
+
+          <!-- Fullscreen -->
+          <q-btn
+            flat dense round
+            :icon="isFullscreen ? 'fullscreen_exit' : 'fullscreen'"
+            class="sap-icon-strip__btn"
+            @click="toggleFullscreen"
+          >
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">
+              {{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}
+            </q-tooltip>
+          </q-btn>
+        </div>
       </div>
     </div>
 
@@ -99,9 +146,9 @@
             </div>
           </div>
 
-          <!-- Branch -->
+          <!-- Kitchen -->
           <div class="report-filter-group">
-            <label class="report-filter-label">Branch</label>
+            <label class="report-filter-label">Kitchen</label>
             <q-select
               v-model="filters.branch"
               :options="branchOptions"
@@ -110,7 +157,7 @@
               emit-value
               map-options
               clearable
-              placeholder="All Branches"
+              placeholder="All Kitchens"
               class="report-filter-input"
               @update:model-value="onFilterChange"
             />
@@ -205,6 +252,21 @@
 
     <!-- ── Content Slot ──────────────────────────────────────────────── -->
     <div class="report-content">
+      <!-- SAP B1 Company Header (built-in for all reports) -->
+      <div v-if="!hideSapHeader" class="sap-header">
+        <div class="sap-header__left">
+          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
+          <div class="sap-header__title">{{ title }}</div>
+          <div class="sap-header__meta">
+            <span>Location: <strong>{{ branchLabel }}</strong></span>
+            <span class="q-ml-lg">{{ reportDateLabel }}</span>
+          </div>
+        </div>
+        <div class="sap-header__right">
+          <div class="sap-header__page">Page 1</div>
+          <div class="sap-header__date">{{ todayLabel }}</div>
+        </div>
+      </div>
       <slot :filters="appliedFilters || filters" />
     </div>
   </q-page>
@@ -213,6 +275,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
+import { supabase } from 'src/boot/supabase'
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -220,13 +283,14 @@ const props = defineProps({
   kpis: { type: Array, default: () => [] },
   branches: { type: Array, default: () => [] },
   autoRefreshInterval: { type: Number, default: 60000 },
+  hideSapHeader: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['filter-change', 'export-csv', 'export-excel', 'refresh'])
+const emit = defineEmits(['filter-change', 'export-csv', 'export-excel', 'export-pdf', 'refresh'])
 
 const authStore = useAuthStore()
 
-const filtersOpen = ref(true)
+const filtersOpen = ref(false)
 const advancedOpen = ref(false)
 const activePreset = ref('This Month')
 const appliedFilters = ref(null)
@@ -240,17 +304,53 @@ const filters = ref({
   branch: null,
 })
 
-const branchOptions = computed(() => {
-  const opts = [{ label: 'All Branches', value: null }]
-  if (props.branches.length) {
-    props.branches.forEach((b) => opts.push({ label: b.name, value: b.id }))
-  } else {
-    authStore.branches.forEach((b) => {
-      if (b.branches) opts.push({ label: b.branches.name, value: b.branches.id })
-    })
+// ── SAP Header computed values ──────────────────────────────────────
+const branchLabel = computed(() => authStore.currentBranch?.name || 'All Branches')
+const todayLabel = computed(() =>
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+)
+const reportDateLabel = computed(() => {
+  const f = appliedFilters.value || filters.value
+  if (f.dateFrom && f.dateTo) {
+    const from = new Date(f.dateFrom).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const to = new Date(f.dateTo).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return `${from} To ${to}`
   }
-  return opts
+  return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
 })
+
+const branchOptions = ref([{ label: 'All Kitchens', value: null }])
+
+async function loadBranches() {
+  try {
+    const branchId = authStore.currentBranch?.id
+
+    // Kitchens to exclude from the filter (non-selling stations)
+    const excludeNames = ['CHINEESE', 'FUNCTION MENU', 'Main Kitchen', 'Main Store', 'OTHERS', 'SRI LANKAN', 'WESTERN']
+
+    // Fetch kitchens only (BENMAR, CASHIER, INDIAN, ITALIAN, JUICE BAR)
+    let kitchenQuery = supabase
+      .from('kitchens')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name')
+    if (branchId) kitchenQuery = kitchenQuery.eq('branch_id', branchId)
+    const { data: kitchenData } = await kitchenQuery
+
+    const opts = [{ label: 'All Kitchens', value: null }]
+    if (kitchenData && kitchenData.length) {
+      kitchenData
+        .filter((k) => !excludeNames.includes(k.name))
+        .forEach((k) => {
+          opts.push({ label: k.name, value: k.id })
+        })
+    }
+
+    branchOptions.value = opts
+  } catch {
+    branchOptions.value = [{ label: 'All Kitchens', value: null }]
+  }
+}
 
 const datePresets = [
   {
@@ -362,9 +462,10 @@ function handlePrint() {
     const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     page.setAttribute('data-print-date', `${dateStr} ${timeStr}`)
   }
-  // Set document title for the print filename
+  // Set document title for the print filename (includes report name + date)
   const origTitle = document.title
-  document.title = `${props.title} — Seven Waves ERP`
+  const dateStr = new Date().toISOString().slice(0, 10)
+  document.title = `${props.title.replace(/\s+/g, '_')}_${dateStr}`
 
   // Brief delay to let attributes render, then print
   setTimeout(() => {
@@ -373,12 +474,121 @@ function handlePrint() {
   }, 100)
 }
 
+// ── File name helper ────────────────────────────────────────────────
+function getFileBaseName() {
+  const dateStr = new Date().toISOString().slice(0, 10) // 2026-03-22
+  return `${props.title.replace(/\s+/g, '_')}_${dateStr}`
+}
+
+// ── PDF Export ──────────────────────────────────────────────────────
+async function handleExportPDF() {
+  const sapContent = document.querySelector('.report-sap-document')
+  if (!sapContent) {
+    // If no SAP content found, emit event for custom handling
+    emit('export-pdf')
+    return
+  }
+
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const { jsPDF } = await import('jspdf')
+
+    // Capture the SAP report content as a canvas
+    const canvas = await html2canvas(sapContent, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const imgWidth = canvas.width
+    const imgHeight = canvas.height
+
+    // Calculate PDF dimensions (A4 landscape or portrait based on aspect ratio)
+    const pdfWidth = 297 // A4 landscape width in mm
+    const pdfHeight = 210 // A4 landscape height in mm
+    const ratio = imgWidth / imgHeight
+
+    let orientation = 'landscape'
+    let pageW = pdfWidth
+    let pageH = pdfHeight
+    if (ratio < 1) {
+      orientation = 'portrait'
+      pageW = 210
+      pageH = 297
+    }
+
+    const pdf = new jsPDF(orientation, 'mm', 'a4')
+    const margin = 10
+    const usableW = pageW - margin * 2
+    const scaledH = (imgHeight * usableW) / imgWidth
+
+    // If content exceeds one page, split across pages
+    let yOffset = 0
+    const usableH = pageH - margin * 2
+
+    while (yOffset < scaledH) {
+      if (yOffset > 0) pdf.addPage()
+
+      pdf.addImage(
+        imgData,
+        'PNG',
+        margin,
+        margin - yOffset,
+        usableW,
+        scaledH
+      )
+
+      yOffset += usableH
+    }
+
+    pdf.save(`${getFileBaseName()}.pdf`)
+  } catch (err) {
+    console.error('[ReportLayout] PDF export error:', err)
+    // Fallback: emit event
+    emit('export-pdf')
+  }
+}
+
+// ── SAP Toolbar actions ─────────────────────────────────────────────
+function handleRefresh() {
+  emit('refresh')
+  // Also re-apply current filters to trigger a data reload
+  if (appliedFilters.value) {
+    emit('filter-change', appliedFilters.value)
+  }
+}
+
+const isFullscreen = ref(false)
+
+function toggleFullscreen() {
+  const el = document.querySelector('.report-page')
+  if (!el) return
+
+  if (!document.fullscreenElement) {
+    el.requestFullscreen().then(() => { isFullscreen.value = true }).catch(() => {})
+  } else {
+    document.exitFullscreen().then(() => { isFullscreen.value = false }).catch(() => {})
+  }
+}
+
+// Listen for fullscreen exit via Escape key
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
 // ── Auto-refresh ────────────────────────────────────────────────────
 let autoRefreshTimer = null
 
 onMounted(() => {
   appliedFilters.value = { ...filters.value }
   emit('filter-change', appliedFilters.value)
+
+  // Load all branches for the filter dropdown
+  loadBranches()
+
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 
   // Silently auto-refresh report data in background
   if (props.autoRefreshInterval > 0) {
@@ -389,6 +599,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
   if (autoRefreshTimer) {
     clearInterval(autoRefreshTimer)
     autoRefreshTimer = null
@@ -397,9 +608,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+@import 'src/pages/reports/report-common.scss';
+
 /* ── Page ─────────────────────────────────────────────────────────────── */
 .report-page {
-  padding: 24px;
+  padding: 16px;
   background: var(--erp-bg-main, #0f172a);
   min-height: 100vh;
 }
@@ -409,8 +622,8 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 10px;
 
   &__left {
     display: flex;
@@ -468,6 +681,52 @@ onUnmounted(() => {
   }
 }
 
+/* ── SAP B1-style Icon Toolbar Strip ──────────────────────────────── */
+.sap-icon-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--erp-bg-card, #1e293b);
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  padding: 3px 4px;
+
+  &__btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    font-size: 16px;
+    color: var(--erp-text-muted, #64748b);
+    border-radius: 6px;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--erp-text-primary, #f8fafc);
+    }
+
+    &--active {
+      background: rgba(37, 99, 235, 0.15) !important;
+      color: var(--erp-primary, #2563eb) !important;
+    }
+  }
+
+  &__sep {
+    width: 1px;
+    height: 20px;
+    background: var(--erp-border, rgba(255, 255, 255, 0.08));
+    margin: 0 3px;
+    flex-shrink: 0;
+  }
+
+  &__badge {
+    font-size: 9px;
+    min-height: 14px;
+    padding: 0 4px;
+  }
+}
+
 /* ── Buttons ─────────────────────────────────────────────────────────── */
 .report-btn {
   height: 32px;
@@ -512,13 +771,13 @@ onUnmounted(() => {
   background: var(--erp-bg-card, #1e293b);
   border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
 
   &__grid {
     display: grid;
     grid-template-columns: 320px 200px repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
+    gap: 10px;
     align-items: start;
   }
 }
@@ -660,15 +919,15 @@ onUnmounted(() => {
 .report-kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .report-kpi-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 10px 12px;
   background: var(--erp-bg-card, #1e293b);
   border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
   border-radius: 8px;

@@ -8,7 +8,7 @@
             {{ breadcrumbs }}
           </div>
           <div class="row items-center no-wrap q-gutter-x-sm">
-            <h1 class="erp-toolbar__title text-white no-margin">{{ title }}</h1>
+            <h1 class="erp-toolbar__title no-margin">{{ title }}</h1>
             <q-badge v-if="roleBadge" outline color="primary" class="erp-toolbar__role-badge">
               {{ roleBadge }}
             </q-badge>
@@ -22,15 +22,13 @@
           v-model="searchQuery"
           dense
           outlined
-          dark
-          bg-color="grey-10"
           placeholder="Search items, orders, or records..."
           class="erp-toolbar__search full-width"
           style="max-width: 480px"
           @keyup.enter="$emit('search', searchQuery)"
         >
           <template #prepend>
-            <q-icon name="search" size="20px" class="text-grey-5" />
+            <q-icon name="search" size="20px" class="erp-toolbar__search-icon" />
           </template>
         </q-input>
       </div>
@@ -45,8 +43,6 @@
           option-value="id"
           dense
           outlined
-          dark
-          bg-color="grey-10"
           emit-value
           map-options
           class="erp-toolbar__branch"
@@ -100,7 +96,7 @@
           icon="file_download"
           no-caps
         >
-          <q-list dense class="bg-dark text-white" style="min-width: 140px">
+          <q-list dense class="erp-toolbar__dropdown-list" style="min-width: 140px">
             <q-item clickable v-close-popup @click="$emit('export-csv')">
               <q-item-section avatar>
                 <q-icon name="table_view" size="20px" />
@@ -133,7 +129,7 @@
           color="white"
           icon="more_vert"
         >
-          <q-list class="bg-dark text-white" style="min-width: 180px">
+          <q-list class="erp-toolbar__dropdown-list" style="min-width: 180px">
             <q-item
               v-for="action in secondaryActions"
               :key="action.label"
@@ -203,8 +199,8 @@ const canExport = computed(() => canExportData(props.moduleName))
 <style scoped lang="scss">
 .erp-toolbar {
   height: 64px;
-  background-color: var(--erp-bg-form-card, #111827);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--erp-bg-form-card);
+  border-bottom: 1px solid var(--erp-border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -222,6 +218,7 @@ const canExport = computed(() => canExportData(props.moduleName))
     line-height: 1.1 !important;
     letter-spacing: -0.02em;
     white-space: nowrap;
+    color: var(--erp-text-primary) !important;
   }
 
   &__breadcrumbs {
@@ -229,7 +226,11 @@ const canExport = computed(() => canExportData(props.moduleName))
     font-weight: 700;
     letter-spacing: 0.08em;
     margin-bottom: 4px;
-    opacity: 0.7;
+    color: var(--erp-text-muted);
+  }
+
+  &__search-icon {
+    color: var(--erp-text-muted);
   }
 
   &__role-badge {
@@ -245,13 +246,14 @@ const canExport = computed(() => canExportData(props.moduleName))
     height: 38px !important;
     min-height: 38px !important;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--erp-bg-input) !important;
+    border: 1px solid var(--erp-border);
+    color: var(--erp-text-primary);
     transition: all 0.2s ease;
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      background: rgba(255, 255, 255, 0.05) !important;
+      border-color: var(--erp-border-hover);
+      background: var(--erp-bg-hover) !important;
     }
 
     &.q-field__control--focused {
@@ -260,13 +262,19 @@ const canExport = computed(() => canExportData(props.moduleName))
     }
   }
 
+  &__dropdown-list {
+    background: var(--erp-bg-card) !important;
+    color: var(--erp-text-primary) !important;
+  }
+
   &__icon-btn {
     width: 32px;
     height: 32px;
+    color: var(--erp-text-muted);
     transition: all 0.2s ease;
     &:hover {
-      color: white !important;
-      background: rgba(255, 255, 255, 0.08);
+      color: var(--erp-text-primary) !important;
+      background: var(--erp-bg-hover);
     }
   }
 
@@ -294,8 +302,8 @@ const canExport = computed(() => canExportData(props.moduleName))
     font-size: 14px;
     font-weight: 500;
     padding: 0 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--erp-border);
+    color: var(--erp-text-secondary);
     transition: all 0.2s ease;
 
     :deep(.q-btn-dropdown__arrow) {
@@ -303,8 +311,8 @@ const canExport = computed(() => canExportData(props.moduleName))
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.3);
+      background: var(--erp-bg-hover);
+      border-color: var(--erp-border-hover);
     }
   }
 

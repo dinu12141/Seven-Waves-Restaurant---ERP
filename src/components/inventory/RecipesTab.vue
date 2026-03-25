@@ -31,6 +31,17 @@
         </q-td>
       </template>
 
+      <template #body-cell-food_cost_pct="props">
+        <q-td :props="props">
+          <q-badge
+            :color="Number(props.value) > 35 ? 'negative' : Number(props.value) > 25 ? 'warning' : 'positive'"
+            class="text-caption"
+          >
+            {{ props.value }}%
+          </q-badge>
+        </q-td>
+      </template>
+
       <template #body-cell-yield="props">
         <q-td :props="props">
           <span class="text-weight-bold">{{ props.row.yield_qty }}</span>
@@ -54,7 +65,7 @@
         </q-td>
       </template>
 
-      <template #body-cell-estimated_cost="props">
+      <template #body-cell-total_cost="props">
         <q-td :props="props">
           <div class="text-weight-bold" :class="props.value > 0 ? 'text-amber-4' : 'text-grey-6'">
             {{ props.value > 0 ? formatCurrency(props.value) : '—' }}
@@ -87,6 +98,15 @@
             @click="editRecipe(props.row)"
           >
             <q-tooltip>Edit Recipe</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat dense round
+            :icon="props.row.is_active ? 'pause' : 'play_arrow'"
+            size="sm"
+            :color="props.row.is_active ? 'warning' : 'positive'"
+            @click="toggleActive(props.row)"
+          >
+            <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
           </q-btn>
           <q-btn
             flat dense round
@@ -167,6 +187,15 @@
                 <div class="text-caption text-grey-5">Per {{ form.yield_unit || 'portion' }}</div>
               </div>
             </div>
+            <div v-if="form.menu_item?.base_price" class="q-mt-sm">
+              <div class="text-caption text-grey-5">
+                Food Cost %:
+                <span :class="foodCostPct > 35 ? 'text-negative' : foodCostPct > 25 ? 'text-warning' : 'text-positive'" class="text-weight-bold">
+                  {{ foodCostPct.toFixed(1) }}%
+                </span>
+                of {{ formatCurrency(form.menu_item.base_price) }} selling price
+              </div>
+            </div>
           </q-card>
         </div>
 
@@ -220,7 +249,14 @@
                   @filter="filterItems"
                   hide-bottom-space
                   placeholder="Select item"
-                />
+                >
+                  <template v-if="ing.item" #selected>
+                    <div>
+                      <span class="text-weight-bold">{{ ing.item.name }}</span>
+                      <span class="text-caption text-grey-5 q-ml-xs">({{ ing.item.code }})</span>
+                    </div>
+                  </template>
+                </q-select>
               </div>
               <div class="col-2">
                 <q-input
@@ -328,37 +364,33 @@
         </q-card-section>
 
         <q-card-section class="q-pa-none">
-          <div v-if="fetchingIngredients" class="flex flex-center q-pa-xl">
-            <q-spinner-dots color="primary" size="40px" />
-          </div>
-          <div v-else-if="viewItems.length === 0" class="q-pa-xl text-center text-grey">
+          <div v-if="!selectedRecipe?.recipe_items?.length" class="q-pa-xl text-center text-grey">
             No ingredients added yet.
           </div>
           <q-list v-else bordered separator class="bg-dark">
-            <q-item v-for="(item, idx) in viewItems" :key="idx" class="q-py-md">
+            <q-item v-for="(item, idx) in selectedRecipe.recipe_items" :key="idx" class="q-py-md">
               <q-item-section avatar>
                 <q-avatar color="grey-9" text-color="primary" icon="layers" size="md" />
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-bold text-h6 text-primary">{{
-                  item.item_name
-                }}</q-item-label>
+                <q-item-label class="text-weight-bold text-h6 text-primary">
+                  {{ item.item?.name || 'Unknown Item' }}
+                </q-item-label>
                 <q-item-label caption class="text-grey-5">
-                  <span v-if="item.wastage_percent > 0">
-                    Wastage: {{ item.wastage_percent }}%
+                  <span class="text-grey-4">{{ item.item?.code }}</span>
+                  <span v-if="item.wastage_percent > 0" class="q-ml-sm">
+                    · Wastage: {{ item.wastage_percent }}%
                   </span>
-                  <span v-if="item.notes" :class="item.wastage_percent > 0 ? 'q-ml-sm' : ''">
-                    {{ item.notes }}
-                  </span>
+                  <span v-if="item.notes" class="q-ml-sm">· {{ item.notes }}</span>
                 </q-item-label>
               </q-item-section>
               <q-item-section side class="text-right">
                 <div class="text-h6 text-white text-weight-bolder">{{ item.qty_per_serving }}</div>
                 <div class="text-caption text-grey-5 uppercase letter-spacing">
-                  {{ item.uom_name }}
+                  {{ item.uom?.name || item.uom?.code || 'Unit' }}
                 </div>
-                <div v-if="item.line_cost > 0" class="text-caption text-amber-4">
-                  {{ formatCurrency(item.line_cost) }}
+                <div v-if="item.item?.avg_cost" class="text-caption text-amber-4">
+                  {{ formatCurrency(item.qty_per_serving * (1 + (item.wastage_percent || 0) / 100) * item.item.avg_cost) }}
                 </div>
               </q-item-section>
             </q-item>
@@ -371,9 +403,12 @@
               <div class="text-subtitle2 text-grey-4 italic">
                 Yield: {{ selectedRecipe?.yield_qty }} {{ selectedRecipe?.yield_unit || 'Portions' }}
               </div>
-              <div v-if="viewTotalCost > 0" class="text-caption text-amber-4 text-weight-bold">
-                Total Cost: {{ formatCurrency(viewTotalCost) }} ·
-                Per portion: {{ formatCurrency(viewTotalCost / (selectedRecipe?.yield_qty || 1)) }}
+              <div v-if="selectedRecipe?.total_cost > 0" class="text-caption text-amber-4 text-weight-bold">
+                Total Cost: {{ formatCurrency(selectedRecipe.total_cost) }} ·
+                Per portion: {{ formatCurrency(selectedRecipe.total_cost / (selectedRecipe?.yield_qty || 1)) }}
+                <span class="q-ml-sm text-grey-5">
+                  | Food Cost: {{ selectedRecipe.food_cost_pct }}%
+                </span>
               </div>
             </div>
             <q-btn flat label="Close" color="primary" v-close-popup class="q-px-lg" />
@@ -386,9 +421,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from 'boot/supabase'
 import { useQuasar } from 'quasar'
-import { useAuthStore } from 'stores/auth'
+import { supabase } from 'boot/supabase'
+import { useRecipeList, useItemsList, useUomList } from 'src/services/inventoryService'
 import DataTable from 'components/common/DataTable.vue'
 import BaseButton from 'components/common/erp/BaseButton.vue'
 import BaseDialog from 'components/common/erp/BaseDialog.vue'
@@ -397,41 +432,36 @@ import BaseInput from 'components/common/erp/BaseInput.vue'
 import BaseSelect from 'components/common/erp/BaseSelect.vue'
 
 const $q = useQuasar()
-const authStore = useAuthStore()
 
-const loading = ref(false)
+// ── Service composables ─────────────────────────────────
+const { recipes, loading, listRecipes, createRecipe, updateRecipe, deleteRecipe, toggleRecipeActive } = useRecipeList()
+const { items: inventoryItemsRaw, listItems } = useItemsList()
+const { uoms, listUoms } = useUomList()
+
 const dialogOpen = ref(false)
 const viewIngredientsOpen = ref(false)
-const fetchingIngredients = ref(false)
 const saving = ref(false)
 const filter = ref('')
-
 const selectedRecipe = ref(null)
-const viewItems = ref([])
-const viewTotalCost = ref(0)
 
-const recipes = ref([])
-const menuItems = ref([])
+// ── Menu items for select ─────────────────────────────
 const allMenuItemsList = ref([])
+const filteredMenuItemsList = ref([])
 const inventoryItems = ref([])
 const allInventoryItems = ref([])
-const uoms = ref([])
 
 function formatCurrency(val) {
   return 'Rs. ' + Number(val || 0).toFixed(2)
 }
 
 const columns = [
-  {
-    name: 'menu_item_name',
-    label: 'Menu Item',
-    field: 'menu_item_name',
-    align: 'left',
-    sortable: true,
-  },
+  { name: 'menu_item_name', label: 'Menu Item', field: 'menu_item_name', align: 'left', sortable: true },
+  { name: 'category_name', label: 'Category', field: 'category_name', align: 'left', sortable: true },
+  { name: 'kitchen_name', label: 'Kitchen', field: 'kitchen_name', align: 'left' },
   { name: 'yield', label: 'Yield', field: 'yield_qty', align: 'left' },
   { name: 'ingredient_count', label: 'Ingredients', field: 'ingredient_count', align: 'center' },
-  { name: 'estimated_cost', label: 'Est. Cost', field: 'estimated_cost', align: 'right', sortable: true },
+  { name: 'total_cost', label: 'Est. Cost', field: 'total_cost', align: 'right', sortable: true },
+  { name: 'food_cost_pct', label: 'Food Cost %', field: 'food_cost_pct', align: 'center', sortable: true },
   { name: 'version_no', label: 'Ver', field: 'version_no', align: 'center' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
@@ -453,20 +483,23 @@ const filteredRecipes = computed(() => {
   return recipes.value.filter(
     (r) =>
       (r.menu_item_name && r.menu_item_name.toLowerCase().includes(f)) ||
-      (r.name && r.name.toLowerCase().includes(f)),
+      (r.name && r.name.toLowerCase().includes(f)) ||
+      (r.category_name && r.category_name.toLowerCase().includes(f)),
   )
 })
 
-// Calculate estimated cost from form ingredients
 const estimatedCost = computed(() => {
-  return form.value.ingredients.reduce((sum, ing) => {
-    return sum + getLineCost(ing)
-  }, 0)
+  return form.value.ingredients.reduce((sum, ing) => sum + getLineCost(ing), 0)
 })
 
 const costPerPortion = computed(() => {
   const yieldQty = form.value.yield_qty || 1
   return yieldQty > 0 ? estimatedCost.value / yieldQty : 0
+})
+
+const foodCostPct = computed(() => {
+  const price = form.value.menu_item?.base_price || 0
+  return price > 0 ? (estimatedCost.value / price) * 100 : 0
 })
 
 function getLineCost(ing) {
@@ -477,13 +510,9 @@ function getLineCost(ing) {
   return qty * (1 + wastage / 100) * avgCost
 }
 
-const filteredMenuItemsList = ref([])
-
 function filterMenuItemsList(val, update) {
   if (val === '') {
-    update(() => {
-      filteredMenuItemsList.value = allMenuItemsList.value
-    })
+    update(() => { filteredMenuItemsList.value = allMenuItemsList.value })
     return
   }
   update(() => {
@@ -494,80 +523,43 @@ function filterMenuItemsList(val, update) {
   })
 }
 
-onMounted(() => {
-  fetchData()
-})
-
-async function fetchData() {
-  loading.value = true
-  try {
-    const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
-
-    // Fetch Recipes with Menu Item Names + cost calculation
-    const { data: recData } = await supabase
-      .from('recipes')
-      .select('id, name, yield_qty, yield_unit, version_no, is_active, notes, menu_item_id, menu_items(name), recipe_items(count)')
-      .eq('company_id', companyId)
-
-    // Get cost for each recipe via RPC
-    const recipesList = recData || []
-    const recipesWithCost = []
-    for (const r of recipesList) {
-      let cost = 0
-      try {
-        const { data: costData } = await supabase.rpc('calculate_recipe_cost', { p_recipe_id: r.id })
-        cost = costData || 0
-      } catch { /* ignore cost calc errors */ }
-
-      recipesWithCost.push({
-        ...r,
-        menu_item_name: r.menu_items?.name,
-        ingredient_count: r.recipe_items?.[0]?.count || 0,
-        estimated_cost: cost,
-      })
-    }
-    recipes.value = recipesWithCost
-
-    // Fetch Menu Items
-    const { data: miData } = await supabase.from('menu_items').select('id, name').order('name')
-    allMenuItemsList.value = miData || []
-    filteredMenuItemsList.value = miData || []
-    menuItems.value = miData || []
-
-    // Fetch Inventory Items (include avg_cost for cost display)
-    const { data: invData } = await supabase
-      .from('items')
-      .select('id, name, inventory_uom_id, avg_cost')
-      .eq('is_active', true)
-      .order('name')
-    allInventoryItems.value = invData || []
-    inventoryItems.value = invData || []
-
-    // Fetch UOMs
-    const { data: uomData } = await supabase.from('uom').select('id, name')
-    uoms.value = uomData || []
-  } catch (error) {
-    console.error(error)
-  } finally {
-    loading.value = false
-  }
-}
-
 function filterItems(val, update) {
   if (val === '') {
-    update(() => {
-      inventoryItems.value = allInventoryItems.value
-    })
+    update(() => { inventoryItems.value = allInventoryItems.value })
     return
   }
   update(() => {
     const needle = val.toLowerCase()
     inventoryItems.value = allInventoryItems.value.filter(
-      (v) => v.name.toLowerCase().indexOf(needle) > -1,
+      (v) => v.name.toLowerCase().indexOf(needle) > -1 || (v.code && v.code.toLowerCase().indexOf(needle) > -1),
     )
   })
 }
 
+// ── Lifecycle ─────────────────────────────────────────
+onMounted(async () => {
+  // Load all data in parallel
+  await Promise.all([
+    listRecipes(),
+    listItems(),
+    listUoms(),
+    fetchMenuItems(),
+  ])
+  // Populate inventory items lists after items load
+  allInventoryItems.value = inventoryItemsRaw.value
+  inventoryItems.value = inventoryItemsRaw.value
+})
+
+async function fetchMenuItems() {
+  const { data } = await supabase
+    .from('menu_items')
+    .select('id, name, base_price, kitchen_id')
+    .order('name')
+  allMenuItemsList.value = data || []
+  filteredMenuItemsList.value = data || []
+}
+
+// ── Dialog actions ─────────────────────────────────────────
 function openRecipeDialog() {
   form.value = {
     recipe_id: null,
@@ -589,109 +581,75 @@ function removeIngredient(index) {
   form.value.ingredients.splice(index, 1)
 }
 
-async function openViewIngredients(row) {
+function openViewIngredients(row) {
   selectedRecipe.value = row
   viewIngredientsOpen.value = true
-  fetchingIngredients.value = true
-  viewItems.value = []
-  viewTotalCost.value = 0
-
-  try {
-    const { data, error } = await supabase
-      .from('recipe_items')
-      .select(`
-        qty_per_serving,
-        wastage_percent,
-        notes,
-        items(name, avg_cost),
-        uom(name)
-      `)
-      .eq('recipe_id', row.id)
-
-    if (error) throw error
-
-    let totalCost = 0
-    viewItems.value = (data || []).map((i) => {
-      const qty = Number(i.qty_per_serving) || 0
-      const wastage = Number(i.wastage_percent) || 0
-      const avgCost = Number(i.items?.avg_cost) || 0
-      const lineCost = qty * (1 + wastage / 100) * avgCost
-      totalCost += lineCost
-
-      return {
-        item_name: i.items?.name || 'Unknown Item',
-        qty_per_serving: i.qty_per_serving,
-        uom_name: i.uom?.name || 'Unit',
-        wastage_percent: i.wastage_percent || 0,
-        notes: i.notes,
-        line_cost: lineCost,
-      }
-    })
-    viewTotalCost.value = totalCost
-  } catch (err) {
-    console.error(err)
-    $q.notify({ type: 'negative', message: 'Error fetching ingredients' })
-  } finally {
-    fetchingIngredients.value = false
-  }
 }
 
 async function loadExistingRecipeForMenuItem(menuItem) {
   if (!menuItem) return
 
-  try {
-    const { data } = await supabase
-      .from('recipes')
-      .select('id, name, yield_qty, yield_unit, notes, recipe_items(item_id, qty_per_serving, uom_id, wastage_percent)')
-      .eq('menu_item_id', menuItem.id)
-      .limit(1)
-      .maybeSingle()
+  // Check if a recipe already exists for this menu item
+  const existing = recipes.value.find((r) => r.menu_item_id === menuItem.id)
+  if (existing) {
+    form.value.recipe_id = existing.id
+    form.value.name = existing.name || ''
+    form.value.yield_qty = existing.yield_qty || 1
+    form.value.yield_unit = existing.yield_unit || ''
+    form.value.notes = existing.notes || ''
 
-    if (data) {
-      form.value.recipe_id = data.id
-      form.value.name = data.name || ''
-      form.value.yield_qty = data.yield_qty || 1
-      form.value.yield_unit = data.yield_unit || ''
-      form.value.notes = data.notes || ''
-
-      // Map recipe_items back to form structure
-      if (data.recipe_items && data.recipe_items.length > 0) {
-        form.value.ingredients = data.recipe_items.map((ri) => {
-          const matchedItem = allInventoryItems.value.find((i) => i.id === ri.item_id)
-          return {
-            item: matchedItem || null,
-            qty_per_serving: ri.qty_per_serving,
-            uom_id: ri.uom_id,
-            wastage_percent: ri.wastage_percent || 0,
-          }
-        })
-      } else {
-        form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
-      }
+    // Map recipe_items
+    if (existing.recipe_items?.length) {
+      form.value.ingredients = existing.recipe_items.map((ri) => ({
+        item: ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null,
+        qty_per_serving: ri.qty_per_serving,
+        uom_id: ri.uom_id,
+        wastage_percent: ri.wastage_percent || 0,
+      }))
     } else {
-      // New Recipe
-      form.value.recipe_id = null
-      form.value.name = ''
-      form.value.yield_qty = 1
-      form.value.yield_unit = ''
-      form.value.notes = ''
       form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
     }
-  } catch (err) {
-    console.error(err)
+  } else {
+    form.value.recipe_id = null
+    form.value.name = ''
+    form.value.yield_qty = 1
+    form.value.yield_unit = ''
+    form.value.notes = ''
+    form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
   }
 }
 
 async function editRecipe(row) {
-  const matchedMenuIndex = menuItems.value.findIndex((m) => m.id === row.menu_item_id)
-  if (matchedMenuIndex > -1) {
-    form.value.menu_item = menuItems.value[matchedMenuIndex]
-    await loadExistingRecipeForMenuItem(form.value.menu_item)
+  const matchedMenu = allMenuItemsList.value.find((m) => m.id === row.menu_item_id)
+  form.value.menu_item = matchedMenu || { id: row.menu_item_id, name: row.menu_item_name || 'Unknown' }
+  form.value.recipe_id = row.id
+  form.value.name = row.name || ''
+  form.value.yield_qty = row.yield_qty || 1
+  form.value.yield_unit = row.yield_unit || ''
+  form.value.notes = row.notes || ''
+
+  // Map recipe_items
+  if (row.recipe_items?.length) {
+    form.value.ingredients = row.recipe_items.map((ri) => ({
+      item: ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null,
+      qty_per_serving: ri.qty_per_serving,
+      uom_id: ri.uom_id,
+      wastage_percent: ri.wastage_percent || 0,
+    }))
   } else {
-    form.value.menu_item = { id: row.menu_item_id, name: row.menu_item_name || 'Unknown' }
-    await loadExistingRecipeForMenuItem(form.value.menu_item)
+    form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
   }
   dialogOpen.value = true
+}
+
+async function toggleActive(row) {
+  try {
+    await toggleRecipeActive(row.id, !row.is_active)
+    $q.notify({ type: 'positive', message: row.is_active ? 'Recipe deactivated' : 'Recipe activated' })
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: err.message || 'Failed to toggle recipe status' })
+  }
 }
 
 async function confirmDeleteRecipe(row) {
@@ -704,16 +662,8 @@ async function confirmDeleteRecipe(row) {
     color: 'negative',
   }).onOk(async () => {
     try {
-      const { data, error } = await supabase.rpc('delete_recipe', {
-        p_recipe_id: row.id,
-      })
-      if (error) throw error
-      if (data?.success) {
-        $q.notify({ type: 'positive', message: 'Recipe deleted successfully' })
-        fetchData()
-      } else {
-        throw new Error(data?.error || 'Failed to delete recipe')
-      }
+      await deleteRecipe(row.id)
+      $q.notify({ type: 'positive', message: 'Recipe deleted successfully' })
     } catch (err) {
       console.error(err)
       $q.notify({ type: 'negative', message: err.message || 'Error deleting recipe' })
@@ -727,7 +677,6 @@ async function saveRecipe() {
     return
   }
 
-  // Validate ingredients
   const validIngredients = form.value.ingredients.filter(
     (ing) => ing.item && ing.qty_per_serving > 0,
   )
@@ -736,47 +685,40 @@ async function saveRecipe() {
     return
   }
 
-  // Check for duplicate inventory items
+  // Check for duplicate items
   const itemIds = validIngredients.map((ing) => ing.item.id)
-  const hasDuplicates = new Set(itemIds).size !== itemIds.length
-  if (hasDuplicates) {
+  if (new Set(itemIds).size !== itemIds.length) {
     $q.notify({ type: 'negative', message: 'Duplicate ingredient detected. Each inventory item can only appear once per recipe.' })
     return
   }
 
   saving.value = true
-  const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
 
-  // Map ingredients to expected JSONB structure for RPC
-  const payloadIngredients = validIngredients.map((ing) => ({
-    item_id: ing.item.id,
-    qty_per_serving: ing.qty_per_serving,
-    uom_id: ing.uom_id || ing.item.inventory_uom_id,
-    wastage_percent: Number(ing.wastage_percent) || 0,
-    notes: null,
-  }))
+  const payload = {
+    menu_item_id: form.value.menu_item.id,
+    name: form.value.name || undefined,
+    yield_qty: Number(form.value.yield_qty) || 1,
+    yield_unit: form.value.yield_unit || undefined,
+    notes: form.value.notes || undefined,
+    items: validIngredients.map((ing) => ({
+      item_id: ing.item.id,
+      qty_per_serving: ing.qty_per_serving,
+      uom_id: ing.uom_id || ing.item.uom_id || ing.item.inventory_uom_id,
+      wastage_percent: Number(ing.wastage_percent) || 0,
+    })),
+  }
 
   try {
-    const { data, error } = await supabase.rpc('save_recipe', {
-      p_company_id: companyId,
-      p_menu_item_id: form.value.menu_item.id,
-      p_variant_id: null,
-      p_name: form.value.name || '',
-      p_yield_qty: Number(form.value.yield_qty || 1),
-      p_yield_unit: form.value.yield_unit || null,
-      p_notes: form.value.notes || null,
-      p_ingredients: payloadIngredients,
-    })
-
-    if (error) throw error
-
-    if (data?.success) {
-      $q.notify({ type: 'positive', message: 'Recipe saved successfully' })
-      dialogOpen.value = false
-      fetchData()
+    if (form.value.recipe_id) {
+      await updateRecipe(form.value.recipe_id, payload)
     } else {
-      throw new Error(data?.error || 'Unknown error occurred')
+      await createRecipe(payload)
     }
+    $q.notify({ type: 'positive', message: 'Recipe saved successfully' })
+    dialogOpen.value = false
+    // Refresh inventory items after potential avg_cost changes
+    allInventoryItems.value = inventoryItemsRaw.value
+    inventoryItems.value = inventoryItemsRaw.value
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: err.message || 'Failed to save recipe' })
