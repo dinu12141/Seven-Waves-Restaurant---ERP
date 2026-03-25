@@ -450,18 +450,20 @@ async function fetchMenuItems() {
         // Load items through the menu book
         const { data: bookItems, error: bookError } = await supabase
           .from('menu_book_items')
-          .select(`
+          .select(
+            `
             id, override_price, is_available, sort_order,
             menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name))
-          `)
+          `,
+          )
           .eq('menu_book_id', bookData.id)
           .eq('is_available', true)
           .order('sort_order')
 
         if (!bookError && bookItems && bookItems.length > 0) {
           products = bookItems
-            .filter(bi => bi.menu_items && bi.menu_items.is_available)
-            .map(bi => ({
+            .filter((bi) => bi.menu_items && bi.menu_items.is_available)
+            .map((bi) => ({
               id: bi.menu_items.id,
               name: bi.menu_items.name,
               price: parseFloat(bi.override_price || bi.menu_items.base_price || 0),
@@ -481,7 +483,9 @@ async function fetchMenuItems() {
     if (!usedMenuBook) {
       const { data, error } = await supabase
         .from('menu_items')
-        .select(`id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name)`)
+        .select(
+          `id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name)`,
+        )
         .eq('is_available', true)
         .order('name')
 
@@ -549,11 +553,11 @@ async function autoOpenBillingForOrder(orderId, attempt = 0) {
   const MAX_ATTEMPTS = 5
 
   // Find order in the billing queue
-  let order = cashierStore.billingOrders.find(o => o.id === orderId)
+  let order = cashierStore.billingOrders.find((o) => o.id === orderId)
 
   if (!order && attempt < MAX_ATTEMPTS) {
     // Order may not be loaded yet — wait and retry
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     // Refresh the queue in case it wasn't loaded
     if (attempt === 1) await cashierStore.fetchBillingQueue(true)
     return autoOpenBillingForOrder(orderId, attempt + 1)
@@ -569,7 +573,12 @@ async function autoOpenBillingForOrder(orderId, attempt = 0) {
 
     Notify.create({
       message: `Billing opened for Order #${order.order_number}`,
-      caption: order.order_type === 'delivery' ? '🛵 Delivery Order' : order.order_type === 'takeaway' ? '🥡 Takeaway' : '🍽️ Dine-in',
+      caption:
+        order.order_type === 'delivery'
+          ? '🛵 Delivery Order'
+          : order.order_type === 'takeaway'
+            ? '🥡 Takeaway'
+            : '🍽️ Dine-in',
       color: 'deep-orange',
       icon: 'receipt_long',
       position: 'top',

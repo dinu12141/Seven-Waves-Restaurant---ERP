@@ -24,7 +24,7 @@ const TRACKING_INTERVAL_MS = 10_000 // 10 seconds
 export function useDeliveryTracking(orderId, deliveryStatus) {
   // ── State ──────────────────────────────────────────────────
   const isActive = ref(false)
-  const lastCoords = ref(null)       // { lat, lng }
+  const lastCoords = ref(null) // { lat, lng }
   const trackingError = ref(null)
   const upsertCount = ref(0)
 
@@ -49,17 +49,15 @@ export function useDeliveryTracking(orderId, deliveryStatus) {
     const lng = position.longitude
 
     try {
-      const { error } = await supabase
-        .from('delivery_tracking')
-        .upsert(
-          {
-            order_id: oid,
-            lat,
-            lng,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'order_id' }
-        )
+      const { error } = await supabase.from('delivery_tracking').upsert(
+        {
+          order_id: oid,
+          lat,
+          lng,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'order_id' },
+      )
 
       if (error) {
         console.error('[DeliveryTracking] Upsert error:', error)
@@ -68,7 +66,11 @@ export function useDeliveryTracking(orderId, deliveryStatus) {
         lastCoords.value = { lat, lng }
         trackingError.value = null
         upsertCount.value++
-        console.log(`[DeliveryTracking] 📍 Upserted (${upsertCount.value}):`, lat.toFixed(6), lng.toFixed(6))
+        console.log(
+          `[DeliveryTracking] 📍 Upserted (${upsertCount.value}):`,
+          lat.toFixed(6),
+          lng.toFixed(6),
+        )
       }
     } catch (err) {
       console.error('[DeliveryTracking] Unexpected error:', err)
@@ -80,7 +82,10 @@ export function useDeliveryTracking(orderId, deliveryStatus) {
   function startTracking() {
     if (isActive.value) return // already running
 
-    console.log('[DeliveryTracking] ▶ Starting GPS tracking for order:', typeof orderId === 'object' ? orderId.value : orderId)
+    console.log(
+      '[DeliveryTracking] ▶ Starting GPS tracking for order:',
+      typeof orderId === 'object' ? orderId.value : orderId,
+    )
 
     // Start GPS watch
     geo.startTracking()
@@ -113,10 +118,7 @@ export function useDeliveryTracking(orderId, deliveryStatus) {
     if (!oid) return
 
     try {
-      await supabase
-        .from('delivery_tracking')
-        .delete()
-        .eq('order_id', oid)
+      await supabase.from('delivery_tracking').delete().eq('order_id', oid)
 
       console.log('[DeliveryTracking] 🧹 Cleaned up tracking row for order:', oid)
     } catch (err) {
@@ -147,7 +149,7 @@ export function useDeliveryTracking(orderId, deliveryStatus) {
           clearTrackingData()
         }
       },
-      { immediate: true }
+      { immediate: true },
     )
   }
 

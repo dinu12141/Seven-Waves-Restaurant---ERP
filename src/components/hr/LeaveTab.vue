@@ -1,8 +1,84 @@
 <template>
   <div class="q-pa-md">
+    <!-- ── Leave Balance Summary ─────────────────────────────────────────── -->
+    <div class="text-subtitle1 text-weight-bold text-grey-3 q-mb-sm">
+      My Leave Balances — {{ currentYear }}
+    </div>
+    <div class="row q-col-gutter-md q-mb-lg">
+      <div v-if="loadingBalances" class="col-12 text-center text-grey-5 q-py-md">
+        <q-spinner size="24px" /> Loading balances…
+      </div>
+      <template v-else>
+        <div v-for="bal in myLeaveBalances" :key="bal.leave_type_id" class="col-12 col-sm-4">
+          <q-card
+            flat
+            bordered
+            :style="{
+              background: 'rgba(255,255,255,0.03)',
+              borderTop: '3px solid ' + leaveBadgeColor(bal.leave_type_name),
+            }"
+          >
+            <q-card-section class="q-pa-md">
+              <div class="row items-center q-mb-sm">
+                <q-badge
+                  :color="bal.is_paid ? 'green' : 'orange'"
+                  :label="bal.is_paid ? 'Paid' : 'Unpaid'"
+                  class="q-mr-sm"
+                />
+                <span class="text-weight-bold text-grey-3">{{ bal.leave_type_name }}</span>
+              </div>
+              <div class="row text-caption text-center q-col-gutter-xs">
+                <div class="col-4">
+                  <div class="text-grey-5">Entitled</div>
+                  <div class="text-h6 text-white text-weight-bold">{{ bal.total_entitlement }}</div>
+                </div>
+                <div class="col-4">
+                  <div class="text-grey-5">Used</div>
+                  <div class="text-h6 text-orange text-weight-bold">{{ bal.used_days }}</div>
+                </div>
+                <div class="col-4">
+                  <div class="text-grey-5">Left</div>
+                  <div
+                    class="text-h6 text-weight-bold"
+                    :class="bal.remaining_days > 0 ? 'text-green' : 'text-red'"
+                  >
+                    {{ bal.remaining_days }}
+                  </div>
+                </div>
+              </div>
+              <q-linear-progress
+                :value="
+                  bal.total_entitlement > 0
+                    ? Number(bal.used_days) / Number(bal.total_entitlement)
+                    : 0
+                "
+                :color="Number(bal.remaining_days) > 0 ? 'amber' : 'red'"
+                track-color="grey-8"
+                rounded
+                size="6px"
+                class="q-mt-sm"
+              />
+              <div v-if="Number(bal.pending_days) > 0" class="text-caption text-amber q-mt-xs">
+                {{ bal.pending_days }} day(s) pending approval
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div v-if="!myLeaveBalances.length" class="col-12 text-grey-5 text-center q-py-md">
+          No leave types found. Contact HR to set up leave entitlements.
+        </div>
+      </template>
+    </div>
+
     <div class="row items-center q-mb-md">
-      <div class="text-h6">Leave Management</div>
-      <q-btn color="primary" icon="add" label="Apply Leave" @click="showApplyLeave = true" />
+      <div class="text-h6">Leave Requests</div>
+      <q-btn
+        color="primary"
+        icon="add"
+        label="Apply Leave"
+        class="q-ml-sm"
+        @click="showApplyLeave = true"
+      />
       <q-space />
       <q-select
         dark
@@ -107,7 +183,7 @@
             <div class="row q-col-gutter-sm">
               <div class="col-6">
                 <div class="text-caption text-grey-5">Quota</div>
-                <div class="text-weight-bold">{{ lt.default_quota }} days / year</div>
+                <div class="text-weight-bold">{{ lt.annual_quota }} days / year</div>
               </div>
               <div class="col-6">
                 <div class="text-caption text-grey-5">Type</div>
@@ -119,7 +195,7 @@
               <div class="col-12" v-if="lt.carry_forward">
                 <q-badge color="blue" label="Carry Forward" />
                 <span class="text-caption text-grey-5 q-ml-xs"
-                  >max {{ lt.max_carry_forward }} days</span
+                  >max {{ lt.max_carry_forward_days }} days</span
                 >
               </div>
             </div>
@@ -219,6 +295,77 @@ const leaveTypes = ref([])
 const employeeOptions = ref([])
 const leaveTypeOptions = ref([])
 const statusFilter = ref('All')
+const currentYear = new Date().getFullYear()
+
+// ── Leave Balances ─────────────────────────────────────────────────────────────
+const myLeaveBalances = ref([])
+const loadingBalances = ref(false)
+
+function leaveBadgeColor(name) {
+  if (!name) return '#6366f1'
+  const n = name.toLowerCase()
+  if (n.includes('annual')) return '#22c55e'
+  if (n.includes('casual')) return '#3b82f6'
+  if (n.includes('sick')) return '#ef4444'
+  return '#f59e0b'
+}
+
+async function loadMyLeaveBalances() {
+  loadingBalances.value = true
+  try {
+    const branchId = authStore.currentBranch?.id
+    if (!branchId) return
+
+    // Find current employee record
+    let empId = null
+    if (!isHR.value) {
+      const { data: myEmp } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('profile_id', authStore.user?.id)
+        .maybeSingle()
+      empId = myEmp?.id
+    } else {
+      // HR: show a combined summary (all employees for this branch)
+      // — load leave types and aggregate balances
+      const companyId = authStore.currentBranch?.company_id
+      const { data: types } = await supabase
+        .from('leave_types')
+        .select('id, name, is_paid, annual_quota')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name')
+      // For HR view, show the quota definitions (not individual balances)
+      myLeaveBalances.value = (types || []).map((t) => ({
+        leave_type_id: t.id,
+        leave_type_name: t.name,
+        is_paid: t.is_paid,
+        total_entitlement: t.annual_quota,
+        used_days: '—',
+        remaining_days: '—',
+        pending_days: 0,
+      }))
+      loadingBalances.value = false
+      return
+    }
+
+    if (!empId) {
+      myLeaveBalances.value = []
+      return
+    }
+
+    const { data, error } = await supabase.rpc('get_employee_leave_summary', {
+      p_employee_id: empId,
+    })
+    if (error) throw error
+    myLeaveBalances.value = data || []
+  } catch (err) {
+    console.error('[LeaveTab] Failed to load balances:', err.message)
+    myLeaveBalances.value = []
+  } finally {
+    loadingBalances.value = false
+  }
+}
 
 const newLeaveRequest = ref({
   employee_id: null,
@@ -384,5 +531,8 @@ async function updateLeaveStatus(id, status) {
 }
 
 watch(statusFilter, () => loadData())
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+  loadMyLeaveBalances()
+})
 </script>

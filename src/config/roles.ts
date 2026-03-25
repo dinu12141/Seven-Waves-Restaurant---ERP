@@ -994,6 +994,26 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'HR',
     group: 'Payroll',
   },
+  {
+    label: 'Leave Management',
+    icon: 'event_note',
+    to: '/hr/leave',
+    roles: ['admin', 'hr', 'manager'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+    group: 'Staff',
+  },
+  {
+    label: 'Document Management',
+    icon: 'folder_special',
+    to: '/hr/documents',
+    roles: ['admin', 'hr'],
+    permission: 'hr:access',
+    section: 'HR',
+    moduleCode: 'HR',
+    group: 'Staff',
+  },
 
   // ─── WEBSITE ───────────────────────────────────────────────────────────────
   {

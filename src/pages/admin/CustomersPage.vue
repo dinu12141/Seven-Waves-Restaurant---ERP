@@ -338,7 +338,7 @@ function deleteCustomerAction(customer) {
     message: `Are you sure you want to delete customer "${customer.full_name}"?`,
     cancel: true,
     persistent: true,
-    color: 'negative'
+    color: 'negative',
   }).onOk(async () => {
     const result = await adminDeleteCustomer(customer.id)
     if (result.success) {

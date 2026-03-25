@@ -22,17 +22,34 @@
       >
         <template #header="props">
           <q-tr :props="props" class="report-table__header-row">
-            <q-th v-for="col in props.cols" :key="col.name" :props="props" class="report-table__th">{{ col.label }}</q-th>
+            <q-th
+              v-for="col in props.cols"
+              :key="col.name"
+              :props="props"
+              class="report-table__th"
+              >{{ col.label }}</q-th
+            >
           </q-tr>
         </template>
         <template #body="props">
           <q-tr :props="props" class="report-table__row">
-            <q-td key="hour_label" :props="props" class="text-weight-bold">{{ props.row.hour_label }}</q-td>
-            <q-td key="order_count" :props="props" class="report-table__td--num">{{ props.row.order_count }}</q-td>
-            <q-td key="total_amount" :props="props" class="report-table__td--num text-weight-bolder text-green">{{ fmtLKR(props.row.total_amount) }}</q-td>
-            <q-td key="avg_order" :props="props" class="report-table__td--num">{{ fmtLKR(props.row.avg_order) }}</q-td>
+            <q-td key="hour_label" :props="props" class="text-weight-bold">{{
+              props.row.hour_label
+            }}</q-td>
+            <q-td key="order_count" :props="props" class="report-table__td--num">{{
+              props.row.order_count
+            }}</q-td>
+            <q-td
+              key="total_amount"
+              :props="props"
+              class="report-table__td--num text-weight-bolder text-green"
+              >{{ fmtLKR(props.row.total_amount) }}</q-td
+            >
+            <q-td key="avg_order" :props="props" class="report-table__td--num">{{
+              fmtLKR(props.row.avg_order)
+            }}</q-td>
             <q-td key="share" :props="props" class="report-table__td--num">
-              <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+              <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end">
                 <div class="hourly-bar" :style="{ width: props.row.share + '%' }" />
                 <span>{{ fmtPercent(props.row.share) }}</span>
               </div>
@@ -43,13 +60,20 @@
           <q-tr class="report-table__total-row">
             <q-td class="report-table__td--bold">TOTAL</q-td>
             <q-td class="report-table__td--bold report-table__td--num">{{ totals.orders }}</q-td>
-            <q-td class="report-table__td--bold report-table__td--num text-green">{{ fmtLKR(totals.amount) }}</q-td>
-            <q-td class="report-table__td--bold report-table__td--num">{{ totals.orders > 0 ? fmtLKR(totals.amount / totals.orders) : '—' }}</q-td>
+            <q-td class="report-table__td--bold report-table__td--num text-green">{{
+              fmtLKR(totals.amount)
+            }}</q-td>
+            <q-td class="report-table__td--bold report-table__td--num">{{
+              totals.orders > 0 ? fmtLKR(totals.amount / totals.orders) : '—'
+            }}</q-td>
             <q-td class="report-table__td--bold report-table__td--num">100%</q-td>
           </q-tr>
         </template>
         <template #no-data>
-          <div class="report-empty"><q-icon name="schedule" size="40px" class="q-mb-sm" /><div>No hourly data</div></div>
+          <div class="report-empty">
+            <q-icon name="schedule" size="40px" class="q-mb-sm" />
+            <div>No hourly data</div>
+          </div>
         </template>
       </q-table>
     </template>
@@ -80,12 +104,25 @@ const totals = computed(() => ({
 }))
 
 const kpiData = computed(() => {
-  const peakHour = rows.value.reduce((max, r) => (r.total_amount > (max?.total_amount || 0) ? r : max), null)
+  const peakHour = rows.value.reduce(
+    (max, r) => (r.total_amount > (max?.total_amount || 0) ? r : max),
+    null,
+  )
   return [
     { label: 'Peak Hour', value: peakHour?.hour_label || '—', icon: 'trending_up', color: 'blue' },
-    { label: 'Total Revenue', value: fmtLKR(totals.value.amount), icon: 'payments', color: 'green' },
+    {
+      label: 'Total Revenue',
+      value: fmtLKR(totals.value.amount),
+      icon: 'payments',
+      color: 'green',
+    },
     { label: 'Total Orders', value: totals.value.orders, icon: 'receipt_long', color: 'purple' },
-    { label: 'Avg/Hour', value: fmtLKR(totals.value.amount / 24), icon: 'schedule', color: 'amber' },
+    {
+      label: 'Avg/Hour',
+      value: fmtLKR(totals.value.amount / 24),
+      icon: 'schedule',
+      color: 'amber',
+    },
   ]
 })
 
@@ -130,8 +167,12 @@ async function loadData(filters = {}) {
   }
 }
 
-function exportCSV() { exportTableToCSV(columns, rows.value, 'hourly_sales') }
-function exportExcel() { exportTableToExcel(columns, rows.value, 'hourly_sales') }
+function exportCSV() {
+  exportTableToCSV(columns, rows.value, 'hourly_sales')
+}
+function exportExcel() {
+  exportTableToExcel(columns, rows.value, 'hourly_sales')
+}
 </script>
 
 <style scoped lang="scss">

@@ -179,19 +179,34 @@
                   <div class="col-4 flex flex-center">
                     <div class="image-upload-area q-ma-sm" @click="triggerImageUpload">
                       <q-avatar size="70px" rounded bg-color="grey-9" class="shadow-3">
-                        <img v-if="form.image_url" :src="form.image_url" style="object-fit:cover" />
+                        <img
+                          v-if="form.image_url"
+                          :src="form.image_url"
+                          style="object-fit: cover"
+                        />
                         <q-icon v-else name="add_a_photo" color="grey-6" size="28px" />
                       </q-avatar>
                       <q-badge v-if="imageUploading" floating color="primary">
                         <q-spinner size="10px" />
                       </q-badge>
-                      <div class="text-caption text-grey-6 text-center q-mt-xs" style="font-size:10px">Click to upload</div>
+                      <div
+                        class="text-caption text-grey-6 text-center q-mt-xs"
+                        style="font-size: 10px"
+                      >
+                        Click to upload
+                      </div>
                     </div>
-                    <input ref="imageInputRef" type="file" accept="image/*" class="hidden" @change="uploadImage" />
+                    <input
+                      ref="imageInputRef"
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      @change="uploadImage"
+                    />
                   </div>
                 </div>
                 <div class="row q-col-gutter-md">
-                   <div class="col-8">
+                  <div class="col-8">
                     <ERPFormField label="Base Price" required :error="vErrors.base_price">
                       <q-input
                         v-model="form.base_price"
@@ -235,9 +250,16 @@
                         @update:model-value="onCategoryChange"
                       >
                         <template v-slot:after>
-                           <q-btn round dense flat icon="add" color="primary" @click="catDialog.show = true">
-                             <q-tooltip>Add New Category</q-tooltip>
-                           </q-btn>
+                          <q-btn
+                            round
+                            dense
+                            flat
+                            icon="add"
+                            color="primary"
+                            @click="catDialog.show = true"
+                          >
+                            <q-tooltip>Add New Category</q-tooltip>
+                          </q-btn>
                         </template>
                       </q-select>
                     </ERPFormField>
@@ -261,9 +283,17 @@
                         @update:model-value="onSubCategoryChange"
                       >
                         <template v-slot:after>
-                           <q-btn round dense flat icon="add" color="primary" @click="subCatDialog.show = true" :disable="!form.category_id">
-                             <q-tooltip>Add New Sub Category</q-tooltip>
-                           </q-btn>
+                          <q-btn
+                            round
+                            dense
+                            flat
+                            icon="add"
+                            color="primary"
+                            @click="subCatDialog.show = true"
+                            :disable="!form.category_id"
+                          >
+                            <q-tooltip>Add New Sub Category</q-tooltip>
+                          </q-btn>
                         </template>
                       </q-select>
                     </ERPFormField>
@@ -281,10 +311,17 @@
                         clearable
                         placeholder="Select..."
                       >
-                         <template v-slot:after>
-                           <q-btn round dense flat icon="add" color="primary" @click="kitchenDialog.show = true">
-                             <q-tooltip>Add New Kitchen</q-tooltip>
-                           </q-btn>
+                        <template v-slot:after>
+                          <q-btn
+                            round
+                            dense
+                            flat
+                            icon="add"
+                            color="primary"
+                            @click="kitchenDialog.show = true"
+                          >
+                            <q-tooltip>Add New Kitchen</q-tooltip>
+                          </q-btn>
                         </template>
                       </q-select>
                     </ERPFormField>
@@ -311,11 +348,24 @@
           <div class="text-h6">New Category</div>
         </q-card-section>
         <q-card-section>
-          <q-input dark outlined v-model="catDialog.name" label="Category Name" autofocus @keyup.enter="saveNewCategory" />
+          <q-input
+            dark
+            outlined
+            v-model="catDialog.name"
+            label="Category Name"
+            autofocus
+            @keyup.enter="saveNewCategory"
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn flat label="Save" color="primary" :loading="catDialog.loading" @click="saveNewCategory" />
+          <q-btn
+            flat
+            label="Save"
+            color="primary"
+            :loading="catDialog.loading"
+            @click="saveNewCategory"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -325,15 +375,28 @@
         <q-card-section>
           <div class="text-h6">New Sub Category</div>
           <div v-if="form.category_id" class="text-caption text-grey-5">
-            Under: {{ categoryOptions.find(c => c.value === form.category_id)?.label }}
+            Under: {{ categoryOptions.find((c) => c.value === form.category_id)?.label }}
           </div>
         </q-card-section>
         <q-card-section>
-          <q-input dark outlined v-model="subCatDialog.name" label="Sub Category Name" autofocus @keyup.enter="saveNewSubCategory" />
+          <q-input
+            dark
+            outlined
+            v-model="subCatDialog.name"
+            label="Sub Category Name"
+            autofocus
+            @keyup.enter="saveNewSubCategory"
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn flat label="Save" color="primary" :loading="subCatDialog.loading" @click="saveNewSubCategory" />
+          <q-btn
+            flat
+            label="Save"
+            color="primary"
+            :loading="subCatDialog.loading"
+            @click="saveNewSubCategory"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -345,15 +408,25 @@
         </q-card-section>
         <q-card-section class="q-gutter-md">
           <q-input dark outlined v-model="kitchenDialog.name" label="Kitchen Name" autofocus />
-          <q-toggle dark color="green" v-model="kitchenDialog.is_cashier_display" label="Is Cashier Display" />
+          <q-toggle
+            dark
+            color="green"
+            v-model="kitchenDialog.is_cashier_display"
+            label="Is Cashier Display"
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn flat label="Save" color="primary" :loading="kitchenDialog.loading" @click="saveNewKitchen" />
+          <q-btn
+            flat
+            label="Save"
+            color="primary"
+            :loading="kitchenDialog.loading"
+            @click="saveNewKitchen"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
-
   </div>
 </template>
 
@@ -411,7 +484,14 @@ const form = reactive({ ...emptyForm })
 const vErrors = reactive({ name: '', base_price: '', category_id: '' })
 
 const columns = [
-  { name: 'image', label: '', field: 'image_url', align: 'left', sortable: false, style: 'width: 48px' },
+  {
+    name: 'image',
+    label: '',
+    field: 'image_url',
+    align: 'left',
+    sortable: false,
+    style: 'width: 48px',
+  },
   { name: 'item_code', label: 'Item ID', field: 'item_code', align: 'left', sortable: true },
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
   {
@@ -491,7 +571,9 @@ async function fetchData() {
 
     // Fetch kitchen mappings for auto-fill
     const branchId = authStore.currentBranch?.id
-    let mapQuery = supabase.from('kitchen_subcategory_map').select('subcategory_id, kitchen_id, category_id')
+    let mapQuery = supabase
+      .from('kitchen_subcategory_map')
+      .select('subcategory_id, kitchen_id, category_id')
     if (branchId) mapQuery = mapQuery.eq('branch_id', branchId)
     const { data: mapData, error: mapError } = await mapQuery
     if (mapError) console.warn('[MenuItems] Kitchen mappings fetch error:', mapError)
@@ -535,12 +617,17 @@ function onCategoryChange() {
 
 function onSubCategoryChange(subCatId) {
   // Auto-select kitchen based on kitchen_subcategory_map
-  console.log('[MenuItems] Sub category changed to:', subCatId, '| Available mappings:', kitchenMappings.value.length)
+  console.log(
+    '[MenuItems] Sub category changed to:',
+    subCatId,
+    '| Available mappings:',
+    kitchenMappings.value.length,
+  )
   if (!subCatId) {
     form.kitchen_id = null
     return
   }
-  const mapping = kitchenMappings.value.find(m => m.subcategory_id === subCatId)
+  const mapping = kitchenMappings.value.find((m) => m.subcategory_id === subCatId)
   console.log('[MenuItems] Found mapping:', mapping)
   if (mapping) {
     form.kitchen_id = mapping.kitchen_id
@@ -556,7 +643,9 @@ function openCreate() {
     if (subCategoryFilter.value) {
       form.sub_category_id = subCategoryFilter.value
       // Auto-fill kitchen from mapping
-      const mapping = kitchenMappings.value.find(m => m.subcategory_id === subCategoryFilter.value)
+      const mapping = kitchenMappings.value.find(
+        (m) => m.subcategory_id === subCategoryFilter.value,
+      )
       if (mapping) form.kitchen_id = mapping.kitchen_id
     }
   }
@@ -714,16 +803,17 @@ async function saveNewCategory() {
     const payload = { company_id: companyId, name: catDialog.name.trim().toUpperCase() }
     const { data, error } = await supabase.from('categories').insert([payload]).select().single()
     if (error) throw error
-    
+
     categories.value.push(data)
     form.category_id = data.id
     onCategoryChange()
-    
+
     catDialog.show = false
     catDialog.name = ''
     $q.notify({ type: 'positive', message: 'Category created' })
   } catch (err) {
-    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Category already exists' })
+    if (err.message.includes('unique'))
+      $q.notify({ type: 'negative', message: 'Category already exists' })
     else $q.notify({ type: 'negative', message: err.message || 'Error creating category' })
   } finally {
     catDialog.loading = false
@@ -735,19 +825,28 @@ async function saveNewSubCategory() {
   subCatDialog.loading = true
   try {
     const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
-    const payload = { company_id: companyId, category_id: form.category_id, name: subCatDialog.name.trim().toUpperCase() }
-    const { data, error } = await supabase.from('menu_sub_categories').insert([payload]).select().single()
+    const payload = {
+      company_id: companyId,
+      category_id: form.category_id,
+      name: subCatDialog.name.trim().toUpperCase(),
+    }
+    const { data, error } = await supabase
+      .from('menu_sub_categories')
+      .insert([payload])
+      .select()
+      .single()
     if (error) throw error
-    
+
     allSubCategories.value.push(data)
     form.sub_category_id = data.id
     onSubCategoryChange(data.id)
-    
+
     subCatDialog.show = false
     subCatDialog.name = ''
     $q.notify({ type: 'positive', message: 'Sub Category created' })
   } catch (err) {
-    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Sub Category already exists' })
+    if (err.message.includes('unique'))
+      $q.notify({ type: 'negative', message: 'Sub Category already exists' })
     else $q.notify({ type: 'negative', message: err.message || 'Error creating sub category' })
   } finally {
     subCatDialog.loading = false
@@ -762,25 +861,26 @@ async function saveNewKitchen() {
     const branchId = authStore.currentBranch?.id || authStore.branches?.[0]?.branches?.id
     if (!branchId) throw new Error('Branch required')
 
-    const payload = { 
-      company_id: companyId, 
-      branch_id: branchId, 
-      name: kitchenDialog.name.trim().toUpperCase(), 
-      is_active: true, 
-      is_cashier_display: kitchenDialog.is_cashier_display 
+    const payload = {
+      company_id: companyId,
+      branch_id: branchId,
+      name: kitchenDialog.name.trim().toUpperCase(),
+      is_active: true,
+      is_cashier_display: kitchenDialog.is_cashier_display,
     }
     const { data, error } = await supabase.from('kitchens').insert([payload]).select().single()
     if (error) throw error
-    
+
     kitchens.value.push(data)
     form.kitchen_id = data.id
-    
+
     kitchenDialog.show = false
     kitchenDialog.name = ''
     kitchenDialog.is_cashier_display = false
     $q.notify({ type: 'positive', message: 'Kitchen created' })
   } catch (err) {
-    if (err.message.includes('unique')) $q.notify({ type: 'negative', message: 'Kitchen already exists' })
+    if (err.message.includes('unique'))
+      $q.notify({ type: 'negative', message: 'Kitchen already exists' })
     else $q.notify({ type: 'negative', message: err.message || 'Error creating kitchen' })
   } finally {
     kitchenDialog.loading = false

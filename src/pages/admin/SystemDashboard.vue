@@ -28,9 +28,15 @@
                   <q-card-section>
                     <div class="row items-center justify-between q-mb-xs">
                       <div class="text-subtitle2 text-grey-4">{{ sys.name }}</div>
-                      <q-icon :name="sys.status ? 'check_circle' : 'error'" :color="sys.status ? 'green-5' : 'red-5'" size="20px" />
+                      <q-icon
+                        :name="sys.status ? 'check_circle' : 'error'"
+                        :color="sys.status ? 'green-5' : 'red-5'"
+                        size="20px"
+                      />
                     </div>
-                    <div class="text-caption" :class="sys.status ? 'text-green-3' : 'text-red-3'">{{ sys.desc }}</div>
+                    <div class="text-caption" :class="sys.status ? 'text-green-3' : 'text-red-3'">
+                      {{ sys.desc }}
+                    </div>
                   </q-card-section>
                 </q-card>
               </div>
@@ -97,7 +103,7 @@ const fetchData = async () => {
 
     auditLogs.value = [
       { id: 1, event: 'Admin Login', time: '5 mins ago', icon: 'login' },
-      { id: 2, event: 'Settings Updated', time: '1 hour ago', icon: 'settings' }
+      { id: 2, event: 'Settings Updated', time: '1 hour ago', icon: 'settings' },
     ]
 
     sysHealth.value = [
@@ -105,7 +111,7 @@ const fetchData = async () => {
       { name: 'Realtime Channels', desc: 'Sync Active', status: true },
       { name: 'Auth Server', desc: 'Operational', status: true },
       { name: 'Storage Bucket', desc: 'Operational', status: true },
-      { name: 'Edge Functions', desc: 'Responsive (< 50ms latency)', status: true }
+      { name: 'Edge Functions', desc: 'Responsive (< 50ms latency)', status: true },
     ]
 
     loading.value = false

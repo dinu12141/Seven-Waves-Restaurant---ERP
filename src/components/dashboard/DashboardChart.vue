@@ -39,7 +39,7 @@ const props = defineProps({
 })
 
 const isDark = computed(() => $q.dark.isActive)
-const chartThemeKey = computed(() => isDark.value ? 'dark' : 'light')
+const chartThemeKey = computed(() => (isDark.value ? 'dark' : 'light'))
 
 const computedOptions = computed(() => {
   const dark = isDark.value

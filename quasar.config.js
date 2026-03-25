@@ -30,7 +30,7 @@ export default defineConfig((ctx) => {
         node: 'node20',
       },
 
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
+      vueRouterMode: 'history', // 'history' for clean URLs — required for QR code /c/TOKEN links
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -84,6 +84,7 @@ export default defineConfig((ctx) => {
     devServer: {
       // https: true,
       host: '0.0.0.0', // Listen on all interfaces for LAN access (phone QR scanning)
+      port: 9000, // Fixed port — must match VITE_APP_PUBLIC_URL in .env
       open: true, // opens browser window automatically
     },
 
@@ -145,7 +146,7 @@ export default defineConfig((ctx) => {
         json.orientation = 'portrait'
         json.background_color = '#090c14'
         json.theme_color = '#f97316'
-        json.start_url = '/#/waiter-app'
+        json.start_url = '/waiter-app'
         json.scope = '/'
         json.categories = ['food', 'productivity']
         json.icons = [
@@ -217,10 +218,7 @@ export default defineConfig((ctx) => {
         // Only include the files the production app actually needs.
         // node_modules are NOT needed — Vite already bundled
         // everything into assets/.
-        files: [
-          '**/*',
-          '!node_modules/**',
-        ],
+        files: ['**/*', '!node_modules/**'],
 
         // ASAR disabled — Electron 41 crashes (0xC0000005 Access Violation)
         // when loading a CJS main process from inside an ASAR archive on Windows.

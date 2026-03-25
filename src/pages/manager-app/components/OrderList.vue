@@ -13,7 +13,11 @@
           <span class="text-grey-6 text-caption">{{ fmtTime(order.created_at) }}</span>
         </div>
         <div v-if="order.order_items && order.order_items.length" class="q-px-sm q-pb-sm">
-          <div v-for="item in order.order_items.slice(0, 3)" :key="item.id" class="text-caption text-grey-5">
+          <div
+            v-for="item in order.order_items.slice(0, 3)"
+            :key="item.id"
+            class="text-caption text-grey-5"
+          >
             {{ item.quantity }}× {{ item.menu_items?.name || 'Item' }}
           </div>
           <div v-if="order.order_items.length > 3" class="text-caption text-grey-7">
@@ -21,7 +25,9 @@
           </div>
         </div>
         <div class="order-card__footer row items-center q-pa-sm">
-          <q-badge :color="statusColor" class="text-caption">{{ order.status?.replace(/_/g, ' ') }}</q-badge>
+          <q-badge :color="statusColor" class="text-caption">{{
+            order.status?.replace(/_/g, ' ')
+          }}</q-badge>
           <q-space />
           <span class="text-caption text-grey-7">{{ elapsedMin(order.created_at) }} min ago</span>
         </div>
@@ -48,11 +54,11 @@ function elapsedMin(dt) {
 
 <style lang="scss" scoped>
 .order-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
 }
 .order-card__footer {
-  border-top: 1px solid rgba(255,255,255,0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 </style>

@@ -1,10 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="HR Dashboard"
-      breadcrumbs="Human Resources / Overview"
-    />
+    <ERPToolbar moduleName="hr" title="HR Dashboard" breadcrumbs="Human Resources / Overview" />
 
     <!-- KPI Cards -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -37,10 +33,17 @@
             <q-list class="erp-activity-list" padding>
               <q-item v-for="alert in alerts" :key="alert.id" class="q-pa-sm erp-activity-item">
                 <q-item-section avatar top>
-                  <q-avatar size="32px" :color="alert.color" text-color="white" :icon="alert.icon" />
+                  <q-avatar
+                    size="32px"
+                    :color="alert.color"
+                    text-color="white"
+                    :icon="alert.icon"
+                  />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-body2 text-weight-medium">{{ alert.title }}</q-item-label>
+                  <q-item-label class="text-body2 text-weight-medium">{{
+                    alert.title
+                  }}</q-item-label>
                   <q-item-label caption class="text-grey-5">{{ alert.desc }}</q-item-label>
                 </q-item-section>
                 <q-item-section side v-if="alert.action">
@@ -78,7 +81,10 @@ const kpis = ref([
 
 const alerts = ref([])
 
-const hrSeries = ref([{ name: 'Present', data: [] }, { name: 'Absent', data: [] }])
+const hrSeries = ref([
+  { name: 'Present', data: [] },
+  { name: 'Absent', data: [] },
+])
 const hrOptions = ref({})
 
 const fetchData = async () => {
@@ -90,18 +96,35 @@ const fetchData = async () => {
     kpis.value[5].value = '4'
 
     alerts.value = [
-      { id: 1, title: 'Annual Leave Req', desc: 'John Doe - Next Week', icon: 'beach_access', color: 'blue-8', action: true },
-      { id: 2, title: 'Overtime Alert', desc: 'Waiters exceeding 40hrs', icon: 'timer', color: 'orange-8', action: true }
+      {
+        id: 1,
+        title: 'Annual Leave Req',
+        desc: 'John Doe - Next Week',
+        icon: 'beach_access',
+        color: 'blue-8',
+        action: true,
+      },
+      {
+        id: 2,
+        title: 'Overtime Alert',
+        desc: 'Waiters exceeding 40hrs',
+        icon: 'timer',
+        color: 'orange-8',
+        action: true,
+      },
     ]
 
     hrSeries.value = [
       { name: 'Present', data: [40, 42, 45, 41, 40, 38, 44] },
-      { name: 'Absent', data: [5, 3, 0, 4, 5, 7, 1] }
+      { name: 'Absent', data: [5, 3, 0, 4, 5, 7, 1] },
     ]
     hrOptions.value = {
       chart: { type: 'bar', toolbar: { show: false }, background: 'transparent', stacked: true },
       theme: { mode: 'dark' },
-      xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { colors: '#9ca3af' } } },
+      xaxis: {
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: { style: { colors: '#9ca3af' } },
+      },
       yaxis: { labels: { style: { colors: '#9ca3af' } } },
       colors: ['#3b82f6', '#ef4444'],
       grid: { borderColor: '#374151', strokeDashArray: 4 },

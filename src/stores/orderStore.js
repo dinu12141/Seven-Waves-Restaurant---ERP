@@ -179,7 +179,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         return {
           order_id: order.id,
           menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || null,  // null = let RPC resolve via subcategory map
+          kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
           quantity: itemQty,
           unit_price: itemPrice,
           total_price: parseFloat((itemQty * itemPrice).toFixed(2)),
@@ -213,7 +213,12 @@ export const useOrderStore = defineStore('posOrder', () => {
         console.error('[OrderStore] KOT generation warning:', kotError.message)
         // Don't throw — order is still valid, KOTs can be created manually
       } else {
-        console.log('[OrderStore] KOTs created:', kotResult?.kot_count, 'dispatches:', kotResult?.dispatch_count)
+        console.log(
+          '[OrderStore] KOTs created:',
+          kotResult?.kot_count,
+          'dispatches:',
+          kotResult?.dispatch_count,
+        )
       }
 
       return { success: true, order }
@@ -285,7 +290,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         return {
           order_id: order.id,
           menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || null,  // null = let RPC resolve via subcategory map
+          kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
           quantity: qty,
           unit_price: price,
           total_price: parseFloat((qty * price).toFixed(2)),
@@ -302,10 +307,9 @@ export const useOrderStore = defineStore('posOrder', () => {
       }
 
       // ── Step 3: Accept order via orchestration RPC (generates KOTs + queues) ─
-      const { data: acceptData, error: acceptError } = await supabase.rpc(
-        'process_waiter_accept',
-        { p_order_id: order.id },
-      )
+      const { data: acceptData, error: acceptError } = await supabase.rpc('process_waiter_accept', {
+        p_order_id: order.id,
+      })
       if (acceptError) throw new Error(`Accept RPC failed: ${acceptError.message}`)
       if (!acceptData?.success) throw new Error(acceptData?.error || 'process_waiter_accept failed')
 
@@ -315,17 +319,15 @@ export const useOrderStore = defineStore('posOrder', () => {
         { p_order_id: order.id },
       )
       if (invoiceRpcError) throw new Error(`Invoice RPC failed: ${invoiceRpcError.message}`)
-      if (!invoiceData?.success) throw new Error(invoiceData?.error || 'process_cashier_invoice failed')
+      if (!invoiceData?.success)
+        throw new Error(invoiceData?.error || 'process_cashier_invoice failed')
 
       // ── Step 5: Record payment via orchestration RPC (posts finance + stock) ─
-      const { data: payData, error: payRpcError } = await supabase.rpc(
-        'process_cashier_payment',
-        {
-          p_order_id: order.id,
-          p_payment_method: paymentMethodName || 'cash',
-          p_amount_paid: parseFloat(total.value.toFixed(2)),
-        },
-      )
+      const { data: payData, error: payRpcError } = await supabase.rpc('process_cashier_payment', {
+        p_order_id: order.id,
+        p_payment_method: paymentMethodName || 'cash',
+        p_amount_paid: parseFloat(total.value.toFixed(2)),
+      })
       if (payRpcError) throw new Error(`Payment RPC failed: ${payRpcError.message}`)
       if (!payData?.success) throw new Error(payData?.error || 'process_cashier_payment failed')
 

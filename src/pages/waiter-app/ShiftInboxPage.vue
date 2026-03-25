@@ -7,8 +7,16 @@
       <q-badge v-if="store.pendingCount > 0" color="red" class="q-px-sm">
         {{ store.pendingCount }} pending
       </q-badge>
-      <q-btn round flat dense icon="refresh" color="grey-5" class="q-ml-sm"
-        :loading="store.loading" @click="store.loadPendingOrders()" />
+      <q-btn
+        round
+        flat
+        dense
+        icon="refresh"
+        color="grey-5"
+        class="q-ml-sm"
+        :loading="store.loading"
+        @click="store.loadPendingOrders()"
+      />
     </div>
 
     <!-- Loading -->
@@ -25,11 +33,7 @@
 
     <!-- Order Cards -->
     <div v-else class="q-pa-md">
-      <div
-        v-for="order in store.pendingOrders"
-        :key="order.id"
-        class="order-card q-mb-md"
-      >
+      <div v-for="order in store.pendingOrders" :key="order.id" class="order-card q-mb-md">
         <!-- Card Header -->
         <div class="order-card__header row items-center">
           <div class="col">
@@ -50,7 +54,7 @@
         <!-- Items -->
         <div class="order-card__items">
           <div
-            v-for="item in (order.items || order.order_items || [])"
+            v-for="item in order.items || order.order_items || []"
             :key="item.id"
             class="item-row row items-center"
           >
@@ -58,7 +62,8 @@
             <span class="text-white text-body2">{{ item.name || item.menu_items?.name }}</span>
             <q-space />
             <span class="text-grey-4 text-caption">
-              Rs. {{ (((item.unit_price || item.menu_items?.price || 0)) * item.quantity).toFixed(0) }}
+              Rs.
+              {{ ((item.unit_price || item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
             </span>
           </div>
         </div>
@@ -98,8 +103,10 @@ const accepting = reactive({})
 const store = computed(() => ({
   loading: appStore.loading || orderStore.loading,
   pendingCount: Math.max(appStore.pendingCount, orderStore.pendingCount),
-  pendingOrders: orderStore.pendingOrders.length > 0 ? orderStore.pendingOrders : appStore.pendingOrders,
-  loadPendingOrders: () => Promise.all([orderStore.fetchPendingOrders(), appStore.loadPendingOrders()]),
+  pendingOrders:
+    orderStore.pendingOrders.length > 0 ? orderStore.pendingOrders : appStore.pendingOrders,
+  loadPendingOrders: () =>
+    Promise.all([orderStore.fetchPendingOrders(), appStore.loadPendingOrders()]),
 }))
 
 function fmtTime(dt) {
@@ -108,7 +115,7 @@ function fmtTime(dt) {
 }
 
 async function accept(orderId) {
-  if (accepting[orderId]) return  // guard against double-tap / rapid re-render
+  if (accepting[orderId]) return // guard against double-tap / rapid re-render
   accepting[orderId] = true
   try {
     const result = await orderStore.acceptOrder(orderId)
@@ -128,18 +135,18 @@ async function accept(orderId) {
 <style lang="scss" scoped>
 @import './waiter-shared.scss';
 .inner-header {
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   height: 48px;
 }
 .order-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 14px;
   overflow: hidden;
   &__header {
     padding: 14px 14px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
   &__items {
     padding: 10px 14px;
@@ -150,9 +157,20 @@ async function accept(orderId) {
 }
 .item-row {
   padding: 4px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  &:last-child { border-bottom: none; }
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  &:last-child {
+    border-bottom: none;
+  }
 }
-.item-qty { font-size: 10px !important; font-weight: 700 !important; }
-.accept-btn { height: 46px; border-radius: 10px !important; font-weight: 700; font-size: 14px; letter-spacing: 0.2px; }
+.item-qty {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+.accept-btn {
+  height: 46px;
+  border-radius: 10px !important;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
 </style>

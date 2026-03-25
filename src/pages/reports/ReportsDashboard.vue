@@ -9,7 +9,9 @@
           <span class="reports-hub__breadcrumb-active">Dashboard</span>
         </div>
         <h1 class="reports-hub__title">Reports Center</h1>
-        <p class="reports-hub__subtitle">Enterprise reporting dashboard — access all reports, view today's summary, and export data</p>
+        <p class="reports-hub__subtitle">
+          Enterprise reporting dashboard — access all reports, view today's summary, and export data
+        </p>
       </div>
       <div class="reports-hub__header-actions">
         <div class="reports-hub__date-badge">
@@ -51,7 +53,10 @@
         @click="navigateToGroup(group)"
       >
         <div class="reports-hub__group-header">
-          <div class="reports-hub__group-icon" :style="{ background: group.color + '18', color: group.color }">
+          <div
+            class="reports-hub__group-icon"
+            :style="{ background: group.color + '18', color: group.color }"
+          >
             <q-icon :name="group.icon" size="22px" />
           </div>
           <q-badge :label="group.reports.length" class="reports-hub__group-count" />
@@ -114,8 +119,16 @@ const todayFormatted = new Date().toLocaleDateString('en-GB', {
 
 // Quick access — top 8 most commonly used reports
 const quickAccessReports = ALL_REPORTS.filter((r) =>
-  ['sales', 'electronic-journal', 'item-wise-sale', 'sales-statement',
-   'payment-summary', 'inventory-ledger', 'stock-on-hand', 'daily-cash'].includes(r.id),
+  [
+    'sales',
+    'electronic-journal',
+    'item-wise-sale',
+    'sales-statement',
+    'payment-summary',
+    'inventory-ledger',
+    'stock-on-hand',
+    'daily-cash',
+  ].includes(r.id),
 )
 
 // ── Live KPIs ─────────────────────────────────────────────────
@@ -193,8 +206,12 @@ onMounted(async () => {
     text-transform: uppercase;
     letter-spacing: 1px;
   }
-  &__breadcrumb-sep { color: var(--erp-text-muted, #475569); }
-  &__breadcrumb-active { color: var(--erp-text-secondary, #94a3b8); }
+  &__breadcrumb-sep {
+    color: var(--erp-text-muted, #475569);
+  }
+  &__breadcrumb-active {
+    color: var(--erp-text-secondary, #94a3b8);
+  }
 
   &__title {
     font-size: 26px;
@@ -246,19 +263,33 @@ onMounted(async () => {
     border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
     border-radius: 10px;
     border-left: 3px solid transparent;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
 
     &:hover {
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
-    &--blue { border-left-color: #2563eb; }
-    &--green { border-left-color: #16a34a; }
-    &--purple { border-left-color: #7c3aed; }
-    &--amber { border-left-color: #f59e0b; }
-    &--teal { border-left-color: #0d9488; }
-    &--red { border-left-color: #dc2626; }
+    &--blue {
+      border-left-color: #2563eb;
+    }
+    &--green {
+      border-left-color: #16a34a;
+    }
+    &--purple {
+      border-left-color: #7c3aed;
+    }
+    &--amber {
+      border-left-color: #f59e0b;
+    }
+    &--teal {
+      border-left-color: #0d9488;
+    }
+    &--red {
+      border-left-color: #dc2626;
+    }
   }
 
   &__kpi-icon {

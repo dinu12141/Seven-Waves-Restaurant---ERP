@@ -19,10 +19,10 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
   const authStore = useAuthStore()
 
   // ── State ──────────────────────────────────────────────────
-  const kitchenQueue = ref([])     // get_kitchen_queue() result
-  const cashierQueue = ref([])     // get_cashier_queue() result
+  const kitchenQueue = ref([]) // get_kitchen_queue() result
+  const cashierQueue = ref([]) // get_cashier_queue() result
   const loading = ref(false)
-  const actionLoading = ref(null)  // batch_id / order_id currently processing
+  const actionLoading = ref(null) // batch_id / order_id currently processing
 
   let kotBatchChannel = null
 
@@ -30,17 +30,15 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
   const branchId = computed(() => authStore.currentBranch?.id)
 
   const newBatches = computed(() =>
-    kitchenQueue.value.filter((b) => ['created', 'accepted'].includes(b.batch_status))
+    kitchenQueue.value.filter((b) => ['created', 'accepted'].includes(b.batch_status)),
   )
   const preparingBatches = computed(() =>
-    kitchenQueue.value.filter((b) => b.batch_status === 'preparing')
+    kitchenQueue.value.filter((b) => b.batch_status === 'preparing'),
   )
-  const readyBatches = computed(() =>
-    kitchenQueue.value.filter((b) => b.batch_status === 'ready')
-  )
+  const readyBatches = computed(() => kitchenQueue.value.filter((b) => b.batch_status === 'ready'))
 
   const readyOrdersInCashier = computed(() =>
-    cashierQueue.value.filter((q) => q.order_status === 'ready')
+    cashierQueue.value.filter((q) => q.order_status === 'ready'),
   )
 
   // ══════════════════════════════════════════════════════════
@@ -59,9 +57,9 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
     actionLoading.value = orderId
     try {
       const { data, error } = await supabase.rpc('accept_order_and_route_kots', {
-        p_order_id:       orderId,
+        p_order_id: orderId,
         p_waiter_user_id: authStore.user?.id,
-        p_shift_id:       shiftId,
+        p_shift_id: shiftId,
       })
 
       if (error) throw error
@@ -97,7 +95,7 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
     try {
       const { data, error } = await supabase.rpc('get_kitchen_queue', {
         p_kitchen_id: kitchenId,
-        p_branch_id:  branchId.value,
+        p_branch_id: branchId.value,
       })
       if (error) throw error
       kitchenQueue.value = (data || []).map(enrichBatch)
@@ -195,10 +193,10 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
     actionLoading.value = orderId
     try {
       const { data, error } = await supabase.rpc('cashier_raise_invoice', {
-        p_order_id:      orderId,
+        p_order_id: orderId,
         p_customer_name: opts.customerName || null,
-        p_discount:      opts.discount      || 0,
-        p_notes:         opts.notes         || null,
+        p_discount: opts.discount || 0,
+        p_notes: opts.notes || null,
       })
       if (error) throw error
       return { success: true, ...data }
@@ -225,11 +223,11 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
     actionLoading.value = orderId
     try {
       const { data, error } = await supabase.rpc('cashier_process_payment', {
-        p_order_id:          orderId,
+        p_order_id: orderId,
         p_payment_method_id: paymentMethodId,
-        p_amount:            amount,
-        p_tip:               opts.tip       || 0,
-        p_reference:         opts.reference || null,
+        p_amount: amount,
+        p_tip: opts.tip || 0,
+        p_reference: opts.reference || null,
       })
       if (error) throw error
 
@@ -284,7 +282,7 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
   async function _triggerBackgroundProcessing(orderId) {
     try {
       await Promise.all([
-        supabase.rpc('process_stock_queue',   { p_order_id: orderId }),
+        supabase.rpc('process_stock_queue', { p_order_id: orderId }),
         supabase.rpc('process_finance_queue', { p_order_id: orderId }),
       ])
       console.log('[KOT] Stock + Finance processed for order:', orderId)
@@ -311,9 +309,9 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
       .on(
         'postgres_changes',
         {
-          event:  '*',
+          event: '*',
           schema: 'public',
-          table:  'kot_batches',
+          table: 'kot_batches',
           filter: `kitchen_id=eq.${kitchenId}`,
         },
         (payload) => handleBatchChange(payload, kitchenId),
@@ -381,15 +379,20 @@ export const useKotOrchestrationStore = defineStore('kotOrchestration', () => {
       const play = (f, t, d) => {
         const osc = ctx.createOscillator()
         const g = ctx.createGain()
-        osc.connect(g); g.connect(ctx.destination)
+        osc.connect(g)
+        g.connect(ctx.destination)
         osc.frequency.value = f
         g.gain.setValueAtTime(0.5, t)
         g.gain.exponentialRampToValueAtTime(0.001, t + d)
-        osc.start(t); osc.stop(t + d)
+        osc.start(t)
+        osc.stop(t + d)
       }
       const now = ctx.currentTime
-      play(880, now, 0.3); play(1108, now + 0.2, 0.3)
-    } catch { /* silent fail */ }
+      play(880, now, 0.3)
+      play(1108, now + 0.2, 0.3)
+    } catch {
+      /* silent fail */
+    }
   }
 
   function cleanup() {

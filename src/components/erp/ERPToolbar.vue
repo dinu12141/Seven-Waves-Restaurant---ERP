@@ -162,7 +162,17 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (v) =>
-      ['orders', 'inventory', 'hr', 'finance', 'dashboard', 'operations', 'procurement', 'reports', 'system'].includes(v),
+      [
+        'orders',
+        'inventory',
+        'hr',
+        'finance',
+        'dashboard',
+        'operations',
+        'procurement',
+        'reports',
+        'system',
+      ].includes(v),
   },
   showSearch: { type: Boolean, default: false },
   showBranchSelector: { type: Boolean, default: false },

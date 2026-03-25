@@ -373,17 +373,15 @@ export async function fetchSubcategoryKitchenMap(branchId) {
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
 export async function setSubcategoryKitchenMap(subcategoryId, kitchenId, branchId) {
-  const { error } = await supabase
-    .from('subcategory_kitchen_map')
-    .upsert(
-      {
-        subcategory_id: subcategoryId,
-        kitchen_id: kitchenId,
-        branch_id: branchId,
-        is_active: true,
-      },
-      { onConflict: 'subcategory_id,branch_id' },
-    )
+  const { error } = await supabase.from('subcategory_kitchen_map').upsert(
+    {
+      subcategory_id: subcategoryId,
+      kitchen_id: kitchenId,
+      branch_id: branchId,
+      is_active: true,
+    },
+    { onConflict: 'subcategory_id,branch_id' },
+  )
 
   if (error) {
     console.error('[KotDispatch] setSubcategoryKitchenMap error:', error)

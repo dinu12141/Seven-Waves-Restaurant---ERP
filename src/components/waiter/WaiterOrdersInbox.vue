@@ -52,7 +52,10 @@
               <span v-if="item.kitchenName" class="kitchen-remark-sm">
                 • {{ item.kitchenName }}
                 <template
-                  v-if="item.categoryName && item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()"
+                  v-if="
+                    item.categoryName &&
+                    item.categoryName.toLowerCase() !== item.kitchenName.toLowerCase()
+                  "
                 >
                   ({{ item.categoryName }})
                 </template>

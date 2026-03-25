@@ -198,11 +198,15 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     // Merge and deduplicate
     const allData = [...(todayResult.data || []), ...(readyResult.data || [])]
     const uniqueMap = new Map()
-    allData.forEach(t => uniqueMap.set(t.id, t))
+    allData.forEach((t) => uniqueMap.set(t.id, t))
     const merged = Array.from(uniqueMap.values())
 
-    console.log('[KDS] Fetched tickets: today=%d, ready=%d, merged=%d',
-      todayResult.data?.length || 0, readyResult.data?.length || 0, merged.length)
+    console.log(
+      '[KDS] Fetched tickets: today=%d, ready=%d, merged=%d',
+      todayResult.data?.length || 0,
+      readyResult.data?.length || 0,
+      merged.length,
+    )
     tickets.value = merged.map(enrichTicket)
   }
 
@@ -411,9 +415,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
       // 🔔 Fire kitchen-specific alert for genuinely NEW tickets
       if (isNewAlert && ['created', 'pending', 'accepted'].includes(data.status)) {
-        const itemSummary = (data.kot_items || []).map(ki => ({
+        const itemSummary = (data.kot_items || []).map((ki) => ({
           name: ki.order_item?.menu_item?.name || 'Item',
-          qty: ki.quantity
+          qty: ki.quantity,
         }))
         newTicketAlert.value = {
           id: data.id,
@@ -422,7 +426,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           orderNumber: data.order?.order_number || '?',
           kitchenName: data.kitchen?.name || selectedKitchen.value?.name || 'Kitchen',
           items: itemSummary,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         }
         // Play urgent repeating sound alert
         startAlertRepeating()
@@ -495,7 +499,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
    * Dismiss ALL ready tickets at once (clear the ready column)
    */
   async function dismissAllReady() {
-    const readyIds = readyTickets.value.map(t => t.id)
+    const readyIds = readyTickets.value.map((t) => t.id)
     if (readyIds.length === 0) return { success: true }
 
     const { error } = await supabase
@@ -508,7 +512,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     }
 
     if (!error) {
-      tickets.value = tickets.value.filter(t => t.status !== 'ready')
+      tickets.value = tickets.value.filter((t) => t.status !== 'ready')
     }
     return { success: !error, error: error?.message }
   }
@@ -589,7 +593,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       src.start(0)
     }
     // Attach to common user gestures
-    ;['click', 'touchstart', 'keydown'].forEach(evt => {
+    ;['click', 'touchstart', 'keydown'].forEach((evt) => {
       document.addEventListener(evt, unlock, { once: true })
     })
   }
@@ -620,12 +624,12 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
       const now = audioCtx.currentTime
       // LOUD urgent kitchen bell: 3 rising tones + double-ding
-      playTone(880, 'square', now, 0.2, 0.9)            // A5 (square = louder)
-      playTone(1108.73, 'square', now + 0.2, 0.2, 0.9)  // C#6
-      playTone(1318.51, 'sine', now + 0.4, 0.5, 1.0)    // E6 (long, max volume)
+      playTone(880, 'square', now, 0.2, 0.9) // A5 (square = louder)
+      playTone(1108.73, 'square', now + 0.2, 0.2, 0.9) // C#6
+      playTone(1318.51, 'sine', now + 0.4, 0.5, 1.0) // E6 (long, max volume)
       // Second ding after pause
       playTone(880, 'square', now + 1.0, 0.15, 0.7)
-      playTone(1318.51, 'sine', now + 1.2, 0.5, 0.9)    // E6 repeat
+      playTone(1318.51, 'sine', now + 1.2, 0.5, 0.9) // E6 repeat
 
       console.log('[KDS] 🔔 Kitchen alert sound played')
     } catch (e) {

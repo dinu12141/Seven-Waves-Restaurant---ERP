@@ -42,15 +42,14 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   // ─── Computed ─────────────────────────────────────────────────────────────
   const pendingOrderCount = computed(() => pendingOrders.value.length)
-  const totalActiveOrders = computed(() =>
-    pendingOrders.value.length + acceptedOrders.value.length + readyOrders.value.length
+  const totalActiveOrders = computed(
+    () => pendingOrders.value.length + acceptedOrders.value.length + readyOrders.value.length,
   )
-  const unreadMessageCount = computed(() =>
-    messages.value.filter(m => !m.is_read && m.receiver_employee_id === _myEmployeeId).length
+  const unreadMessageCount = computed(
+    () =>
+      messages.value.filter((m) => !m.is_read && m.receiver_employee_id === _myEmployeeId).length,
   )
-  const unreadAlertCount = computed(() =>
-    alerts.value.filter(a => !a.is_resolved).length
-  )
+  const unreadAlertCount = computed(() => alerts.value.filter((a) => !a.is_resolved).length)
 
   // ─── Private ──────────────────────────────────────────────────────────────
   let _myEmployeeId = null
@@ -64,7 +63,9 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         await authStore.fetchUserData()
       }
       // Resolve manager's employee_id
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         const { data: emp } = await supabase
           .from('employees')
@@ -98,43 +99,50 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     const { data: profiles } = await supabase
       .from('waiter_profiles')
-      .select(`
+      .select(
+        `
         id, waiter_code, display_name, current_points, total_orders_served, is_active,
         employee:employee_id ( id, full_name, employee_code, profile_id )
-      `)
+      `,
+      )
       .eq('branch_id', branchId)
       .eq('is_active', true)
 
-    if (!profiles) { onShiftWaiters.value = []; return }
+    if (!profiles) {
+      onShiftWaiters.value = []
+      return
+    }
 
-    const enriched = await Promise.all(profiles.map(async (wp) => {
-      const { count: activeOrders } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('assigned_waiter_id', wp.employee?.profile_id)
-        .eq('branch_id', branchId)
-        .in('status', ['accepted', 'preparing', 'ready'])
+    const enriched = await Promise.all(
+      profiles.map(async (wp) => {
+        const { count: activeOrders } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('assigned_waiter_id', wp.employee?.profile_id)
+          .eq('branch_id', branchId)
+          .in('status', ['accepted', 'preparing', 'ready'])
 
-      const { count: unreadAlerts } = await supabase
-        .from('waiter_notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('waiter_profile_id', wp.id)
-        .eq('is_read', false)
+        const { count: unreadAlerts } = await supabase
+          .from('waiter_notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('waiter_profile_id', wp.id)
+          .eq('is_read', false)
 
-      return {
-        id: wp.id,
-        employee_id: wp.employee?.id,
-        waiter_code: wp.waiter_code,
-        display_name: wp.display_name,
-        employee_name: wp.employee?.full_name,
-        employee_code: wp.employee?.employee_code,
-        profile_id: wp.employee?.profile_id,
-        current_points: wp.current_points || 0,
-        served_count: wp.total_orders_served || 0,
-        active_orders: activeOrders || 0,
-        unread_alerts: unreadAlerts || 0,
-      }
-    }))
+        return {
+          id: wp.id,
+          employee_id: wp.employee?.id,
+          waiter_code: wp.waiter_code,
+          display_name: wp.display_name,
+          employee_name: wp.employee?.full_name,
+          employee_code: wp.employee?.employee_code,
+          profile_id: wp.employee?.profile_id,
+          current_points: wp.current_points || 0,
+          served_count: wp.total_orders_served || 0,
+          active_orders: activeOrders || 0,
+          unread_alerts: unreadAlerts || 0,
+        }
+      }),
+    )
 
     onShiftWaiters.value = enriched
   }
@@ -152,23 +160,32 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     const [pending, accepted, ready] = await Promise.all([
       supabase
-        .from('orders').select(orderSelect)
-        .eq('branch_id', branchId).eq('status', 'pending_waiter')
+        .from('orders')
+        .select(orderSelect)
+        .eq('branch_id', branchId)
+        .eq('status', 'pending_waiter')
         .order('created_at', { ascending: true }),
       supabase
-        .from('orders').select(orderSelect)
-        .eq('branch_id', branchId).in('status', ['accepted', 'preparing'])
-        .order('created_at', { ascending: false }).limit(50),
+        .from('orders')
+        .select(orderSelect)
+        .eq('branch_id', branchId)
+        .in('status', ['accepted', 'preparing'])
+        .order('created_at', { ascending: false })
+        .limit(50),
       supabase
-        .from('orders').select(orderSelect)
-        .eq('branch_id', branchId).eq('status', 'ready')
-        .order('created_at', { ascending: false }).limit(50),
+        .from('orders')
+        .select(orderSelect)
+        .eq('branch_id', branchId)
+        .eq('status', 'ready')
+        .order('created_at', { ascending: false })
+        .limit(50),
     ])
 
-    const mapTable = arr => (arr || []).map(o => ({
-      ...o,
-      table_number: o.restaurant_tables?.table_number || null
-    }))
+    const mapTable = (arr) =>
+      (arr || []).map((o) => ({
+        ...o,
+        table_number: o.restaurant_tables?.table_number || null,
+      }))
 
     pendingOrders.value = mapTable(pending.data)
     acceptedOrders.value = mapTable(accepted.data)
@@ -180,8 +197,12 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     const ACCEPTED_THRESHOLD = 15 * 60 * 1000
 
     delayedOrders.value = [
-      ...pendingOrders.value.filter(o => now - new Date(o.created_at).getTime() > PENDING_THRESHOLD),
-      ...acceptedOrders.value.filter(o => now - new Date(o.created_at).getTime() > ACCEPTED_THRESHOLD),
+      ...pendingOrders.value.filter(
+        (o) => now - new Date(o.created_at).getTime() > PENDING_THRESHOLD,
+      ),
+      ...acceptedOrders.value.filter(
+        (o) => now - new Date(o.created_at).getTime() > ACCEPTED_THRESHOLD,
+      ),
     ]
   }
 
@@ -191,12 +212,14 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     const { data } = await supabase
       .from('manager_messages')
-      .select(`
+      .select(
+        `
         id, sender_employee_id, receiver_employee_id, branch_id,
         subject, message_body, priority, is_read, read_at, created_at,
         sender:sender_employee_id ( full_name ),
         receiver:receiver_employee_id ( full_name )
-      `)
+      `,
+      )
       .or(`sender_employee_id.eq.${_myEmployeeId},receiver_employee_id.eq.${_myEmployeeId}`)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -206,14 +229,18 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   async function sendMessage(recipientEmployeeId, subject, body, priority = 'normal') {
     const branchId = authStore.currentBranch?.id
-    const { error, data: msgData } = await supabase.from('manager_messages').insert({
-      sender_employee_id: _myEmployeeId || null,
-      receiver_employee_id: recipientEmployeeId,
-      branch_id: branchId,
-      subject: subject || 'Direct Message',
-      message_body: body,
-      priority,
-    }).select('id').single()
+    const { error, data: msgData } = await supabase
+      .from('manager_messages')
+      .insert({
+        sender_employee_id: _myEmployeeId || null,
+        receiver_employee_id: recipientEmployeeId,
+        branch_id: branchId,
+        subject: subject || 'Direct Message',
+        message_body: body,
+        priority,
+      })
+      .select('id')
+      .single()
     if (error) throw error
 
     // Also push a waiter_notification so the waiter sees it in their app
@@ -225,14 +252,22 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         .eq('is_active', true)
         .maybeSingle()
       if (wp?.id) {
-        await supabase.from('waiter_notifications').insert({
-          waiter_profile_id: wp.id,
-          notification_type: 'manager_message',
-          title: priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
-          body: (subject ? `📌 ${subject}\n` : '') + body,
-          payload: { manager_message_id: msgData.id, priority, subject: subject || 'Direct Message' },
-          action_url: null,
-        }).catch(e => console.error('Failed to notify waiter:', e))
+        await supabase
+          .from('waiter_notifications')
+          .insert({
+            waiter_profile_id: wp.id,
+            notification_type: 'manager_message',
+            title:
+              priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
+            body: (subject ? `📌 ${subject}\n` : '') + body,
+            payload: {
+              manager_message_id: msgData.id,
+              priority,
+              subject: subject || 'Direct Message',
+            },
+            action_url: null,
+          })
+          .catch((e) => console.error('Failed to notify waiter:', e))
       }
     }
 
@@ -244,9 +279,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
       .from('manager_messages')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', id)
-    messages.value = messages.value.map(m =>
-      m.id === id ? { ...m, is_read: true } : m
-    )
+    messages.value = messages.value.map((m) => (m.id === id ? { ...m, is_read: true } : m))
   }
 
   // ─── Alerts ───────────────────────────────────────────────────────────────
@@ -265,14 +298,14 @@ export const useManagerAppStore = defineStore('managerApp', () => {
   }
 
   async function resolveAlert(id) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     await supabase
       .from('manager_alerts')
       .update({ is_resolved: true, resolved_by: user?.id, resolved_at: new Date().toISOString() })
       .eq('id', id)
-    alerts.value = alerts.value.map(a =>
-      a.id === id ? { ...a, is_resolved: true } : a
-    )
+    alerts.value = alerts.value.map((a) => (a.id === id ? { ...a, is_resolved: true } : a))
   }
 
   // ─── Hierarchy ────────────────────────────────────────────────────────────
@@ -282,15 +315,17 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     const { data } = await supabase
       .from('employee_hierarchy_assignments')
-      .select(`
+      .select(
+        `
         id, hierarchy_type,
         employee:employee_id ( full_name ),
         manager:manager_employee_id ( full_name )
-      `)
+      `,
+      )
       .eq('branch_id', branchId)
       .eq('is_active', true)
 
-    hierarchyMap.value = (data || []).map(h => ({
+    hierarchyMap.value = (data || []).map((h) => ({
       id: h.id,
       employee_name: h.employee?.full_name,
       manager_name: h.manager?.full_name,
@@ -305,22 +340,29 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     const { data: profiles } = await supabase
       .from('waiter_profiles')
-      .select('id, waiter_code, display_name, current_points, total_orders_served, employee:employee_id(full_name)')
+      .select(
+        'id, waiter_code, display_name, current_points, total_orders_served, employee:employee_id(full_name)',
+      )
       .eq('branch_id', branchId)
       .eq('is_active', true)
       .order('current_points', { ascending: false })
 
-    if (!profiles) { leaderboard.value = []; return }
+    if (!profiles) {
+      leaderboard.value = []
+      return
+    }
 
-    const enriched = await Promise.all(profiles.map(async (wp) => {
-      const { data: ledger } = await supabase
-        .from('waiter_points_ledger')
-        .select('id, point_type, points, note, created_at')
-        .eq('waiter_profile_id', wp.id)
-        .order('created_at', { ascending: false })
-        .limit(10)
-      return { ...wp, employee_name: wp.employee?.full_name, ledger: ledger || [] }
-    }))
+    const enriched = await Promise.all(
+      profiles.map(async (wp) => {
+        const { data: ledger } = await supabase
+          .from('waiter_points_ledger')
+          .select('id, point_type, points, note, created_at')
+          .eq('waiter_profile_id', wp.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+        return { ...wp, employee_name: wp.employee?.full_name, ledger: ledger || [] }
+      }),
+    )
 
     leaderboard.value = enriched
   }
@@ -329,7 +371,8 @@ export const useManagerAppStore = defineStore('managerApp', () => {
   async function loadServedToday() {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
     const { count } = await supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
@@ -349,29 +392,43 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     // Orders channel
     ordersChannel = supabase
       .channel(`mgr-orders-${branchId}-${ts}`)
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
-        () => { loadOrders(); loadServedToday() }
+        () => {
+          loadOrders()
+          loadServedToday()
+        },
       )
       .subscribe()
 
     // KOT channel
     kotChannel = supabase
       .channel(`mgr-kot-${branchId}-${ts}`)
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
           if (payload.new?.status === 'ready') loadOrders()
-        }
+        },
       )
       .subscribe()
 
     // Waiter profiles channel
     profilesChannel = supabase
       .channel(`mgr-waiter-profiles-${branchId}-${ts}`)
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'waiter_profiles', filter: `branch_id=eq.${branchId}` },
-        () => { loadOnShiftWaiters(); loadLeaderboard() }
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'waiter_profiles',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          loadOnShiftWaiters()
+          loadLeaderboard()
+        },
       )
       .subscribe()
 
@@ -379,10 +436,17 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     if (_myEmployeeId) {
       messagesChannel = supabase
         .channel(`mgr-messages-${branchId}-${ts}`)
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'manager_messages',
-            filter: `receiver_employee_id=eq.${_myEmployeeId}` },
-          (payload) => { messages.value.unshift(payload.new) }
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'manager_messages',
+            filter: `receiver_employee_id=eq.${_myEmployeeId}`,
+          },
+          (payload) => {
+            messages.value.unshift(payload.new)
+          },
         )
         .subscribe()
     }
@@ -390,9 +454,15 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     // Alerts channel
     alertsChannel = supabase
       .channel(`mgr-alerts-${branchId}-${ts}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'manager_alerts', filter: `branch_id=eq.${branchId}` },
-        () => loadAlerts()
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'manager_alerts',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => loadAlerts(),
       )
       .subscribe()
   }
@@ -429,15 +499,35 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   return {
     // state
-    loading, onShiftWaiters, hierarchyMap, leaderboard,
-    pendingOrders, acceptedOrders, readyOrders, delayedOrders,
-    messages, alerts, servedTodayCount,
+    loading,
+    onShiftWaiters,
+    hierarchyMap,
+    leaderboard,
+    pendingOrders,
+    acceptedOrders,
+    readyOrders,
+    delayedOrders,
+    messages,
+    alerts,
+    servedTodayCount,
     // computed
-    pendingOrderCount, totalActiveOrders, unreadMessageCount, unreadAlertCount,
+    pendingOrderCount,
+    totalActiveOrders,
+    unreadMessageCount,
+    unreadAlertCount,
     // actions
-    initialize, cleanup, refresh,
-    loadOnShiftWaiters, loadOrders, loadMessages, loadAlerts,
-    loadHierarchy, loadLeaderboard, loadServedToday,
-    sendMessage, markMessageRead, resolveAlert,
+    initialize,
+    cleanup,
+    refresh,
+    loadOnShiftWaiters,
+    loadOrders,
+    loadMessages,
+    loadAlerts,
+    loadHierarchy,
+    loadLeaderboard,
+    loadServedToday,
+    sendMessage,
+    markMessageRead,
+    resolveAlert,
   }
 })

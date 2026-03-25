@@ -551,4 +551,3 @@ function downloadFile(content, filename, mime) {
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
 </style>
-

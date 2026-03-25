@@ -82,9 +82,18 @@ const routes = [
         children: [
           { path: '', redirect: 'dashboard' },
           { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue') },
-          { path: 'chart-of-accounts', component: () => import('pages/finance/ChartOfAccountsPage.vue') },
-          { path: 'journal-entries', component: () => import('pages/finance/JournalEntriesPage.vue') },
-          { path: 'general-ledger', component: () => import('pages/finance/GeneralLedgerPage.vue') },
+          {
+            path: 'chart-of-accounts',
+            component: () => import('pages/finance/ChartOfAccountsPage.vue'),
+          },
+          {
+            path: 'journal-entries',
+            component: () => import('pages/finance/JournalEntriesPage.vue'),
+          },
+          {
+            path: 'general-ledger',
+            component: () => import('pages/finance/GeneralLedgerPage.vue'),
+          },
           { path: 'trial-balance', component: () => import('pages/finance/TrialBalancePage.vue') },
           { path: 'cash-bank', component: () => import('pages/finance/CashBankPage.vue') },
           { path: 'receivables', component: () => import('pages/finance/ReceivablesPage.vue') },
@@ -94,7 +103,10 @@ const routes = [
           { path: 'payroll', component: () => import('pages/finance/PayrollPage.vue') },
           { path: 'payroll/run', component: () => import('pages/finance/PayrollRunPage.vue') },
           { path: 'payroll/payslips', component: () => import('pages/finance/PayslipsPage.vue') },
-          { path: 'payroll/salary-structure', component: () => import('pages/finance/SalaryStructurePage.vue') },
+          {
+            path: 'payroll/salary-structure',
+            component: () => import('pages/finance/SalaryStructurePage.vue'),
+          },
           { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue') },
           { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue') },
         ],
@@ -114,6 +126,8 @@ const routes = [
           { path: 'performance', component: () => import('pages/hr/PerformancePage.vue') },
           { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue') },
           { path: 'shifts', component: () => import('pages/hr/ShiftManagementPage.vue') },
+          { path: 'leave', component: () => import('pages/hr/LeaveManagementPage.vue') },
+          { path: 'documents', component: () => import('pages/hr/DocumentManagementPage.vue') },
         ],
       },
       {
@@ -121,7 +135,10 @@ const routes = [
         component: () => import('pages/procurement/ProcurementLayout.vue'),
         children: [
           { path: '', redirect: 'dashboard' },
-          { path: 'dashboard', component: () => import('pages/procurement/ProcurementDashboard.vue') },
+          {
+            path: 'dashboard',
+            component: () => import('pages/procurement/ProcurementDashboard.vue'),
+          },
           { path: 'suppliers', component: () => import('pages/procurement/SuppliersPage.vue') },
           {
             path: 'purchase-orders',
@@ -225,53 +242,113 @@ const routes = [
           { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue') },
           // ── Sales Reports ─────────────────────────────────
           { path: 'sales', component: () => import('pages/reports/SalesReport.vue') },
-          { path: 'electronic-journal', component: () => import('pages/reports/ElectronicJournal.vue') },
+          {
+            path: 'electronic-journal',
+            component: () => import('pages/reports/ElectronicJournal.vue'),
+          },
           { path: 'item-wise-sale', component: () => import('pages/reports/ItemWiseSale.vue') },
           { path: 'waiter-wise-sale', component: () => import('pages/reports/WaiterWiseSale.vue') },
           { path: 'table-wise-sale', component: () => import('pages/reports/TableWiseSale.vue') },
           { path: 'sales-statement', component: () => import('pages/reports/SalesStatement.vue') },
           { path: 'group-summary', component: () => import('pages/reports/GroupSummary.vue') },
-          { path: 'category-wise-sales', component: () => import('pages/reports/CategoryWiseSales.vue') },
+          {
+            path: 'category-wise-sales',
+            component: () => import('pages/reports/CategoryWiseSales.vue'),
+          },
           { path: 'hourly-sales', component: () => import('pages/reports/HourlySalesReport.vue') },
-          { path: 'branch-wise-sales', component: () => import('pages/reports/BranchWiseSales.vue') },
+          {
+            path: 'branch-wise-sales',
+            component: () => import('pages/reports/BranchWiseSales.vue'),
+          },
           { path: 'discount-report', component: () => import('pages/reports/DiscountReport.vue') },
-          { path: 'void-cancelled', component: () => import('pages/reports/VoidCancelledReport.vue') },
+          {
+            path: 'void-cancelled',
+            component: () => import('pages/reports/VoidCancelledReport.vue'),
+          },
           { path: 'refund-report', component: () => import('pages/reports/RefundReport.vue') },
-          { path: 'payment-summary', component: () => import('pages/reports/PaymentMethodSummary.vue') },
+          {
+            path: 'payment-summary',
+            component: () => import('pages/reports/PaymentMethodSummary.vue'),
+          },
           { path: 'tax-summary', component: () => import('pages/reports/TaxSummaryReport.vue') },
           // ── Operations Reports ────────────────────────────
-          { path: 'kitchen-orders', component: () => import('pages/reports/KitchenOrderReport.vue') },
+          {
+            path: 'kitchen-orders',
+            component: () => import('pages/reports/KitchenOrderReport.vue'),
+          },
           { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue') },
-          { path: 'delivery-performance', component: () => import('pages/reports/DeliveryPerformanceReport.vue') },
-          { path: 'rider-performance', component: () => import('pages/reports/RiderPerformanceReport.vue') },
-          { path: 'pickup-delivery', component: () => import('pages/reports/PickupDeliverySummary.vue') },
+          {
+            path: 'delivery-performance',
+            component: () => import('pages/reports/DeliveryPerformanceReport.vue'),
+          },
+          {
+            path: 'rider-performance',
+            component: () => import('pages/reports/RiderPerformanceReport.vue'),
+          },
+          {
+            path: 'pickup-delivery',
+            component: () => import('pages/reports/PickupDeliverySummary.vue'),
+          },
           { path: 'reservation', component: () => import('pages/reports/ReservationReport.vue') },
-          { path: 'customer-history', component: () => import('pages/reports/CustomerOrderHistory.vue') },
+          {
+            path: 'customer-history',
+            component: () => import('pages/reports/CustomerOrderHistory.vue'),
+          },
           // ── Inventory Reports ─────────────────────────────
           { path: 'stock-on-hand', component: () => import('pages/reports/StockOnHand.vue') },
           { path: 'inventory', component: () => import('pages/reports/InventoryLedger.vue') },
           { path: 'wastage', component: () => import('pages/reports/WastageReport.vue') },
-          { path: 'ingredient-consumption', component: () => import('pages/reports/IngredientConsumption.vue') },
-          { path: 'reorder-level', component: () => import('pages/reports/ReorderLevelReport.vue') },
-          { path: 'purchase-consumption', component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue') },
+          {
+            path: 'ingredient-consumption',
+            component: () => import('pages/reports/IngredientConsumption.vue'),
+          },
+          {
+            path: 'reorder-level',
+            component: () => import('pages/reports/ReorderLevelReport.vue'),
+          },
+          {
+            path: 'purchase-consumption',
+            component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue'),
+          },
           { path: 'variance', component: () => import('pages/reports/VarianceReport.vue') },
-          { path: 'inventory-performance', component: () => import('pages/reports/InventoryPerformanceReport.vue') },
-          { path: 'kot-deduction-log', component: () => import('pages/reports/KotDeductionLog.vue') },
+          {
+            path: 'inventory-performance',
+            component: () => import('pages/reports/InventoryPerformanceReport.vue'),
+          },
+          {
+            path: 'kot-deduction-log',
+            component: () => import('pages/reports/KotDeductionLog.vue'),
+          },
           // ── Procurement Reports ───────────────────────────
-          { path: 'purchase-summary', component: () => import('pages/reports/PurchaseSummary.vue') },
-          { path: 'supplier-purchases', component: () => import('pages/reports/SupplierWisePurchases.vue') },
+          {
+            path: 'purchase-summary',
+            component: () => import('pages/reports/PurchaseSummary.vue'),
+          },
+          {
+            path: 'supplier-purchases',
+            component: () => import('pages/reports/SupplierWisePurchases.vue'),
+          },
           { path: 'grn-report', component: () => import('pages/reports/GRNReport.vue') },
           // ── Finance Reports ───────────────────────────────
           { path: 'revenue-summary', component: () => import('pages/reports/RevenueSummary.vue') },
           { path: 'expense-summary', component: () => import('pages/reports/ExpenseSummary.vue') },
           { path: 'daily-cash', component: () => import('pages/reports/DailyCashSummary.vue') },
           // ── HR / Staff Reports ────────────────────────────
-          { path: 'staff-performance', component: () => import('pages/reports/StaffSalesPerformance.vue') },
-          { path: 'cashier-performance', component: () => import('pages/reports/CashierPerformance.vue') },
+          {
+            path: 'staff-performance',
+            component: () => import('pages/reports/StaffSalesPerformance.vue'),
+          },
+          {
+            path: 'cashier-performance',
+            component: () => import('pages/reports/CashierPerformance.vue'),
+          },
           // ── System / Audit Reports ────────────────────────
           { path: 'user-activity', component: () => import('pages/reports/UserActivityLog.vue') },
           { path: 'price-change', component: () => import('pages/reports/PriceChangeLog.vue') },
-          { path: 'inventory-adjustments', component: () => import('pages/reports/InventoryAdjustmentLog.vue') },
+          {
+            path: 'inventory-adjustments',
+            component: () => import('pages/reports/InventoryAdjustmentLog.vue'),
+          },
         ],
       },
     ],

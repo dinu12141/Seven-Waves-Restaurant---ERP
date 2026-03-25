@@ -1,20 +1,23 @@
 <template>
   <q-page class="wm-page">
-
     <!-- ── Page Header ────────────────────────────────────────── -->
     <div class="wm-header">
       <div class="wm-header__left">
         <div class="wm-header__breadcrumb">
           <span class="wm-header__breadcrumb-item">WEBSITE</span>
           <span class="wm-header__breadcrumb-sep">/</span>
-          <span class="wm-header__breadcrumb-item wm-header__breadcrumb-item--active">Contact Messages</span>
+          <span class="wm-header__breadcrumb-item wm-header__breadcrumb-item--active"
+            >Contact Messages</span
+          >
         </div>
         <h1 class="wm-header__title">Website Messages</h1>
         <p class="wm-header__subtitle">Manage messages sent from the website contact page</p>
       </div>
       <div class="wm-header__right">
         <q-btn
-          unelevated no-caps dense
+          unelevated
+          no-caps
+          dense
           icon="refresh"
           label="Refresh"
           class="wm-btn wm-btn--ghost"
@@ -34,14 +37,18 @@
         </div>
       </div>
       <div class="wm-kpi wm-kpi--red">
-        <div class="wm-kpi__icon wm-kpi__icon--danger"><q-icon name="mark_email_unread" size="18px" /></div>
+        <div class="wm-kpi__icon wm-kpi__icon--danger">
+          <q-icon name="mark_email_unread" size="18px" />
+        </div>
         <div class="wm-kpi__body">
           <div class="wm-kpi__value">{{ unreadCount }}</div>
           <div class="wm-kpi__label">Unread</div>
         </div>
       </div>
       <div class="wm-kpi wm-kpi--green">
-        <div class="wm-kpi__icon wm-kpi__icon--success"><q-icon name="mark_email_read" size="18px" /></div>
+        <div class="wm-kpi__icon wm-kpi__icon--success">
+          <q-icon name="mark_email_read" size="18px" />
+        </div>
         <div class="wm-kpi__body">
           <div class="wm-kpi__value">{{ readCount }}</div>
           <div class="wm-kpi__label">Read</div>
@@ -53,7 +60,9 @@
     <div class="wm-filter-bar">
       <q-input
         v-model="search"
-        dense outlined clearable
+        dense
+        outlined
+        clearable
         placeholder="Search by name, email, subject..."
         class="wm-filter-input"
       >
@@ -64,7 +73,10 @@
       <q-select
         v-model="statusFilter"
         :options="statusOptions"
-        dense outlined emit-value map-options
+        dense
+        outlined
+        emit-value
+        map-options
         class="wm-filter-select"
         placeholder="All statuses"
       />
@@ -81,7 +93,8 @@
         :rows="filteredMessages"
         :columns="columns"
         row-key="id"
-        flat dense
+        flat
+        dense
         :loading="loading"
         :rows-per-page-options="[15, 30, 50]"
         :pagination="{ rowsPerPage: 15 }"
@@ -99,10 +112,18 @@
 
         <!-- Body Rows -->
         <template #body="props">
-          <q-tr :props="props" class="wm-table__row" :class="{ 'wm-table__row--unread': props.row.status === 'unread' }">
+          <q-tr
+            :props="props"
+            class="wm-table__row"
+            :class="{ 'wm-table__row--unread': props.row.status === 'unread' }"
+          >
             <q-td key="name" :props="props">
               <div class="wm-cell-name">
-                <q-avatar size="28px" class="wm-cell-avatar" :class="props.row.status === 'unread' ? 'wm-cell-avatar--unread' : ''">
+                <q-avatar
+                  size="28px"
+                  class="wm-cell-avatar"
+                  :class="props.row.status === 'unread' ? 'wm-cell-avatar--unread' : ''"
+                >
                   {{ (props.row.name || 'U')[0].toUpperCase() }}
                 </q-avatar>
                 <div>
@@ -113,7 +134,10 @@
             </q-td>
             <q-td key="subject" :props="props">
               <div class="wm-cell-subject">{{ props.row.subject || 'No Subject' }}</div>
-              <div class="wm-cell-preview">{{ (props.row.message || '').substring(0, 60) }}{{ (props.row.message || '').length > 60 ? '...' : '' }}</div>
+              <div class="wm-cell-preview">
+                {{ (props.row.message || '').substring(0, 60)
+                }}{{ (props.row.message || '').length > 60 ? '...' : '' }}
+              </div>
             </q-td>
             <q-td key="status" :props="props">
               <span class="wm-status-badge" :class="`wm-status-badge--${props.row.status}`">
@@ -125,13 +149,38 @@
             </q-td>
             <q-td key="actions" :props="props">
               <div class="wm-actions">
-                <q-btn flat round dense size="sm" icon="visibility" class="wm-action-btn" @click="viewMessage(props.row)">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="visibility"
+                  class="wm-action-btn"
+                  @click="viewMessage(props.row)"
+                >
                   <q-tooltip>View Message</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="check_circle" class="wm-action-btn wm-action-btn--success" v-if="props.row.status === 'unread'" @click="markAsRead(props.row)">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="check_circle"
+                  class="wm-action-btn wm-action-btn--success"
+                  v-if="props.row.status === 'unread'"
+                  @click="markAsRead(props.row)"
+                >
                   <q-tooltip>Mark as Read</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="delete_outline" class="wm-action-btn wm-action-btn--danger" @click="deleteMessage(props.row)">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="delete_outline"
+                  class="wm-action-btn wm-action-btn--danger"
+                  @click="deleteMessage(props.row)"
+                >
                   <q-tooltip>Delete</q-tooltip>
                 </q-btn>
               </div>
@@ -183,7 +232,9 @@
             </div>
             <div class="wm-dialog__meta-item">
               <span class="wm-dialog__meta-label">Received</span>
-              <span class="wm-dialog__meta-value">{{ selectedMessage ? formatDate(selectedMessage.created_at) : '' }}</span>
+              <span class="wm-dialog__meta-value">{{
+                selectedMessage ? formatDate(selectedMessage.created_at) : ''
+              }}</span>
             </div>
             <div class="wm-dialog__meta-item">
               <span class="wm-dialog__meta-label">Status</span>
@@ -207,7 +258,8 @@
           <q-btn flat no-caps label="Close" class="wm-btn wm-btn--ghost" v-close-popup />
           <q-btn
             v-if="selectedMessage?.status === 'unread'"
-            unelevated no-caps
+            unelevated
+            no-caps
             icon="check_circle"
             label="Mark as Read"
             class="wm-btn wm-btn--success"
@@ -215,7 +267,8 @@
           />
           <q-btn
             v-else-if="selectedMessage?.status === 'read'"
-            unelevated no-caps
+            unelevated
+            no-caps
             icon="mark_email_unread"
             label="Mark Unread"
             class="wm-btn wm-btn--warning"
@@ -224,7 +277,6 @@
         </div>
       </div>
     </q-dialog>
-
   </q-page>
 </template>
 
@@ -260,21 +312,22 @@ const columns = [
 
 // ── KPIs ──────────────────────────────────────────────────────────
 const totalCount = computed(() => messages.value.length)
-const unreadCount = computed(() => messages.value.filter(m => m.status === 'unread').length)
-const readCount = computed(() => messages.value.filter(m => m.status === 'read').length)
+const unreadCount = computed(() => messages.value.filter((m) => m.status === 'unread').length)
+const readCount = computed(() => messages.value.filter((m) => m.status === 'read').length)
 
 // ── Filtered messages ─────────────────────────────────────────────
 const filteredMessages = computed(() => {
   let result = messages.value
   if (statusFilter.value) {
-    result = result.filter(m => m.status === statusFilter.value)
+    result = result.filter((m) => m.status === statusFilter.value)
   }
   if (search.value) {
     const q = search.value.toLowerCase()
-    result = result.filter(m =>
-      (m.name || '').toLowerCase().includes(q) ||
-      (m.email || '').toLowerCase().includes(q) ||
-      (m.subject || '').toLowerCase().includes(q)
+    result = result.filter(
+      (m) =>
+        (m.name || '').toLowerCase().includes(q) ||
+        (m.email || '').toLowerCase().includes(q) ||
+        (m.subject || '').toLowerCase().includes(q),
     )
   }
   return result
@@ -314,7 +367,7 @@ const updateStatus = async (msg, newStatus) => {
 
     if (error) throw error
 
-    const index = messages.value.findIndex(m => m.id === msg.id)
+    const index = messages.value.findIndex((m) => m.id === msg.id)
     if (index !== -1) messages.value[index].status = newStatus
     if (selectedMessage.value && selectedMessage.value.id === msg.id) {
       selectedMessage.value.status = newStatus
@@ -338,18 +391,15 @@ const deleteMessage = async (msg) => {
     message: `Are you sure you want to delete the message from ${msg.name}?`,
     cancel: true,
     persistent: true,
-    color: 'negative'
+    color: 'negative',
   }).onOk(async () => {
     try {
       $q.loading.show()
-      const { error } = await supabase
-        .from('website_messages')
-        .delete()
-        .eq('id', msg.id)
+      const { error } = await supabase.from('website_messages').delete().eq('id', msg.id)
 
       if (error) throw error
 
-      messages.value = messages.value.filter(m => m.id !== msg.id)
+      messages.value = messages.value.filter((m) => m.id !== msg.id)
       $q.notify({ type: 'positive', message: 'Message deleted successfully' })
       if (viewDialog.value && selectedMessage.value?.id === msg.id) {
         viewDialog.value = false
@@ -396,7 +446,9 @@ onMounted(() => {
   gap: 16px;
   margin-bottom: var(--erp-spacing-md);
 
-  &__left { flex: 1; }
+  &__left {
+    flex: 1;
+  }
 
   &__breadcrumb {
     display: flex;
@@ -455,20 +507,35 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   border-top: 2px solid transparent;
 
-  &--blue  { border-top-color: var(--erp-primary); }
-  &--red   { border-top-color: var(--erp-danger); }
-  &--green { border-top-color: var(--erp-success); }
+  &--blue {
+    border-top-color: var(--erp-primary);
+  }
+  &--red {
+    border-top-color: var(--erp-danger);
+  }
+  &--green {
+    border-top-color: var(--erp-success);
+  }
 
   &__icon {
-    width: 36px; height: 36px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--erp-radius-md);
     background: var(--erp-primary-subtle);
     color: var(--erp-primary-light);
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 
-    &--danger  { background: var(--erp-danger-subtle);  color: var(--erp-danger); }
-    &--success { background: var(--erp-success-subtle); color: var(--erp-success); }
+    &--danger {
+      background: var(--erp-danger-subtle);
+      color: var(--erp-danger);
+    }
+    &--success {
+      background: var(--erp-success-subtle);
+      color: var(--erp-success);
+    }
   }
   &__value {
     font-size: 20px;
@@ -497,8 +564,14 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   margin-bottom: var(--erp-spacing-md);
 }
-.wm-filter-input { flex: 0 1 320px; font-size: var(--erp-font-size-table); }
-.wm-filter-select { flex: 0 1 180px; font-size: var(--erp-font-size-table); }
+.wm-filter-input {
+  flex: 0 1 320px;
+  font-size: var(--erp-font-size-table);
+}
+.wm-filter-select {
+  flex: 0 1 180px;
+  font-size: var(--erp-font-size-table);
+}
 
 .wm-live-badge {
   display: flex;
@@ -510,7 +583,8 @@ onMounted(() => {
   letter-spacing: 0.5px;
 
   &__dot {
-    width: 6px; height: 6px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--erp-success);
     box-shadow: 0 0 6px var(--erp-success);
@@ -518,8 +592,13 @@ onMounted(() => {
   }
 }
 @keyframes live-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* ── Table ─────────────────────────────────────────────────────────── */
@@ -550,9 +629,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--erp-border) !important;
   transition: background 0.12s ease;
 
-  &:hover { background: var(--erp-bg-card-hover) !important; }
+  &:hover {
+    background: var(--erp-bg-card-hover) !important;
+  }
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: var(--erp-font-size-table) !important;
     color: var(--erp-text-primary) !important;
     padding: 10px 14px !important;
@@ -561,7 +643,10 @@ onMounted(() => {
 
   &--unread {
     background: rgba(37, 99, 235, 0.03) !important;
-    td, .q-td { font-weight: var(--erp-font-weight-medium); }
+    td,
+    .q-td {
+      font-weight: var(--erp-font-weight-medium);
+    }
   }
 }
 
@@ -646,9 +731,18 @@ onMounted(() => {
 }
 .wm-action-btn {
   color: var(--erp-text-secondary) !important;
-  &:hover { color: var(--erp-primary) !important; background: var(--erp-primary-subtle) !important; }
-  &--success:hover { color: var(--erp-success) !important; background: var(--erp-success-subtle) !important; }
-  &--danger:hover  { color: var(--erp-danger) !important; background: var(--erp-danger-subtle) !important; }
+  &:hover {
+    color: var(--erp-primary) !important;
+    background: var(--erp-primary-subtle) !important;
+  }
+  &--success:hover {
+    color: var(--erp-success) !important;
+    background: var(--erp-success-subtle) !important;
+  }
+  &--danger:hover {
+    color: var(--erp-danger) !important;
+    background: var(--erp-danger-subtle) !important;
+  }
 }
 
 /* ── Empty State ──────────────────────────────────────────────────── */
@@ -685,7 +779,10 @@ onMounted(() => {
     background: transparent !important;
     border: 1px solid var(--erp-border) !important;
     color: var(--erp-text-secondary) !important;
-    &:hover { background: var(--erp-bg-hover) !important; color: var(--erp-text-primary) !important; }
+    &:hover {
+      background: var(--erp-bg-hover) !important;
+      color: var(--erp-text-primary) !important;
+    }
   }
   &--success {
     background: var(--erp-success) !important;
@@ -805,10 +902,20 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .wm-kpi-row { grid-template-columns: 1fr; }
-  .wm-filter-bar { flex-wrap: wrap; }
-  .wm-filter-input { flex: 1 1 100%; }
-  .wm-filter-select { flex: 1 1 100%; }
-  .wm-dialog__meta-grid { grid-template-columns: 1fr; }
+  .wm-kpi-row {
+    grid-template-columns: 1fr;
+  }
+  .wm-filter-bar {
+    flex-wrap: wrap;
+  }
+  .wm-filter-input {
+    flex: 1 1 100%;
+  }
+  .wm-filter-select {
+    flex: 1 1 100%;
+  }
+  .wm-dialog__meta-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

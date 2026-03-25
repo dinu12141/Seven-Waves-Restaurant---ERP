@@ -18,7 +18,11 @@
 
         <!-- Brand only visible in POS mode where sidebar is hidden entirely -->
         <div class="erp-brand erp-brand--pos" v-if="isPOSMode">
-          <img src="~assets/seven-waves-logo-transparent.png" alt="Seven Waves" style="width: 18px; height: auto;" />
+          <img
+            src="~assets/seven-waves-logo-transparent.png"
+            alt="Seven Waves"
+            style="width: 18px; height: auto"
+          />
           <span class="erp-brand__name">Seven Waves</span>
         </div>
 
@@ -125,7 +129,10 @@
       </q-toolbar>
 
       <!-- Second Row: Categories Navigation Menu -->
-      <q-toolbar class="erp-toolbar erp-toolbar--bottom" v-if="!isPOSMode && topNavSections.length > 0">
+      <q-toolbar
+        class="erp-toolbar erp-toolbar--bottom"
+        v-if="!isPOSMode && topNavSections.length > 0"
+      >
         <div class="erp-top-nav">
           <q-tabs
             v-model="activeSection"
@@ -163,7 +170,11 @@
     >
       <!-- Logo area -->
       <div class="erp-sidebar__logo">
-        <img src="~assets/seven-waves-logo-transparent.png" alt="Seven Waves" style="width: 22px; height: auto;" />
+        <img
+          src="~assets/seven-waves-logo-transparent.png"
+          alt="Seven Waves"
+          style="width: 22px; height: auto"
+        />
         <div class="erp-sidebar__logo-text">
           <span class="erp-sidebar__logo-name">Seven Waves</span>
           <span class="erp-sidebar__logo-sub">Restaurant ERP</span>
@@ -174,13 +185,21 @@
         <nav class="erp-sidebar__nav">
           <template v-for="(items, groupName) in groupedSidebarItems" :key="groupName">
             <!-- Section header — hide for 'Overview' group (redundant with tab nav) -->
-            <div v-if="groupName && groupName !== 'default' && groupName !== 'Overview'" class="erp-sidebar__section-label">
+            <div
+              v-if="groupName && groupName !== 'default' && groupName !== 'Overview'"
+              class="erp-sidebar__section-label"
+            >
               {{ groupName }}
             </div>
 
             <template v-for="item in items" :key="item.label">
               <!-- Leaf item -->
-              <router-link v-if="!item.children" :to="item.to" custom v-slot="{ isActive, navigate }">
+              <router-link
+                v-if="!item.children"
+                :to="item.to"
+                custom
+                v-slot="{ isActive, navigate }"
+              >
                 <div
                   class="erp-sidebar__item"
                   :class="{ 'erp-sidebar__item--active': isItemActive(item.to, isActive) }"
@@ -324,9 +343,7 @@ const activeSection = ref(null)
 const handleSectionClick = (section) => {
   activeSection.value = section
   // Find the first accessible nav item in this section
-  const firstItem = filteredMenuItems.value.find(
-    (item) => item.section === section && item.to
-  )
+  const firstItem = filteredMenuItems.value.find((item) => item.section === section && item.to)
   if (firstItem?.to && route.path !== firstItem.to) {
     router.push(firstItem.to)
   }
@@ -402,7 +419,7 @@ const filteredMenuItems = computed(() => {
 /** Compute unique sections available for the top navigation */
 const topNavSections = computed(() => {
   const sections = new Set()
-  filteredMenuItems.value.forEach(item => {
+  filteredMenuItems.value.forEach((item) => {
     if (item.section) sections.add(item.section)
   })
   return Array.from(sections)
@@ -411,10 +428,10 @@ const topNavSections = computed(() => {
 /** Fetch items only matching the selected active section and group them */
 const groupedSidebarItems = computed(() => {
   if (!activeSection.value) return {}
-  const items = filteredMenuItems.value.filter(item => item.section === activeSection.value)
-  
+  const items = filteredMenuItems.value.filter((item) => item.section === activeSection.value)
+
   const groups = {}
-  items.forEach(item => {
+  items.forEach((item) => {
     const g = item.group || 'default'
     if (!groups[g]) groups[g] = []
     groups[g].push(item)
@@ -432,9 +449,18 @@ function sectionForPath(path) {
   if (path.startsWith('/finance')) return 'FINANCE'
   if (path.startsWith('/reports')) return 'REPORTS'
   if (path.startsWith('/hr')) return 'HR'
-  if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile') return 'SYSTEM'
+  if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile')
+    return 'SYSTEM'
   if (path.startsWith('/website-orders') || path.startsWith('/website')) return 'WEBSITE'
-  if (path.startsWith('/operations') || path.startsWith('/pos') || path.startsWith('/kitchen') || path.startsWith('/cashier') || path.startsWith('/orders') || path.startsWith('/waiter')) return 'OPERATIONS'
+  if (
+    path.startsWith('/operations') ||
+    path.startsWith('/pos') ||
+    path.startsWith('/kitchen') ||
+    path.startsWith('/cashier') ||
+    path.startsWith('/orders') ||
+    path.startsWith('/waiter')
+  )
+    return 'OPERATIONS'
   return 'MAIN'
 }
 
@@ -451,7 +477,7 @@ watch(
     const section = sectionForPath(route.path)
     activeSection.value = sections.includes(section) ? section : sections[0]
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // When the user navigates to a route, ensure the correct section tab is active.
@@ -468,9 +494,8 @@ watch(
     if (natural !== activeSection.value && sections.includes(natural)) {
       activeSection.value = natural
     }
-  }
+  },
 )
-
 </script>
 
 <style scoped lang="scss">
@@ -569,7 +594,9 @@ watch(
     height: 34px !important;
     min-height: 34px !important;
     padding: 0 10px 0 8px !important;
-    transition: border-color 0.2s, background-color 0.2s;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s;
     display: flex;
     align-items: center;
 
@@ -664,8 +691,20 @@ watch(
     align-items: center !important;
     justify-content: center !important;
 
-    .q-tab__content { padding: 0 !important; min-height: unset !important; height: 26px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-    .q-tab__label   { font-size: 11px; line-height: 1; display: flex; align-items: center; }
+    .q-tab__content {
+      padding: 0 !important;
+      min-height: unset !important;
+      height: 26px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .q-tab__label {
+      font-size: 11px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
 
     &:hover {
       background: var(--erp-bg-hover);
@@ -676,7 +715,9 @@ watch(
     color: var(--erp-text-on-primary) !important;
     background: var(--erp-primary) !important;
     font-weight: 700;
-    .q-tab__label { color: var(--erp-text-on-primary); }
+    .q-tab__label {
+      color: var(--erp-text-on-primary);
+    }
   }
 }
 
@@ -878,14 +919,18 @@ watch(
   :deep(.q-drawer__content) {
     overflow: hidden !important;
     scrollbar-width: none !important;
-    &::-webkit-scrollbar { display: none !important; }
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
   }
 
   // Remove the scrollbar gap between sidebar and main content
   :deep(.q-drawer) {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
-    &::-webkit-scrollbar { display: none !important; }
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
   }
 
   &__logo {
@@ -930,9 +975,11 @@ watch(
     overflow-x: hidden;
 
     // Hide scrollbar across all browsers
-    scrollbar-width: none;       // Firefox
-    -ms-overflow-style: none;    // IE/Edge
-    &::-webkit-scrollbar { display: none; } // Chrome/Safari
+    scrollbar-width: none; // Firefox
+    -ms-overflow-style: none; // IE/Edge
+    &::-webkit-scrollbar {
+      display: none;
+    } // Chrome/Safari
   }
 
   &__nav {

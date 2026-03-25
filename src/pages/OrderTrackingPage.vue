@@ -210,11 +210,15 @@ const isDeliveryOrder = computed(() => {
 const statusSteps = computed(() => {
   if (isDeliveryOrder.value) {
     // Delivery orders: show delivery-specific steps, hide 'served'
-    return ORDER_STATUS_STEPS.filter(s => s.key !== 'invoiced' && s.key !== 'served')
+    return ORDER_STATUS_STEPS.filter((s) => s.key !== 'invoiced' && s.key !== 'served')
   }
   // Dine-in / takeaway: hide delivery-specific steps
-  return ORDER_STATUS_STEPS.filter(s =>
-    s.key !== 'invoiced' && s.key !== 'picked_up' && s.key !== 'out_for_delivery' && s.key !== 'delivered'
+  return ORDER_STATUS_STEPS.filter(
+    (s) =>
+      s.key !== 'invoiced' &&
+      s.key !== 'picked_up' &&
+      s.key !== 'out_for_delivery' &&
+      s.key !== 'delivered',
   )
 })
 

@@ -1,11 +1,14 @@
 <template>
   <q-page class="delivery-history-page">
-
     <!-- ── Header ──────────────────────────────────── -->
     <div class="page-header">
       <h2 class="page-title">Delivery History</h2>
       <q-btn
-        flat round dense icon="refresh" color="grey-4"
+        flat
+        round
+        dense
+        icon="refresh"
+        color="grey-4"
         :loading="refreshing"
         @click="refresh"
       />
@@ -43,11 +46,7 @@
 
     <!-- ── History List ────────────────────────────── -->
     <div v-else class="history-list">
-      <div
-        v-for="item in store.history"
-        :key="item.id"
-        class="history-card"
-      >
+      <div v-for="item in store.history" :key="item.id" class="history-card">
         <div class="card-top">
           <div class="order-number">#{{ item.orderNumber }}</div>
           <q-chip dense color="green-9" text-color="white" size="sm" class="done-chip">
@@ -82,7 +81,6 @@
         </div>
       </div>
     </div>
-
   </q-page>
 </template>
 
@@ -96,9 +94,9 @@ const refreshing = ref(false)
 const todayStart = new Date()
 todayStart.setHours(0, 0, 0, 0)
 
-const todayItems = computed(() => store.history.filter(
-  h => h.delivered_at && new Date(h.delivered_at) >= todayStart
-))
+const todayItems = computed(() =>
+  store.history.filter((h) => h.delivered_at && new Date(h.delivered_at) >= todayStart),
+)
 
 const todayCount = computed(() => todayItems.value.length)
 
@@ -108,10 +106,13 @@ const todayEarnings = computed(() => {
 })
 
 const avgDeliveryTime = computed(() => {
-  const valid = todayItems.value.filter(h => h.assigned_at)
+  const valid = todayItems.value.filter((h) => h.assigned_at)
   if (!valid.length) return '—'
   const totalMins = valid.reduce((s, h) => {
-    return s + Math.round((new Date(h.delivered_at).getTime() - new Date(h.assigned_at).getTime()) / 60000)
+    return (
+      s +
+      Math.round((new Date(h.delivered_at).getTime() - new Date(h.assigned_at).getTime()) / 60000)
+    )
   }, 0)
   return `${Math.round(totalMins / valid.length)}m`
 })
@@ -131,7 +132,9 @@ function formatDate(dateStr) {
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
   const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  return isToday ? `Today ${time}` : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${time}`
+  return isToday
+    ? `Today ${time}`
+    : `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${time}`
 }
 
 function deliveryDuration(item) {
@@ -174,14 +177,33 @@ function deliveryDuration(item) {
   padding: 14px 8px;
   margin-bottom: 16px;
 }
-.summary-item { text-align: center; flex: 1; }
-.summary-value {
-  font-size: 18px; font-weight: 800; color: #e8eaf0;
-  &--green { color: #a5d6a7; }
-  &--blue { color: #64b5f6; }
+.summary-item {
+  text-align: center;
+  flex: 1;
 }
-.summary-label { font-size: 10px; color: #757575; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
-.summary-divider { width: 1px; height: 32px; background: rgba(255, 255, 255, 0.08); }
+.summary-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #e8eaf0;
+  &--green {
+    color: #a5d6a7;
+  }
+  &--blue {
+    color: #64b5f6;
+  }
+}
+.summary-label {
+  font-size: 10px;
+  color: #757575;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+.summary-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+}
 
 .loading-wrap {
   display: flex;
@@ -197,8 +219,15 @@ function deliveryDuration(item) {
   padding: 60px 20px;
   text-align: center;
 }
-.empty-title { font-size: 16px; font-weight: 700; color: #bdbdbd; }
-.empty-sub { font-size: 12px; color: #757575; }
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #bdbdbd;
+}
+.empty-sub {
+  font-size: 12px;
+  color: #757575;
+}
 
 // ── History Card ────────────────────────
 .history-card {
@@ -220,7 +249,10 @@ function deliveryDuration(item) {
   font-weight: 800;
   color: #e0e0e0;
 }
-.done-chip { font-size: 10px !important; height: 20px !important; }
+.done-chip {
+  font-size: 10px !important;
+  height: 20px !important;
+}
 
 .card-details {
   display: flex;
@@ -234,8 +266,13 @@ function deliveryDuration(item) {
   font-size: 12px;
   color: #9e9e9e;
 }
-.address-text { color: #bdbdbd; }
-.total-amount { font-weight: 600; color: #a5d6a7; }
+.address-text {
+  color: #bdbdbd;
+}
+.total-amount {
+  font-weight: 600;
+  color: #a5d6a7;
+}
 
 .card-timing {
   display: flex;
@@ -259,7 +296,9 @@ body.body--light {
     background: #f8fafc;
   }
 
-  .page-title { color: #0f172a; }
+  .page-title {
+    color: #0f172a;
+  }
 
   // Summary row
   .summary-row {
@@ -269,15 +308,27 @@ body.body--light {
   }
   .summary-value {
     color: #0f172a;
-    &--green { color: #16a34a; }
-    &--blue { color: #2563eb; }
+    &--green {
+      color: #16a34a;
+    }
+    &--blue {
+      color: #2563eb;
+    }
   }
-  .summary-label { color: #94a3b8; }
-  .summary-divider { background: #e2e8f0; }
+  .summary-label {
+    color: #94a3b8;
+  }
+  .summary-divider {
+    background: #e2e8f0;
+  }
 
   // Empty
-  .empty-title { color: #64748b; }
-  .empty-sub { color: #94a3b8; }
+  .empty-title {
+    color: #64748b;
+  }
+  .empty-sub {
+    color: #94a3b8;
+  }
 
   // History cards
   .history-card {
@@ -285,11 +336,23 @@ body.body--light {
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
-  .order-number { color: #0f172a; }
-  .detail-row { color: #475569; }
-  .address-text { color: #334155; }
-  .total-amount { color: #16a34a; }
-  .card-timing { border-top-color: #f1f5f9; }
-  .timing-pill { color: #94a3b8; }
+  .order-number {
+    color: #0f172a;
+  }
+  .detail-row {
+    color: #475569;
+  }
+  .address-text {
+    color: #334155;
+  }
+  .total-amount {
+    color: #16a34a;
+  }
+  .card-timing {
+    border-top-color: #f1f5f9;
+  }
+  .timing-pill {
+    color: #94a3b8;
+  }
 }
-
+</style>

@@ -202,10 +202,7 @@ async function loadFilterOptions() {
 
   // Fetch categories
   try {
-    let catQuery = supabase
-      .from('categories')
-      .select('id, name')
-      .order('name')
+    let catQuery = supabase.from('categories').select('id, name').order('name')
     if (companyId) catQuery = catQuery.eq('company_id', companyId)
 
     const { data: cats } = await catQuery
@@ -370,40 +367,49 @@ async function loadData() {
     const { data, error } = await query.limit(500)
     if (error) throw error
 
-    rows.value = (data || []).map((r) => {
-      // Extract payment method from invoices → payments chain
-      let paymentMode = '—'
-      const invoices = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []
-      for (const inv of invoices) {
-        const payments = Array.isArray(inv.payments) ? inv.payments : inv.payments ? [inv.payments] : []
-        for (const p of payments) {
-          if (p.payment_methods?.name) {
-            paymentMode = p.payment_methods.name
-            break
+    rows.value = (data || [])
+      .map((r) => {
+        // Extract payment method from invoices → payments chain
+        let paymentMode = '—'
+        const invoices = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []
+        for (const inv of invoices) {
+          const payments = Array.isArray(inv.payments)
+            ? inv.payments
+            : inv.payments
+              ? [inv.payments]
+              : []
+          for (const p of payments) {
+            if (p.payment_methods?.name) {
+              paymentMode = p.payment_methods.name
+              break
+            }
           }
+          if (paymentMode !== '—') break
         }
-        if (paymentMode !== '—') break
-      }
 
-      // Filter by payment mode if set
-      if (extraFilters.value.paymentMode && paymentMode.toLowerCase() !== extraFilters.value.paymentMode) {
-        return null
-      }
+        // Filter by payment mode if set
+        if (
+          extraFilters.value.paymentMode &&
+          paymentMode.toLowerCase() !== extraFilters.value.paymentMode
+        ) {
+          return null
+        }
 
-      return {
-        id: r.id,
-        order_no: r.order_number || `#${r.id?.slice(0, 8)}`,
-        created_at: r.created_at,
-        branch: r.branches?.name || '—',
-        subtotal: Number(r.subtotal || 0),
-        discount: Number(r.discount_amount || 0),
-        tax: Number(r.tax_amount || 0),
-        total: Number(r.total_amount || 0),
-        payment_mode: paymentMode,
-        cashier: r.waiter?.full_name || '—',
-        status: r.status || 'pending',
-      }
-    }).filter(Boolean)
+        return {
+          id: r.id,
+          order_no: r.order_number || `#${r.id?.slice(0, 8)}`,
+          created_at: r.created_at,
+          branch: r.branches?.name || '—',
+          subtotal: Number(r.subtotal || 0),
+          discount: Number(r.discount_amount || 0),
+          tax: Number(r.tax_amount || 0),
+          total: Number(r.total_amount || 0),
+          payment_mode: paymentMode,
+          cashier: r.waiter?.full_name || '—',
+          status: r.status || 'pending',
+        }
+      })
+      .filter(Boolean)
   } catch (err) {
     console.error('[SalesReport] Error:', err)
   } finally {

@@ -29,7 +29,13 @@
                   {{ profile.display_name || employeeName }}
                 </div>
                 <div class="row items-center q-gutter-x-sm q-mt-xs">
-                  <q-chip dense color="cyan-9" text-color="white" icon="badge" class="text-weight-bold">
+                  <q-chip
+                    dense
+                    color="cyan-9"
+                    text-color="white"
+                    icon="badge"
+                    class="text-weight-bold"
+                  >
                     {{ profile.waiter_code }}
                   </q-chip>
                   <q-chip
@@ -76,9 +82,19 @@
                 {{ initials(manager.manager_employee?.full_name) }}
               </q-avatar>
               <div>
-                <div class="text-weight-bold text-white">{{ manager.manager_employee?.full_name }}</div>
-                <div class="text-caption text-grey-5">{{ manager.manager_employee?.employee_code }}</div>
-                <q-chip dense color="purple-9" text-color="white" icon="supervisor_account" class="q-mt-xs">
+                <div class="text-weight-bold text-white">
+                  {{ manager.manager_employee?.full_name }}
+                </div>
+                <div class="text-caption text-grey-5">
+                  {{ manager.manager_employee?.employee_code }}
+                </div>
+                <q-chip
+                  dense
+                  color="purple-9"
+                  text-color="white"
+                  icon="supervisor_account"
+                  class="q-mt-xs"
+                >
                   {{ formatHierarchyType(manager.hierarchy_type) }}
                 </q-chip>
               </div>
@@ -139,7 +155,10 @@
               <q-item-label caption class="text-grey-5">{{ entry.note || '—' }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <span :class="entry.points >= 0 ? 'text-positive' : 'text-negative'" class="text-weight-bold">
+              <span
+                :class="entry.points >= 0 ? 'text-positive' : 'text-negative'"
+                class="text-weight-bold"
+              >
                 {{ entry.points >= 0 ? '+' : '' }}{{ entry.points }} pts
               </span>
               <div class="text-grey-7 text-caption">{{ formatDate(entry.created_at) }}</div>
@@ -169,7 +188,9 @@ onMounted(async () => {
 async function loadProfile() {
   loading.value = true
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return
 
     // 1. Load waiter_profile (linked by user_id)
@@ -205,10 +226,12 @@ async function loadProfile() {
     // 3. Load manager hierarchy
     const { data: hier } = await supabase
       .from('employee_hierarchy_assignments')
-      .select(`
+      .select(
+        `
         hierarchy_type,
         manager_employee:manager_employee_id ( full_name, employee_code )
-      `)
+      `,
+      )
       .eq('employee_id', wp.employee_id)
       .eq('is_active', true)
       .limit(1)
@@ -241,7 +264,11 @@ async function loadProfile() {
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 function formatHierarchyType(type) {
@@ -270,21 +297,47 @@ function formatPointType(type) {
 
 function formatDate(dt) {
   if (!dt) return ''
-  return new Date(dt).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(dt).toLocaleDateString('en', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function pointsIcon(type) {
-  const map = { served_order: 'restaurant', bonus: 'card_giftcard', adjustment: 'tune', penalty: 'warning', tip_received: 'payments', customer_rating: 'star' }
+  const map = {
+    served_order: 'restaurant',
+    bonus: 'card_giftcard',
+    adjustment: 'tune',
+    penalty: 'warning',
+    tip_received: 'payments',
+    customer_rating: 'star',
+  }
   return map[type] || 'stars'
 }
 
 function notifIcon(type) {
-  const map = { info: 'info', order_assigned: 'assignment', message_received: 'mail', points_earned: 'stars', schedule_change: 'event', urgent: 'priority_high', performance_review: 'assessment', shift_reminder: 'alarm' }
+  const map = {
+    info: 'info',
+    order_assigned: 'assignment',
+    message_received: 'mail',
+    points_earned: 'stars',
+    schedule_change: 'event',
+    urgent: 'priority_high',
+    performance_review: 'assessment',
+    shift_reminder: 'alarm',
+  }
   return map[type] || 'notifications'
 }
 
 function notifColor(type) {
-  const map = { urgent: 'red', message_received: 'blue', points_earned: 'amber', order_assigned: 'green' }
+  const map = {
+    urgent: 'red',
+    message_received: 'blue',
+    points_earned: 'amber',
+    order_assigned: 'green',
+  }
   return map[type] || 'grey-5'
 }
 </script>

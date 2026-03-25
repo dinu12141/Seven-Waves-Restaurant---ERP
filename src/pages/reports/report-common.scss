@@ -79,20 +79,70 @@
   border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
   white-space: nowrap;
 
-  &--cash, &--paid { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
-  &--card { background: rgba(37, 99, 235, 0.12); color: #2563eb; border-color: rgba(37, 99, 235, 0.2); }
-  &--online { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
-  &--pending { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
-  &--cancelled, &--void { background: rgba(220, 38, 38, 0.12); color: #dc2626; border-color: rgba(220, 38, 38, 0.2); }
-  &--refunded { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
+  &--cash,
+  &--paid {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+    border-color: rgba(22, 163, 74, 0.2);
+  }
+  &--card {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.2);
+  }
+  &--online {
+    background: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+    border-color: rgba(124, 58, 237, 0.2);
+  }
+  &--pending {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  &--cancelled,
+  &--void {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.2);
+  }
+  &--refunded {
+    background: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+    border-color: rgba(124, 58, 237, 0.2);
+  }
 
   // Inventory movement types
-  &--grn { background: rgba(22, 163, 74, 0.12); color: #16a34a; border-color: rgba(22, 163, 74, 0.2); }
-  &--kot_issue { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
-  &--adjustment { background: rgba(124, 58, 237, 0.12); color: #7c3aed; border-color: rgba(124, 58, 237, 0.2); }
-  &--transfer { background: rgba(37, 99, 235, 0.12); color: #2563eb; border-color: rgba(37, 99, 235, 0.2); }
-  &--return { background: rgba(220, 38, 38, 0.12); color: #dc2626; border-color: rgba(220, 38, 38, 0.2); }
-  &--opening { background: rgba(100, 116, 139, 0.12); color: #94a3b8; border-color: rgba(100, 116, 139, 0.2); }
+  &--grn {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+    border-color: rgba(22, 163, 74, 0.2);
+  }
+  &--kot_issue {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  &--adjustment {
+    background: rgba(124, 58, 237, 0.12);
+    color: #7c3aed;
+    border-color: rgba(124, 58, 237, 0.2);
+  }
+  &--transfer {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.2);
+  }
+  &--return {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.2);
+  }
+  &--opening {
+    background: rgba(100, 116, 139, 0.12);
+    color: #94a3b8;
+    border-color: rgba(100, 116, 139, 0.2);
+  }
 }
 
 /* ── 3. Filter Groups (for extra-filters slot) ─────────────────────────── */
@@ -146,8 +196,13 @@
   border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.1));
   background: rgba(255, 255, 255, 0.02);
 
-  &__left { flex: 1; }
-  &__center { flex: 1; text-align: center; }
+  &__left {
+    flex: 1;
+  }
+  &__center {
+    flex: 1;
+    text-align: center;
+  }
   &__company {
     font-size: 13px;
     font-weight: 800;
@@ -190,10 +245,14 @@
   background: transparent !important;
   font-size: 11px !important;
 
-  :deep(.q-table) { font-size: 11px !important; }
+  :deep(.q-table) {
+    font-size: 11px !important;
+  }
 }
 
-.sap-table__header { background: rgba(255, 255, 255, 0.03) !important; }
+.sap-table__header {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
 
 .sap-table__th {
   font-size: 10px !important;
@@ -209,14 +268,16 @@
 .sap-table__row {
   border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 11px !important;
     color: var(--erp-text-primary, #f8fafc) !important;
     padding: 4px 6px !important;
     height: 28px !important;
   }
 
-  &--void td, &--void .q-td {
+  &--void td,
+  &--void .q-td {
     color: var(--erp-danger, #dc2626) !important;
     text-decoration: line-through;
     opacity: 0.7;
@@ -281,7 +342,8 @@
   background: rgba(37, 99, 235, 0.05) !important;
   border-top: 1px solid rgba(37, 99, 235, 0.1) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     padding: 4px 10px !important;
     height: 28px !important;
   }
@@ -300,7 +362,8 @@
   border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
   border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 11px !important;
     padding: 5px 6px !important;
     height: 28px !important;
@@ -314,7 +377,8 @@
   border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
   border-bottom: 2px solid rgba(245, 158, 11, 0.2) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 11px !important;
     padding: 6px 8px !important;
     color: var(--erp-text-primary, #f8fafc) !important;
@@ -327,7 +391,8 @@
   border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
   border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 12px !important;
     padding: 8px 6px !important;
     color: var(--erp-text-primary, #f8fafc) !important;
@@ -338,7 +403,8 @@
 .sap-table__payment-row {
   background: rgba(22, 163, 74, 0.05) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 11px !important;
     padding: 3px 6px !important;
     height: 22px !important;
@@ -357,7 +423,8 @@
   border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
   border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: 11px !important;
     padding: 3px 6px !important;
     height: 24px !important;
@@ -379,12 +446,36 @@
   color: var(--erp-text-secondary, #94a3b8);
   border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
 
-  &--rs { background: rgba(37, 99, 235, 0.12); color: #60a5fa; border-color: rgba(37, 99, 235, 0.2); }
-  &--tk { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
-  &--we { background: rgba(124, 58, 237, 0.12); color: #a78bfa; border-color: rgba(124, 58, 237, 0.2); }
-  &--dl { background: rgba(22, 163, 74, 0.12); color: #4ade80; border-color: rgba(22, 163, 74, 0.2); }
-  &--pm { background: rgba(236, 72, 153, 0.12); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
-  &--ub { background: rgba(0, 0, 0, 0.15); color: #e5e7eb; border-color: rgba(255, 255, 255, 0.1); }
+  &--rs {
+    background: rgba(37, 99, 235, 0.12);
+    color: #60a5fa;
+    border-color: rgba(37, 99, 235, 0.2);
+  }
+  &--tk {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  &--we {
+    background: rgba(124, 58, 237, 0.12);
+    color: #a78bfa;
+    border-color: rgba(124, 58, 237, 0.2);
+  }
+  &--dl {
+    background: rgba(22, 163, 74, 0.12);
+    color: #4ade80;
+    border-color: rgba(22, 163, 74, 0.2);
+  }
+  &--pm {
+    background: rgba(236, 72, 153, 0.12);
+    color: #f472b6;
+    border-color: rgba(236, 72, 153, 0.2);
+  }
+  &--ub {
+    background: rgba(0, 0, 0, 0.15);
+    color: #e5e7eb;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* ── 18. GP % Badge ────────────────────────────────────────────────── */
@@ -412,12 +503,16 @@
   text-align: left;
   white-space: nowrap;
 
-  &--num { text-align: right; }
+  &--num {
+    text-align: right;
+  }
 }
 
 .sap-native-table__row {
   border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03));
-  &:hover { background: rgba(255, 255, 255, 0.02); }
+  &:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
 }
 
 .sap-native-table__td {
@@ -537,7 +632,9 @@
   text-align: center;
   border-right: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
   padding-right: 8px;
-  &:last-child { border-right: none; }
+  &:last-child {
+    border-right: none;
+  }
 }
 
 /* ── 23. SAP Two-Column Statement Layout ───────────────────────────── */
@@ -694,14 +791,30 @@
   }
 
   /* Footer */
-  .sap-footer { padding: 4pt 0 !important; }
-  .sap-footer__row { font-size: 7pt !important; color: #333 !important; }
-  .sap-footer__row--bold { font-size: 8pt !important; color: #1a1a2e !important; }
+  .sap-footer {
+    padding: 4pt 0 !important;
+  }
+  .sap-footer__row {
+    font-size: 7pt !important;
+    color: #333 !important;
+  }
+  .sap-footer__row--bold {
+    font-size: 8pt !important;
+    color: #1a1a2e !important;
+  }
 
   /* Column groups */
-  .report-col-groups { display: none; }
+  .report-col-groups {
+    display: none;
+  }
 
   /* Statement */
-  .sap-columns { gap: 10pt; padding: 4pt 0; }
-  .sap-analysis__title { font-size: 10pt !important; color: #1a1a2e !important; }
+  .sap-columns {
+    gap: 10pt;
+    padding: 4pt 0;
+  }
+  .sap-analysis__title {
+    font-size: 10pt !important;
+    color: #1a1a2e !important;
+  }
 }

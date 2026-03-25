@@ -40,6 +40,19 @@
         <span v-else class="text-green">On time</span>
       </q-td>
     </template>
+    <template v-slot:body-cell-holiday="props">
+      <q-td :props="props" class="text-center">
+        <q-toggle
+          :model-value="props.row.is_public_holiday || false"
+          color="amber"
+          size="sm"
+          :label="props.row.is_public_holiday ? '2×' : '1.5×'"
+          @update:model-value="emit('toggle-holiday', { id: props.row.id, value: $event })"
+        >
+          <q-tooltip>Mark as Public Holiday OT (2×) for payroll</q-tooltip>
+        </q-toggle>
+      </q-td>
+    </template>
   </q-table>
 </template>
 
@@ -55,6 +68,8 @@ defineProps({
   },
 })
 
+const emit = defineEmits(['toggle-holiday'])
+
 const columns = [
   {
     name: 'employee',
@@ -68,6 +83,7 @@ const columns = [
   { name: 'check_out', label: 'Check Out', align: 'center', field: 'check_out_time' },
   { name: 'hours', label: 'Hours', align: 'center', field: 'regular_hours' },
   { name: 'late', label: 'Late', align: 'center', field: 'late_minutes' },
+  { name: 'holiday', label: 'Holiday OT', align: 'center', field: 'is_public_holiday' },
 ]
 
 function attendanceColor(status) {

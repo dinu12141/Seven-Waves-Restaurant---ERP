@@ -18,8 +18,12 @@
             <div class="sap-header__title sap-header__title--underline">Group Summary</div>
           </div>
           <div class="sap-header__meta">
-            <div>Location: <strong>{{ branchName }}</strong></div>
-            <div>From Date : <strong>{{ reportDateRange }}</strong></div>
+            <div>
+              Location: <strong>{{ branchName }}</strong>
+            </div>
+            <div>
+              From Date : <strong>{{ reportDateRange }}</strong>
+            </div>
           </div>
         </div>
         <div class="sap-header__right">
@@ -66,26 +70,50 @@
             <td class="sap-native-table__td sap-native-table__td--desc">{{ row.description }}</td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ row.qty }}</td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.grossAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.returnAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num">
+              {{ fmtN(row.returnAmt) }}
+            </td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.discAmt) }}</td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.netAmt) }}</td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.taxAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bold">{{ fmtN(row.amtWithTax) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num">{{ fmtN(row.wastageAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bold">
+              {{ fmtN(row.amtWithTax) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num">
+              {{ fmtN(row.wastageAmt) }}
+            </td>
             <td class="sap-native-table__td sap-native-table__td--num">{{ row.pctSale }}</td>
           </tr>
         </tbody>
         <tfoot v-if="groupRows.length > 0">
           <tr class="sap-native-table__total">
             <td colspan="2" class="sap-native-table__td text-weight-bolder">Grand Total</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ grandTotals.qty }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.grossAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.returnAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.discAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.netAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.taxAmt) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder text-green">{{ fmtN(grandTotals.amtWithTax) }}</td>
-            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">{{ fmtN(grandTotals.wastageAmt) }}</td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ grandTotals.qty }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.grossAmt) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.returnAmt) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.discAmt) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.netAmt) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.taxAmt) }}
+            </td>
+            <td
+              class="sap-native-table__td sap-native-table__td--num text-weight-bolder text-green"
+            >
+              {{ fmtN(grandTotals.amtWithTax) }}
+            </td>
+            <td class="sap-native-table__td sap-native-table__td--num text-weight-bolder">
+              {{ fmtN(grandTotals.wastageAmt) }}
+            </td>
             <td class="sap-native-table__td" />
           </tr>
         </tfoot>
@@ -125,7 +153,7 @@ const currentFilters = ref({})
 // ── Helpers ────────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
 const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
 )
 const reportDateRange = computed(() => {
   const f = currentFilters.value
@@ -135,7 +163,11 @@ const reportDateRange = computed(() => {
 
 function fmtDate(d) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function fmtN(val) {
@@ -197,8 +229,18 @@ const grandTotals = computed(() => {
 const kpiData = computed(() => [
   { label: 'Categories', value: groupRows.value.length, icon: 'category', color: 'blue' },
   { label: 'Total Qty', value: grandTotals.value.qty, icon: 'shopping_cart', color: 'cyan' },
-  { label: 'Gross Sales', value: `LKR ${fmtN(grandTotals.value.grossAmt)}`, icon: 'payments', color: 'green' },
-  { label: 'Net with Tax', value: `LKR ${fmtN(grandTotals.value.amtWithTax)}`, icon: 'trending_up', color: 'purple' },
+  {
+    label: 'Gross Sales',
+    value: `LKR ${fmtN(grandTotals.value.grossAmt)}`,
+    icon: 'payments',
+    color: 'green',
+  },
+  {
+    label: 'Net with Tax',
+    value: `LKR ${fmtN(grandTotals.value.amtWithTax)}`,
+    icon: 'trending_up',
+    color: 'purple',
+  },
 ])
 
 // ── Data Loading ──────────────────────────────────────────
@@ -206,9 +248,7 @@ async function loadData(filters = {}) {
   loading.value = true
   currentFilters.value = filters
   try {
-    let query = supabase
-      .from('order_items')
-      .select(`
+    let query = supabase.from('order_items').select(`
         id,
         quantity,
         unit_price,
@@ -241,7 +281,7 @@ async function loadData(filters = {}) {
 
     // Process into per-category aggregations
     const items = []
-    for (const oi of (data || [])) {
+    for (const oi of data || []) {
       const order = oi.orders
       if (!order || order.status === 'cancelled') continue
 
@@ -283,8 +323,12 @@ const exportColumns = [
   { name: 'pctSale', label: '% of Sale', field: 'pctSale' },
 ]
 
-function exportCSV() { exportTableToCSV(exportColumns, groupRows.value, 'group_summary') }
-function exportExcel() { exportTableToExcel(exportColumns, groupRows.value, 'group_summary') }
+function exportCSV() {
+  exportTableToCSV(exportColumns, groupRows.value, 'group_summary')
+}
+function exportExcel() {
+  exportTableToExcel(exportColumns, groupRows.value, 'group_summary')
+}
 </script>
 
 <style scoped lang="scss">

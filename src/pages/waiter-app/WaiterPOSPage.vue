@@ -116,9 +116,19 @@
                 <span class="qty-val">{{ item.qty }}</span>
                 <button class="qty-btn" @click.stop="changeQty(idx, 1)">+</button>
               </span>
-              <span class="wpos-cart-col wpos-col-amt">{{ fmtCurrency(item.price * item.qty) }}</span>
+              <span class="wpos-cart-col wpos-col-amt">{{
+                fmtCurrency(item.price * item.qty)
+              }}</span>
               <span class="wpos-cart-col wpos-col-act">
-                <q-btn flat dense round icon="close" size="xs" color="red-4" @click.stop="removeItem(idx)" />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="close"
+                  size="xs"
+                  color="red-4"
+                  @click.stop="removeItem(idx)"
+                />
               </span>
             </div>
           </div>
@@ -286,13 +296,13 @@ const searchResults = computed(() => {
   if (!searchQuery.value) return []
   const q = searchQuery.value.toLowerCase()
   return menuProducts.value.filter(
-    p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    (p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
   )
 })
 
 const filteredItems = computed(() => {
   if (selectedCategory.value === 'All') return menuProducts.value
-  return menuProducts.value.filter(p => p.category === selectedCategory.value)
+  return menuProducts.value.filter((p) => p.category === selectedCategory.value)
 })
 
 // ── Fetch Menu ───────────────────────────────────────────
@@ -315,18 +325,20 @@ async function fetchMenuItems() {
       if (bookData) {
         const { data: bookItems, error: bookError } = await supabase
           .from('menu_book_items')
-          .select(`
+          .select(
+            `
             id, override_price, is_available, sort_order,
             menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name))
-          `)
+          `,
+          )
           .eq('menu_book_id', bookData.id)
           .eq('is_available', true)
           .order('sort_order')
 
         if (!bookError && bookItems?.length) {
           products = bookItems
-            .filter(bi => bi.menu_items?.is_available)
-            .map(bi => ({
+            .filter((bi) => bi.menu_items?.is_available)
+            .map((bi) => ({
               id: bi.menu_items.id,
               name: bi.menu_items.name,
               price: parseFloat(bi.override_price || bi.menu_items.base_price || 0),
@@ -348,7 +360,7 @@ async function fetchMenuItems() {
 
       if (error) throw error
 
-      products = (data || []).map(item => ({
+      products = (data || []).map((item) => ({
         id: item.id,
         name: item.name,
         price: parseFloat(item.base_price || 0),
@@ -470,7 +482,10 @@ async function handleSendToKitchen() {
 
 // ── Helpers ──────────────────────────────────────────────
 function fmtCurrency(val) {
-  return parseFloat(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return parseFloat(val || 0).toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 </script>
 
@@ -493,7 +508,7 @@ function fmtCurrency(val) {
   background: #fff;
   border-bottom: 1px solid var(--erp-border, #e2e8f0);
   min-height: 52px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .wpos-top-left {
@@ -646,7 +661,7 @@ function fmtCurrency(val) {
   max-height: 60vh;
   width: 100%;
   max-width: 520px;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
 }
 
 .wpos-table-grid-section {
@@ -735,11 +750,26 @@ function fmtCurrency(val) {
 }
 
 .wpos-cart-col {
-  &.wpos-col-num { width: 24px; text-align: center; }
-  &.wpos-col-name { flex: 1; min-width: 0; }
-  &.wpos-col-qty { width: 80px; text-align: center; }
-  &.wpos-col-amt { width: 70px; text-align: right; }
-  &.wpos-col-act { width: 28px; text-align: center; }
+  &.wpos-col-num {
+    width: 24px;
+    text-align: center;
+  }
+  &.wpos-col-name {
+    flex: 1;
+    min-width: 0;
+  }
+  &.wpos-col-qty {
+    width: 80px;
+    text-align: center;
+  }
+  &.wpos-col-amt {
+    width: 70px;
+    text-align: right;
+  }
+  &.wpos-col-act {
+    width: 28px;
+    text-align: center;
+  }
 }
 
 .wpos-cart-items {
@@ -877,8 +907,13 @@ function fmtCurrency(val) {
 }
 
 @keyframes send-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3); }
-  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
 }
 
 // ── Right Panel (Menu Browser) ──────────────────────────
@@ -917,7 +952,9 @@ function fmtCurrency(val) {
   flex-shrink: 0;
   border-bottom: 1px solid var(--erp-border, #e2e8f0);
 
-  &::-webkit-scrollbar { height: 0; }
+  &::-webkit-scrollbar {
+    height: 0;
+  }
 }
 
 .wpos-cat-tab {
@@ -966,13 +1003,13 @@ function fmtCurrency(val) {
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 
   &:hover {
     border-color: #fdba74;
     background: #fff7ed;
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
   }
 
   &:active {

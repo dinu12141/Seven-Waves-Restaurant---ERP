@@ -1,14 +1,18 @@
 <template>
   <q-page class="delivery-active-page">
-
     <!-- ── No active delivery ──────────────────────── -->
     <div v-if="!currentDelivery" class="empty-state">
       <q-icon name="local_shipping" size="64px" color="grey-7" />
       <div class="empty-title">No active delivery</div>
       <div class="empty-sub">Accept a delivery from the queue to get started.</div>
       <q-btn
-        flat no-caps color="purple-4" label="Go to Queue" icon="arrow_back"
-        class="q-mt-md" @click="$router.push('/delivery-app')"
+        flat
+        no-caps
+        color="purple-4"
+        label="Go to Queue"
+        icon="arrow_back"
+        class="q-mt-md"
+        @click="$router.push('/delivery-app')"
       />
     </div>
 
@@ -51,10 +55,7 @@
       </div>
 
       <!-- Kitchen Status Alert -->
-      <div
-        v-if="orderIsReady"
-        class="kitchen-alert"
-      >
+      <div v-if="orderIsReady" class="kitchen-alert">
         <q-icon name="local_fire_department" size="28px" color="green" />
         <div class="kitchen-alert__text">
           <div class="kitchen-alert__title">🔔 Food is Ready!</div>
@@ -65,7 +66,8 @@
       <!-- Quick Action Buttons -->
       <div class="quick-actions q-mb-md">
         <q-btn
-          unelevated no-caps
+          unelevated
+          no-caps
           color="blue-8"
           icon="map"
           label="Open Map"
@@ -73,7 +75,8 @@
           @click="$router.push('/delivery-app/map')"
         />
         <q-btn
-          unelevated no-caps
+          unelevated
+          no-caps
           color="green-8"
           icon="phone"
           label="Call Customer"
@@ -84,11 +87,23 @@
       </div>
 
       <!-- Live GPS Tracking Indicator -->
-      <div v-if="trackingActive || currentDelivery?.status === 'picked_up'" class="tracking-section">
+      <div
+        v-if="trackingActive || currentDelivery?.status === 'picked_up'"
+        class="tracking-section"
+      >
         <div class="tracking-header">
           <div class="tracking-dot" :class="{ 'tracking-dot--active': trackingActive }" />
-          <span class="tracking-label">{{ trackingActive ? 'Live Tracking Active' : 'Tracking Stopped' }}</span>
-          <q-chip v-if="upsertCount > 0" dense size="sm" color="blue-grey-8" text-color="cyan-4" class="tracking-count">
+          <span class="tracking-label">{{
+            trackingActive ? 'Live Tracking Active' : 'Tracking Stopped'
+          }}</span>
+          <q-chip
+            v-if="upsertCount > 0"
+            dense
+            size="sm"
+            color="blue-grey-8"
+            text-color="cyan-4"
+            class="tracking-count"
+          >
             {{ upsertCount }} updates
           </q-chip>
         </div>
@@ -149,7 +164,9 @@
         </div>
         <div class="order-total">
           <span>Total</span>
-          <span class="total-value">Rs. {{ Number(currentDelivery.orderTotal || 0).toFixed(2) }}</span>
+          <span class="total-value"
+            >Rs. {{ Number(currentDelivery.orderTotal || 0).toFixed(2) }}</span
+          >
         </div>
       </div>
 
@@ -158,7 +175,8 @@
         <!-- Picked Up -->
         <q-btn
           v-if="currentDelivery.status === 'accepted'"
-          unelevated no-caps
+          unelevated
+          no-caps
           color="blue-8"
           label="Mark Picked Up"
           icon="local_shipping"
@@ -175,7 +193,8 @@
         <!-- Delivered -->
         <q-btn
           v-if="currentDelivery.status === 'picked_up'"
-          unelevated no-caps
+          unelevated
+          no-caps
           color="green-8"
           label="Mark Delivered"
           icon="check_circle"
@@ -209,8 +228,9 @@
           <q-icon name="check_circle" size="48px" color="green" />
           <div class="confirm-title">Confirm Delivery</div>
           <div class="confirm-sub">
-            Are you sure order <b>#{{ currentDelivery?.orderNumber }}</b> has been
-            successfully handed over to <b>{{ currentDelivery?.customer_name || 'the customer' }}</b>?
+            Are you sure order <b>#{{ currentDelivery?.orderNumber }}</b> has been successfully
+            handed over to <b>{{ currentDelivery?.customer_name || 'the customer' }}</b
+            >?
           </div>
         </q-card-section>
 
@@ -221,14 +241,24 @@
           </div>
           <div class="confirm-row">
             <q-icon name="payments" size="16px" color="amber" />
-            <span class="confirm-amount">Rs. {{ Number(currentDelivery.orderTotal || 0).toFixed(2) }}</span>
+            <span class="confirm-amount"
+              >Rs. {{ Number(currentDelivery.orderTotal || 0).toFixed(2) }}</span
+            >
           </div>
         </q-card-section>
 
         <q-card-actions class="confirm-actions">
-          <q-btn flat no-caps label="Cancel" color="grey" v-close-popup class="confirm-cancel-btn" />
           <q-btn
-            unelevated no-caps
+            flat
+            no-caps
+            label="Cancel"
+            color="grey"
+            v-close-popup
+            class="confirm-cancel-btn"
+          />
+          <q-btn
+            unelevated
+            no-caps
             color="green-8"
             icon="check"
             label="Yes, Mark Delivered"
@@ -304,12 +334,16 @@ function isStepDone(stepKey) {
 
   // For 'preparing' and 'ready', use order status
   if (stepKey === 'preparing') {
-    return ['preparing', 'ready', 'served', 'invoiced', 'paid'].includes(orderStatus) ||
+    return (
+      ['preparing', 'ready', 'served', 'invoiced', 'paid'].includes(orderStatus) ||
       deliveryIdx >= statusOrder.indexOf('picked_up')
+    )
   }
   if (stepKey === 'ready') {
-    return ['ready', 'served', 'invoiced', 'paid'].includes(orderStatus) ||
+    return (
+      ['ready', 'served', 'invoiced', 'paid'].includes(orderStatus) ||
       deliveryIdx >= statusOrder.indexOf('picked_up')
+    )
   }
 
   return deliveryIdx > stepIdx
@@ -365,7 +399,6 @@ async function handlePickUp() {
   await store.pickUp(currentDelivery.value.id)
 }
 
-
 async function handleConfirmDeliver() {
   if (!currentDelivery.value) return
   await store.deliver(currentDelivery.value.id)
@@ -393,8 +426,16 @@ function callCustomer() {
   padding: 80px 20px;
   text-align: center;
 }
-.empty-title { font-size: 16px; font-weight: 700; color: #bdbdbd; }
-.empty-sub { font-size: 12px; color: #757575; max-width: 260px; }
+.empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #bdbdbd;
+}
+.empty-sub {
+  font-size: 12px;
+  color: #757575;
+  max-width: 260px;
+}
 
 // ── Order Header ────────────────────────
 .order-header {
@@ -421,7 +462,9 @@ function callCustomer() {
   padding: 3px 8px;
   border-radius: 6px;
 }
-.status-chip { font-size: 11px !important; }
+.status-chip {
+  font-size: 11px !important;
+}
 
 // ── Progress Stepper ────────────────────
 .progress-stepper {
@@ -485,8 +528,12 @@ function callCustomer() {
       border-color: #66bb6a;
       color: white;
     }
-    .step__label { color: #a5d6a7; }
-    .step__connector { background: #66bb6a; }
+    .step__label {
+      color: #a5d6a7;
+    }
+    .step__connector {
+      background: #66bb6a;
+    }
   }
 
   &--current {
@@ -497,13 +544,21 @@ function callCustomer() {
       box-shadow: 0 0 12px rgba(66, 165, 245, 0.5);
       animation: pulse 2s ease-in-out infinite;
     }
-    .step__label { color: #64b5f6; font-weight: 800; }
+    .step__label {
+      color: #64b5f6;
+      font-weight: 800;
+    }
   }
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(66, 165, 245, 0.3); }
-  50% { box-shadow: 0 0 18px rgba(66, 165, 245, 0.7); }
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(66, 165, 245, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(66, 165, 245, 0.7);
+  }
 }
 
 // ── Kitchen Alert ───────────────────────
@@ -529,8 +584,13 @@ function callCustomer() {
   margin-top: 2px;
 }
 @keyframes alertPulse {
-  0%, 100% { border-color: rgba(76, 175, 80, 0.3); }
-  50% { border-color: rgba(76, 175, 80, 0.7); }
+  0%,
+  100% {
+    border-color: rgba(76, 175, 80, 0.3);
+  }
+  50% {
+    border-color: rgba(76, 175, 80, 0.7);
+  }
 }
 
 // ── Info Section ────────────────────────
@@ -558,7 +618,9 @@ function callCustomer() {
   gap: 10px;
 }
 .info-item {
-  &--full { grid-column: 1 / -1; }
+  &--full {
+    grid-column: 1 / -1;
+  }
 }
 .info-label {
   display: block;
@@ -575,7 +637,9 @@ function callCustomer() {
   &--link {
     color: #64b5f6;
     text-decoration: none;
-    &:active { color: #90caf9; }
+    &:active {
+      color: #90caf9;
+    }
   }
   &--note {
     font-size: 12px;
@@ -596,7 +660,9 @@ function callCustomer() {
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 .item-qty {
   font-size: 12px;
@@ -624,7 +690,9 @@ function callCustomer() {
   font-weight: 800;
   color: #e8eaf0;
 }
-.total-value { color: #a5d6a7; }
+.total-value {
+  color: #a5d6a7;
+}
 
 // ── Quick Actions ───────────────────────
 .quick-actions {
@@ -705,8 +773,13 @@ function callCustomer() {
   }
 }
 @keyframes trackPulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(0, 230, 118, 0.3); }
-  50% { box-shadow: 0 0 14px rgba(0, 230, 118, 0.8); }
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(0, 230, 118, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(0, 230, 118, 0.8);
+  }
 }
 .tracking-label {
   font-size: 12px;
@@ -745,17 +818,56 @@ function callCustomer() {
   background: #1a1e2e !important;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px !important;
-  min-width: 320px; max-width: 400px;
+  min-width: 320px;
+  max-width: 400px;
 }
-.confirm-header { text-align: center; padding: 24px 20px 12px; }
-.confirm-title { font-size: 20px; font-weight: 800; color: #e8eaf0; margin-top: 12px; }
-.confirm-sub { font-size: 13px; color: #9e9e9e; margin-top: 8px; line-height: 1.5; b { color: #e0e0e0; } }
-.confirm-details { padding: 0 20px 12px; }
-.confirm-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #bdbdbd; padding: 4px 0; }
-.confirm-amount { font-weight: 800; color: #a5d6a7; }
-.confirm-actions { padding: 12px 20px 20px; justify-content: flex-end; gap: 8px; }
-.confirm-cancel-btn { border-radius: 10px; }
-.confirm-deliver-btn { border-radius: 10px; height: 42px; font-weight: 700; }
+.confirm-header {
+  text-align: center;
+  padding: 24px 20px 12px;
+}
+.confirm-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #e8eaf0;
+  margin-top: 12px;
+}
+.confirm-sub {
+  font-size: 13px;
+  color: #9e9e9e;
+  margin-top: 8px;
+  line-height: 1.5;
+  b {
+    color: #e0e0e0;
+  }
+}
+.confirm-details {
+  padding: 0 20px 12px;
+}
+.confirm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #bdbdbd;
+  padding: 4px 0;
+}
+.confirm-amount {
+  font-weight: 800;
+  color: #a5d6a7;
+}
+.confirm-actions {
+  padding: 12px 20px 20px;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.confirm-cancel-btn {
+  border-radius: 10px;
+}
+.confirm-deliver-btn {
+  border-radius: 10px;
+  height: 42px;
+  font-weight: 700;
+}
 </style>
 
 <style lang="scss">
@@ -765,12 +877,21 @@ body.body--light {
   }
 
   // Empty
-  .empty-title { color: #64748b; }
-  .empty-sub { color: #94a3b8; }
+  .empty-title {
+    color: #64748b;
+  }
+  .empty-sub {
+    color: #94a3b8;
+  }
 
   // Order header
-  .order-number { color: #0f172a; }
-  .source-badge { color: #7c3aed; background: rgba(124, 58, 237, 0.08); }
+  .order-number {
+    color: #0f172a;
+  }
+  .source-badge {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+  }
 
   // Progress stepper
   .progress-stepper {
@@ -783,16 +904,34 @@ body.body--light {
     color: #94a3b8;
     background: #ffffff;
   }
-  .step__label { color: #94a3b8; }
-  .step__connector { background: #e2e8f0; }
+  .step__label {
+    color: #94a3b8;
+  }
+  .step__connector {
+    background: #e2e8f0;
+  }
   .step--done {
-    .step__circle { background: #16a34a; border-color: #16a34a; color: #fff; }
-    .step__label { color: #16a34a; }
-    .step__connector { background: #16a34a; }
+    .step__circle {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #fff;
+    }
+    .step__label {
+      color: #16a34a;
+    }
+    .step__connector {
+      background: #16a34a;
+    }
   }
   .step--current {
-    .step__circle { background: #2563eb; border-color: #2563eb; color: #fff; }
-    .step__label { color: #2563eb; }
+    .step__circle {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    .step__label {
+      color: #2563eb;
+    }
   }
 
   // Kitchen alert
@@ -800,8 +939,12 @@ body.body--light {
     background: #f0fdf4;
     border-color: #86efac;
   }
-  .kitchen-alert__title { color: #16a34a; }
-  .kitchen-alert__sub { color: #22c55e; }
+  .kitchen-alert__title {
+    color: #16a34a;
+  }
+  .kitchen-alert__sub {
+    color: #22c55e;
+  }
 
   // Info sections
   .info-section {
@@ -809,45 +952,88 @@ body.body--light {
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
-  .section-heading { color: #475569; }
-  .info-label { color: #94a3b8; }
-  .info-value { color: #334155; }
-  .info-value--link { color: #2563eb; }
-  .info-value--note { color: #64748b; }
+  .section-heading {
+    color: #475569;
+  }
+  .info-label {
+    color: #94a3b8;
+  }
+  .info-value {
+    color: #334155;
+  }
+  .info-value--link {
+    color: #2563eb;
+  }
+  .info-value--note {
+    color: #64748b;
+  }
 
   // Items
-  .item-row { border-bottom-color: #f1f5f9; }
-  .item-qty { color: #7c3aed; }
-  .item-name { color: #334155; }
-  .item-price { color: #16a34a; }
+  .item-row {
+    border-bottom-color: #f1f5f9;
+  }
+  .item-qty {
+    color: #7c3aed;
+  }
+  .item-name {
+    color: #334155;
+  }
+  .item-price {
+    color: #16a34a;
+  }
   .order-total {
     border-top-color: #e2e8f0;
     color: #0f172a;
   }
-  .total-value { color: #16a34a; }
+  .total-value {
+    color: #16a34a;
+  }
 
   // Timing
-  .timing-section { background: #f8fafc; }
-  .timing-label { color: #94a3b8; }
-  .timing-value { color: #475569; }
+  .timing-section {
+    background: #f8fafc;
+  }
+  .timing-label {
+    color: #94a3b8;
+  }
+  .timing-value {
+    color: #475569;
+  }
 
   // Tracking indicator
   .tracking-section {
     background: #f0fdfa;
     border-color: #99f6e4;
   }
-  .tracking-label { color: #0d9488; }
-  .tracking-coords { color: #0f766e; }
-  .tracking-error { color: #d97706; }
+  .tracking-label {
+    color: #0d9488;
+  }
+  .tracking-coords {
+    color: #0f766e;
+  }
+  .tracking-error {
+    color: #d97706;
+  }
 
   // Confirm dialog
   .confirm-dialog {
     background: #ffffff !important;
     border: 1px solid #e2e8f0;
   }
-  .confirm-title { color: #0f172a; }
-  .confirm-sub { color: #64748b; b { color: #334155; } }
-  .confirm-row { color: #475569; }
-  .confirm-amount { color: #16a34a; }
+  .confirm-title {
+    color: #0f172a;
+  }
+  .confirm-sub {
+    color: #64748b;
+    b {
+      color: #334155;
+    }
+  }
+  .confirm-row {
+    color: #475569;
+  }
+  .confirm-amount {
+    color: #16a34a;
+  }
 }
-
+</style>

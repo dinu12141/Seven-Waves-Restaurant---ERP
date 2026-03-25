@@ -98,6 +98,16 @@
           <template v-slot:body-cell-employee="props">
             <q-td :props="props">
               <div class="text-weight-bold">{{ props.row.employees?.full_name || '—' }}</div>
+              <div v-if="props.row.late_minutes > 0" class="text-caption text-orange">
+                <q-icon name="schedule" size="12px" /> {{ props.row.late_minutes }} min late
+              </div>
+              <div v-if="props.row.days_absent > 0" class="text-caption text-red">
+                <q-icon name="event_busy" size="12px" /> {{ props.row.days_absent }} absent
+              </div>
+              <div v-if="props.row.paid_leave_days > 0" class="text-caption text-blue">
+                <q-icon name="beach_access" size="12px" /> {{ props.row.paid_leave_days }}d paid
+                leave
+              </div>
             </q-td>
           </template>
           <template v-slot:body-cell-net_pay="props">
@@ -184,6 +194,27 @@ const payslipColumns = [
     align: 'right',
     field: 'total_allowances',
     format: (v) => `${formatCurrency(v)}`,
+  },
+  {
+    name: 'late_deduction',
+    label: 'Late Deduct',
+    align: 'right',
+    field: 'late_deduction',
+    format: (v) => (v > 0 ? `(${formatCurrency(v)})` : '—'),
+  },
+  {
+    name: 'short_leave_deduction',
+    label: 'Short Leave',
+    align: 'right',
+    field: 'short_leave_deduction',
+    format: (v) => (v > 0 ? `(${formatCurrency(v)})` : '—'),
+  },
+  {
+    name: 'paid_leave_days',
+    label: 'Paid Leave',
+    align: 'center',
+    field: 'paid_leave_days',
+    format: (v) => (v > 0 ? `${v}d` : '—'),
   },
   {
     name: 'total_deductions',

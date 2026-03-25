@@ -6,7 +6,6 @@
       breadcrumbs="Human Resources / Commission Packages"
     />
 
-    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn color="primary" icon="add" label="Add Commission Package" @click="openPkg()" no-caps />
       <q-space />

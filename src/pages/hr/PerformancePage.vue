@@ -1,12 +1,7 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Performance"
-      breadcrumbs="Human Resources / Performance"
-    />
+    <ERPToolbar moduleName="hr" title="Performance" breadcrumbs="Human Resources / Performance" />
 
-    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn color="primary" icon="add" label="New Evaluation" @click="openEval()" no-caps />
       <q-space />

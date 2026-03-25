@@ -29,19 +29,35 @@
 
       <!-- Pending Actions -->
       <div class="col-12 col-md-4">
-        <q-card class="erp-dashboard-panel shadow-1 column full-height" style="background: var(--erp-bg-card); color: var(--erp-text-primary);">
+        <q-card
+          class="erp-dashboard-panel shadow-1 column full-height"
+          style="background: var(--erp-bg-card); color: var(--erp-text-primary)"
+        >
           <q-card-section class="row items-center justify-between q-pb-none">
             <div class="text-h6 text-subtitle1 text-weight-bold">Pending Actions</div>
           </q-card-section>
           <q-card-section class="col q-pt-sm">
             <q-list class="erp-activity-list" padding>
-              <q-item v-for="action in pendingActions" :key="action.id" class="q-pa-sm erp-activity-item">
+              <q-item
+                v-for="action in pendingActions"
+                :key="action.id"
+                class="q-pa-sm erp-activity-item"
+              >
                 <q-item-section avatar top>
-                  <q-avatar size="32px" :color="action.type === 'kitchen' ? 'orange-8' : 'blue-8'" text-color="white" :icon="action.icon" />
+                  <q-avatar
+                    size="32px"
+                    :color="action.type === 'kitchen' ? 'orange-8' : 'blue-8'"
+                    text-color="white"
+                    :icon="action.icon"
+                  />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-body2 text-weight-medium">{{ action.title }}</q-item-label>
-                  <q-item-label caption style="color: var(--erp-text-muted)">{{ action.desc }}</q-item-label>
+                  <q-item-label class="text-body2 text-weight-medium">{{
+                    action.title
+                  }}</q-item-label>
+                  <q-item-label caption style="color: var(--erp-text-muted)">{{
+                    action.desc
+                  }}</q-item-label>
                 </q-item-section>
               </q-item>
               <div v-if="pendingActions.length === 0" class="text-grey-6 text-center q-pa-md">
@@ -70,7 +86,13 @@ let timer = null
 
 const kpis = ref([
   { title: 'Active Orders', value: '0', icon: 'receipt_long', color: 'blue', isCurrency: false },
-  { title: 'Pending Waiter Actions', value: '0', icon: 'room_service', color: 'orange', isCurrency: false },
+  {
+    title: 'Pending Waiter Actions',
+    value: '0',
+    icon: 'room_service',
+    color: 'orange',
+    isCurrency: false,
+  },
   { title: 'Kitchen Queue', value: '0', icon: 'soup_kitchen', color: 'red', isCurrency: false },
   { title: 'Cashier Activity', value: '0', icon: 'local_atm', color: 'green', isCurrency: true },
   { title: 'Table Occupancy', value: '0%', icon: 'deck', color: 'purple', isCurrency: false },
@@ -93,15 +115,30 @@ const fetchData = async () => {
     kpis.value[5].value = '45'
 
     pendingActions.value = [
-      { id: 1, title: 'Order #1042 Ready', desc: 'Table 4 needs serving', icon: 'room_service', type: 'waiter' },
-      { id: 2, title: 'Kitchen Delay', desc: 'Order #1039 exceeds prep time', icon: 'timer', type: 'kitchen' }
+      {
+        id: 1,
+        title: 'Order #1042 Ready',
+        desc: 'Table 4 needs serving',
+        icon: 'room_service',
+        type: 'waiter',
+      },
+      {
+        id: 2,
+        title: 'Kitchen Delay',
+        desc: 'Order #1039 exceeds prep time',
+        icon: 'timer',
+        type: 'kitchen',
+      },
     ]
 
     orderSeries.value = [{ name: 'Orders', data: [5, 8, 3, 2, 1] }]
     orderOptions.value = {
       chart: { type: 'bar', toolbar: { show: false }, background: 'transparent' },
       theme: { mode: isDark.value ? 'dark' : 'light' },
-      xaxis: { categories: ['Draft', 'Placed', 'Preparing', 'Ready', 'Served'], labels: { style: { colors: '#9ca3af' } } },
+      xaxis: {
+        categories: ['Draft', 'Placed', 'Preparing', 'Ready', 'Served'],
+        labels: { style: { colors: '#9ca3af' } },
+      },
       yaxis: { labels: { style: { colors: '#9ca3af' } } },
       colors: ['#3b82f6'],
       grid: { borderColor: isDark.value ? '#374151' : '#e5e7eb', strokeDashArray: 4 },

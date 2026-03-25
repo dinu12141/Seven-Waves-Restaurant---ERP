@@ -29,47 +29,28 @@
                 <th class="acm-th-corner" rowspan="2">
                   <span class="acm-corner-label">Role</span>
                 </th>
-                <th :colspan="matrixModules.length" class="acm-th-group">
-                  Console Section
-                </th>
+                <th :colspan="matrixModules.length" class="acm-th-group">Console Section</th>
               </tr>
               <tr>
-                <th
-                  v-for="mod in matrixModules"
-                  :key="mod.key"
-                  class="acm-th-module"
-                >
+                <th v-for="mod in matrixModules" :key="mod.key" class="acm-th-module">
                   {{ mod.label }}
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="role in matrixRoles"
-                :key="role.key"
-                class="acm-row"
-              >
+              <tr v-for="role in matrixRoles" :key="role.key" class="acm-row">
                 <td class="acm-td-role">
                   <div class="acm-role-name">{{ role.label }}</div>
                   <div v-if="role.caption" class="acm-role-caption">{{ role.caption }}</div>
                 </td>
-                <td
-                  v-for="mod in matrixModules"
-                  :key="mod.key"
-                  class="acm-td-access"
-                >
+                <td v-for="mod in matrixModules" :key="mod.key" class="acm-td-access">
                   <q-icon
                     v-if="hasModuleAccess(role.key, mod.key)"
                     name="check_circle"
                     size="20px"
                     class="acm-icon-allow"
                   />
-                  <q-icon
-                    v-else
-                    name="cancel"
-                    size="20px"
-                    class="acm-icon-deny"
-                  />
+                  <q-icon v-else name="cancel" size="20px" class="acm-icon-deny" />
                 </td>
               </tr>
             </tbody>
@@ -177,9 +158,7 @@
       <q-card class="acm-dialog-card">
         <q-toolbar class="bg-primary text-white sticky-top">
           <q-icon name="security" size="24px" class="q-mr-sm" />
-          <q-toolbar-title>
-            Manage Access — {{ selectedUser?.full_name }}
-          </q-toolbar-title>
+          <q-toolbar-title> Manage Access — {{ selectedUser?.full_name }} </q-toolbar-title>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-toolbar>
 
@@ -197,12 +176,7 @@
                 </div>
                 <div class="row q-col-gutter-xs">
                   <div v-for="role in allRoles" :key="role.id" class="col-6">
-                    <q-item
-                      tag="label"
-                      v-ripple
-                      dense
-                      class="rounded-borders border-grey-3"
-                    >
+                    <q-item tag="label" v-ripple dense class="rounded-borders border-grey-3">
                       <q-item-section avatar>
                         <q-checkbox
                           v-model="form.roleIds"
@@ -223,7 +197,9 @@
             </div>
             <div class="col-12 col-md-7">
               <div
-                v-if="form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')"
+                v-if="
+                  form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')
+                "
                 class="q-pa-md bg-amber-1 rounded-borders text-amber-9 text-weight-bold"
                 style="border: 1px solid #fbbf24"
               >
@@ -233,7 +209,8 @@
               <q-card v-else flat bordered class="q-pa-md">
                 <div class="text-caption text-grey-8">
                   <q-icon name="info" size="14px" class="q-mr-xs" color="blue" />
-                  Select roles on the left to auto-enable default permissions. Then fine-tune individual features in the matrix below.
+                  Select roles on the left to auto-enable default permissions. Then fine-tune
+                  individual features in the matrix below.
                 </div>
               </q-card>
             </div>
@@ -267,7 +244,12 @@
                     <tr class="acm-et-section-row">
                       <td class="acm-et-section-cell" :rowspan="section.perms.length + 1">
                         <div class="row items-center no-wrap">
-                          <q-icon :name="section.icon" size="18px" class="q-mr-xs" :color="sectionHasAnyAccess(section) ? 'primary' : 'grey-5'" />
+                          <q-icon
+                            :name="section.icon"
+                            size="18px"
+                            class="q-mr-xs"
+                            :color="sectionHasAnyAccess(section) ? 'primary' : 'grey-5'"
+                          />
                           <div>
                             <div class="acm-et-section-name">{{ section.label }}</div>
                           </div>
@@ -275,7 +257,9 @@
                       </td>
                       <td class="acm-et-toggle-cell" colspan="2">
                         <div class="row items-center justify-between">
-                          <span class="text-caption text-grey-7 text-italic">Toggle all features in this module</span>
+                          <span class="text-caption text-grey-7 text-italic"
+                            >Toggle all features in this module</span
+                          >
                           <q-toggle
                             :model-value="sectionHasAllAccess(section)"
                             @update:model-value="toggleSection(section, $event)"
@@ -286,11 +270,7 @@
                       </td>
                     </tr>
                     <!-- Permission Feature Rows -->
-                    <tr
-                      v-for="perm in section.perms"
-                      :key="perm.code"
-                      class="acm-et-feature-row"
-                    >
+                    <tr v-for="perm in section.perms" :key="perm.code" class="acm-et-feature-row">
                       <td class="acm-et-feature-cell">
                         <div class="acm-et-feature-name">{{ perm.description || perm.code }}</div>
                         <div class="acm-et-feature-code">{{ perm.code }}</div>
@@ -309,7 +289,7 @@
                   <!-- Empty state -->
                   <tr v-if="dialogSections.length === 0">
                     <td colspan="3" class="text-center q-pa-lg text-grey-5">
-                      <q-icon name="lock" size="32px" class="q-mb-sm" /><br>
+                      <q-icon name="lock" size="32px" class="q-mb-sm" /><br />
                       No permissions defined in the system yet.
                     </td>
                   </tr>
@@ -401,14 +381,37 @@ const matrixRoles = [
 ]
 
 const roleModuleMap = {
-  waiter:     ['dashboard', 'orders'],
-  cashier:    ['dashboard', 'pos', 'orders'],
-  kitchen:    ['dashboard', 'kitchen'],
-  inventory:  ['dashboard', 'inventory', 'procurement'],
-  finance:    ['dashboard', 'finance', 'reports'],
-  hr:         ['dashboard', 'hr'],
-  manager:    ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm'],
-  admin:      ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm', 'system'],
+  waiter: ['dashboard', 'orders'],
+  cashier: ['dashboard', 'pos', 'orders'],
+  kitchen: ['dashboard', 'kitchen'],
+  inventory: ['dashboard', 'inventory', 'procurement'],
+  finance: ['dashboard', 'finance', 'reports'],
+  hr: ['dashboard', 'hr'],
+  manager: [
+    'dashboard',
+    'pos',
+    'orders',
+    'kitchen',
+    'inventory',
+    'procurement',
+    'finance',
+    'hr',
+    'reports',
+    'crm',
+  ],
+  admin: [
+    'dashboard',
+    'pos',
+    'orders',
+    'kitchen',
+    'inventory',
+    'procurement',
+    'finance',
+    'hr',
+    'reports',
+    'crm',
+    'system',
+  ],
 }
 
 function hasModuleAccess(roleKey, moduleKey) {
@@ -422,7 +425,12 @@ const sectionConfig = [
   { key: 'pos', label: 'Point of Sale', icon: 'point_of_sale', prefixes: ['pos:', 'cashier:'] },
   { key: 'orders', label: 'Order Management', icon: 'receipt_long', prefixes: ['orders:'] },
   { key: 'kitchen', label: 'Kitchen Display', icon: 'restaurant', prefixes: ['kitchen:'] },
-  { key: 'tables', label: 'Table Management', icon: 'table_restaurant', prefixes: ['tables:', 'waiter:'] },
+  {
+    key: 'tables',
+    label: 'Table Management',
+    icon: 'table_restaurant',
+    prefixes: ['tables:', 'waiter:'],
+  },
   { key: 'inventory', label: 'Inventory', icon: 'inventory_2', prefixes: ['inventory:'] },
   { key: 'procurement', label: 'Procurement', icon: 'local_shipping', prefixes: ['procurement:'] },
   { key: 'finance', label: 'Finance', icon: 'account_balance', prefixes: ['finance:'] },
@@ -448,7 +456,9 @@ function sectionHasAnyAccess(section) {
 }
 
 function sectionHasAllAccess(section) {
-  return section.perms.length > 0 && section.perms.every((p) => form.permissionCodes.includes(p.code))
+  return (
+    section.perms.length > 0 && section.perms.every((p) => form.permissionCodes.includes(p.code))
+  )
 }
 
 function toggleSection(section, val) {
@@ -577,7 +587,7 @@ const editUserAccess = (user) => {
   const savedPerms = new Set(user.user_permissions?.map((up) => up.permission_code) || [])
 
   // Auto-populate based on current roles
-  for (const ur of (user.user_roles || [])) {
+  for (const ur of user.user_roles || []) {
     const roleName = ur.roles?.name?.toLowerCase()
     if (!roleName) continue
 

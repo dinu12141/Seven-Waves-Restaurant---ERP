@@ -16,7 +16,9 @@
           <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
           <div class="sap-header__title">POS Sales Report By Item</div>
           <div class="sap-header__meta">
-            <span>Location: <strong>{{ branchName }}</strong></span>
+            <span
+              >Location: <strong>{{ branchName }}</strong></span
+            >
             <span class="q-ml-lg">{{ reportDateRange }}</span>
           </div>
         </div>
@@ -31,7 +33,8 @@
         :rows="displayRows"
         :columns="columns"
         row-key="__rowKey"
-        flat dense
+        flat
+        dense
         class="sap-table"
         :loading="loading"
         :rows-per-page-options="[0]"
@@ -65,10 +68,14 @@
             <q-td />
             <q-td />
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-red">{{
+              fmtN(props.row.disc_amt)
+            }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.amount) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{
+              fmtN(props.row.amt_with_tax)
+            }}</q-td>
             <q-td />
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.cost) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ props.row.gp_pct }}%</q-td>
@@ -81,11 +88,17 @@
             <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.quantity }}</q-td>
             <q-td />
             <q-td />
-            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{
+              fmtN(props.row.gross_amt)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-red">{{
+              fmtN(props.row.disc_amt)
+            }}</q-td>
             <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.amount) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{
+              fmtN(props.row.amt_with_tax)
+            }}</q-td>
             <q-td />
             <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.cost) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.gp_pct }}%</q-td>
@@ -94,22 +107,48 @@
           <!-- Normal item row -->
           <q-tr v-else :props="props" class="sap-table__row">
             <q-td key="description" :props="props">{{ props.row.description }}</q-td>
-            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{ props.row.item_code }}</q-td>
-            <q-td key="quantity" :props="props" class="sap-table__td--num">{{ props.row.quantity }}</q-td>
-            <q-td key="net_price" :props="props" class="sap-table__td--num">{{ fmtN(props.row.net_price) }}</q-td>
-            <q-td key="cur_price" :props="props" class="sap-table__td--num">{{ fmtN(props.row.cur_price) }}</q-td>
-            <q-td key="gross_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.gross_amt) }}</q-td>
-            <q-td key="disc_amt" :props="props" class="sap-table__td--num text-red">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td key="amount" :props="props" class="sap-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td key="amt_with_tax" :props="props" class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amt_with_tax) }}</q-td>
-            <q-td key="del_cost" :props="props" class="sap-table__td--num">{{ fmtN(props.row.del_cost) }}</q-td>
-            <q-td key="cost" :props="props" class="sap-table__td--num">{{ fmtN(props.row.cost) }}</q-td>
+            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{
+              props.row.item_code
+            }}</q-td>
+            <q-td key="quantity" :props="props" class="sap-table__td--num">{{
+              props.row.quantity
+            }}</q-td>
+            <q-td key="net_price" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.net_price)
+            }}</q-td>
+            <q-td key="cur_price" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.cur_price)
+            }}</q-td>
+            <q-td key="gross_amt" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.gross_amt)
+            }}</q-td>
+            <q-td key="disc_amt" :props="props" class="sap-table__td--num text-red">{{
+              fmtN(props.row.disc_amt)
+            }}</q-td>
+            <q-td key="amount" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.amount)
+            }}</q-td>
+            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.tax_amt)
+            }}</q-td>
+            <q-td
+              key="amt_with_tax"
+              :props="props"
+              class="sap-table__td--num text-weight-bold text-green"
+              >{{ fmtN(props.row.amt_with_tax) }}</q-td
+            >
+            <q-td key="del_cost" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.del_cost)
+            }}</q-td>
+            <q-td key="cost" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.cost)
+            }}</q-td>
             <q-td key="gp_pct" :props="props" class="sap-table__td--num">
               <q-badge
                 :color="props.row.gp_pct > 30 ? 'green' : props.row.gp_pct > 15 ? 'orange' : 'red'"
                 class="sap-gp-badge"
-              >{{ props.row.gp_pct }}%</q-badge>
+                >{{ props.row.gp_pct }}%</q-badge
+              >
             </q-td>
           </q-tr>
         </template>
@@ -149,23 +188,63 @@ const currentFilters = ref({})
 const columns = [
   { name: 'description', label: 'Description', field: 'description', align: 'left' },
   { name: 'item_code', label: 'Code', field: 'item_code', align: 'left', style: 'width:60px' },
-  { name: 'quantity', label: 'Quantity', field: 'quantity', align: 'right', style: 'width:60px', sortable: true },
-  { name: 'net_price', label: 'Net Price', field: 'net_price', align: 'right', style: 'width:80px' },
-  { name: 'cur_price', label: 'Cur Price', field: 'cur_price', align: 'right', style: 'width:80px' },
-  { name: 'gross_amt', label: 'Gross Amt', field: 'gross_amt', align: 'right', style: 'width:90px', sortable: true },
+  {
+    name: 'quantity',
+    label: 'Quantity',
+    field: 'quantity',
+    align: 'right',
+    style: 'width:60px',
+    sortable: true,
+  },
+  {
+    name: 'net_price',
+    label: 'Net Price',
+    field: 'net_price',
+    align: 'right',
+    style: 'width:80px',
+  },
+  {
+    name: 'cur_price',
+    label: 'Cur Price',
+    field: 'cur_price',
+    align: 'right',
+    style: 'width:80px',
+  },
+  {
+    name: 'gross_amt',
+    label: 'Gross Amt',
+    field: 'gross_amt',
+    align: 'right',
+    style: 'width:90px',
+    sortable: true,
+  },
   { name: 'disc_amt', label: 'Disc Amt', field: 'disc_amt', align: 'right', style: 'width:80px' },
   { name: 'amount', label: 'Amount', field: 'amount', align: 'right', style: 'width:90px' },
   { name: 'tax_amt', label: 'TAS Amt', field: 'tax_amt', align: 'right', style: 'width:80px' },
-  { name: 'amt_with_tax', label: 'Amt with TAS', field: 'amt_with_tax', align: 'right', style: 'width:100px', sortable: true },
+  {
+    name: 'amt_with_tax',
+    label: 'Amt with TAS',
+    field: 'amt_with_tax',
+    align: 'right',
+    style: 'width:100px',
+    sortable: true,
+  },
   { name: 'del_cost', label: 'Del.Cost', field: 'del_cost', align: 'right', style: 'width:70px' },
   { name: 'cost', label: 'Cost', field: 'cost', align: 'right', style: 'width:80px' },
-  { name: 'gp_pct', label: 'GP %', field: 'gp_pct', align: 'right', style: 'width:55px', sortable: true },
+  {
+    name: 'gp_pct',
+    label: 'GP %',
+    field: 'gp_pct',
+    align: 'right',
+    style: 'width:55px',
+    sortable: true,
+  },
 ]
 
 // ── Helpers ────────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
 const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
 )
 const reportDateRange = computed(() => {
   const f = currentFilters.value
@@ -175,7 +254,11 @@ const reportDateRange = computed(() => {
 
 function fmtDate(d) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function fmtN(val) {
@@ -196,8 +279,13 @@ const displayRows = computed(() => {
   }
 
   const result = []
-  let grandQty = 0, grandGross = 0, grandDisc = 0, grandAmt = 0
-  let grandTax = 0, grandAmtTax = 0, grandCost = 0
+  let grandQty = 0,
+    grandGross = 0,
+    grandDisc = 0,
+    grandAmt = 0
+  let grandTax = 0,
+    grandAmtTax = 0,
+    grandCost = 0
 
   const sortedGroups = Object.keys(groups).sort()
 
@@ -212,8 +300,13 @@ const displayRows = computed(() => {
     })
 
     // Item rows
-    let grpQty = 0, grpGross = 0, grpDisc = 0, grpAmt = 0
-    let grpTax = 0, grpAmtTax = 0, grpCost = 0
+    let grpQty = 0,
+      grpGross = 0,
+      grpDisc = 0,
+      grpAmt = 0
+    let grpTax = 0,
+      grpAmtTax = 0,
+      grpCost = 0
 
     for (const item of items) {
       const qty = Number(item.quantity || 0)
@@ -228,8 +321,13 @@ const displayRows = computed(() => {
       const delCost = Number(item.del_cost || 0)
       const gpPct = amtWithTax > 0 ? (((amtWithTax - cost) / amtWithTax) * 100).toFixed(0) : 0
 
-      grpQty += qty; grpGross += grossAmt; grpDisc += discAmt
-      grpAmt += amount; grpTax += taxAmt; grpAmtTax += amtWithTax; grpCost += cost
+      grpQty += qty
+      grpGross += grossAmt
+      grpDisc += discAmt
+      grpAmt += amount
+      grpTax += taxAmt
+      grpAmtTax += amtWithTax
+      grpCost += cost
 
       result.push({
         __type: 'item',
@@ -265,8 +363,13 @@ const displayRows = computed(() => {
       gp_pct: grpGP,
     })
 
-    grandQty += grpQty; grandGross += grpGross; grandDisc += grpDisc
-    grandAmt += grpAmt; grandTax += grpTax; grandAmtTax += grpAmtTax; grandCost += grpCost
+    grandQty += grpQty
+    grandGross += grpGross
+    grandDisc += grpDisc
+    grandAmt += grpAmt
+    grandTax += grpTax
+    grandAmtTax += grpAmtTax
+    grandCost += grpCost
   }
 
   // Grand total row
@@ -289,13 +392,23 @@ const displayRows = computed(() => {
 
 // ── KPIs ──────────────────────────────────────────────────
 const kpiData = computed(() => {
-  const gt = displayRows.value.find(r => r.__type === 'grand-total')
+  const gt = displayRows.value.find((r) => r.__type === 'grand-total')
   if (!gt) return []
   return [
     { label: 'Total Items Sold', value: gt.quantity, icon: 'shopping_cart', color: 'blue' },
     { label: 'Gross Sales', value: `LKR ${fmtN(gt.gross_amt)}`, icon: 'payments', color: 'green' },
-    { label: 'Total Discounts', value: `LKR ${fmtN(gt.disc_amt)}`, icon: 'local_offer', color: 'amber' },
-    { label: 'Net Revenue', value: `LKR ${fmtN(gt.amt_with_tax)}`, icon: 'trending_up', color: 'teal' },
+    {
+      label: 'Total Discounts',
+      value: `LKR ${fmtN(gt.disc_amt)}`,
+      icon: 'local_offer',
+      color: 'amber',
+    },
+    {
+      label: 'Net Revenue',
+      value: `LKR ${fmtN(gt.amt_with_tax)}`,
+      icon: 'trending_up',
+      color: 'teal',
+    },
     { label: 'GP %', value: `${gt.gp_pct}%`, icon: 'pie_chart', color: 'purple' },
   ]
 })
@@ -306,9 +419,7 @@ async function loadData(filters = {}) {
   currentFilters.value = filters
   try {
     // Query order_items with menu_items and item_categories
-    let query = supabase
-      .from('order_items')
-      .select(`
+    let query = supabase.from('order_items').select(`
         id,
         menu_item_id,
         quantity,
@@ -356,7 +467,7 @@ async function loadData(filters = {}) {
 
     // Aggregate by menu item + category
     const itemMap = {}
-    for (const oi of (data || [])) {
+    for (const oi of data || []) {
       const order = oi.orders
       if (!order || order.status === 'cancelled') continue
 
@@ -396,9 +507,9 @@ async function loadData(filters = {}) {
       itemMap[key].quantity += qty
       itemMap[key].gross_amt += itemTotal
       itemMap[key].disc_amt += discShare
-      itemMap[key].amount += (itemTotal - discShare)
+      itemMap[key].amount += itemTotal - discShare
       itemMap[key].tax_amt += taxShare
-      itemMap[key].amt_with_tax += (itemTotal - discShare + taxShare)
+      itemMap[key].amt_with_tax += itemTotal - discShare + taxShare
       itemMap[key].del_cost += deliveryShare
       // Cost would come from inventory/recipe costing — for now use 0
       // itemMap[key].cost += ...
@@ -417,11 +528,11 @@ async function loadData(filters = {}) {
 
 // ── Export ─────────────────────────────────────────────────
 function exportCSV() {
-  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  const exportRows = displayRows.value.filter((r) => r.__type === 'item')
   exportTableToCSV(columns, exportRows, 'item_wise_sales')
 }
 function exportExcel() {
-  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  const exportRows = displayRows.value.filter((r) => r.__type === 'item')
   exportTableToExcel(columns, exportRows, 'item_wise_sales')
 }
 </script>

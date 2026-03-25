@@ -1,20 +1,23 @@
 <template>
   <q-page class="wr-page">
-
     <!-- ── Page Header ────────────────────────────────────────── -->
     <div class="wr-header">
       <div class="wr-header__left">
         <div class="wr-header__breadcrumb">
           <span class="wr-header__breadcrumb-item">WEBSITE</span>
           <span class="wr-header__breadcrumb-sep">/</span>
-          <span class="wr-header__breadcrumb-item wr-header__breadcrumb-item--active">Reservations</span>
+          <span class="wr-header__breadcrumb-item wr-header__breadcrumb-item--active"
+            >Reservations</span
+          >
         </div>
         <h1 class="wr-header__title">Website Reservations</h1>
         <p class="wr-header__subtitle">Manage table reservation requests from the website</p>
       </div>
       <div class="wr-header__right">
         <q-btn
-          unelevated no-caps dense
+          unelevated
+          no-caps
+          dense
           icon="refresh"
           label="Refresh"
           class="wr-btn wr-btn--ghost"
@@ -34,14 +37,18 @@
         </div>
       </div>
       <div class="wr-kpi wr-kpi--orange">
-        <div class="wr-kpi__icon wr-kpi__icon--warning"><q-icon name="pending_actions" size="18px" /></div>
+        <div class="wr-kpi__icon wr-kpi__icon--warning">
+          <q-icon name="pending_actions" size="18px" />
+        </div>
         <div class="wr-kpi__body">
           <div class="wr-kpi__value">{{ pendingCount }}</div>
           <div class="wr-kpi__label">Pending</div>
         </div>
       </div>
       <div class="wr-kpi wr-kpi--green">
-        <div class="wr-kpi__icon wr-kpi__icon--success"><q-icon name="check_circle" size="18px" /></div>
+        <div class="wr-kpi__icon wr-kpi__icon--success">
+          <q-icon name="check_circle" size="18px" />
+        </div>
         <div class="wr-kpi__body">
           <div class="wr-kpi__value">{{ confirmedCount }}</div>
           <div class="wr-kpi__label">Confirmed</div>
@@ -60,7 +67,9 @@
     <div class="wr-filter-bar">
       <q-input
         v-model="search"
-        dense outlined clearable
+        dense
+        outlined
+        clearable
         placeholder="Search by name, phone, occasion..."
         class="wr-filter-input"
       >
@@ -71,13 +80,18 @@
       <q-select
         v-model="statusFilter"
         :options="statusOptions"
-        dense outlined emit-value map-options
+        dense
+        outlined
+        emit-value
+        map-options
         class="wr-filter-select"
         placeholder="All statuses"
       />
       <q-input
         v-model="dateFilter"
-        dense outlined clearable
+        dense
+        outlined
+        clearable
         type="date"
         class="wr-filter-date"
         label="Filter Date"
@@ -95,7 +109,8 @@
         :rows="filteredReservations"
         :columns="columns"
         row-key="id"
-        flat dense
+        flat
+        dense
         :loading="loading"
         :rows-per-page-options="[15, 30, 50]"
         :pagination="{ rowsPerPage: 15 }"
@@ -113,10 +128,18 @@
 
         <!-- Body Rows -->
         <template #body="props">
-          <q-tr :props="props" class="wr-table__row" :class="{ 'wr-table__row--pending': props.row.status === 'pending' }">
+          <q-tr
+            :props="props"
+            class="wr-table__row"
+            :class="{ 'wr-table__row--pending': props.row.status === 'pending' }"
+          >
             <q-td key="name" :props="props">
               <div class="wr-cell-name">
-                <q-avatar size="28px" class="wr-cell-avatar" :class="props.row.status === 'pending' ? 'wr-cell-avatar--pending' : ''">
+                <q-avatar
+                  size="28px"
+                  class="wr-cell-avatar"
+                  :class="props.row.status === 'pending' ? 'wr-cell-avatar--pending' : ''"
+                >
                   {{ (props.row.name || 'U')[0].toUpperCase() }}
                 </q-avatar>
                 <div>
@@ -150,19 +173,62 @@
             </q-td>
             <q-td key="actions" :props="props">
               <div class="wr-actions">
-                <q-btn flat round dense size="sm" icon="visibility" class="wr-action-btn" @click="viewReservation(props.row)">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="visibility"
+                  class="wr-action-btn"
+                  @click="viewReservation(props.row)"
+                >
                   <q-tooltip>View Details</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="check_circle" class="wr-action-btn wr-action-btn--success" v-if="props.row.status === 'pending'" @click="updateStatus(props.row, 'confirmed')">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="check_circle"
+                  class="wr-action-btn wr-action-btn--success"
+                  v-if="props.row.status === 'pending'"
+                  @click="updateStatus(props.row, 'confirmed')"
+                >
                   <q-tooltip>Confirm</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="cancel" class="wr-action-btn wr-action-btn--danger" v-if="props.row.status === 'pending' || props.row.status === 'confirmed'" @click="updateStatus(props.row, 'cancelled')">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="cancel"
+                  class="wr-action-btn wr-action-btn--danger"
+                  v-if="props.row.status === 'pending' || props.row.status === 'confirmed'"
+                  @click="updateStatus(props.row, 'cancelled')"
+                >
                   <q-tooltip>Cancel</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="event_available" class="wr-action-btn wr-action-btn--info" v-if="props.row.status === 'confirmed'" @click="updateStatus(props.row, 'completed')">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="event_available"
+                  class="wr-action-btn wr-action-btn--info"
+                  v-if="props.row.status === 'confirmed'"
+                  @click="updateStatus(props.row, 'completed')"
+                >
                   <q-tooltip>Mark Completed</q-tooltip>
                 </q-btn>
-                <q-btn flat round dense size="sm" icon="delete_outline" class="wr-action-btn wr-action-btn--danger" @click="deleteReservation(props.row)">
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="delete_outline"
+                  class="wr-action-btn wr-action-btn--danger"
+                  @click="deleteReservation(props.row)"
+                >
                   <q-tooltip>Delete</q-tooltip>
                 </q-btn>
               </div>
@@ -210,11 +276,15 @@
           <div class="wr-dialog__meta-grid">
             <div class="wr-dialog__meta-item">
               <span class="wr-dialog__meta-label">Date</span>
-              <span class="wr-dialog__meta-value">{{ selected ? formatDate(selected.reservation_date) : '' }}</span>
+              <span class="wr-dialog__meta-value">{{
+                selected ? formatDate(selected.reservation_date) : ''
+              }}</span>
             </div>
             <div class="wr-dialog__meta-item">
               <span class="wr-dialog__meta-label">Time</span>
-              <span class="wr-dialog__meta-value">{{ selected ? formatTime(selected.reservation_time) : '' }}</span>
+              <span class="wr-dialog__meta-value">{{
+                selected ? formatTime(selected.reservation_time) : ''
+              }}</span>
             </div>
             <div class="wr-dialog__meta-item">
               <span class="wr-dialog__meta-label">Guests</span>
@@ -222,7 +292,9 @@
             </div>
             <div class="wr-dialog__meta-item">
               <span class="wr-dialog__meta-label">Occasion</span>
-              <span class="wr-dialog__meta-value">{{ selected ? formatOccasion(selected.occasion) : '' }}</span>
+              <span class="wr-dialog__meta-value">{{
+                selected ? formatOccasion(selected.occasion) : ''
+              }}</span>
             </div>
             <div class="wr-dialog__meta-item">
               <span class="wr-dialog__meta-label">Email</span>
@@ -241,9 +313,11 @@
           <div class="wr-dialog__message-label">Special Requests / Message</div>
           <div class="wr-dialog__message">{{ selected?.message || 'No special requests' }}</div>
 
-          <div class="wr-dialog__meta-item" style="margin-top: 16px;">
+          <div class="wr-dialog__meta-item" style="margin-top: 16px">
             <span class="wr-dialog__meta-label">Received</span>
-            <span class="wr-dialog__meta-value">{{ selected ? formatDateTime(selected.created_at) : '' }}</span>
+            <span class="wr-dialog__meta-value">{{
+              selected ? formatDateTime(selected.created_at) : ''
+            }}</span>
           </div>
         </div>
 
@@ -252,7 +326,8 @@
           <q-btn flat no-caps label="Close" class="wr-btn wr-btn--ghost" v-close-popup />
           <q-btn
             v-if="selected?.status === 'pending'"
-            unelevated no-caps
+            unelevated
+            no-caps
             icon="check_circle"
             label="Confirm Reservation"
             class="wr-btn wr-btn--success"
@@ -260,7 +335,8 @@
           />
           <q-btn
             v-if="selected?.status === 'pending' || selected?.status === 'confirmed'"
-            unelevated no-caps
+            unelevated
+            no-caps
             icon="cancel"
             label="Cancel Reservation"
             class="wr-btn wr-btn--danger"
@@ -268,7 +344,8 @@
           />
           <q-btn
             v-if="selected?.status === 'confirmed'"
-            unelevated no-caps
+            unelevated
+            no-caps
             icon="event_available"
             label="Mark Completed"
             class="wr-btn wr-btn--info"
@@ -277,7 +354,6 @@
         </div>
       </div>
     </q-dialog>
-
   </q-page>
 </template>
 
@@ -307,8 +383,20 @@ const statusOptions = [
 
 const columns = [
   { name: 'name', label: 'Guest', field: 'name', align: 'left', sortable: true },
-  { name: 'reservation_date', label: 'Date', field: 'reservation_date', align: 'left', sortable: true },
-  { name: 'reservation_time', label: 'Time', field: 'reservation_time', align: 'left', sortable: true },
+  {
+    name: 'reservation_date',
+    label: 'Date',
+    field: 'reservation_date',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'reservation_time',
+    label: 'Time',
+    field: 'reservation_time',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'guests', label: 'Guests', field: 'guests', align: 'center', sortable: true },
   { name: 'occasion', label: 'Occasion', field: 'occasion', align: 'left', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
@@ -318,26 +406,31 @@ const columns = [
 
 // ── KPIs ──────────────────────────────────────────────────────────
 const totalCount = computed(() => reservations.value.length)
-const pendingCount = computed(() => reservations.value.filter(r => r.status === 'pending').length)
-const confirmedCount = computed(() => reservations.value.filter(r => r.status === 'confirmed').length)
-const cancelledCount = computed(() => reservations.value.filter(r => r.status === 'cancelled').length)
+const pendingCount = computed(() => reservations.value.filter((r) => r.status === 'pending').length)
+const confirmedCount = computed(
+  () => reservations.value.filter((r) => r.status === 'confirmed').length,
+)
+const cancelledCount = computed(
+  () => reservations.value.filter((r) => r.status === 'cancelled').length,
+)
 
 // ── Filtered reservations ─────────────────────────────────────────
 const filteredReservations = computed(() => {
   let result = reservations.value
   if (statusFilter.value) {
-    result = result.filter(r => r.status === statusFilter.value)
+    result = result.filter((r) => r.status === statusFilter.value)
   }
   if (dateFilter.value) {
-    result = result.filter(r => r.reservation_date === dateFilter.value)
+    result = result.filter((r) => r.reservation_date === dateFilter.value)
   }
   if (search.value) {
     const q = search.value.toLowerCase()
-    result = result.filter(r =>
-      (r.name || '').toLowerCase().includes(q) ||
-      (r.phone || '').toLowerCase().includes(q) ||
-      (r.email || '').toLowerCase().includes(q) ||
-      (r.occasion || '').toLowerCase().includes(q)
+    result = result.filter(
+      (r) =>
+        (r.name || '').toLowerCase().includes(q) ||
+        (r.phone || '').toLowerCase().includes(q) ||
+        (r.email || '').toLowerCase().includes(q) ||
+        (r.occasion || '').toLowerCase().includes(q),
     )
   }
   return result
@@ -377,13 +470,18 @@ const updateStatus = async (row, newStatus) => {
 
     if (error) throw error
 
-    const index = reservations.value.findIndex(r => r.id === row.id)
+    const index = reservations.value.findIndex((r) => r.id === row.id)
     if (index !== -1) reservations.value[index].status = newStatus
     if (selected.value && selected.value.id === row.id) {
       selected.value.status = newStatus
     }
 
-    const labels = { confirmed: 'confirmed', cancelled: 'cancelled', completed: 'completed', pending: 'set to pending' }
+    const labels = {
+      confirmed: 'confirmed',
+      cancelled: 'cancelled',
+      completed: 'completed',
+      pending: 'set to pending',
+    }
     $q.notify({ type: 'positive', message: `Reservation ${labels[newStatus] || newStatus}` })
   } catch (error) {
     console.error('Error updating reservation status:', error)
@@ -399,18 +497,15 @@ const deleteReservation = async (row) => {
     message: `Are you sure you want to delete the reservation from ${row.name}?`,
     cancel: true,
     persistent: true,
-    color: 'negative'
+    color: 'negative',
   }).onOk(async () => {
     try {
       $q.loading.show()
-      const { error } = await supabase
-        .from('website_reservations')
-        .delete()
-        .eq('id', row.id)
+      const { error } = await supabase.from('website_reservations').delete().eq('id', row.id)
 
       if (error) throw error
 
-      reservations.value = reservations.value.filter(r => r.id !== row.id)
+      reservations.value = reservations.value.filter((r) => r.id !== row.id)
       $q.notify({ type: 'positive', message: 'Reservation deleted successfully' })
       if (viewDialog.value && selected.value?.id === row.id) {
         viewDialog.value = false
@@ -453,7 +548,7 @@ const formatOccasion = (occasion) => {
     business: 'Business 💼',
     family: 'Family 👨‍👩‍👧‍👦',
     celebration: 'Celebration 🎉',
-    other: 'Other'
+    other: 'Other',
   }
   return map[occasion] || occasion.charAt(0).toUpperCase() + occasion.slice(1)
 }
@@ -486,7 +581,9 @@ onMounted(() => {
   gap: 16px;
   margin-bottom: var(--erp-spacing-md);
 
-  &__left { flex: 1; }
+  &__left {
+    flex: 1;
+  }
 
   &__breadcrumb {
     display: flex;
@@ -545,22 +642,42 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   border-top: 2px solid transparent;
 
-  &--blue   { border-top-color: var(--erp-primary); }
-  &--orange { border-top-color: #f59e0b; }
-  &--green  { border-top-color: var(--erp-success); }
-  &--red    { border-top-color: var(--erp-danger); }
+  &--blue {
+    border-top-color: var(--erp-primary);
+  }
+  &--orange {
+    border-top-color: #f59e0b;
+  }
+  &--green {
+    border-top-color: var(--erp-success);
+  }
+  &--red {
+    border-top-color: var(--erp-danger);
+  }
 
   &__icon {
-    width: 36px; height: 36px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--erp-radius-md);
     background: var(--erp-primary-subtle);
     color: var(--erp-primary-light);
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 
-    &--warning { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-    &--success { background: var(--erp-success-subtle); color: var(--erp-success); }
-    &--danger  { background: var(--erp-danger-subtle);  color: var(--erp-danger); }
+    &--warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+    }
+    &--success {
+      background: var(--erp-success-subtle);
+      color: var(--erp-success);
+    }
+    &--danger {
+      background: var(--erp-danger-subtle);
+      color: var(--erp-danger);
+    }
   }
   &__value {
     font-size: 20px;
@@ -589,9 +706,18 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   margin-bottom: var(--erp-spacing-md);
 }
-.wr-filter-input { flex: 0 1 320px; font-size: var(--erp-font-size-table); }
-.wr-filter-select { flex: 0 1 180px; font-size: var(--erp-font-size-table); }
-.wr-filter-date { flex: 0 1 180px; font-size: var(--erp-font-size-table); }
+.wr-filter-input {
+  flex: 0 1 320px;
+  font-size: var(--erp-font-size-table);
+}
+.wr-filter-select {
+  flex: 0 1 180px;
+  font-size: var(--erp-font-size-table);
+}
+.wr-filter-date {
+  flex: 0 1 180px;
+  font-size: var(--erp-font-size-table);
+}
 
 .wr-live-badge {
   display: flex;
@@ -603,7 +729,8 @@ onMounted(() => {
   letter-spacing: 0.5px;
 
   &__dot {
-    width: 6px; height: 6px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--erp-success);
     box-shadow: 0 0 6px var(--erp-success);
@@ -611,8 +738,13 @@ onMounted(() => {
   }
 }
 @keyframes wr-live-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* ── Table ─────────────────────────────────────────────────────────── */
@@ -643,9 +775,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--erp-border) !important;
   transition: background 0.12s ease;
 
-  &:hover { background: var(--erp-bg-card-hover) !important; }
+  &:hover {
+    background: var(--erp-bg-card-hover) !important;
+  }
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: var(--erp-font-size-table) !important;
     color: var(--erp-text-primary) !important;
     padding: 10px 14px !important;
@@ -654,7 +789,10 @@ onMounted(() => {
 
   &--pending {
     background: rgba(245, 158, 11, 0.03) !important;
-    td, .q-td { font-weight: var(--erp-font-weight-medium); }
+    td,
+    .q-td {
+      font-weight: var(--erp-font-weight-medium);
+    }
   }
 }
 
@@ -789,10 +927,22 @@ onMounted(() => {
 }
 .wr-action-btn {
   color: var(--erp-text-secondary) !important;
-  &:hover { color: var(--erp-primary) !important; background: var(--erp-primary-subtle) !important; }
-  &--success:hover { color: var(--erp-success) !important; background: var(--erp-success-subtle) !important; }
-  &--danger:hover  { color: var(--erp-danger) !important; background: var(--erp-danger-subtle) !important; }
-  &--info:hover    { color: #2563eb !important; background: rgba(37, 99, 235, 0.08) !important; }
+  &:hover {
+    color: var(--erp-primary) !important;
+    background: var(--erp-primary-subtle) !important;
+  }
+  &--success:hover {
+    color: var(--erp-success) !important;
+    background: var(--erp-success-subtle) !important;
+  }
+  &--danger:hover {
+    color: var(--erp-danger) !important;
+    background: var(--erp-danger-subtle) !important;
+  }
+  &--info:hover {
+    color: #2563eb !important;
+    background: rgba(37, 99, 235, 0.08) !important;
+  }
 }
 
 /* ── Empty State ──────────────────────────────────────────────────── */
@@ -829,7 +979,10 @@ onMounted(() => {
     background: transparent !important;
     border: 1px solid var(--erp-border) !important;
     color: var(--erp-text-secondary) !important;
-    &:hover { background: var(--erp-bg-hover) !important; color: var(--erp-text-primary) !important; }
+    &:hover {
+      background: var(--erp-bg-hover) !important;
+      color: var(--erp-text-primary) !important;
+    }
   }
   &--success {
     background: var(--erp-success) !important;
@@ -946,11 +1099,23 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .wr-kpi-row { grid-template-columns: repeat(2, 1fr); }
-  .wr-filter-bar { flex-wrap: wrap; }
-  .wr-filter-input { flex: 1 1 100%; }
-  .wr-filter-select { flex: 1 1 100%; }
-  .wr-filter-date { flex: 1 1 100%; }
-  .wr-dialog__meta-grid { grid-template-columns: 1fr; }
+  .wr-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .wr-filter-bar {
+    flex-wrap: wrap;
+  }
+  .wr-filter-input {
+    flex: 1 1 100%;
+  }
+  .wr-filter-select {
+    flex: 1 1 100%;
+  }
+  .wr-filter-date {
+    flex: 1 1 100%;
+  }
+  .wr-dialog__meta-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

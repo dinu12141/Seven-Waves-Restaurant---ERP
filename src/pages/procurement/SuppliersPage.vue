@@ -53,14 +53,7 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" align="right">
-          <q-btn
-            flat
-            round
-            color="primary"
-            icon="edit"
-            size="sm"
-            @click="editSupplier(props.row)"
-          >
+          <q-btn flat round color="primary" icon="edit" size="sm" @click="editSupplier(props.row)">
             <q-tooltip>Edit</q-tooltip>
           </q-btn>
           <q-btn
@@ -363,7 +356,7 @@ function deleteSupplierAction(row) {
     message: `Are you sure you want to delete supplier "${row.name}"?`,
     cancel: true,
     persistent: true,
-    color: 'negative'
+    color: 'negative',
   }).onOk(async () => {
     try {
       await deleteSupplier(row.id)

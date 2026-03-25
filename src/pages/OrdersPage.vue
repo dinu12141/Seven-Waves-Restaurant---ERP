@@ -133,7 +133,7 @@
 
             <div class="kanban-scroll">
               <div v-if="column.orders.length === 0" class="kanban-empty">
-                <q-icon name="inbox" size="32px" style="opacity:0.15" />
+                <q-icon name="inbox" size="32px" style="opacity: 0.15" />
                 <div class="text-caption text-grey-7 q-mt-xs">No orders</div>
               </div>
               <OrderKanbanCard
@@ -152,10 +152,7 @@
     </div>
 
     <!-- Order Details Dialog -->
-    <OrderDetailDialog
-      v-model="detailsOpen"
-      :order-id="selectedOrderId"
-    />
+    <OrderDetailDialog v-model="detailsOpen" :order-id="selectedOrderId" />
   </q-page>
 </template>
 
@@ -258,7 +255,9 @@ const allProcessedOrders = computed(() => {
   return orderStore.activeOrders.map((o) => {
     const fullOrder = orderStore.orderWithItems(o.id)
     const itemsText =
-      fullOrder?.items?.map((i) => `${i.quantity}x ${i.menu_items?.name || i.name || 'Item'}`).join(', ') || ''
+      fullOrder?.items
+        ?.map((i) => `${i.quantity}x ${i.menu_items?.name || i.name || 'Item'}`)
+        .join(', ') || ''
     const table = orderStore.tables.get(o.table_id)
     return {
       ...o,
@@ -375,14 +374,14 @@ const displayColumns = computed(() => {
     const tableNum = table ? table.table_number : '-'
 
     // Get KOT tickets for this order
-    const kots = [...orderStore.kotTickets.values()].filter(k => k.order_id === o.id)
+    const kots = [...orderStore.kotTickets.values()].filter((k) => k.order_id === o.id)
 
     return {
       ...o,
       type: o.order_type,
       order_items: fullOrder?.items || [],
       kot_tickets: kots,
-      invoices: [],  // Will be detected by status
+      invoices: [], // Will be detected by status
       table: tableNum,
       timeAgo: getTimeAgo(o.created_at),
       total: o.total_amount,
@@ -485,7 +484,9 @@ async function cancelOrder(order) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .body--dark .erp-view-btn {
   color: rgba(255, 255, 255, 0.4);
@@ -546,16 +547,24 @@ async function cancelOrder(order) {
   padding: 12px 14px;
   flex-shrink: 0;
 }
-.body--dark .kanban-header { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.body--light .kanban-header { border-bottom: 1px solid #e5e7eb; }
+.body--dark .kanban-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.body--light .kanban-header {
+  border-bottom: 1px solid #e5e7eb;
+}
 
 .kanban-header-left {
   display: flex;
   align-items: center;
   font-size: 14px;
 }
-.body--dark .kanban-header-left { color: #e5e7eb; }
-.body--light .kanban-header-left { color: #374151; }
+.body--dark .kanban-header-left {
+  color: #e5e7eb;
+}
+.body--light .kanban-header-left {
+  color: #374151;
+}
 
 .kanban-scroll {
   flex: 1;

@@ -18,7 +18,9 @@
         <div class="sap-icon-strip">
           <!-- Filter toggle -->
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             :icon="filtersOpen ? 'filter_list_off' : 'filter_list'"
             class="sap-icon-strip__btn"
             :class="{ 'sap-icon-strip__btn--active': filtersOpen }"
@@ -37,41 +39,41 @@
           </q-btn>
 
           <!-- Refresh -->
-          <q-btn
-            flat dense round
-            icon="refresh"
-            class="sap-icon-strip__btn"
-            @click="handleRefresh"
-          >
-            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Refresh Data</q-tooltip>
+          <q-btn flat dense round icon="refresh" class="sap-icon-strip__btn" @click="handleRefresh">
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle"
+              >Refresh Data</q-tooltip
+            >
           </q-btn>
 
           <!-- Separator -->
           <div class="sap-icon-strip__sep" />
 
           <!-- Print -->
-          <q-btn
-            flat dense round
-            icon="print"
-            class="sap-icon-strip__btn"
-            @click="handlePrint"
-          >
-            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Print Report</q-tooltip>
+          <q-btn flat dense round icon="print" class="sap-icon-strip__btn" @click="handlePrint">
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle"
+              >Print Report</q-tooltip
+            >
           </q-btn>
 
           <!-- Export PDF -->
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             icon="picture_as_pdf"
             class="sap-icon-strip__btn"
             @click="handleExportPDF"
           >
-            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Download PDF</q-tooltip>
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle"
+              >Download PDF</q-tooltip
+            >
           </q-btn>
 
           <!-- Export CSV -->
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             icon="table_view"
             class="sap-icon-strip__btn"
             @click="$emit('export-csv')"
@@ -81,12 +83,16 @@
 
           <!-- Export Excel -->
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             icon="grid_on"
             class="sap-icon-strip__btn"
             @click="$emit('export-excel')"
           >
-            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Export Excel</q-tooltip>
+            <q-tooltip :delay="400" anchor="bottom middle" self="top middle"
+              >Export Excel</q-tooltip
+            >
           </q-btn>
 
           <!-- Separator -->
@@ -94,7 +100,9 @@
 
           <!-- Fullscreen -->
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             :icon="isFullscreen ? 'fullscreen_exit' : 'fullscreen'"
             class="sap-icon-strip__btn"
             @click="toggleFullscreen"
@@ -258,7 +266,9 @@
           <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
           <div class="sap-header__title">{{ title }}</div>
           <div class="sap-header__meta">
-            <span>Location: <strong>{{ branchLabel }}</strong></span>
+            <span
+              >Location: <strong>{{ branchLabel }}</strong></span
+            >
             <span class="q-ml-lg">{{ reportDateLabel }}</span>
           </div>
         </div>
@@ -307,16 +317,28 @@ const filters = ref({
 // ── SAP Header computed values ──────────────────────────────────────
 const branchLabel = computed(() => authStore.currentBranch?.name || 'All Branches')
 const todayLabel = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
 )
 const reportDateLabel = computed(() => {
   const f = appliedFilters.value || filters.value
   if (f.dateFrom && f.dateTo) {
-    const from = new Date(f.dateFrom).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const to = new Date(f.dateTo).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const from = new Date(f.dateFrom).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    const to = new Date(f.dateTo).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
     return `${from} To ${to}`
   }
-  return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 })
 
 const branchOptions = ref([{ label: 'All Kitchens', value: null }])
@@ -326,7 +348,15 @@ async function loadBranches() {
     const branchId = authStore.currentBranch?.id
 
     // Kitchens to exclude from the filter (non-selling stations)
-    const excludeNames = ['CHINEESE', 'FUNCTION MENU', 'Main Kitchen', 'Main Store', 'OTHERS', 'SRI LANKAN', 'WESTERN']
+    const excludeNames = [
+      'CHINEESE',
+      'FUNCTION MENU',
+      'Main Kitchen',
+      'Main Store',
+      'OTHERS',
+      'SRI LANKAN',
+      'WESTERN',
+    ]
 
     // Fetch kitchens only (BENMAR, CASHIER, INDIAN, ITALIAN, JUICE BAR)
     let kitchenQuery = supabase
@@ -458,7 +488,11 @@ function handlePrint() {
   const page = document.querySelector('.report-page')
   if (page) {
     const now = new Date()
-    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const dateStr = now.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
     const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     page.setAttribute('data-print-date', `${dateStr} ${timeStr}`)
   }
@@ -531,14 +565,7 @@ async function handleExportPDF() {
     while (yOffset < scaledH) {
       if (yOffset > 0) pdf.addPage()
 
-      pdf.addImage(
-        imgData,
-        'PNG',
-        margin,
-        margin - yOffset,
-        usableW,
-        scaledH
-      )
+      pdf.addImage(imgData, 'PNG', margin, margin - yOffset, usableW, scaledH)
 
       yOffset += usableH
     }
@@ -567,9 +594,18 @@ function toggleFullscreen() {
   if (!el) return
 
   if (!document.fullscreenElement) {
-    el.requestFullscreen().then(() => { isFullscreen.value = true }).catch(() => {})
+    el.requestFullscreen()
+      .then(() => {
+        isFullscreen.value = true
+      })
+      .catch(() => {})
   } else {
-    document.exitFullscreen().then(() => { isFullscreen.value = false }).catch(() => {})
+    document
+      .exitFullscreen()
+      .then(() => {
+        isFullscreen.value = false
+      })
+      .catch(() => {})
   }
 }
 
@@ -1016,5 +1052,4 @@ onUnmounted(() => {
 
 /* ── Print Styles ─────────────────────────────────────────────────────── */
 /* NOTE: All print styles are in src/css/report-print.css (global) */
-
 </style>

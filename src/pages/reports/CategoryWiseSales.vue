@@ -29,12 +29,27 @@
 
         <template #body="props">
           <q-tr :props="props" class="report-table__row">
-            <q-td key="category" :props="props" class="text-weight-bold">{{ props.row.category }}</q-td>
-            <q-td key="item_count" :props="props" class="report-table__td--num">{{ props.row.item_count }}</q-td>
-            <q-td key="total_qty" :props="props" class="report-table__td--num">{{ props.row.total_qty }}</q-td>
-            <q-td key="total_amount" :props="props" class="report-table__td--num text-weight-bolder text-green">{{ fmtLKR(props.row.total_amount) }}</q-td>
-            <q-td key="total_discount" :props="props" class="report-table__td--num text-red">{{ fmtLKR(props.row.total_discount) }}</q-td>
-            <q-td key="net_amount" :props="props" class="report-table__td--num text-weight-bold">{{ fmtLKR(props.row.net_amount) }}</q-td>
+            <q-td key="category" :props="props" class="text-weight-bold">{{
+              props.row.category
+            }}</q-td>
+            <q-td key="item_count" :props="props" class="report-table__td--num">{{
+              props.row.item_count
+            }}</q-td>
+            <q-td key="total_qty" :props="props" class="report-table__td--num">{{
+              props.row.total_qty
+            }}</q-td>
+            <q-td
+              key="total_amount"
+              :props="props"
+              class="report-table__td--num text-weight-bolder text-green"
+              >{{ fmtLKR(props.row.total_amount) }}</q-td
+            >
+            <q-td key="total_discount" :props="props" class="report-table__td--num text-red">{{
+              fmtLKR(props.row.total_discount)
+            }}</q-td>
+            <q-td key="net_amount" :props="props" class="report-table__td--num text-weight-bold">{{
+              fmtLKR(props.row.net_amount)
+            }}</q-td>
             <q-td key="share" :props="props" class="report-table__td--num">
               <q-badge :color="props.row.share > 20 ? 'blue' : 'grey'">
                 {{ fmtPercent(props.row.share) }}
@@ -48,9 +63,15 @@
             <q-td class="report-table__td--bold">TOTAL</q-td>
             <q-td class="report-table__td--bold report-table__td--num">{{ totals.items }}</q-td>
             <q-td class="report-table__td--bold report-table__td--num">{{ totals.qty }}</q-td>
-            <q-td class="report-table__td--bold report-table__td--num text-green">{{ fmtLKR(totals.amount) }}</q-td>
-            <q-td class="report-table__td--bold report-table__td--num text-red">{{ fmtLKR(totals.discount) }}</q-td>
-            <q-td class="report-table__td--bold report-table__td--num">{{ fmtLKR(totals.net) }}</q-td>
+            <q-td class="report-table__td--bold report-table__td--num text-green">{{
+              fmtLKR(totals.amount)
+            }}</q-td>
+            <q-td class="report-table__td--bold report-table__td--num text-red">{{
+              fmtLKR(totals.discount)
+            }}</q-td>
+            <q-td class="report-table__td--bold report-table__td--num">{{
+              fmtLKR(totals.net)
+            }}</q-td>
             <q-td class="report-table__td--bold report-table__td--num">100%</q-td>
           </q-tr>
         </template>
@@ -80,8 +101,20 @@ const columns = [
   { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
   { name: 'item_count', label: 'Items Sold', field: 'item_count', align: 'right', sortable: true },
   { name: 'total_qty', label: 'Total Qty', field: 'total_qty', align: 'right', sortable: true },
-  { name: 'total_amount', label: 'Gross Amount', field: 'total_amount', align: 'right', sortable: true },
-  { name: 'total_discount', label: 'Discount', field: 'total_discount', align: 'right', sortable: true },
+  {
+    name: 'total_amount',
+    label: 'Gross Amount',
+    field: 'total_amount',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'total_discount',
+    label: 'Discount',
+    field: 'total_discount',
+    align: 'right',
+    sortable: true,
+  },
   { name: 'net_amount', label: 'Net Amount', field: 'net_amount', align: 'right', sortable: true },
   { name: 'share', label: '% Share', field: 'share', align: 'right', sortable: true },
 ]
@@ -102,7 +135,12 @@ const kpiData = computed(() => [
   { label: 'Categories', value: rows.value.length, icon: 'category', color: 'blue' },
   { label: 'Total Qty Sold', value: totals.value.qty, icon: 'shopping_cart', color: 'green' },
   { label: 'Gross Revenue', value: fmtLKR(totals.value.amount), icon: 'payments', color: 'purple' },
-  { label: 'Top Category', value: rows.value[0]?.category || '—', icon: 'emoji_events', color: 'amber' },
+  {
+    label: 'Top Category',
+    value: rows.value[0]?.category || '—',
+    icon: 'emoji_events',
+    color: 'amber',
+  },
 ])
 
 async function loadData(filters = {}) {
@@ -110,13 +148,15 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('order_items')
-      .select(`
+      .select(
+        `
         quantity,
         unit_price,
         total_price,
         menu_items!inner ( name, item_categories ( name ) ),
         orders!inner ( created_at, branch_id, status )
-      `)
+      `,
+      )
       .neq('orders.status', 'cancelled')
 
     if (filters.dateFrom) query = query.gte('orders.created_at', filters.dateFrom + 'T00:00:00')
@@ -132,7 +172,16 @@ async function loadData(filters = {}) {
     let grandTotal = 0
     ;(data || []).forEach((item) => {
       const cat = item.menu_items?.item_categories?.name || 'Uncategorized'
-      if (!catMap[cat]) catMap[cat] = { category: cat, item_count: 0, total_qty: 0, total_amount: 0, total_discount: 0, net_amount: 0, items: new Set() }
+      if (!catMap[cat])
+        catMap[cat] = {
+          category: cat,
+          item_count: 0,
+          total_qty: 0,
+          total_amount: 0,
+          total_discount: 0,
+          net_amount: 0,
+          items: new Set(),
+        }
       const qty = Number(item.quantity || 0)
       const amt = Number(item.total_price || 0) || qty * Number(item.unit_price || 0)
       catMap[cat].total_qty += qty
@@ -156,8 +205,12 @@ async function loadData(filters = {}) {
   }
 }
 
-function exportCSV() { exportTableToCSV(columns, rows.value, 'category_wise_sales') }
-function exportExcel() { exportTableToExcel(columns, rows.value, 'category_wise_sales') }
+function exportCSV() {
+  exportTableToCSV(columns, rows.value, 'category_wise_sales')
+}
+function exportExcel() {
+  exportTableToExcel(columns, rows.value, 'category_wise_sales')
+}
 </script>
 
 <style scoped lang="scss">

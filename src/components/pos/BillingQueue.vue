@@ -130,7 +130,11 @@
 
             <!-- ── Tap CTA ── -->
             <div class="tap-cta">
-              <q-icon :name="isPaid(order) ? 'receipt_long' : 'touch_app'" size="11px" class="q-mr-xs" />
+              <q-icon
+                :name="isPaid(order) ? 'receipt_long' : 'touch_app'"
+                size="11px"
+                class="q-mr-xs"
+              />
               {{ isPaid(order) ? 'Tap to view receipt' : 'Tap to open billing' }}
             </div>
           </div>
@@ -186,7 +190,9 @@ const filteredOrders = computed(() => {
       // Search by invoice number
       if (
         o.invoices &&
-        o.invoices.some((inv) => inv.invoice_number && String(inv.invoice_number).toLowerCase().includes(q))
+        o.invoices.some(
+          (inv) => inv.invoice_number && String(inv.invoice_number).toLowerCase().includes(q),
+        )
       )
         return true
       // Search by KOT number

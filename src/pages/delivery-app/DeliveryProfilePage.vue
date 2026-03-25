@@ -1,6 +1,5 @@
 <template>
   <q-page class="delivery-profile-page">
-
     <!-- ── Profile Header ──────────────────────── -->
     <div class="profile-hero">
       <q-avatar size="72px" class="profile-avatar text-weight-bold text-white">
@@ -48,10 +47,20 @@
       <div class="status-card">
         <div class="status-card__row">
           <div class="status-card__label">
-            <q-icon name="wifi" size="18px" class="q-mr-sm" :color="store.isConnected ? 'green-4' : 'red-4'" />
+            <q-icon
+              name="wifi"
+              size="18px"
+              class="q-mr-sm"
+              :color="store.isConnected ? 'green-4' : 'red-4'"
+            />
             Realtime Connection
           </div>
-          <q-chip dense :color="store.isConnected ? 'green-9' : 'red-9'" text-color="white" size="sm">
+          <q-chip
+            dense
+            :color="store.isConnected ? 'green-9' : 'red-9'"
+            text-color="white"
+            size="sm"
+          >
             {{ store.isConnected ? 'Connected' : 'Disconnected' }}
           </q-chip>
         </div>
@@ -68,7 +77,8 @@
     <!-- ── Sign Out ────────────────────────────── -->
     <div class="q-px-md q-mt-lg">
       <q-btn
-        unelevated no-caps
+        unelevated
+        no-caps
         color="red-9"
         icon="logout"
         label="Sign Out"
@@ -92,14 +102,18 @@ const authStore = useAuthStore()
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 const todayEarnings = computed(() => {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   const total = store.history
-    .filter(h => h.delivered_at && new Date(h.delivered_at) >= todayStart)
+    .filter((h) => h.delivered_at && new Date(h.delivered_at) >= todayStart)
     .reduce((sum, h) => sum + Number(h.orderTotal || 0), 0)
   if (total === 0) return '0'
   return `${(total / 1000).toFixed(1)}K`
@@ -109,11 +123,14 @@ const avgTime = computed(() => {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   const completed = store.history.filter(
-    h => h.assigned_at && h.delivered_at && new Date(h.delivered_at) >= todayStart
+    (h) => h.assigned_at && h.delivered_at && new Date(h.delivered_at) >= todayStart,
   )
   if (!completed.length) return '—'
   const totalMins = completed.reduce((sum, h) => {
-    return sum + Math.round((new Date(h.delivered_at).getTime() - new Date(h.assigned_at).getTime()) / 60000)
+    return (
+      sum +
+      Math.round((new Date(h.delivered_at).getTime() - new Date(h.assigned_at).getTime()) / 60000)
+    )
   }, 0)
   return `${Math.round(totalMins / completed.length)}m`
 })
@@ -140,7 +157,12 @@ async function logout() {
   flex-direction: column;
   align-items: center;
   padding: 32px 16px 24px;
-  background: linear-gradient(135deg, rgba(124, 77, 255, 0.1), rgba(206, 147, 216, 0.06), transparent);
+  background: linear-gradient(
+    135deg,
+    rgba(124, 77, 255, 0.1),
+    rgba(206, 147, 216, 0.06),
+    transparent
+  );
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .profile-avatar {
@@ -231,13 +253,22 @@ body.body--light {
 
   // Hero
   .profile-hero {
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(167, 139, 250, 0.04), transparent);
+    background: linear-gradient(
+      135deg,
+      rgba(124, 58, 237, 0.06),
+      rgba(167, 139, 250, 0.04),
+      transparent
+    );
     border-bottom: 1px solid #e2e8f0;
   }
-  .profile-name { color: #0f172a; }
+  .profile-name {
+    color: #0f172a;
+  }
 
   // Section heading
-  .section-heading { color: #475569; }
+  .section-heading {
+    color: #475569;
+  }
 
   // Stats grid
   .stat-item {
@@ -245,8 +276,12 @@ body.body--light {
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
-  .stat-value { color: #0f172a; }
-  .stat-label { color: #94a3b8; }
+  .stat-value {
+    color: #0f172a;
+  }
+  .stat-label {
+    color: #94a3b8;
+  }
 
   // Status card
   .status-card {
@@ -254,7 +289,9 @@ body.body--light {
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-    &__label { color: #475569; }
+    &__label {
+      color: #475569;
+    }
   }
 }
-
+</style>

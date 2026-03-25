@@ -1,12 +1,7 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Waiter Setup"
-      breadcrumbs="Human Resources / Waiter Setup"
-    />
+    <ERPToolbar moduleName="hr" title="Waiter Setup" breadcrumbs="Human Resources / Waiter Setup" />
 
-    
     <!-- ── Header ── -->
     <div class="row items-center q-mb-lg">
       <div>
@@ -16,7 +11,13 @@
         </div>
       </div>
       <q-space />
-      <q-btn color="cyan-8" icon="add" label="Create Waiter Profile" no-caps @click="openCreateDialog" />
+      <q-btn
+        color="cyan-8"
+        icon="add"
+        label="Create Waiter Profile"
+        no-caps
+        @click="openCreateDialog"
+      />
     </div>
 
     <!-- ── Stats Row ── -->
@@ -53,7 +54,9 @@
 
     <!-- ── Waiter Profiles Table ── -->
     <q-table
-      dark flat bordered
+      dark
+      flat
+      bordered
       title="Waiter Profiles"
       :rows="waiterProfiles"
       :columns="columns"
@@ -103,7 +106,11 @@
         <q-td :props="props">
           <span v-if="props.row.hierarchy?.length">
             {{ props.row.hierarchy[0]?.manager_employee?.full_name }}
-            <q-badge class="q-ml-xs" color="purple-9" :label="formatHType(props.row.hierarchy[0]?.hierarchy_type)" />
+            <q-badge
+              class="q-ml-xs"
+              color="purple-9"
+              :label="formatHType(props.row.hierarchy[0]?.hierarchy_type)"
+            />
           </span>
           <span v-else class="text-grey-6 text-caption">— Not assigned</span>
         </q-td>
@@ -111,21 +118,48 @@
 
       <template #body-cell-actions="props">
         <q-td :props="props" class="q-gutter-xs">
-          <q-btn flat round dense icon="supervisor_account" color="purple" size="sm"
-            @click="openHierarchyDialog(props.row)">
+          <q-btn
+            flat
+            round
+            dense
+            icon="supervisor_account"
+            color="purple"
+            size="sm"
+            @click="openHierarchyDialog(props.row)"
+          >
             <q-tooltip>Assign Manager</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="stars" color="amber" size="sm"
-            @click="openPointsDialog(props.row)">
+          <q-btn
+            flat
+            round
+            dense
+            icon="stars"
+            color="amber"
+            size="sm"
+            @click="openPointsDialog(props.row)"
+          >
             <q-tooltip>Award / Deduct Points</q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="mail" color="blue" size="sm"
-            @click="openMessageDialog(props.row)">
+          <q-btn
+            flat
+            round
+            dense
+            icon="mail"
+            color="blue"
+            size="sm"
+            @click="openMessageDialog(props.row)"
+          >
             <q-tooltip>Send Message</q-tooltip>
           </q-btn>
-          <q-btn flat round dense :icon="props.row.is_active ? 'toggle_on' : 'toggle_off'"
-            :color="props.row.is_active ? 'green' : 'grey'" size="sm"
-            @click="toggleActive(props.row)">
+          <q-btn
+            flat
+            round
+            dense
+            :icon="props.row.is_active ? 'toggle_on' : 'toggle_off'"
+            :color="props.row.is_active ? 'green' : 'grey'"
+            size="sm"
+            @click="toggleActive(props.row)"
+          >
             <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -145,16 +179,20 @@
         </q-bar>
         <q-card-section class="q-pb-none">
           <div class="text-caption text-grey-5 q-mb-md">
-            Select an employee who has the <strong class="text-cyan">waiter</strong> role assigned. Their profile will appear in the waiter dashboard.
+            Select an employee who has the <strong class="text-cyan">waiter</strong> role assigned.
+            Their profile will appear in the waiter dashboard.
           </div>
           <q-select
-            dark outlined
+            dark
+            outlined
             v-model="createForm.employee_id"
             :options="employeesWithoutProfile"
-            option-value="id" option-label="full_name"
-            emit-value map-options
+            option-value="id"
+            option-label="full_name"
+            emit-value
+            map-options
             label="Employee *"
-            :rules="[v => !!v || 'Required']"
+            :rules="[(v) => !!v || 'Required']"
           >
             <template #option="scope">
               <q-item v-bind="scope.itemProps">
@@ -172,17 +210,19 @@
           </q-select>
 
           <q-input
-            dark outlined
+            dark
+            outlined
             v-model="createForm.waiter_code"
             label="Waiter Code *"
             placeholder="e.g. W001"
             class="q-mt-md"
-            :rules="[v => !!v || 'Required']"
+            :rules="[(v) => !!v || 'Required']"
             hint="Unique code shown on receipts and KOTs"
           />
 
           <q-input
-            dark outlined
+            dark
+            outlined
             v-model="createForm.display_name"
             label="Display Name (optional)"
             class="q-mt-md"
@@ -191,7 +231,14 @@
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md q-pt-lg">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
-          <q-btn color="cyan-8" label="Create Profile" icon="save" :loading="saving" @click="createProfile" no-caps />
+          <q-btn
+            color="cyan-8"
+            label="Create Profile"
+            icon="save"
+            :loading="saving"
+            @click="createProfile"
+            no-caps
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -209,14 +256,18 @@
         </q-bar>
         <q-card-section>
           <div class="text-grey-4 text-body2 q-mb-md">
-            Assigning manager for: <strong class="text-white">{{ selectedProfile?.employee?.full_name }}</strong>
+            Assigning manager for:
+            <strong class="text-white">{{ selectedProfile?.employee?.full_name }}</strong>
           </div>
           <q-select
-            dark outlined
+            dark
+            outlined
             v-model="hierarchyForm.manager_employee_id"
             :options="managerEmployees"
-            option-value="id" option-label="full_name"
-            emit-value map-options
+            option-value="id"
+            option-label="full_name"
+            emit-value
+            map-options
             label="Manager *"
             class="q-mb-md"
           >
@@ -235,16 +286,25 @@
             </template>
           </q-select>
           <q-select
-            dark outlined
+            dark
+            outlined
             v-model="hierarchyForm.hierarchy_type"
             :options="hierarchyTypeOpts"
-            emit-value map-options
+            emit-value
+            map-options
             label="Hierarchy Type *"
           />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
-          <q-btn color="purple" label="Save Assignment" :loading="saving" @click="saveHierarchy" no-caps icon="save" />
+          <q-btn
+            color="purple"
+            label="Save Assignment"
+            :loading="saving"
+            @click="saveHierarchy"
+            no-caps
+            icon="save"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -271,30 +331,43 @@
             </q-badge>
           </div>
           <q-select
-            dark outlined
+            dark
+            outlined
             v-model="pointsForm.point_type"
-            :options="pointTypeOpts" emit-value map-options
+            :options="pointTypeOpts"
+            emit-value
+            map-options
             label="Type *"
             class="q-mb-md"
           />
           <q-input
-            dark outlined
+            dark
+            outlined
             v-model.number="pointsForm.points"
             label="Points (positive = award, negative = deduct) *"
             type="number"
             class="q-mb-md"
-            :rules="[v => v !== 0 || 'Cannot be 0']"
+            :rules="[(v) => v !== 0 || 'Cannot be 0']"
           />
           <q-input
-            dark outlined
+            dark
+            outlined
             v-model="pointsForm.note"
             label="Note (optional)"
-            type="textarea" rows="2"
+            type="textarea"
+            rows="2"
           />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
-          <q-btn color="amber-8" label="Save Points" :loading="saving" @click="savePoints" no-caps icon="stars" />
+          <q-btn
+            color="amber-8"
+            label="Save Points"
+            :loading="saving"
+            @click="savePoints"
+            no-caps
+            icon="stars"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -314,32 +387,41 @@
           <div class="text-grey-4 text-body2 q-mb-md">
             To: <strong class="text-white">{{ selectedProfile?.employee?.full_name }}</strong>
           </div>
-          <q-input
-            dark outlined
-            v-model="messageForm.subject"
-            label="Subject"
-            class="q-mb-md"
-          />
+          <q-input dark outlined v-model="messageForm.subject" label="Subject" class="q-mb-md" />
           <q-select
-            dark outlined
+            dark
+            outlined
             v-model="messageForm.priority"
-            :options="[{label:'Normal', value:'normal'},{label:'🔴 Urgent', value:'urgent'},{label:'🚨 Critical', value:'critical'}]"
-            emit-value map-options
+            :options="[
+              { label: 'Normal', value: 'normal' },
+              { label: '🔴 Urgent', value: 'urgent' },
+              { label: '🚨 Critical', value: 'critical' },
+            ]"
+            emit-value
+            map-options
             label="Priority"
             class="q-mb-md"
           />
           <q-input
-            dark outlined
+            dark
+            outlined
             v-model="messageForm.message_body"
             label="Message *"
             type="textarea"
             rows="4"
-            :rules="[v => !!v || 'Required']"
+            :rules="[(v) => !!v || 'Required']"
           />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
-          <q-btn color="blue-7" label="Send Message" :loading="saving" @click="sendMessage" no-caps icon="send" />
+          <q-btn
+            color="blue-7"
+            label="Send Message"
+            :loading="saving"
+            @click="sendMessage"
+            no-caps
+            icon="send"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -375,13 +457,15 @@ const messageForm = reactive({ subject: '', message_body: '', priority: 'normal'
 
 const stats = computed(() => ({
   total: waiterProfiles.value.length,
-  active: waiterProfiles.value.filter(w => w.is_active).length,
-  noProfile: allEmployees.value.filter(e => !waiterProfiles.value.some(w => w.employee_id === e.id)).length,
+  active: waiterProfiles.value.filter((w) => w.is_active).length,
+  noProfile: allEmployees.value.filter(
+    (e) => !waiterProfiles.value.some((w) => w.employee_id === e.id),
+  ).length,
   totalPoints: waiterProfiles.value.reduce((s, w) => s + (w.current_points || 0), 0),
 }))
 
 const employeesWithoutProfile = computed(() =>
-  allEmployees.value.filter(e => !waiterProfiles.value.some(w => w.employee_id === e.id))
+  allEmployees.value.filter((e) => !waiterProfiles.value.some((w) => w.employee_id === e.id)),
 )
 
 const managerEmployees = computed(() => allEmployees.value)
@@ -402,22 +486,44 @@ const pointTypeOpts = [
 ]
 
 const columns = [
-  { name: 'waiter', label: 'Employee', align: 'left', field: row => row.employee?.full_name, sortable: true },
+  {
+    name: 'waiter',
+    label: 'Employee',
+    align: 'left',
+    field: (row) => row.employee?.full_name,
+    sortable: true,
+  },
   { name: 'waiter_code', label: 'Code', align: 'center', field: 'waiter_code' },
   { name: 'status', label: 'Status', align: 'center', field: 'is_active' },
   { name: 'points', label: 'Points', align: 'center', field: 'current_points', sortable: true },
-  { name: 'orders', label: 'Orders', align: 'center', field: 'total_orders_served', sortable: true },
+  {
+    name: 'orders',
+    label: 'Orders',
+    align: 'center',
+    field: 'total_orders_served',
+    sortable: true,
+  },
   { name: 'manager', label: 'Manager', align: 'left' },
   { name: 'actions', label: 'Actions', align: 'center' },
 ]
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 function formatHType(type) {
-  const m = { waiter_manager: 'W.Mgr', floor_manager: 'F.Mgr', shift_lead: 'Lead', general: 'GM', kitchen_manager: 'K.Mgr' }
+  const m = {
+    waiter_manager: 'W.Mgr',
+    floor_manager: 'F.Mgr',
+    shift_lead: 'Lead',
+    general: 'GM',
+    kitchen_manager: 'K.Mgr',
+  }
   return m[type] || type
 }
 
@@ -428,18 +534,23 @@ onMounted(async () => {
 async function loadProfiles() {
   loading.value = true
   const branchId = authStore.currentBranch?.id
-  if (!branchId) { loading.value = false; return }
+  if (!branchId) {
+    loading.value = false
+    return
+  }
 
   const { data, error } = await supabase
     .from('waiter_profiles')
-    .select(`
+    .select(
+      `
       *,
       employee:employee_id ( id, full_name, employee_code ),
       hierarchy:employee_hierarchy_assignments (
         hierarchy_type, is_active,
         manager_employee:manager_employee_id ( full_name, employee_code )
       )
-    `)
+    `,
+    )
     .eq('branch_id', branchId)
     .order('created_at')
 
@@ -495,7 +606,10 @@ async function createProfile() {
       total_orders_served: 0,
     })
     if (error) throw error
-    $q.notify({ type: 'positive', message: '✅ Waiter profile created! The waiter can now see their profile tab.' })
+    $q.notify({
+      type: 'positive',
+      message: '✅ Waiter profile created! The waiter can now see their profile tab.',
+    })
     showCreate.value = false
     await loadProfiles()
   } catch (err) {
@@ -524,16 +638,17 @@ async function saveHierarchy() {
     const employeeId = selectedProfile.value.employee_id
 
     // Upsert — update existing or insert new
-    const { error } = await supabase
-      .from('employee_hierarchy_assignments')
-      .upsert({
+    const { error } = await supabase.from('employee_hierarchy_assignments').upsert(
+      {
         employee_id: employeeId,
         manager_employee_id: hierarchyForm.manager_employee_id,
         branch_id: branchId,
         hierarchy_type: hierarchyForm.hierarchy_type,
         is_active: true,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'employee_id,hierarchy_type,branch_id' })
+      },
+      { onConflict: 'employee_id,hierarchy_type,branch_id' },
+    )
 
     if (error) throw error
     $q.notify({ type: 'positive', message: '✅ Manager assigned successfully' })
@@ -562,15 +677,15 @@ async function savePoints() {
     // Use the secure RPC — enforces role check + DB trigger recomputes current_points
     const { data, error } = await supabase.rpc('admin_adjust_waiter_points', {
       p_waiter_profile_id: selectedProfile.value.id,
-      p_points:            pointsForm.points,
-      p_point_type:        pointsForm.point_type,
-      p_note:              pointsForm.note || null,
+      p_points: pointsForm.points,
+      p_point_type: pointsForm.point_type,
+      p_note: pointsForm.note || null,
     })
     if (error) throw error
     if (data?.success === false) throw new Error(data.error || 'Adjustment failed')
 
     // Patch local list instantly using new balance from RPC
-    const idx = waiterProfiles.value.findIndex(w => w.id === selectedProfile.value.id)
+    const idx = waiterProfiles.value.findIndex((w) => w.id === selectedProfile.value.id)
     if (idx !== -1) waiterProfiles.value[idx].current_points = data.new_balance
 
     const action = pointsForm.points > 0 ? 'awarded' : 'deducted'
@@ -610,27 +725,39 @@ async function sendMessage() {
 
     if (!senderEmp) throw new Error('Your employee record not found')
 
-    const { error, data: msgData } = await supabase.from('manager_messages').insert({
-      sender_employee_id: senderEmp.id,
-      receiver_employee_id: selectedProfile.value.employee_id,
-      branch_id: branchId,
-      subject: messageForm.subject || '',
-      message_body: messageForm.message_body,
-      priority: messageForm.priority,
-    }).select('id').single()
+    const { error, data: msgData } = await supabase
+      .from('manager_messages')
+      .insert({
+        sender_employee_id: senderEmp.id,
+        receiver_employee_id: selectedProfile.value.employee_id,
+        branch_id: branchId,
+        subject: messageForm.subject || '',
+        message_body: messageForm.message_body,
+        priority: messageForm.priority,
+      })
+      .select('id')
+      .single()
     if (error) throw error
 
     // Push waiter_notification so waiter sees it in their app
     if (selectedProfile.value?.id && msgData?.id) {
       const priority = messageForm.priority
-      await supabase.from('waiter_notifications').insert({
-        waiter_profile_id: selectedProfile.value.id,
-        notification_type: 'manager_message',
-        title: priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
-        body: (messageForm.subject ? `📌 ${messageForm.subject}\n` : '') + messageForm.message_body,
-        payload: { manager_message_id: msgData.id, priority, subject: messageForm.subject || 'Direct Message' },
-        action_url: null,
-      }).catch(e => console.error('Failed to notify waiter:', e))
+      await supabase
+        .from('waiter_notifications')
+        .insert({
+          waiter_profile_id: selectedProfile.value.id,
+          notification_type: 'manager_message',
+          title: priority === 'urgent' ? '🚨 URGENT: Message from Manager' : 'Message from Manager',
+          body:
+            (messageForm.subject ? `📌 ${messageForm.subject}\n` : '') + messageForm.message_body,
+          payload: {
+            manager_message_id: msgData.id,
+            priority,
+            subject: messageForm.subject || 'Direct Message',
+          },
+          action_url: null,
+        })
+        .catch((e) => console.error('Failed to notify waiter:', e))
     }
 
     $q.notify({ type: 'positive', message: '✅ Message sent! Waiter will see a notification.' })
@@ -649,7 +776,10 @@ async function toggleActive(profile) {
     .eq('id', profile.id)
   if (error) $q.notify({ type: 'negative', message: error.message })
   else {
-    $q.notify({ type: 'positive', message: `Profile ${profile.is_active ? 'deactivated' : 'activated'}` })
+    $q.notify({
+      type: 'positive',
+      message: `Profile ${profile.is_active ? 'deactivated' : 'activated'}`,
+    })
     await loadProfiles()
   }
 }

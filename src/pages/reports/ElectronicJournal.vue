@@ -16,7 +16,10 @@
         <q-select
           v-model="extraFilters.orderType"
           :options="orderTypeOptions"
-          dense outlined emit-value map-options
+          dense
+          outlined
+          emit-value
+          map-options
           class="report-filter-input"
         />
       </div>
@@ -25,7 +28,10 @@
         <q-select
           v-model="extraFilters.billStatus"
           :options="billStatusOptions"
-          dense outlined emit-value map-options
+          dense
+          outlined
+          emit-value
+          map-options
           class="report-filter-input"
         />
       </div>
@@ -37,7 +43,9 @@
       <div class="sap-header">
         <div class="sap-header__left">
           <div class="sap-header__company">Electronic Journal / Bill Details</div>
-          <div class="sap-header__title">Location : {{ branchName }} Date : {{ reportDateRange }}</div>
+          <div class="sap-header__title">
+            Location : {{ branchName }} Date : {{ reportDateRange }}
+          </div>
         </div>
         <div class="sap-header__right">
           <div class="sap-header__page">Page 1</div>
@@ -56,7 +64,8 @@
         :rows="flatRows"
         :columns="columns"
         row-key="__rowKey"
-        flat dense
+        flat
+        dense
         class="sap-table"
         :loading="loading"
         :rows-per-page-options="[50, 100, 200, 0]"
@@ -80,7 +89,9 @@
             <q-td colspan="10" />
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.disc_amt) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.sales_price) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{
+              fmtN(props.row.sales_price)
+            }}</q-td>
             <q-td colspan="5" />
           </q-tr>
 
@@ -92,27 +103,54 @@
           </q-tr>
 
           <!-- Normal item row -->
-          <q-tr v-else :props="props" class="sap-table__row" :class="{ 'sap-table__row--void': props.row.void_marked === 'V' }">
-            <q-td key="bill_no" :props="props" class="sap-table__td--mono">{{ props.row.bill_no }}</q-td>
+          <q-tr
+            v-else
+            :props="props"
+            class="sap-table__row"
+            :class="{ 'sap-table__row--void': props.row.void_marked === 'V' }"
+          >
+            <q-td key="bill_no" :props="props" class="sap-table__td--mono">{{
+              props.row.bill_no
+            }}</q-td>
             <q-td key="pos" :props="props">{{ props.row.pos }}</q-td>
             <q-td key="clerk" :props="props">{{ props.row.clerk }}</q-td>
             <q-td key="waiter" :props="props">{{ props.row.waiter }}</q-td>
             <q-td key="kot_no" :props="props">{{ props.row.kot_no }}</q-td>
             <q-td key="cust" :props="props">{{ props.row.cust }}</q-td>
-            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{ props.row.item_code }}</q-td>
+            <q-td key="item_code" :props="props" class="sap-table__td--mono">{{
+              props.row.item_code
+            }}</q-td>
             <q-td key="dept" :props="props">{{ props.row.dept }}</q-td>
-            <q-td key="prod_ref" :props="props" class="sap-table__td--mono">{{ props.row.prod_ref }}</q-td>
+            <q-td key="prod_ref" :props="props" class="sap-table__td--mono">{{
+              props.row.prod_ref
+            }}</q-td>
             <q-td key="description" :props="props">{{ props.row.description }}</q-td>
-            <q-td key="disc_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.disc_amt) }}</q-td>
-            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{ fmtN(props.row.tax_amt) }}</q-td>
-            <q-td key="sales_price" :props="props" class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.sales_price) }}</q-td>
+            <q-td key="disc_amt" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.disc_amt)
+            }}</q-td>
+            <q-td key="tax_amt" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.tax_amt)
+            }}</q-td>
+            <q-td key="sales_price" :props="props" class="sap-table__td--num text-weight-bold">{{
+              fmtN(props.row.sales_price)
+            }}</q-td>
             <q-td key="qty" :props="props" class="sap-table__td--num">{{ props.row.qty }}</q-td>
             <q-td key="time" :props="props">{{ props.row.time }}</q-td>
             <q-td key="type" :props="props">
-              <span class="sap-type-badge" :class="`sap-type-badge--${(props.row.type||'').toLowerCase()}`">{{ props.row.type }}</span>
+              <span
+                class="sap-type-badge"
+                :class="`sap-type-badge--${(props.row.type || '').toLowerCase()}`"
+                >{{ props.row.type }}</span
+              >
             </q-td>
-            <q-td key="bill_ref" :props="props" class="sap-table__td--mono">{{ props.row.bill_ref }}</q-td>
-            <q-td key="void_marked" :props="props" :class="props.row.void_marked === 'V' ? 'text-red text-weight-bold' : ''">
+            <q-td key="bill_ref" :props="props" class="sap-table__td--mono">{{
+              props.row.bill_ref
+            }}</q-td>
+            <q-td
+              key="void_marked"
+              :props="props"
+              :class="props.row.void_marked === 'V' ? 'text-red text-weight-bold' : ''"
+            >
               {{ props.row.void_marked }}
             </q-td>
           </q-tr>
@@ -124,7 +162,9 @@
             <q-td colspan="10" class="text-weight-bold">GRAND TOTAL ({{ billCount }} Bills)</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.disc) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.tax) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(grandTotals.sales) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{
+              fmtN(grandTotals.sales)
+            }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ grandTotals.qty }}</q-td>
             <q-td colspan="4" />
           </q-tr>
@@ -187,13 +227,20 @@ const billStatusOptions = [
 ]
 
 const activeStatusLabel = computed(() => {
-  const opt = billStatusOptions.find(o => o.value === extraFilters.value.billStatus)
+  const opt = billStatusOptions.find((o) => o.value === extraFilters.value.billStatus)
   return opt?.label || 'All Bills'
 })
 
 // ── Column Definitions (SAP B1 format) ────────────────────
 const columns = [
-  { name: 'bill_no', label: 'Bill No', field: 'bill_no', align: 'left', sortable: true, style: 'width:70px' },
+  {
+    name: 'bill_no',
+    label: 'Bill No',
+    field: 'bill_no',
+    align: 'left',
+    sortable: true,
+    style: 'width:70px',
+  },
   { name: 'pos', label: 'POS', field: 'pos', align: 'center', style: 'width:35px' },
   { name: 'clerk', label: 'Clerk', field: 'clerk', align: 'left', style: 'width:50px' },
   { name: 'waiter', label: 'Waiter', field: 'waiter', align: 'left', style: 'width:50px' },
@@ -205,7 +252,13 @@ const columns = [
   { name: 'description', label: 'Description', field: 'description', align: 'left' },
   { name: 'disc_amt', label: 'Disc Amt', field: 'disc_amt', align: 'right', style: 'width:70px' },
   { name: 'tax_amt', label: 'Tax Amt', field: 'tax_amt', align: 'right', style: 'width:70px' },
-  { name: 'sales_price', label: 'Sales Price', field: 'sales_price', align: 'right', style: 'width:80px' },
+  {
+    name: 'sales_price',
+    label: 'Sales Price',
+    field: 'sales_price',
+    align: 'right',
+    style: 'width:80px',
+  },
   { name: 'qty', label: 'Qty', field: 'qty', align: 'right', style: 'width:35px' },
   { name: 'time', label: 'Time', field: 'time', align: 'center', style: 'width:70px' },
   { name: 'type', label: 'Type', field: 'type', align: 'center', style: 'width:35px' },
@@ -217,7 +270,11 @@ const columns = [
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
 
 const todayFormatted = computed(() => {
-  return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 })
 
 const reportDateRange = computed(() => {
@@ -230,7 +287,11 @@ const reportDateRange = computed(() => {
 
 function formatDateShort(d) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function fmtN(val) {
@@ -267,14 +328,17 @@ const flatRows = computed(() => {
     const items = order.order_items || []
     const waiterName = order.waiter?.full_name || '—'
     const billNo = order.order_number || `#${(order.id || '').slice(0, 8)}`
-    const kotNos = (order.kot_tickets || []).map(k => k.kot_number).filter(Boolean)
+    const kotNos = (order.kot_tickets || []).map((k) => k.kot_number).filter(Boolean)
     const typeCode = orderTypeCode(order.order_type)
     const isVoid = order.status === 'cancelled' || order.status === 'void'
     const orderTime = fmtTime(order.created_at)
     const custCount = order.customer_name ? 1 : 0
 
     // Calculate per-item discount/tax proration
-    const orderTotal = items.reduce((s, i) => s + Number(i.total_price || i.quantity * i.unit_price || 0), 0)
+    const orderTotal = items.reduce(
+      (s, i) => s + Number(i.total_price || i.quantity * i.unit_price || 0),
+      0,
+    )
     const orderDisc = Number(order.discount_amount || 0)
     const orderTax = Number(order.tax_amount || 0)
 
@@ -379,7 +443,11 @@ const flatRows = computed(() => {
 })
 
 function extractPaymentMethod(order) {
-  const invoices = Array.isArray(order.invoices) ? order.invoices : order.invoices ? [order.invoices] : []
+  const invoices = Array.isArray(order.invoices)
+    ? order.invoices
+    : order.invoices
+      ? [order.invoices]
+      : []
   for (const inv of invoices) {
     const payments = Array.isArray(inv.payments) ? inv.payments : inv.payments ? [inv.payments] : []
     for (const p of payments) {
@@ -393,7 +461,10 @@ function extractPaymentMethod(order) {
 const billCount = computed(() => rawOrders.value.length)
 
 const grandTotals = computed(() => {
-  let disc = 0, tax = 0, sales = 0, qty = 0
+  let disc = 0,
+    tax = 0,
+    sales = 0,
+    qty = 0
   for (const r of flatRows.value) {
     if (r.__type === 'item') {
       disc += Number(r.disc_amt || 0)
@@ -407,10 +478,30 @@ const grandTotals = computed(() => {
 
 const kpiData = computed(() => [
   { label: 'Total Bills', value: billCount.value, icon: 'receipt_long', color: 'blue' },
-  { label: 'Gross Sales', value: `LKR ${fmtN(grandTotals.value.sales)}`, icon: 'payments', color: 'green' },
-  { label: 'Total Discounts', value: `LKR ${fmtN(grandTotals.value.disc)}`, icon: 'local_offer', color: 'amber' },
-  { label: 'Tax Collected', value: `LKR ${fmtN(grandTotals.value.tax)}`, icon: 'account_balance', color: 'purple' },
-  { label: 'Void / Cancelled', value: rawOrders.value.filter(o => o.status === 'cancelled' || o.status === 'void').length, icon: 'cancel', color: 'red' },
+  {
+    label: 'Gross Sales',
+    value: `LKR ${fmtN(grandTotals.value.sales)}`,
+    icon: 'payments',
+    color: 'green',
+  },
+  {
+    label: 'Total Discounts',
+    value: `LKR ${fmtN(grandTotals.value.disc)}`,
+    icon: 'local_offer',
+    color: 'amber',
+  },
+  {
+    label: 'Tax Collected',
+    value: `LKR ${fmtN(grandTotals.value.tax)}`,
+    icon: 'account_balance',
+    color: 'purple',
+  },
+  {
+    label: 'Void / Cancelled',
+    value: rawOrders.value.filter((o) => o.status === 'cancelled' || o.status === 'void').length,
+    icon: 'cancel',
+    color: 'red',
+  },
 ])
 
 // ── Data Loading ──────────────────────────────────────────
@@ -420,7 +511,8 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('orders')
-      .select(`
+      .select(
+        `
         id,
         order_number,
         order_type,
@@ -454,7 +546,8 @@ async function loadData(filters = {}) {
           id, invoice_number, total, payment_status,
           payments ( amount, payment_methods ( name ) )
         )
-      `)
+      `,
+      )
       .order('created_at', { ascending: true })
 
     // Date filters
@@ -498,12 +591,12 @@ async function loadData(filters = {}) {
 
 // ── Export ─────────────────────────────────────────────────
 function exportCSV() {
-  const exportRows = flatRows.value.filter(r => r.__type === 'item')
+  const exportRows = flatRows.value.filter((r) => r.__type === 'item')
   exportTableToCSV(columns, exportRows, 'electronic_journal')
 }
 
 function exportExcel() {
-  const exportRows = flatRows.value.filter(r => r.__type === 'item')
+  const exportRows = flatRows.value.filter((r) => r.__type === 'item')
   exportTableToExcel(columns, exportRows, 'electronic_journal')
 }
 </script>

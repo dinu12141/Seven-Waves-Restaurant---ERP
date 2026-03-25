@@ -100,14 +100,23 @@ defineEmits(['add-to-cart', 'request-add'])
   height: 100%;
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s, background 0.25s;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.2s,
+    background 0.25s;
   cursor: pointer;
 
-  &:active { transform: scale(0.97); }
+  &:active {
+    transform: scale(0.97);
+  }
   &:hover {
-    box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.12), 0 8px 10px -6px rgba(37, 99, 235, 0.1);
-    border-color: rgba(37, 99, 235, 0.25);
-    .menu-img { transform: scale(1.05); }
+    box-shadow:
+      0 10px 25px -5px rgba(249, 115, 22, 0.15),
+      0 8px 10px -6px rgba(249, 115, 22, 0.1);
+    border-color: rgba(249, 115, 22, 0.3);
+    .menu-img {
+      transform: scale(1.05);
+    }
   }
 }
 
@@ -133,11 +142,17 @@ defineEmits(['add-to-cart', 'request-add'])
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.menu-img { transition: transform 0.4s ease-out; }
+.menu-img {
+  transition: transform 0.4s ease-out;
+}
 
-.bg-black-06 { background: rgba(0, 0, 0, 0.65); }
+.bg-black-06 {
+  background: rgba(0, 0, 0, 0.65);
+}
 
-.transform-center { transform: rotate(-15deg); }
+.transform-center {
+  transform: rotate(-15deg);
+}
 
 .name-text {
   font-size: 11px;
@@ -145,26 +160,40 @@ defineEmits(['add-to-cart', 'request-add'])
   letter-spacing: -0.1px;
   min-height: 24px;
 }
-:global(.body--dark) .name-text { color: #f8fafc; }
-:global(.body--light) .name-text { color: #0f172a; }
+:global(.body--dark) .name-text {
+  color: #f8fafc;
+}
+:global(.body--light) .name-text {
+  color: #0f172a;
+}
 
 .price-text {
   font-size: 11px;
-  color: #3b82f6;
+  color: #f97316;
   letter-spacing: -0.2px;
 }
 
-.flex-grow { flex-grow: 1; }
+.flex-grow {
+  flex-grow: 1;
+}
 
 .shadow-touch {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.15),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 :global(.body--light) .shadow-touch {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.shadow-top-glow { box-shadow: 0 -2px 10px rgba(37, 99, 235, 0.4); }
+.shadow-top-glow {
+  box-shadow: 0 -2px 10px rgba(249, 115, 22, 0.5);
+}
 
-.font-mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; }
-.grayscale { filter: grayscale(100%); }
+.font-mono {
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+}
+.grayscale {
+  filter: grayscale(100%);
+}
 </style>

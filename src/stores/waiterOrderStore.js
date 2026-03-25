@@ -243,7 +243,13 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   async function acceptOrder(orderId) {
     if (!waiterId.value) return { success: false, error: 'Not authenticated' }
     if (!isOnShift.value) {
-      Notify.create({ type: 'warning', icon: 'lock', message: 'You cannot accept orders while off shift', position: 'top', timeout: 3000 })
+      Notify.create({
+        type: 'warning',
+        icon: 'lock',
+        message: 'You cannot accept orders while off shift',
+        position: 'top',
+        timeout: 3000,
+      })
       return { success: false, error: 'Off shift' }
     }
     accepting.value = orderId
@@ -304,7 +310,13 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   async function markOrderServed(orderId) {
     if (!waiterId.value) return { success: false, error: 'Not authenticated' }
     if (!isOnShift.value) {
-      Notify.create({ type: 'warning', icon: 'lock', message: 'You cannot mark orders while off shift', position: 'top', timeout: 3000 })
+      Notify.create({
+        type: 'warning',
+        icon: 'lock',
+        message: 'You cannot mark orders while off shift',
+        position: 'top',
+        timeout: 3000,
+      })
       return { success: false, error: 'Off shift' }
     }
 
@@ -535,9 +547,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       const doPlay = () => {
         const now = audioCtx.currentTime
         // Urgent triple-ding for new order
-        playTone(1318.51, 'sine', now,       0.3)  // E6
-        playTone(1046.50, 'sine', now + 0.2, 0.3)  // C6
-        playTone(1318.51, 'sine', now + 0.4, 0.5)  // E6 (long)
+        playTone(1318.51, 'sine', now, 0.3) // E6
+        playTone(1046.5, 'sine', now + 0.2, 0.3) // C6
+        playTone(1318.51, 'sine', now + 0.4, 0.5) // E6 (long)
       }
 
       if (audioCtx.state === 'suspended') {
@@ -553,7 +565,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   // ── Cleanup ────────────────────────────────────────────────
 
   function dismissNewOrderAlert(alertId) {
-    newOrderAlerts.value = newOrderAlerts.value.filter(a => a.id !== alertId)
+    newOrderAlerts.value = newOrderAlerts.value.filter((a) => a.id !== alertId)
   }
 
   function clearNewOrderAlerts() {

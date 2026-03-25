@@ -1,9 +1,7 @@
 <template>
   <div class="dept-page">
-
     <!-- ── Two-panel grid ──────────────────────────────────── -->
     <div class="two-panel-grid">
-
       <!-- ═══════════ LEFT: DEPARTMENTS ═══════════ -->
       <div class="panel">
         <div class="panel-header">
@@ -13,9 +11,13 @@
             <q-badge color="primary" :label="departments.length" class="q-ml-xs" />
           </div>
           <q-btn
-            unelevated no-caps dense
-            icon="add" label="Add"
-            color="primary" size="sm"
+            unelevated
+            no-caps
+            dense
+            icon="add"
+            label="Add"
+            color="primary"
+            size="sm"
             class="add-btn"
             @click="openDeptDialog()"
           />
@@ -59,10 +61,24 @@
               </div>
             </div>
             <div class="dept-item-actions" @click.stop>
-              <q-btn flat round dense icon="edit" size="xs" color="grey-5"
-                @click="openDeptDialog(dept)" />
-              <q-btn flat round dense icon="delete_outline" size="xs" color="red-4"
-                @click="deleteDept(dept)" />
+              <q-btn
+                flat
+                round
+                dense
+                icon="edit"
+                size="xs"
+                color="grey-5"
+                @click="openDeptDialog(dept)"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="delete_outline"
+                size="xs"
+                color="red-4"
+                @click="deleteDept(dept)"
+              />
             </div>
           </div>
         </div>
@@ -78,9 +94,13 @@
             <q-badge color="deep-purple-4" :label="filteredDesignations.length" class="q-ml-xs" />
           </div>
           <q-btn
-            unelevated no-caps dense
-            icon="add" label="Add"
-            color="deep-purple-4" size="sm"
+            unelevated
+            no-caps
+            dense
+            icon="add"
+            label="Add"
+            color="deep-purple-4"
+            size="sm"
             class="add-btn"
             @click="openDesigDialog()"
           />
@@ -91,15 +111,25 @@
           <button
             class="filter-chip"
             :class="{ active: desigDeptFilter === null }"
-            @click="desigDeptFilter = null; selectedDept = null"
-          >All</button>
+            @click="
+              desigDeptFilter = null
+              selectedDept = null
+            "
+          >
+            All
+          </button>
           <button
             v-for="dept in departments"
             :key="dept.id"
             class="filter-chip"
             :class="{ active: desigDeptFilter === dept.id }"
-            @click="desigDeptFilter = dept.id; selectedDept = dept"
-          >{{ dept.name }}</button>
+            @click="
+              desigDeptFilter = dept.id
+              selectedDept = dept
+            "
+          >
+            {{ dept.name }}
+          </button>
         </div>
 
         <!-- Search -->
@@ -119,11 +149,7 @@
           </div>
         </div>
         <div v-else class="desig-list">
-          <div
-            v-for="desig in filteredDesignations"
-            :key="desig.id"
-            class="desig-item"
-          >
+          <div v-for="desig in filteredDesignations" :key="desig.id" class="desig-item">
             <div class="desig-item-left">
               <div class="desig-icon-wrap">
                 <q-icon name="badge" size="16px" color="deep-purple-3" />
@@ -143,10 +169,24 @@
               </div>
             </div>
             <div class="desig-item-actions">
-              <q-btn flat round dense icon="edit" size="xs" color="grey-5"
-                @click="openDesigDialog(desig)" />
-              <q-btn flat round dense icon="delete_outline" size="xs" color="red-4"
-                @click="deleteDesig(desig)" />
+              <q-btn
+                flat
+                round
+                dense
+                icon="edit"
+                size="xs"
+                color="grey-5"
+                @click="openDesigDialog(desig)"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                icon="delete_outline"
+                size="xs"
+                color="red-4"
+                @click="deleteDesig(desig)"
+              />
             </div>
           </div>
         </div>
@@ -191,7 +231,8 @@
         <q-card-actions class="dialog-actions">
           <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
           <q-btn
-            unelevated no-caps
+            unelevated
+            no-caps
             :label="editingDept ? 'Update Department' : 'Create Department'"
             color="primary"
             :loading="savingDept"
@@ -225,11 +266,9 @@
             <label class="field-label">Department</label>
             <select v-model="desigForm.department_id" class="field-input field-select">
               <option :value="null">— No Department —</option>
-              <option
-                v-for="dept in activeDepts"
-                :key="dept.id"
-                :value="dept.id"
-              >{{ dept.name }}</option>
+              <option v-for="dept in activeDepts" :key="dept.id" :value="dept.id">
+                {{ dept.name }}
+              </option>
             </select>
           </div>
           <div class="field-group">
@@ -250,7 +289,8 @@
         <q-card-actions class="dialog-actions">
           <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
           <q-btn
-            unelevated no-caps
+            unelevated
+            no-caps
             :label="editingDesig ? 'Update Designation' : 'Create Designation'"
             color="deep-purple-4"
             :loading="savingDesig"
@@ -259,7 +299,6 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-
   </div>
 </template>
 
@@ -273,60 +312,71 @@ const $q = useQuasar()
 const authStore = useAuthStore()
 
 // ── State ────────────────────────────────────────────────────────────
-const departments    = ref([])
-const designations   = ref([])
-const loadingDepts   = ref(false)
-const loadingDesig   = ref(false)
-const selectedDept   = ref(null)
+const departments = ref([])
+const designations = ref([])
+const loadingDepts = ref(false)
+const loadingDesig = ref(false)
+const selectedDept = ref(null)
 const desigDeptFilter = ref(null)
 
-const deptSearch  = ref('')
+const deptSearch = ref('')
 const desigSearch = ref('')
 
 // Department dialog
 const deptDialogOpen = ref(false)
-const savingDept     = ref(false)
-const editingDept    = ref(null)
-const deptForm       = ref({ name: '', description: '', is_active: true })
+const savingDept = ref(false)
+const editingDept = ref(null)
+const deptForm = ref({ name: '', description: '', is_active: true })
 
 // Designation dialog
 const desigDialogOpen = ref(false)
-const savingDesig     = ref(false)
-const editingDesig    = ref(null)
-const desigForm       = ref({ title: '', description: '', department_id: null, is_active: true })
+const savingDesig = ref(false)
+const editingDesig = ref(null)
+const desigForm = ref({ title: '', description: '', department_id: null, is_active: true })
 
 // ── Computed ─────────────────────────────────────────────────────────
-const companyId  = computed(() => authStore.currentBranch?.company_id || authStore.profile?.company_id)
-const branchId   = computed(() => authStore.currentBranch?.id)
+const companyId = computed(
+  () => authStore.currentBranch?.company_id || authStore.profile?.company_id,
+)
+const branchId = computed(() => authStore.currentBranch?.id)
 
-const activeDepts = computed(() => departments.value.filter(d => d.is_active))
+const activeDepts = computed(() => departments.value.filter((d) => d.is_active))
 
 const filteredDepts = computed(() => {
   const q = deptSearch.value.toLowerCase()
   if (!q) return departments.value
-  return departments.value.filter(d => d.name.toLowerCase().includes(q))
+  return departments.value.filter((d) => d.name.toLowerCase().includes(q))
 })
 
 const filteredDesignations = computed(() => {
   let list = designations.value
   if (desigDeptFilter.value) {
-    list = list.filter(d => d.department_id === desigDeptFilter.value)
+    list = list.filter((d) => d.department_id === desigDeptFilter.value)
   }
   const q = desigSearch.value.toLowerCase()
-  if (q) list = list.filter(d => d.title.toLowerCase().includes(q))
+  if (q) list = list.filter((d) => d.title.toLowerCase().includes(q))
   return list
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function designationsOf(deptId) {
-  return designations.value.filter(d => d.department_id === deptId)
+  return designations.value.filter((d) => d.department_id === deptId)
 }
 
 function getDeptName(deptId) {
-  return departments.value.find(d => d.id === deptId)?.name || ''
+  return departments.value.find((d) => d.id === deptId)?.name || ''
 }
 
-const DEPT_COLORS = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6']
+const DEPT_COLORS = [
+  '#6366f1',
+  '#0ea5e9',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+]
 function deptColor(name) {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -390,11 +440,11 @@ async function saveDept() {
   savingDept.value = true
   try {
     const payload = {
-      name:        deptForm.value.name.trim(),
+      name: deptForm.value.name.trim(),
       description: deptForm.value.description?.trim() || null,
-      is_active:   deptForm.value.is_active,
-      company_id:  companyId.value,
-      branch_id:   branchId.value,
+      is_active: deptForm.value.is_active,
+      company_id: companyId.value,
+      branch_id: branchId.value,
     }
 
     if (editingDept.value) {
@@ -421,9 +471,10 @@ async function saveDept() {
 
 async function deleteDept(dept) {
   const desigCount = designationsOf(dept.id).length
-  const msg = desigCount > 0
-    ? `Delete "${dept.name}"? ${desigCount} designation(s) will be unlinked.`
-    : `Delete "${dept.name}"?`
+  const msg =
+    desigCount > 0
+      ? `Delete "${dept.name}"? ${desigCount} designation(s) will be unlinked.`
+      : `Delete "${dept.name}"?`
 
   $q.dialog({
     title: 'Delete Department',
@@ -435,10 +486,13 @@ async function deleteDept(dept) {
     try {
       const { error } = await supabase.from('departments').delete().eq('id', dept.id)
       if (error) throw error
-      if (selectedDept.value?.id === dept.id) { selectedDept.value = null; desigDeptFilter.value = null }
+      if (selectedDept.value?.id === dept.id) {
+        selectedDept.value = null
+        desigDeptFilter.value = null
+      }
       $q.notify({ type: 'positive', message: 'Department deleted' })
       await Promise.all([fetchDepartments(), fetchDesignations()])
-    } catch(e) {
+    } catch (e) {
       $q.notify({ type: 'negative', message: e.message })
     }
   })
@@ -449,16 +503,16 @@ function openDesigDialog(desig = null) {
   editingDesig.value = desig
   desigForm.value = desig
     ? {
-        title:         desig.title,
-        description:   desig.description || '',
+        title: desig.title,
+        description: desig.description || '',
         department_id: desig.department_id || null,
-        is_active:     desig.is_active,
+        is_active: desig.is_active,
       }
     : {
-        title:         '',
-        description:   '',
+        title: '',
+        description: '',
         department_id: desigDeptFilter.value || null,
-        is_active:     true,
+        is_active: true,
       }
   desigDialogOpen.value = true
 }
@@ -471,12 +525,12 @@ async function saveDesig() {
   savingDesig.value = true
   try {
     const payload = {
-      title:         desigForm.value.title.trim(),
-      description:   desigForm.value.description?.trim() || null,
+      title: desigForm.value.title.trim(),
+      description: desigForm.value.description?.trim() || null,
       department_id: desigForm.value.department_id || null,
-      is_active:     desigForm.value.is_active,
-      company_id:    companyId.value,
-      branch_id:     branchId.value,
+      is_active: desigForm.value.is_active,
+      company_id: companyId.value,
+      branch_id: branchId.value,
     }
 
     if (editingDesig.value) {
@@ -514,7 +568,7 @@ async function deleteDesig(desig) {
       if (error) throw error
       $q.notify({ type: 'positive', message: 'Designation deleted' })
       await fetchDesignations()
-    } catch(e) {
+    } catch (e) {
       $q.notify({ type: 'negative', message: e.message })
     }
   })
@@ -538,13 +592,15 @@ onMounted(async () => {
   gap: 16px;
 }
 @media (max-width: 900px) {
-  .two-panel-grid { grid-template-columns: 1fr; }
+  .two-panel-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Panel ── */
 .panel {
   background: #111827;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
@@ -557,7 +613,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 16px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
 }
 
@@ -575,7 +631,7 @@ onMounted(async () => {
 
 .panel-subtitle {
   font-size: 0.78rem;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .add-btn {
@@ -591,8 +647,8 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  background: rgba(255,255,255,0.015);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.015);
   flex-shrink: 0;
 }
 
@@ -604,7 +660,9 @@ onMounted(async () => {
   color: #e5e7eb;
   font-size: 0.8rem;
 }
-.search-input::placeholder { color: rgba(255,255,255,0.25); }
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
 
 /* ── Filter chips ── */
 .desig-filter-row {
@@ -612,7 +670,7 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 6px;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
@@ -621,21 +679,25 @@ onMounted(async () => {
   border-radius: 20px;
   font-size: 0.7rem;
   font-weight: 500;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
   transition: all 0.18s;
 }
-.filter-chip:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+.filter-chip:hover {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.25);
+}
 .filter-chip.active {
-  background: rgba(139,92,246,0.15);
-  border-color: rgba(139,92,246,0.35);
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.35);
   color: #a78bfa;
 }
 
 /* ── Loading / Empty ── */
-.panel-loading, .panel-empty {
+.panel-loading,
+.panel-empty {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -663,8 +725,8 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 .dept-item:hover {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.07);
 }
 .dept-item.active {
   background: rgba(99, 102, 241, 0.1);
@@ -695,7 +757,7 @@ onMounted(async () => {
 
 .dept-desc {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255, 0.35);
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
@@ -707,7 +769,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   font-size: 0.68rem;
-  color: rgba(255,255,255,0.3);
+  color: rgba(255, 255, 255, 0.3);
   margin-top: 4px;
 }
 
@@ -717,7 +779,9 @@ onMounted(async () => {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.dept-item:hover .dept-item-actions { opacity: 1; }
+.dept-item:hover .dept-item-actions {
+  opacity: 1;
+}
 
 /* ── Designation List ── */
 .desig-list {
@@ -732,14 +796,14 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 12px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.04);
-  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
   margin-bottom: 6px;
   transition: all 0.18s;
 }
 .desig-item:hover {
-  background: rgba(139,92,246,0.06);
-  border-color: rgba(139,92,246,0.15);
+  background: rgba(139, 92, 246, 0.06);
+  border-color: rgba(139, 92, 246, 0.15);
 }
 
 .desig-item-left {
@@ -753,7 +817,7 @@ onMounted(async () => {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: rgba(139,92,246,0.1);
+  background: rgba(139, 92, 246, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -772,14 +836,14 @@ onMounted(async () => {
   font-size: 0.68rem;
   color: #818cf8;
   margin-top: 2px;
-  background: rgba(99,102,241,0.1);
+  background: rgba(99, 102, 241, 0.1);
   padding: 1px 7px;
   border-radius: 10px;
 }
 
 .desig-desc {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255, 0.35);
   margin-top: 3px;
 }
 
@@ -790,7 +854,9 @@ onMounted(async () => {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.desig-item:hover .desig-item-actions { opacity: 1; }
+.desig-item:hover .desig-item-actions {
+  opacity: 1;
+}
 
 .status-badge {
   font-size: 0.6rem !important;
@@ -800,7 +866,7 @@ onMounted(async () => {
 /* ── Dialog ── */
 .dialog-card {
   background: #111827;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   min-width: 420px;
   max-width: 480px;
@@ -811,7 +877,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   font-size: 1rem;
   font-weight: 700;
   color: #e5e7eb;
@@ -833,14 +899,14 @@ onMounted(async () => {
 .field-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255, 255, 255, 0.45);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .field-input {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 10px 14px;
   color: #e5e7eb;
@@ -851,10 +917,18 @@ onMounted(async () => {
   box-sizing: border-box;
   font-family: inherit;
 }
-.field-input:focus { border-color: rgba(99,102,241,0.5); }
-.field-textarea { resize: vertical; }
-.field-select { cursor: pointer; }
-.field-select option { background: #1f2937; }
+.field-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+.field-textarea {
+  resize: vertical;
+}
+.field-select {
+  cursor: pointer;
+}
+.field-select option {
+  background: #1f2937;
+}
 
 .field-toggle {
   display: flex;
@@ -867,6 +941,6 @@ onMounted(async () => {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 20px 18px !important;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 </style>

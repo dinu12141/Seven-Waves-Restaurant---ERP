@@ -1,12 +1,7 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Salary Audit"
-      breadcrumbs="Human Resources / Salary Audit"
-    />
+    <ERPToolbar moduleName="hr" title="Salary Audit" breadcrumbs="Human Resources / Salary Audit" />
 
-    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-select
         dark

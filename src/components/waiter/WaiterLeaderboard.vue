@@ -8,7 +8,9 @@
       <q-btn-toggle
         v-model="period"
         toggle-color="amber-9"
-        no-caps dense flat
+        no-caps
+        dense
+        flat
         text-color="grey-5"
         class="lb-period-toggle"
         :options="[
@@ -26,7 +28,10 @@
     </div>
 
     <!-- Empty -->
-    <div v-else-if="rankedWaiters.length === 0" class="text-grey-6 text-caption text-center q-pa-lg">
+    <div
+      v-else-if="rankedWaiters.length === 0"
+      class="text-grey-6 text-caption text-center q-pa-lg"
+    >
       No waiter data for this period.
     </div>
 
@@ -61,8 +66,13 @@
           <div class="col">
             <div class="rank-name">
               {{ w.display_name || w.employee_name }}
-              <q-badge v-if="highlightProfileId && w.id === highlightProfileId"
-                color="orange-9" label="YOU" class="q-ml-xs" style="font-size:0.55rem;padding:1px 5px" />
+              <q-badge
+                v-if="highlightProfileId && w.id === highlightProfileId"
+                color="orange-9"
+                label="YOU"
+                class="q-ml-xs"
+                style="font-size: 0.55rem; padding: 1px 5px"
+              />
             </div>
             <div class="text-caption text-grey-6">{{ w.waiter_code }}</div>
           </div>
@@ -74,7 +84,11 @@
           </div>
 
           <!-- Change indicator -->
-          <div v-if="w.all_time_points > w.period_points" class="rank-total q-ml-sm" title="All-time total">
+          <div
+            v-if="w.all_time_points > w.period_points"
+            class="rank-total q-ml-sm"
+            title="All-time total"
+          >
             <span class="text-grey-7 text-caption">/ {{ w.all_time_points }}</span>
           </div>
         </div>
@@ -84,7 +98,9 @@
           <div class="rank-progress-bar">
             <div
               class="rank-progress-fill"
-              :style="{ width: Math.max(2, (w.period_points / rankedWaiters[0].period_points) * 100) + '%' }"
+              :style="{
+                width: Math.max(2, (w.period_points / rankedWaiters[0].period_points) * 100) + '%',
+              }"
               :class="{
                 'bg-amber-7': idx === 0,
                 'bg-grey-6': idx === 1,
@@ -158,7 +174,9 @@ async function loadRankings() {
     // 1. Get all active waiter profiles
     const { data: profiles } = await supabase
       .from('waiter_profiles')
-      .select('id, waiter_code, display_name, current_points, total_orders_served, employee:employee_id(full_name)')
+      .select(
+        'id, waiter_code, display_name, current_points, total_orders_served, employee:employee_id(full_name)',
+      )
       .eq('branch_id', branchId)
       .eq('is_active', true)
 
@@ -168,7 +186,7 @@ async function loadRankings() {
     }
 
     // 2. Get period points from ledger — sum points per waiter within the date range
-    const profileIds = profiles.map(p => p.id)
+    const profileIds = profiles.map((p) => p.id)
     const { data: ledgerEntries } = await supabase
       .from('waiter_points_ledger')
       .select('waiter_profile_id, points')
@@ -177,13 +195,13 @@ async function loadRankings() {
 
     // 3. Aggregate points per waiter
     const periodPointsMap = {}
-    ;(ledgerEntries || []).forEach(entry => {
+    ;(ledgerEntries || []).forEach((entry) => {
       if (!periodPointsMap[entry.waiter_profile_id]) periodPointsMap[entry.waiter_profile_id] = 0
       periodPointsMap[entry.waiter_profile_id] += entry.points || 0
     })
 
     // 4. Build ranked list
-    const ranked = profiles.map(p => ({
+    const ranked = profiles.map((p) => ({
       id: p.id,
       waiter_code: p.waiter_code,
       display_name: p.display_name,
@@ -208,7 +226,11 @@ async function loadRankings() {
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 watch(period, () => loadRankings())
@@ -231,7 +253,7 @@ defineExpose({ refresh: loadRankings })
 }
 
 .lb-period-toggle {
-  background: rgba(0,0,0,0.03);
+  background: rgba(0, 0, 0, 0.03);
   border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 8px;
   padding: 1px;
@@ -250,12 +272,12 @@ defineExpose({ refresh: loadRankings })
   border-radius: 12px;
   transition: all 0.15s ease;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 
   &--gold {
     background: #fffbeb;
     border-color: #fde68a;
-    box-shadow: 0 0 12px rgba(251,191,36,0.12);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.12);
   }
   &--silver {
     background: #f8fafc;
@@ -318,7 +340,7 @@ defineExpose({ refresh: loadRankings })
 }
 .rank-progress-bar {
   height: 3px;
-  background: rgba(0,0,0,0.04);
+  background: rgba(0, 0, 0, 0.04);
   border-radius: 2px;
   overflow: hidden;
 }

@@ -323,7 +323,9 @@ async function fetchData() {
       // Load items from the menu book
       const { data: bookItemsData, error: biErr } = await supabase
         .from('menu_book_items')
-        .select('*, menu_items(id, name, description, base_price, image_url, sub_category_id, kitchen_id, is_available, is_veg, is_spicy, is_best_seller, preparation_time_mins, sort_order)')
+        .select(
+          '*, menu_items(id, name, description, base_price, image_url, sub_category_id, kitchen_id, is_available, is_veg, is_spicy, is_best_seller, preparation_time_mins, sort_order)',
+        )
         .eq('menu_book_id', activeBook.id)
         .eq('is_available', true)
         .order('sort_order')
@@ -333,8 +335,8 @@ async function fetchData() {
       if (bookItemsData && bookItemsData.length > 0) {
         // Menu book has items — use them
         loadedItems = bookItemsData
-          .filter(bi => bi.menu_items && bi.menu_items.is_available !== false)
-          .map(bi => {
+          .filter((bi) => bi.menu_items && bi.menu_items.is_available !== false)
+          .map((bi) => {
             const mi = bi.menu_items
             return {
               ...mi,
@@ -344,14 +346,15 @@ async function fetchData() {
           })
 
         // Only show categories that have items in the book
-        const usedSubCatIds = new Set(loadedItems.map(i => i.sub_category_id).filter(Boolean))
+        const usedSubCatIds = new Set(loadedItems.map((i) => i.sub_category_id).filter(Boolean))
         categories.value = [
           {
             id: 'all',
             name: 'All Menu',
-            image_url: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+            image_url:
+              'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
           },
-          ...loadedCategories.filter(c => usedSubCatIds.has(c.id)),
+          ...loadedCategories.filter((c) => usedSubCatIds.has(c.id)),
         ]
 
         items.value = loadedItems
@@ -364,17 +367,16 @@ async function fetchData() {
       {
         id: 'all',
         name: 'All Menu',
-        image_url: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+        image_url:
+          'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
       },
       ...loadedCategories,
     ]
 
-    const { data: itemData, error: itemErr } = await supabase
-      .from('menu_items')
-      .select('*')
+    const { data: itemData, error: itemErr } = await supabase.from('menu_items').select('*')
     if (itemErr) throw itemErr
 
-    items.value = (itemData || []).map(i => ({
+    items.value = (itemData || []).map((i) => ({
       ...i,
       price: i.base_price != null ? Number(i.base_price) : i.price || i.name.length * 150 + 400,
       image_url: i.image_url || getPremiumFallbackImage(i.name, i.id),
@@ -514,22 +516,30 @@ onMounted(() => {
   font-family: 'Inter', sans-serif;
   height: calc(100vh - 70px) !important;
   max-width: 100vw;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 // ── Theme-adaptive backgrounds ─────────────────────────────────────────────
-:global(.body--dark) .touch-menu-page { background-color: #0b0e14; color: #f8fafc; }
-:global(.body--light) .touch-menu-page { background-color: #f8fafc; color: #0f172a; }
+:global(.body--dark) .touch-menu-page {
+  background-color: #0b0e14;
+  color: #f8fafc;
+}
+:global(.body--light) .touch-menu-page {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
 
 // Hero section
 .touch-hero {
   height: 60px;
 }
 :global(.body--dark) .touch-hero {
-  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 60%);
+  background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 60%);
 }
 :global(.body--light) .touch-hero {
-  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.06), transparent 60%);
+  background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.06), transparent 60%);
 }
 
 .touch-hero-title {
@@ -552,7 +562,9 @@ onMounted(() => {
 
 // Search bar
 .tm-search-wrap {
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 :global(.body--dark) .tm-search-wrap {
   background: rgba(30, 41, 59, 0.8);
@@ -561,7 +573,7 @@ onMounted(() => {
 :global(.body--light) .tm-search-wrap {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 // Filter button
@@ -607,19 +619,21 @@ onMounted(() => {
 
 // Borders
 .border-bottom {
-  border-bottom: 1px solid rgba(128,128,128,0.12);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.12);
 }
 .border-right {
-  border-right: 1px solid rgba(128,128,128,0.12);
+  border-right: 1px solid rgba(128, 128, 128, 0.12);
 }
 .border-top {
-  border-top: 1px solid rgba(128,128,128,0.12);
+  border-top: 1px solid rgba(128, 128, 128, 0.12);
 }
 .border-accent {
-  border: 1px solid rgba(128,128,128,0.12);
+  border: 1px solid rgba(128, 128, 128, 0.12);
 }
 
-.transparency-05 { opacity: 0.5; }
+.transparency-05 {
+  opacity: 0.5;
+}
 
 // Item detail card
 .tm-detail-card {
@@ -639,14 +653,21 @@ onMounted(() => {
 .tm-actions-bg {
   background: rgba(0, 0, 0, 0.04);
 }
-:global(.body--dark) .tm-actions-bg { background: rgba(0, 0, 0, 0.2); }
-:global(.body--light) .tm-actions-bg { background: rgba(0, 0, 0, 0.02); }
+:global(.body--dark) .tm-actions-bg {
+  background: rgba(0, 0, 0, 0.2);
+}
+:global(.body--light) .tm-actions-bg {
+  background: rgba(0, 0, 0, 0.02);
+}
 
 // Category slide cards
 .category-slide-card {
   width: 48px;
   opacity: 0.7;
-  &:hover { opacity: 1; transform: translateY(-2px); }
+  &:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
   &--active {
     opacity: 1;
     .cat-img-wrapper {
@@ -674,14 +695,22 @@ onMounted(() => {
   display: flex;
   width: max-content;
   animation: scrollLeft 120s linear infinite;
-  &.paused { animation-play-state: paused; }
+  &.paused {
+    animation-play-state: paused;
+  }
 }
 
-.marquee-content { display: flex; }
+.marquee-content {
+  display: flex;
+}
 
 @keyframes scrollLeft {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-16.66666%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-16.66666%);
+  }
 }
 
 // Bottom gradient
@@ -700,36 +729,68 @@ onMounted(() => {
   box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
 }
 
-.bg-black-06 { background: rgba(0, 0, 0, 0.6); }
-.bg-black-03 { background: rgba(0, 0, 0, 0.3); }
-.bg-primary-transparent { background: rgba(37, 99, 235, 0.1); }
+.bg-black-06 {
+  background: rgba(0, 0, 0, 0.6);
+}
+.bg-black-03 {
+  background: rgba(0, 0, 0, 0.3);
+}
+.bg-primary-transparent {
+  background: rgba(37, 99, 235, 0.1);
+}
 
 /* Typography */
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 700; }
-.font-extrabold { font-weight: 800; }
-.font-black { font-weight: 900; }
-.letter-spacing-1 { letter-spacing: 1px; }
-.font-mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; }
-.line-height-1 { line-height: 1.2; }
-.line-height-1-5 { line-height: 1.5; }
+.font-medium {
+  font-weight: 500;
+}
+.font-bold {
+  font-weight: 700;
+}
+.font-extrabold {
+  font-weight: 800;
+}
+.font-black {
+  font-weight: 900;
+}
+.letter-spacing-1 {
+  letter-spacing: 1px;
+}
+.font-mono {
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+}
+.line-height-1 {
+  line-height: 1.2;
+}
+.line-height-1-5 {
+  line-height: 1.5;
+}
 
 /* Transitions */
-.transition-02 { transition: all 0.2s ease; }
-.transition-03 { transition: all 0.3s cubic-bezier(0.2, 0, 0, 1); }
+.transition-02 {
+  transition: all 0.2s ease;
+}
+.transition-03 {
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
 
 /* Hide scrollbars */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .touch-confirm-btn {
   border-radius: 12px;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
-  &:active { transform: scale(0.97); }
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  &:active {
+    transform: scale(0.97);
+  }
 }
 </style>

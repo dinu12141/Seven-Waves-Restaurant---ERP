@@ -16,7 +16,6 @@
 
     <!-- Main content card -->
     <q-card class="bg-dark text-white q-mt-md">
-
       <q-tab-panels v-model="tab" animated class="bg-dark text-white">
         <!-- Dashboard -->
         <q-tab-panel name="dashboard" class="q-pa-none">
@@ -128,14 +127,17 @@ const tab = ref('dashboard')
 const tabRef = ref(null)
 const editingDocument = ref(null)
 
-watch(() => route.query.tab, (newTab) => {
-  if (newTab) {
-    tab.value = newTab
-  } else {
-    tab.value = 'dashboard'
-  }
-}, { immediate: true })
-
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab) {
+      tab.value = newTab
+    } else {
+      tab.value = 'dashboard'
+    }
+  },
+  { immediate: true },
+)
 
 function handleExport(format) {
   if (!tabRef.value) return

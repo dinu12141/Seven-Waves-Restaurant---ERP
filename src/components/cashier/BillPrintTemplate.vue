@@ -216,7 +216,8 @@ const balanceAmount = computed(() => {
 
 const itemsSubtotal = computed(() => {
   return (props.invoice.invoice_items || []).reduce(
-    (sum, item) => sum + parseFloat(item.total_price || 0), 0
+    (sum, item) => sum + parseFloat(item.total_price || 0),
+    0,
   )
 })
 

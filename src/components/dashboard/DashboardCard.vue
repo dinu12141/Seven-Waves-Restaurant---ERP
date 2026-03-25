@@ -6,8 +6,15 @@
         <q-icon :name="icon" size="28px" />
       </div>
       <div class="column justify-center flex-grow" style="min-width: 0; min-height: 56px">
-        <div class="erp-dashboard-card__title text-uppercase text-weight-bold tracking-wide">{{ title }}</div>
-        <div class="erp-dashboard-card__value erp-num q-my-xs tracking-tight" :title="String(value)">{{ value }}</div>
+        <div class="erp-dashboard-card__title text-uppercase text-weight-bold tracking-wide">
+          {{ title }}
+        </div>
+        <div
+          class="erp-dashboard-card__value erp-num q-my-xs tracking-tight"
+          :title="String(value)"
+        >
+          {{ value }}
+        </div>
         <div class="erp-dashboard-card__subtext ellipsis">
           <span class="q-mr-xs text-weight-bold" :class="trendClass" v-if="trend">
             <q-icon :name="trendIcon" size="14px" class="q-mr-xs" v-if="trendIcon" />
@@ -59,7 +66,7 @@ const trendClass = computed(() => {
     transform: translateY(-4px);
     border-color: var(--erp-border-hover);
     box-shadow: var(--erp-shadow-lg);
-    
+
     .erp-dashboard-card__glow {
       opacity: 0.15;
     }
@@ -78,13 +85,27 @@ const trendClass = computed(() => {
     z-index: 0;
   }
 
-  &--primary { color: var(--erp-primary); }
-  &--green { color: #10b981; }
-  &--blue { color: #3b82f6; }
-  &--orange { color: #f59e0b; }
-  &--red { color: #ef4444; }
-  &--purple { color: #8b5cf6; }
-  &--teal { color: #0d9488; }
+  &--primary {
+    color: var(--erp-primary);
+  }
+  &--green {
+    color: #10b981;
+  }
+  &--blue {
+    color: #3b82f6;
+  }
+  &--orange {
+    color: #f59e0b;
+  }
+  &--red {
+    color: #ef4444;
+  }
+  &--purple {
+    color: #8b5cf6;
+  }
+  &--teal {
+    color: #0d9488;
+  }
 
   &__icon-box {
     width: 56px;
@@ -124,8 +145,15 @@ const trendClass = computed(() => {
     color: var(--erp-text-muted);
   }
 
-  .tracking-wide { letter-spacing: 1px; }
-  .tracking-tight { letter-spacing: -0.5px; }
-  .z-top { z-index: 2; position: relative; }
+  .tracking-wide {
+    letter-spacing: 1px;
+  }
+  .tracking-tight {
+    letter-spacing: -0.5px;
+  }
+  .z-top {
+    z-index: 2;
+    position: relative;
+  }
 }
 </style>

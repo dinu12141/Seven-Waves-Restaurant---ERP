@@ -47,10 +47,7 @@ async function createWindow() {
     : path.join(appDir, 'preload', 'electron-preload.cjs')
 
   mainWindow = new BrowserWindow({
-    icon: path.join(
-      appDir,
-      app.isPackaged ? 'icons/icon.png' : 'src-electron/icons/icon.png',
-    ),
+    icon: path.join(appDir, app.isPackaged ? 'icons/icon.png' : 'src-electron/icons/icon.png'),
     width: 1280,
     height: 800,
     minWidth: 1024,

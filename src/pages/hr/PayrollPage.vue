@@ -1,12 +1,7 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Payroll"
-      breadcrumbs="Human Resources / Payroll"
-    />
+    <ERPToolbar moduleName="hr" title="Payroll" breadcrumbs="Human Resources / Payroll" />
 
-    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn
         color="primary"
@@ -176,7 +171,157 @@
                 />
               </q-td>
             </template>
+            <template #body-cell-details="props">
+              <q-td :props="props" class="q-gutter-xs">
+                <q-btn
+                  flat
+                  dense
+                  icon="receipt_long"
+                  color="cyan"
+                  size="xs"
+                  no-caps
+                  @click="viewBreakdown(props.row)"
+                >
+                  <q-tooltip>View Breakdown</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  icon="picture_as_pdf"
+                  color="red-4"
+                  size="xs"
+                  no-caps
+                  @click="downloadPayslipPDF(props.row)"
+                >
+                  <q-tooltip>Download PDF</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  icon="email"
+                  color="blue-4"
+                  size="xs"
+                  no-caps
+                  @click="sendPayslipEmail(props.row)"
+                  :loading="sendingEmail === props.row.id"
+                >
+                  <q-tooltip>Send to Email</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
           </q-table>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+    <!-- Payslip Breakdown Dialog -->
+    <q-dialog v-model="showBreakdown">
+      <q-card
+        style="width: 680px; max-width: 95vw; background: var(--erp-bg-page, #0b0f19); color: #fff"
+      >
+        <q-bar class="bg-grey-10">
+          <q-icon name="receipt_long" color="cyan" />
+          <div class="q-ml-sm text-weight-bold">
+            Payslip Breakdown — {{ selectedPayslip?.employees?.full_name }}
+          </div>
+          <q-space />
+          <q-btn dense flat icon="close" @click="showBreakdown = false" />
+        </q-bar>
+
+        <q-card-section v-if="loadingBreakdown" class="text-center q-pa-xl">
+          <q-spinner size="40px" color="amber" />
+          <div class="q-mt-sm text-grey-5">Loading breakdown…</div>
+        </q-card-section>
+
+        <q-card-section v-else-if="breakdown" class="q-gutter-md">
+          <!-- Earnings -->
+          <div>
+            <div class="text-subtitle2 text-weight-bold text-green row items-center q-mb-sm">
+              <q-icon name="trending_up" class="q-mr-xs" /> Earnings
+            </div>
+            <q-markup-table
+              dark
+              flat
+              bordered
+              dense
+              separator="cell"
+              style="background: rgba(255, 255, 255, 0.02)"
+            >
+              <tbody>
+                <tr v-for="item in breakdown.earnings" :key="item.label">
+                  <td class="text-grey-4 text-caption">{{ item.label }}</td>
+                  <td class="text-right text-white text-weight-medium text-caption">
+                    LKR {{ fmt(item.amount) }}
+                  </td>
+                </tr>
+                <tr style="border-top: 2px solid rgba(34, 197, 94, 0.4)">
+                  <td class="text-green text-weight-bold text-caption">Gross Salary</td>
+                  <td class="text-right text-green text-weight-bold text-caption">
+                    LKR {{ fmt(breakdown.gross) }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+
+          <!-- Deductions -->
+          <div>
+            <div class="text-subtitle2 text-weight-bold text-red row items-center q-mb-sm">
+              <q-icon name="trending_down" class="q-mr-xs" /> Deductions
+            </div>
+            <q-markup-table
+              dark
+              flat
+              bordered
+              dense
+              separator="cell"
+              style="background: rgba(255, 255, 255, 0.02)"
+            >
+              <tbody>
+                <tr v-for="item in breakdown.deductions" :key="item.label">
+                  <td class="text-grey-4 text-caption">{{ item.label }}</td>
+                  <td class="text-right text-red-3 text-caption">LKR {{ fmt(item.amount) }}</td>
+                </tr>
+                <tr style="border-top: 2px solid rgba(59, 130, 246, 0.5)">
+                  <td class="text-white text-weight-bold text-caption">Net Salary</td>
+                  <td class="text-right text-blue text-weight-bold text-caption">
+                    LKR {{ fmt(breakdown.net) }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+
+          <!-- Employer Contributions (informational) -->
+          <div v-if="breakdown.employer_contributions && breakdown.employer_contributions.length">
+            <div class="text-subtitle2 text-weight-bold text-grey-5 row items-center q-mb-sm">
+              <q-icon name="business" class="q-mr-xs" /> Employer Contributions
+              <q-badge
+                color="grey-7"
+                label="informational"
+                class="q-ml-sm"
+                style="font-size: 10px"
+              />
+            </div>
+            <q-markup-table
+              dark
+              flat
+              bordered
+              dense
+              separator="cell"
+              style="background: rgba(255, 255, 255, 0.02)"
+            >
+              <tbody>
+                <tr v-for="item in breakdown.employer_contributions" :key="item.label">
+                  <td class="text-grey-5 text-caption">{{ item.label }}</td>
+                  <td class="text-right text-grey-4 text-caption">LKR {{ fmt(item.amount) }}</td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+        </q-card-section>
+
+        <q-card-section v-else class="text-center text-grey-5 q-pa-xl">
+          No breakdown data available for this payslip.
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -189,6 +334,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -201,6 +348,11 @@ const showRunDialog = ref(false)
 const showPayslips = ref(false)
 const selectedRun = ref(null)
 const payrollMonth = ref('')
+const showBreakdown = ref(false)
+const selectedPayslip = ref(null)
+const breakdown = ref(null)
+const loadingBreakdown = ref(false)
+const sendingEmail = ref(null)
 
 const fmt = (v) => Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })
 
@@ -252,6 +404,7 @@ const payslipColumns = [
   },
   { name: 'net', label: 'Net Salary', align: 'right', field: 'net_salary', format: (v) => fmt(v) },
   { name: 'status', label: 'Status', align: 'center', field: 'payment_status' },
+  { name: 'details', label: 'Actions', align: 'center', field: 'id' },
 ]
 
 function runStatusColor(s) {
@@ -308,7 +461,7 @@ async function viewRun(run) {
   selectedRun.value = run
   const { data } = await supabase
     .from('payslips')
-    .select('*, employees(full_name, employee_code)')
+    .select('*, employees(full_name, employee_code, email)')
     .eq('payroll_run_id', run.id)
     .order('net_salary', { ascending: false })
   payslips.value = data || []
@@ -335,6 +488,228 @@ async function finalApprove(run) {
       $q.notify({ type: 'negative', message: err.message })
     }
   })
+}
+
+async function viewBreakdown(payslip) {
+  selectedPayslip.value = payslip
+  breakdown.value = null
+  showBreakdown.value = true
+  loadingBreakdown.value = true
+  try {
+    const { data, error } = await supabase.rpc('get_payslip_breakdown', {
+      p_payslip_id: payslip.id,
+    })
+    if (error) throw error
+    breakdown.value = data
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to load breakdown: ' + err.message })
+  } finally {
+    loadingBreakdown.value = false
+  }
+}
+
+async function downloadPayslipPDF(payslip) {
+  // Fetch full breakdown for PDF content
+  let bd = null
+  try {
+    const { data, error } = await supabase.rpc('get_payslip_breakdown', {
+      p_payslip_id: payslip.id,
+    })
+    if (error) throw error
+    bd = data
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Could not load payslip data: ' + err.message })
+    return
+  }
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+  const margin = 14
+  let y = margin
+
+  // ── Header ─────────────────────────────────────────────────────────────
+  doc.setFillColor(17, 24, 39)
+  doc.rect(0, 0, pageW, 30, 'F')
+  doc.setFontSize(16)
+  doc.setTextColor(249, 168, 37)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PAYSLIP', pageW / 2, 13, { align: 'center' })
+  doc.setFontSize(9)
+  doc.setTextColor(156, 163, 175)
+  doc.setFont('helvetica', 'normal')
+  doc.text(
+    `${selectedRun.value?.period_start || ''} — ${selectedRun.value?.period_end || ''}`,
+    pageW / 2,
+    21,
+    { align: 'center' },
+  )
+  y = 38
+
+  // ── Employee Info ────────────────────────────────────────────────────────
+  doc.setFontSize(10)
+  doc.setTextColor(30, 30, 30)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Employee Details', margin, y)
+  y += 5
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+
+  const empName = bd.employee || payslip.employees?.full_name || '—'
+  const empCode = bd.code || payslip.employees?.employee_code || '—'
+  const empDesig = bd.designation || '—'
+  const daysWorked = bd.days_worked ?? '—'
+  const daysAbsent = bd.days_absent ?? '—'
+  const lateMin = bd.late_minutes ?? '—'
+
+  const infoRows = [
+    ['Employee Name', empName, 'Employee Code', empCode],
+    ['Designation', empDesig, 'Days Worked', daysWorked],
+    ['Days Absent', daysAbsent, 'Late (min)', lateMin],
+  ]
+  autoTable(doc, {
+    startY: y,
+    head: [],
+    body: infoRows,
+    theme: 'plain',
+    styles: { fontSize: 9, cellPadding: 2 },
+    columnStyles: {
+      0: { fontStyle: 'bold', textColor: [80, 80, 80], cellWidth: 40 },
+      1: { cellWidth: 55 },
+      2: { fontStyle: 'bold', textColor: [80, 80, 80], cellWidth: 40 },
+      3: { cellWidth: 45 },
+    },
+    margin: { left: margin, right: margin },
+  })
+  y = doc.lastAutoTable.finalY + 6
+
+  // ── Earnings & Deductions side-by-side ─────────────────────────────────
+  const earnings = (bd.earnings || []).filter((e) => Number(e.amount) !== 0)
+  const deductions = (bd.deductions || []).filter((d) => Number(d.amount) !== 0)
+
+  const earningRows = earnings.map((e) => [e.label, fmt(e.amount)])
+  const deductionRows = deductions.map((d) => [d.label, fmt(d.amount)])
+
+  earningRows.push(['', ''])
+  earningRows.push(['GROSS SALARY', fmt(bd.gross)])
+  deductionRows.push(['', ''])
+  deductionRows.push(['TOTAL DEDUCTIONS', fmt(bd.total_deductions ?? bd.gross - bd.net)])
+
+  // Left table – Earnings
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(34, 197, 94)
+  doc.text('EARNINGS', margin, y)
+  doc.setTextColor(239, 68, 68)
+  doc.text('DEDUCTIONS', pageW / 2 + 2, y)
+  y += 3
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Description', 'Amount (LKR)']],
+    body: earningRows,
+    theme: 'striped',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'right' } },
+    margin: { left: margin, right: pageW / 2 + 1 },
+    didDrawCell: (data) => {
+      if (data.row.index === earningRows.length - 1) {
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+      }
+    },
+  })
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Description', 'Amount (LKR)']],
+    body: deductionRows,
+    theme: 'striped',
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'right' } },
+    margin: { left: pageW / 2 + 2, right: margin },
+  })
+
+  y = Math.max(doc.lastAutoTable.finalY, doc.lastAutoTable.finalY) + 4
+
+  // ── Net Salary Banner ───────────────────────────────────────────────────
+  doc.setFillColor(17, 24, 39)
+  doc.rect(margin, y, pageW - margin * 2, 12, 'F')
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text('NET SALARY:', margin + 4, y + 8)
+  doc.setTextColor(96, 165, 250)
+  doc.text('LKR ' + fmt(bd.net), pageW - margin - 4, y + 8, { align: 'right' })
+  y += 18
+
+  // ── Employer Contributions ──────────────────────────────────────────────
+  const empContribs = (bd.employer_contributions || []).filter((c) => Number(c.amount) !== 0)
+  if (empContribs.length) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(100, 100, 100)
+    doc.text('EMPLOYER CONTRIBUTIONS (Informational):', margin, y)
+    y += 3
+    autoTable(doc, {
+      startY: y,
+      body: empContribs.map((c) => [c.label, fmt(c.amount)]),
+      theme: 'plain',
+      styles: { fontSize: 8, textColor: [120, 120, 120] },
+      columnStyles: { 1: { halign: 'right' } },
+      margin: { left: margin, right: margin },
+    })
+    y = doc.lastAutoTable.finalY + 6
+  }
+
+  // ── Signature Line ──────────────────────────────────────────────────────
+  y = Math.max(y, 240)
+  doc.setDrawColor(200, 200, 200)
+  doc.line(margin, y, margin + 60, y)
+  doc.line(pageW - margin - 60, y, pageW - margin, y)
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120, 120, 120)
+  doc.text('Employee Signature', margin, y + 5)
+  doc.text('Authorized Signatory', pageW - margin - 60, y + 5)
+
+  // ── Footer ──────────────────────────────────────────────────────────────
+  doc.setFontSize(7)
+  doc.setTextColor(160, 160, 160)
+  doc.text('Generated by Restaurant ERP • Confidential', pageW / 2, 290, { align: 'center' })
+
+  // Save
+  const filename = `Payslip_${empCode}_${selectedRun.value?.period_start || 'period'}.pdf`
+  doc.save(filename)
+  $q.notify({ type: 'positive', message: `Payslip downloaded: ${filename}` })
+}
+
+async function sendPayslipEmail(payslip) {
+  const empName = payslip.employees?.full_name || 'Employee'
+  const empEmail = payslip.employees?.email
+
+  if (!empEmail) {
+    $q.notify({ type: 'warning', message: `No email address on file for ${empName}` })
+    return
+  }
+
+  sendingEmail.value = payslip.id
+  try {
+    const { error } = await supabase.functions.invoke('send-payslip', {
+      body: {
+        payslip_id: payslip.id,
+        period_start: selectedRun.value?.period_start,
+        period_end: selectedRun.value?.period_end,
+      },
+    })
+    if (error) throw error
+    $q.notify({ type: 'positive', message: `Payslip sent to ${empEmail}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Email failed: ' + (err.message || 'Unknown error') })
+  } finally {
+    sendingEmail.value = null
+  }
 }
 
 watch(statusFilter, () => loadRuns())

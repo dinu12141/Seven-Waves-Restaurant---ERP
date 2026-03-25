@@ -107,7 +107,13 @@
             id="orders-menu-btn"
           >
             <q-icon name="receipt_long" size="22px" color="white" />
-            <q-badge v-if="session.activeOrders.length > 0" color="red" floating rounded class="cart-badge">
+            <q-badge
+              v-if="session.activeOrders.length > 0"
+              color="red"
+              floating
+              rounded
+              class="cart-badge"
+            >
               {{ session.activeOrders.length }}
             </q-badge>
             <q-menu
@@ -115,7 +121,12 @@
               self="top right"
               dark
               class="orders-menu-popup bg-grey-10"
-              style="border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; min-width: 280px; max-width: 320px"
+              style="
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 16px;
+                min-width: 280px;
+                max-width: 320px;
+              "
             >
               <!-- Tabs -->
               <div class="orders-menu-tabs">
@@ -123,12 +134,16 @@
                   class="orders-tab-btn"
                   :class="{ active: ordersTab === 'active' }"
                   @click.stop="ordersTab = 'active'"
-                >Active ({{ session.activeOrders.length }})</button>
+                >
+                  Active ({{ session.activeOrders.length }})
+                </button>
                 <button
                   class="orders-tab-btn"
                   :class="{ active: ordersTab === 'history' }"
                   @click.stop="ordersTab = 'history'"
-                >History ({{ session.orderHistory.length }})</button>
+                >
+                  History ({{ session.orderHistory.length }})
+                </button>
               </div>
 
               <!-- Active Orders -->
@@ -142,7 +157,9 @@
                   :key="oid"
                   clickable
                   v-close-popup
-                  @click="$router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + oid)"
+                  @click="
+                    $router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + oid)
+                  "
                   class="orders-menu-item"
                 >
                   <q-item-section avatar style="min-width: 38px; padding-right: 10px">
@@ -151,7 +168,10 @@
                     </div>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-white text-weight-semibold" style="font-size: 0.88rem">
+                    <q-item-label
+                      class="text-white text-weight-semibold"
+                      style="font-size: 0.88rem"
+                    >
                       Order #{{ idx + 1 }}
                     </q-item-label>
                     <q-item-label caption class="text-orange-4" style="font-size: 0.72rem">
@@ -175,7 +195,9 @@
                   :key="hist.id"
                   clickable
                   v-close-popup
-                  @click="$router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + hist.id)"
+                  @click="
+                    $router.push('/table/' + encodeURIComponent(sessionToken) + '/track/' + hist.id)
+                  "
                   class="orders-menu-item"
                 >
                   <q-item-section avatar style="min-width: 38px; padding-right: 10px">
@@ -184,11 +206,15 @@
                     </div>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-white text-weight-semibold" style="font-size: 0.88rem">
+                    <q-item-label
+                      class="text-white text-weight-semibold"
+                      style="font-size: 0.88rem"
+                    >
                       Order #{{ hist.order_number ?? '—' }}
                     </q-item-label>
                     <q-item-label caption class="text-green-5" style="font-size: 0.72rem">
-                      Paid · LKR {{ hist.total_amount ? Number(hist.total_amount).toLocaleString() : '—' }}
+                      Paid · LKR
+                      {{ hist.total_amount ? Number(hist.total_amount).toLocaleString() : '—' }}
                     </q-item-label>
                   </q-item-section>
                   <q-item-section side>
@@ -683,7 +709,12 @@ async function loadMenu() {
 
     if (subCatData) {
       categories.value = [
-        { name: 'All', image: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png', id: 'all' },
+        {
+          name: 'All',
+          image:
+            'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+          id: 'all',
+        },
         ...subCatData.map((sc) => ({ name: sc.name, image: sc.image_url, id: sc.id })),
       ]
     }
@@ -1234,7 +1265,7 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   background: var(--erp-bg-main, #1a1a24);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .cat-img {

@@ -57,9 +57,8 @@ export const useDeliveryStore = defineStore('delivery', () => {
   const completedTodayCount = computed(() => {
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
-    return history.value.filter(
-      (a) => a.delivered_at && new Date(a.delivered_at) >= todayStart,
-    ).length
+    return history.value.filter((a) => a.delivered_at && new Date(a.delivered_at) >= todayStart)
+      .length
   })
 
   // ── Initialize ─────────────────────────────────────────────

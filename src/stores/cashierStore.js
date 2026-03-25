@@ -71,7 +71,16 @@ export const useCashierStore = defineStore('cashier', () => {
         message: 'POS Initialization Failed',
         caption: err.message || 'Unknown error',
         color: 'red',
-        actions: [{ label: 'Retry', color: 'white', handler: () => { booted = false; initialize() } }],
+        actions: [
+          {
+            label: 'Retry',
+            color: 'white',
+            handler: () => {
+              booted = false
+              initialize()
+            },
+          },
+        ],
       })
     } finally {
       loading.value = false
@@ -189,14 +198,14 @@ export const useCashierStore = defineStore('cashier', () => {
       // Call the canonical RPC — it handles all charges correctly and
       // creates invoice_items, updates cashier_queue, and fires audit events.
       const { data: result, error: rpcErr } = await supabase.rpc('cashier_raise_invoice', {
-        p_order_id:          orderId,
-        p_customer_name:     opts.customerName ?? order.customer_name ?? null,
-        p_discount:          opts.discount       ?? 0,
-        p_service_charge:    opts.serviceCharge  ?? 0,
-        p_tips:              opts.tips            ?? 0,
-        p_delivery_charge:   opts.deliveryCharge ?? 0,
-        p_notes:             opts.notes          ?? null,
-        p_tax_breakdown:     opts.taxBreakdown   ?? {},
+        p_order_id: orderId,
+        p_customer_name: opts.customerName ?? order.customer_name ?? null,
+        p_discount: opts.discount ?? 0,
+        p_service_charge: opts.serviceCharge ?? 0,
+        p_tips: opts.tips ?? 0,
+        p_delivery_charge: opts.deliveryCharge ?? 0,
+        p_notes: opts.notes ?? null,
+        p_tax_breakdown: opts.taxBreakdown ?? {},
         p_discount_breakdown: opts.discountBreakdown ?? {},
       })
 
@@ -206,7 +215,9 @@ export const useCashierStore = defineStore('cashier', () => {
       // Fetch the full invoice record for local state
       const { data: invoice, error: fetchErr } = await supabase
         .from('invoices')
-        .select('id, invoice_number, total, grand_total, status, payment_status, created_at, subtotal, tax, discount, service_charge, tips, delivery_charge')
+        .select(
+          'id, invoice_number, total, grand_total, status, payment_status, created_at, subtotal, tax, discount, service_charge, tips, delivery_charge',
+        )
         .eq('id', result.invoice_id)
         .single()
 
@@ -223,7 +234,10 @@ export const useCashierStore = defineStore('cashier', () => {
         }
       }
 
-      return { success: true, invoice: { ...invoice, grand_total: invoice.grand_total ?? invoice.total } }
+      return {
+        success: true,
+        invoice: { ...invoice, grand_total: invoice.grand_total ?? invoice.total },
+      }
     } catch (err) {
       Notify.create({
         message: 'Invoice Generation Failed',
@@ -409,8 +423,8 @@ export const useCashierStore = defineStore('cashier', () => {
             kot_tickets: Array.isArray(data.orders.kot_tickets)
               ? data.orders.kot_tickets
               : data.orders.kot_tickets
-              ? [data.orders.kot_tickets]
-              : [],
+                ? [data.orders.kot_tickets]
+                : [],
           }
         : null,
       invoice_items: (data?.invoice_items || []).map((ii) => ({
@@ -475,8 +489,13 @@ export const useCashierStore = defineStore('cashier', () => {
       // Always refresh for any new order (including pending_waiter from website)
       // so the cashier sees it immediately in the queue
       const isValidForQueue = [
-        'pending', 'pending_waiter', 'accepted', 'preparing',
-        'ready', 'served', 'invoiced',
+        'pending',
+        'pending_waiter',
+        'accepted',
+        'preparing',
+        'ready',
+        'served',
+        'invoiced',
       ].includes(newRow.status)
       if (isValidForQueue) {
         debouncedRefresh()
@@ -484,9 +503,10 @@ export const useCashierStore = defineStore('cashier', () => {
         if (newRow.status === 'pending_waiter' || newRow.status === 'accepted') {
           Notify.create({
             message: `New Order Received! (#${newRow.order_number})`,
-            caption: newRow.status === 'pending_waiter'
-              ? '⚡ Awaiting waiter acceptance — check Billing Queue.'
-              : '✅ Order accepted — check Billing Queue.',
+            caption:
+              newRow.status === 'pending_waiter'
+                ? '⚡ Awaiting waiter acceptance — check Billing Queue.'
+                : '✅ Order accepted — check Billing Queue.',
             color: 'orange-9',
             icon: 'receipt_long',
             position: 'top-right',
@@ -552,8 +572,14 @@ export const useCashierStore = defineStore('cashier', () => {
       } else {
         // Order not in local list yet — add it via full refresh
         const isValidForQueue = [
-          'pending', 'pending_waiter', 'accepted', 'preparing',
-          'ready', 'served', 'invoiced', 'paid',
+          'pending',
+          'pending_waiter',
+          'accepted',
+          'preparing',
+          'ready',
+          'served',
+          'invoiced',
+          'paid',
         ].includes(newRow.status)
         if (isValidForQueue) {
           debouncedRefresh()

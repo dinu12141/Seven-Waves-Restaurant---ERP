@@ -293,9 +293,7 @@
       <q-card style="width: 360px; max-width: 95vw">
         <q-card-section class="dialog-header" style="padding: 12px 16px">
           <q-icon name="qr_code_2" size="20px" class="q-mr-sm" />
-          <span style="font-size: 0.95rem"
-            >QR Code — {{ (qrTarget?.table_number || '') }}</span
-          >
+          <span style="font-size: 0.95rem">QR Code — {{ qrTarget?.table_number || '' }}</span>
           <q-btn
             flat
             round
@@ -309,25 +307,46 @@
 
         <!-- ⚠️ Localhost warning — phones can't reach localhost -->
         <q-card-section v-if="isLocalhostUrl" class="q-pa-sm q-pt-none">
-          <div style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.4); border-radius: 10px; padding: 10px 12px;">
+          <div
+            style="
+              background: rgba(245, 158, 11, 0.12);
+              border: 1px solid rgba(245, 158, 11, 0.4);
+              border-radius: 10px;
+              padding: 10px 12px;
+            "
+          >
             <div class="row items-center q-mb-xs">
               <q-icon name="wifi_tethering" size="16px" color="orange" class="q-mr-xs" />
-              <span style="font-size: 0.78rem; font-weight: 700; color: #f59e0b;">Phone can't reach localhost!</span>
+              <span style="font-size: 0.78rem; font-weight: 700; color: #f59e0b"
+                >Phone can't reach localhost!</span
+              >
             </div>
-            <div style="font-size: 0.74rem; color: #9ca3af; margin-bottom: 8px;">Enter your PC's WiFi IP so phones on the same network can open this QR.</div>
+            <div style="font-size: 0.74rem; color: #9ca3af; margin-bottom: 8px">
+              Enter your PC's WiFi IP so phones on the same network can open this QR.
+            </div>
             <div class="row q-gutter-xs items-center">
               <q-input
                 v-model="qrBaseUrlOverride"
                 dense
                 outlined
                 placeholder="e.g. http://192.168.1.50:9000"
-                style="flex: 1; font-size: 0.78rem;"
+                style="flex: 1; font-size: 0.78rem"
                 class="q-mr-xs"
                 @keyup.enter="applyQrUrlOverride"
               />
-              <q-btn dense unelevated color="orange" no-caps label="Apply" size="sm" @click="applyQrUrlOverride" />
+              <q-btn
+                dense
+                unelevated
+                color="orange"
+                no-caps
+                label="Apply"
+                size="sm"
+                @click="applyQrUrlOverride"
+              />
             </div>
-            <div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px;">💡 Run <code>ipconfig</code> in cmd to find your IP</div>
+            <div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px">
+              💡 Run <code>ipconfig</code> in cmd to find your IP
+            </div>
           </div>
         </q-card-section>
 
@@ -350,7 +369,7 @@
                 :href="qrUrl"
                 target="_blank"
                 class="text-primary text-weight-medium"
-                style="word-break: break-all; text-decoration: underline; font-size: 0.72rem;"
+                style="word-break: break-all; text-decoration: underline; font-size: 0.72rem"
               >
                 {{ qrUrl }}
               </a>
@@ -907,7 +926,8 @@ function getAppBaseUrl() {
   const override = localStorage.getItem('sw_qr_base_url')
   if (override) return override.replace(/\/$/, '')
   // 2. Build-time env var (set in .env — best for LAN deployments)
-  if (import.meta.env.VITE_APP_PUBLIC_URL) return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
+  if (import.meta.env.VITE_APP_PUBLIC_URL)
+    return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
   // 3. Current browser origin (works on production, but returns 'localhost' on dev)
   return window.location.origin
 }

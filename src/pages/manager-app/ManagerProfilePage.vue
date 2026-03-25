@@ -33,8 +33,11 @@
     <div class="info-card q-mb-lg">
       <div class="row q-gutter-sm q-pa-md">
         <q-chip
-          v-for="role in authStore.roles" :key="role"
-          dense color="blue-grey-9" text-color="cyan-3"
+          v-for="role in authStore.roles"
+          :key="role"
+          dense
+          color="blue-grey-9"
+          text-color="cyan-3"
         >
           {{ role }}
         </q-chip>
@@ -45,22 +48,29 @@
     <div class="section-title q-mb-sm">TODAY'S SUMMARY</div>
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6">
-        <div class="mini-kpi"><span class="mini-val text-cyan">{{ store.onShiftWaiters.length }}</span><span class="mini-lbl">Waiters</span></div>
+        <div class="mini-kpi">
+          <span class="mini-val text-cyan">{{ store.onShiftWaiters.length }}</span
+          ><span class="mini-lbl">Waiters</span>
+        </div>
       </div>
       <div class="col-6">
-        <div class="mini-kpi"><span class="mini-val text-green">{{ store.servedTodayCount }}</span><span class="mini-lbl">Served Today</span></div>
+        <div class="mini-kpi">
+          <span class="mini-val text-green">{{ store.servedTodayCount }}</span
+          ><span class="mini-lbl">Served Today</span>
+        </div>
       </div>
     </div>
 
     <!-- Actions -->
     <q-btn
       class="full-width"
-      unelevated no-caps
+      unelevated
+      no-caps
       icon="logout"
       label="Sign Out"
       color="red-9"
       text-color="white"
-      style="border-radius:10px;height:48px;font-weight:600"
+      style="border-radius: 10px; height: 48px; font-weight: 600"
       @click="logout"
     />
   </q-page>
@@ -76,7 +86,11 @@ const authStore = useAuthStore()
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 async function logout() {
@@ -90,17 +104,56 @@ async function logout() {
 </script>
 
 <style lang="scss" scoped>
-.mgr-profile-page { background: #090c14; min-height: 100vh; }
-.section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #4b5563; }
+.mgr-profile-page {
+  background: #090c14;
+  min-height: 100vh;
+}
+.section-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #4b5563;
+}
 .profile-card {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
 }
-.profile-avatar { background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important; font-size: 18px !important; }
+.profile-avatar {
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important;
+  font-size: 18px !important;
+}
 .info-card {
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
 }
-.info-row { display: flex; align-items: center; padding: 12px 14px; }
-.mini-kpi { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
-.mini-val { font-size: 1.3rem; font-weight: 800; line-height: 1; }
-.mini-lbl { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+.info-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+}
+.mini-kpi {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mini-val {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.mini-lbl {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
 </style>

@@ -16,8 +16,12 @@
           <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
           <div class="sap-header__title">Waiter Wise Sales</div>
           <div class="sap-header__meta">
-            <div>Location : <strong>{{ branchName }}</strong></div>
-            <div>Date From : <strong>{{ reportDateRange }}</strong></div>
+            <div>
+              Location : <strong>{{ branchName }}</strong>
+            </div>
+            <div>
+              Date From : <strong>{{ reportDateRange }}</strong>
+            </div>
           </div>
         </div>
         <div class="sap-header__right">
@@ -31,7 +35,8 @@
         :rows="displayRows"
         :columns="columns"
         row-key="__rowKey"
-        flat dense
+        flat
+        dense
         class="sap-table"
         :loading="loading"
         :rows-per-page-options="[0]"
@@ -69,36 +74,64 @@
           <q-tr v-else-if="props.row.__type === 'waiter-total'" class="sap-table__subtotal">
             <q-td />
             <q-td class="sap-table__td--num text-weight-bold">{{ props.row.no_customer }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold text-green">{{
+              fmtN(props.row.amount)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{
+              fmtN(props.row.avg_w_sales)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bold">{{
+              fmtN(props.row.avg_table_sal)
+            }}</q-td>
           </q-tr>
 
           <!-- Date total row -->
           <q-tr v-else-if="props.row.__type === 'date-total'" class="sap-table__date-total">
             <q-td class="text-weight-bolder">Bill Date Total</q-td>
             <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{
+              fmtN(props.row.amount)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{
+              fmtN(props.row.avg_w_sales)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{
+              fmtN(props.row.avg_table_sal)
+            }}</q-td>
           </q-tr>
 
           <!-- Grand total row -->
           <q-tr v-else-if="props.row.__type === 'grand-total'" class="sap-table__grand-total">
             <q-td class="text-weight-bolder">GRAND TOTAL</q-td>
             <q-td class="sap-table__td--num text-weight-bolder">{{ props.row.no_customer }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder text-green">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td class="sap-table__td--num text-weight-bolder">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder text-green">{{
+              fmtN(props.row.amount)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{
+              fmtN(props.row.avg_w_sales)
+            }}</q-td>
+            <q-td class="sap-table__td--num text-weight-bolder">{{
+              fmtN(props.row.avg_table_sal)
+            }}</q-td>
           </q-tr>
 
           <!-- Normal table row -->
           <q-tr v-else :props="props" class="sap-table__row">
-            <q-td key="table_no" :props="props" class="sap-table__td--num">{{ props.row.table_no }}</q-td>
-            <q-td key="no_customer" :props="props" class="sap-table__td--num">{{ props.row.no_customer }}</q-td>
-            <q-td key="amount" :props="props" class="sap-table__td--num">{{ fmtN(props.row.amount) }}</q-td>
-            <q-td key="avg_w_sales" :props="props" class="sap-table__td--num">{{ fmtN(props.row.avg_w_sales) }}</q-td>
-            <q-td key="avg_table_sal" :props="props" class="sap-table__td--num">{{ fmtN(props.row.avg_table_sal) }}</q-td>
+            <q-td key="table_no" :props="props" class="sap-table__td--num">{{
+              props.row.table_no
+            }}</q-td>
+            <q-td key="no_customer" :props="props" class="sap-table__td--num">{{
+              props.row.no_customer
+            }}</q-td>
+            <q-td key="amount" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.amount)
+            }}</q-td>
+            <q-td key="avg_w_sales" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.avg_w_sales)
+            }}</q-td>
+            <q-td key="avg_table_sal" :props="props" class="sap-table__td--num">{{
+              fmtN(props.row.avg_table_sal)
+            }}</q-td>
           </q-tr>
         </template>
 
@@ -135,17 +168,50 @@ const currentFilters = ref({})
 
 // ── Column Definitions (SAP B1 format) ────────────────────
 const columns = [
-  { name: 'table_no', label: 'Table No', field: 'table_no', align: 'right', style: 'width:80px', sortable: true },
-  { name: 'no_customer', label: 'No.Customer', field: 'no_customer', align: 'right', style: 'width:90px', sortable: true },
-  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', style: 'width:120px', sortable: true },
-  { name: 'avg_w_sales', label: 'Avg W Sales', field: 'avg_w_sales', align: 'right', style: 'width:100px' },
-  { name: 'avg_table_sal', label: 'Avg Tabel Sal', field: 'avg_table_sal', align: 'right', style: 'width:100px' },
+  {
+    name: 'table_no',
+    label: 'Table No',
+    field: 'table_no',
+    align: 'right',
+    style: 'width:80px',
+    sortable: true,
+  },
+  {
+    name: 'no_customer',
+    label: 'No.Customer',
+    field: 'no_customer',
+    align: 'right',
+    style: 'width:90px',
+    sortable: true,
+  },
+  {
+    name: 'amount',
+    label: 'Amount',
+    field: 'amount',
+    align: 'right',
+    style: 'width:120px',
+    sortable: true,
+  },
+  {
+    name: 'avg_w_sales',
+    label: 'Avg W Sales',
+    field: 'avg_w_sales',
+    align: 'right',
+    style: 'width:100px',
+  },
+  {
+    name: 'avg_table_sal',
+    label: 'Avg Tabel Sal',
+    field: 'avg_table_sal',
+    align: 'right',
+    style: 'width:100px',
+  },
 ]
 
 // ── Helpers ────────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
 const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
 )
 const reportDateRange = computed(() => {
   const f = currentFilters.value
@@ -155,7 +221,11 @@ const reportDateRange = computed(() => {
 
 function fmtDate(d) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
 }
 
 function fmtN(val) {
@@ -178,7 +248,8 @@ const displayRows = computed(() => {
   }
 
   const result = []
-  let grandCustomers = 0, grandAmount = 0
+  let grandCustomers = 0,
+    grandAmount = 0
 
   const sortedDates = Object.keys(byDate).sort()
 
@@ -202,9 +273,12 @@ const displayRows = computed(() => {
       byWaiter[waiterId].orders.push(order)
     }
 
-    let dateCustomers = 0, dateAmount = 0
+    let dateCustomers = 0,
+      dateAmount = 0
 
-    const sortedWaiters = Object.entries(byWaiter).sort((a, b) => a[1].name.localeCompare(b[1].name))
+    const sortedWaiters = Object.entries(byWaiter).sort((a, b) =>
+      a[1].name.localeCompare(b[1].name),
+    )
 
     for (const [waiterId, waiterData] of sortedWaiters) {
       // Waiter header
@@ -223,7 +297,8 @@ const displayRows = computed(() => {
         byTable[tableKey].orders.push(order)
       }
 
-      let waiterCustomers = 0, waiterAmount = 0
+      let waiterCustomers = 0,
+        waiterAmount = 0
       const waiterTables = Object.keys(byTable).length
 
       const sortedTables = Object.entries(byTable).sort((a, b) => {
@@ -299,14 +374,19 @@ const displayRows = computed(() => {
 
 // ── KPIs ──────────────────────────────────────────────────
 const kpiData = computed(() => {
-  const gt = displayRows.value.find(r => r.__type === 'grand-total')
+  const gt = displayRows.value.find((r) => r.__type === 'grand-total')
   if (!gt) return []
-  const uniqueWaiters = new Set(rawOrders.value.map(o => o.waiter_id).filter(Boolean)).size
+  const uniqueWaiters = new Set(rawOrders.value.map((o) => o.waiter_id).filter(Boolean)).size
   return [
     { label: 'Active Waiters', value: uniqueWaiters, icon: 'people', color: 'blue' },
     { label: 'Total Orders', value: gt.no_customer, icon: 'receipt_long', color: 'cyan' },
     { label: 'Total Revenue', value: `LKR ${fmtN(gt.amount)}`, icon: 'payments', color: 'green' },
-    { label: 'Avg Per Order', value: `LKR ${fmtN(gt.avg_w_sales)}`, icon: 'trending_up', color: 'purple' },
+    {
+      label: 'Avg Per Order',
+      value: `LKR ${fmtN(gt.avg_w_sales)}`,
+      icon: 'trending_up',
+      color: 'purple',
+    },
   ]
 })
 
@@ -317,7 +397,8 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('orders')
-      .select(`
+      .select(
+        `
         id,
         order_number,
         order_type,
@@ -329,7 +410,8 @@ async function loadData(filters = {}) {
         table_id,
         waiter:profiles!orders_waiter_id_fkey ( full_name ),
         restaurant_tables ( table_number, section )
-      `)
+      `,
+      )
       .not('status', 'eq', 'cancelled')
       .order('created_at', { ascending: true })
 
@@ -358,11 +440,11 @@ async function loadData(filters = {}) {
 
 // ── Export ─────────────────────────────────────────────────
 function exportCSV() {
-  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  const exportRows = displayRows.value.filter((r) => r.__type === 'item')
   exportTableToCSV(columns, exportRows, 'waiter_wise_sales')
 }
 function exportExcel() {
-  const exportRows = displayRows.value.filter(r => r.__type === 'item')
+  const exportRows = displayRows.value.filter((r) => r.__type === 'item')
   exportTableToExcel(columns, exportRows, 'waiter_wise_sales')
 }
 </script>

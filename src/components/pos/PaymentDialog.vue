@@ -1,5 +1,11 @@
 <template>
-  <q-dialog v-model="isOpen" persistent maximized transition-show="slide-up" transition-hide="slide-down">
+  <q-dialog
+    v-model="isOpen"
+    persistent
+    maximized
+    transition-show="slide-up"
+    transition-hide="slide-down"
+  >
     <div class="pos-billing-fullscreen">
       <!-- ═══ TOP BAR ═══ -->
       <div class="billing-top-bar">
@@ -48,7 +54,11 @@
 
           <!-- Bill Actions -->
           <div class="bill-actions">
-            <button class="bill-act-btn print-btn" @click="printBill" :disabled="effectiveItemCount === 0">
+            <button
+              class="bill-act-btn print-btn"
+              @click="printBill"
+              :disabled="effectiveItemCount === 0"
+            >
               <q-icon name="print" size="20px" />
               <span>{{ isPaid ? 'PRINT RECEIPT' : 'PRINT BILL' }}</span>
             </button>
@@ -80,7 +90,9 @@
               <div class="pay-section-label">AMOUNT RECEIVED</div>
               <div class="amount-display">
                 <span class="amount-currency">LKR</span>
-                <span class="amount-value">{{ amountReceived > 0 ? fmt(amountReceived) : '0.00' }}</span>
+                <span class="amount-value">{{
+                  amountReceived > 0 ? fmt(amountReceived) : '0.00'
+                }}</span>
               </div>
 
               <!-- Quick amount buttons -->
@@ -88,12 +100,16 @@
                 <button v-for="q in quickAmounts" :key="q" class="quick-btn" @click="setAmount(q)">
                   {{ q.toLocaleString() }}
                 </button>
-                <button class="quick-btn exact-btn" @click="setAmount(effectiveTotalAmount)">EXACT</button>
+                <button class="quick-btn exact-btn" @click="setAmount(effectiveTotalAmount)">
+                  EXACT
+                </button>
               </div>
 
               <!-- Numpad -->
               <div class="pay-numpad">
-                <button v-for="k in ['7','8','9','4','5','6','1','2','3','0','.','\u232B']" :key="k"
+                <button
+                  v-for="k in ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', '\u232B']"
+                  :key="k"
                   class="numpad-key"
                   :class="{ 'numpad-clear': k === '\u232B' }"
                   @click="numKey(k)"
@@ -231,12 +247,14 @@ const effectiveTotalAmount = computed(() => {
 })
 
 const effectiveSubtotal = computed(() => {
-  if (isQueueOrder.value) return parseFloat(props.queueOrder.subtotal || props.queueOrder.total_amount || 0)
+  if (isQueueOrder.value)
+    return parseFloat(props.queueOrder.subtotal || props.queueOrder.total_amount || 0)
   return props.subtotalAmount
 })
 
 const effectiveItemCount = computed(() => {
-  if (isQueueOrder.value) return props.queueOrder.order_items?.length || props.queueOrder.itemCount || 0
+  if (isQueueOrder.value)
+    return props.queueOrder.order_items?.length || props.queueOrder.itemCount || 0
   return props.itemCount
 })
 
@@ -247,7 +265,7 @@ const effectiveItems = computed(() => {
       menu_item_name: item.name || item.menu_item_name || 'Item',
       quantity: item.quantity || item.qty || 1,
       unit_price: parseFloat(item.unit_price || item.price || 0),
-      total_price: parseFloat(item.total_price || (item.unit_price * item.quantity) || 0),
+      total_price: parseFloat(item.total_price || item.unit_price * item.quantity || 0),
     }))
   }
   return props.cartItems.map((item, idx) => ({
@@ -266,15 +284,17 @@ const effectiveCustomerName = computed(() => {
 
 const effectiveOrderType = computed(() => {
   if (isQueueOrder.value) return props.queueOrder.order_type || 'dine_in'
-  const map = { 'dine-in': 'dine_in', 'takeaway': 'takeaway', 'delivery': 'delivery' }
+  const map = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
   return map[props.orderType] || 'dine_in'
 })
 
 const orderTypeLabel = computed(() => {
   const map = {
-    'dine_in': 'TABLE ORDER', 'dine-in': 'TABLE ORDER',
-    'takeaway': 'TAKE AWAY', 'take_away': 'TAKE AWAY',
-    'delivery': 'DELIVERY',
+    dine_in: 'TABLE ORDER',
+    'dine-in': 'TABLE ORDER',
+    takeaway: 'TAKE AWAY',
+    take_away: 'TAKE AWAY',
+    delivery: 'DELIVERY',
   }
   if (isQueueOrder.value) return map[props.queueOrder.order_type] || 'ORDER'
   return map[props.orderType] || 'ORDER'
@@ -286,39 +306,43 @@ const orderTypeLabel = computed(() => {
  */
 const simulatedInvoice = computed(() => {
   const now = isQueueOrder.value
-    ? (props.queueOrder.created_at || new Date().toISOString())
+    ? props.queueOrder.created_at || new Date().toISOString()
     : new Date().toISOString()
 
   const qo = props.queueOrder // shorthand for queue order
 
   return {
-    invoice_number: isQueueOrder.value ? (qo.invoices?.[0]?.invoice_number || '—') : '—',
+    invoice_number: isQueueOrder.value ? qo.invoices?.[0]?.invoice_number || '—' : '—',
     created_at: now,
     subtotal: effectiveSubtotal.value,
     grand_total: effectiveTotalAmount.value,
     delivery_charge: isQueueOrder.value ? parseFloat(qo.delivery_charge || 0) : 0,
     customer_name: effectiveCustomerName.value,
-    customer_phone: isQueueOrder.value ? (qo.customer_phone || '') : '',
+    customer_phone: isQueueOrder.value ? qo.customer_phone || '' : '',
     invoice_items: effectiveItems.value,
-    payments: isPaid.value ? [{
-      id: 'pos-pay',
-      amount: amountReceived.value,
-      payment_methods: { name: confirmedMethod.value },
-    }] : [],
+    payments: isPaid.value
+      ? [
+          {
+            id: 'pos-pay',
+            amount: amountReceived.value,
+            payment_methods: { name: confirmedMethod.value },
+          },
+        ]
+      : [],
     orders: {
       order_type: effectiveOrderType.value,
       customer_name: effectiveCustomerName.value,
-      customer_phone: isQueueOrder.value ? (qo.customer_phone || '') : '',
-      delivery_address: isQueueOrder.value ? (qo.delivery_address || '') : '',
-      pax: isQueueOrder.value ? (qo.pax || 1) : 1,
+      customer_phone: isQueueOrder.value ? qo.customer_phone || '' : '',
+      delivery_address: isQueueOrder.value ? qo.delivery_address || '' : '',
+      pax: isQueueOrder.value ? qo.pax || 1 : 1,
       waiter: {
         full_name: isQueueOrder.value
-          ? (qo.waiterName || qo.waiter?.full_name || cashierName.value)
-          : cashierName.value
+          ? qo.waiterName || qo.waiter?.full_name || cashierName.value
+          : cashierName.value,
       },
-      kot_tickets: isQueueOrder.value ? (qo.kot_tickets || []) : [],
+      kot_tickets: isQueueOrder.value ? qo.kot_tickets || [] : [],
       restaurant_tables: isQueueOrder.value
-        ? (qo.restaurant_tables || (qo.tableNumber ? { table_number: qo.tableNumber } : null))
+        ? qo.restaurant_tables || (qo.tableNumber ? { table_number: qo.tableNumber } : null)
         : null,
     },
   }
@@ -356,7 +380,7 @@ const quickAmounts = computed(() => {
   const rounded = Math.ceil(t / 100) * 100
   const extras = [rounded]
   if (rounded + 100 <= 10000) extras.push(rounded + 100)
-  const all = [...new Set([...base, ...extras])].filter(v => v >= t).sort((a, b) => a - b)
+  const all = [...new Set([...base, ...extras])].filter((v) => v >= t).sort((a, b) => a - b)
   return all.slice(0, 5)
 })
 
@@ -383,8 +407,8 @@ function setAmount(val) {
 async function confirmPayment() {
   if (!canConfirm.value) return
 
-  const methodName = selectedMethod.value === 'cash' ? 'Cash'
-    : selectedMethod.value === 'card' ? 'Card' : 'Online'
+  const methodName =
+    selectedMethod.value === 'cash' ? 'Cash' : selectedMethod.value === 'card' ? 'Card' : 'Online'
   confirmedMethod.value = methodName
 
   if (isQueueOrder.value) {
@@ -411,10 +435,9 @@ async function processQueueOrderPayment(methodName) {
   try {
     // Step 1: Accept order if still pending_waiter
     if (props.queueOrder.status === 'pending_waiter') {
-      const { data: acceptData, error: acceptError } = await supabase.rpc(
-        'process_waiter_accept',
-        { p_order_id: orderId }
-      )
+      const { data: acceptData, error: acceptError } = await supabase.rpc('process_waiter_accept', {
+        p_order_id: orderId,
+      })
       if (acceptError) throw new Error(`Accept failed: ${acceptError.message}`)
       if (!acceptData?.success && acceptData?.code !== 'ALREADY_ACCEPTED') {
         throw new Error(acceptData?.error || 'Accept failed')
@@ -424,10 +447,9 @@ async function processQueueOrderPayment(methodName) {
     // Step 2: Generate invoice if not already invoiced
     const status = props.queueOrder.status
     if (status !== 'invoiced' && status !== 'paid') {
-      const { data: invData, error: invError } = await supabase.rpc(
-        'process_cashier_invoice',
-        { p_order_id: orderId }
-      )
+      const { data: invData, error: invError } = await supabase.rpc('process_cashier_invoice', {
+        p_order_id: orderId,
+      })
       if (invError) throw new Error(`Invoice failed: ${invError.message}`)
       if (!invData?.success && invData?.message !== 'Already invoiced.') {
         throw new Error(invData?.error || 'Invoice failed')
@@ -435,14 +457,11 @@ async function processQueueOrderPayment(methodName) {
     }
 
     // Step 3: Record payment
-    const { data: payData, error: payError } = await supabase.rpc(
-      'process_cashier_payment',
-      {
-        p_order_id: orderId,
-        p_payment_method: methodName,
-        p_amount_paid: effectiveTotalAmount.value,
-      }
-    )
+    const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+      p_order_id: orderId,
+      p_payment_method: methodName,
+      p_amount_paid: effectiveTotalAmount.value,
+    })
     if (payError) throw new Error(`Payment failed: ${payError.message}`)
     if (!payData?.success && payData?.message !== 'Already paid.') {
       throw new Error(payData?.error || 'Payment failed')
@@ -541,7 +560,10 @@ watch(isOpen, async (val) => {
     isProcessing.value = false
 
     // ── If opening a PAID queue order, skip to receipt view ──
-    if (isQueueOrder.value && (props.queueOrder.status === 'paid' || props.queueOrder.payment_status === 'paid')) {
+    if (
+      isQueueOrder.value &&
+      (props.queueOrder.status === 'paid' || props.queueOrder.payment_status === 'paid')
+    ) {
       isPaid.value = true
       confirmedMethod.value = 'Completed'
 
@@ -556,7 +578,7 @@ watch(isOpen, async (val) => {
 // Print using BillPrintTemplate's printReceipt()
 async function printBill() {
   await nextTick()
-  await new Promise(r => setTimeout(r, 150))
+  await new Promise((r) => setTimeout(r, 150))
   if (printTemplateRef.value?.printReceipt) {
     printTemplateRef.value.printReceipt()
   }
@@ -586,26 +608,55 @@ defineExpose({ markAsPaid, printBill })
 /* ── Top Bar ────────────────────────────────────────────── */
 .billing-top-bar {
   height: 48px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   flex-shrink: 0;
 }
-.top-left { display: flex; align-items: center; gap: 8px; }
-.topbar-icon-wrap {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: rgba(33,150,243,0.12);
-  display: flex; align-items: center; justify-content: center;
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.top-title { color: #fff; font-weight: 700; font-size: 15px; }
-.top-center { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 13px; }
-.top-sep { color: #4b5563; }
-.top-items { color: #d1d5db; font-weight: 500; }
-.top-cashier { color: #f5c542; font-weight: 600; }
-.top-right { display: flex; align-items: center; }
+.topbar-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(33, 150, 243, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.top-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+.top-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+.top-sep {
+  color: #4b5563;
+}
+.top-items {
+  color: #d1d5db;
+  font-weight: 500;
+}
+.top-cashier {
+  color: #f5c542;
+  font-weight: 600;
+}
+.top-right {
+  display: flex;
+  align-items: center;
+}
 
 /* ── Body — Split Layout ─────────────────────────────── */
 .billing-body {
@@ -621,7 +672,7 @@ defineExpose({ markAsPaid, printBill })
   max-width: 420px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   background: #0d0d14;
 }
 
@@ -634,8 +685,8 @@ defineExpose({ markAsPaid, printBill })
 /* Bill Actions */
 .bill-actions {
   padding: 12px 16px;
-  background: rgba(255,255,255,0.02);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   gap: 8px;
 }
@@ -658,8 +709,13 @@ defineExpose({ markAsPaid, printBill })
   background: #1e40af;
   color: #fff;
 }
-.print-btn:hover { background: #2563eb; }
-.print-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.print-btn:hover {
+  background: #2563eb;
+}
+.print-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* ── RIGHT: Payment Panel ────────────────────────────── */
 .payment-panel {
@@ -671,7 +727,9 @@ defineExpose({ markAsPaid, printBill })
   overflow-y: auto;
 }
 
-.pay-section { margin-bottom: 20px; }
+.pay-section {
+  margin-bottom: 20px;
+}
 .pay-section-label {
   font-size: 11px;
   font-weight: 700;
@@ -681,7 +739,10 @@ defineExpose({ markAsPaid, printBill })
 }
 
 /* Payment methods */
-.pay-methods { display: flex; gap: 10px; }
+.pay-methods {
+  display: flex;
+  gap: 10px;
+}
 .pay-method-btn {
   flex: 1;
   display: flex;
@@ -705,7 +766,7 @@ defineExpose({ markAsPaid, printBill })
 }
 .pay-method-btn.active {
   border-color: #f59e0b;
-  background: rgba(245,158,11,0.1);
+  background: rgba(245, 158, 11, 0.1);
   color: #f5c542;
 }
 
@@ -720,11 +781,25 @@ defineExpose({ markAsPaid, printBill })
   gap: 8px;
   margin-bottom: 12px;
 }
-.amount-currency { color: #9ca3af; font-size: 16px; font-weight: 600; }
-.amount-value { color: #fff; font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.amount-currency {
+  color: #9ca3af;
+  font-size: 16px;
+  font-weight: 600;
+}
+.amount-value {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Quick amounts */
-.quick-amounts { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.quick-amounts {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
 .quick-btn {
   flex: 1;
   min-width: 70px;
@@ -738,9 +813,18 @@ defineExpose({ markAsPaid, printBill })
   cursor: pointer;
   transition: all 0.12s ease;
 }
-.quick-btn:hover { background: #374151; color: #fff; }
-.exact-btn { background: #0d3320; border-color: #166534; color: #4ade80; }
-.exact-btn:hover { background: #166534; }
+.quick-btn:hover {
+  background: #374151;
+  color: #fff;
+}
+.exact-btn {
+  background: #0d3320;
+  border-color: #166534;
+  color: #4ade80;
+}
+.exact-btn:hover {
+  background: #166534;
+}
 
 /* Numpad */
 .pay-numpad {
@@ -762,10 +846,21 @@ defineExpose({ markAsPaid, printBill })
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-.numpad-key:hover { background: #1f2937; }
-.numpad-key:active { background: #374151; transform: scale(0.96); }
-.numpad-clear { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
-.numpad-clear:hover { background: #991b1b; }
+.numpad-key:hover {
+  background: #1f2937;
+}
+.numpad-key:active {
+  background: #374151;
+  transform: scale(0.96);
+}
+.numpad-clear {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+.numpad-clear:hover {
+  background: #991b1b;
+}
 
 /* Change display */
 .change-display {
@@ -776,9 +871,21 @@ defineExpose({ markAsPaid, printBill })
   text-align: center;
   margin-bottom: 16px;
 }
-.change-label { font-size: 11px; font-weight: 700; color: #9ca3af; letter-spacing: 1.5px; }
-.change-value { font-size: 28px; font-weight: 800; color: #4ade80; margin-top: 4px; }
-.change-value.negative { color: #f87171; }
+.change-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 1.5px;
+}
+.change-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #4ade80;
+  margin-top: 4px;
+}
+.change-value.negative {
+  color: #f87171;
+}
 
 /* Card total */
 .card-total-display {
@@ -788,11 +895,24 @@ defineExpose({ markAsPaid, printBill })
   padding: 24px 20px;
   text-align: center;
 }
-.card-total-label { font-size: 11px; font-weight: 700; color: #9ca3af; letter-spacing: 1.5px; }
-.card-total-value { font-size: 36px; font-weight: 800; color: #fff; margin-top: 8px; }
+.card-total-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 1.5px;
+}
+.card-total-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  margin-top: 8px;
+}
 
 /* Confirm button */
-.pay-confirm-section { margin-top: auto; padding-top: 12px; }
+.pay-confirm-section {
+  margin-top: auto;
+  padding-top: 12px;
+}
 .confirm-pay-btn {
   width: 100%;
   padding: 18px 24px;
@@ -809,10 +929,15 @@ defineExpose({ markAsPaid, printBill })
   justify-content: center;
   gap: 10px;
   transition: all 0.15s ease;
-  box-shadow: 0 4px 16px rgba(5,150,105,0.3);
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
 }
-.confirm-pay-btn:hover { background: linear-gradient(135deg, #047857, #065f46); transform: translateY(-1px); }
-.confirm-pay-btn:active { transform: scale(0.98); }
+.confirm-pay-btn:hover {
+  background: linear-gradient(135deg, #047857, #065f46);
+  transform: translateY(-1px);
+}
+.confirm-pay-btn:active {
+  transform: scale(0.98);
+}
 .confirm-pay-btn:disabled {
   background: #374151;
   color: #6b7280;
@@ -831,20 +956,63 @@ defineExpose({ markAsPaid, printBill })
   gap: 12px;
   text-align: center;
 }
-.paid-title { font-size: 22px; font-weight: 800; color: #4ade80; letter-spacing: 2px; }
-.paid-amount { font-size: 36px; font-weight: 800; color: #fff; }
-.paid-method { font-size: 14px; color: #9ca3af; }
-.paid-change { font-size: 16px; color: #fbbf24; margin-top: 4px; }
-.paid-invoice-num { font-size: 12px; color: #6b7280; font-weight: 600; letter-spacing: 0.5px; margin-top: 2px; }
-.paid-actions { display: flex; gap: 12px; margin-top: 24px; }
-.paid-act-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 14px 24px; border: none; border-radius: 10px;
-  font-size: 14px; font-weight: 700; cursor: pointer;
-  transition: all 0.15s ease; letter-spacing: 0.5px;
+.paid-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: 2px;
 }
-.print-receipt-btn { background: #1e40af; color: #fff; }
-.print-receipt-btn:hover { background: #2563eb; }
-.new-order-btn { background: #374151; color: #d1d5db; }
-.new-order-btn:hover { background: #4b5563; }
+.paid-amount {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+}
+.paid-method {
+  font-size: 14px;
+  color: #9ca3af;
+}
+.paid-change {
+  font-size: 16px;
+  color: #fbbf24;
+  margin-top: 4px;
+}
+.paid-invoice-num {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.paid-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+.paid-act-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.5px;
+}
+.print-receipt-btn {
+  background: #1e40af;
+  color: #fff;
+}
+.print-receipt-btn:hover {
+  background: #2563eb;
+}
+.new-order-btn {
+  background: #374151;
+  color: #d1d5db;
+}
+.new-order-btn:hover {
+  background: #4b5563;
+}
 </style>

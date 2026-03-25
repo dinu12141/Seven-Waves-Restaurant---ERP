@@ -105,9 +105,7 @@
 
         <!-- Footer -->
         <div class="form-footer">
-          <div>
-            &copy; {{ new Date().getFullYear() }} Seven Waves &middot; All rights reserved
-          </div>
+          <div>&copy; {{ new Date().getFullYear() }} Seven Waves &middot; All rights reserved</div>
         </div>
       </div>
 
@@ -189,12 +187,16 @@ const handleLogin = async () => {
     // even if they also have cashier role
     if (authStore.hasRole('kitchen') && !authStore.isAdmin && !authStore.hasRole('manager')) {
       redirect = '/kitchen'
-    } else if (authStore.hasRole('cashier') && !authStore.isAdmin && !authStore.hasRole('manager')) {
+    } else if (
+      authStore.hasRole('cashier') &&
+      !authStore.isAdmin &&
+      !authStore.hasRole('manager')
+    ) {
       redirect = '/pos'
     } else if (authStore.hasRole('waiter') && !authStore.isAdmin && !authStore.hasRole('manager')) {
       redirect = '/waiter-app'
     }
-    
+
     router.push(redirect).catch(() => {})
   } catch {
     errorMessage.value = 'An unexpected error occurred. Please try again.'
@@ -415,8 +417,6 @@ const handleLogin = async () => {
   padding-top: 16px;
   margin-top: auto;
 }
-
-
 
 /* ─── RIGHT PANEL ─────────────────────────────────── */
 .image-panel {

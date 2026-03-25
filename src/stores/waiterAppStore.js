@@ -15,19 +15,19 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
   // ─── State ────────────────────────────────────────────────────────────────
   const loading = ref(false)
-  const profile = ref(null)          // waiter_profiles row
-  const managerInfo = ref(null)      // employee_hierarchy_assignments + manager employee
-  const shiftInfo = ref(null)        // current shift info
+  const profile = ref(null) // waiter_profiles row
+  const managerInfo = ref(null) // employee_hierarchy_assignments + manager employee
+  const shiftInfo = ref(null) // current shift info
   const isOnShift = ref(false)
-  const pendingOrders = ref([])      // status = 'pending_waiter'
-  const myOrders = ref([])           // assigned_waiter_id = me
-  const readyAlerts = ref([])        // kot_tickets status = 'ready' on my orders
-  const notifications = ref([])      // waiter_notifications
-  const pointsLedger = ref([])       // last 20 waiter_points_ledger entries
+  const pendingOrders = ref([]) // status = 'pending_waiter'
+  const myOrders = ref([]) // assigned_waiter_id = me
+  const readyAlerts = ref([]) // kot_tickets status = 'ready' on my orders
+  const notifications = ref([]) // waiter_notifications
+  const pointsLedger = ref([]) // last 20 waiter_points_ledger entries
 
   // Admin impersonation
-  const impersonateProfileId = ref(null)  // waiter_profiles.id to view as
-  const allWaiters = ref([])              // all active waiter profiles (admin only)
+  const impersonateProfileId = ref(null) // waiter_profiles.id to view as
+  const allWaiters = ref([]) // all active waiter profiles (admin only)
 
   // Realtime channels
   let ordersChannel = null
@@ -35,7 +35,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   let pointsChannel = null
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  const unreadNotifCount = computed(() => notifications.value.filter(n => !n.is_read).length)
+  const unreadNotifCount = computed(() => notifications.value.filter((n) => !n.is_read).length)
   const pendingCount = computed(() => pendingOrders.value.length)
   const myOrderCount = computed(() => myOrders.value.length)
   const readyCount = computed(() => readyAlerts.value.length)
@@ -52,12 +52,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       }
       // MUST load profile first — shiftInfo + orders depend on profile.employee_id
       await loadProfile()
-      await Promise.all([
-        loadShiftInfo(),
-        loadPendingOrders(),
-        loadMyOrders(),
-        loadNotifications(),
-      ])
+      await Promise.all([loadShiftInfo(), loadPendingOrders(), loadMyOrders(), loadNotifications()])
       await loadReadyAlerts()
       subscribeRealtime()
 
@@ -88,12 +83,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     loading.value = true
     try {
       await loadProfile()
-      await Promise.all([
-        loadShiftInfo(),
-        loadMyOrders(),
-        loadNotifications(),
-        loadPendingOrders(),
-      ])
+      await Promise.all([loadShiftInfo(), loadMyOrders(), loadNotifications(), loadPendingOrders()])
       await loadReadyAlerts()
       subscribeRealtime()
     } catch (e) {
@@ -117,7 +107,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       wp = data
     } else {
       // Normal waiter — load own profile
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
       const { data } = await supabase
         .from('waiter_profiles')
@@ -161,10 +153,12 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     if (wp.employee_id) {
       const { data: hier } = await supabase
         .from('employee_hierarchy_assignments')
-        .select(`
+        .select(
+          `
           hierarchy_type,
           manager_employee:manager_employee_id ( id, full_name, employee_code )
-        `)
+        `,
+        )
         .eq('employee_id', wp.employee_id)
         .eq('is_active', true)
         .limit(1)
@@ -226,11 +220,13 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       // Use Intl to get Sri Lanka local time reliably
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: 'Asia/Colombo',
-        hour: 'numeric', minute: 'numeric', hour12: false
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false,
       })
       const parts = formatter.formatToParts(now)
-      const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
-      const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
+      const hour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0')
+      const minute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0')
       currentMinutes = hour * 60 + minute
     } catch {
       // Fallback: use browser local time (works if browser is in SL timezone)
@@ -240,7 +236,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     const [sh, sm] = startTimeStr.split(':').map(Number)
     const [eh, em] = endTimeStr.split(':').map(Number)
     const rawStart = sh * 60 + sm
-    const rawEnd   = eh * 60 + em
+    const rawEnd = eh * 60 + em
 
     // Auto-detect overnight: shift crosses midnight when end <= start
     // e.g. Evening 16:00→00:00 (960 > 0) or 22:00→06:00 (1320 > 360)
@@ -250,7 +246,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     if (crossesMidnight) {
       // Overnight shift spans two calendar days.
       const shiftStart = rawStart - BUFFER_MINUTES
-      const shiftEnd   = rawEnd + DAY + BUFFER_MINUTES
+      const shiftEnd = rawEnd + DAY + BUFFER_MINUTES
 
       // Normalize current time: if before raw start, treat as next-day
       const cur = currentMinutes < rawStart ? currentMinutes + DAY : currentMinutes
@@ -260,7 +256,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     // Normal daytime shift — clamp buffer so we don't go negative
     const startMin = Math.max(0, rawStart - BUFFER_MINUTES)
-    const endMin   = Math.min(DAY - 1, rawEnd + BUFFER_MINUTES)
+    const endMin = Math.min(DAY - 1, rawEnd + BUFFER_MINUTES)
 
     return currentMinutes >= startMin && currentMinutes <= endMin
   }
@@ -276,7 +272,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     try {
       const fmt = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Colombo',
-        year: 'numeric', month: '2-digit', day: '2-digit',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
       })
       const today = fmt.format(now) // 'YYYY-MM-DD'
 
@@ -301,7 +299,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     let employeeId = profile.value?.employee_id
 
     if (!employeeId) {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
 
       // Try waiter_profiles first
@@ -337,10 +337,12 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     // that started last evening and continue into today)
     let query = supabase
       .from('shift_assignments')
-      .select(`
+      .select(
+        `
         id, assignment_date, status,
         shifts ( id, name, start_time, end_time, is_overnight )
-      `)
+      `,
+      )
       .eq('employee_id', employeeId)
       .in('assignment_date', [today, yesterday])
       .in('status', ['scheduled', 'active', 'present'])
@@ -356,35 +358,35 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     }
 
     // Find the first assignment whose shift time range covers NOW
-    const activeAssignment = (assignments || []).find(sa => {
+    const activeAssignment = (assignments || []).find((sa) => {
       return _isWithinShiftTime(
         sa.shifts?.start_time,
         sa.shifts?.end_time,
-        sa.shifts?.is_overnight || false
+        sa.shifts?.is_overnight || false,
       )
     })
 
     if (activeAssignment) {
       shiftInfo.value = {
-        id:           activeAssignment.id,
-        date:         activeAssignment.assignment_date,
-        shift_name:   activeAssignment.shifts?.name,
-        shift_start:  activeAssignment.shifts?.start_time,
-        shift_end:    activeAssignment.shifts?.end_time,
-        branch_name:  authStore.currentBranch?.name,
+        id: activeAssignment.id,
+        date: activeAssignment.assignment_date,
+        shift_name: activeAssignment.shifts?.name,
+        shift_start: activeAssignment.shifts?.start_time,
+        shift_end: activeAssignment.shifts?.end_time,
+        branch_name: authStore.currentBranch?.name,
       }
       isOnShift.value = true
     } else {
       // Check if there's at least a today assignment (even if outside shift hours)
-      const todayAssignment = (assignments || []).find(sa => sa.assignment_date === today)
+      const todayAssignment = (assignments || []).find((sa) => sa.assignment_date === today)
       if (todayAssignment) {
         shiftInfo.value = {
-          id:           todayAssignment.id,
-          date:         todayAssignment.assignment_date,
-          shift_name:   todayAssignment.shifts?.name,
-          shift_start:  todayAssignment.shifts?.start_time,
-          shift_end:    todayAssignment.shifts?.end_time,
-          branch_name:  authStore.currentBranch?.name,
+          id: todayAssignment.id,
+          date: todayAssignment.assignment_date,
+          shift_name: todayAssignment.shifts?.name,
+          shift_start: todayAssignment.shifts?.start_time,
+          shift_end: todayAssignment.shifts?.end_time,
+          branch_name: authStore.currentBranch?.name,
         }
         isOnShift.value = false
       } else {
@@ -393,7 +395,6 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       }
     }
   }
-
 
   // ─── Orders ───────────────────────────────────────────────────────────────
   async function loadPendingOrders() {
@@ -406,18 +407,20 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     const { data } = await supabase
       .from('orders')
-      .select(`
+      .select(
+        `
         id, order_number, status, created_at, table_id,
         restaurant_tables ( table_number ),
         order_items ( id, quantity, unit_price, total_price, menu_items ( name, base_price ) )
-      `)
+      `,
+      )
       .eq('branch_id', branchId)
       .eq('status', 'pending_waiter')
       .order('created_at', { ascending: true })
 
-    pendingOrders.value = (data || []).map(o => ({
+    pendingOrders.value = (data || []).map((o) => ({
       ...o,
-      table_number: o.restaurant_tables?.table_number || null
+      table_number: o.restaurant_tables?.table_number || null,
     }))
   }
 
@@ -425,27 +428,31 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     // Use impersonated waiter's user_id if set, else current user
     let userId = profile.value?.user_id
     if (!userId) {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       userId = user?.id
     }
     if (!userId) return
 
     const { data } = await supabase
       .from('orders')
-      .select(`
+      .select(
+        `
         id, order_number, status, created_at, table_id, accepted_at, total_amount,
         restaurant_tables ( table_number ),
         order_items ( id, quantity, unit_price, total_price, status, notes, menu_items ( name, base_price ) ),
         kot_tickets ( id, status, kot_number, kitchen_id, kitchens ( name ) )
-      `)
+      `,
+      )
       .eq('assigned_waiter_id', userId)
       .in('status', ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served'])
       .order('created_at', { ascending: false })
       .limit(30)
 
-    myOrders.value = (data || []).map(o => ({
+    myOrders.value = (data || []).map((o) => ({
       ...o,
-      table_number: o.restaurant_tables?.table_number || null
+      table_number: o.restaurant_tables?.table_number || null,
     }))
   }
 
@@ -453,14 +460,16 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   async function loadReadyAlerts() {
     if (!myOrders.value.length) return
 
-    const orderIds = myOrders.value.map(o => o.id)
+    const orderIds = myOrders.value.map((o) => o.id)
     const { data } = await supabase
       .from('kot_tickets')
-      .select(`
+      .select(
+        `
         id, status, batch_number, created_at,
         order_id,
         kitchens ( name )
-      `)
+      `,
+      )
       .in('order_id', orderIds)
       .eq('status', 'ready')
       .order('created_at', { ascending: true })
@@ -472,7 +481,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   async function loadNotifications() {
     if (!profile.value) {
       // profile may not be loaded yet; re-fetch user_id
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
       const { data: wp } = await supabase
         .from('waiter_profiles')
@@ -498,8 +509,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .from('waiter_notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', id)
-    notifications.value = notifications.value.map(n =>
-      n.id === id ? { ...n, is_read: true } : n
+    notifications.value = notifications.value.map((n) =>
+      n.id === id ? { ...n, is_read: true } : n,
     )
   }
 
@@ -510,7 +521,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('waiter_profile_id', profile.value.id)
       .eq('is_read', false)
-    notifications.value = notifications.value.map(n => ({ ...n, is_read: true }))
+    notifications.value = notifications.value.map((n) => ({ ...n, is_read: true }))
   }
 
   // ─── Accept Order ─────────────────────────────────────────────────────────
@@ -526,7 +537,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Mark Served ──────────────────────────────────────────────────────────
   async function markServed(orderId) {
     if (!isOnShift.value) throw new Error('You cannot mark orders while off shift.')
-    const { data, error } = await supabase.rpc('process_waiter_mark_served', { p_order_id: orderId })
+    const { data, error } = await supabase.rpc('process_waiter_mark_served', {
+      p_order_id: orderId,
+    })
     if (error) throw error
     if (data?.success === false) throw new Error(data.error || 'Mark served failed')
     await Promise.all([loadMyOrders(), loadReadyAlerts(), loadProfile()])
@@ -554,13 +567,15 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       }
       const doPlay = () => {
         const now = audioCtx.currentTime
-        playTone(1318.51, 'sine', now,       0.3)
-        playTone(1046.50, 'sine', now + 0.2, 0.3)
+        playTone(1318.51, 'sine', now, 0.3)
+        playTone(1046.5, 'sine', now + 0.2, 0.3)
         playTone(1318.51, 'sine', now + 0.4, 0.5)
       }
       if (audioCtx.state === 'suspended') audioCtx.resume().then(doPlay)
       else doPlay()
-    } catch { /* silent fail */ }
+    } catch {
+      /* silent fail */
+    }
   }
 
   function subscribeRealtime() {
@@ -573,7 +588,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     // Orders channel — covers pending + assigned order changes
     ordersChannel = supabase
       .channel('waiter-app-orders')
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         (payload) => {
           const newRow = payload.new
@@ -586,16 +602,18 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
             const pushAlert = (tableName) => {
               try {
                 const orderStore = useWaiterOrderStore()
-                if (!orderStore.newOrderAlerts.find(a => a.order_id === newRow.id)) {
+                if (!orderStore.newOrderAlerts.find((a) => a.order_id === newRow.id)) {
                   orderStore.newOrderAlerts.unshift({
-                    id:           `new-${newRow.id}`,
-                    order_id:     newRow.id,
+                    id: `new-${newRow.id}`,
+                    order_id: newRow.id,
                     order_number: newRow.order_number,
-                    table_name:   tableName,
-                    created_at:   newRow.created_at,
+                    table_name: tableName,
+                    created_at: newRow.created_at,
                   })
                 }
-              } catch { /* orderStore not ready */ }
+              } catch {
+                /* orderStore not ready */
+              }
 
               // 🔔 Fire toast
               Notify.create({
@@ -604,7 +622,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
                 color: 'blue-9',
                 textColor: 'white',
                 message: `🛎 New Order from ${tableName}!`,
-                caption: newRow.order_number ? `Order #${newRow.order_number}` : 'Tap Alerts to view',
+                caption: newRow.order_number
+                  ? `Order #${newRow.order_number}`
+                  : 'Tap Alerts to view',
                 position: 'top',
                 timeout: 10000,
                 dense: true,
@@ -620,39 +640,43 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
                 .eq('id', newRow.table_id)
                 .single()
                 .then(({ data }) => {
-                  const tNum = data?.table_number ? data.table_number.replace('Table', '').trim() : ''
+                  const tNum = data?.table_number
+                    ? data.table_number.replace('Table', '').trim()
+                    : ''
                   pushAlert(tNum ? `Table ${tNum}` : 'a Table')
                 })
             } else {
               pushAlert(newRow.order_type === 'takeaway' ? 'Takeaway' : 'a Table')
             }
           }
-        }
+        },
       )
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
         () => {
           loadPendingOrders()
           loadMyOrders()
-        }
+        },
       )
       .subscribe()
 
     // KOT channel — kitchen-ready alerts
     kotChannel = supabase
       .channel('waiter-app-kot')
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
         (payload) => {
           if (payload.new?.status === 'ready') {
             // Check this KOT belongs to one of MY orders before alerting
-            const myOrderIds = myOrders.value.map(o => o.id)
+            const myOrderIds = myOrders.value.map((o) => o.id)
             if (myOrderIds.includes(payload.new.order_id)) {
               _playAlertSound()
             }
             loadReadyAlerts()
           }
-        }
+        },
       )
       .subscribe()
 
@@ -660,27 +684,37 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       // Notifications channel — pushed by triggers
       notifsChannel = supabase
         .channel('waiter-app-notifs')
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'waiter_notifications',
-            filter: `waiter_profile_id=eq.${profile.value.id}` },
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'waiter_notifications',
+            filter: `waiter_profile_id=eq.${profile.value.id}`,
+          },
           (payload) => {
             notifications.value.unshift(payload.new)
-          }
+          },
         )
         .subscribe()
 
       // Points ledger channel — realtime balance updates
       pointsChannel = supabase
         .channel('waiter-app-points')
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'waiter_points_ledger',
-            filter: `waiter_profile_id=eq.${profile.value.id}` },
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'waiter_points_ledger',
+            filter: `waiter_profile_id=eq.${profile.value.id}`,
+          },
           (payload) => {
             // Prepend new entry immediately for instant feedback
             pointsLedger.value.unshift(payload.new)
             // Re-fetch profile so current_points reflects DB trigger result
             loadProfile()
-          }
+          },
         )
         .subscribe()
     }
@@ -689,13 +723,15 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   function cleanup() {
     if (ordersChannel) supabase.removeChannel(ordersChannel)
     if (notifsChannel) supabase.removeChannel(notifsChannel)
-    if (kotChannel)    supabase.removeChannel(kotChannel)
+    if (kotChannel) supabase.removeChannel(kotChannel)
     if (pointsChannel) supabase.removeChannel(pointsChannel)
     // Also cleanup the waiterOrderStore
     try {
       const orderStore = useWaiterOrderStore()
       orderStore.cleanup()
-    } catch { /* ignore if not initialized */ }
+    } catch {
+      /* ignore if not initialized */
+    }
   }
 
   async function refresh() {
@@ -712,19 +748,40 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     await Promise.all([loadReadyAlerts(), loadPointsLedger()])
   }
 
-
   return {
     // state
-    loading, profile, managerInfo, shiftInfo, isOnShift,
-    pendingOrders, myOrders, readyAlerts, notifications, pointsLedger,
-    impersonateProfileId, allWaiters,
+    loading,
+    profile,
+    managerInfo,
+    shiftInfo,
+    isOnShift,
+    pendingOrders,
+    myOrders,
+    readyAlerts,
+    notifications,
+    pointsLedger,
+    impersonateProfileId,
+    allWaiters,
     // computed
-    unreadNotifCount, pendingCount, myOrderCount, readyCount,
-    currentPoints, totalOrdersServed,
+    unreadNotifCount,
+    pendingCount,
+    myOrderCount,
+    readyCount,
+    currentPoints,
+    totalOrdersServed,
     // actions
-    initialize, initializeAs, refresh, cleanup,
-    acceptOrder, markServed, markNotificationRead, markAllNotifsRead,
-    loadPendingOrders, loadMyOrders, loadReadyAlerts, loadPointsLedger,
+    initialize,
+    initializeAs,
+    refresh,
+    cleanup,
+    acceptOrder,
+    markServed,
+    markNotificationRead,
+    markAllNotifsRead,
+    loadPendingOrders,
+    loadMyOrders,
+    loadReadyAlerts,
+    loadPointsLedger,
     loadAllWaiters,
   }
 })

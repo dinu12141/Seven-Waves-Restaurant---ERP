@@ -177,7 +177,12 @@ async function fetchMenu() {
 
     if (subCatData) {
       categories.value = [
-        { name: 'All', image: 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png', id: 'all' },
+        {
+          name: 'All',
+          image:
+            'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+          id: 'all',
+        },
         ...subCatData.map((sc) => ({
           name: sc.name,
           image: sc.image_url,
@@ -352,7 +357,7 @@ function decrementItem(product) {
   border-radius: 8px;
   overflow: hidden;
   background: var(--erp-bg-main, #1a1a24);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .cat-img {

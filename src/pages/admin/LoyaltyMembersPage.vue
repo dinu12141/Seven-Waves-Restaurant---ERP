@@ -532,7 +532,9 @@ onMounted(fetchCustomers)
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
   &:hover {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.12);
@@ -547,10 +549,18 @@ onMounted(fetchCustomers)
   justify-content: center;
   flex-shrink: 0;
   // Override Quasar bg-* light classes with dark-theme versions
-  &.bg-blue-1  { background: rgba(59, 130, 246, 0.12) !important; }
-  &.bg-amber-1 { background: rgba(245, 158, 11, 0.12) !important; }
-  &.bg-green-1 { background: rgba(16, 185, 129, 0.12) !important; }
-  &.bg-grey-2  { background: rgba(148, 163, 184, 0.12) !important; }
+  &.bg-blue-1 {
+    background: rgba(59, 130, 246, 0.12) !important;
+  }
+  &.bg-amber-1 {
+    background: rgba(245, 158, 11, 0.12) !important;
+  }
+  &.bg-green-1 {
+    background: rgba(16, 185, 129, 0.12) !important;
+  }
+  &.bg-grey-2 {
+    background: rgba(148, 163, 184, 0.12) !important;
+  }
 }
 .stat-value {
   font-size: 1.3rem;

@@ -51,11 +51,15 @@
               <div class="row items-center no-wrap">
                 <div class="col">
                   <div class="text-weight-bold shift-name">{{ shift.name }}</div>
-                  <div class="text-caption shift-type-label" style="font-size: 10px;">
+                  <div class="text-caption shift-type-label" style="font-size: 10px">
                     {{ getShiftType(shift).toUpperCase() }} SHIFT
                   </div>
                 </div>
-                <q-badge :color="shift.is_active ? 'positive' : 'grey-7'" class="q-ml-sm" style="font-size: 9px;">
+                <q-badge
+                  :color="shift.is_active ? 'positive' : 'grey-7'"
+                  class="q-ml-sm"
+                  style="font-size: 9px"
+                >
                   {{ shift.is_active ? 'Active' : 'Inactive' }}
                 </q-badge>
               </div>
@@ -66,8 +70,8 @@
                 <div class="col-6">
                   <div class="shift-time-block">
                     <q-icon name="login" size="12px" class="text-green q-mr-xs" />
-                    <span class="text-caption shift-time-label" style="font-size: 10px;">Start</span>
-                    <div class="text-weight-bold shift-time-value" style="font-size: 12px;">
+                    <span class="text-caption shift-time-label" style="font-size: 10px">Start</span>
+                    <div class="text-weight-bold shift-time-value" style="font-size: 12px">
                       {{ formatTime(shift.start_time) }}
                     </div>
                   </div>
@@ -75,8 +79,8 @@
                 <div class="col-6">
                   <div class="shift-time-block">
                     <q-icon name="logout" size="12px" class="text-red q-mr-xs" />
-                    <span class="text-caption shift-time-label" style="font-size: 10px;">End</span>
-                    <div class="text-weight-bold shift-time-value" style="font-size: 12px;">
+                    <span class="text-caption shift-time-label" style="font-size: 10px">End</span>
+                    <div class="text-weight-bold shift-time-value" style="font-size: 12px">
                       {{ formatTime(shift.end_time) }}
                       <q-badge
                         v-if="shift.is_overnight"
@@ -84,14 +88,14 @@
                         dense
                         class="q-ml-xs"
                         label="+1"
-                        style="font-size: 9px;"
+                        style="font-size: 9px"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="row q-mt-xs q-col-gutter-xs shift-meta-text" style="font-size: 10px;">
+              <div class="row q-mt-xs q-col-gutter-xs shift-meta-text" style="font-size: 10px">
                 <div class="col-auto">
                   <q-icon name="coffee" size="10px" class="q-mr-xs" />
                   {{ shift.break_duration_minutes }}min break
@@ -99,6 +103,16 @@
                 <div class="col-auto">
                   <q-icon name="timer" size="10px" class="q-mr-xs" />
                   {{ calculateHours(shift) }}hrs
+                </div>
+                <div v-if="shift.night_allowance_amount > 0" class="col-auto">
+                  <q-icon name="payments" size="10px" class="q-mr-xs text-amber" />
+                  <span class="text-amber">
+                    +{{
+                      shift.night_allowance_type === 'fixed'
+                        ? 'LKR ' + shift.night_allowance_amount
+                        : shift.night_allowance_amount + '%'
+                    }}
+                  </span>
                 </div>
               </div>
             </q-card-section>
@@ -201,7 +215,12 @@
           <template #option="scope">
             <q-item v-bind="scope.itemProps">
               <q-item-section avatar>
-                <q-avatar :color="avatarColor(scope.opt.full_name)" text-color="white" size="28px" style="font-size: 11px">
+                <q-avatar
+                  :color="avatarColor(scope.opt.full_name)"
+                  text-color="white"
+                  size="28px"
+                  style="font-size: 11px"
+                >
                   {{ initials(scope.opt.full_name) }}
                 </q-avatar>
               </q-item-section>
@@ -213,7 +232,14 @@
           </template>
         </q-select>
         <!-- Load button -->
-        <q-btn color="primary" icon="refresh" label="Load" no-caps unelevated @click="loadAssignments" />
+        <q-btn
+          color="primary"
+          icon="refresh"
+          label="Load"
+          no-caps
+          unelevated
+          @click="loadAssignments"
+        />
         <!-- Clear filters -->
         <q-btn
           v-if="assignFilter.shiftId || assignFilter.employeeId"
@@ -392,6 +418,52 @@
               <q-toggle v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
             </div>
           </div>
+          <!-- Shift Type & Night Allowance -->
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-select
+                outlined
+                v-model="shiftForm.shift_type"
+                :options="[
+                  { label: 'Day Shift', value: 'day' },
+                  { label: 'Evening Shift', value: 'evening' },
+                  { label: 'Night Shift', value: 'night' },
+                  { label: 'Split Shift', value: 'split' },
+                ]"
+                label="Shift Type"
+                emit-value
+                map-options
+              />
+            </div>
+            <div class="col-6">
+              <q-select
+                outlined
+                v-model="shiftForm.night_allowance_type"
+                :options="[
+                  { label: 'Fixed Amount (LKR)', value: 'fixed' },
+                  { label: '% of Basic Salary', value: 'percentage' },
+                ]"
+                label="Allowance Type"
+                emit-value
+                map-options
+              />
+            </div>
+          </div>
+          <q-input
+            v-if="shiftForm.shift_type !== 'day'"
+            outlined
+            v-model.number="shiftForm.night_allowance_amount"
+            type="number"
+            :label="
+              shiftForm.night_allowance_type === 'fixed'
+                ? 'Shift Allowance (LKR per shift worked)'
+                : 'Shift Allowance (% of basic salary per shift)'
+            "
+            :prefix="shiftForm.night_allowance_type === 'fixed' ? 'LKR' : ''"
+            :suffix="shiftForm.night_allowance_type === 'percentage' ? '%' : ''"
+            hint="Auto-deducted and added to payroll each month"
+            min="0"
+          />
           <q-toggle v-model="shiftForm.is_active" label="Active" color="positive" />
 
           <!-- Preview -->
@@ -449,7 +521,9 @@
             use-input
             input-debounce="0"
             @filter="filterEmps"
-            :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one employee']"
+            :rules="[
+              (v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one employee',
+            ]"
           >
             <template #option="scope">
               <q-item v-bind="scope.itemProps">
@@ -526,7 +600,10 @@
           </q-select>
 
           <!-- Summary Banner -->
-          <div v-if="!assignDialog.isEdit && assignSummary" class="assign-summary-banner q-pa-sm rounded-borders">
+          <div
+            v-if="!assignDialog.isEdit && assignSummary"
+            class="assign-summary-banner q-pa-sm rounded-borders"
+          >
             <q-icon name="info" size="16px" class="q-mr-xs" />
             {{ assignSummary }}
           </div>
@@ -642,6 +719,9 @@ const shiftForm = reactive({
   break_duration_minutes: 60,
   is_overnight: false,
   is_active: true,
+  shift_type: 'day',
+  night_allowance_amount: 0,
+  night_allowance_type: 'fixed',
 })
 
 function openShiftDialog(shift = null) {
@@ -655,6 +735,9 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: shift.break_duration_minutes || 0,
       is_overnight: shift.is_overnight || false,
       is_active: shift.is_active !== false,
+      shift_type: shift.shift_type || 'day',
+      night_allowance_amount: shift.night_allowance_amount || 0,
+      night_allowance_type: shift.night_allowance_type || 'fixed',
     })
   } else {
     Object.assign(shiftForm, {
@@ -665,6 +748,9 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: 60,
       is_overnight: false,
       is_active: true,
+      shift_type: 'day',
+      night_allowance_amount: 0,
+      night_allowance_type: 'fixed',
     })
   }
   shiftDialog.open = true
@@ -674,8 +760,8 @@ function openShiftDialog(shift = null) {
 const assignDialog = reactive({ open: false, isEdit: false })
 const assignForm = reactive({
   id: null,
-  employee_ids: [],  // multi-select for create, single value for edit
-  shift_ids: [],     // multi-select for create, single value for edit
+  employee_ids: [], // multi-select for create, single value for edit
+  shift_ids: [], // multi-select for create, single value for edit
   date_from: new Date().toISOString().split('T')[0],
   date_to: new Date().toISOString().split('T')[0],
   days: [1, 2, 3, 4, 5], // Mon-Fri by default
@@ -727,8 +813,8 @@ function editAssignment(row) {
 
   Object.assign(assignForm, {
     id: row.id,
-    employee_ids: row.employee_id,   // single value for edit
-    shift_ids: row.shift_id,         // single value for edit
+    employee_ids: row.employee_id, // single value for edit
+    shift_ids: row.shift_id, // single value for edit
     date_from: row.assignment_date,
     date_to: row.assignment_date,
     days: [actualDay], // Pre-select the actual day of this assignment
@@ -828,18 +914,15 @@ function formatLocalDate(date) {
 async function loadShifts() {
   loadingShifts.value = true
   const branchId = authStore.currentBranch?.id
-  
-  let q = supabase
-    .from('shifts')
-    .select('*')
-    .order('start_time')
-    
+
+  let q = supabase.from('shifts').select('*').order('start_time')
+
   if (branchId) {
     q = q.eq('branch_id', branchId)
   }
-  
+
   const { data, error } = await q
-  
+
   if (error) console.error(error)
   else shifts.value = data || []
   loadingShifts.value = false
@@ -857,7 +940,7 @@ async function loadAssignments() {
 
   if (branchId) q = q.eq('branch_id', branchId)
   if (assignFilter.shiftId) q = q.eq('shift_id', assignFilter.shiftId)
-  
+
   const { data, error } = await q
   if (error) console.error(error)
   else assignments.value = data || []
@@ -867,20 +950,20 @@ async function loadAssignments() {
 async function loadEmployees() {
   loadingAssignments.value = true // Just reusing this to indicate loading if needed, though not mapped
   const branchId = authStore.currentBranch?.id
-  
+
   let q = supabase
     .from('employees')
     .select('id, full_name, employee_code')
     .eq('is_active', true)
     .order('full_name')
-    
+
   if (branchId) {
     q = q.eq('branch_id', branchId)
   }
-    
+
   const { data, error } = await q
   if (error) console.error(error)
-  
+
   employees.value = data || []
   employeeOptions.value = data || []
   loadingAssignments.value = false
@@ -892,8 +975,8 @@ function filterEmps(val, update) {
     else {
       const s = val.toLowerCase()
       employeeOptions.value = employees.value.filter(
-        (e) => 
-          (e.full_name && e.full_name.toLowerCase().includes(s)) || 
+        (e) =>
+          (e.full_name && e.full_name.toLowerCase().includes(s)) ||
           (e.employee_code && e.employee_code.toLowerCase().includes(s)),
       )
     }
@@ -917,6 +1000,9 @@ async function saveShift() {
     break_duration_minutes: shiftForm.break_duration_minutes || 0,
     is_overnight: shiftForm.is_overnight,
     is_active: shiftForm.is_active,
+    shift_type: shiftForm.shift_type || 'day',
+    night_allowance_amount: shiftForm.night_allowance_amount || 0,
+    night_allowance_type: shiftForm.night_allowance_type || 'fixed',
   }
   try {
     if (shiftDialog.isEdit) {
@@ -1009,7 +1095,11 @@ async function saveAssignment() {
         }
       }
       if (inserts.length === 0) {
-        $q.notify({ type: 'warning', message: 'No dates matched your selected days of week. Check your date range and day selection.' })
+        $q.notify({
+          type: 'warning',
+          message:
+            'No dates matched your selected days of week. Check your date range and day selection.',
+        })
         saving.value = false
         return
       }

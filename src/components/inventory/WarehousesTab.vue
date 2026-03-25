@@ -38,7 +38,9 @@
                   </q-item>
                   <q-separator dark />
                   <q-item clickable v-close-popup @click="deleteWh(wh)">
-                    <q-item-section avatar><q-icon name="delete" color="negative" /></q-item-section>
+                    <q-item-section avatar
+                      ><q-icon name="delete" color="negative"
+                    /></q-item-section>
                     <q-item-section class="text-negative">Delete</q-item-section>
                   </q-item>
                 </q-list>
@@ -193,7 +195,8 @@ import BaseButton from 'components/common/erp/BaseButton.vue'
 import { useWarehouseList } from 'src/services/inventoryService'
 
 const $q = useQuasar()
-const { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } = useWarehouseList()
+const { warehouses, loading, listWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } =
+  useWarehouseList()
 
 const showDialog = ref(false)
 const editingWh = ref(null)

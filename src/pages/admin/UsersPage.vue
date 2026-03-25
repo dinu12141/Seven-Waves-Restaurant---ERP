@@ -57,7 +57,9 @@
               size="sm"
               @click="toggleUserStatus(props.row)"
             >
-              <q-tooltip>{{ props.row.is_active ? 'Deactivate Account' : 'Activate Account' }}</q-tooltip>
+              <q-tooltip>{{
+                props.row.is_active ? 'Deactivate Account' : 'Activate Account'
+              }}</q-tooltip>
             </q-btn>
           </q-td>
         </template>
@@ -464,7 +466,7 @@ const saveUser = async () => {
         p_email: form.email,
         p_password: form.password,
         p_full_name: form.full_name,
-        p_phone: form.phone || ''
+        p_phone: form.phone || '',
       })
 
       if (createError) throw createError
@@ -520,23 +522,23 @@ const toggleUserStatus = (user) => {
   }).onOk(async () => {
     try {
       loading.value = true
-      
+
       const { error } = await supabase.rpc('admin_toggle_user_status', {
         target_user_id: user.id,
-        new_status: !isCurrentlyActive
+        new_status: !isCurrentlyActive,
       })
 
       if (error) {
         throw new Error(error.message || 'Server error occurred')
       }
-      
+
       $q.notify({ type: 'positive', message: `User account successfully ${actionPast}` })
       await fetchUsers()
     } catch (err) {
       console.error(`Error trying to ${actionText} user:`, err)
-      $q.notify({ 
-        type: 'negative', 
-        message: err.message || `Failed to ${actionText} user`
+      $q.notify({
+        type: 'negative',
+        message: err.message || `Failed to ${actionText} user`,
       })
     } finally {
       loading.value = false

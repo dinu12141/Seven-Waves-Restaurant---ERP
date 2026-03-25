@@ -1,6 +1,5 @@
 <template>
   <q-layout view="hHh lpR fFf" class="manager-app-layout">
-
     <!-- ── Top Bar ───────────────────────────────────────────────────────── -->
     <q-header class="manager-top-bar">
       <q-toolbar class="manager-toolbar">
@@ -13,22 +12,35 @@
         <q-space />
 
         <!-- Branch chip -->
-        <q-chip
-          dense color="blue-grey-9" text-color="cyan-3"
-          icon="store" class="branch-chip"
-        >
+        <q-chip dense color="blue-grey-9" text-color="cyan-3" icon="store" class="branch-chip">
           {{ authStore.currentBranch?.name || 'No Branch' }}
         </q-chip>
 
         <!-- Notification Bell -->
-        <q-btn flat round dense icon="notifications" color="grey-4" class="q-ml-sm" to="/manager-app/alerts">
+        <q-btn
+          flat
+          round
+          dense
+          icon="notifications"
+          color="grey-4"
+          class="q-ml-sm"
+          to="/manager-app/alerts"
+        >
           <q-badge v-if="store.unreadAlertCount > 0" color="red" floating rounded>
             {{ store.unreadAlertCount > 9 ? '9+' : store.unreadAlertCount }}
           </q-badge>
         </q-btn>
 
         <!-- Messages -->
-        <q-btn flat round dense icon="mail" color="grey-4" class="q-ml-xs" to="/manager-app/messages">
+        <q-btn
+          flat
+          round
+          dense
+          icon="mail"
+          color="grey-4"
+          class="q-ml-xs"
+          to="/manager-app/messages"
+        >
           <q-badge v-if="store.unreadMessageCount > 0" color="orange" floating rounded>
             {{ store.unreadMessageCount > 9 ? '9+' : store.unreadMessageCount }}
           </q-badge>
@@ -36,7 +48,9 @@
 
         <!-- Theme Toggle -->
         <q-btn
-          flat round dense
+          flat
+          round
+          dense
           :icon="uiStore.themeIcon"
           class="q-ml-xs"
           @click="uiStore.toggleDarkMode($q)"
@@ -63,7 +77,9 @@
             <q-separator dark />
             <!-- Theme Toggle -->
             <q-item clickable v-close-popup class="mum-item" @click="uiStore.toggleDarkMode($q)">
-              <q-item-section avatar><q-icon :name="uiStore.themeIcon" size="16px" /></q-item-section>
+              <q-item-section avatar
+                ><q-icon :name="uiStore.themeIcon" size="16px"
+              /></q-item-section>
               <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
             </q-item>
             <q-separator dark />
@@ -96,11 +112,7 @@
           custom
           v-slot="{ isActive, navigate }"
         >
-          <button
-            class="nav-tab"
-            :class="{ 'nav-tab--active': isActive }"
-            @click="navigate"
-          >
+          <button class="nav-tab" :class="{ 'nav-tab--active': isActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
               <q-icon :name="tab.icon" size="22px" />
               <q-badge
@@ -118,7 +130,6 @@
         </router-link>
       </div>
     </q-footer>
-
   </q-layout>
 </template>
 
@@ -139,7 +150,9 @@ const router = useRouter()
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   if (!session) {
     router.replace('/auth/login')
     return
@@ -163,7 +176,11 @@ onUnmounted(() => store.cleanup())
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 async function logout() {
@@ -177,11 +194,21 @@ async function logout() {
 
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
 const tabs = computed(() => [
-  { label: 'Home',     icon: 'space_dashboard',       to: '/manager-app' },
-  { label: 'Floor',    icon: 'supervisor_account',    to: '/manager-app/floor' },
-  { label: 'Orders',   icon: 'receipt_long',          to: '/manager-app/orders',   badge: { value: store.pendingOrderCount } },
-  { label: 'Messages', icon: 'mail',                  to: '/manager-app/messages', badge: { value: store.unreadMessageCount } },
-  { label: 'Profile',  icon: 'person',                to: '/manager-app/profile' },
+  { label: 'Home', icon: 'space_dashboard', to: '/manager-app' },
+  { label: 'Floor', icon: 'supervisor_account', to: '/manager-app/floor' },
+  {
+    label: 'Orders',
+    icon: 'receipt_long',
+    to: '/manager-app/orders',
+    badge: { value: store.pendingOrderCount },
+  },
+  {
+    label: 'Messages',
+    icon: 'mail',
+    to: '/manager-app/messages',
+    badge: { value: store.unreadMessageCount },
+  },
+  { label: 'Profile', icon: 'person', to: '/manager-app/profile' },
 ])
 </script>
 
@@ -244,13 +271,22 @@ const tabs = computed(() => [
 }
 
 .top-avatar {
-  width: 30px; height: 30px; border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   background: linear-gradient(135deg, #06b6d4, #8b5cf6);
-  color: #fff; font-size: 11px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; letter-spacing: 0.3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
   &--lg {
-    width: 40px; height: 40px; font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
   }
 }
 
@@ -264,17 +300,30 @@ const tabs = computed(() => [
 }
 
 .mum-header {
-  display: flex; align-items: center; gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 14px 16px 12px;
 }
-.mum-info { flex: 1; min-width: 0; }
+.mum-info {
+  flex: 1;
+  min-width: 0;
+}
 .mum-name {
-  font-size: 13px; font-weight: 700; color: #f3f4f6;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3f4f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .mum-role {
-  font-size: 11px; color: #22d3ee; margin-top: 2px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px;
+  font-size: 11px;
+  color: #22d3ee;
+  margin-top: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .mum-item {
   min-height: 44px !important;
@@ -284,8 +333,12 @@ const tabs = computed(() => [
   gap: 10px;
   &--danger {
     color: #f87171 !important;
-    :deep(.q-icon) { color: #f87171 !important; }
-    &:hover { background: rgba(239, 68, 68, 0.08) !important; }
+    :deep(.q-icon) {
+      color: #f87171 !important;
+    }
+    &:hover {
+      background: rgba(239, 68, 68, 0.08) !important;
+    }
   }
 }
 

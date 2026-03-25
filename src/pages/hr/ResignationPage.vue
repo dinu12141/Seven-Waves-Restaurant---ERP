@@ -1,12 +1,7 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Resignations"
-      breadcrumbs="Human Resources / Resignations"
-    />
+    <ERPToolbar moduleName="hr" title="Resignations" breadcrumbs="Human Resources / Resignations" />
 
-    
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn
         color="deep-orange"
@@ -114,6 +109,19 @@
             label="Approve"
             no-caps
           />
+          <q-btn
+            v-if="props.row.status === 'approved'"
+            flat
+            dense
+            icon="calculate"
+            color="amber"
+            size="sm"
+            @click="openSettlement(props.row)"
+            label="F&F"
+            no-caps
+          >
+            <q-tooltip>Full & Final Settlement</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -236,6 +244,197 @@
       </q-card>
     </q-dialog>
 
+    <!-- Full & Final Settlement Dialog -->
+    <q-dialog v-model="showSettlement" persistent>
+      <q-card
+        style="
+          width: 680px;
+          max-width: 95vw;
+          background: var(--erp-bg-form-card, #111827);
+          color: #fff;
+        "
+      >
+        <q-bar class="bg-grey-10">
+          <q-icon name="calculate" color="amber" />
+          <div class="q-ml-sm text-weight-bold">
+            Full & Final Settlement — {{ settlementRow?.employees?.full_name }}
+          </div>
+          <q-space />
+          <q-btn dense flat icon="close" @click="showSettlement = false" />
+        </q-bar>
+
+        <q-card-section v-if="loadingSettlement" class="text-center q-pa-xl">
+          <q-spinner size="40px" color="amber" />
+          <div class="q-mt-sm text-grey-5">Calculating settlement…</div>
+        </q-card-section>
+
+        <q-card-section v-else-if="settlement" class="q-gutter-sm">
+          <!-- Key Info Strip -->
+          <div class="row q-col-gutter-sm text-caption">
+            <div class="col-6 col-sm-3">
+              <div class="q-pa-sm rounded-borders" style="background: rgba(255, 255, 255, 0.04)">
+                <div class="text-grey-5">Hire Date</div>
+                <div class="text-weight-bold">{{ settlement.hire_date }}</div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-3">
+              <div class="q-pa-sm rounded-borders" style="background: rgba(255, 255, 255, 0.04)">
+                <div class="text-grey-5">Last Day</div>
+                <div class="text-weight-bold">{{ settlement.last_working_day }}</div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-3">
+              <div class="q-pa-sm rounded-borders" style="background: rgba(255, 255, 255, 0.04)">
+                <div class="text-grey-5">Service</div>
+                <div class="text-weight-bold">{{ settlement.years_of_service }} yrs</div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-3">
+              <div class="q-pa-sm rounded-borders" style="background: rgba(255, 255, 255, 0.04)">
+                <div class="text-grey-5">Daily Rate</div>
+                <div class="text-weight-bold">LKR {{ fmtS(settlement.daily_rate) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Earnings Table -->
+          <div>
+            <div class="text-subtitle2 text-weight-bold text-green row items-center q-mb-xs">
+              <q-icon name="trending_up" class="q-mr-xs" /> Earnings
+            </div>
+            <q-markup-table
+              dark
+              flat
+              bordered
+              dense
+              separator="cell"
+              style="background: rgba(255, 255, 255, 0.02)"
+            >
+              <tbody>
+                <tr>
+                  <td class="text-grey-4 text-caption">
+                    Pro-Rata Salary ({{ settlement.days_worked_last_month }} days × LKR
+                    {{ fmtS(settlement.daily_rate) }})
+                  </td>
+                  <td class="text-right text-white text-caption">
+                    LKR {{ fmtS(settlement.pro_rata_salary) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-grey-4 text-caption">
+                    Leave Encashment ({{ settlement.unused_leave_days }} days unused annual leave)
+                  </td>
+                  <td class="text-right text-white text-caption">
+                    LKR {{ fmtS(settlement.leave_encashment) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-grey-4 text-caption">
+                    Gratuity (14 days × {{ settlement.years_of_service }} yrs × LKR
+                    {{ fmtS(settlement.daily_rate) }})
+                    <q-badge
+                      v-if="!settlement.gratuity_eligible"
+                      color="grey"
+                      label="Not eligible (<5 yrs)"
+                      class="q-ml-xs"
+                      style="font-size: 9px"
+                    />
+                  </td>
+                  <td class="text-right text-white text-caption">
+                    LKR {{ fmtS(settlement.gratuity_amount) }}
+                  </td>
+                </tr>
+                <tr style="border-top: 2px solid rgba(34, 197, 94, 0.4)">
+                  <td class="text-green text-weight-bold text-caption">Total Earnings</td>
+                  <td class="text-right text-green text-weight-bold text-caption">
+                    LKR {{ fmtS(settlement.total_earnings) }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+
+          <!-- Deductions Table -->
+          <div>
+            <div class="text-subtitle2 text-weight-bold text-red row items-center q-mb-xs">
+              <q-icon name="trending_down" class="q-mr-xs" /> Outstanding Recoveries
+            </div>
+            <q-markup-table
+              dark
+              flat
+              bordered
+              dense
+              separator="cell"
+              style="background: rgba(255, 255, 255, 0.02)"
+            >
+              <tbody>
+                <tr>
+                  <td class="text-grey-4 text-caption">Salary Advance Recovery</td>
+                  <td class="text-right text-red-3 text-caption">
+                    LKR {{ fmtS(settlement.advance_recovery) }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-grey-4 text-caption">Loan Recovery</td>
+                  <td class="text-right text-red-3 text-caption">
+                    LKR {{ fmtS(settlement.loan_recovery) }}
+                  </td>
+                </tr>
+                <tr style="border-top: 2px solid rgba(239, 68, 68, 0.4)">
+                  <td class="text-white text-weight-bold text-caption">Total Deductions</td>
+                  <td class="text-right text-red text-weight-bold text-caption">
+                    LKR {{ fmtS(settlement.total_deductions) }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </div>
+
+          <!-- Net Settlement Banner -->
+          <div
+            class="q-pa-md text-center rounded-borders"
+            style="background: #1e3a5f; border: 1px solid #3b82f6"
+          >
+            <div class="text-caption text-blue-3 q-mb-xs">NET SETTLEMENT AMOUNT</div>
+            <div class="text-h5 text-weight-bold text-blue">
+              LKR {{ fmtS(settlement.net_settlement) }}
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <q-input
+            dark
+            outlined
+            v-model="settlementNotes"
+            label="Notes (optional)"
+            type="textarea"
+            rows="2"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md q-gutter-sm" v-if="settlement">
+          <q-btn flat label="Close" color="grey" no-caps @click="showSettlement = false" />
+          <q-btn
+            outline
+            color="amber"
+            label="Download PDF"
+            icon="picture_as_pdf"
+            no-caps
+            @click="downloadSettlementPDF"
+          />
+          <q-btn
+            unelevated
+            color="green"
+            label="Approve Settlement"
+            icon="done_all"
+            no-caps
+            :loading="approvingSettlement"
+            @click="approveSettlement"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Interview Dialog -->
     <q-dialog v-model="showInterview">
       <q-card style="min-width: 400px; background: var(--erp-bg-form-card, #111827); color: #fff">
@@ -268,6 +467,8 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -448,6 +649,203 @@ async function approveResign(row) {
     $q.notify({ type: 'positive', message: 'Resignation approved. Employee status changed.' })
     loadResignations()
   })
+}
+
+// ── Full & Final Settlement ─────────────────────────────────────────────────
+const showSettlement = ref(false)
+const loadingSettlement = ref(false)
+const approvingSettlement = ref(false)
+const settlementRow = ref(null)
+const settlement = ref(null)
+const settlementNotes = ref('')
+
+const fmtS = (v) => Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })
+
+async function openSettlement(row) {
+  settlementRow.value = row
+  settlement.value = null
+  settlementNotes.value = ''
+  showSettlement.value = true
+  loadingSettlement.value = true
+  try {
+    const { data, error } = await supabase.rpc('calculate_final_settlement', {
+      p_resignation_id: row.id,
+    })
+    if (error) throw error
+    settlement.value = data
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to calculate settlement: ' + err.message })
+    showSettlement.value = false
+  } finally {
+    loadingSettlement.value = false
+  }
+}
+
+async function approveSettlement() {
+  if (!settlement.value) return
+  approvingSettlement.value = true
+  try {
+    const { error } = await supabase
+      .from('resignation_settlements')
+      .update({
+        status: 'approved',
+        notes: settlementNotes.value || null,
+        approved_by: authStore.user?.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq('resignation_id', settlementRow.value.id)
+    if (error) throw error
+    $q.notify({ type: 'positive', message: 'Settlement approved successfully' })
+    showSettlement.value = false
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    approvingSettlement.value = false
+  }
+}
+
+function downloadSettlementPDF() {
+  if (!settlement.value) return
+  const s = settlement.value
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const pageW = doc.internal.pageSize.getWidth()
+  const margin = 14
+  let y = margin
+
+  // Header
+  doc.setFillColor(17, 24, 39)
+  doc.rect(0, 0, pageW, 32, 'F')
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(249, 168, 37)
+  doc.text('FULL & FINAL SETTLEMENT', pageW / 2, 13, { align: 'center' })
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(156, 163, 175)
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-LK')}`, pageW / 2, 22, {
+    align: 'center',
+  })
+  y = 40
+
+  // Employee info
+  autoTable(doc, {
+    startY: y,
+    head: [],
+    body: [
+      ['Employee', s.employee_name, 'Code', s.employee_code],
+      ['Hire Date', s.hire_date, 'Last Day', s.last_working_day],
+      ['Years of Service', s.years_of_service + ' yrs', 'Daily Rate', 'LKR ' + fmtS(s.daily_rate)],
+    ],
+    theme: 'plain',
+    styles: { fontSize: 9, cellPadding: 2 },
+    columnStyles: {
+      0: { fontStyle: 'bold', textColor: [80, 80, 80], cellWidth: 45 },
+      1: { cellWidth: 55 },
+      2: { fontStyle: 'bold', textColor: [80, 80, 80], cellWidth: 40 },
+      3: { cellWidth: 45 },
+    },
+    margin: { left: margin, right: margin },
+  })
+  y = doc.lastAutoTable.finalY + 8
+
+  // Earnings
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(34, 197, 94)
+  doc.text('EARNINGS', margin, y)
+  y += 2
+  autoTable(doc, {
+    startY: y,
+    head: [['Component', 'Calculation', 'Amount (LKR)']],
+    body: [
+      [
+        'Pro-Rata Salary',
+        `${s.days_worked_last_month} days × LKR ${fmtS(s.daily_rate)}`,
+        fmtS(s.pro_rata_salary),
+      ],
+      [
+        'Leave Encashment',
+        `${s.unused_leave_days} days × LKR ${fmtS(s.daily_rate)}`,
+        fmtS(s.leave_encashment),
+      ],
+      [
+        'Gratuity',
+        s.gratuity_eligible
+          ? `14 × ${s.years_of_service} yrs × LKR ${fmtS(s.daily_rate)}`
+          : 'Not eligible (< 5 years)',
+        fmtS(s.gratuity_amount),
+      ],
+      ['Total Earnings', '', fmtS(s.total_earnings)],
+    ],
+    theme: 'striped',
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [22, 163, 74], textColor: 255 },
+    columnStyles: { 2: { halign: 'right' } },
+    margin: { left: margin, right: margin },
+  })
+  y = doc.lastAutoTable.finalY + 6
+
+  // Deductions
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(239, 68, 68)
+  doc.text('OUTSTANDING RECOVERIES', margin, y)
+  y += 2
+  autoTable(doc, {
+    startY: y,
+    head: [['Component', 'Amount (LKR)']],
+    body: [
+      ['Salary Advance Recovery', fmtS(s.advance_recovery)],
+      ['Loan Recovery', fmtS(s.loan_recovery)],
+      ['Total Deductions', fmtS(s.total_deductions)],
+    ],
+    theme: 'striped',
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+    columnStyles: { 1: { halign: 'right' } },
+    margin: { left: margin, right: margin },
+  })
+  y = doc.lastAutoTable.finalY + 8
+
+  // Net settlement
+  doc.setFillColor(17, 24, 39)
+  doc.rect(margin, y, pageW - margin * 2, 14, 'F')
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text('NET SETTLEMENT:', margin + 4, y + 9)
+  doc.setTextColor(96, 165, 250)
+  doc.text('LKR ' + fmtS(s.net_settlement), pageW - margin - 4, y + 9, { align: 'right' })
+  y += 20
+
+  if (settlementNotes.value) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 100, 100)
+    doc.text('Notes: ' + settlementNotes.value, margin, y)
+    y += 8
+  }
+
+  // Signature
+  y = Math.max(y, 240)
+  doc.setDrawColor(200, 200, 200)
+  doc.line(margin, y, margin + 65, y)
+  doc.line(pageW - margin - 65, y, pageW - margin, y)
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120, 120, 120)
+  doc.text('Employee Signature & Date', margin, y + 5)
+  doc.text('HR / Finance Signature & Date', pageW - margin - 65, y + 5)
+
+  doc.setFontSize(7)
+  doc.setTextColor(160, 160, 160)
+  doc.text('Restaurant ERP • Full & Final Settlement • Confidential', pageW / 2, 290, {
+    align: 'center',
+  })
+
+  const filename = `F&F_${s.employee_code || 'emp'}_${new Date().toISOString().split('T')[0]}.pdf`
+  doc.save(filename)
+  $q.notify({ type: 'positive', message: 'Settlement PDF downloaded' })
 }
 
 watch(statusFilter, () => loadResignations())

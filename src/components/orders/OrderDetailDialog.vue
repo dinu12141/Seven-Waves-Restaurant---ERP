@@ -13,7 +13,9 @@
         <div class="top-center">
           <q-btn-toggle
             v-model="activeTab"
-            dense no-caps rounded
+            dense
+            no-caps
+            rounded
             toggle-color="primary"
             color="grey-9"
             text-color="grey-4"
@@ -50,7 +52,9 @@
             </div>
             <div class="meta-card">
               <div class="meta-card-label">Table</div>
-              <div class="meta-card-value">{{ orderData?.restaurant_tables?.table_number || '—' }}</div>
+              <div class="meta-card-value">
+                {{ orderData?.restaurant_tables?.table_number || '—' }}
+              </div>
             </div>
             <div class="meta-card">
               <div class="meta-card-label">Customer</div>
@@ -83,19 +87,21 @@
             <table class="items-table">
               <thead>
                 <tr>
-                  <th style="width:40px">#</th>
+                  <th style="width: 40px">#</th>
                   <th>Item</th>
-                  <th style="width:60px" class="text-center">Qty</th>
-                  <th style="width:100px" class="text-right">Price</th>
-                  <th style="width:100px" class="text-right">Total</th>
-                  <th style="width:80px" class="text-center">Status</th>
+                  <th style="width: 60px" class="text-center">Qty</th>
+                  <th style="width: 100px" class="text-right">Price</th>
+                  <th style="width: 100px" class="text-right">Total</th>
+                  <th style="width: 80px" class="text-center">Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(item, idx) in items" :key="item.id">
                   <td class="text-grey-6">{{ idx + 1 }}</td>
                   <td>
-                    <span class="item-name">{{ item.menu_items?.name || item.name || 'Item' }}</span>
+                    <span class="item-name">{{
+                      item.menu_items?.name || item.name || 'Item'
+                    }}</span>
                     <div v-if="item.notes" class="item-notes">{{ item.notes }}</div>
                   </td>
                   <td class="text-center">{{ item.quantity }}</td>
@@ -135,7 +141,7 @@
       <div v-else-if="activeTab === 'kot'" class="detail-body">
         <div class="detail-content">
           <div v-if="kotTickets.length === 0" class="empty-state">
-            <q-icon name="soup_kitchen" size="64px" style="opacity:0.15" />
+            <q-icon name="soup_kitchen" size="64px" style="opacity: 0.15" />
             <div class="text-grey-6 q-mt-md">No KOT tickets for this order</div>
           </div>
           <div v-else class="kot-grid">
@@ -161,7 +167,12 @@
                 <div v-for="ki in kot.items" :key="ki.id" class="kot-item-row">
                   <span class="kot-item-qty">{{ ki.quantity }}x</span>
                   <span class="kot-item-name">{{ ki.item_name || 'Item' }}</span>
-                  <q-badge v-if="ki.status && ki.status !== 'queued'" :color="kotStatusColor(ki.status)" dense size="sm">
+                  <q-badge
+                    v-if="ki.status && ki.status !== 'queued'"
+                    :color="kotStatusColor(ki.status)"
+                    dense
+                    size="sm"
+                  >
                     {{ ki.status }}
                   </q-badge>
                 </div>
@@ -185,9 +196,11 @@
       <div v-else-if="activeTab === 'invoice'" class="detail-body">
         <div class="detail-content">
           <div v-if="!invoiceData && !invoiceLoading" class="empty-state">
-            <q-icon name="receipt" size="64px" style="opacity:0.15" />
+            <q-icon name="receipt" size="64px" style="opacity: 0.15" />
             <div class="text-grey-6 q-mt-md">No invoice generated yet</div>
-            <div class="text-caption text-grey-7 q-mt-xs">Invoice is created when the order is billed</div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              Invoice is created when the order is billed
+            </div>
           </div>
           <div v-else-if="invoiceLoading" class="empty-state">
             <q-spinner-dots size="40px" color="primary" />
@@ -255,14 +268,35 @@ const branchName = computed(() => authStore.currentBranch?.name || 'Restaurant')
 // ── Status helpers ──
 const statusLabel = computed(() => {
   const s = orderData.value?.status || ''
-  return { pending_waiter: 'Pending', accepted: 'Accepted', preparing: 'Preparing', ready: 'Ready',
-    served: 'Served', invoiced: 'Invoiced', paid: 'Paid', cancelled: 'Cancelled' }[s] || s
+  return (
+    {
+      pending_waiter: 'Pending',
+      accepted: 'Accepted',
+      preparing: 'Preparing',
+      ready: 'Ready',
+      served: 'Served',
+      invoiced: 'Invoiced',
+      paid: 'Paid',
+      cancelled: 'Cancelled',
+    }[s] || s
+  )
 })
 
 const statusColor = computed(() => {
   const s = orderData.value?.status || ''
-  return { pending_waiter: 'orange', pending: 'orange', accepted: 'blue', preparing: 'blue',
-    ready: 'green', served: 'teal', invoiced: 'indigo', paid: 'green-8', cancelled: 'red' }[s] || 'grey'
+  return (
+    {
+      pending_waiter: 'orange',
+      pending: 'orange',
+      accepted: 'blue',
+      preparing: 'blue',
+      ready: 'green',
+      served: 'teal',
+      invoiced: 'indigo',
+      paid: 'green-8',
+      cancelled: 'red',
+    }[s] || 'grey'
+  )
 })
 
 const orderTypeLabel = computed(() => {
@@ -272,15 +306,31 @@ const orderTypeLabel = computed(() => {
 
 const orderTypeIcon = computed(() => {
   const t = orderData.value?.order_type || ''
-  return { dine_in: 'table_restaurant', takeaway: 'takeout_dining', delivery: 'delivery_dining' }[t] || 'restaurant'
+  return (
+    { dine_in: 'table_restaurant', takeaway: 'takeout_dining', delivery: 'delivery_dining' }[t] ||
+    'restaurant'
+  )
 })
 
 function itemStatusColor(status) {
-  return { queued: 'grey', preparing: 'blue', ready: 'green', served: 'teal', cancelled: 'red' }[status] || 'grey'
+  return (
+    { queued: 'grey', preparing: 'blue', ready: 'green', served: 'teal', cancelled: 'red' }[
+      status
+    ] || 'grey'
+  )
 }
 
 function kotStatusColor(status) {
-  return { pending: 'orange', accepted: 'blue', preparing: 'blue-8', ready: 'green', completed: 'teal', cancelled: 'red' }[status] || 'grey'
+  return (
+    {
+      pending: 'orange',
+      accepted: 'blue',
+      preparing: 'blue-8',
+      ready: 'green',
+      completed: 'teal',
+      cancelled: 'red',
+    }[status] || 'grey'
+  )
 }
 
 // ── Fetch full order data via SECURITY DEFINER RPC (bypasses RLS) ──
@@ -317,13 +367,13 @@ async function fetchOrderDetails(orderId) {
     orderData.value = order
 
     // ── Map items (RPC gives menu_item_name directly) ──
-    items.value = (result.items || []).map(i => ({
+    items.value = (result.items || []).map((i) => ({
       ...i,
       menu_items: { name: i.menu_item_name },
     }))
 
     // ── Map KOT tickets (RPC gives kitchen_name + items with item_name) ──
-    kotTickets.value = (result.kot_tickets || []).map(kot => ({
+    kotTickets.value = (result.kot_tickets || []).map((kot) => ({
       ...kot,
       // items already have item_name from the RPC
     }))
@@ -368,12 +418,12 @@ function buildInvoiceFromOrder(order, orderItemsList) {
       customer_phone: order.customer_phone,
       pax: order.pax || 1,
       restaurant_tables: order.restaurant_tables || null,
-      kot_tickets: kotTickets.value.map(k => ({ kot_number: k.kot_number })),
+      kot_tickets: kotTickets.value.map((k) => ({ kot_number: k.kot_number })),
       waiter: order.waiter || null,
       delivery_address: order.delivery_address || null,
     },
     // BillPrintTemplate loops over invoice_items
-    invoice_items: orderItemsList.map(i => ({
+    invoice_items: orderItemsList.map((i) => ({
       id: i.id,
       menu_item_name: i.menu_items?.name || 'Item',
       quantity: i.quantity,
@@ -396,26 +446,37 @@ async function fetchInvoice(invoiceId) {
 }
 
 // ── Watch for dialog open ──
-watch(() => [props.modelValue, props.orderId], ([open, id]) => {
-  if (open && id) {
-    // Check for tab hint from parent
-    if (window.__orderDetailTab) {
-      activeTab.value = window.__orderDetailTab
-      window.__orderDetailTab = null
-    } else {
-      activeTab.value = props.defaultTab || 'details'
+watch(
+  () => [props.modelValue, props.orderId],
+  ([open, id]) => {
+    if (open && id) {
+      // Check for tab hint from parent
+      if (window.__orderDetailTab) {
+        activeTab.value = window.__orderDetailTab
+        window.__orderDetailTab = null
+      } else {
+        activeTab.value = props.defaultTab || 'details'
+      }
+      fetchOrderDetails(id)
     }
-    fetchOrderDetails(id)
-  }
-})
+  },
+)
 
 // ── Format helpers ──
-function fmt(val) { return parseFloat(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+function fmt(val) {
+  return parseFloat(val || 0).toLocaleString('en-LK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
 function formatDateTime(dt) {
   if (!dt) return '—'
   const d = new Date(dt)
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-    ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return (
+    d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+    ' ' +
+    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  )
 }
 
 // ── Print / Download ──
@@ -442,10 +503,13 @@ function downloadKot(kot) {
 }
 
 function buildKotHtml(kot, title) {
-  const itemsHtml = (kot.items || []).map(ki =>
-    `<tr><td style="padding:4px 0;font-size:16px;font-weight:700">${ki.quantity}x</td>
-     <td style="padding:4px 8px;font-size:16px">${ki.item_name || 'Item'}</td></tr>`
-  ).join('')
+  const itemsHtml = (kot.items || [])
+    .map(
+      (ki) =>
+        `<tr><td style="padding:4px 0;font-size:16px;font-weight:700">${ki.quantity}x</td>
+     <td style="padding:4px 8px;font-size:16px">${ki.item_name || 'Item'}</td></tr>`,
+    )
+    .join('')
 
   return `<!DOCTYPE html><html><head>
     <title>${title || `KOT #${kot.kot_number}`}</title>
@@ -482,7 +546,7 @@ function buildKotHtml(kot, title) {
 
 async function printInvoice() {
   await nextTick()
-  await new Promise(r => setTimeout(r, 150))
+  await new Promise((r) => setTimeout(r, 150))
   if (invoicePrintRef.value?.printReceipt) {
     invoicePrintRef.value.printReceipt()
   }
@@ -490,7 +554,7 @@ async function printInvoice() {
 
 async function downloadInvoice() {
   await nextTick()
-  await new Promise(r => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 300))
 
   // Get the rendered BillPrintTemplate element
   const el = invoicePrintRef.value?.$el
@@ -567,23 +631,41 @@ async function downloadInvoice() {
 /* ── Top Bar ── */
 .detail-top-bar {
   height: 52px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   flex-shrink: 0;
 }
-.top-left { display: flex; align-items: center; gap: 8px; }
-.topbar-icon-wrap {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: rgba(255,152,0,0.12);
-  display: flex; align-items: center; justify-content: center;
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.top-title { color: #fff; font-weight: 700; font-size: 16px; }
-.top-center { display: flex; align-items: center; }
-.top-right { display: flex; align-items: center; }
+.topbar-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 152, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.top-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.top-center {
+  display: flex;
+  align-items: center;
+}
+.top-right {
+  display: flex;
+  align-items: center;
+}
 
 .tab-toggle {
   :deep(.q-btn) {
@@ -621,8 +703,8 @@ async function downloadInvoice() {
   margin-bottom: 24px;
 }
 .meta-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 14px 16px;
 }
@@ -642,8 +724,8 @@ async function downloadInvoice() {
 
 /* ── Items Section ── */
 .items-section {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -652,8 +734,8 @@ async function downloadInvoice() {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
 }
@@ -670,20 +752,28 @@ async function downloadInvoice() {
   text-transform: uppercase;
   letter-spacing: 1px;
   text-align: left;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .items-table td {
   padding: 10px 12px;
   font-size: 13px;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
-.item-name { font-weight: 600; color: #f3f4f6; }
-.item-notes { font-size: 11px; color: #f59e0b; margin-top: 2px; font-style: italic; }
+.item-name {
+  font-weight: 600;
+  color: #f3f4f6;
+}
+.item-notes {
+  font-size: 11px;
+  color: #f59e0b;
+  margin-top: 2px;
+  font-style: italic;
+}
 
 /* ── Totals ── */
 .totals-section {
   padding: 16px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -696,12 +786,14 @@ async function downloadInvoice() {
   font-size: 13px;
   color: #d1d5db;
 }
-.total-row.discount { color: #f87171; }
+.total-row.discount {
+  color: #f87171;
+}
 .total-row.grand-total {
   font-size: 18px;
   font-weight: 800;
   color: #fff;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 8px;
   margin-top: 4px;
 }
@@ -723,8 +815,8 @@ async function downloadInvoice() {
   gap: 16px;
 }
 .kot-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -733,8 +825,8 @@ async function downloadInvoice() {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .kot-card-title {
   font-weight: 700;
@@ -758,7 +850,7 @@ async function downloadInvoice() {
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 .kot-item-qty {
   font-weight: 800;
@@ -775,17 +867,18 @@ async function downloadInvoice() {
   display: flex;
   gap: 8px;
   padding: 10px 16px;
-  background: rgba(255,255,255,0.02);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
-.kot-print-btn, .kot-download-btn {
+.kot-print-btn,
+.kot-download-btn {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: transparent;
   color: #d1d5db;
@@ -795,12 +888,12 @@ async function downloadInvoice() {
   transition: all 0.15s ease;
 }
 .kot-print-btn:hover {
-  background: rgba(30,64,175,0.2);
+  background: rgba(30, 64, 175, 0.2);
   border-color: #1e40af;
   color: #93c5fd;
 }
 .kot-download-btn:hover {
-  background: rgba(5,150,105,0.15);
+  background: rgba(5, 150, 105, 0.15);
   border-color: #059669;
   color: #6ee7b7;
 }
@@ -812,8 +905,8 @@ async function downloadInvoice() {
   gap: 16px;
 }
 .invoice-preview-scroll {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 20px;
   max-height: calc(100vh - 220px);
@@ -841,10 +934,14 @@ async function downloadInvoice() {
   background: #1e40af;
   color: #fff;
 }
-.inv-print-btn:hover { background: #2563eb; }
+.inv-print-btn:hover {
+  background: #2563eb;
+}
 .inv-download-btn {
   background: #059669;
   color: #fff;
 }
-.inv-download-btn:hover { background: #047857; }
+.inv-download-btn:hover {
+  background: #047857;
+}
 </style>

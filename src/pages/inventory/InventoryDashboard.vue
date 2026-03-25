@@ -27,8 +27,12 @@
                   <q-avatar size="32px" color="orange-8" text-color="white" icon="warning" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-body2 text-weight-medium">{{ alert.name }}</q-item-label>
-                  <q-item-label caption class="text-grey-5">{{ alert.stock }} left (Min: {{ alert.min }})</q-item-label>
+                  <q-item-label class="text-body2 text-weight-medium">{{
+                    alert.name
+                  }}</q-item-label>
+                  <q-item-label caption class="text-grey-5"
+                    >{{ alert.stock }} left (Min: {{ alert.min }})</q-item-label
+                  >
                 </q-item-section>
               </q-item>
               <div v-if="lowStock.length === 0" class="text-grey-6 text-center q-pa-md">
@@ -69,11 +73,20 @@ const kpis = ref([
   { title: 'Low Stock Items', value: '0', icon: 'warning', color: 'orange', isCurrency: false },
   { title: 'Today GRN', value: '0', icon: 'move_to_inbox', color: 'teal', isCurrency: false },
   { title: 'Today GIN', value: '0', icon: 'outbox', color: 'deep-purple', isCurrency: false },
-  { title: 'Stock Value', value: '0', icon: 'account_balance_wallet', color: 'indigo', isCurrency: true },
+  {
+    title: 'Stock Value',
+    value: '0',
+    icon: 'account_balance_wallet',
+    color: 'indigo',
+    isCurrency: true,
+  },
 ])
 
 const lowStock = ref([])
-const stockSeries = ref([{ name: 'Inbound', data: [] }, { name: 'Outbound', data: [] }])
+const stockSeries = ref([
+  { name: 'Inbound', data: [] },
+  { name: 'Outbound', data: [] },
+])
 const stockOptions = ref({})
 
 const fetchData = async () => {
@@ -87,22 +100,28 @@ const fetchData = async () => {
 
     lowStock.value = [
       { id: 1, name: 'Tomato Paste', stock: 5, min: 20 },
-      { id: 2, name: 'Cooking Oil (L)', stock: 12, min: 50 }
+      { id: 2, name: 'Cooking Oil (L)', stock: 12, min: 50 },
     ]
 
     stockSeries.value = [
       { name: 'Inbound', data: [120, 400, 50, 60, 200, 310, 150] },
-      { name: 'Outbound', data: [80, 150, 200, 90, 100, 250, 180] }
+      { name: 'Outbound', data: [80, 150, 200, 90, 100, 250, 180] },
     ]
     stockOptions.value = {
       chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
       theme: { mode: 'dark' },
-      xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { colors: '#9ca3af' } } },
+      xaxis: {
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: { style: { colors: '#9ca3af' } },
+      },
       yaxis: { labels: { style: { colors: '#9ca3af' } } },
       colors: ['#10b981', '#ef4444'],
       grid: { borderColor: '#374151', strokeDashArray: 4 },
       dataLabels: { enabled: false },
-      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } }
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] },
+      },
     }
 
     loading.value = false

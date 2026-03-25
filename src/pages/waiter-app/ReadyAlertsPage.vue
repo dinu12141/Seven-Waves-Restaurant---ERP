@@ -4,25 +4,30 @@
     <div class="inner-header q-px-md q-py-sm row items-center">
       <div class="text-weight-bold text-white">Alerts</div>
       <q-space />
-      <q-badge
-        v-if="totalAlertCount > 0"
-        color="red" class="q-px-sm q-mr-sm alert-badge"
-      >
+      <q-badge v-if="totalAlertCount > 0" color="red" class="q-px-sm q-mr-sm alert-badge">
         {{ totalAlertCount }}
       </q-badge>
-      <q-btn round flat dense icon="refresh" color="grey-5" class="q-ml-xs"
-        @click="appStore.loadReadyAlerts()" />
+      <q-btn
+        round
+        flat
+        dense
+        icon="refresh"
+        color="grey-5"
+        class="q-ml-xs"
+        @click="appStore.loadReadyAlerts()"
+      />
     </div>
 
     <!-- Empty state -->
     <div v-if="totalAlertCount === 0" class="empty-state">
       <q-icon name="notifications_none" size="52px" class="text-grey-7 q-mb-md" />
       <div class="text-grey-5">No alerts right now</div>
-      <div class="text-caption text-grey-7 q-mt-xs">New orders and kitchen-ready alerts appear here</div>
+      <div class="text-caption text-grey-7 q-mt-xs">
+        New orders and kitchen-ready alerts appear here
+      </div>
     </div>
 
     <div v-else class="q-pa-md">
-
       <!-- ── Section 1: New Incoming Orders ── -->
       <template v-if="orderStore.newOrderAlerts.length > 0">
         <div class="section-header q-mb-sm">
@@ -30,8 +35,15 @@
           <span>NEW ORDERS</span>
           <q-badge color="blue-9" class="q-ml-sm">{{ orderStore.newOrderAlerts.length }}</q-badge>
           <q-space />
-          <q-btn flat dense no-caps size="xs" color="grey-5"
-            label="Clear all" @click="orderStore.clearNewOrderAlerts()" />
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="xs"
+            color="grey-5"
+            label="Clear all"
+            @click="orderStore.clearNewOrderAlerts()"
+          />
         </div>
 
         <div
@@ -46,7 +58,9 @@
             <div class="col">
               <div class="text-white text-weight-bold">
                 New Order
-                <span v-if="alert.order_number" class="text-blue-3"> #{{ alert.order_number }}</span>
+                <span v-if="alert.order_number" class="text-blue-3">
+                  #{{ alert.order_number }}</span
+                >
               </div>
               <div class="text-caption text-grey-5 q-mt-xs">
                 <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
@@ -58,17 +72,26 @@
             </div>
             <!-- Dismiss button -->
             <q-btn
-              round flat dense size="sm" icon="close" color="grey-6"
+              round
+              flat
+              dense
+              size="sm"
+              icon="close"
+              color="grey-6"
               @click="orderStore.dismissNewOrderAlert(alert.id)"
             />
           </div>
           <!-- Go to Inbox CTA -->
           <div class="alert-card__actions q-px-md q-pb-md">
             <q-btn
-              unelevated class="full-width" color="blue-9"
-              icon="move_to_inbox" label="Go to Inbox to Accept"
-              @click="goInbox" no-caps
-              style="height:42px;border-radius:10px;font-weight:700;font-size:13px"
+              unelevated
+              class="full-width"
+              color="blue-9"
+              icon="move_to_inbox"
+              label="Go to Inbox to Accept"
+              @click="goInbox"
+              no-caps
+              style="height: 42px; border-radius: 10px; font-weight: 700; font-size: 13px"
             />
           </div>
         </div>
@@ -87,7 +110,9 @@
         <!-- Ready pulse banner -->
         <div class="pulse-banner q-mb-md">
           <q-icon name="restaurant" size="18px" class="q-mr-sm" />
-          <span class="text-weight-bold">{{ appStore.readyAlerts.length }} order(s) ready to serve!</span>
+          <span class="text-weight-bold"
+            >{{ appStore.readyAlerts.length }} order(s) ready to serve!</span
+          >
         </div>
 
         <div
@@ -119,17 +144,19 @@
           <!-- Mark Served -->
           <div class="alert-card__actions q-px-md q-pb-md">
             <q-btn
-              unelevated class="full-width" color="green-9"
-              icon="check_circle" label="Pick Up & Mark Served"
+              unelevated
+              class="full-width"
+              color="green-9"
+              icon="check_circle"
+              label="Pick Up & Mark Served"
               :loading="serving[alert.order_id]"
               @click="markServedFromAlert(alert.order_id)"
               no-caps
-              style="height:44px;border-radius:10px;font-weight:700;font-size:13px"
+              style="height: 44px; border-radius: 10px; font-weight: 700; font-size: 13px"
             />
           </div>
         </div>
       </template>
-
     </div>
 
     <div style="height: 24px" />
@@ -149,8 +176,8 @@ const $q = useQuasar()
 const router = useRouter()
 const serving = reactive({})
 
-const totalAlertCount = computed(() =>
-  orderStore.newOrderAlerts.length + appStore.readyAlerts.length
+const totalAlertCount = computed(
+  () => orderStore.newOrderAlerts.length + appStore.readyAlerts.length,
 )
 
 function fmtTime(dt) {
@@ -169,7 +196,7 @@ function relativeTime(dateStr) {
 }
 
 function orderNumber(orderId) {
-  return appStore.myOrders.find(o => o.id === orderId)?.order_number || '—'
+  return appStore.myOrders.find((o) => o.id === orderId)?.order_number || '—'
 }
 
 function goInbox() {
@@ -180,7 +207,11 @@ async function markServedFromAlert(orderId) {
   serving[orderId] = true
   try {
     const result = await appStore.markServed(orderId)
-    $q.notify({ type: 'positive', message: `✅ Served! +${result?.points_awarded || 0} pts`, position: 'top' })
+    $q.notify({
+      type: 'positive',
+      message: `✅ Served! +${result?.points_awarded || 0} pts`,
+      position: 'top',
+    })
   } catch (e) {
     $q.notify({ type: 'negative', message: e.message, position: 'top' })
   } finally {
@@ -193,8 +224,8 @@ async function markServedFromAlert(orderId) {
 @import './waiter-shared.scss';
 
 .inner-header {
-  background: rgba(255,255,255,0.02);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   height: 48px;
 }
 
@@ -203,77 +234,132 @@ async function markServedFromAlert(orderId) {
   animation: badge-pulse 1s ease-in-out infinite;
 }
 @keyframes badge-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.8; transform: scale(1.1); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
 }
 
 // ── Section headers ──────────────────────────────────────────────
 .section-header {
-  display: flex; align-items: center;
-  font-size: 0.62rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 1.5px;
+  display: flex;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
   color: #4b5563;
 
   &__dot {
-    width: 6px; height: 6px; border-radius: 50%; margin-right: 8px;
-    &--blue  { background: #3b82f6; box-shadow: 0 0 6px #3b82f6; }
-    &--green { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: dot-pulse 1.5s ease-in-out infinite; }
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 8px;
+    &--blue {
+      background: #3b82f6;
+      box-shadow: 0 0 6px #3b82f6;
+    }
+    &--green {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      animation: dot-pulse 1.5s ease-in-out infinite;
+    }
   }
 }
 @keyframes dot-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .section-divider {
-  height: 1px; background: rgba(255,255,255,0.06); border-radius: 1px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 1px;
 }
 
 // ── Alert Cards ───────────────────────────────────────────────────
 .alert-card {
-  border-radius: 14px; overflow: hidden;
+  border-radius: 14px;
+  overflow: hidden;
 
-  &__actions { border-top: 1px solid transparent; }
+  &__actions {
+    border-top: 1px solid transparent;
+  }
 
   &--new {
     background: rgba(59, 130, 246, 0.06);
     border: 1px solid rgba(59, 130, 246, 0.22);
-    &__actions { border-top-color: rgba(59, 130, 246, 0.12); }
+    &__actions {
+      border-top-color: rgba(59, 130, 246, 0.12);
+    }
     animation: new-order-pulse 2.5s ease-in-out infinite;
   }
 
   &--ready {
     background: rgba(34, 197, 94, 0.05);
     border: 1px solid rgba(34, 197, 94, 0.22);
-    &__actions { border-top-color: rgba(34, 197, 94, 0.12); }
+    &__actions {
+      border-top-color: rgba(34, 197, 94, 0.12);
+    }
   }
 }
 
 @keyframes new-order-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.22); }
-  50%       { box-shadow: 0 0 14px 2px rgba(59, 130, 246, 0.1); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px rgba(59, 130, 246, 0.1);
+  }
 }
 
 // ── Alert icon wraps ─────────────────────────────────────────────
 .alert-icon-wrap {
-  width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  &--blue  { background: rgba(59, 130, 246, 0.12); }
-  &--green { background: rgba(34, 197, 94, 0.12); }
+  &--blue {
+    background: rgba(59, 130, 246, 0.12);
+  }
+  &--green {
+    background: rgba(34, 197, 94, 0.12);
+  }
 }
 
 // ── Kitchen ready banner ─────────────────────────────────────────
 .pulse-banner {
-  background: rgba(34,197,94,0.1);
-  border: 1px solid rgba(34,197,94,0.25);
-  border-radius: 10px; padding: 12px 16px;
-  display: flex; align-items: center;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
   color: #4ade80;
   animation: banner-glow 2s ease-in-out infinite;
 }
 @keyframes banner-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.2); }
-  50%       { box-shadow: 0 0 12px 3px rgba(34,197,94,0.1); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px 3px rgba(34, 197, 94, 0.1);
+  }
 }
 </style>

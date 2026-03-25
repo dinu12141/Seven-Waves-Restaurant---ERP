@@ -1,6 +1,5 @@
 <template>
   <q-layout view="hHh lpR fFf" class="delivery-app-layout">
-
     <!-- ── Top Bar ───────────────────────────────────────────── -->
     <q-header class="delivery-top-bar">
       <q-toolbar class="delivery-toolbar">
@@ -25,7 +24,9 @@
 
         <!-- Theme Toggle -->
         <q-btn
-          flat round dense
+          flat
+          round
+          dense
           :icon="uiStore.themeIcon"
           class="q-ml-sm"
           @click="uiStore.toggleDarkMode($q)"
@@ -38,7 +39,12 @@
           <div class="top-avatar">
             {{ initials(authStore.userDisplayName) }}
           </div>
-          <q-menu anchor="bottom right" self="top right" :offset="[0, 6]" class="delivery-user-menu">
+          <q-menu
+            anchor="bottom right"
+            self="top right"
+            :offset="[0, 6]"
+            class="delivery-user-menu"
+          >
             <div class="dum-header">
               <div class="top-avatar top-avatar--lg">
                 {{ initials(authStore.userDisplayName) }}
@@ -51,7 +57,9 @@
             <q-separator dark />
             <!-- Theme Toggle -->
             <q-item clickable v-close-popup class="dum-item" @click="uiStore.toggleDarkMode($q)">
-              <q-item-section avatar><q-icon :name="uiStore.themeIcon" size="16px" /></q-item-section>
+              <q-item-section avatar
+                ><q-icon :name="uiStore.themeIcon" size="16px"
+              /></q-item-section>
               <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
             </q-item>
             <q-separator dark />
@@ -83,11 +91,7 @@
           custom
           v-slot="{ isActive, navigate }"
         >
-          <button
-            class="nav-tab"
-            :class="{ 'nav-tab--active': isActive }"
-            @click="navigate"
-          >
+          <button class="nav-tab" :class="{ 'nav-tab--active': isActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
               <q-icon :name="tab.icon" size="22px" />
               <q-badge
@@ -105,7 +109,6 @@
         </router-link>
       </div>
     </q-footer>
-
   </q-layout>
 </template>
 
@@ -126,7 +129,9 @@ const router = useRouter()
 
 // ── Auth guard ─────────────────────────
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   if (!session) {
     router.replace('/auth/login')
     return
@@ -141,7 +146,11 @@ onUnmounted(() => store.cleanup())
 
 function initials(name) {
   if (!name) return '?'
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
 }
 
 async function logout() {
@@ -231,15 +240,26 @@ const tabs = computed(() => [
 }
 
 // ─── Avatar ─────────────────────────────────────
-.top-avatar-btn { min-width: 34px; }
+.top-avatar-btn {
+  min-width: 34px;
+}
 .top-avatar {
-  width: 30px; height: 30px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: linear-gradient(135deg, #7c4dff, #b388ff);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800; color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
   letter-spacing: 0.5px;
-  &--lg { width: 40px; height: 40px; font-size: 14px; }
+  &--lg {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
 }
 
 // ─── User Menu ──────────────────────────────────
@@ -250,15 +270,31 @@ const tabs = computed(() => [
   min-width: 200px;
 }
 .dum-header {
-  display: flex; align-items: center; gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 14px 16px;
 }
-.dum-info { flex: 1; }
-.dum-name { font-size: 13px; font-weight: 700; color: #e8eaf0; }
-.dum-role { font-size: 10px; color: #9e9e9e; margin-top: 2px; }
+.dum-info {
+  flex: 1;
+}
+.dum-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8eaf0;
+}
+.dum-role {
+  font-size: 10px;
+  color: #9e9e9e;
+  margin-top: 2px;
+}
 .dum-item {
-  font-size: 12px; color: #bdbdbd; min-height: 36px;
-  &--danger { color: #ef5350 !important; }
+  font-size: 12px;
+  color: #bdbdbd;
+  min-height: 36px;
+  &--danger {
+    color: #ef5350 !important;
+  }
 }
 
 // ─── Page Container ─────────────────────────────
@@ -293,14 +329,20 @@ const tabs = computed(() => [
   background: none;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.38);
-  transition: color 0.2s ease, transform 0.15s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   position: relative;
 
-  &:active { transform: scale(0.92); }
+  &:active {
+    transform: scale(0.92);
+  }
   &--active {
     color: #ce93d8 !important;
-    .nav-tab__label { font-weight: 700; }
+    .nav-tab__label {
+      font-weight: 700;
+    }
   }
 }
 
@@ -333,7 +375,6 @@ const tabs = computed(() => [
 .tab-fade-leave-to {
   opacity: 0;
 }
-
 </style>
 
 <style lang="scss">
@@ -367,9 +408,15 @@ body.body--light {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
   }
 
-  .dum-name { color: #0f172a; }
-  .dum-role { color: #64748b; }
-  .dum-item { color: #475569; }
+  .dum-name {
+    color: #0f172a;
+  }
+  .dum-role {
+    color: #64748b;
+  }
+  .dum-item {
+    color: #475569;
+  }
 
   .delivery-bottom-nav {
     background: rgba(255, 255, 255, 0.98) !important;

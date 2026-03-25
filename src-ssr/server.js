@@ -17,7 +17,7 @@ import {
   defineSsrListen,
   defineSsrClose,
   defineSsrServeStaticContent,
-  defineSsrRenderPreloadTag
+  defineSsrRenderPreloadTag,
 } from '#q-app/wrappers'
 
 /**
@@ -92,9 +92,7 @@ export const close = defineSsrClose(({ listenResult }) => {
   return listenResult.close()
 })
 
-const maxAge = process.env.DEV
-  ? 0
-  : 1000 * 60 * 60 * 24 * 30
+const maxAge = process.env.DEV ? 0 : 1000 * 60 * 60 * 24 * 30
 
 /**
  * Should return a function that will be used to configure the webserver
@@ -124,7 +122,7 @@ const pngRE = /\.png$/
  * Should return a String with HTML output
  * (if any) for preloading indicated file
  */
-export const renderPreloadTag = defineSsrRenderPreloadTag((file/* , { ssrContext } */) => {
+export const renderPreloadTag = defineSsrRenderPreloadTag((file /* , { ssrContext } */) => {
   if (jsRE.test(file) === true) {
     return `<link rel="modulepreload" href="${file}" crossorigin>`
   }

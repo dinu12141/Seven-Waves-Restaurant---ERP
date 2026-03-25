@@ -188,7 +188,9 @@
                 <div class="row items-center q-gutter-x-xs">
                   <q-btn
                     v-if="filteredReady.length > 0"
-                    flat dense no-caps
+                    flat
+                    dense
+                    no-caps
                     size="sm"
                     color="red-4"
                     icon="clear_all"
@@ -303,9 +305,7 @@ watch(
     if (!alert) return
 
     // Build items summary text
-    const itemsText = alert.items
-      .map(i => `${i.qty}x ${i.name}`)
-      .join(', ')
+    const itemsText = alert.items.map((i) => `${i.qty}x ${i.name}`).join(', ')
 
     $q.notify({
       type: 'warning',
@@ -316,12 +316,10 @@ watch(
       timeout: 6000,
       multiLine: true,
       html: false,
-      actions: [
-        { label: 'OK', color: 'white', handler: () => store.clearNewTicketAlert() }
-      ],
+      actions: [{ label: 'OK', color: 'white', handler: () => store.clearNewTicketAlert() }],
     })
   },
-  { deep: true }
+  { deep: true },
 )
 
 async function onKitchenChange(kitchenId) {
@@ -361,7 +359,12 @@ async function handleClearAllReady() {
   }).onOk(async () => {
     const { success, error } = await store.dismissAllReady()
     if (success) {
-      $q.notify({ type: 'positive', message: 'All ready orders cleared', icon: 'check_circle', timeout: 2000 })
+      $q.notify({
+        type: 'positive',
+        message: 'All ready orders cleared',
+        icon: 'check_circle',
+        timeout: 2000,
+      })
     } else {
       $q.notify({ type: 'negative', message: error || 'Failed to clear', icon: 'error' })
     }

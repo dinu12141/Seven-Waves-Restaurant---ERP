@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh lpR fFf" class="touch-menu-layout">
-    <q-header class="touch-menu-header" elevated>
+    <q-header class="touch-menu-header">
       <q-toolbar class="q-px-md q-py-xs">
         <!-- Brand -->
         <div class="header-logo row items-center no-wrap">
@@ -454,23 +454,32 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .touch-menu-layout {
+  // Override Quasar's primary color to the restaurant's orange brand
+  // for the entire touch/kiosk menu so all color="primary" components match
+  --q-primary: #f97316;
+  --q-primary-dark: #ea580c;
   font-family: 'Inter', sans-serif;
 }
 
 .touch-menu-header {
   backdrop-filter: blur(16px);
+  // Fallback for when body class isn't applied yet (prevents blue flash)
+  background: rgba(11, 14, 20, 0.95) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 // Light mode header
 :global(.body--light) .touch-menu-header {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07) !important;
 }
 
 // Dark mode header
 :global(.body--dark) .touch-menu-header {
   background: rgba(11, 14, 20, 0.95) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 .touch-page-bg {
@@ -491,8 +500,12 @@ onUnmounted(() => {
   line-height: 1.1;
 }
 
-:global(.body--dark) .header-brand { color: #f8fafc; }
-:global(.body--light) .header-brand { color: #0f172a; }
+:global(.body--dark) .header-brand {
+  color: #f8fafc;
+}
+:global(.body--light) .header-brand {
+  color: #0f172a;
+}
 
 .header-table {
   font-size: 11px;
@@ -518,12 +531,16 @@ onUnmounted(() => {
 :global(.body--dark) .loyalty-badge {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  &:hover { background: rgba(255, 255, 255, 0.09); }
+  &:hover {
+    background: rgba(255, 255, 255, 0.09);
+  }
 }
 :global(.body--light) .loyalty-badge {
   background: rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  &:hover { background: rgba(0, 0, 0, 0.07); }
+  &:hover {
+    background: rgba(0, 0, 0, 0.07);
+  }
 }
 
 .loyalty-avatar {
@@ -549,8 +566,12 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-:global(.body--dark) .loyalty-name { color: #f1f5f9; }
-:global(.body--light) .loyalty-name { color: #0f172a; }
+:global(.body--dark) .loyalty-name {
+  color: #f1f5f9;
+}
+:global(.body--light) .loyalty-name {
+  color: #0f172a;
+}
 
 .loyalty-pts {
   font-size: 10px;
@@ -562,13 +583,18 @@ onUnmounted(() => {
 
 .touch-cart-btn {
   transition: all 0.2s ease;
-  &:hover, &:active {
+  &:hover,
+  &:active {
     color: var(--q-primary);
     background: rgba(37, 99, 235, 0.1);
   }
 }
-:global(.body--dark) .touch-cart-btn { color: #cbd5e1; }
-:global(.body--light) .touch-cart-btn { color: #475569; }
+:global(.body--dark) .touch-cart-btn {
+  color: #cbd5e1;
+}
+:global(.body--light) .touch-cart-btn {
+  color: #475569;
+}
 
 .cart-badge {
   padding: 4px 6px;
@@ -596,7 +622,9 @@ onUnmounted(() => {
   border: 1px solid rgba(249, 115, 22, 0.2);
   border-radius: 16px;
   padding: 16px;
-  &__inner { font-family: 'Inter', sans-serif; }
+  &__inner {
+    font-family: 'Inter', sans-serif;
+  }
 }
 
 .font-mono {

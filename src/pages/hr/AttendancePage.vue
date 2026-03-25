@@ -1,10 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <ERPToolbar
-      moduleName="hr"
-      title="Attendance"
-      breadcrumbs="Human Resources / Attendance"
-    />
+    <ERPToolbar moduleName="hr" title="Attendance" breadcrumbs="Human Resources / Attendance" />
 
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input

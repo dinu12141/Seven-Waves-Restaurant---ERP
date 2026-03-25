@@ -42,7 +42,7 @@ function saveTheme(theme, userId) {
 
 export const useUIStore = defineStore('ui', {
   state: () => ({
-    darkMode: true,       // Will be overridden in initThemeForUser()
+    darkMode: true, // Will be overridden in initThemeForUser()
     _currentUserId: null, // Tracked so toggle/set know which key to write
     sidebarOpen: true,
     sidebarCollapsed: false,

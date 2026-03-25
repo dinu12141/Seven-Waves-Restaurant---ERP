@@ -15,7 +15,8 @@
           <q-card-section class="q-pa-md">
             <!-- Filter by category -->
             <q-select
-              outlined dense
+              outlined
+              dense
               v-model="selectedCategoryId"
               :options="categoryOptions"
               emit-value
@@ -36,7 +37,12 @@
                 @click="selectedSubId = sub.id"
               >
                 <q-item-section avatar>
-                  <q-avatar size="28px" color="grey-7" text-color="white" icon="subdirectory_arrow_right" />
+                  <q-avatar
+                    size="28px"
+                    color="grey-7"
+                    text-color="white"
+                    icon="subdirectory_arrow_right"
+                  />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-bold">{{ sub.name }}</q-item-label>
@@ -81,7 +87,9 @@
           <q-card-section class="q-pa-md">
             <template v-if="selectedSubId">
               <div class="text-body2 text-grey-4 q-mb-md">
-                Select which kitchen should receive KOT tickets for items in <strong class="text-primary">{{ selectedSub?.name }}</strong>:
+                Select which kitchen should receive KOT tickets for items in
+                <strong class="text-primary">{{ selectedSub?.name }}</strong
+                >:
               </div>
 
               <q-list separator>
@@ -100,7 +108,9 @@
                       :color="currentKitchenId === kitchen.id ? 'green' : 'grey-8'"
                       text-color="white"
                     >
-                      <q-icon :name="currentKitchenId === kitchen.id ? 'check_circle' : 'kitchen'" />
+                      <q-icon
+                        :name="currentKitchenId === kitchen.id ? 'check_circle' : 'kitchen'"
+                      />
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
@@ -151,7 +161,10 @@
                   <td>{{ row.category_name }}</td>
                   <td>{{ row.name }}</td>
                   <td>
-                    <q-badge :color="row.kitchen_name ? 'green' : 'orange'" :label="row.kitchen_name || 'Unmapped'" />
+                    <q-badge
+                      :color="row.kitchen_name ? 'green' : 'orange'"
+                      :label="row.kitchen_name || 'Unmapped'"
+                    />
                   </td>
                 </tr>
               </tbody>
@@ -175,7 +188,7 @@
             v-model="kitchenDialog.name"
             label="Kitchen Name"
             placeholder="e.g. PASTRY STATION"
-            :rules="[v => !!v || 'Name is required']"
+            :rules="[(v) => !!v || 'Name is required']"
           />
           <q-toggle
             v-model="kitchenDialog.isCashierDisplay"
@@ -208,18 +221,18 @@
           <q-select
             outlined
             v-model="subCatDialog.categoryId"
-            :options="categories.map(c => ({ label: c.name, value: c.id }))"
+            :options="categories.map((c) => ({ label: c.name, value: c.id }))"
             emit-value
             map-options
             label="Parent Category"
-            :rules="[v => !!v || 'Category is required']"
+            :rules="[(v) => !!v || 'Category is required']"
           />
           <q-input
             outlined
             v-model="subCatDialog.name"
             label="Sub Category Name"
             placeholder="e.g. PASTA"
-            :rules="[v => !!v || 'Name is required']"
+            :rules="[(v) => !!v || 'Name is required']"
           />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
@@ -271,16 +284,17 @@ const subCatDialog = reactive({
 
 const categoryOptions = computed(() => [
   { label: 'All Categories', value: null },
-  ...categories.value.map(c => ({ label: c.name, value: c.id })),
+  ...categories.value.map((c) => ({ label: c.name, value: c.id })),
 ])
 
 // Enriched sub-categories with kitchen info from mappings
 const enrichedSubs = computed(() => {
-  return rawSubCategories.value.map(s => {
+  return rawSubCategories.value.map((s) => {
     // Find mapping: prefer subcategory_id match, fallback to category_id match
-    const mapping = mappings.value.find(m => m.subcategory_id === s.id)
-      || mappings.value.find(m => !m.subcategory_id && m.category_id === s.category_id)
-    const kitchen = mapping ? kitchens.value.find(k => k.id === mapping.kitchen_id) : null
+    const mapping =
+      mappings.value.find((m) => m.subcategory_id === s.id) ||
+      mappings.value.find((m) => !m.subcategory_id && m.category_id === s.category_id)
+    const kitchen = mapping ? kitchens.value.find((k) => k.id === mapping.kitchen_id) : null
     return {
       ...s,
       category_name: s.categories?.name || 'Unknown',
@@ -293,12 +307,12 @@ const enrichedSubs = computed(() => {
 
 const filteredSubCategories = computed(() => {
   if (selectedCategoryId.value) {
-    return enrichedSubs.value.filter(s => s.category_id === selectedCategoryId.value)
+    return enrichedSubs.value.filter((s) => s.category_id === selectedCategoryId.value)
   }
   return enrichedSubs.value
 })
 
-const selectedSub = computed(() => enrichedSubs.value.find(s => s.id === selectedSubId.value))
+const selectedSub = computed(() => enrichedSubs.value.find((s) => s.id === selectedSubId.value))
 
 const currentKitchenId = computed(() => {
   if (!selectedSub.value) return null
@@ -316,7 +330,11 @@ async function fetchAll() {
 
 async function fetchCategories() {
   const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
-  const { data } = await supabase.from('categories').select('id, name').eq('company_id', companyId).order('sort_order')
+  const { data } = await supabase
+    .from('categories')
+    .select('id, name')
+    .eq('company_id', companyId)
+    .order('sort_order')
   categories.value = data || []
 }
 
@@ -330,7 +348,10 @@ async function fetchSubCategories() {
 
 async function fetchKitchens() {
   const branchId = authStore.currentBranch?.id
-  const query = supabase.from('kitchens').select('id, name, is_active, is_cashier_display').eq('is_active', true)
+  const query = supabase
+    .from('kitchens')
+    .select('id, name, is_active, is_cashier_display')
+    .eq('is_active', true)
   if (branchId) query.eq('branch_id', branchId)
   const { data } = await query.order('name')
   kitchens.value = data || []
@@ -346,10 +367,12 @@ async function fetchMappings() {
 
 function resolveBranchId() {
   // Try multiple sources for branchId
-  return authStore.currentBranch?.id
-    || authStore.branches?.[0]?.branches?.id
-    || mappings.value?.[0]?.branch_id
-    || null
+  return (
+    authStore.currentBranch?.id ||
+    authStore.branches?.[0]?.branches?.id ||
+    mappings.value?.[0]?.branch_id ||
+    null
+  )
 }
 
 async function assignKitchen(kitchenId) {
@@ -364,7 +387,7 @@ async function assignKitchen(kitchenId) {
 
   try {
     // Check if there's an existing mapping for this subcategory
-    const existingMapping = mappings.value.find(m => m.subcategory_id === sub.id)
+    const existingMapping = mappings.value.find((m) => m.subcategory_id === sub.id)
 
     if (existingMapping) {
       // Update existing
@@ -398,7 +421,10 @@ async function removeMapping() {
   if (!sub || !sub.mapping_id) return
 
   try {
-    const { error } = await supabase.from('kitchen_subcategory_map').delete().eq('id', sub.mapping_id)
+    const { error } = await supabase
+      .from('kitchen_subcategory_map')
+      .delete()
+      .eq('id', sub.mapping_id)
     if (error) throw error
     await fetchMappings()
     $q.notify({ type: 'info', message: 'Kitchen mapping removed' })
@@ -424,7 +450,10 @@ async function createKitchen() {
     const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
     const branchId = resolveBranchId()
     if (!branchId) {
-      $q.notify({ type: 'negative', message: 'No branch selected. Please log out and log in again.' })
+      $q.notify({
+        type: 'negative',
+        message: 'No branch selected. Please log out and log in again.',
+      })
       return
     }
 
@@ -439,7 +468,10 @@ async function createKitchen() {
 
     kitchenDialog.show = false
     await fetchKitchens()
-    $q.notify({ type: 'positive', message: `Kitchen "${kitchenDialog.name.trim().toUpperCase()}" created!` })
+    $q.notify({
+      type: 'positive',
+      message: `Kitchen "${kitchenDialog.name.trim().toUpperCase()}" created!`,
+    })
   } catch (err) {
     console.error('[KitchenMapping] Error creating kitchen:', err)
     $q.notify({ type: 'negative', message: err.message || 'Failed to create kitchen' })
@@ -463,17 +495,22 @@ async function createSubCategory() {
   try {
     const companyId = authStore.user?.company_id || '5c7ff29c-418a-461a-9624-3667375c2af4'
 
-    const { error } = await supabase.from('menu_sub_categories').insert([{
-      company_id: companyId,
-      category_id: subCatDialog.categoryId,
-      name: subCatDialog.name.trim().toUpperCase(),
-      sort_order: rawSubCategories.value.length + 1,
-    }])
+    const { error } = await supabase.from('menu_sub_categories').insert([
+      {
+        company_id: companyId,
+        category_id: subCatDialog.categoryId,
+        name: subCatDialog.name.trim().toUpperCase(),
+        sort_order: rawSubCategories.value.length + 1,
+      },
+    ])
     if (error) throw error
 
     subCatDialog.show = false
     await fetchSubCategories()
-    $q.notify({ type: 'positive', message: `Sub category "${subCatDialog.name.trim().toUpperCase()}" created!` })
+    $q.notify({
+      type: 'positive',
+      message: `Sub category "${subCatDialog.name.trim().toUpperCase()}" created!`,
+    })
   } catch (err) {
     console.error('[KitchenMapping] Error creating sub category:', err)
     $q.notify({ type: 'negative', message: err.message || 'Failed to create sub category' })

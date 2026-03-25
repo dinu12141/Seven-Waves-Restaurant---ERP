@@ -207,69 +207,69 @@ body.body--light {
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--light {
   /* Catch common text-white on dark patterns */
-  [style*="color: #fff"],
-  [style*="color:#fff"],
-  [style*="color: white"] {
+  [style*='color: #fff'],
+  [style*='color:#fff'],
+  [style*='color: white'] {
     color: var(--erp-text-primary) !important;
   }
 
   /* Catch common dark background patterns in inline styles */
-  [style*="background: #0d"],
-  [style*="background: #0b"],
-  [style*="background: #0a"],
-  [style*="background: #09"],
-  [style*="background: #08"],
-  [style*="background: #07"],
-  [style*="background:#0d"],
-  [style*="background:#0b"],
-  [style*="background:#0a"],
-  [style*="background:#09"],
-  [style*="background:#08"],
-  [style*="background:#07"],
-  [style*="background-color: #0d"],
-  [style*="background-color: #0b"],
-  [style*="background-color: #0a"],
-  [style*="background-color: #09"],
-  [style*="background-color: #08"],
-  [style*="background-color: #07"] {
+  [style*='background: #0d'],
+  [style*='background: #0b'],
+  [style*='background: #0a'],
+  [style*='background: #09'],
+  [style*='background: #08'],
+  [style*='background: #07'],
+  [style*='background:#0d'],
+  [style*='background:#0b'],
+  [style*='background:#0a'],
+  [style*='background:#09'],
+  [style*='background:#08'],
+  [style*='background:#07'],
+  [style*='background-color: #0d'],
+  [style*='background-color: #0b'],
+  [style*='background-color: #0a'],
+  [style*='background-color: #09'],
+  [style*='background-color: #08'],
+  [style*='background-color: #07'] {
     background: var(--erp-bg-page) !important;
   }
 
-  [style*="background: #1"],
-  [style*="background:#1"],
-  [style*="background-color: #1"],
-  [style*="background-color:#1"] {
+  [style*='background: #1'],
+  [style*='background:#1'],
+  [style*='background-color: #1'],
+  [style*='background-color:#1'] {
     background: var(--erp-bg-card) !important;
   }
 
   /* Border overrides */
-  [style*="border-color: #21"],
-  [style*="border-color: #30"],
-  [style*="border: 1px solid #21"],
-  [style*="border: 1px solid #30"] {
+  [style*='border-color: #21'],
+  [style*='border-color: #30'],
+  [style*='border: 1px solid #21'],
+  [style*='border: 1px solid #30'] {
     border-color: var(--erp-border) !important;
   }
 
   /* Text color overrides for common dark-adaptive colors */
-  [style*="color: #e6edf3"],
-  [style*="color: #c9d1d9"],
-  [style*="color: #f1f5f9"],
-  [style*="color: #f8fafc"],
-  [style*="color: #e2e8f0"],
-  [style*="color:#e6edf3"],
-  [style*="color:#c9d1d9"],
-  [style*="color:#f1f5f9"],
-  [style*="color:#f8fafc"],
-  [style*="color:#e2e8f0"] {
+  [style*='color: #e6edf3'],
+  [style*='color: #c9d1d9'],
+  [style*='color: #f1f5f9'],
+  [style*='color: #f8fafc'],
+  [style*='color: #e2e8f0'],
+  [style*='color:#e6edf3'],
+  [style*='color:#c9d1d9'],
+  [style*='color:#f1f5f9'],
+  [style*='color:#f8fafc'],
+  [style*='color:#e2e8f0'] {
     color: var(--erp-text-primary) !important;
   }
 
-  [style*="color: #8b949e"],
-  [style*="color: #94a3b8"],
-  [style*="color: #64748b"],
-  [style*="color:#8b949e"],
-  [style*="color:#94a3b8"],
-  [style*="color:#64748b"] {
+  [style*='color: #8b949e'],
+  [style*='color: #94a3b8'],
+  [style*='color: #64748b'],
+  [style*='color:#8b949e'],
+  [style*='color:#94a3b8'],
+  [style*='color:#64748b'] {
     color: var(--erp-text-secondary) !important;
   }
 }
@@ -531,7 +531,9 @@ body.body--light {
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--dark,
 body.body--light {
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Smoothly transition key layout elements */
@@ -551,5 +553,8 @@ body.body--light {
 .fin-kpi-card,
 .dash-card,
 .kpi-card {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease !important;
 }

@@ -34,7 +34,13 @@
       <template #body-cell-food_cost_pct="props">
         <q-td :props="props">
           <q-badge
-            :color="Number(props.value) > 35 ? 'negative' : Number(props.value) > 25 ? 'warning' : 'positive'"
+            :color="
+              Number(props.value) > 35
+                ? 'negative'
+                : Number(props.value) > 25
+                  ? 'warning'
+                  : 'positive'
+            "
             class="text-caption"
           >
             {{ props.value }}%
@@ -45,7 +51,9 @@
       <template #body-cell-yield="props">
         <q-td :props="props">
           <span class="text-weight-bold">{{ props.row.yield_qty }}</span>
-          <span v-if="props.row.yield_unit" class="text-caption text-grey-5 q-ml-xs">{{ props.row.yield_unit }}</span>
+          <span v-if="props.row.yield_unit" class="text-caption text-grey-5 q-ml-xs">{{
+            props.row.yield_unit
+          }}</span>
           <span v-else class="text-caption text-grey-6 q-ml-xs">portions</span>
         </q-td>
       </template>
@@ -93,14 +101,20 @@
       <template #body-cell-actions="props">
         <q-td :props="props" class="q-gutter-xs">
           <q-btn
-            flat dense round
-            icon="edit" size="sm" color="primary"
+            flat
+            dense
+            round
+            icon="edit"
+            size="sm"
+            color="primary"
             @click="editRecipe(props.row)"
           >
             <q-tooltip>Edit Recipe</q-tooltip>
           </q-btn>
           <q-btn
-            flat dense round
+            flat
+            dense
+            round
             :icon="props.row.is_active ? 'pause' : 'play_arrow'"
             size="sm"
             :color="props.row.is_active ? 'warning' : 'positive'"
@@ -109,8 +123,12 @@
             <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
           </q-btn>
           <q-btn
-            flat dense round
-            icon="delete" size="sm" color="negative"
+            flat
+            dense
+            round
+            icon="delete"
+            size="sm"
+            color="negative"
             @click="confirmDeleteRecipe(props.row)"
           >
             <q-tooltip>Delete Recipe</q-tooltip>
@@ -154,11 +172,7 @@
                 />
               </div>
               <div class="col-5">
-                <BaseInput
-                  label="Yield Unit"
-                  v-model="form.yield_unit"
-                  placeholder="portions"
-                />
+                <BaseInput label="Yield Unit" v-model="form.yield_unit" placeholder="portions" />
               </div>
             </div>
 
@@ -175,22 +189,41 @@
           </BaseFormSection>
 
           <!-- Estimated Cost Summary -->
-          <q-card v-if="form.ingredients.length > 0" flat bordered class="bg-grey-9 q-mt-md q-pa-md" style="border-radius: 8px; border-color: rgba(255,255,255,0.1)">
+          <q-card
+            v-if="form.ingredients.length > 0"
+            flat
+            bordered
+            class="bg-grey-9 q-mt-md q-pa-md"
+            style="border-radius: 8px; border-color: rgba(255, 255, 255, 0.1)"
+          >
             <div class="text-caption text-grey-5 q-mb-sm">ESTIMATED FOOD COST</div>
             <div class="row justify-between items-center">
               <div>
-                <div class="text-h5 text-amber-4 text-weight-bold">{{ formatCurrency(estimatedCost) }}</div>
+                <div class="text-h5 text-amber-4 text-weight-bold">
+                  {{ formatCurrency(estimatedCost) }}
+                </div>
                 <div class="text-caption text-grey-5">Total recipe cost</div>
               </div>
               <div class="text-right" v-if="form.yield_qty > 0">
-                <div class="text-h6 text-white text-weight-bold">{{ formatCurrency(costPerPortion) }}</div>
+                <div class="text-h6 text-white text-weight-bold">
+                  {{ formatCurrency(costPerPortion) }}
+                </div>
                 <div class="text-caption text-grey-5">Per {{ form.yield_unit || 'portion' }}</div>
               </div>
             </div>
             <div v-if="form.menu_item?.base_price" class="q-mt-sm">
               <div class="text-caption text-grey-5">
                 Food Cost %:
-                <span :class="foodCostPct > 35 ? 'text-negative' : foodCostPct > 25 ? 'text-warning' : 'text-positive'" class="text-weight-bold">
+                <span
+                  :class="
+                    foodCostPct > 35
+                      ? 'text-negative'
+                      : foodCostPct > 25
+                        ? 'text-warning'
+                        : 'text-positive'
+                  "
+                  class="text-weight-bold"
+                >
                   {{ foodCostPct.toFixed(1) }}%
                 </span>
                 of {{ formatCurrency(form.menu_item.base_price) }} selling price
@@ -267,7 +300,7 @@
                   dark
                   hide-bottom-space
                   placeholder="0.0"
-                  :rules="[v => v > 0 || 'Must be > 0']"
+                  :rules="[(v) => v > 0 || 'Must be > 0']"
                 />
               </div>
               <div class="col-2">
@@ -390,7 +423,13 @@
                   {{ item.uom?.name || item.uom?.code || 'Unit' }}
                 </div>
                 <div v-if="item.item?.avg_cost" class="text-caption text-amber-4">
-                  {{ formatCurrency(item.qty_per_serving * (1 + (item.wastage_percent || 0) / 100) * item.item.avg_cost) }}
+                  {{
+                    formatCurrency(
+                      item.qty_per_serving *
+                        (1 + (item.wastage_percent || 0) / 100) *
+                        item.item.avg_cost,
+                    )
+                  }}
                 </div>
               </q-item-section>
             </q-item>
@@ -401,11 +440,15 @@
           <div class="row items-center justify-between">
             <div>
               <div class="text-subtitle2 text-grey-4 italic">
-                Yield: {{ selectedRecipe?.yield_qty }} {{ selectedRecipe?.yield_unit || 'Portions' }}
+                Yield: {{ selectedRecipe?.yield_qty }}
+                {{ selectedRecipe?.yield_unit || 'Portions' }}
               </div>
-              <div v-if="selectedRecipe?.total_cost > 0" class="text-caption text-amber-4 text-weight-bold">
-                Total Cost: {{ formatCurrency(selectedRecipe.total_cost) }} ·
-                Per portion: {{ formatCurrency(selectedRecipe.total_cost / (selectedRecipe?.yield_qty || 1)) }}
+              <div
+                v-if="selectedRecipe?.total_cost > 0"
+                class="text-caption text-amber-4 text-weight-bold"
+              >
+                Total Cost: {{ formatCurrency(selectedRecipe.total_cost) }} · Per portion:
+                {{ formatCurrency(selectedRecipe.total_cost / (selectedRecipe?.yield_qty || 1)) }}
                 <span class="q-ml-sm text-grey-5">
                   | Food Cost: {{ selectedRecipe.food_cost_pct }}%
                 </span>
@@ -434,7 +477,15 @@ import BaseSelect from 'components/common/erp/BaseSelect.vue'
 const $q = useQuasar()
 
 // ── Service composables ─────────────────────────────────
-const { recipes, loading, listRecipes, createRecipe, updateRecipe, deleteRecipe, toggleRecipeActive } = useRecipeList()
+const {
+  recipes,
+  loading,
+  listRecipes,
+  createRecipe,
+  updateRecipe,
+  deleteRecipe,
+  toggleRecipeActive,
+} = useRecipeList()
 const { items: inventoryItemsRaw, listItems } = useItemsList()
 const { uoms, listUoms } = useUomList()
 
@@ -455,13 +506,31 @@ function formatCurrency(val) {
 }
 
 const columns = [
-  { name: 'menu_item_name', label: 'Menu Item', field: 'menu_item_name', align: 'left', sortable: true },
-  { name: 'category_name', label: 'Category', field: 'category_name', align: 'left', sortable: true },
+  {
+    name: 'menu_item_name',
+    label: 'Menu Item',
+    field: 'menu_item_name',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'category_name',
+    label: 'Category',
+    field: 'category_name',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'kitchen_name', label: 'Kitchen', field: 'kitchen_name', align: 'left' },
   { name: 'yield', label: 'Yield', field: 'yield_qty', align: 'left' },
   { name: 'ingredient_count', label: 'Ingredients', field: 'ingredient_count', align: 'center' },
   { name: 'total_cost', label: 'Est. Cost', field: 'total_cost', align: 'right', sortable: true },
-  { name: 'food_cost_pct', label: 'Food Cost %', field: 'food_cost_pct', align: 'center', sortable: true },
+  {
+    name: 'food_cost_pct',
+    label: 'Food Cost %',
+    field: 'food_cost_pct',
+    align: 'center',
+    sortable: true,
+  },
   { name: 'version_no', label: 'Ver', field: 'version_no', align: 'center' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
@@ -512,7 +581,9 @@ function getLineCost(ing) {
 
 function filterMenuItemsList(val, update) {
   if (val === '') {
-    update(() => { filteredMenuItemsList.value = allMenuItemsList.value })
+    update(() => {
+      filteredMenuItemsList.value = allMenuItemsList.value
+    })
     return
   }
   update(() => {
@@ -525,13 +596,17 @@ function filterMenuItemsList(val, update) {
 
 function filterItems(val, update) {
   if (val === '') {
-    update(() => { inventoryItems.value = allInventoryItems.value })
+    update(() => {
+      inventoryItems.value = allInventoryItems.value
+    })
     return
   }
   update(() => {
     const needle = val.toLowerCase()
     inventoryItems.value = allInventoryItems.value.filter(
-      (v) => v.name.toLowerCase().indexOf(needle) > -1 || (v.code && v.code.toLowerCase().indexOf(needle) > -1),
+      (v) =>
+        v.name.toLowerCase().indexOf(needle) > -1 ||
+        (v.code && v.code.toLowerCase().indexOf(needle) > -1),
     )
   })
 }
@@ -539,12 +614,7 @@ function filterItems(val, update) {
 // ── Lifecycle ─────────────────────────────────────────
 onMounted(async () => {
   // Load all data in parallel
-  await Promise.all([
-    listRecipes(),
-    listItems(),
-    listUoms(),
-    fetchMenuItems(),
-  ])
+  await Promise.all([listRecipes(), listItems(), listUoms(), fetchMenuItems()])
   // Populate inventory items lists after items load
   allInventoryItems.value = inventoryItemsRaw.value
   inventoryItems.value = inventoryItemsRaw.value
@@ -607,7 +677,9 @@ async function loadExistingRecipeForMenuItem(menuItem) {
         wastage_percent: ri.wastage_percent || 0,
       }))
     } else {
-      form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
+      form.value.ingredients = [
+        { item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 },
+      ]
     }
   } else {
     form.value.recipe_id = null
@@ -621,7 +693,10 @@ async function loadExistingRecipeForMenuItem(menuItem) {
 
 async function editRecipe(row) {
   const matchedMenu = allMenuItemsList.value.find((m) => m.id === row.menu_item_id)
-  form.value.menu_item = matchedMenu || { id: row.menu_item_id, name: row.menu_item_name || 'Unknown' }
+  form.value.menu_item = matchedMenu || {
+    id: row.menu_item_id,
+    name: row.menu_item_name || 'Unknown',
+  }
   form.value.recipe_id = row.id
   form.value.name = row.name || ''
   form.value.yield_qty = row.yield_qty || 1
@@ -645,7 +720,10 @@ async function editRecipe(row) {
 async function toggleActive(row) {
   try {
     await toggleRecipeActive(row.id, !row.is_active)
-    $q.notify({ type: 'positive', message: row.is_active ? 'Recipe deactivated' : 'Recipe activated' })
+    $q.notify({
+      type: 'positive',
+      message: row.is_active ? 'Recipe deactivated' : 'Recipe activated',
+    })
   } catch (err) {
     console.error(err)
     $q.notify({ type: 'negative', message: err.message || 'Failed to toggle recipe status' })
@@ -681,14 +759,21 @@ async function saveRecipe() {
     (ing) => ing.item && ing.qty_per_serving > 0,
   )
   if (validIngredients.length === 0) {
-    $q.notify({ type: 'warning', message: 'Please add at least one ingredient with a valid quantity' })
+    $q.notify({
+      type: 'warning',
+      message: 'Please add at least one ingredient with a valid quantity',
+    })
     return
   }
 
   // Check for duplicate items
   const itemIds = validIngredients.map((ing) => ing.item.id)
   if (new Set(itemIds).size !== itemIds.length) {
-    $q.notify({ type: 'negative', message: 'Duplicate ingredient detected. Each inventory item can only appear once per recipe.' })
+    $q.notify({
+      type: 'negative',
+      message:
+        'Duplicate ingredient detected. Each inventory item can only appear once per recipe.',
+    })
     return
   }
 
