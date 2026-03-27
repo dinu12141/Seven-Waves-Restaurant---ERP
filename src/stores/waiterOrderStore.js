@@ -123,7 +123,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           supabase
             .from('order_items')
             .select(
-              'id, quantity, unit_price, notes, menu_items ( name, categories ( name ) ), kitchens ( name )',
+              'id, quantity, unit_price, notes, availability_status, menu_items ( name, categories ( name ) ), kitchens ( name )',
             )
             .eq('order_id', row.id),
           supabase
@@ -194,7 +194,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           supabase
             .from('order_items')
             .select(
-              'id, quantity, unit_price, status, notes, menu_items ( name, categories ( name ) ), kitchens ( name )',
+              'id, quantity, unit_price, status, notes, availability_status, menu_items ( name, categories ( name ) ), kitchens ( name )',
             )
             .eq('order_id', row.id),
           supabase
@@ -240,7 +240,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
    *
    * Returns { success: true/false, error?: string }
    */
-  async function acceptOrder(orderId) {
+  async function acceptOrder(orderId, unavailableItemIds = null) {
     if (!waiterId.value) return { success: false, error: 'Not authenticated' }
     if (!isOnShift.value) {
       Notify.create({
@@ -255,9 +255,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     accepting.value = orderId
 
     try {
-      console.log('[WaiterStore] Accepting order via ERP dispatch:', orderId)
-      // Use the dispatch service (wraps the upgraded accept_order_as_waiter RPC)
-      const result = await dispatchAcceptOrder(orderId)
+      console.log('[WaiterStore] Accepting order via ERP dispatch:', orderId, { unavailableItemIds })
+      // Pass unavailable IDs so RPC marks availability atomically before KOT generation
+      const result = await dispatchAcceptOrder(orderId, unavailableItemIds)
 
       if (!result.success) {
         Notify.create({

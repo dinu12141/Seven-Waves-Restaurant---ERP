@@ -195,41 +195,45 @@
 
     <!-- ══════════ DEPARTMENT DIALOG ══════════════ -->
     <q-dialog v-model="deptDialogOpen" persistent>
-      <q-card class="dialog-card">
-        <div class="dialog-header">
-          <q-icon name="account_tree" size="20px" color="primary" class="q-mr-sm" />
-          <span>{{ editingDept ? 'Edit Department' : 'New Department' }}</span>
+      <q-card 
+        class="full-width rounded-borders"
+        style="max-width: 480px; padding: 0"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+      >
+        <div class="dialog-header row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+          <q-icon name="account_tree" size="24px" color="primary" class="q-mr-sm" />
+          <div class="text-h6 text-weight-bold">{{ editingDept ? 'Edit Department' : 'New Department' }}</div>
           <q-space />
-          <q-btn flat round dense icon="close" color="grey-5" v-close-popup />
+          <q-btn flat round dense icon="close" v-close-popup />
         </div>
 
-        <q-card-section class="dialog-body">
-          <div class="field-group">
-            <label class="field-label">Department Name *</label>
-            <input
+        <q-card-section class="q-gutter-md q-pa-lg">
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department Name *</div>
+            <q-input :dark="$q.dark.isActive"
+              outlined
+              dense
               v-model="deptForm.name"
-              class="field-input"
               placeholder="e.g. Kitchen, Front of House, Management"
               @keyup.enter="saveDept"
             />
           </div>
-          <div class="field-group">
-            <label class="field-label">Description</label>
-            <textarea
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
+            <q-input :dark="$q.dark.isActive"
+              outlined
+              dense
               v-model="deptForm.description"
-              class="field-input field-textarea"
-              placeholder="Brief description of this department…"
+              type="textarea"
               rows="3"
+              placeholder="Brief description of this department…"
             />
           </div>
-          <div class="field-toggle">
-            <span class="field-label">Active</span>
-            <q-toggle v-model="deptForm.is_active" color="primary" />
-          </div>
+          <q-toggle :dark="$q.dark.isActive" v-model="deptForm.is_active" label="Active" color="primary" />
         </q-card-section>
 
-        <q-card-actions class="dialog-actions">
-          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" color="grey-6" v-close-popup />
           <q-btn
             unelevated
             no-caps
@@ -244,50 +248,59 @@
 
     <!-- ══════════ DESIGNATION DIALOG ═════════════ -->
     <q-dialog v-model="desigDialogOpen" persistent>
-      <q-card class="dialog-card">
-        <div class="dialog-header">
-          <q-icon name="badge" size="20px" color="deep-purple-4" class="q-mr-sm" />
-          <span>{{ editingDesig ? 'Edit Designation' : 'New Designation' }}</span>
+      <q-card 
+        class="full-width rounded-borders"
+        style="max-width: 480px; padding: 0"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+      >
+        <div class="dialog-header row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+          <q-icon name="badge" size="24px" color="deep-purple-4" class="q-mr-sm" />
+          <div class="text-h6 text-weight-bold">{{ editingDesig ? 'Edit Designation' : 'New Designation' }}</div>
           <q-space />
-          <q-btn flat round dense icon="close" color="grey-5" v-close-popup />
+          <q-btn flat round dense icon="close" v-close-popup />
         </div>
 
-        <q-card-section class="dialog-body">
-          <div class="field-group">
-            <label class="field-label">Designation Title *</label>
-            <input
+        <q-card-section class="q-gutter-md q-pa-lg">
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Designation Title *</div>
+            <q-input :dark="$q.dark.isActive"
+              outlined
+              dense
               v-model="desigForm.title"
-              class="field-input"
               placeholder="e.g. Head Chef, Senior Waiter, Cashier"
               @keyup.enter="saveDesig"
             />
           </div>
-          <div class="field-group">
-            <label class="field-label">Department</label>
-            <select v-model="desigForm.department_id" class="field-input field-select">
-              <option :value="null">— No Department —</option>
-              <option v-for="dept in activeDepts" :key="dept.id" :value="dept.id">
-                {{ dept.name }}
-              </option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Description</label>
-            <textarea
-              v-model="desigForm.description"
-              class="field-input field-textarea"
-              placeholder="Brief description of this role…"
-              rows="3"
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department</div>
+            <q-select :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model="desigForm.department_id"
+              :options="activeDepts"
+              option-label="name"
+              option-value="id"
+              emit-value
+              map-options
+              clearable
             />
           </div>
-          <div class="field-toggle">
-            <span class="field-label">Active</span>
-            <q-toggle v-model="desigForm.is_active" color="deep-purple-4" />
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
+            <q-input :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model="desigForm.description"
+              type="textarea"
+              rows="3"
+              placeholder="Brief description of this role…"
+            />
           </div>
+          <q-toggle :dark="$q.dark.isActive" v-model="desigForm.is_active" label="Active" color="deep-purple-4" />
         </q-card-section>
 
-        <q-card-actions class="dialog-actions">
-          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" color="grey-6" v-close-popup />
           <q-btn
             unelevated
             no-caps

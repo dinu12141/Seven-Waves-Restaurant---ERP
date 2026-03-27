@@ -259,10 +259,10 @@
             </div>
           </div>
 
-          <!-- Order Items -->
+          <!-- Order Items (available only) -->
           <div class="section-label q-mb-sm">Order Items</div>
           <div class="items-list">
-            <div v-for="item in getOrderItems(detailOrder)" :key="item.id" class="item-row">
+            <div v-for="item in getAvailableItems(detailOrder)" :key="item.id" class="item-row">
               <div class="item-row__qty">{{ item.quantity }}×</div>
               <div class="item-row__name">
                 <div class="text-white">{{ item.name || item.menu_items?.name || '?' }}</div>
@@ -284,10 +284,29 @@
             </div>
           </div>
 
-          <!-- Total -->
+          <!-- Unavailable items section (collapsed, shown as info only) -->
+          <div v-if="getUnavailableItems(detailOrder).length > 0" class="unavail-section q-mt-sm q-mb-sm">
+            <div class="unavail-section__header">
+              <q-icon name="block" size="12px" class="q-mr-xs" />
+              {{ getUnavailableItems(detailOrder).length }} item(s) unavailable — not charged
+            </div>
+            <div
+              v-for="item in getUnavailableItems(detailOrder)"
+              :key="item.id"
+              class="unavail-item-row"
+            >
+              <span class="unavail-item-row__qty">{{ item.quantity }}×</span>
+              <span class="unavail-item-row__name">{{ item.name || item.menu_items?.name || '?' }}</span>
+              <span class="unavail-item-row__price">Rs. {{ ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0) }}</span>
+            </div>
+          </div>
+
+          <!-- Total (unavailable items excluded) -->
           <q-separator dark class="q-my-md" />
           <div class="row items-center q-mb-lg">
-            <div class="text-grey-4">Order Total</div>
+            <div class="text-grey-4">Order Total
+              <span v-if="getUnavailableItems(detailOrder).length > 0" class="text-caption text-grey-6 q-ml-xs">(excl. unavailable)</span>
+            </div>
             <q-space />
             <div class="text-white text-weight-bold" style="font-size: 1.2rem">
               Rs. {{ orderTotal(detailOrder).toFixed(0) }}
@@ -491,14 +510,24 @@ function getOrderItems(order) {
   return order.order_items || order.items || []
 }
 
+// Only items that are NOT marked unavailable (available + unchecked)
+function getAvailableItems(order) {
+  return getOrderItems(order).filter((i) => i.availability_status !== 'unavailable')
+}
+
+// Items explicitly marked unavailable
+function getUnavailableItems(order) {
+  return getOrderItems(order).filter((i) => i.availability_status === 'unavailable')
+}
+
 function itemCount(order) {
-  return getOrderItems(order).reduce((s, i) => s + (i.quantity || 0), 0) || 0
+  // Count only available items
+  return getAvailableItems(order).reduce((s, i) => s + (i.quantity || 0), 0) || 0
 }
 
 function orderTotal(order) {
-  // Use total_amount from DB if available
-  if (order.total_amount) return parseFloat(order.total_amount)
-  return getOrderItems(order).reduce((sum, item) => {
+  // Always compute from available items only (do NOT use total_amount which includes unavailable)
+  return getAvailableItems(order).reduce((sum, item) => {
     const price = item.unit_price || item.menu_items?.base_price || 0
     return sum + price * item.quantity
   }, 0)
@@ -1299,6 +1328,51 @@ async function markServed(orderId) {
   &:active {
     opacity: 1;
     background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+// ── Unavailable Items Section ─────────────────────────────────────
+.unavail-section {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px dashed rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ef4444;
+    opacity: 0.7;
+    margin-bottom: 6px;
+  }
+}
+.unavail-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  opacity: 0.45;
+  text-decoration: line-through;
+
+  &__qty {
+    font-size: 0.78rem;
+    color: #ef4444;
+    font-weight: 700;
+    min-width: 22px;
+  }
+  &__name {
+    flex: 1;
+    font-size: 0.8rem;
+    color: #9ca3af;
+  }
+  &__price {
+    font-size: 0.78rem;
+    color: #6b7280;
+    white-space: nowrap;
   }
 }
 </style>

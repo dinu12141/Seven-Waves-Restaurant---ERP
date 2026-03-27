@@ -16,6 +16,8 @@
    These selectors catch them and remap in light mode.
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--light {
+  color-scheme: light;
+
   /* Page backgrounds — override common hardcoded dark backgrounds */
   .q-page {
     background: var(--erp-bg-page) !important;
@@ -365,11 +367,64 @@ body.body--light {
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--light {
   .delivery-page,
-  .delivery-detail-page {
+  .delivery-detail-page,
+  .delivery-home-page {
     background: var(--erp-bg-page) !important;
     color: var(--erp-text-primary) !important;
   }
+
+  // Delivery assignment cards
+  .delivery-home-page {
+    .assignment-card {
+      background: var(--erp-bg-card) !important;
+      border-color: var(--erp-border) !important;
+      color: var(--erp-text-primary) !important;
+    }
+
+    // Hero section gradient adapts to light
+    .hero-section {
+      background: linear-gradient(
+        135deg,
+        rgba(37, 99, 235, 0.06),
+        rgba(124, 58, 237, 0.04),
+        transparent
+      ) !important;
+    }
+
+    // Items preview panel
+    .items-preview {
+      background: var(--erp-bg-input) !important;
+      border-color: var(--erp-border) !important;
+    }
+
+    .item-name {
+      color: var(--erp-text-primary) !important;
+    }
+
+    .item-qty {
+      color: var(--erp-accent) !important;
+    }
+
+    // Availability toggle inactive state
+    .avail-btn--inactive {
+      color: var(--erp-text-muted) !important;
+    }
+
+    // Warning summary banner
+    .unavail-summary {
+      background: rgba(217, 119, 6, 0.08) !important;
+      border-color: rgba(217, 119, 6, 0.3) !important;
+      color: var(--erp-warning) !important;
+    }
+
+    // KPI bar
+    .kpi-bar {
+      background: var(--erp-bg-card) !important;
+      border-color: var(--erp-border) !important;
+    }
+  }
 }
+
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    ADMIN PAGES (light mode)
@@ -529,6 +584,10 @@ body.body--light {
 /* ═══════════════════════════════════════════════════════════════════════════════
    SMOOTH THEME TRANSITIONS
    ═══════════════════════════════════════════════════════════════════════════════ */
+body.body--dark {
+  color-scheme: dark;
+}
+
 body.body--dark,
 body.body--light {
   transition:

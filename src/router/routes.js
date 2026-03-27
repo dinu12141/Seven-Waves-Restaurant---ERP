@@ -61,6 +61,11 @@ const routes = [
         meta: { roles: ['admin', 'manager'] },
       },
       {
+        path: 'website-hall-bookings',
+        component: () => import('pages/website/WebsiteHallBookingsPage.vue'),
+        meta: { roles: ['admin', 'manager'] },
+      },
+      {
         path: 'cashier',
         component: () => import('pages/CashierPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier'] },
@@ -277,6 +282,10 @@ const routes = [
             component: () => import('pages/reports/KitchenOrderReport.vue'),
           },
           { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue') },
+          {
+            path: 'item-availability',
+            component: () => import('pages/reports/ItemAvailabilityReport.vue'),
+          },
           {
             path: 'delivery-performance',
             component: () => import('pages/reports/DeliveryPerformanceReport.vue'),

@@ -231,6 +231,56 @@
                 <span class="total-amount">Rs. {{ Number(a.orderTotal || 0).toFixed(2) }}</span>
               </div>
             </div>
+
+            <!-- ── Items with Availability Toggles ──────────── -->
+            <div class="items-preview q-mt-sm" v-if="a.items && a.items.length">
+              <div class="items-preview-header">
+                <span class="items-label">ORDER ITEMS</span>
+                <span class="tap-hint">Tap to set availability</span>
+              </div>
+              <div
+                v-for="item in a.items"
+                :key="item.id"
+                class="item-row"
+                :class="{
+                  'item-row--unavailable': getItemAvailability(a.id, item.id) === 'unavailable',
+                  'item-row--available': getItemAvailability(a.id, item.id) === 'available',
+                }"
+              >
+                <span class="item-qty">{{ item.quantity }}×</span>
+                <span
+                  class="item-name"
+                  :class="{ 'item-name--strike': getItemAvailability(a.id, item.id) === 'unavailable' }"
+                >
+                  {{ item.name }}
+                </span>
+                <!-- Availability Toggle Buttons -->
+                <div class="avail-toggle-group">
+                  <q-btn
+                    flat dense round size="xs"
+                    :icon="getItemAvailability(a.id, item.id) === 'available' ? 'check_circle' : 'check_circle_outline'"
+                    :class="getItemAvailability(a.id, item.id) === 'available' ? 'avail-btn--yes' : 'avail-btn--inactive'"
+                    @click.stop="toggleAvailability(a.id, item.id, 'available')"
+                  >
+                    <q-tooltip>Available</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat dense round size="xs"
+                    :icon="getItemAvailability(a.id, item.id) === 'unavailable' ? 'cancel' : 'highlight_off'"
+                    :class="getItemAvailability(a.id, item.id) === 'unavailable' ? 'avail-btn--no' : 'avail-btn--inactive'"
+                    @click.stop="toggleAvailability(a.id, item.id, 'unavailable')"
+                  >
+                    <q-tooltip>Unavailable</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+              <!-- Unavailable summary banner -->
+              <div v-if="getUnavailableCount(a.id) > 0" class="unavail-summary">
+                <q-icon name="warning_amber" size="13px" class="q-mr-xs" />
+                {{ getUnavailableCount(a.id) }} item(s) unavailable — will be excluded from KOT &amp; bill
+              </div>
+            </div>
+
             <div class="card-actions">
               <q-btn
                 unelevated
@@ -240,7 +290,7 @@
                 icon="delivery_dining"
                 class="accept-btn"
                 :loading="store.processing"
-                @click="handleAccept(a.id)"
+                @click="handleAccept(a)"
               />
             </div>
             <div class="card-footer">
@@ -263,13 +313,57 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
 import { useAuthStore } from 'stores/auth'
+import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 
 const store = useDeliveryStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const $q = useQuasar()
 
 const pendingSection = ref(null)
 const activeSection = ref(null)
+
+// ── Availability tracking per assignment ────────────────
+// Map: { [assignmentId]: { [itemId]: 'available' | 'unavailable' | null } }
+const itemAvailability = ref({})
+
+function getItemAvailability(assignmentId, itemId) {
+  return itemAvailability.value[assignmentId]?.[itemId] || null
+}
+
+function toggleAvailability(assignmentId, itemId, status) {
+  if (!itemAvailability.value[assignmentId]) {
+    itemAvailability.value[assignmentId] = {}
+  }
+  // Toggle: clicking same status clears it (back to unchecked)
+  if (itemAvailability.value[assignmentId][itemId] === status) {
+    itemAvailability.value[assignmentId][itemId] = null
+  } else {
+    itemAvailability.value[assignmentId][itemId] = status
+  }
+}
+
+function getUnavailableCount(assignmentId) {
+  const avail = itemAvailability.value[assignmentId]
+  if (!avail) return 0
+  return Object.values(avail).filter((v) => v === 'unavailable').length
+}
+
+function getUnavailableItemIds(assignment) {
+  const avail = itemAvailability.value[assignment.id]
+  if (!avail) return []
+  return Object.entries(avail)
+    .filter(([, v]) => v === 'unavailable')
+    .map(([id]) => id)
+}
+
+function getUnavailableItemNames(assignment) {
+  const unavailIds = getUnavailableItemIds(assignment)
+  return (assignment.items || [])
+    .filter((i) => unavailIds.includes(i.id))
+    .map((i) => i.name)
+}
 
 // ── KPI Calculations ─────────────────────
 const cashToCollect = computed(() => {
@@ -316,9 +410,40 @@ function scrollToSection(type) {
   else if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 
-async function handleAccept(assignmentId) {
+async function handleAccept(assignment) {
+  const unavailableIds = getUnavailableItemIds(assignment)
+  const unavailableNames = getUnavailableItemNames(assignment)
+
   try {
-    await store.acceptAssignment(assignmentId)
+    await store.acceptAssignment(assignment.id, unavailableIds.length > 0 ? unavailableIds : null)
+
+    // Notify customer about unavailable items
+    if (unavailableIds.length > 0 && unavailableNames.length > 0) {
+      try {
+        await supabase.from('order_notifications').insert({
+          order_id: assignment.order_id,
+          notification_type: 'item_unavailable',
+          title: 'Items Unavailable',
+          message: `Sorry, the following items are currently unavailable: ${unavailableNames.join(', ')}. They have been removed from your order.`,
+          is_read: false,
+        })
+      } catch (notifyErr) {
+        console.warn('[Delivery] Could not send customer notification:', notifyErr)
+      }
+
+      $q.notify({
+        type: 'warning',
+        icon: 'info',
+        message: `Delivery accepted. ${unavailableNames.length} unavailable item(s) excluded from KOT.`,
+        caption: unavailableNames.join(', '),
+        position: 'top',
+        timeout: 5000,
+      })
+    }
+
+    // Clear availability tracking for this assignment
+    delete itemAvailability.value[assignment.id]
+
     router.push('/delivery-app/active')
   } catch {
     // Error handled in store
@@ -638,6 +763,130 @@ async function onRefresh(done) {
 }
 .est-time {
   color: #9e9e9e;
+}
+
+// ── Items Preview (availability toggles) ──────────────────
+.items-preview {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.items-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 4px;
+}
+
+.items-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tap-hint {
+  font-size: 0.6rem;
+  color: #4b5563;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 0.82rem;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  &--available {
+    background: rgba(34, 197, 94, 0.06);
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  &--unavailable {
+    background: rgba(239, 68, 68, 0.08);
+    padding-left: 4px;
+    padding-right: 4px;
+    opacity: 0.7;
+  }
+}
+
+.item-qty {
+  font-weight: 700;
+  color: #ce93d8;
+  min-width: 26px;
+  font-size: 0.78rem;
+}
+
+.item-name {
+  color: #d1d5db;
+  flex: 1;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+
+  &--strike {
+    text-decoration: line-through;
+    color: #6b7280;
+  }
+}
+
+.avail-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.avail-btn--inactive {
+  color: #4b5563 !important;
+  opacity: 0.45;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.avail-btn--yes {
+  color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+  animation: avail-pop 0.3s ease;
+}
+
+.avail-btn--no {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  animation: avail-pop 0.3s ease;
+}
+
+@keyframes avail-pop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.unavail-summary {
+  display: flex;
+  align-items: center;
+  font-size: 0.68rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-weight: 600;
+  margin-top: 6px;
 }
 </style>
 

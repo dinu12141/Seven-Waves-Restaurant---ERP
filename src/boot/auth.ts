@@ -9,7 +9,7 @@ export default boot(async ({ router }) => {
   // Initialize auth — fast: just checks session + fetches roles
   await authStore.initialize()
 
-  router.beforeEach(async (to, _from, next) => {
+  router.beforeEach(async (to) => {
     // Make sure we have the latest session
     if (!authStore.initialized) {
       await authStore.initialize()
@@ -19,12 +19,12 @@ export default boot(async ({ router }) => {
 
     // Not authenticated → login
     if (requiresAuth && !authStore.isAuthenticated) {
-      return next({ path: '/auth/login', query: { redirect: to.fullPath } })
+      return { path: '/auth/login', query: { redirect: to.fullPath } }
     }
 
     // Already authenticated → skip login page
     if (to.path === '/auth/login' && authStore.isAuthenticated) {
-      return next(authStore.defaultLandingPage || '/dashboard')
+      return authStore.defaultLandingPage || '/dashboard'
     }
 
     // ── Manager-only guard ────────────────────────────────────────────────
@@ -46,7 +46,7 @@ export default boot(async ({ router }) => {
 
       if (!isManagerRoute && !isAuthRoute && !isPublicRoute) {
         // Blocked — send them back where they belong
-        return next('/manager-app')
+        return '/manager-app'
       }
     }
     // ─────────────────────────────────────────────────────────────────────
@@ -65,19 +65,19 @@ export default boot(async ({ router }) => {
         // @ts-ignore
         const hasAccess = requiredRoles.some((role) => authStore.roles.includes(role))
         if (!hasAccess) {
-          if (to.path === authStore.defaultLandingPage) return next('/profile')
-          return next(authStore.defaultLandingPage || '/dashboard')
+          if (to.path === authStore.defaultLandingPage) return '/profile'
+          return authStore.defaultLandingPage || '/dashboard'
         }
       }
 
       // Check centralized config
       if (!canAccessRoute(authStore.roles, to.path, authStore.permissions)) {
-        if (to.path === authStore.defaultLandingPage) return next('/profile')
-        return next(authStore.defaultLandingPage || '/dashboard')
+        if (to.path === authStore.defaultLandingPage) return '/profile'
+        return authStore.defaultLandingPage || '/dashboard'
       }
     }
 
-    next()
+    // Allow navigation (return nothing = proceed)
   })
 })
 

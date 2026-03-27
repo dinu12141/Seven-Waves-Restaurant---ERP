@@ -82,7 +82,10 @@ export async function fetchDeliveryQueue(
       created_at, updated_at,
       order:orders!inner (
         order_number, order_type, order_source, status, total_amount,
-        customer_name, notes, created_at
+        customer_name, notes, created_at,
+        order_items ( id, quantity, unit_price, total_price, notes, availability_status,
+          menu_items ( name )
+        )
       ),
       rider:profiles!delivery_assignments_rider_id_fkey ( full_name )
     `,
@@ -180,10 +183,15 @@ export async function fetchDeliveryHistory(
 /**
  * Accept a pending delivery assignment.
  */
-export async function acceptDelivery(assignmentId: string): Promise<DeliveryRpcResult> {
-  const { data, error } = await supabase.rpc('rider_accept_delivery', {
-    p_assignment_id: assignmentId,
-  })
+export async function acceptDelivery(
+  assignmentId: string,
+  unavailableItemIds: string[] | null = null,
+): Promise<DeliveryRpcResult> {
+  const params: Record<string, unknown> = { p_assignment_id: assignmentId }
+  if (unavailableItemIds && unavailableItemIds.length > 0) {
+    params.p_unavailable_item_ids = unavailableItemIds
+  }
+  const { data, error } = await supabase.rpc('rider_accept_delivery', params)
 
   if (error) {
     console.error('[DeliveryService] acceptDelivery RPC error:', error)

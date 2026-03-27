@@ -5,8 +5,8 @@
       class="q-px-md q-py-sm touch-hero border-bottom row items-center no-wrap justify-between overflow-hidden"
     >
       <div class="column justify-center text-left" style="max-width: 60%">
-        <h1 class="touch-hero-title font-bold q-mb-xs text-white">Experience Fine Dining</h1>
-        <p class="touch-hero-subtitle text-grey-5 text-caption q-mb-none font-medium ellipsis">
+        <h1 class="touch-hero-title font-bold q-mb-xs" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Experience Fine Dining</h1>
+        <p class="touch-hero-subtitle text-caption q-mb-none font-medium ellipsis" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
           Explore our executive chef's seasonal recommendations and best sellers crafted just for
           you.
         </p>
@@ -65,9 +65,9 @@
                 active-class="text-primary bg-black-03"
               >
                 <q-item-section avatar>
-                  <q-icon name="restaurant_menu" size="sm" color="grey-4" />
+                  <q-icon name="restaurant_menu" size="sm" :color="$q.dark.isActive ? 'white' : 'black'" />
                 </q-item-section>
-                <q-item-section class="text-subtitle2">All Menu</q-item-section>
+                <q-item-section class="text-subtitle2" :class="$q.dark.isActive ? 'text-white' : 'text-black'">All Menu</q-item-section>
               </q-item>
 
               <q-separator class="q-my-xs transparency-05" />
@@ -86,7 +86,7 @@
                     <q-img :src="getCategoryImgUrl(cat)" />
                   </q-avatar>
                 </q-item-section>
-                <q-item-section class="text-subtitle2">{{ cat.name }}</q-item-section>
+                <q-item-section class="text-subtitle2" :class="$q.dark.isActive ? 'text-white' : 'text-black'">{{ cat.name }}</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -134,7 +134,9 @@
                 class="text-caption font-bold text-center ellipsis"
                 style="width: 100%; font-size: 10px"
                 :class="
-                  activeCategoryId === cat.id && !searchQuery ? 'text-primary' : 'text-grey-5'
+                  activeCategoryId === cat.id && !searchQuery
+                    ? 'text-primary'
+                    : ($q.dark.isActive ? 'text-white' : 'text-black')
                 "
                 >{{ cat.name }}</span
               >
@@ -152,9 +154,9 @@
         </div>
 
         <div v-else-if="filteredItems.length === 0" class="column items-center q-pa-xl">
-          <q-icon name="search_off" size="64px" class="text-grey-7 q-mb-md" />
-          <div class="text-h6 text-grey-5 font-bold">No items found</div>
-          <div class="text-caption text-grey-6">Try adjusting your filters or search query.</div>
+          <q-icon name="search_off" size="64px" :color="$q.dark.isActive ? 'white' : 'black'" class="q-mb-md" />
+          <div class="text-h6 font-bold" :class="$q.dark.isActive ? 'text-white' : 'text-black'">No items found</div>
+          <div class="text-caption" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Try adjusting your filters or search query.</div>
         </div>
 
         <div v-else class="row q-col-gutter-md">
@@ -220,14 +222,15 @@
               >
             </div>
           </div>
-          <p class="text-grey-4 text-body1 line-height-1-5 q-mb-none font-medium">
+          <p class="text-body1 line-height-1-5 q-mb-none font-medium" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
             {{
               selectedItem.description ||
               'Deliciously crafted by our executive chefs for your perfect evening.'
             }}
           </p>
           <div
-            class="row items-center q-mt-md text-grey-5 font-bold"
+            class="row items-center q-mt-md font-bold"
+            :class="$q.dark.isActive ? 'text-white' : 'text-black'"
             v-if="selectedItem.preparation_time_mins"
           >
             <q-icon name="schedule" size="sm" class="q-mr-xs" />
@@ -546,19 +549,7 @@ onMounted(() => {
   font-size: 18px;
   line-height: 1.1;
   letter-spacing: -0.5px;
-}
-:global(.body--dark) .touch-hero-title {
-  background: linear-gradient(90deg, #f8fafc, #94a3b8);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-:global(.body--light) .touch-hero-title {
-  background: linear-gradient(90deg, #0f172a, #64748b);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+}  
 
 // Search bar
 .tm-search-wrap {

@@ -51,7 +51,7 @@
       </div>
 
       <div
-        v-else-if="filteredOrders.length === 0"
+        v-else-if="displayItems.length === 0"
         class="column items-center justify-center q-pa-xl text-grey-6"
       >
         <q-icon name="upcoming" size="48px" style="opacity: 0.2" class="q-mb-sm" />
@@ -59,54 +59,111 @@
       </div>
 
       <div v-else class="q-gutter-y-xs q-pb-sm">
-        <transition-group name="order-item">
+        <template v-for="item in displayItems" :key="item._key">
+          <!-- ═══ TABLE GROUP — Multiple unpaid orders on same table ═══ -->
+          <div v-if="item._type === 'table-group'" class="table-group-card">
+            <div class="tg-header" @click="item._expanded = !item._expanded">
+              <div class="tg-left">
+                <q-icon name="table_restaurant" size="18px" color="orange-6" class="q-mr-xs" />
+                <span class="tg-table-num">{{ item.tableNumber }}</span>
+                <q-badge color="orange-9" dense class="q-ml-sm">
+                  {{ item.orders.length }} orders
+                </q-badge>
+              </div>
+              <div class="tg-right">
+                <span class="tg-total">LKR {{ parseFloat(item.grandTotal).toLocaleString() }}</span>
+                <q-icon
+                  :name="item._expanded ? 'expand_less' : 'expand_more'"
+                  size="18px"
+                  color="grey-5"
+                />
+              </div>
+            </div>
+
+            <!-- Merge Billing Button -->
+            <div class="tg-merge-row">
+              <button class="merge-bill-btn" @click="$emit('merge-table', item)">
+                <q-icon name="merge_type" size="14px" class="q-mr-xs" />
+                Merge {{ item.orders.length }} Orders & Bill — LKR
+                {{ parseFloat(item.grandTotal).toLocaleString() }}
+              </button>
+            </div>
+
+            <!-- Expanded individual orders -->
+            <div v-if="item._expanded" class="tg-orders">
+              <div
+                v-for="order in item.orders"
+                :key="order.id"
+                class="queue-card queue-card--grouped"
+                :class="statusClass(order)"
+                @click="onSelect(order)"
+              >
+                <div class="row items-center justify-between q-mb-xs">
+                  <div class="row items-center q-gutter-x-xs">
+                    <span class="order-num">#{{ order.order_number }}</span>
+                    <div v-if="isNew(order)" class="new-dot" />
+                  </div>
+                  <q-badge :color="getStatusColor(order.status)" dense class="status-badge">
+                    <q-icon :name="getStatusIcon(order.status)" size="10px" class="q-mr-xs" />
+                    {{ getStatusLabel(order.status) }}
+                  </q-badge>
+                </div>
+                <div class="row items-center justify-between">
+                  <div class="items-summary text-grey-6">
+                    <q-icon name="fastfood" size="10px" class="q-mr-xs" />
+                    {{ order.order_items?.length || order.itemCount || 0 }} item(s)
+                  </div>
+                  <div class="total-val">
+                    LKR {{ parseFloat(order.total_amount || 0).toLocaleString() }}
+                  </div>
+                </div>
+                <div class="tap-cta">
+                  <q-icon name="touch_app" size="11px" class="q-mr-xs" />
+                  Tap to bill individually
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ SINGLE ORDER (no table group) ═══ -->
           <div
-            v-for="order in filteredOrders"
-            :key="order.id"
+            v-else
             class="queue-card"
-            :class="{
-              'is-new': isNew(order),
-              'status-ready': order.status === 'ready',
-              'status-preparing': order.status === 'preparing',
-              'status-accepted': order.status === 'accepted',
-              'status-pending_waiter': order.status === 'pending_waiter',
-              'status-invoiced': order.status === 'invoiced',
-              'status-paid': order.status === 'paid',
-            }"
-            @click="onSelect(order)"
+            :class="statusClass(item)"
+            @click="onSelect(item)"
           >
-            <!-- ── Card Header ── -->
+            <!-- Card Header -->
             <div class="row items-center justify-between q-mb-xs">
               <div class="row items-center q-gutter-x-xs">
-                <span class="order-num">#{{ order.order_number }}</span>
-                <div v-if="isNew(order)" class="new-dot" />
+                <span class="order-num">#{{ item.order_number }}</span>
+                <div v-if="isNew(item)" class="new-dot" />
               </div>
-              <q-badge :color="getStatusColor(order.status)" dense class="status-badge">
-                <q-icon :name="getStatusIcon(order.status)" size="10px" class="q-mr-xs" />
-                {{ getStatusLabel(order.status) }}
+              <q-badge :color="getStatusColor(item.status)" dense class="status-badge">
+                <q-icon :name="getStatusIcon(item.status)" size="10px" class="q-mr-xs" />
+                {{ getStatusLabel(item.status) }}
               </q-badge>
             </div>
 
-            <!-- ── Table / Waiter row ── -->
+            <!-- Table / Waiter row -->
             <div class="row items-center text-caption meta-row q-mb-xs">
               <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
-              <span>{{ order.tableNumber || '—' }}</span>
+              <span>{{ item.tableNumber || '—' }}</span>
               <span class="q-mx-xs text-grey-8">·</span>
               <q-icon name="person" size="11px" class="q-mr-xs" />
-              <span>{{ order.waiterName || 'POS' }}</span>
-              <template v-if="order.customer_name">
+              <span>{{ item.waiterName || 'POS' }}</span>
+              <template v-if="item.customer_name">
                 <span class="q-mx-xs text-grey-8">·</span>
                 <q-icon name="account_circle" size="11px" class="q-mr-xs" />
-                <span>{{ order.customer_name }}</span>
+                <span>{{ item.customer_name }}</span>
               </template>
               <q-space />
-              <span class="text-grey-7">{{ timeAgo(order.created_at) }}</span>
+              <span class="text-grey-7">{{ timeAgo(item.created_at) }}</span>
             </div>
 
-            <!-- ── KOT Tickets ── -->
-            <div v-if="order.kot_tickets && order.kot_tickets.length > 0" class="kot-section">
+            <!-- KOT Tickets -->
+            <div v-if="item.kot_tickets && item.kot_tickets.length > 0" class="kot-section">
               <div
-                v-for="kot in order.kot_tickets"
+                v-for="kot in item.kot_tickets"
                 :key="kot.id"
                 class="kot-chip"
                 :class="'kot-' + kot.status"
@@ -117,40 +174,40 @@
               </div>
             </div>
 
-            <!-- ── Items summary ── -->
+            <!-- Items summary -->
             <div class="row items-center justify-between q-mt-xs">
               <div class="items-summary text-grey-6">
                 <q-icon name="fastfood" size="10px" class="q-mr-xs" />
-                {{ order.order_items?.length || order.itemCount || 0 }} item(s)
+                {{ item.order_items?.length || item.itemCount || 0 }} item(s)
               </div>
               <div class="total-val">
-                LKR {{ parseFloat(order.total_amount || 0).toLocaleString() }}
+                LKR {{ parseFloat(item.total_amount || 0).toLocaleString() }}
               </div>
             </div>
 
-            <!-- ── Tap CTA ── -->
+            <!-- Tap CTA -->
             <div class="tap-cta">
               <q-icon
-                :name="isPaid(order) ? 'receipt_long' : 'touch_app'"
+                :name="isPaid(item) ? 'receipt_long' : 'touch_app'"
                 size="11px"
                 class="q-mr-xs"
               />
-              {{ isPaid(order) ? 'Tap to view receipt' : 'Tap to open billing' }}
+              {{ isPaid(item) ? 'Tap to view receipt' : 'Tap to open billing' }}
             </div>
           </div>
-        </transition-group>
+        </template>
       </div>
     </q-scroll-area>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
 import { useCashierStore } from 'src/stores/cashierStore'
 
 const store = useCashierStore()
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'merge-table'])
 
 // New orders logic: compare created_at with store.lastViewedAt
 const isNew = (order) => {
@@ -187,7 +244,6 @@ const filteredOrders = computed(() => {
       if (o.waiterName && String(o.waiterName).toLowerCase().includes(q)) return true
       if (o.customer_name && String(o.customer_name).toLowerCase().includes(q)) return true
       if (o.order_number && String(o.order_number).toLowerCase().includes(q)) return true
-      // Search by invoice number
       if (
         o.invoices &&
         o.invoices.some(
@@ -195,7 +251,6 @@ const filteredOrders = computed(() => {
         )
       )
         return true
-      // Search by KOT number
       if (
         o.kot_tickets &&
         o.kot_tickets.some((k) => k.kot_number && String(k.kot_number).toLowerCase().includes(q))
@@ -208,6 +263,77 @@ const filteredOrders = computed(() => {
   return orders
 })
 
+/**
+ * Group unpaid dine-in orders that share the same table_id into collapsible groups.
+ * Paid orders are NEVER grouped (they're already settled).
+ */
+const displayItems = computed(() => {
+  const orders = filteredOrders.value
+
+  // Only group in the 'unpaid' tab
+  if (filterStatus.value === 'paid') {
+    return orders.map((o) => ({ ...o, _type: 'single', _key: o.id }))
+  }
+
+  // Build table groups
+  const tableMap = new Map() // table_id → { orders, tableNumber, grandTotal }
+  const ungrouped = []
+
+  for (const o of orders) {
+    // Only group dine_in orders with a table_id
+    if (o.table_id && o.order_type === 'dine_in') {
+      if (!tableMap.has(o.table_id)) {
+        tableMap.set(o.table_id, {
+          _type: 'table-group',
+          _key: 'tg-' + o.table_id,
+          _expanded: false,
+          table_id: o.table_id,
+          tableNumber: o.tableNumber || o.table_number || '—',
+          orders: [],
+          grandTotal: 0,
+        })
+      }
+      const group = tableMap.get(o.table_id)
+      group.orders.push(o)
+      group.grandTotal += parseFloat(o.total_amount || 0)
+    } else {
+      ungrouped.push({ ...o, _type: 'single', _key: o.id })
+    }
+  }
+
+  // Only show as a TABLE GROUP if there are 2+ orders on that table
+  // Single-order tables are rendered normally
+  const result = []
+
+  for (const group of tableMap.values()) {
+    if (group.orders.length >= 2) {
+      // Make _expanded reactive
+      result.push(reactive(group))
+    } else {
+      // Single order on this table → just show it normally
+      result.push({ ...group.orders[0], _type: 'single', _key: group.orders[0].id })
+    }
+  }
+
+  // Add ungrouped (delivery, takeaway, no table_id)
+  result.push(...ungrouped)
+
+  // Sort: table groups first (by most recent order), then singles by created_at desc
+  result.sort((a, b) => {
+    const aDate =
+      a._type === 'table-group'
+        ? Math.max(...a.orders.map((o) => new Date(o.created_at).getTime()))
+        : new Date(a.created_at).getTime()
+    const bDate =
+      b._type === 'table-group'
+        ? Math.max(...b.orders.map((o) => new Date(o.created_at).getTime()))
+        : new Date(b.created_at).getTime()
+    return bDate - aDate
+  })
+
+  return result
+})
+
 const newOrderCount = computed(() => {
   return store.billingOrders.filter(isNew).length
 })
@@ -215,18 +341,24 @@ const newOrderCount = computed(() => {
 // Watch for purely new arrivals in real-time to trigger pulse effects
 watch(
   () => store.billingOrders.length,
-  (newLen, oldLen) => {
-    if (newLen > oldLen) {
-      // Logic for sounds or extra emphasis can go here
-    }
-  },
+  () => {},
 )
 
 onMounted(() => {})
 
+function statusClass(order) {
+  return {
+    'is-new': isNew(order),
+    'status-ready': order.status === 'ready',
+    'status-preparing': order.status === 'preparing',
+    'status-accepted': order.status === 'accepted',
+    'status-pending_waiter': order.status === 'pending_waiter',
+    'status-invoiced': order.status === 'invoiced',
+    'status-paid': order.status === 'paid',
+  }
+}
+
 function onSelect(order) {
-  // Clear new indicator when tapped
-  // newIds.value.delete(order.id) // This line was commented out or removed in the original context, keeping it as is.
   emit('select', order)
 }
 
@@ -321,6 +453,98 @@ function timeAgo(dateStr) {
     font-size: 0.68rem;
     min-width: 0;
     flex: 1;
+  }
+}
+
+/* ═══ TABLE GROUP CARD ═══ */
+.table-group-card {
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-left: 3px solid #f59e0b;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.tg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.06);
+  }
+}
+
+.tg-left {
+  display: flex;
+  align-items: center;
+}
+
+.tg-table-num {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #fbbf24;
+}
+
+.tg-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tg-total {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #fb923c;
+}
+
+.tg-merge-row {
+  padding: 0 10px 10px;
+}
+
+.merge-bill-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+  }
+}
+
+.tg-orders {
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.queue-card--grouped {
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  .order-num {
+    font-size: 0.78rem;
   }
 }
 

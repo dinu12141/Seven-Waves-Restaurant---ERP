@@ -131,7 +131,9 @@
 <script setup>
 import { ref, watch, onUnmounted, inject } from 'vue'
 import { supabase } from 'src/boot/supabase'
-import { date } from 'quasar'
+import { date, useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 const props = defineProps({
   open: {
@@ -146,6 +148,7 @@ const { tableUuid, sessionToken } = inject('touchMenuState')
 const orders = ref([])
 const loading = ref(true)
 let realTimeSubscription = null
+let notificationChannel = null
 
 const progressSteps = [
   { key: 'pending_waiter', label: 'Ordered', icon: 'send' },
@@ -218,7 +221,6 @@ async function fetchOrders() {
         p_table_id: tUuid,
       }))
     } else if (fallbackTableId) {
-      // Try resolving table UUID from localStorage table number
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         fallbackTableId,
       )
@@ -291,13 +293,65 @@ function subscribeToOrders() {
     .subscribe()
 }
 
+// ── Customer Notification Listener ────────────────────────────────
+// Listens for order_notifications inserts and shows an alert to the customer
+function subscribeToNotifications() {
+  if (notificationChannel) {
+    supabase.removeChannel(notificationChannel)
+  }
+
+  notificationChannel = supabase
+    .channel('customer-order-notifications')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'order_notifications',
+      },
+      (payload) => {
+        const notification = payload.new
+        // Check if this notification is for one of our orders
+        const isOurs = orders.value.some((o) => o.id === notification.order_id)
+        if (isOurs && notification.notification_type === 'item_unavailable') {
+          // Show a prominent dialog to the customer
+          $q.dialog({
+            title: '⚠️ ' + notification.title,
+            message: notification.message,
+            persistent: true,
+            ok: {
+              label: 'I Understand',
+              color: 'primary',
+              unelevated: true,
+            },
+          })
+
+          // Also show a toast
+          $q.notify({
+            type: 'warning',
+            icon: 'remove_shopping_cart',
+            message: notification.title,
+            caption: notification.message,
+            position: 'top',
+            timeout: 8000,
+            actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+          })
+        }
+      },
+    )
+    .subscribe()
+}
+
 // Watch tableUuid and sessionToken changes
 watch(
   [() => tableUuid?.value, () => sessionToken?.value],
   ([newUuid, newToken]) => {
     if (newUuid || newToken) {
       fetchOrders()
-      if (newUuid) subscribeToOrders()
+      if (newUuid) {
+        subscribeToOrders()
+        subscribeToNotifications()
+      }
     } else {
       loading.value = false
     }
@@ -308,6 +362,9 @@ watch(
 onUnmounted(() => {
   if (realTimeSubscription) {
     supabase.removeChannel(realTimeSubscription)
+  }
+  if (notificationChannel) {
+    supabase.removeChannel(notificationChannel)
   }
 })
 </script>

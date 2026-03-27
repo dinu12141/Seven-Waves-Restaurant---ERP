@@ -32,10 +32,16 @@ import { supabase } from 'src/boot/supabase'
  * @param {string} orderId
  * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
  */
-export async function acceptOrder(orderId) {
-  const { data, error } = await supabase.rpc('accept_order_as_waiter', {
-    p_order_id: orderId,
-  })
+export async function acceptOrder(orderId, unavailableItemIds = null) {
+  const params = { p_order_id: orderId }
+
+  // Pass unavailable IDs to RPC so availability marking + KOT generation
+  // happen atomically in one DB transaction (prevents race conditions)
+  if (unavailableItemIds && unavailableItemIds.length > 0) {
+    params.p_unavailable_ids = unavailableItemIds
+  }
+
+  const { data, error } = await supabase.rpc('accept_order_as_waiter', params)
 
   if (error) {
     console.error('[KotDispatch] acceptOrder RPC error:', error)

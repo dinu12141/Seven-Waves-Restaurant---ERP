@@ -133,10 +133,10 @@ export const useDeliveryStore = defineStore('delivery', () => {
 
   // ── Actions ────────────────────────────────────────────────
 
-  async function acceptAssignment(assignmentId) {
+  async function acceptAssignment(assignmentId, unavailableItemIds = null) {
     processing.value = true
     try {
-      const result = await svcAcceptDelivery(assignmentId)
+      const result = await svcAcceptDelivery(assignmentId, unavailableItemIds)
       if (!result.success) {
         throw new Error(result.error || 'Accept failed')
       }
@@ -457,6 +457,7 @@ export const useDeliveryStore = defineStore('delivery', () => {
 
   function normalizeAssignment(entry) {
     const order = entry.order || {}
+    const rawItems = order.order_items || []
     return {
       ...entry,
       orderNumber: order.order_number || '?',
@@ -465,7 +466,10 @@ export const useDeliveryStore = defineStore('delivery', () => {
       orderSource: order.order_source || 'website',
       orderNotes: order.notes || '',
       riderName: entry.rider?.full_name || '—',
-      items: order.order_items || [],
+      items: rawItems.map((oi) => ({
+        ...oi,
+        name: oi.menu_items?.name || 'Unknown Item',
+      })),
       timeAgo: getTimeAgo(entry.created_at),
     }
   }

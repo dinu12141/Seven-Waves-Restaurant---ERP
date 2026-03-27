@@ -299,7 +299,7 @@
       :width="380"
       class="billing-queue-drawer"
     >
-      <BillingQueue @select="openBilling" />
+      <BillingQueue @select="openBilling" @merge-table="openMergedBilling" />
     </q-drawer>
 
     <!-- Bill Dialog removed — queue orders now use PaymentDialog -->
@@ -319,9 +319,16 @@
       :customer-name="store.customerName"
       :loading="isProcessingPayment"
       :queue-order="selectedQueueOrder"
+      :merged-orders="mergedTableOrders"
       @confirm="handleConfirmPayment"
       @new-order="handleNewOrderAfterPayment"
       @paid="onOrderPaid"
+    />
+    <!-- POS Lock Screen (cashier switch) -->
+    <POSLockScreen
+      v-model="posLocked"
+      :previous-cashier="previousCashierName"
+      @signed-in="onCashierSignedIn"
     />
   </q-page>
 </template>
@@ -337,6 +344,7 @@ import { useAuthStore } from 'src/stores/auth'
 import BillingQueue from 'src/components/pos/BillingQueue.vue'
 // BillDialog removed — queue orders now use PaymentDialog
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
+import POSLockScreen from 'src/components/pos/POSLockScreen.vue'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -367,6 +375,13 @@ const isProcessingPayment = ref(false)
 const queueDrawer = ref(false)
 const selectedQueueOrder = ref(null)
 const paymentDialogRef = ref(null)
+
+// POS Lock Screen (cashier switch)
+const posLocked = ref(false)
+const previousCashierName = ref('')
+
+// Merged table billing
+const mergedTableOrders = ref([])
 
 // ── Computed ────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES')
@@ -547,26 +562,68 @@ watch(
 
 /**
  * Auto-open billing dialog for an order from notification click.
- * Retries up to 5 times (1s apart) in case the cashierStore hasn't loaded the order yet.
+ * 1st: looks in cashierStore.billingOrders (fast, works for recent orders)
+ * 2nd: if not found, fetches the specific order directly from DB (covers old orders)
  */
 async function autoOpenBillingForOrder(orderId, attempt = 0) {
-  const MAX_ATTEMPTS = 5
+  const MAX_ATTEMPTS = 3
 
-  // Find order in the billing queue
+  // Try to find in the already-loaded queue first
   let order = cashierStore.billingOrders.find((o) => o.id === orderId)
 
   if (!order && attempt < MAX_ATTEMPTS) {
-    // Order may not be loaded yet — wait and retry
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    // Refresh the queue in case it wasn't loaded
-    if (attempt === 1) await cashierStore.fetchBillingQueue(true)
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    if (attempt === 0) await cashierStore.fetchBillingQueue(true)
     return autoOpenBillingForOrder(orderId, attempt + 1)
   }
 
-  if (order) {
-    // Clear the query param so reloads don't re-trigger
-    router.replace({ query: {} }).catch(() => {})
+  // Final fallback: fetch this specific order directly from DB
+  // (handles orders older than today that might not be in the queue)
+  if (!order) {
+    try {
+      const { data: rawOrder, error } = await supabase
+        .from('orders')
+        .select(
+          `
+          id, order_number, order_type, order_source, status, payment_status,
+          customer_name, customer_phone, subtotal, tax_amount, discount_amount,
+          total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
+          table_id, table_number, branch_id,
+          restaurant_tables ( table_number, section ),
+          waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          order_items (
+            id, quantity, unit_price, total_price, notes, status,
+            menu_items ( id, name )
+          ),
+          kot_tickets (
+            id, kot_number, status, kitchen_id,
+            kot_items ( id, order_item_id, quantity, status )
+          ),
+          invoices ( id, invoice_number, total, payment_status, status )
+        `,
+        )
+        .eq('id', orderId)
+        .single()
 
+      if (!error && rawOrder) {
+        // Normalize using the store's canonical normalizer
+        const normalized = cashierStore._normalizeEntry(rawOrder)
+
+        // Inject into the queue if not already there
+        if (!cashierStore.billingOrders.find((o) => o.id === orderId)) {
+          cashierStore.billingOrders.unshift(normalized)
+        }
+        order = normalized
+      }
+    } catch (fetchErr) {
+      console.warn('[POS] Direct order fetch failed:', fetchErr)
+    }
+  }
+
+  // Clear the query param so reloads don't re-trigger
+  router.replace({ query: {} }).catch(() => {})
+
+  if (order) {
     await nextTick()
     selectedQueueOrder.value = order
     paymentDialog.value = true
@@ -585,18 +642,16 @@ async function autoOpenBillingForOrder(orderId, attempt = 0) {
       timeout: 3000,
     })
 
-    // Auto-print bill after dialog fully renders (350ms for dialog animation + render)
+    // Auto-print bill after dialog fully renders
     setTimeout(async () => {
       if (paymentDialogRef.value?.printBill) {
         await paymentDialogRef.value.printBill()
       }
     }, 350)
   } else {
-    // Order not found after retries — notify
-    router.replace({ query: {} }).catch(() => {})
     Notify.create({
-      message: 'Order not found in billing queue',
-      caption: 'It may have already been processed or is still being prepared.',
+      message: 'Order not found',
+      caption: 'It may have already been fully completed or cancelled.',
       color: 'orange-8',
       icon: 'info',
       position: 'top',
@@ -924,6 +979,7 @@ function handleNewOrderAfterPayment() {
   selectedItemIndex.value = -1
   numBuffer.value = ''
   selectedQueueOrder.value = null
+  mergedTableOrders.value = []
 }
 
 // ── Billing Queue ───────────────────────────────────────
@@ -942,23 +998,66 @@ function openBilling(order) {
   }
 }
 
-function onOrderPaid() {
-  // Called when a queue order payment completes inside PaymentDialog
+/**
+ * Open merged billing for a table group from BillingQueue.
+ * The tableGroup has { orders, tableNumber, grandTotal, ... }.
+ */
+function openMergedBilling(tableGroup) {
+  // Clear single-order selection, set merged orders
   selectedQueueOrder.value = null
+  mergedTableOrders.value = tableGroup.orders || []
+  paymentDialog.value = true
+
+  // Auto-print merged bill
+  setTimeout(async () => {
+    if (paymentDialogRef.value?.printBill) {
+      await paymentDialogRef.value.printBill()
+    }
+  }, 350)
+}
+
+function onOrderPaid() {
+  // Called when a queue order or merged payment completes inside PaymentDialog
+  selectedQueueOrder.value = null
+  mergedTableOrders.value = []
   cashierStore.fetchBillingOrders()
 }
 
 function handleLogout() {
   $q.dialog({
-    title: 'Log Out',
-    message: 'Are you sure you want to log out?',
+    title: 'Switch Cashier',
+    message: `Sign out ${authStore.profile?.full_name || 'current cashier'} and lock the terminal?`,
     dark: true,
-    cancel: { flat: true, color: 'grey-5', noCaps: true },
-    ok: { color: 'red', unelevated: true, noCaps: true, label: 'Log Out' },
+    cancel: { flat: true, color: 'grey-5', noCaps: true, label: 'Cancel' },
+    ok: { color: 'orange-8', unelevated: true, noCaps: true, label: 'Lock Terminal' },
   }).onOk(async () => {
-    await authStore.logout()
-    router.push('/login')
+    // Remember who was logged in to show in the lock screen chip
+    previousCashierName.value = authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
+
+    // Sign out the current user (clears auth state, session, cache)
+    await authStore.signOut()
+
+    // Reinitialize cashier store so it resets for the next user
+    cashierStore.cleanup()
+
+    // Show the lock screen overlay — POS stays visible behind it
+    posLocked.value = true
   })
+}
+
+/**
+ * Called by POSLockScreen after a new cashier successfully signs in.
+ * Reinitializes all POS stores for the new user.
+ */
+async function onCashierSignedIn() {
+  // Re-initialize cashier store for the new user
+  await cashierStore.initialize()
+  // Reload menu in case branch changed
+  fetchMenuItems()
+  // Clear any leftover cart from previous session
+  store.clearCart()
+  selectedItemIndex.value = -1
+  selectedQueueOrder.value = null
 }
 
 function scrollCategoriesUp() {

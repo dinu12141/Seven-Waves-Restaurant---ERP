@@ -6,7 +6,7 @@
         <div class="header-logo row items-center no-wrap">
           <q-icon name="restaurant_menu" size="28px" color="primary" class="q-mr-sm" />
           <div class="column justify-center">
-            <span class="header-brand">Seven Waves</span>
+            <span class="header-brand" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Seven Waves</span>
             <span class="header-table text-primary text-weight-bold">
               Table: {{ tableId || 'Menu' }}
             </span>
@@ -38,7 +38,7 @@
               {{ customerStore.displayName.charAt(0).toUpperCase() }}
             </div>
             <div class="column q-ml-xs">
-              <span class="loyalty-name">{{ customerStore.displayName }}</span>
+              <span class="loyalty-name" :class="$q.dark.isActive ? 'text-white' : 'text-black'">{{ customerStore.displayName }}</span>
               <span class="loyalty-pts">
                 <q-icon name="stars" size="10px" color="amber" class="q-mr-xs" />
                 {{ customerStore.pointsBalance }} pts · {{ customerStore.loyaltyTierDisplay }}
@@ -500,13 +500,6 @@ onUnmounted(() => {
   line-height: 1.1;
 }
 
-:global(.body--dark) .header-brand {
-  color: #f8fafc;
-}
-:global(.body--light) .header-brand {
-  color: #0f172a;
-}
-
 .header-table {
   font-size: 11px;
   text-transform: uppercase;
@@ -565,12 +558,6 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-:global(.body--dark) .loyalty-name {
-  color: #f1f5f9;
-}
-:global(.body--light) .loyalty-name {
-  color: #0f172a;
 }
 
 .loyalty-pts {

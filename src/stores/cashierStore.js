@@ -111,50 +111,88 @@ export const useCashierStore = defineStore('cashier', () => {
       console.log(`[CashierStore] Fetching queue for branch: ${bid}`)
     }
 
-    const { data: qData, error } = await supabase
-      .from('orders')
-      .select(
-        `
-        id, order_number, order_type, order_source, status, payment_status,
-        customer_name, customer_phone, subtotal, tax_amount, discount_amount,
-        total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
-        table_id, table_number, branch_id,
-        restaurant_tables ( table_number, section ),
-        waiter:profiles!orders_waiter_id_fkey ( full_name ),
-        order_items (
-          id, quantity, unit_price, total_price, notes, status,
-          menu_items ( id, name )
-        ),
-        kot_tickets (
-          id, kot_number, status, kitchen_id,
-          kot_items ( id, order_item_id, quantity, status )
-        ),
-        invoices ( id, invoice_number, total, payment_status, status )
-      `,
-      )
-      .eq('branch_id', bid)
-      .in('status', [
-        'pending',
-        'pending_waiter',
-        'accepted',
-        'preparing',
-        'ready',
-        'served',
-        'invoiced',
-        'paid',
-      ])
-      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-      .order('created_at', { ascending: false })
-      .limit(200)
+    // Fetch unpaid orders: last 7 days (covers orders from previous sessions)
+    // Fetch paid orders: today only (to keep the paid tab manageable)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 
-    if (error) {
-      console.error('[CashierStore] fetchBillingQueue error:', error)
-      Notify.create({ message: 'Fetch Failed', caption: error.message, color: 'red' })
+    // Fetch all unpaid statuses (last 7 days) + paid orders (today only)
+    const unpaidStatuses = ['pending', 'pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced']
+    const paidStatuses = ['paid']
+
+    const [unpaidRes, paidRes] = await Promise.all([
+      supabase
+        .from('orders')
+        .select(
+          `
+          id, order_number, order_type, order_source, status, payment_status,
+          customer_name, customer_phone, subtotal, tax_amount, discount_amount,
+          total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
+          table_id, table_number, branch_id,
+          restaurant_tables ( table_number, section ),
+          waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          order_items (
+            id, quantity, unit_price, total_price, notes, status,
+            menu_items ( id, name )
+          ),
+          kot_tickets (
+            id, kot_number, status, kitchen_id,
+            kot_items ( id, order_item_id, quantity, status )
+          ),
+          invoices ( id, invoice_number, total, payment_status, status )
+        `,
+        )
+        .eq('branch_id', bid)
+        .in('status', unpaidStatuses)
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false })
+        .limit(300),
+
+      supabase
+        .from('orders')
+        .select(
+          `
+          id, order_number, order_type, order_source, status, payment_status,
+          customer_name, customer_phone, subtotal, tax_amount, discount_amount,
+          total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
+          table_id, table_number, branch_id,
+          restaurant_tables ( table_number, section ),
+          waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          order_items (
+            id, quantity, unit_price, total_price, notes, status,
+            menu_items ( id, name )
+          ),
+          kot_tickets (
+            id, kot_number, status, kitchen_id,
+            kot_items ( id, order_item_id, quantity, status )
+          ),
+          invoices ( id, invoice_number, total, payment_status, status )
+        `,
+        )
+        .eq('branch_id', bid)
+        .in('status', paidStatuses)
+        .gte('created_at', todayMidnight)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ])
+
+    if (unpaidRes.error) {
+      console.error('[CashierStore] fetchBillingQueue (unpaid) error:', unpaidRes.error)
+      Notify.create({ message: 'Fetch Failed', caption: unpaidRes.error.message, color: 'red' })
       return
     }
+    if (paidRes.error) {
+      console.warn('[CashierStore] fetchBillingQueue (paid) error:', paidRes.error)
+      // Non-fatal — still show unpaid orders
+    }
 
-    console.log(`[CashierStore] Received ${qData?.length || 0} orders`)
-    billingOrders.value = (qData || []).map(normalizeQueueEntry)
+    const combined = [...(unpaidRes.data || []), ...(paidRes.data || [])]
+    // De-duplicate by id (shouldn't happen but guard anyway)
+    const seen = new Set()
+    const deduped = combined.filter((o) => { if (seen.has(o.id)) return false; seen.add(o.id); return true })
+
+    console.log(`[CashierStore] Received ${deduped.length} orders (${unpaidRes.data?.length ?? 0} unpaid + ${paidRes.data?.length ?? 0} paid)`)
+    billingOrders.value = deduped.map(normalizeQueueEntry)
   }
 
   // Keep alias for backward compat
@@ -724,5 +762,7 @@ export const useCashierStore = defineStore('cashier', () => {
     markQueueAsRead,
     cleanup,
     getTimeAgo,
+    // Internal helpers exposed for POSPage direct-fetch fallback
+    _normalizeEntry: normalizeQueueEntry,
   }
 })

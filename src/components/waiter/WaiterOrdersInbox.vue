@@ -43,11 +43,35 @@
           <div class="order-number">#{{ order.order_number }}</div>
         </div>
 
-        <!-- Items Preview -->
+        <!-- Items Preview with Availability Toggles -->
         <div class="items-preview q-mx-md q-my-sm">
-          <div v-for="item in order.items.slice(0, 4)" :key="item.id" class="item-row">
+          <div class="items-header row items-center q-mb-xs">
+            <span
+              class="text-caption text-grey-5 text-weight-bold text-uppercase"
+              style="letter-spacing: 1px"
+              >ORDER ITEMS</span
+            >
+            <q-space />
+            <span class="text-caption text-grey-6" style="font-size: 0.65rem"
+              >Tap to check availability</span
+            >
+          </div>
+          <div
+            v-for="item in order.items"
+            :key="item.id"
+            class="item-row"
+            :class="{
+              'item-row--unavailable': getItemAvailability(order.id, item.id) === 'unavailable',
+              'item-row--available': getItemAvailability(order.id, item.id) === 'available',
+            }"
+          >
             <span class="item-qty">{{ item.quantity }}×</span>
-            <span class="item-name">
+            <span
+              class="item-name"
+              :class="{
+                'item-name--strike': getItemAvailability(order.id, item.id) === 'unavailable',
+              }"
+            >
               {{ item.name }}
               <span v-if="item.kitchenName" class="kitchen-remark-sm">
                 • {{ item.kitchenName }}
@@ -64,9 +88,55 @@
             <span v-if="item.notes" class="item-note">
               <q-icon name="sticky_note_2" size="12px" /> {{ item.notes }}
             </span>
+
+            <!-- Availability Toggle Buttons -->
+            <div class="avail-toggle-group">
+              <q-btn
+                flat
+                dense
+                round
+                size="xs"
+                :icon="
+                  getItemAvailability(order.id, item.id) === 'available'
+                    ? 'check_circle'
+                    : 'check_circle_outline'
+                "
+                :class="
+                  getItemAvailability(order.id, item.id) === 'available'
+                    ? 'avail-btn--active-yes'
+                    : 'avail-btn--inactive'
+                "
+                @click.stop="toggleAvailability(order.id, item.id, 'available')"
+              >
+                <q-tooltip>Available</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                dense
+                round
+                size="xs"
+                :icon="
+                  getItemAvailability(order.id, item.id) === 'unavailable'
+                    ? 'cancel'
+                    : 'highlight_off'
+                "
+                :class="
+                  getItemAvailability(order.id, item.id) === 'unavailable'
+                    ? 'avail-btn--active-no'
+                    : 'avail-btn--inactive'
+                "
+                @click.stop="toggleAvailability(order.id, item.id, 'unavailable')"
+              >
+                <q-tooltip>Unavailable</q-tooltip>
+              </q-btn>
+            </div>
           </div>
-          <div v-if="order.items.length > 4" class="text-caption text-grey-6 q-mt-xs">
-            +{{ order.items.length - 4 }} more items
+
+          <!-- Unavailable Summary -->
+          <div v-if="getUnavailableCount(order.id) > 0" class="unavailable-summary q-mt-sm">
+            <q-icon name="warning_amber" size="14px" class="q-mr-xs" />
+            {{ getUnavailableCount(order.id) }} item(s) marked unavailable — will be excluded from
+            KOT
           </div>
         </div>
 
@@ -120,12 +190,53 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useQuasar } from 'quasar'
 import { watch } from 'vue'
+import { supabase } from 'src/boot/supabase'
 
 const store = useWaiterOrderStore()
 const $q = useQuasar()
+
+// ── Availability tracking per order ──────────────────────────────
+// Map: { [orderId]: { [itemId]: 'available' | 'unavailable' | null } }
+const itemAvailability = ref({})
+
+function getItemAvailability(orderId, itemId) {
+  return itemAvailability.value[orderId]?.[itemId] || null
+}
+
+function toggleAvailability(orderId, itemId, status) {
+  if (!itemAvailability.value[orderId]) {
+    itemAvailability.value[orderId] = {}
+  }
+  // Toggle: if already same status, clear it (back to unchecked)
+  if (itemAvailability.value[orderId][itemId] === status) {
+    itemAvailability.value[orderId][itemId] = null
+  } else {
+    itemAvailability.value[orderId][itemId] = status
+  }
+}
+
+function getUnavailableCount(orderId) {
+  const avail = itemAvailability.value[orderId]
+  if (!avail) return 0
+  return Object.values(avail).filter((v) => v === 'unavailable').length
+}
+
+function getUnavailableItemIds(orderId) {
+  const avail = itemAvailability.value[orderId]
+  if (!avail) return []
+  return Object.entries(avail)
+    .filter(([, v]) => v === 'unavailable')
+    .map(([id]) => id)
+}
+
+function getUnavailableItemNames(order) {
+  const unavailIds = getUnavailableItemIds(order.id)
+  return order.items.filter((i) => unavailIds.includes(i.id)).map((i) => i.name)
+}
 
 // Watch for new orders to notify the waiter
 watch(
@@ -141,7 +252,6 @@ watch(
         dense: true,
         actions: [{ icon: 'close', color: 'white', size: 'sm' }],
       })
-      // Optional: Play sound if user desires later
     }
   },
 )
@@ -167,10 +277,43 @@ function getKotBadge(kot) {
 }
 
 async function handleAccept(order) {
-  const { success, error } = await store.acceptOrder(order.id)
+  const unavailableIds = getUnavailableItemIds(order.id)
+  const unavailableNames = getUnavailableItemNames(order)
+
+  // Pass unavailable IDs directly to the store — the RPC will mark
+  // availability_status and generate KOTs atomically (no race conditions)
+  const { success, error } = await store.acceptOrder(
+    order.id,
+    unavailableIds.length > 0 ? unavailableIds : null,
+  )
 
   if (success) {
-    // No notification needed for professional ERP - card moves automatically
+    // Notify customer about unavailable items
+    if (unavailableIds.length > 0 && unavailableNames.length > 0) {
+      try {
+        await supabase.from('order_notifications').insert({
+          order_id: order.id,
+          notification_type: 'item_unavailable',
+          title: 'Items Unavailable',
+          message: `Sorry, the following items are currently unavailable: ${unavailableNames.join(', ')}. They have been removed from your order.`,
+          is_read: false,
+        })
+      } catch (notifyErr) {
+        console.warn('Could not create customer notification:', notifyErr)
+      }
+
+      $q.notify({
+        type: 'warning',
+        icon: 'info',
+        message: `Order accepted. ${unavailableNames.length} unavailable item(s) excluded from KOT.`,
+        caption: unavailableNames.join(', '),
+        position: 'top',
+        timeout: 5000,
+      })
+    }
+
+    // Clear availability tracking for this order
+    delete itemAvailability.value[order.id]
   } else {
     $q.notify({
       type: 'negative',
@@ -272,15 +415,36 @@ async function handleAccept(order) {
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.items-header {
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 4px;
+}
+
 .item-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 5px 0;
   font-size: 0.85rem;
+  transition: all 0.2s ease;
+  border-radius: 6px;
 
   &:not(:last-child) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  &--available {
+    background: rgba(34, 197, 94, 0.06);
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  &--unavailable {
+    background: rgba(239, 68, 68, 0.08);
+    padding-left: 6px;
+    padding-right: 6px;
+    opacity: 0.7;
   }
 }
 
@@ -294,6 +458,12 @@ async function handleAccept(order) {
 .item-name {
   color: #d1d5db;
   flex: 1;
+  transition: all 0.2s;
+
+  &--strike {
+    text-decoration: line-through;
+    color: #6b7280;
+  }
 }
 
 .item-note {
@@ -304,6 +474,62 @@ async function handleAccept(order) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+// Availability toggle buttons
+.avail-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.avail-btn--inactive {
+  color: #4b5563 !important;
+  opacity: 0.5;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.avail-btn--active-yes {
+  color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+  opacity: 1;
+  animation: avail-pop 0.3s ease;
+}
+
+.avail-btn--active-no {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  opacity: 1;
+  animation: avail-pop 0.3s ease;
+}
+
+@keyframes avail-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.unavailable-summary {
+  display: flex;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 600;
 }
 
 .order-notes {

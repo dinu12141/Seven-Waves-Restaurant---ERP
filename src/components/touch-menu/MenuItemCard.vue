@@ -56,14 +56,18 @@
       </q-img>
     </div>
 
-    <q-card-section class="q-pt-xs q-pb-none flex-grow">
-      <div class="text-caption text-weight-bold ellipsis-2-lines name-text" :title="item.name">
+    <q-card-section class="card-info-section q-pt-sm q-pb-xs flex-grow">
+      <div 
+        class="text-weight-bold ellipsis-2-lines name-text" 
+        :class="$q.dark.isActive ? 'text-white' : 'text-black'"
+        :title="item.name"
+      >
         {{ item.name }}
       </div>
     </q-card-section>
 
-    <q-card-section class="row items-center justify-between q-pt-none q-pb-sm">
-      <div class="text-caption text-primary text-weight-black font-mono price-text">
+    <q-card-section class="row items-center justify-between q-pt-none q-pb-sm q-px-sm">
+      <div class="text-weight-black font-mono price-text">
         LKR {{ Math.round(item.price).toLocaleString('en-LK') }}
       </div>
 
@@ -84,6 +88,10 @@
 </template>
 
 <script setup>
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
+
 defineProps({
   item: {
     type: Object,
@@ -154,23 +162,27 @@ defineEmits(['add-to-cart', 'request-add'])
   transform: rotate(-15deg);
 }
 
+.card-info-section {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .name-text {
-  font-size: 11px;
-  line-height: 1.1;
+  font-size: 13px;
+  line-height: 1.35;
   letter-spacing: -0.1px;
-  min-height: 24px;
+  min-height: 18px;
+  font-weight: 700;
 }
 :global(.body--dark) .name-text {
-  color: #f8fafc;
-}
-:global(.body--light) .name-text {
-  color: #0f172a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .price-text {
-  font-size: 11px;
+  font-size: 13px;
   color: #f97316;
   letter-spacing: -0.2px;
+  font-weight: 900;
 }
 
 .flex-grow {

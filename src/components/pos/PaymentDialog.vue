@@ -14,7 +14,12 @@
             <q-icon name="point_of_sale" size="18px" color="primary" />
           </div>
           <span class="top-title">POS Billing</span>
-          <q-badge v-if="isQueueOrder" color="blue-8" class="q-ml-sm">
+          <!-- Merged table badge -->
+          <q-badge v-if="isMergeMode" color="orange-8" class="q-ml-sm">
+            <q-icon name="merge_type" size="12px" class="q-mr-xs" />
+            {{ mergedOrders.length }} Orders Merged — Table {{ mergedTableNumber }}
+          </q-badge>
+          <q-badge v-else-if="isQueueOrder" color="blue-8" class="q-ml-sm">
             Order #{{ queueOrder?.order_number }}
           </q-badge>
           <q-badge v-if="isPaid" color="green" class="q-ml-sm">PAID</q-badge>
@@ -206,6 +211,8 @@ const props = defineProps({
   loading: Boolean,
   // ── Queue order prop (billing queue orders from DB) ──
   queueOrder: { type: Object, default: null },
+  // ── MERGED table orders (multiple orders, 1 combined bill) ──
+  mergedOrders: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'new-order', 'paid'])
@@ -239,26 +246,63 @@ const branchName = computed(() => authStore.currentBranch?.name || 'Restaurant')
 
 // ── Mode detection ──
 const isQueueOrder = computed(() => !!props.queueOrder)
+const isMergeMode = computed(() => props.mergedOrders && props.mergedOrders.length >= 2)
+const mergedTableNumber = computed(() => {
+  if (!isMergeMode.value) return ''
+  return props.mergedOrders[0]?.tableNumber || props.mergedOrders[0]?.table_number || '—'
+})
 
-// ── Effective values (from cart OR queue order) ──
+// ── Effective values (from cart OR queue order OR merged orders) ──
 const effectiveTotalAmount = computed(() => {
+  if (isMergeMode.value) {
+    return props.mergedOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0)
+  }
   if (isQueueOrder.value) return parseFloat(props.queueOrder.total_amount || 0)
   return props.totalAmount
 })
 
 const effectiveSubtotal = computed(() => {
+  if (isMergeMode.value) {
+    return props.mergedOrders.reduce(
+      (sum, o) => sum + parseFloat(o.subtotal || o.total_amount || 0),
+      0,
+    )
+  }
   if (isQueueOrder.value)
     return parseFloat(props.queueOrder.subtotal || props.queueOrder.total_amount || 0)
   return props.subtotalAmount
 })
 
 const effectiveItemCount = computed(() => {
+  if (isMergeMode.value) {
+    return props.mergedOrders.reduce(
+      (sum, o) => sum + (o.order_items?.length || o.itemCount || 0),
+      0,
+    )
+  }
   if (isQueueOrder.value)
     return props.queueOrder.order_items?.length || props.queueOrder.itemCount || 0
   return props.itemCount
 })
 
 const effectiveItems = computed(() => {
+  if (isMergeMode.value) {
+    // Combine items from all merged orders, with order_number prefix
+    const allItems = []
+    for (const o of props.mergedOrders) {
+      for (const item of o.order_items || []) {
+        allItems.push({
+          id: item.id || allItems.length,
+          menu_item_name:
+            (item.name || item.menu_item_name || 'Item') + ` (#${o.order_number})`,
+          quantity: item.quantity || item.qty || 1,
+          unit_price: parseFloat(item.unit_price || item.price || 0),
+          total_price: parseFloat(item.total_price || item.unit_price * item.quantity || 0),
+        })
+      }
+    }
+    return allItems
+  }
   if (isQueueOrder.value) {
     return (props.queueOrder.order_items || []).map((item, idx) => ({
       id: idx,
@@ -278,17 +322,25 @@ const effectiveItems = computed(() => {
 })
 
 const effectiveCustomerName = computed(() => {
+  if (isMergeMode.value) {
+    // Use the first order's customer name
+    return props.mergedOrders[0]?.customer_name || ''
+  }
   if (isQueueOrder.value) return props.queueOrder.customer_name || ''
   return props.customerName
 })
 
 const effectiveOrderType = computed(() => {
+  if (isMergeMode.value) return 'dine_in' // merged orders are always dine-in
   if (isQueueOrder.value) return props.queueOrder.order_type || 'dine_in'
   const map = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
   return map[props.orderType] || 'dine_in'
 })
 
 const orderTypeLabel = computed(() => {
+  if (isMergeMode.value) {
+    return `TABLE ${mergedTableNumber.value} — MERGED`
+  }
   const map = {
     dine_in: 'TABLE ORDER',
     'dine-in': 'TABLE ORDER',
@@ -305,9 +357,54 @@ const orderTypeLabel = computed(() => {
  * Works for both POS manual cart items and billing queue orders.
  */
 const simulatedInvoice = computed(() => {
-  const now = isQueueOrder.value
-    ? props.queueOrder.created_at || new Date().toISOString()
-    : new Date().toISOString()
+  const now = isMergeMode.value
+    ? props.mergedOrders[0]?.created_at || new Date().toISOString()
+    : isQueueOrder.value
+      ? props.queueOrder.created_at || new Date().toISOString()
+      : new Date().toISOString()
+
+  if (isMergeMode.value) {
+    const allKots = props.mergedOrders.flatMap((o) => o.kot_tickets || [])
+    const orderNums = props.mergedOrders.map((o) => '#' + o.order_number).join(', ')
+    return {
+      invoice_number: '—',
+      created_at: now,
+      subtotal: effectiveSubtotal.value,
+      grand_total: effectiveTotalAmount.value,
+      delivery_charge: 0,
+      customer_name: effectiveCustomerName.value,
+      customer_phone: props.mergedOrders[0]?.customer_phone || '',
+      invoice_items: effectiveItems.value,
+      payments: isPaid.value
+        ? [
+            {
+              id: 'merged-pay',
+              amount: amountReceived.value,
+              payment_methods: { name: confirmedMethod.value },
+            },
+          ]
+        : [],
+      orders: {
+        order_type: 'dine_in',
+        customer_name: effectiveCustomerName.value,
+        customer_phone: props.mergedOrders[0]?.customer_phone || '',
+        delivery_address: '',
+        pax: 1,
+        waiter: {
+          full_name:
+            props.mergedOrders[0]?.waiterName ||
+            props.mergedOrders[0]?.waiter?.full_name ||
+            cashierName.value,
+        },
+        kot_tickets: allKots,
+        restaurant_tables: props.mergedOrders[0]?.restaurant_tables ||
+          (props.mergedOrders[0]?.tableNumber
+            ? { table_number: props.mergedOrders[0].tableNumber }
+            : null),
+      },
+      _mergedNote: `Consolidated Bill: ${orderNums}`,
+    }
+  }
 
   const qo = props.queueOrder // shorthand for queue order
 
@@ -411,7 +508,10 @@ async function confirmPayment() {
     selectedMethod.value === 'cash' ? 'Cash' : selectedMethod.value === 'card' ? 'Card' : 'Online'
   confirmedMethod.value = methodName
 
-  if (isQueueOrder.value) {
+  if (isMergeMode.value) {
+    // ── MERGED TABLE: process via merge RPC ──
+    await processMergedPayment(methodName)
+  } else if (isQueueOrder.value) {
     // ── QUEUE ORDER: process directly via RPCs ──
     await processQueueOrderPayment(methodName)
   } else {
@@ -421,6 +521,51 @@ async function confirmPayment() {
       amount: amountReceived.value,
       change: Math.max(0, changeAmount.value),
     })
+  }
+}
+
+/**
+ * Process merged payment for all orders in the table group.
+ * Calls merge_table_orders_and_pay RPC.
+ */
+async function processMergedPayment(methodName) {
+  isProcessing.value = true
+  const orderIds = props.mergedOrders.map((o) => o.id)
+  const orderNums = props.mergedOrders.map((o) => '#' + o.order_number).join(', ')
+
+  try {
+    const { data, error } = await supabase.rpc('merge_table_orders_and_pay', {
+      p_order_ids: orderIds,
+      p_payment_method: methodName,
+      p_amount_paid: effectiveTotalAmount.value,
+    })
+
+    if (error) throw new Error(error.message)
+    if (!data?.success) throw new Error(data?.error || 'Merge payment failed')
+
+    isPaid.value = true
+
+    // Notify parent
+    emit('paid', orderIds)
+
+    Notify.create({
+      message: 'Table Payment Successful!',
+      caption: `${data.order_count} orders merged (${orderNums}) — ${methodName}`,
+      color: 'positive',
+      icon: 'verified',
+      position: 'top',
+      timeout: 3000,
+    })
+  } catch (err) {
+    console.error('[PaymentDialog] Merged payment error:', err)
+    Notify.create({
+      message: 'Merged Payment Failed',
+      caption: err.message,
+      color: 'red',
+      position: 'top',
+    })
+  } finally {
+    isProcessing.value = false
   }
 }
 

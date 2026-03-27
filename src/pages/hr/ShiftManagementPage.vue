@@ -5,11 +5,12 @@
       <q-btn-toggle
         v-model="viewMode"
         toggle-color="primary"
-        text-color="grey-7"
+        :text-color="$q.dark.isActive ? 'grey-3' : 'grey-7'"
         no-caps
         dense
         size="sm"
         class="shift-toggle"
+        :class="$q.dark.isActive ? 'bg-grey-9 border-grey-8' : ''"
         :options="[
           { label: 'Shift Definitions', value: 'definitions', icon: 'schedule' },
           { label: 'Employee Assignments', value: 'assignments', icon: 'calendar_month' },
@@ -27,24 +28,37 @@
         unelevated
         @click="openShiftDialog()"
       />
-      <q-btn
-        v-if="viewMode === 'assignments'"
-        color="primary"
-        icon="person_add"
-        label="Assign Shift"
-        no-caps
-        dense
-        size="sm"
-        unelevated
-        @click="openAssignDialog()"
-      />
+      <div class="row q-gutter-x-sm">
+        <q-btn
+          v-if="viewMode === 'assignments'"
+          color="secondary"
+          icon="upload_file"
+          label="Upload Roster"
+          no-caps
+          dense
+          size="sm"
+          unelevated
+          @click="openUploadDialog()"
+        />
+        <q-btn
+          v-if="viewMode === 'assignments'"
+          color="primary"
+          icon="person_add"
+          label="Assign Shift"
+          no-caps
+          dense
+          size="sm"
+          unelevated
+          @click="openAssignDialog()"
+        />
+      </div>
     </div>
 
     <!-- ─── SHIFT DEFINITIONS VIEW ─── -->
     <div v-if="viewMode === 'definitions'">
       <div class="row q-col-gutter-sm">
         <div v-for="shift in shifts" :key="shift.id" class="col-12 col-sm-6 col-md-4 col-lg-3">
-          <q-card flat class="shift-card">
+          <q-card flat class="shift-card" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'" bordered :style="$q.dark.isActive ? 'border-color: #424242' : 'border-color: #e0e0e0'">
             <!-- Color bar based on shift type -->
             <div :class="`shift-bar shift-${getShiftType(shift)}`"></div>
             <q-card-section class="q-py-sm q-px-md">
@@ -104,16 +118,6 @@
                   <q-icon name="timer" size="10px" class="q-mr-xs" />
                   {{ calculateHours(shift) }}hrs
                 </div>
-                <div v-if="shift.night_allowance_amount > 0" class="col-auto">
-                  <q-icon name="payments" size="10px" class="q-mr-xs text-amber" />
-                  <span class="text-amber">
-                    +{{
-                      shift.night_allowance_type === 'fixed'
-                        ? 'LKR ' + shift.night_allowance_amount
-                        : shift.night_allowance_amount + '%'
-                    }}
-                  </span>
-                </div>
               </div>
             </q-card-section>
 
@@ -160,109 +164,128 @@
     <!-- ─── EMPLOYEE ASSIGNMENTS VIEW ─── -->
     <div v-if="viewMode === 'assignments'">
       <!-- Filters -->
-      <div class="row q-mb-md q-gutter-sm items-end">
+      <div class="row q-mb-md q-gutter-x-sm q-gutter-y-md items-end">
         <!-- Date filters -->
-        <q-input
-          dense
-          outlined
-          v-model="assignFilter.dateFrom"
-          type="date"
-          label="From Date"
-          style="width: 155px"
-        />
-        <q-input
-          dense
-          outlined
-          v-model="assignFilter.dateTo"
-          type="date"
-          label="To Date"
-          style="width: 155px"
-        />
+        <div class="col-auto">
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">From Date</div>
+          <q-input
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="assignFilter.dateFrom"
+            type="date"
+            style="width: 155px"
+          />
+        </div>
+        <div class="col-auto">
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">To Date</div>
+          <q-input
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="assignFilter.dateTo"
+            type="date"
+            style="width: 155px"
+          />
+        </div>
         <!-- Shift filter -->
-        <q-select
-          dense
-          outlined
-          v-model="assignFilter.shiftId"
-          :options="shiftOptions"
-          option-label="name"
-          option-value="id"
-          emit-value
-          map-options
-          label="Filter by Shift"
-          clearable
-          style="width: 190px"
-        >
-          <template #prepend><q-icon name="schedule" size="18px" /></template>
-        </q-select>
+        <div class="col-auto">
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Shift</div>
+          <q-select
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="assignFilter.shiftId"
+            :options="shiftOptions"
+            option-label="name"
+            option-value="id"
+            emit-value
+            map-options
+            clearable
+            style="width: 190px"
+          >
+            <template #prepend><q-icon name="schedule" size="18px" /></template>
+          </q-select>
+        </div>
         <!-- Employee filter -->
-        <q-select
-          dense
-          outlined
-          v-model="assignFilter.employeeId"
-          :options="employeeOptions"
-          option-label="full_name"
-          option-value="id"
-          emit-value
-          map-options
-          label="Filter by Employee"
-          clearable
-          use-input
-          input-debounce="0"
-          @filter="filterEmps"
-          style="min-width: 200px"
-        >
-          <template #prepend><q-icon name="person" size="18px" /></template>
-          <template #option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section avatar>
-                <q-avatar
-                  :color="avatarColor(scope.opt.full_name)"
-                  text-color="white"
-                  size="28px"
-                  style="font-size: 11px"
-                >
-                  {{ initials(scope.opt.full_name) }}
-                </q-avatar>
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ scope.opt.full_name }}</q-item-label>
-                <q-item-label caption>{{ scope.opt.employee_code }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-select>
+        <div class="col-auto">
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Employee</div>
+          <q-select
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="assignFilter.employeeId"
+            :options="employeeOptions"
+            option-label="full_name"
+            option-value="id"
+            emit-value
+            map-options
+            clearable
+            use-input
+            input-debounce="0"
+            @filter="filterEmps"
+            style="min-width: 200px"
+          >
+            <template #prepend><q-icon name="person" size="18px" /></template>
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section avatar>
+                  <q-avatar
+                    :color="avatarColor(scope.opt.full_name)"
+                    text-color="white"
+                    size="28px"
+                    style="font-size: 11px"
+                  >
+                    {{ initials(scope.opt.full_name) }}
+                  </q-avatar>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.full_name }}</q-item-label>
+                  <q-item-label caption>{{ scope.opt.employee_code }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
         <!-- Load button -->
-        <q-btn
-          color="primary"
-          icon="refresh"
-          label="Load"
-          no-caps
-          unelevated
-          @click="loadAssignments"
-        />
-        <!-- Clear filters -->
-        <q-btn
-          v-if="assignFilter.shiftId || assignFilter.employeeId"
-          flat
-          dense
-          color="grey-5"
-          icon="clear"
-          label="Clear"
-          no-caps
-          @click="clearAssignFilters"
-        />
+        <div class="col-auto">
+          <div class="row q-gutter-x-sm">
+            <q-btn
+              color="primary"
+              icon="refresh"
+              label="Load"
+              no-caps
+              unelevated
+              style="height: 40px;"
+              @click="loadAssignments"
+            />
+            <!-- Clear filters -->
+            <q-btn
+              v-if="assignFilter.shiftId || assignFilter.employeeId"
+              flat
+              color="grey-5"
+              icon="clear"
+              label="Clear"
+              no-caps
+              style="height: 40px;"
+              @click="clearAssignFilters"
+            />
+          </div>
+        </div>
         <q-space />
         <!-- Text search -->
-        <q-input
-          dense
-          outlined
-          v-model="assignSearch"
-          placeholder="Quick search..."
-          clearable
-          style="width: 200px"
-        >
-          <template #prepend><q-icon name="search" /></template>
-        </q-input>
+        <div class="col-12 col-sm-3 col-md-2">
+          <q-input
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="assignSearch"
+            placeholder="Search Table..."
+            clearable
+          >
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+        </div>
       </div>
 
       <!-- Weekly Calendar View -->
@@ -377,105 +400,76 @@
           <q-btn flat round dense icon="close" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-gutter-md q-pa-lg">
-          <q-input
-            outlined
-            v-model="shiftForm.name"
-            label="Shift Name *"
-            placeholder="e.g. Morning Shift"
-            :rules="[(v) => !!v || 'Required']"
-          />
-          <div class="row q-col-gutter-md">
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Shift Name *</div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="shiftForm.name"
+              placeholder="e.g. Morning Shift"
+              :rules="[(v) => !!v || 'Required']"
+            />
+          </div>
+          <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input
-                outlined
-                v-model="shiftForm.start_time"
-                type="time"
-                label="Start Time *"
-                :rules="[(v) => !!v || 'Required']"
-              />
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Start Time *</div>
+              <q-input :dark="$q.dark.isActive" dense outlined v-model="shiftForm.start_time" mask="time" :rules="[(v) => !!v || 'Required']">
+                <template v-slot:append>
+                  <q-icon name="access_time" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-time :dark="$q.dark.isActive" v-model="shiftForm.start_time" format24h>
+                        <div class="row items-center justify-end"><q-btn v-close-popup label="Close" color="primary" flat /></div>
+                      </q-time>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
             </div>
             <div class="col-6">
-              <q-input
-                outlined
-                v-model="shiftForm.end_time"
-                type="time"
-                label="End Time *"
-                :rules="[(v) => !!v || 'Required']"
-              />
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">End Time *</div>
+              <q-input :dark="$q.dark.isActive" dense outlined v-model="shiftForm.end_time" mask="time" :rules="[(v) => !!v || 'Required']">
+                <template v-slot:append>
+                  <q-icon name="access_time" class="cursor-pointer">
+                    <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                      <q-time :dark="$q.dark.isActive" v-model="shiftForm.end_time" format24h>
+                        <div class="row items-center justify-end"><q-btn v-close-popup label="Close" color="primary" flat /></div>
+                      </q-time>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
             </div>
           </div>
-          <div class="row q-col-gutter-md items-center">
+          <div class="row q-col-gutter-sm items-center">
             <div class="col-8">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Break Duration (minutes)</div>
               <q-input
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model.number="shiftForm.break_duration_minutes"
                 type="number"
-                label="Break Duration (minutes)"
                 min="0"
               />
             </div>
             <div class="col-4 q-pt-md">
-              <q-toggle v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
+              <q-toggle :dark="$q.dark.isActive" v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
             </div>
           </div>
-          <!-- Shift Type & Night Allowance -->
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-select
-                outlined
-                v-model="shiftForm.shift_type"
-                :options="[
-                  { label: 'Day Shift', value: 'day' },
-                  { label: 'Evening Shift', value: 'evening' },
-                  { label: 'Night Shift', value: 'night' },
-                  { label: 'Split Shift', value: 'split' },
-                ]"
-                label="Shift Type"
-                emit-value
-                map-options
-              />
-            </div>
-            <div class="col-6">
-              <q-select
-                outlined
-                v-model="shiftForm.night_allowance_type"
-                :options="[
-                  { label: 'Fixed Amount (LKR)', value: 'fixed' },
-                  { label: '% of Basic Salary', value: 'percentage' },
-                ]"
-                label="Allowance Type"
-                emit-value
-                map-options
-              />
-            </div>
-          </div>
-          <q-input
-            v-if="shiftForm.shift_type !== 'day'"
-            outlined
-            v-model.number="shiftForm.night_allowance_amount"
-            type="number"
-            :label="
-              shiftForm.night_allowance_type === 'fixed'
-                ? 'Shift Allowance (LKR per shift worked)'
-                : 'Shift Allowance (% of basic salary per shift)'
-            "
-            :prefix="shiftForm.night_allowance_type === 'fixed' ? 'LKR' : ''"
-            :suffix="shiftForm.night_allowance_type === 'percentage' ? '%' : ''"
-            hint="Auto-deducted and added to payroll each month"
-            min="0"
-          />
-          <q-toggle v-model="shiftForm.is_active" label="Active" color="positive" />
+          <!-- Removed Shift Type here to avoid schema 400 errors -->
+          <q-toggle :dark="$q.dark.isActive" v-model="shiftForm.is_active" label="Active" color="positive" />
 
           <!-- Preview -->
-          <q-card flat class="q-pa-md shift-preview-card rounded-borders">
-            <div class="text-caption shift-preview-label q-mb-xs">SHIFT PREVIEW</div>
+          <q-card flat class="q-pa-md rounded-borders" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'">
+            <div :class="['text-caption q-mb-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">SHIFT PREVIEW</div>
             <div class="row q-gutter-md text-center">
               <div class="col">
-                <div class="text-caption shift-preview-label">Duration</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">Duration</div>
                 <div class="text-h6 text-weight-bold">{{ previewHours }} hrs</div>
               </div>
               <div class="col">
-                <div class="text-caption shift-preview-label">Effective Hours</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">Effective Hours</div>
                 <div class="text-h6 text-weight-bold">{{ previewEffective }} hrs</div>
               </div>
             </div>
@@ -507,124 +501,141 @@
         </q-toolbar>
         <q-card-section class="q-gutter-md q-pa-lg">
           <!-- Multi Employee Select -->
-          <q-select
-            outlined
-            v-model="assignForm.employee_ids"
-            :options="employeeOptions"
-            option-label="full_name"
-            option-value="id"
-            emit-value
-            map-options
-            :label="assignDialog.isEdit ? 'Employee *' : 'Employees * (select multiple)'"
-            :multiple="!assignDialog.isEdit"
-            use-chips
-            use-input
-            input-debounce="0"
-            @filter="filterEmps"
-            :rules="[
-              (v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one employee',
-            ]"
-          >
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section avatar>
-                  <q-avatar
-                    :color="avatarColor(scope.opt.full_name)"
-                    text-color="white"
-                    size="32px"
-                    style="font-size: 12px"
-                  >
-                    {{ initials(scope.opt.full_name) }}
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.full_name }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.employee_code }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #selected-item="scope">
-              <q-chip
-                dense
-                removable
-                @remove="scope.removeAtIndex(scope.index)"
-                :color="avatarColor(scope.opt.full_name)"
-                text-color="white"
-                size="sm"
-                class="q-my-xs"
-              >
-                {{ scope.opt.full_name }}
-              </q-chip>
-            </template>
-          </q-select>
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              {{ assignDialog.isEdit ? 'Employee *' : 'Employees * (select multiple)' }}
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="assignForm.employee_ids"
+              :options="employeeOptions"
+              option-label="full_name"
+              option-value="id"
+              emit-value
+              map-options
+              :multiple="!assignDialog.isEdit"
+              use-chips
+              use-input
+              input-debounce="0"
+              @filter="filterEmps"
+              :rules="[
+                (v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one employee',
+              ]"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section avatar>
+                    <q-avatar
+                      :color="avatarColor(scope.opt.full_name)"
+                      text-color="white"
+                      size="32px"
+                      style="font-size: 12px"
+                    >
+                      {{ initials(scope.opt.full_name) }}
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.full_name }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.employee_code }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+              <template #selected-item="scope">
+                <q-chip
+                  dense
+                  removable
+                  @remove="scope.removeAtIndex(scope.index)"
+                  :color="avatarColor(scope.opt.full_name)"
+                  text-color="white"
+                  size="sm"
+                  class="q-my-xs"
+                >
+                  {{ scope.opt.full_name }}
+                </q-chip>
+              </template>
+            </q-select>
+          </div>
 
           <!-- Multi Shift Select -->
-          <q-select
-            outlined
-            v-model="assignForm.shift_ids"
-            :options="activeShifts"
-            option-label="name"
-            option-value="id"
-            emit-value
-            map-options
-            :label="assignDialog.isEdit ? 'Shift *' : 'Shifts * (select multiple)'"
-            :multiple="!assignDialog.isEdit"
-            use-chips
-            :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one shift']"
-          >
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.name }}</q-item-label>
-                  <q-item-label caption
-                    >{{ formatTime(scope.opt.start_time) }} –
-                    {{ formatTime(scope.opt.end_time) }}</q-item-label
-                  >
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #selected-item="scope">
-              <q-chip
-                dense
-                removable
-                @remove="scope.removeAtIndex(scope.index)"
-                :color="getShiftColor(scope.opt.name)"
-                text-color="white"
-                size="sm"
-                icon="schedule"
-                class="q-my-xs"
-              >
-                {{ scope.opt.name }}
-              </q-chip>
-            </template>
-          </q-select>
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              {{ assignDialog.isEdit ? 'Shift *' : 'Shifts * (select multiple)' }}
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="assignForm.shift_ids"
+              :options="activeShifts"
+              option-label="name"
+              option-value="id"
+              emit-value
+              map-options
+              :multiple="!assignDialog.isEdit"
+              use-chips
+              :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one shift']"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.name }}</q-item-label>
+                    <q-item-label caption
+                      >{{ formatTime(scope.opt.start_time) }} –
+                      {{ formatTime(scope.opt.end_time) }}</q-item-label
+                    >
+                  </q-item-section>
+                </q-item>
+              </template>
+              <template #selected-item="scope">
+                <q-chip
+                  dense
+                  removable
+                  @remove="scope.removeAtIndex(scope.index)"
+                  :color="getShiftColor(scope.opt.name)"
+                  text-color="white"
+                  size="sm"
+                  icon="schedule"
+                  class="q-my-xs"
+                >
+                  {{ scope.opt.name }}
+                </q-chip>
+              </template>
+            </q-select>
+          </div>
 
           <!-- Summary Banner -->
           <div
             v-if="!assignDialog.isEdit && assignSummary"
             class="assign-summary-banner q-pa-sm rounded-borders"
+            :class="$q.dark.isActive ? 'bg-grey-9 border-grey-8' : 'bg-grey-1'"
           >
-            <q-icon name="info" size="16px" class="q-mr-xs" />
-            {{ assignSummary }}
+            <q-icon name="info" size="16px" class="q-mr-xs" :color="$q.dark.isActive ? 'grey-4' : 'primary'" />
+            <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-primary'">{{ assignSummary }}</span>
           </div>
 
           <!-- Date Range -->
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-gutter-sm">
             <div class="col-6">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">From Date *</div>
               <q-input
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model="assignForm.date_from"
                 type="date"
-                label="From Date *"
                 :rules="[(v) => !!v || 'Required']"
               />
             </div>
             <div class="col-6">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">To Date *</div>
               <q-input
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model="assignForm.date_to"
                 type="date"
-                label="To Date *"
                 :rules="[(v) => !!v || 'Required']"
               />
             </div>
@@ -632,12 +643,14 @@
 
           <!-- Days of Week -->
           <div>
-            <div class="text-caption text-grey-5 q-mb-sm">REPEAT ON DAYS</div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">REPEAT ON DAYS</div>
             <div class="row q-gutter-xs">
               <q-btn
                 v-for="d in daysOfWeek"
                 :key="d.val"
                 :outline="!assignForm.days.includes(d.val)"
+                :flat="$q.dark.isActive && !assignForm.days.includes(d.val)"
+                :class="$q.dark.isActive && !assignForm.days.includes(d.val) ? 'border border-grey-7' : ''"
                 :color="assignForm.days.includes(d.val) ? 'primary' : 'grey-7'"
                 dense
                 no-caps
@@ -649,7 +662,10 @@
             </div>
           </div>
 
-          <q-input outlined v-model="assignForm.notes" label="Notes" autogrow />
+          <div>
+             <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Notes</div>
+             <q-input :dark="$q.dark.isActive" dense outlined v-model="assignForm.notes" autogrow />
+          </div>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
@@ -665,6 +681,60 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ─── ROSTER UPLOAD & TEMPLATE DIALOG ─── -->
+    <q-dialog v-model="uploadDialog.open" persistent>
+      <q-card style="min-width: 500px; padding: 0" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'">
+        <q-card-section class="row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+          <div class="text-h6 text-weight-bold">Monthly Roster Upload</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        
+        <q-card-section class="q-pa-lg row q-col-gutter-md">
+          <div class="col-12">
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Select Month/Year *</div>
+            <q-input :dark="$q.dark.isActive" dense outlined v-model="uploadForm.month" type="month" />
+          </div>
+
+          <div class="col-12">
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">1. Download Template</div>
+            <div class="row q-col-gutter-sm items-end">
+              <div class="col-12 col-sm-6">
+                <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Department (Optional)</div>
+                <q-select :dark="$q.dark.isActive" dense outlined v-model="uploadForm.department_id" :options="departments" option-label="name" option-value="id" emit-value map-options clearable />
+              </div>
+              <div class="col-12 col-sm-6 text-right">
+                <q-btn label="Download Template" color="secondary" icon="download" @click="generateTemplate" unelevated no-caps size="md" />
+              </div>
+            </div>
+            <div class="text-caption q-mt-sm text-grey-6">Downloads an Excel template pre-filled with exactly the employees in the selected department.</div>
+          </div>
+
+          <div class="col-12">
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">2. Upload Filled Roster</div>
+            <div>
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Select Excel File *</div>
+              <q-file :dark="$q.dark.isActive" dense outlined v-model="uploadForm.file" accept=".xlsx, .xls, .csv">
+                <template v-slot:prepend>
+                  <q-icon name="attach_file" />
+                </template>
+              </q-file>
+            </div>
+            <div class="text-caption q-mt-sm text-grey-6">Upload the filled template. Valid shift names (e.g. "Morning Shift", "Night") mapped to correctly dated columns will be assigned. Enter "Off" or "-" to leave empty.</div>
+          </div>
+        </q-card-section>
+        
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
+          <q-btn label="Process Upload" color="primary" icon="upload" @click="processRosterUpload" :loading="uploading" unelevated no-caps />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -673,6 +743,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -682,6 +753,7 @@ const viewMode = ref('definitions')
 const shifts = ref([])
 const assignments = ref([])
 const employees = ref([])
+const departments = ref([])
 const employeeOptions = ref([])
 const loadingShifts = ref(false)
 const loadingAssignments = ref(false)
@@ -719,9 +791,6 @@ const shiftForm = reactive({
   break_duration_minutes: 60,
   is_overnight: false,
   is_active: true,
-  shift_type: 'day',
-  night_allowance_amount: 0,
-  night_allowance_type: 'fixed',
 })
 
 function openShiftDialog(shift = null) {
@@ -735,9 +804,6 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: shift.break_duration_minutes || 0,
       is_overnight: shift.is_overnight || false,
       is_active: shift.is_active !== false,
-      shift_type: shift.shift_type || 'day',
-      night_allowance_amount: shift.night_allowance_amount || 0,
-      night_allowance_type: shift.night_allowance_type || 'fixed',
     })
   } else {
     Object.assign(shiftForm, {
@@ -748,9 +814,6 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: 60,
       is_overnight: false,
       is_active: true,
-      shift_type: 'day',
-      night_allowance_amount: 0,
-      night_allowance_type: 'fixed',
     })
   }
   shiftDialog.open = true
@@ -833,10 +896,23 @@ const previewHours = computed(() => {
     const [sh, sm] = shiftForm.start_time.split(':').map(Number)
     const [eh, em] = shiftForm.end_time.split(':').map(Number)
     let mins = eh * 60 + em - (sh * 60 + sm)
-    if (shiftForm.is_overnight && mins < 0) mins += 24 * 60
+    if (mins < 0) mins += 24 * 60
+    else if (shiftForm.is_overnight) mins += 24 * 60
     return (mins / 60).toFixed(1)
   } catch {
     return '—'
+  }
+})
+
+watch([() => shiftForm.start_time, () => shiftForm.end_time], ([st, et]) => {
+  if (st && et) {
+    const [sh, sm] = st.split(':').map(Number)
+    const [eh, em] = et.split(':').map(Number)
+    if (eh * 60 + em < sh * 60 + sm) {
+      shiftForm.is_overnight = true
+    } else {
+      shiftForm.is_overnight = false
+    }
   }
 })
 
@@ -947,19 +1023,158 @@ async function loadAssignments() {
   loadingAssignments.value = false
 }
 
+function openUploadDialog() {
+  uploadForm.file = null
+  uploadForm.month = new Date().toISOString().substring(0, 7)
+  uploadForm.department_id = null
+  uploadDialog.open = true
+}
+
+const uploadDialog = reactive({ open: false })
+const uploadForm = reactive({ file: null, month: '', department_id: null })
+const uploading = ref(false)
+
+function generateTemplate() {
+  const [yyyy, mm] = uploadForm.month.split('-')
+  const daysInMonth = new Date(yyyy, mm, 0).getDate()
+  
+  const header = ['Employee Code', 'Employee Name']
+  for (let i = 1; i <= daysInMonth; i++) {
+    header.push(`${yyyy}-${mm}-${String(i).padStart(2, '0')}`)
+  }
+  const data = [header]
+  
+  const filteredEmps = uploadForm.department_id 
+    ? employees.value.filter(e => e.department_id === uploadForm.department_id)
+    : employees.value
+
+  filteredEmps.forEach(e => {
+     const row = [e.employee_code, e.full_name]
+     for (let i = 1; i <= daysInMonth; i++) row.push('-')
+     data.push(row)
+  })
+  
+  const ws = XLSX.utils.aoa_to_sheet(data)
+  // Auto-width for the first 2 columns
+  ws['!cols'] = [{ wch: 15 }, { wch: 25 }]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'RosterTemplate')
+  XLSX.writeFile(wb, `Roster_Template_${yyyy}_${mm}.xlsx`)
+}
+
+async function processRosterUpload() {
+  if (!uploadForm.file || !uploadForm.month) {
+    $q.notify({ type: 'warning', message: 'Please select a file and month' })
+    return
+  }
+  
+  uploading.value = true
+  try {
+    const file = uploadForm.file
+    const buffer = await file.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: 'array' })
+    const sheetName = workbook.SheetNames[0]
+    const sheet = workbook.Sheets[sheetName]
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+    
+    if (data.length < 2) throw new Error('File is empty or missing data rows')
+    
+    const headers = data[0].map(h => (h !== undefined && h !== null) ? h.toString().toLowerCase().trim() : '')
+    const empIdx = headers.findIndex(h => h.includes('code') || h.includes('employee'))
+    
+    if (empIdx === -1 && data[0][0]) {
+       // Graceful fallback to assume 1st col
+    }
+    const safeEmpIdx = empIdx !== -1 ? empIdx : 0
+
+    const shiftMap = {}
+    shifts.value.forEach(s => { 
+      shiftMap[s.name.toLowerCase().trim()] = s.id 
+      shiftMap[s.name.split(' ')[0].toLowerCase().trim()] = s.id 
+    })
+    
+    const empMap = {}
+    employees.value.forEach(e => { if (e.employee_code) empMap[e.employee_code.toString().toLowerCase().trim()] = e.id })
+    
+    const [yyyy, mm] = uploadForm.month.split('-')
+    const daysInMonth = new Date(yyyy, mm, 0).getDate()
+    const inserts = []
+
+    for (let r = 1; r < data.length; r++) {
+      const row = data[r]
+      if (!row || !row[safeEmpIdx]) continue
+      const empCode = row[safeEmpIdx].toString().toLowerCase().trim()
+      const empId = empMap[empCode]
+      
+      if (!empId) continue // Silently skip rows not matching a valid code
+      
+      for (let c = 0; c < headers.length; c++) {
+        if (c === safeEmpIdx || !data[0][c]) continue
+        
+        let dayOrDate = data[0][c].toString().trim()
+        let dayNum = parseInt(dayOrDate, 10)
+        if (dayOrDate.includes('-')) dayNum = parseInt(dayOrDate.split('-').pop(), 10)
+        
+        if (isNaN(dayNum) || dayNum < 1 || dayNum > daysInMonth) continue
+        
+        const cellVal = row[c]
+        if (!cellVal) continue
+        const shiftName = cellVal.toString().toLowerCase().trim()
+        
+        if (['off', 'x', '-', 'leave'].includes(shiftName)) continue
+        
+        let shiftId = shiftMap[shiftName] || shiftMap[shiftName.replace(' shift', '')]
+        if (!shiftId) {
+          const sObj = shifts.value.find(s => s.name.toLowerCase().includes(shiftName) || shiftName.includes(s.name.toLowerCase()))
+          if (sObj) shiftId = sObj.id
+        }
+        
+        if (shiftId) {
+          const dateStr = `${yyyy}-${mm}-${String(dayNum).padStart(2, '0')}`
+          inserts.push({
+             company_id: authStore.currentBranch?.company_id,
+             branch_id: authStore.currentBranch?.id,
+             employee_id: empId,
+             shift_id: shiftId,
+             assignment_date: dateStr,
+             status: 'scheduled',
+             notes: 'Roster Bulk Import'
+          })
+        }
+      }
+    }
+
+    if (inserts.length === 0) throw new Error('No valid shift assignments found to import. Check shift names and headers.')
+
+    const { error } = await supabase
+       .from('shift_assignments')
+       .upsert(inserts, { onConflict: 'employee_id,shift_id,assignment_date' })
+       
+    if (error) throw error
+    
+    $q.notify({ type: 'positive', message: `Successfully imported ${inserts.length} shift assignments!` })
+    uploadDialog.open = false
+    await loadAssignments()
+
+  } catch (err) {
+    console.error('Upload Error:', err)
+    $q.notify({ type: 'negative', message: err.message || 'Error processing Excel file' })
+  } finally {
+    uploading.value = false
+  }
+}
+
 async function loadEmployees() {
-  loadingAssignments.value = true // Just reusing this to indicate loading if needed, though not mapped
+  loadingAssignments.value = true
   const branchId = authStore.currentBranch?.id
 
   let q = supabase
     .from('employees')
-    .select('id, full_name, employee_code')
+    .select('id, full_name, employee_code, department_id, departments(name)')
     .eq('is_active', true)
     .order('full_name')
 
-  if (branchId) {
-    q = q.eq('branch_id', branchId)
-  }
+  if (branchId) q = q.eq('branch_id', branchId)
 
   const { data, error } = await q
   if (error) console.error(error)
@@ -967,6 +1182,14 @@ async function loadEmployees() {
   employees.value = data || []
   employeeOptions.value = data || []
   loadingAssignments.value = false
+}
+
+async function loadDepartments() {
+  const branchId = authStore.currentBranch?.id
+  let q = supabase.from('departments').select('id, name').eq('is_active', true).order('name')
+  if (branchId) q = q.eq('branch_id', branchId)
+  const { data } = await q
+  departments.value = data || []
 }
 
 function filterEmps(val, update) {
@@ -992,17 +1215,12 @@ async function saveShift() {
   const branchId = authStore.currentBranch?.id
   const companyId = authStore.currentBranch?.company_id
   const payload = {
-    company_id: companyId,
-    branch_id: branchId,
     name: shiftForm.name,
     start_time: shiftForm.start_time,
     end_time: shiftForm.end_time,
     break_duration_minutes: shiftForm.break_duration_minutes || 0,
     is_overnight: shiftForm.is_overnight,
     is_active: shiftForm.is_active,
-    shift_type: shiftForm.shift_type || 'day',
-    night_allowance_amount: shiftForm.night_allowance_amount || 0,
-    night_allowance_type: shiftForm.night_allowance_type || 'fixed',
   }
   try {
     if (shiftDialog.isEdit) {
@@ -1010,6 +1228,9 @@ async function saveShift() {
       if (error) throw error
       $q.notify({ type: 'positive', message: 'Shift updated successfully' })
     } else {
+      // Add branch and company info only on insert to avoid RLS 400s on update
+      payload.company_id = companyId
+      payload.branch_id = branchId
       const { error } = await supabase.from('shifts').insert(payload)
       if (error) throw error
       $q.notify({ type: 'positive', message: 'Shift created successfully' })
@@ -1017,7 +1238,8 @@ async function saveShift() {
     shiftDialog.open = false
     await loadShifts()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message || 'Failed to save shift' })
+    console.error('SAVE SHIFT ERROR:', err)
+    $q.notify({ type: 'negative', message: err?.details || err?.message || 'Failed to save shift' })
   } finally {
     saving.value = false
   }
@@ -1138,10 +1360,8 @@ async function deleteAssignment(row) {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function formatTime(t) {
   if (!t) return '—'
-  const [h, m] = t.split(':').map(Number)
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+  const [h, m] = t.split(':')
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 function getShiftType(shift) {
@@ -1157,7 +1377,8 @@ function calculateHours(shift) {
     const [sh, sm] = shift.start_time.split(':').map(Number)
     const [eh, em] = shift.end_time.split(':').map(Number)
     let mins = eh * 60 + em - (sh * 60 + sm)
-    if (shift.is_overnight && mins < 0) mins += 24 * 60
+    if (mins < 0) mins += 24 * 60
+    else if (shift.is_overnight) mins += 24 * 60
     return (mins / 60).toFixed(1)
   } catch {
     return '—'
@@ -1218,7 +1439,7 @@ watch(
 )
 
 onMounted(async () => {
-  await Promise.all([loadShifts(), loadEmployees()])
+  await Promise.all([loadShifts(), loadEmployees(), loadDepartments()])
   await loadAssignments()
 })
 </script>

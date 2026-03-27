@@ -1048,6 +1048,14 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'WEBSITE',
     group: 'Website Management',
   },
+  {
+    label: 'Hall Bookings',
+    icon: 'meeting_room',
+    to: '/website-hall-bookings',
+    roles: ['admin', 'manager'],
+    section: 'WEBSITE',
+    group: 'Website Management',
+  },
 
   // ─── SYSTEM ────────────────────────────────────────────────────────────────
   {

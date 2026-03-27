@@ -255,6 +255,13 @@ export const REPORT_GROUPS = [
         description: 'Orders by status breakdown',
       },
       {
+        id: 'item-availability',
+        label: 'Item Availability',
+        icon: 'inventory_2',
+        route: '/reports/item-availability',
+        description: 'Track available vs unavailable items marked by waiters',
+      },
+      {
         id: 'delivery-performance',
         label: 'Delivery Performance',
         icon: 'local_shipping',
