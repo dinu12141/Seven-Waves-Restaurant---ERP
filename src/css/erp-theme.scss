@@ -777,3 +777,123 @@ body.body--light {
     transform: rotate(15deg);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HR MODULE — Premium KPI Card System
+   Usage: <q-card flat class="hr-kpi-card hr-kpi-card--blue">
+   ─────────────────────────────────────────────────────────────────────────────
+   Variants: --blue  --green  --amber  --red  --purple  --cyan  --teal  --rose
+             --indigo  --orange
+   
+   IMPORTANT: Color variants are nested inside body theme selectors to achieve
+   specificity (0,3,0) which beats Quasar's global .q-card override (0,2,0).
+   Both use !important so the higher specificity wins.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base card layout & behaviour ──────────────────────────────────────────── */
+.hr-kpi-card {
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  height: 100% !important;
+  transition: transform 0.2s ease, box-shadow 0.25s ease !important;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  /* ── Inner section ─────────────────────────────────── */
+  .hr-kpi-inner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px !important;
+    position: relative;
+    overflow: hidden;
+    min-height: 88px;
+    height: 100%;
+  }
+
+  /* ── Icon bubble ───────────────────────────────────── */
+  .hr-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Text ──────────────────────────────────────────── */
+  .hr-kpi-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.2;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .hr-kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+    font-family: var(--erp-font-family);
+  }
+  .hr-kpi-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 3px;
+  }
+
+  /* ── Watermark background icon ─────────────────────── */
+  .hr-kpi-watermark {
+    position: absolute;
+    right: -4px;
+    bottom: -10px;
+    opacity: 0.08;
+    pointer-events: none;
+    /* Quasar icon SVG fill must be white */
+    color: white !important;
+  }
+}
+
+/* ── Color Variants — nested inside body selectors for specificity (0,3,0) ── */
+/* This beats Quasar's body.body--light .q-card { background !important } (0,2,0) */
+body.body--dark,
+body.body--light {
+  /* Force gradient card backgrounds to override Quasar's .q-card bg */
+  .hr-kpi-card {
+    /* Make q-card section transparent so card gradient shows through */
+    &.q-card {
+      &.hr-kpi-card--blue   { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) !important; }
+      &.hr-kpi-card--green  { background: linear-gradient(135deg, #065f46 0%, #10b981 100%) !important; }
+      &.hr-kpi-card--amber  { background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%) !important; }
+      &.hr-kpi-card--red    { background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%) !important; }
+      &.hr-kpi-card--purple { background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%) !important; }
+      &.hr-kpi-card--cyan   { background: linear-gradient(135deg, #164e63 0%, #06b6d4 100%) !important; }
+      &.hr-kpi-card--teal   { background: linear-gradient(135deg, #134e4a 0%, #14b8a6 100%) !important; }
+      &.hr-kpi-card--rose   { background: linear-gradient(135deg, #881337 0%, #f43f5e 100%) !important; }
+      &.hr-kpi-card--indigo { background: linear-gradient(135deg, #312e81 0%, #6366f1 100%) !important; }
+      &.hr-kpi-card--orange { background: linear-gradient(135deg, #7c2d12 0%, #f97316 100%) !important; }
+    }
+  }
+}
+
+/* ─── HR Main Panel (table/content card) ──────────────── */
+.hr-main-panel {
+  border-radius: 14px !important;
+  border: 1px solid var(--erp-border) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
+  overflow: hidden !important;
+  background: var(--erp-bg-card) !important;
+
+  body.body--dark & {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+

@@ -10,17 +10,43 @@
             <span class="panel-title">Departments</span>
             <q-badge color="primary" :label="departments.length" class="q-ml-xs" />
           </div>
-          <q-btn
-            unelevated
-            no-caps
-            dense
-            icon="add"
-            label="Add"
-            color="primary"
-            size="sm"
-            class="add-btn"
-            @click="openDeptDialog()"
-          />
+          <div class="row q-gutter-x-xs">
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="download"
+              color="positive"
+              size="sm"
+              class="add-btn"
+              @click="exportDeptsExcel"
+            >
+              <q-tooltip>Export Excel</q-tooltip>
+            </q-btn>
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="picture_as_pdf"
+              color="red-6"
+              size="sm"
+              class="add-btn"
+              @click="exportDeptsPDF"
+            >
+              <q-tooltip>Export PDF</q-tooltip>
+            </q-btn>
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="add"
+              label="Add"
+              color="primary"
+              size="sm"
+              class="add-btn q-ml-sm"
+              @click="openDeptDialog()"
+            />
+          </div>
         </div>
 
         <!-- Search -->
@@ -93,17 +119,43 @@
             <span v-if="selectedDept" class="panel-subtitle">— {{ selectedDept.name }}</span>
             <q-badge color="deep-purple-4" :label="filteredDesignations.length" class="q-ml-xs" />
           </div>
-          <q-btn
-            unelevated
-            no-caps
-            dense
-            icon="add"
-            label="Add"
-            color="deep-purple-4"
-            size="sm"
-            class="add-btn"
-            @click="openDesigDialog()"
-          />
+          <div class="row q-gutter-x-xs">
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="download"
+              color="positive"
+              size="sm"
+              class="add-btn"
+              @click="exportDesigExcel"
+            >
+              <q-tooltip>Export Excel</q-tooltip>
+            </q-btn>
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="picture_as_pdf"
+              color="red-6"
+              size="sm"
+              class="add-btn"
+              @click="exportDesigPDF"
+            >
+              <q-tooltip>Export PDF</q-tooltip>
+            </q-btn>
+            <q-btn
+              unelevated
+              no-caps
+              dense
+              icon="add"
+              label="Add"
+              color="deep-purple-4"
+              size="sm"
+              class="add-btn q-ml-sm"
+              @click="openDesigDialog()"
+            />
+          </div>
         </div>
 
         <!-- Filter chips -->
@@ -320,6 +372,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -585,6 +640,123 @@ async function deleteDesig(desig) {
       $q.notify({ type: 'negative', message: e.message })
     }
   })
+}
+
+// ── Export ────────────────────────────────────────────────────────────
+function exportDeptsPDF() {
+  if (!filteredDepts.value || filteredDepts.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Departments Report', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Total Records: ${filteredDepts.value.length}`, 14, 22)
+  
+  const head = [['#', 'Name', 'Description', 'Designations', 'Status']]
+  const body = filteredDepts.value.map((r, i) => [
+    i + 1,
+    r.name || '—',
+    r.description || '—',
+    designationsOf(r.id).length,
+    r.is_active ? 'Active' : 'Inactive'
+  ])
+  
+  autoTable(doc, {
+    startY: 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('departments_report.pdf')
+}
+
+function exportDeptsExcel() {
+  if (!filteredDepts.value || filteredDepts.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredDepts.value.map((r, i) => ({
+    '#': i + 1,
+    'Name': r.name || '',
+    'Description': r.description || '',
+    'Designations Count': designationsOf(r.id).length,
+    'Status': r.is_active ? 'Active' : 'Inactive'
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Departments')
+  XLSX.writeFile(wb, 'departments_report.xlsx')
+}
+
+function exportDesigPDF() {
+  if (!filteredDesignations.value || filteredDesignations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  let title = 'Designations Report'
+  if (selectedDept.value) title += ` - ${selectedDept.value.name}`
+  doc.text(title, 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Total Records: ${filteredDesignations.value.length}`, 14, 22)
+  
+  const head = [['#', 'Title', 'Department', 'Description', 'Status']]
+  const body = filteredDesignations.value.map((r, i) => [
+    i + 1,
+    r.title || '—',
+    getDeptName(r.department_id) || '—',
+    r.description || '—',
+    r.is_active ? 'Active' : 'Inactive'
+  ])
+  
+  autoTable(doc, {
+    startY: 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('designations_report.pdf')
+}
+
+function exportDesigExcel() {
+  if (!filteredDesignations.value || filteredDesignations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredDesignations.value.map((r, i) => ({
+    '#': i + 1,
+    'Title': r.title || '',
+    'Department': getDeptName(r.department_id) || '',
+    'Description': r.description || '',
+    'Status': r.is_active ? 'Active' : 'Inactive'
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  let sheetName = 'Designations'
+  if (selectedDept.value && selectedDept.value.name) {
+    sheetName = selectedDept.value.name.substring(0, 31).replace(/[[\]*/\\?:]/g, '_')
+  }
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+  XLSX.writeFile(wb, 'designations_report.xlsx')
 }
 
 // ── Init ──────────────────────────────────────────────────────────────

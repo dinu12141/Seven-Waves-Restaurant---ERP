@@ -57,6 +57,8 @@
         <q-btn color="primary" icon="add" label="Add Employee" @click="openForm()" no-caps />
         <q-btn color="amber-8" text-color="dark" icon="badge" label="Add Designation" @click="openDesigDialog()" no-caps />
         <q-btn color="indigo" icon="account_tree" label="Add Department" @click="openDeptDialog()" no-caps />
+        <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps />
+        <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps />
       </div>
       
       <q-space class="gt-sm" />
@@ -308,9 +310,16 @@
                 </div>
               </div>
               <div class="col-12 col-md-6">
-                <div class="text-caption">Basic Salary</div>
-                <q-input :dark="$q.dark.isActive" outlined dense v-model="form.salary" />
-              </div>
+                <div class="text-caption">Department:</div>
+                <q-select
+                  :dark="$q.dark.isActive"
+                  outlined dense
+                  v-model="form.department_id"
+                  :options="departmentOptions"
+                  emit-value map-options
+                  clearable
+                  placeholder="— Select Department —"
+                /></div>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Salary Type:</div>
@@ -345,22 +354,7 @@
                 </div>
               </div>
 
-              <div class="col-12 col-md-6">
-                <div class="text-caption">Shift:</div>
-                <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.shift" :options="getDynOptions('shift')">
-                    <template #option="scope">
-                      <q-item v-bind="scope.itemProps">
-                        <q-item-section>{{ scope.opt }}</q-item-section>
-                        <q-item-section side v-if="dynOptions.shift.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('shift', scope.opt)" />
-                        </q-item-section>
-                      </q-item>
-                    </template>
-                  </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('shift')"><q-tooltip>Add option</q-tooltip></q-btn>
-                </div>
-              </div>
+
               <div class="col-12 col-md-6">
                 <div class="text-caption">Promotion Period:</div>
                 <q-input :dark="$q.dark.isActive"
@@ -371,33 +365,8 @@
                 />
               </div>
 
-              <div class="col-12 col-md-6">
-                <q-checkbox :dark="$q.dark.isActive"
-                  v-model="form.epf_etf_eligible"
-                  label="EPF / ETF Eligible"
-                  dense
-                  color="amber-8"
-                  :class="['q-mt-sm', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                />
-              </div>
-              <div class="col-12 col-md-6"></div>
 
-              <template v-if="form.epf_etf_eligible">
-                <div class="col-12 col-md-6">
-                  <div class="text-caption">EPF No</div>
-                  <q-input :dark="$q.dark.isActive" outlined dense v-model="form.epf_no" />
-                </div>
-                <div class="col-12 col-md-6">
-                  <div class="text-caption">EPF Amount</div>
-                  <q-input :dark="$q.dark.isActive" outlined dense v-model="form.epf_amount" />
-                </div>
-              </template>
 
-              <div class="col-12 col-md-6">
-                <div class="text-caption">Welfare Amount</div>
-                <q-input :dark="$q.dark.isActive" outlined dense v-model="form.welfare_amount" />
-              </div>
-              <div class="col-12 col-md-6"></div>
 
               <div class="col-12 col-md-6">
                 <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Company Name:</div>
@@ -482,74 +451,163 @@
 
               <template v-if="form.ot === 'Eligible'">
                 <div class="col-12 col-md-4">
-                  <div class="text-caption">Hourly Rate (LKR)</div>
-                  <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.hourly_rate" type="number" />
+                  <div class="text-caption">Hourly Rate <span class="text-caption text-teal-6">(auto)</span></div>
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    outlined dense
+                    v-model.number="form.hourly_rate"
+                    type="number"
+                    readonly
+                    bg-color="teal-1"
+                    :hint="`Basic ÷ 26 ÷ 8 = LKR ${form.hourly_rate}`"
+                  >
+                    <template #append>
+                      <q-icon name="schedule" color="teal-7" size="16px">
+                        <q-tooltip>Auto: Basic ÷ 26 working days ÷ 8 hours</q-tooltip>
+                      </q-icon>
+                    </template>
+                  </q-input>
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="text-caption">OT Multiplier</div>
                   <q-input :dark="$q.dark.isActive"
-                    outlined
-                    dense
+                    outlined dense
                     v-model.number="form.overtime_rate_multiplier"
                     type="number"
                     hint="Default: 1.5×"
                   />
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="text-caption">Holiday OT Multiplier</div>
-                  <q-input :dark="$q.dark.isActive"
-                    outlined
-                    dense
-                    v-model.number="form.holiday_ot_multiplier"
-                    type="number"
-                    hint="Default: 2.0× (public holidays)"
-                  />
+                  <div class="text-caption">OT Rate <span class="text-caption text-orange-6">(auto)</span></div>
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    outlined dense
+                    :model-value="otRateDisplay"
+                    readonly
+                    bg-color="orange-1"
+                    :hint="`= Hourly × ${form.overtime_rate_multiplier || 1.5}× = LKR ${otRateDisplay}`"
+                  >
+                    <template #append>
+                      <q-icon name="calculate" color="orange-7" size="16px">
+                        <q-tooltip>Auto: Hourly Rate × OT Multiplier</q-tooltip>
+                      </q-icon>
+                    </template>
+                  </q-input>
                 </div>
+
               </template>
-              <div class="col-12 col-md-4" v-if="form.epf_etf_eligible">
-                <div class="text-caption">EPF % (Employee)</div>
-                <q-input :dark="$q.dark.isActive"
-                  outlined
-                  dense
-                  v-model.number="form.epf_employee_pct"
-                  type="number"
-                  suffix="%"
+              <!-- EPF / ETF block (inside Salary Config) -->
+              <div class="col-12">
+                <q-separator :dark="$q.dark.isActive" class="q-mb-sm" spaced />
+                <q-checkbox
+                  :dark="$q.dark.isActive"
+                  v-model="form.epf_etf_eligible"
+                  label="EPF / ETF Eligible"
+                  dense color="amber-8"
+                  :class="[$q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
                 />
               </div>
 
+              <template v-if="form.epf_etf_eligible">
+                <div class="col-12 col-md-4">
+                  <div class="text-caption">EPF No</div>
+                  <q-input :dark="$q.dark.isActive" outlined dense v-model="form.epf_no" />
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption">EPF % (Employee)</div>
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    outlined dense
+                    v-model.number="form.epf_employee_pct"
+                    type="number"
+                    suffix="%"
+                  />
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption">EPF Amount <span class="text-caption text-amber-6">(auto)</span></div>
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    outlined dense
+                    v-model="form.epf_amount"
+                    readonly
+                    bg-color="amber-1"
+                    :hint="`= Basic × ${form.epf_employee_pct || 8}% = LKR ${form.epf_amount}`"
+                  >
+                    <template #append>
+                      <q-icon name="calculate" color="amber-7" size="16px">
+                        <q-tooltip>Auto-calculated: Basic Salary × EPF%</q-tooltip>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </div>
+              </template>
+
               <div class="col-12">
-                <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Allowances (LKR)</div>
-                <div class="row q-col-gutter-md">
+                <!-- Allowances header + Add button -->
+                <div class="row items-center q-mb-xs">
+                  <div :class="['text-caption col', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Allowances (LKR)</div>
+                  <q-btn
+                    flat round dense icon="add_circle" color="teal" size="sm"
+                    @click="addExtraAllowance"
+                  >
+                    <q-tooltip>Add custom allowance</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <!-- Fixed allowances -->
+                <div class="row q-col-gutter-md q-mb-sm">
                   <div class="col-12 col-md-4">
                     <div class="text-caption" style="font-size: 11px;">Housing</div>
-                    <q-input :dark="$q.dark.isActive"
-                      outlined
-                      dense
-                      v-model.number="form.housing_allowance"
-                      type="number"
-                      placeholder="0.00"
-                    />
+                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.housing_allowance" type="number" placeholder="0.00" />
                   </div>
                   <div class="col-12 col-md-4">
                     <div class="text-caption" style="font-size: 11px;">Transport</div>
-                    <q-input :dark="$q.dark.isActive"
-                      outlined
-                      dense
-                      v-model.number="form.transport_allowance"
-                      type="number"
-                      placeholder="0.00"
-                    />
+                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.transport_allowance" type="number" placeholder="0.00" />
                   </div>
                   <div class="col-12 col-md-4">
                     <div class="text-caption" style="font-size: 11px;">Meals</div>
-                    <q-input :dark="$q.dark.isActive"
-                      outlined
-                      dense
-                      v-model.number="form.meal_allowance"
-                      type="number"
-                      placeholder="0.00"
-                    />
+                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.meal_allowance" type="number" placeholder="0.00" />
                   </div>
+                </div>
+
+                <!-- Dynamic extra allowances -->
+                <div v-if="extraAllowances.length" class="q-gutter-y-xs">
+                  <div
+                    v-for="(item, idx) in extraAllowances"
+                    :key="idx"
+                    class="row q-col-gutter-sm items-center"
+                  >
+                    <div class="col-12 col-md-5">
+                      <q-input
+                        :dark="$q.dark.isActive"
+                        outlined dense
+                        v-model="item.label"
+                        placeholder="Allowance name (e.g. Attendance)"
+                      />
+                    </div>
+                    <div class="col-12 col-md-5">
+                      <q-input
+                        :dark="$q.dark.isActive"
+                        outlined dense
+                        v-model.number="item.amount"
+                        type="number"
+                        placeholder="0.00"
+                        prefix="LKR"
+                      />
+                    </div>
+                    <div class="col-auto">
+                      <q-btn flat round dense icon="remove_circle" color="negative" size="sm"
+                        @click="extraAllowances.splice(idx, 1)"
+                      >
+                        <q-tooltip>Remove</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Total summary -->
+                <div v-if="extraAllowances.length" :class="['text-caption q-mt-xs', $q.dark.isActive ? 'text-teal-4' : 'text-teal-8']">
+                  Other allowances total: LKR {{ extraAllowances.reduce((s, a) => s + (Number(a.amount) || 0), 0).toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}
                 </div>
               </div>
             </div>
@@ -823,6 +881,7 @@
       maximized
       transition-show="slide-up"
       transition-hide="slide-down"
+      @hide="unsubscribeProfileRealtime"
     >
       <q-card
         class="full-width" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
@@ -1419,7 +1478,20 @@
                           EPF Amount
                         </div>
                         <div class="col-9">
-                          <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.epf_amount" />
+                          <q-input
+                            :dark="$q.dark.isActive"
+                            outlined dense
+                            v-model="viewForm.epf_amount"
+                            readonly
+                            bg-color="amber-1"
+                            :hint="`= LKR ${viewForm.epf_amount} (Basic × ${viewForm.epf_employee_pct || 8}%)`"
+                          >
+                            <template #append>
+                              <q-icon name="calculate" color="amber-7" size="16px">
+                                <q-tooltip>Auto-calculated: Basic Salary × EPF%</q-tooltip>
+                              </q-icon>
+                            </template>
+                          </q-input>
                         </div>
                       </template>
 
@@ -1543,11 +1615,13 @@
                         Shift
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
-                          outlined
-                          dense
+                        <q-select
+                          :dark="$q.dark.isActive"
+                          outlined dense
                           v-model="viewForm.shift"
-                          :options="['Select Shift']"
+                          :options="getDynOptions('shift')"
+                          clearable
+                          placeholder="— Optional —"
                         />
                       </div>
 
@@ -1625,97 +1699,326 @@
 
                   <!-- ══ DOCUMENTS TAB ══════════════════════════════════════ -->
                   <q-tab-panel name="documents" class="q-pa-md">
-                    <div class="row items-center q-mb-md">
-                      <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
-                        Employee Documents
+
+                    <!-- Tab header -->
+                    <div class="row items-center q-mb-lg">
+                      <div>
+                        <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-2' : 'text-grey-9']">
+                          Employee Documents
+                        </div>
+                        <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">
+                          {{ empDocuments.length }} file{{ empDocuments.length !== 1 ? 's' : '' }} uploaded
+                        </div>
                       </div>
                       <q-space />
                       <q-btn
-                        color="amber-8"
-                        text-color="dark"
-                        icon="upload"
-                        label="Upload Document"
-                        unelevated
-                        no-caps
-                        size="sm"
+                        unelevated color="amber-8" text-color="dark"
+                        icon="upload_file" label="Upload Document"
+                        no-caps size="sm"
                         @click="openUploadDoc"
                       />
                     </div>
 
-                    <!-- Document Type Grid -->
-                    <div class="row q-col-gutter-md q-mb-lg">
+                    <!-- Loading state -->
+                    <div v-if="loadingDocs" class="row justify-center q-pa-xl">
+                      <q-spinner-orbit color="amber" size="48px" />
+                    </div>
+
+                    <!-- Document type cards grid -->
+                    <div v-else class="row q-col-gutter-md">
                       <div
                         v-for="docType in docTypeGroups"
                         :key="docType.key"
-                        class="col-12 col-sm-6 col-md-4"
+                        class="col-12 col-sm-6 col-lg-4"
                       >
                         <q-card
                           flat
-                          bordered
-                          style="
-                            
-                            
-                          "
+                          :style="$q.dark.isActive
+                            ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px'
+                            : 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px'"
+                          style="min-height: 130px; display: flex; flex-direction: column"
                         >
-                          <q-card-section class="q-pa-sm">
-                            <div class="row items-center q-mb-xs">
+                          <!-- Card header -->
+                          <div
+                            class="row items-center q-px-md q-pt-md q-pb-sm"
+                            style="border-bottom: 1px solid rgba(0,0,0,0.07); flex-shrink: 0"
+                          >
+                            <q-icon
+                              :name="docType.icon"
+                              :color="docType.color"
+                              size="20px"
+                              class="q-mr-sm"
+                            />
+                            <div :class="['text-caption text-weight-bold col', $q.dark.isActive ? 'text-grey-2' : 'text-grey-8']">
+                              {{ docType.label }}
+                            </div>
+                            <q-badge
+                              v-if="empDocsByType[docType.key]?.length"
+                              :color="docType.color"
+                              :label="empDocsByType[docType.key].length"
+                              outline
+                              style="font-size: 10px; padding: 2px 7px"
+                            />
+                          </div>
+
+                          <!-- Document list -->
+                          <div
+                            v-if="empDocsByType[docType.key]?.length"
+                            class="col"
+                            style="overflow: hidden"
+                          >
+                            <div
+                              v-for="doc in empDocsByType[docType.key]"
+                              :key="doc.id"
+                              class="row items-center q-px-md q-py-sm"
+                              style="border-bottom: 1px solid rgba(0,0,0,0.05)"
+                            >
+                              <!-- File type icon -->
                               <q-icon
-                                :name="docType.icon"
-                                :color="docType.color"
+                                :name="doc.mime_type?.startsWith('image') ? 'image' : 'picture_as_pdf'"
+                                :color="doc.mime_type?.startsWith('image') ? 'teal-6' : 'deep-orange-5'"
+                                size="18px"
+                                class="q-mr-sm flex-shrink-0"
+                              />
+
+                              <!-- Name + date -->
+                              <div class="col" style="min-width: 0">
+                                <div
+                                  class="text-caption text-weight-medium ellipsis cursor-pointer"
+                                  :class="$q.dark.isActive ? 'text-amber-4' : 'text-indigo-7'"
+                                  style="text-decoration: underline; text-underline-offset: 2px"
+                                  @click="previewDoc(doc)"
+                                >
+                                  {{ doc.doc_name || doc.file_path?.split('/').pop() || 'Document' }}
+                                </div>
+                                <div class="text-grey-6" style="font-size: 10px">
+                                  {{ new Date(doc.created_at).toLocaleDateString('en-GB') }}
+                                </div>
+                              </div>
+
+                              <!-- Actions -->
+                              <div class="row no-wrap items-center q-gutter-xs q-ml-xs">
+                                <q-icon
+                                  v-if="doc.is_verified"
+                                  name="verified"
+                                  color="green-6"
+                                  size="14px"
+                                >
+                                  <q-tooltip>Verified</q-tooltip>
+                                </q-icon>
+                                <q-btn
+                                  flat round dense
+                                  icon="visibility"
+                                  color="blue-6"
+                                  size="xs"
+                                  :loading="previewLoading && previewDocId === doc.id"
+                                  @click="previewDoc(doc)"
+                                >
+                                  <q-tooltip>View</q-tooltip>
+                                </q-btn>
+                                <q-btn
+                                  flat round dense
+                                  icon="delete_outline"
+                                  color="red-5"
+                                  size="xs"
+                                  @click="confirmDeleteDoc(doc)"
+                                >
+                                  <q-tooltip>Delete</q-tooltip>
+                                </q-btn>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Empty state -->
+                          <div
+                            v-else
+                            class="col column items-center justify-center q-pa-md"
+                            :style="$q.dark.isActive
+                              ? 'border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; margin: 0 12px 12px'
+                              : 'border: 1.5px dashed #e2e8f0; border-radius: 0 0 8px 8px; margin: 0 12px 12px'"
+                          >
+                            <q-icon name="upload_file" size="24px" :color="$q.dark.isActive ? 'grey-7' : 'grey-4'" />
+                            <div :class="['text-caption q-mt-xs', $q.dark.isActive ? 'text-grey-6' : 'text-grey-5']">
+                              Not uploaded
+                            </div>
+                          </div>
+                        </q-card>
+                      </div>
+                    </div>
+
+                  </q-tab-panel>
+
+
+                  <!-- ══ LEAVE TAB ══════════════════════════════════════════════ -->
+                  <q-tab-panel name="leave" class="q-pa-md">
+
+                    <!-- Header row -->
+                    <div class="row items-center q-mb-md">
+                      <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                        Leave Balances — {{ new Date().getFullYear() }}
+                      </div>
+                      <q-space />
+                      <q-btn
+                        flat round dense size="sm"
+                        icon="refresh"
+                        :loading="loadingLeave"
+                        color="amber-7"
+                        @click="loadEmpLeaveBalances(viewEmp?.id)"
+                      >
+                        <q-tooltip>Refresh</q-tooltip>
+                      </q-btn>
+                    </div>
+
+                    <!-- Loading -->
+                    <div v-if="loadingLeave" class="row justify-center q-pa-xl">
+                      <q-spinner-orbit color="amber" size="48px" />
+                    </div>
+
+                    <!-- Empty state -->
+                    <div
+                      v-else-if="!empLeaveBalances.length"
+                      :class="['text-center q-pa-xl', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                    >
+                      <q-icon name="event_busy" size="48px" class="q-mb-sm" />
+                      <div>No leave types configured for this company yet.</div>
+                    </div>
+
+                    <!-- Leave type cards grid -->
+                    <div v-else class="row q-col-gutter-md">
+                      <div
+                        v-for="lb in empLeaveBalances"
+                        :key="lb.leave_type_id"
+                        class="col-12 col-sm-6 col-md-4"
+                      >
+                        <q-card
+                          flat bordered
+                          :style="lb.remaining_days <= 0
+                            ? 'border-color: rgba(239,68,68,0.3)'
+                            : lb.remaining_days < lb.total_entitlement * 0.3
+                              ? 'border-color: rgba(251,191,36,0.4)'
+                              : 'border-color: rgba(34,197,94,0.3)'"
+                        >
+                          <q-card-section class="q-pa-md">
+                            <!-- Leave type name + paid badge -->
+                            <div class="row items-center q-mb-sm">
+                              <q-icon
+                                name="event_available"
+                                :color="lb.remaining_days <= 0 ? 'red-5' : lb.remaining_days < lb.total_entitlement * 0.3 ? 'amber-7' : 'green-6'"
                                 size="18px"
                                 class="q-mr-xs"
                               />
-                              <span :class="['text-caption text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">{{
-                                docType.label
-                              }}</span>
+                              <div :class="['text-caption text-weight-bold col ellipsis', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                                {{ lb.leave_type_name }}
+                              </div>
+                              <q-badge
+                                :color="lb.is_paid ? 'green-7' : 'grey-6'"
+                                :label="lb.is_paid ? 'Paid' : 'Unpaid'"
+                                class="q-ml-xs"
+                                style="font-size: 10px"
+                              />
                             </div>
-                            <div
-                              v-if="empDocsByType[docType.key] && empDocsByType[docType.key].length"
-                            >
-                              <div
-                                v-for="doc in empDocsByType[docType.key]"
-                                :key="doc.id"
-                                class="row items-center q-py-xs"
-                              >
-                                <div class="col ellipsis">
-                                  <a
-                                    :href="getDocUrl(doc.file_path)"
-                                    target="_blank"
-                                    class="text-amber-8 text-weight-medium text-caption"
-                                    style="text-decoration: none"
-                                  >
-                                    {{ doc.document_name || doc.file_name }}
-                                  </a>
-                                  <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="font-size: 10px">
-                                    {{ new Date(doc.created_at).toLocaleDateString() }}
-                                  </div>
-                                </div>
-                                <div class="col-auto">
-                                  <q-icon
-                                    v-if="doc.is_verified"
-                                    name="check_circle"
-                                    color="green"
-                                    size="14px"
-                                  >
-                                    <q-tooltip>Verified</q-tooltip>
-                                  </q-icon>
-                                </div>
+
+                            <!-- Stats row -->
+                            <div class="row q-col-gutter-xs text-center q-mb-sm">
+                              <div class="col-4">
+                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Entitled</div>
+                                <div class="text-weight-bold text-caption text-blue-6">{{ lb.total_entitlement }}</div>
+                              </div>
+                              <div class="col-4">
+                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Used</div>
+                                <div class="text-weight-bold text-caption text-red-5">{{ lb.used_days }}</div>
+                              </div>
+                              <div class="col-4">
+                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Left</div>
+                                <div
+                                  class="text-weight-bold text-caption"
+                                  :class="lb.remaining_days <= 0 ? 'text-red-5' : 'text-green-6'"
+                                >{{ lb.remaining_days }}</div>
                               </div>
                             </div>
-                            <div
-                              v-else
-                              :class="['text-caption q-mt-xs', $q.dark.isActive ? 'text-grey-6' : 'text-grey-8']"
-                            >
-                              No documents uploaded
+
+                            <!-- Progress bar -->
+                            <q-linear-progress
+                              :value="lb.total_entitlement > 0 ? (lb.used_days / lb.total_entitlement) : 0"
+                              :color="lb.remaining_days <= 0 ? 'red-5' : lb.remaining_days < lb.total_entitlement * 0.3 ? 'amber-7' : 'green-6'"
+                              track-color="grey-3"
+                              size="6px"
+                              rounded
+                              class="q-mb-xs"
+                            />
+
+                            <!-- Pending -->
+                            <div v-if="lb.pending_days > 0" class="text-caption text-amber-7" style="font-size: 10px">
+                              <q-icon name="hourglass_empty" size="10px" /> {{ lb.pending_days }} days pending approval
                             </div>
                           </q-card-section>
                         </q-card>
                       </div>
                     </div>
+
+                    <!-- Summary totals -->
+                    <div v-if="empLeaveBalances.length" class="row q-col-gutter-md q-mt-md">
+                      <div class="col-12">
+                        <q-card flat :style="$q.dark.isActive ? 'background: rgba(255,255,255,0.04)' : 'background: rgba(0,0,0,0.03)'">
+                          <q-card-section class="row q-pa-sm q-col-gutter-lg justify-around text-center">
+                            <div>
+                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Entitlement</div>
+                              <div class="text-subtitle2 text-weight-bold text-blue-6">
+                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.total_entitlement), 0) }} days
+                              </div>
+                            </div>
+                            <div>
+                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Used</div>
+                              <div class="text-subtitle2 text-weight-bold text-red-5">
+                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.used_days), 0) }} days
+                              </div>
+                            </div>
+                            <div>
+                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Remaining</div>
+                              <div class="text-subtitle2 text-weight-bold text-green-6">
+                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.remaining_days), 0) }} days
+                              </div>
+                            </div>
+                            <div v-if="empLeaveBalances.some(l => l.pending_days > 0)">
+                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Pending</div>
+                              <div class="text-subtitle2 text-weight-bold text-amber-7">
+                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.pending_days), 0) }} days
+                              </div>
+                            </div>
+                          </q-card-section>
+                        </q-card>
+                      </div>
+                    </div>
+
                   </q-tab-panel>
 
                   <!-- ══ ADVANCES TAB ═══════════════════════════════════════ -->
+
                   <q-tab-panel name="advances" class="q-pa-md">
+                    <!-- Advances header -->
+                    <div class="row items-center q-mb-md">
+                      <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                        Salary Advances
+                      </div>
+                      <q-space />
+                      <q-btn
+                        flat round dense size="sm"
+                        icon="refresh"
+                        :loading="loadingAdvances"
+                        color="amber-7"
+                        class="q-mr-sm"
+                        @click="loadEmpAdvances(viewEmp?.id)"
+                      >
+                        <q-tooltip>Refresh</q-tooltip>
+                      </q-btn>
+                      <q-btn
+                        unelevated size="sm" no-caps
+                        color="amber-8" text-color="dark"
+                        icon="add" label="New Advance"
+                        @click="showNewAdvance = true"
+                      />
+                    </div>
+
                     <div class="row q-col-gutter-lg q-mb-lg">
                       <div class="col-4">
                         <q-card
@@ -1904,6 +2207,80 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ══ DOCUMENT PREVIEW DIALOG ══════════════════════════════════════════ -->
+    <q-dialog v-model="showDocPreview" maximized>
+      <q-card style="background: #0f172a; color: #fff; display: flex; flex-direction: column; position: relative">
+        <!-- Header -->
+        <q-card-section class="row items-center q-py-sm q-px-md" style="background: #1e293b; flex-shrink: 0">
+          <q-icon name="description" color="amber-6" size="22px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold col ellipsis">{{ previewDocMeta?.doc_name || 'Document Preview' }}</div>
+          <q-space />
+          <q-btn
+            v-if="previewUrl"
+            unelevated color="amber-8" text-color="dark"
+            icon="download" label="Download" size="sm" no-caps class="q-mr-sm"
+            :href="previewUrl" target="_blank" type="a"
+          />
+          <q-btn flat round dense icon="close" color="grey-4" v-close-popup />
+        </q-card-section>
+        <q-separator dark />
+
+        <!-- Unified loading/content overlay -->
+        <div class="col" style="position: relative; overflow: hidden; min-height: 0">
+
+          <!-- Spinner overlay — shown while fetching URL OR while content renders -->
+          <div
+            v-if="previewLoading || previewContentLoading"
+            style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10"
+          >
+            <q-spinner-orbit color="amber" size="64px" />
+            <div class="text-grey-4 q-mt-lg text-subtitle2">
+              {{ previewLoading ? 'Preparing document…' : 'Rendering…' }}
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div
+            v-if="!previewLoading && previewError"
+            class="column items-center justify-center q-pa-xl text-center"
+            style="height: 100%"
+          >
+            <q-icon name="error_outline" color="red-4" size="64px" />
+            <div class="text-grey-4 text-subtitle1 q-mt-md">{{ previewError }}</div>
+            <q-btn
+              unelevated color="amber-8" text-color="dark"
+              label="Try Download Instead" icon="download" no-caps class="q-mt-lg"
+              :href="previewUrl" target="_blank" type="a"
+            />
+          </div>
+
+          <!-- Image preview -->
+          <div
+            v-if="!previewLoading && !previewError && previewIsImage && previewUrl"
+            class="column items-center justify-center q-pa-md"
+            style="height: 100%; overflow: auto"
+          >
+            <img
+              :src="previewUrl"
+              style="max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 8px"
+              alt="Document preview"
+              @load="previewContentLoading = false"
+              @error="() => { previewContentLoading = false; previewError = 'Image could not be displayed. Try downloading.' }"
+            />
+          </div>
+
+          <!-- PDF / iframe preview -->
+          <iframe
+            v-if="!previewLoading && !previewError && !previewIsImage && previewUrl"
+            :src="previewUrl"
+            style="border: none; width: 100%; height: 100%; display: block"
+            @load="previewContentLoading = false"
+          />
+        </div>
+      </q-card>
+    </q-dialog>
+
 
     <!-- ══ NEW SALARY ADVANCE DIALOG ══════════════════════════════════════════ -->
     <q-dialog v-model="showNewAdvance" persistent>
@@ -2161,6 +2538,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as xlsx from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -2233,9 +2613,9 @@ const BASE_OPTIONS = {
   gender: ['Male', 'Female', 'Other'],
   title: ['Mr.', 'Mrs.', 'Miss', 'Rev.'],
   civil_status: ['Single', 'Married', 'Divorced', 'Widowed'],
-  salary_type: ['Shift Base', 'Monthly', 'Daily'],
+  salary_type: ['Weekly', 'Monthly', 'Daily'],
   ot: ['Eligible', 'Not Eligible'],
-  shift: ['Select Shift', 'Day Shift', 'Night Shift'],
+  shift: ['Day Shift', 'Night Shift'],
   internal_company: ['SEVEN WAVES (PVT) LTD'],
   payment_type: ['Bank', 'Cash', 'Cheque'],
 }
@@ -2791,9 +3171,9 @@ const defaultForm = {
   hire_date: new Date().toISOString().split('T')[0],
   designation_id: null,
   salary: '', // Basic Salary (kept for display in profile)
-  pay_type: 'Shift Base',
+  pay_type: 'Monthly',
   ot: 'Eligible',
-  shift: 'Select Shift',
+  shift: null,
   probation_period: '',
   epf_no: '',
   epf_amount: '',
@@ -2841,6 +3221,53 @@ const defaultForm = {
 }
 
 const form = reactive({ ...defaultForm })
+
+// ── Custom extra allowances (dynamic) ────────────────────────────────────────
+const extraAllowances = ref([])
+function addExtraAllowance() {
+  extraAllowances.value.push({ label: '', amount: 0 })
+}
+
+// ── EPF auto-calculation (Add Form) ──────────────────────────────────────────
+// Formula: (basic_salary / 26) * 26 * EPF% = basic_salary * EPF%
+// Simplified: full-month EPF = basic_salary × epf_employee_pct%
+function recalcEpf(basicSalary, pct) {
+  if (!basicSalary || !pct || isNaN(basicSalary) || isNaN(pct)) {
+    return '0.00'
+  }
+  return (Number(basicSalary) * Number(pct) / 100).toFixed(2)
+}
+
+watch(
+  () => [form.basic_salary, form.epf_employee_pct, form.epf_etf_eligible],
+  ([basic, pct, eligible]) => {
+    if (eligible) {
+      form.epf_amount = recalcEpf(basic, pct || 8)
+    }
+  },
+  { immediate: true },
+)
+
+// ── OT Hourly Rate auto-calculation ──────────────────────────────────────────
+// Formula: hourly_rate = basic_salary / 26 / 8
+// OT Rate  = hourly_rate × overtime_rate_multiplier
+watch(
+  () => form.basic_salary,
+  (basic) => {
+    if (basic && !isNaN(basic) && Number(basic) > 0) {
+      form.hourly_rate = Number((Number(basic) / 26 / 8).toFixed(2))
+    } else {
+      form.hourly_rate = 0
+    }
+  },
+  { immediate: true },
+)
+
+const otRateDisplay = computed(() => {
+  const h = Number(form.hourly_rate) || 0
+  const m = Number(form.overtime_rate_multiplier) || 1.5
+  return (h * m).toFixed(2)
+})
 
 const columns = [
   { name: 'view_id', label: 'ID', align: 'left' },
@@ -2950,14 +3377,36 @@ const uploadDocForm = reactive({
   notes: '',
 })
 
-const docTypeGroups = [
-  { key: 'nic_front', label: 'NIC Front', icon: 'badge', color: 'cyan' },
-  { key: 'nic_back', label: 'NIC Back', icon: 'badge', color: 'cyan' },
-  { key: 'photo', label: 'Photograph', icon: 'photo_camera', color: 'amber' },
-  { key: 'contract_letter', label: 'Contract Letter', icon: 'description', color: 'green' },
-  { key: 'gs_letter', label: 'GS Letter', icon: 'article', color: 'indigo' },
-  { key: 'birth_certificate', label: 'Birth Certificate', icon: 'child_care', color: 'purple' },
-]
+
+// ── All known doc type metadata ────────────────────────────────────────────────
+const DOC_TYPE_META = {
+  nic_front:          { label: 'NIC Front',            icon: 'badge',             color: 'cyan'   },
+  nic_back:           { label: 'NIC Back',             icon: 'badge',             color: 'cyan'   },
+  photo:              { label: 'Photograph',            icon: 'photo_camera',      color: 'amber'  },
+  contract_letter:    { label: 'Contract Letter',       icon: 'description',       color: 'green'  },
+  gs_letter:          { label: 'GS Letter',             icon: 'article',           color: 'indigo' },
+  birth_certificate:  { label: 'Birth Certificate',     icon: 'child_care',        color: 'purple' },
+  police_report:      { label: 'Police Report',         icon: 'local_police',      color: 'blue'   },
+  driving_license:    { label: 'Driving License',       icon: 'drive_eta',         color: 'teal'   },
+  passport:           { label: 'Passport',              icon: 'travel_explore',    color: 'blue'   },
+  educational_cert:   { label: 'Educational Cert',      icon: 'school',            color: 'orange' },
+  experience_letter:  { label: 'Experience Letter',     icon: 'work',              color: 'brown'  },
+  bank_statement:     { label: 'Bank Statement',        icon: 'account_balance',   color: 'green'  },
+  cv:                 { label: 'CV / Resume',           icon: 'person_pin',        color: 'deep-purple' },
+  other:              { label: 'Other',                 icon: 'folder',            color: 'grey'   },
+}
+
+// Base types always shown; plus any types existing in employee's actual docs
+const BASE_DOC_TYPES = ['nic_front', 'nic_back', 'photo', 'contract_letter', 'gs_letter', 'birth_certificate']
+
+const docTypeGroups = computed(() => {
+  const existing = new Set(empDocuments.value.map((d) => d.doc_type))
+  const allKeys = [...new Set([...BASE_DOC_TYPES, ...existing])]
+  return allKeys.map((key) => ({
+    key,
+    ...(DOC_TYPE_META[key] || { label: key, icon: 'folder', color: 'grey' }),
+  }))
+})
 
 const docTypeOptions = [
   { label: 'NIC Front', value: 'nic_front' },
@@ -2995,10 +3444,110 @@ async function loadEmpDocuments(empId) {
       .order('created_at', { ascending: false })
     if (error) throw error
     empDocuments.value = data || []
+    // Pre-fetch signed URLs in background for instant preview
+    prefetchDocUrls(data || [])
   } catch (err) {
     console.error('[HR-Docs] Failed to load:', err.message)
   } finally {
     loadingDocs.value = false
+  }
+}
+
+// ── Document Preview & Delete ──────────────────────────────────────────────────
+const showDocPreview        = ref(false)
+const previewUrl            = ref('')
+const previewIsImage        = ref(false)
+const previewLoading        = ref(false)
+const previewContentLoading = ref(false)
+const previewError          = ref('')
+const previewDocMeta        = ref(null)
+const previewDocId          = ref(null)
+
+// Signed URL cache: { [doc.id]: signedUrl }
+const docSignedUrls = ref({})
+
+// Pre-fetch signed URLs for all docs in background (1-hr expiry)
+async function prefetchDocUrls(docs) {
+  if (!docs?.length) return
+  const pending = docs.filter((d) => !docSignedUrls.value[d.id])
+  if (!pending.length) return
+  await Promise.all(
+    pending.map(async (doc) => {
+      try {
+        const { data } = await supabase.storage
+          .from('employee-documents')
+          .createSignedUrl(doc.file_path, 3600)
+        if (data?.signedUrl) docSignedUrls.value[doc.id] = data.signedUrl
+      } catch { /* silent */ }
+    })
+  )
+}
+
+async function previewDoc(doc) {
+  previewDocId.value          = doc.id
+  previewDocMeta.value        = doc
+  previewError.value          = ''
+  previewIsImage.value        = (doc.mime_type || '').startsWith('image')
+  previewContentLoading.value = true   // keep spinner until img/iframe @load
+  showDocPreview.value        = true
+
+  // Use cached URL immediately if available
+  if (docSignedUrls.value[doc.id]) {
+    previewUrl.value     = docSignedUrls.value[doc.id]
+    previewLoading.value = false
+    previewDocId.value   = null
+    return
+  }
+
+  // Otherwise fetch now
+  previewLoading.value = true
+  previewUrl.value     = ''
+  try {
+    const { data, error } = await supabase.storage
+      .from('employee-documents')
+      .createSignedUrl(doc.file_path, 3600)
+    if (error) throw error
+    docSignedUrls.value[doc.id] = data.signedUrl
+    previewUrl.value = data.signedUrl
+  } catch (err) {
+    previewError.value          = 'Could not load document: ' + err.message
+    previewContentLoading.value = false
+  } finally {
+    previewLoading.value = false
+    previewDocId.value   = null
+  }
+}
+
+function confirmDeleteDoc(doc) {
+  $q.dialog({
+    title: 'Delete Document',
+    message: `Delete "${doc.doc_name || 'this document'}"? This cannot be undone.`,
+    ok: { label: 'Delete', color: 'negative', unelevated: true },
+    cancel: { label: 'Cancel', flat: true, color: 'grey' },
+    persistent: true,
+  }).onOk(() => deleteDoc(doc))
+}
+
+async function deleteDoc(doc) {
+  try {
+    // 1. Remove from storage
+    const { error: storageErr } = await supabase.storage
+      .from('employee-documents')
+      .remove([doc.file_path])
+    if (storageErr) throw storageErr
+
+    // 2. Remove DB record
+    const { error: dbErr } = await supabase
+      .from('employee_documents')
+      .delete()
+      .eq('id', doc.id)
+    if (dbErr) throw dbErr
+
+    // 3. Update local list
+    empDocuments.value = empDocuments.value.filter((d) => d.id !== doc.id)
+    $q.notify({ type: 'positive', message: 'Document deleted' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Delete failed: ' + err.message })
   }
 }
 
@@ -3228,14 +3777,27 @@ const viewForm = reactive({
   bank_account_number: '',
   hire_date: '',
   shift_rate: '',
-  shift: 'Select Shift',
+  shift: null,
   epf_etf_eligible: false,
+  basic_salary: 0,
+  epf_employee_pct: 8,
   morning_ot: false,
   late_deduct: false,
   no_pay_deduct: false,
   epf_attend: false,
   user_pic: null,
 })
+
+// ── EPF auto-calculation (Edit/View Form) ─────────────────────────────────────
+watch(
+  () => [viewForm.basic_salary, viewForm.epf_employee_pct, viewForm.epf_etf_eligible],
+  ([basic, pct, eligible]) => {
+    if (eligible) {
+      viewForm.epf_amount = recalcEpf(basic, pct || 8)
+    }
+  },
+  { immediate: true },
+)
 
 function customFilter(rows, terms, cols, getCellValue) {
   const t = (terms || '').toLowerCase()
@@ -3357,6 +3919,7 @@ function openForm(emp) {
       form[k] = emp[k] ?? defaultForm[k]
     })
     form.id = emp.id
+    extraAllowances.value = []
   } else {
     isEditing.value = false
     Object.assign(form, { ...defaultForm })
@@ -3366,6 +3929,7 @@ function openForm(emp) {
     extraDocEntries.value = []
     customDocEntry.doc_name = ''
     customDocEntry.file = null
+    extraAllowances.value = []
   }
   showForm.value = true
 }
@@ -3413,6 +3977,12 @@ async function viewEmployee(emp) {
         .limit(1)
         .single()
       viewEmpSalary.value = data || null
+      // populate viewForm for EPF auto-calc
+      if (data) {
+        viewForm.basic_salary = data.basic_salary ?? 0
+        viewForm.epf_employee_pct = data.epf_employee_pct ?? 8
+        viewForm.epf_etf_eligible = emp.epf_etf_eligible ?? false
+      }
     } catch {
       viewEmpSalary.value = null
     }
@@ -3425,11 +3995,49 @@ async function viewEmployee(emp) {
     loadEmpLeaveBalances(emp.id).catch(console.error),
     loadEmpAdvances(emp.id).catch(console.error)
   ])
+
+  // Start realtime sync for this employee's leave & advances
+  subscribeProfileRealtime(emp.id)
+}
+
+// ── Realtime subscriptions for Leave & Advances in the profile view ──────────
+let profileRealtimeChannel = null
+
+function subscribeProfileRealtime(empId) {
+  // Clean up any previous subscription
+  if (profileRealtimeChannel) {
+    supabase.removeChannel(profileRealtimeChannel)
+    profileRealtimeChannel = null
+  }
+
+  profileRealtimeChannel = supabase
+    .channel(`profile-realtime-${empId}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'leave_balances',
+      filter: `employee_id=eq.${empId}`
+    }, () => { loadEmpLeaveBalances(empId) })
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'leave_requests',
+      filter: `employee_id=eq.${empId}`
+    }, () => { loadEmpLeaveBalances(empId) })
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'salary_advances',
+      filter: `employee_id=eq.${empId}`
+    }, () => { loadEmpAdvances(empId) })
+    .subscribe()
+}
+
+function unsubscribeProfileRealtime() {
+  if (profileRealtimeChannel) {
+    supabase.removeChannel(profileRealtimeChannel)
+    profileRealtimeChannel = null
+  }
 }
 
 async function saveEmployee() {
   saving.value = true
   try {
+
     const payload = { ...form }
     const empId = payload.id
     delete payload.id
@@ -3449,7 +4057,7 @@ async function saveEmployee() {
       epf_employee_pct: payload.epf_employee_pct ?? 8,
       epf_employer_pct: 12,
       etf_employer_pct: 3,
-      other_allowances: 0,
+      other_allowances: extraAllowances.value.reduce((s, a) => s + (Number(a.amount) || 0), 0),
       salary_type: 'monthly',
       is_current: true,
       effective_from: new Date().toISOString().split('T')[0],
@@ -3506,13 +4114,45 @@ async function saveEmployee() {
     if (isEditing.value) {
       const { error } = await supabase.from('employees').update(payload).eq('id', empId)
       if (error) throw error
+
+      // ── Optimistic update: patch the existing card instantly ──────
+      const idx = employees.value.findIndex((e) => e.id === empId)
+      if (idx !== -1) {
+        employees.value[idx] = {
+          ...employees.value[idx],
+          ...payload,
+          id: empId,
+        }
+      }
       $q.notify({ type: 'positive', message: 'Employee updated successfully' })
     } else {
       const { data, error } = await supabase.from('employees').insert(payload).select('id').single()
       if (error) throw error
       targetEmpId = data.id
+
+      // ── Optimistic insert: show new card immediately ──────────────
+      employees.value = [
+        {
+          ...payload,
+          id: targetEmpId,
+          departments: departmentOptions.value.find((d) => d.value === payload.department_id)
+            ? { name: departmentOptions.value.find((d) => d.value === payload.department_id).label }
+            : null,
+          designations: designationOptions.value.find((d) => d.value === payload.designation_id)
+            ? { title: designationOptions.value.find((d) => d.value === payload.designation_id).label }
+            : null,
+        },
+        ...employees.value,
+      ]
+      stats.value.total = employees.value.length
       $q.notify({ type: 'positive', message: 'Employee added successfully' })
     }
+
+    // ── Close dialog immediately — don't wait for uploads ────────────
+    showForm.value = false
+    Object.assign(form, { ...defaultForm })
+    extraAllowances.value = []
+    isEditing.value = false
 
     // ── Upload photo if provided ─────────────────────────────────────
     if (userPicFile && targetEmpId) {
@@ -3551,7 +4191,7 @@ async function saveEmployee() {
     customDocEntry.doc_name = ''
     customDocEntry.file = null
 
-    showForm.value = false
+    // ── Background refresh to get full relational data ───────────────
     loadEmployees()
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message })
@@ -3747,6 +4387,88 @@ async function saveDept() {
   } finally {
     savingDept.value = false
   }
+}
+
+function exportPDF() {
+  if (!filteredEmployees.value || filteredEmployees.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No employees to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Employee List', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  let filterText = `Status: ${statusFilter.value}`
+  if (deptFilter.value && deptFilter.value !== 'all') {
+    const dept = departmentOptions.value.find((d) => d.value === deptFilter.value)?.label || deptFilter.value
+    filterText += ` | Department: ${dept}`
+  }
+  if (desigFilter.value && desigFilter.value !== 'all') {
+    const desig = designationOptions.value.find((d) => d.value === desigFilter.value)?.label || desigFilter.value
+    filterText += ` | Designation: ${desig}`
+  }
+  if (search.value) {
+    filterText += ` | Search: ${search.value}`
+  }
+  doc.text(filterText, 14, 22)
+  doc.text(`Total Employees: ${filteredEmployees.value.length}`, 14, 27)
+  
+  const head = [['#', 'Name', 'Phone No', 'NIC', 'EPF No', 'Designation', 'Department']]
+  const body = filteredEmployees.value.map((emp, index) => [
+    index + 1,
+    emp.full_name || emp.first_name + ' ' + (emp.last_name || ''),
+    emp.mobile || '—',
+    emp.nic_number || '—',
+    emp.epf_no || '—',
+    emp.designations?.title || '—',
+    emp.departments?.name || '—',
+  ])
+  
+  autoTable(doc, {
+    startY: 32,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('employees_list.pdf')
+}
+
+function exportExcel() {
+  if (!filteredEmployees.value || filteredEmployees.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No employees to export.' })
+    return
+  }
+
+  const exportData = filteredEmployees.value.map((emp, index) => ({
+    '#': index + 1,
+    'Employee Code': emp.employee_code || '',
+    'Full Name': emp.full_name || emp.first_name + ' ' + (emp.last_name || ''),
+    'Department': emp.departments?.name || '',
+    'Designation': emp.designations?.title || '',
+    'Status': emp.employment_status || '',
+    'Phone No': emp.mobile || '',
+    'NIC': emp.nic_number || '',
+    'Gender': emp.gender || '',
+    'Civil Status': emp.civil_status || '',
+    'Bank Name': emp.bank_name || '',
+    'Bank Branch': emp.bank_branch || '',
+    'Account Name': emp.bank_account_name || '',
+    'Account No': emp.bank_account_number || '',
+    'EPF No': emp.epf_no || '',
+    'Basic Salary': emp.basic_salary || '0',
+    'Hire Date': emp.hire_date || ''
+  }))
+
+  const ws = xlsx.utils.json_to_sheet(exportData)
+  const wb = xlsx.utils.book_new()
+  xlsx.utils.book_append_sheet(wb, ws, 'Employees')
+  xlsx.writeFile(wb, 'employees_list.xlsx')
 }
 
 watch(statusFilter, () => loadEmployees())

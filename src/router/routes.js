@@ -128,10 +128,11 @@ const routes = [
           { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue') },
           { path: 'commission', component: () => import('pages/hr/CommissionPage.vue') },
           { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue') },
-          { path: 'performance', component: () => import('pages/hr/PerformancePage.vue') },
+
           { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue') },
           { path: 'shifts', component: () => import('pages/hr/ShiftManagementPage.vue') },
           { path: 'leave', component: () => import('pages/hr/LeaveManagementPage.vue') },
+          { path: 'finances', component: () => import('pages/hr/EmployeeFinancesPage.vue') },
           { path: 'documents', component: () => import('pages/hr/DocumentManagementPage.vue') },
         ],
       },

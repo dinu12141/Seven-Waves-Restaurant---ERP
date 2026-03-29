@@ -134,3 +134,41 @@ export function exportTableToExcel(columns: any[], rows: any[], filename: string
   XLSX.utils.book_append_sheet(wb, ws, 'Data')
   XLSX.writeFile(wb, finalName)
 }
+
+/**
+ * Generic PDF Export with jsPDF-AutoTable
+ */
+export function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
+  const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
+  doc.setFontSize(18)
+  doc.setTextColor(25, 118, 210)
+  doc.text('SEVEN WAVES RESTAURANT (PVT) LTD', 14, 18)
+  
+  doc.setFontSize(12)
+  doc.setTextColor(0)
+  doc.text(title.replace(/_/g, ' '), 14, 26)
+  
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  const subText = subtitle ? `${subtitle} | ` : ''
+  doc.text(`${subText}Generated: ${new Date().toLocaleString()}`, 14, 33)
+
+  const heads = columns.map((c) => c.label)
+  const body = rows.map((r) =>
+    columns.map((c) => {
+      const val = typeof c.field === 'function' ? c.field(r) : r[c.field]
+      return c.format ? c.format(val) : (val ?? '-')
+    }),
+  )
+  
+  autoTable(doc, {
+    startY: 38,
+    head: [heads],
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [25, 118, 210], halign: 'center', fontSize: 8 },
+    styles: { fontSize: 7 },
+    columnStyles: Object.fromEntries(columns.map((c, i) => [i, { halign: c.align || 'left' }])),
+  })
+  doc.save(`${title}_${new Date().toISOString().slice(0, 10)}.pdf`)
+}

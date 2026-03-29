@@ -52,6 +52,7 @@ export async function fetchJournalEntries(filters: FinanceFilters = {}) {
   if (filters.branchId) query = query.eq('branch_id', filters.branchId)
   if (filters.dateFrom) query = query.gte('doc_date', filters.dateFrom)
   if (filters.dateTo) query = query.lte('doc_date', filters.dateTo)
+  if (filters.search) query = query.ilike('description', `%${filters.search}%`)
   if (filters.limit) query = query.limit(filters.limit)
 
   const { data, error } = await query
@@ -127,6 +128,7 @@ export async function fetchGeneralLedger(filters: FinanceFilters = {}) {
   if (filters.accountCode) query = query.eq('account_code', filters.accountCode)
   if (filters.dateFrom) query = query.gte('journal_entries.doc_date', filters.dateFrom)
   if (filters.dateTo) query = query.lte('journal_entries.doc_date', filters.dateTo)
+  if (filters.search) query = query.ilike('journal_entries.description', `%${filters.search}%`)
   if (filters.limit) query = query.limit(filters.limit)
 
   const { data, error } = await query
@@ -145,6 +147,24 @@ export async function fetchBankAccounts() {
   return { data, error }
 }
 
+export async function fetchCogsReport(dateFrom: string, dateTo: string, branchId?: string) {
+  const { data, error } = await supabase.rpc('get_cogs_report', {
+    p_start_date: dateFrom ? dateFrom + 'T00:00:00Z' : null,
+    p_end_date: dateTo ? dateTo + 'T23:59:59Z' : null,
+    p_branch_id: branchId || null,
+  })
+  return { data, error }
+}
+
+export async function fetchCashFlowStatement(dateFrom: string, dateTo: string, branchId?: string) {
+  const { data, error } = await supabase.rpc('get_cash_flow_statement', {
+    p_start_date: dateFrom || null,
+    p_end_date: dateTo || null,
+    p_branch_id: branchId || null,
+  })
+  return { data, error }
+}
+
 export async function createBankAccount(account) {
   const { data, error } = await supabase
     .from('bank_accounts')
@@ -157,10 +177,12 @@ export async function createBankAccount(account) {
 export async function fetchCashTransactions(filters: FinanceFilters = {}) {
   let query = supabase
     .from('cash_transactions')
-    .select('*, bank_accounts(name, account_type)')
+    .select('*, bank_accounts(id, name, account_type)')
     .order('txn_date', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (filters.bankAccountId) query = query.eq('bank_account_id', filters.bankAccountId)
+  if (filters.branchId) query = query.eq('branch_id', filters.branchId)
   if (filters.dateFrom) query = query.gte('txn_date', filters.dateFrom)
   if (filters.dateTo) query = query.lte('txn_date', filters.dateTo)
   if (filters.limit) query = query.limit(filters.limit)
@@ -199,7 +221,7 @@ export async function createCashTransaction(txn: FinanceFilters) {
 export async function fetchReceivables(filters: FinanceFilters = {}) {
   let query = supabase
     .from('customer_receivables')
-    .select('*, customers(name, email, phone)')
+    .select('*, customers(name, email, phone, bank_name, bank_account_number)')
     .order('created_at', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -326,15 +348,22 @@ export async function fetchTaxSummary() {
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchPayrollCycles(filters: FinanceFilters = {}) {
   let query = supabase
-    .from('payroll_cycles')
-    .select('*')
+    .from('payroll_runs')
+    .select('id, period_start, period_end, status, total_gross, total_deductions, total_net, employee_count, branch_id, created_at')
     .order('period_start', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
+  if (filters.branchId) query = query.eq('branch_id', filters.branchId)
   if (filters.limit) query = query.limit(filters.limit)
 
+  // map field names to match what Finance UI expects
   const { data, error } = await query
-  return { data, error }
+  const mapped = (data || []).map(r => ({
+    ...r,
+    cycle_name: `Payroll ${r.period_start?.substring(0, 7) || ''}`,
+    total_employees: r.employee_count,
+  }))
+  return { data: mapped, error }
 }
 
 export async function fetchPayrollRecords(cycleId: string) {
@@ -352,7 +381,7 @@ export async function fetchEmployeeSalaryStructures() {
     .select(`
       id, first_name, last_name, employee_code, employment_status,
       salary_structures(id, basic_salary, currency, effective_from),
-      employee_allowances(*, salary_allowance_types(name, code)),
+      employee_allowances(id, amount, salary_allowance_types(name, code)),
       designations(title),
       departments(name)
     `)
@@ -951,4 +980,3 @@ export async function fetchMonthlyPnlSummary(year: number) {
     error: null,
   }
 }
-

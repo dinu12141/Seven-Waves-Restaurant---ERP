@@ -54,6 +54,8 @@
           </template>
         </q-select>
 
+        <slot name="actions" />
+
         <slot name="bulk-actions" />
 
         <div class="row items-center no-wrap q-gutter-x-xs">

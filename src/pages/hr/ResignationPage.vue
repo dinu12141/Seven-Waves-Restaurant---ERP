@@ -10,6 +10,10 @@
         @click="openForm()"
         no-caps
       />
+      <div class="q-gutter-x-sm q-ml-sm">
+        <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps unelevated />
+        <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps unelevated />
+      </div>
       <q-space />
       <q-select
         dark
@@ -469,6 +473,7 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -846,6 +851,67 @@ function downloadSettlementPDF() {
   const filename = `F&F_${s.employee_code || 'emp'}_${new Date().toISOString().split('T')[0]}.pdf`
   doc.save(filename)
   $q.notify({ type: 'positive', message: 'Settlement PDF downloaded' })
+}
+
+// ── Export List ──────────────────────────────────────────────────────────────
+function exportPDF() {
+  if (!resignations.value || resignations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Resignations Report', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  if (statusFilter.value !== 'All') doc.text(`Status Filter: ${statusFilter.value}`, 14, 22)
+  doc.text(`Total Records: ${resignations.value.length}`, 14, statusFilter.value !== 'All' ? 27 : 22)
+  
+  const head = [['#', 'Employee Code', 'Employee Name', 'Resign Date', 'Last Day', 'Category', 'Status']]
+  const body = resignations.value.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    r.resignation_date || '—',
+    r.last_working_day || '—',
+    (r.reason_category || '').replace('_', ' ') || '—',
+    (r.status || '').replace('_', ' ') || '—'
+  ])
+  
+  autoTable(doc, {
+    startY: statusFilter.value !== 'All' ? 32 : 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('resignations_report.pdf')
+}
+
+function exportExcel() {
+  if (!resignations.value || resignations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = resignations.value.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Resign Date': r.resignation_date || '',
+    'Last Day': r.last_working_day || '',
+    'Category': (r.reason_category || '').replace('_', ' '),
+    'Status': (r.status || '').replace('_', ' ')
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Resignations')
+  XLSX.writeFile(wb, 'resignations_report.xlsx')
 }
 
 watch(statusFilter, () => loadResignations())

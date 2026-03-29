@@ -7,77 +7,112 @@
     />
 
     <!-- KPI Cards -->
-    <div class="row q-col-gutter-md q-mb-lg">
+    <div class="row q-col-gutter-md q-mb-lg items-stretch">
+
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="pending_actions" size="36px" color="amber" class="q-mr-md" />
-            <div>
-              <div class="text-caption text-grey-5">Pending Requests</div>
-              <div class="text-h5 text-weight-bold text-amber">{{ kpi.pending }}</div>
+        <q-card flat class="hr-kpi-card hr-kpi-card--amber">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="pending_actions" size="22px" color="white" /></div>
+            <div style="flex:1">
+              <div class="hr-kpi-label">Pending Requests</div>
+              <div class="hr-kpi-value">{{ kpi.pending }}</div>
             </div>
+            <q-icon name="hourglass_top" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
+
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="check_circle" size="36px" color="green" class="q-mr-md" />
-            <div>
-              <div class="text-caption text-grey-5">Approved This Month</div>
-              <div class="text-h5 text-weight-bold text-green">{{ kpi.approvedMonth }}</div>
+        <q-card flat class="hr-kpi-card hr-kpi-card--green">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="check_circle" size="22px" color="white" /></div>
+            <div style="flex:1">
+              <div class="hr-kpi-label">Approved (Month)</div>
+              <div class="hr-kpi-value">{{ kpi.approvedMonth }}</div>
             </div>
+            <q-icon name="task_alt" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
+
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="cancel" size="36px" color="red" class="q-mr-md" />
-            <div>
-              <div class="text-caption text-grey-5">Rejected This Month</div>
-              <div class="text-h5 text-weight-bold text-red">{{ kpi.rejectedMonth }}</div>
+        <q-card flat class="hr-kpi-card hr-kpi-card--red">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="cancel" size="22px" color="white" /></div>
+            <div style="flex:1">
+              <div class="hr-kpi-label">Rejected (Month)</div>
+              <div class="hr-kpi-value">{{ kpi.rejectedMonth }}</div>
             </div>
+            <q-icon name="block" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
+
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="category" size="36px" color="cyan" class="q-mr-md" />
-            <div>
-              <div class="text-caption text-grey-5">Leave Types</div>
-              <div class="text-h5 text-weight-bold">{{ kpi.types }}</div>
+        <q-card flat class="hr-kpi-card hr-kpi-card--cyan">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="category" size="22px" color="white" /></div>
+            <div style="flex:1">
+              <div class="hr-kpi-label">Leave Types</div>
+              <div class="hr-kpi-value">{{ kpi.types }}</div>
             </div>
+            <q-icon name="list_alt" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
     </div>
 
+
     <!-- Main Tabs Card -->
     <q-card
       flat
       bordered
-      style="
-        background: var(--erp-bg-form-card, #111827);
-        border-color: rgba(255, 255, 255, 0.08);
-        border-top: 3px solid #f9a825;
-      "
+      :class="[$q.dark.isActive ? 'bg-dark border-dark' : 'bg-white']"
+      :style="{ borderTop: '3px solid #f9a825' }"
     >
       <div class="row items-center justify-between q-px-md q-pt-sm">
         <q-tabs
           v-model="activeTab"
-          dark
+          :dark="$q.dark.isActive"
           dense
           align="left"
-          active-color="amber-4"
-          indicator-color="amber-4"
+          active-color="amber-9"
+          indicator-color="amber-9"
+          narrow-indicator
+          no-caps
+          :class="[$q.dark.isActive ? 'text-grey-5' : 'text-grey-7', 'text-weight-medium']"
         >
-          <q-tab name="requests" icon="event_note" label="Leave Requests" />
-          <q-tab name="types" icon="category" label="Leave Types" />
-          <q-tab name="balances" icon="balance" label="Balances" />
+          <q-tab name="requests" label="Leave Requests" />
+          <q-tab name="types" label="Leave Types" />
+          <q-tab name="balances" label="Balances" />
         </q-tabs>
         <div class="q-gutter-sm">
+          <q-btn
+            v-if="activeTab === 'requests'"
+            unelevated
+            color="positive"
+            text-color="white"
+            icon="download"
+            label="Excel"
+            no-caps
+            dense
+            padding="xs md"
+            class="text-weight-medium"
+            @click="exportRequestsExcel"
+          />
+          <q-btn
+            v-if="activeTab === 'requests'"
+            unelevated
+            color="red-6"
+            text-color="white"
+            icon="picture_as_pdf"
+            label="PDF"
+            no-caps
+            dense
+            padding="xs md"
+            class="text-weight-medium"
+            @click="exportRequestsPDF"
+          />
           <q-btn
             v-if="activeTab === 'requests'"
             unelevated
@@ -86,7 +121,9 @@
             icon="add"
             label="New Request"
             no-caps
-            size="sm"
+            dense
+            padding="xs md"
+            class="text-weight-medium"
             @click="openNewRequest"
           />
           <q-btn
@@ -97,8 +134,36 @@
             icon="add"
             label="Add Leave Type"
             no-caps
-            size="sm"
+            dense
+            padding="xs md"
+            class="text-weight-medium"
             @click="openLeaveTypeDialog()"
+          />
+          <q-btn
+            v-if="activeTab === 'balances'"
+            unelevated
+            color="positive"
+            text-color="white"
+            icon="download"
+            label="Excel"
+            no-caps
+            dense
+            padding="xs md"
+            class="text-weight-medium"
+            @click="exportBalancesExcel"
+          />
+          <q-btn
+            v-if="activeTab === 'balances'"
+            unelevated
+            color="red-6"
+            text-color="white"
+            icon="picture_as_pdf"
+            label="PDF"
+            no-caps
+            dense
+            padding="xs md"
+            class="text-weight-medium"
+            @click="exportBalancesPDF"
           />
           <q-btn
             v-if="activeTab === 'balances'"
@@ -107,13 +172,15 @@
             icon="refresh"
             label="Initialize All Balances"
             no-caps
-            size="sm"
+            dense
+            padding="xs md"
+            class="text-weight-medium"
             :loading="initializingAll"
             @click="initAllBalances"
           />
         </div>
       </div>
-      <q-separator dark style="opacity: 0.08" />
+      <q-separator :dark="$q.dark.isActive" />
 
       <q-tab-panels v-model="activeTab" animated style="background: transparent">
         <!-- ══ LEAVE REQUESTS TAB ══════════════════════════════════════════ -->
@@ -121,8 +188,9 @@
           <!-- Filters -->
           <div class="row q-col-gutter-sm q-mb-md">
             <div class="col-12 col-sm-3">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Status</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="reqStatusFilter"
@@ -133,68 +201,68 @@
                   { label: 'Rejected', value: 'rejected' },
                   { label: 'Cancelled', value: 'cancelled' },
                 ]"
-                label="Status"
                 emit-value
                 map-options
               />
             </div>
             <div class="col-12 col-sm-3">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="reqEmpFilter"
                 :options="[{ label: 'All Employees', value: '' }, ...employeeOptions]"
-                label="Employee"
                 emit-value
                 map-options
                 clearable
               />
             </div>
             <div class="col-12 col-sm-3">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="reqTypeFilter"
                 :options="[{ label: 'All Types', value: '' }, ...leaveTypeOptions]"
-                label="Leave Type"
                 emit-value
                 map-options
                 clearable
               />
             </div>
             <div class="col-12 col-sm-3">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Month</div>
               <q-input
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="reqDateFilter"
                 type="month"
-                label="Month"
-                stack-label
                 clearable
               />
             </div>
           </div>
 
           <q-table
-            dark
+            :dark="$q.dark.isActive"
             flat
             bordered
+            dense
             :rows="filteredRequests"
             :columns="requestColumns"
             row-key="id"
             :loading="loadingRequests"
             :pagination="{ rowsPerPage: 15 }"
-            class="erp-data-grid"
+            :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white', 'text-body2']"
+            table-header-class="text-weight-bold text-uppercase"
           >
             <template #body-cell-employee="props">
               <q-td :props="props">
-                <div class="text-weight-medium text-grey-2">
+                <div :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
                   {{ props.row.employees?.full_name || props.row.employees?.first_name }}
                 </div>
-                <div class="text-caption text-grey-5">{{ props.row.employees?.employee_code }}</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">{{ props.row.employees?.employee_code }}</div>
               </q-td>
             </template>
 
@@ -271,15 +339,17 @@
         <!-- ══ LEAVE TYPES TAB ════════════════════════════════════════════ -->
         <q-tab-panel name="types" class="q-pa-md">
           <q-table
-            dark
+            :dark="$q.dark.isActive"
             flat
             bordered
+            dense
             :rows="leaveTypes"
             :columns="typeColumns"
             row-key="id"
             :loading="loadingTypes"
-            :pagination="{ rowsPerPage: 20 }"
-            class="erp-data-grid"
+            :pagination="{ rowsPerPage: 15 }"
+            :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white', 'text-body2']"
+            table-header-class="text-weight-bold text-uppercase"
           >
             <template #body-cell-is_paid="props">
               <q-td :props="props" class="text-center">
@@ -343,25 +413,25 @@
         <q-tab-panel name="balances" class="q-pa-md">
           <div class="row q-col-gutter-sm q-mb-md items-center">
             <div class="col-auto">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Year</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="balanceYear"
                 :options="yearOptions"
-                label="Year"
                 style="width: 120px"
                 @update:model-value="loadBalances"
               />
             </div>
             <div class="col-auto">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="balanceEmpFilter"
                 :options="[{ label: 'All Employees', value: '' }, ...employeeOptions]"
-                label="Employee"
                 emit-value
                 map-options
                 clearable
@@ -369,13 +439,13 @@
               />
             </div>
             <div class="col-auto">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type</div>
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="balanceTypeFilter"
                 :options="[{ label: 'All Types', value: '' }, ...leaveTypeOptions]"
-                label="Leave Type"
                 emit-value
                 map-options
                 clearable
@@ -385,22 +455,24 @@
           </div>
 
           <q-table
-            dark
+            :dark="$q.dark.isActive"
             flat
             bordered
+            dense
             :rows="filteredBalances"
             :columns="balanceColumns"
             row-key="id"
             :loading="loadingBalances"
             :pagination="{ rowsPerPage: 25 }"
-            class="erp-data-grid"
+            :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white', 'text-body2']"
+            table-header-class="text-weight-bold text-uppercase"
           >
             <template #body-cell-employee="props">
               <q-td :props="props">
-                <div class="text-weight-medium text-grey-2">
+                <div :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
                   {{ props.row.employees?.full_name || props.row.employees?.first_name }}
                 </div>
-                <div class="text-caption text-grey-5">{{ props.row.employees?.employee_code }}</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">{{ props.row.employees?.employee_code }}</div>
               </q-td>
             </template>
             <template #body-cell-leave_type="props">
@@ -449,68 +521,76 @@
 
     <!-- ══ NEW LEAVE REQUEST DIALOG ══════════════════════════════════════ -->
     <q-dialog v-model="showNewRequest" persistent>
-      <q-card style="min-width: 520px; background: #111827; color: #fff">
-        <q-card-section class="row items-center">
+      <q-card style="min-width: 520px" :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']">
+        <q-card-section class="row items-center" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
           <q-icon name="event_note" size="24px" color="amber-6" class="q-mr-sm" />
           <div class="text-h6 text-weight-bold">New Leave Request</div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
-        <q-separator dark />
-        <q-card-section class="q-gutter-md">
-          <q-select
-            dark
-            outlined
-            v-model="reqForm.employee_id"
-            :options="employeeOptions"
-            label="Employee *"
-            emit-value
-            map-options
-          />
-          <q-select
-            dark
-            outlined
-            v-model="reqForm.leave_type_id"
-            :options="activeLeaveTypeOptions"
-            label="Leave Type *"
-            emit-value
-            map-options
-          />
-          <div class="row q-col-gutter-md">
+        <q-card-section class="q-pt-md">
+          <div class="q-mb-md">
+            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee <span class="text-red">*</span></div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="reqForm.employee_id"
+              :options="employeeOptions"
+              emit-value
+              map-options
+            />
+          </div>
+          <div class="q-mb-md">
+            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type <span class="text-red">*</span></div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="reqForm.leave_type_id"
+              :options="activeLeaveTypeOptions"
+              emit-value
+              map-options
+            />
+          </div>
+          <div class="row q-col-gutter-md q-mb-md">
             <div class="col-6">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Start Date <span class="text-red">*</span></div>
               <q-input
-                dark
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model="reqForm.start_date"
                 type="date"
-                label="Start Date *"
-                stack-label
                 @update:model-value="calcDays"
               />
             </div>
             <div class="col-6">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">End Date <span class="text-red">*</span></div>
               <q-input
-                dark
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model="reqForm.end_date"
                 type="date"
-                label="End Date *"
-                stack-label
                 @update:model-value="calcDays"
               />
             </div>
           </div>
           <div
             v-if="reqForm.start_date && reqForm.end_date"
-            class="q-pa-sm rounded-borders text-center"
+            class="q-pa-sm rounded-borders text-center q-mb-md"
             style="background: rgba(249, 168, 37, 0.1); border: 1px solid rgba(249, 168, 37, 0.3)"
           >
             <span class="text-amber text-weight-bold">{{ reqForm.total_days }} working day(s)</span>
           </div>
-          <q-input dark outlined v-model="reqForm.reason" label="Reason" type="textarea" rows="2" />
+          <div class="q-mb-sm">
+            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Reason</div>
+            <q-input :dark="$q.dark.isActive" dense outlined v-model="reqForm.reason" type="textarea" rows="2" />
+          </div>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
+          <q-btn flat label="Cancel" color="grey-7" no-caps v-close-popup />
           <q-btn
             unelevated
             color="amber-8"
@@ -569,8 +649,8 @@
 
     <!-- ══ LEAVE TYPE DIALOG ══════════════════════════════════════════════ -->
     <q-dialog v-model="showLeaveTypeDialog" persistent>
-      <q-card style="min-width: 480px; background: #111827; color: #fff">
-        <q-card-section class="row items-center">
+      <q-card style="min-width: 480px" :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']">
+        <q-card-section class="row items-center" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
           <q-icon name="category" size="24px" color="cyan" class="q-mr-sm" />
           <div class="text-h6 text-weight-bold">
             {{ editingType ? 'Edit Leave Type' : 'New Leave Type' }}
@@ -578,42 +658,44 @@
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
-        <q-separator dark />
-        <q-card-section class="q-gutter-md">
-          <div class="row q-col-gutter-md">
+        <q-card-section class="q-pt-md">
+          <div class="row q-col-gutter-md q-mb-md">
             <div class="col-8">
-              <q-input dark outlined v-model="typeForm.name" label="Leave Type Name *" />
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type Name <span class="text-red">*</span></div>
+              <q-input :dark="$q.dark.isActive" dense outlined v-model="typeForm.name" />
             </div>
             <div class="col-4">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Code <span class="text-red">*</span></div>
               <q-input
-                dark
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model="typeForm.code"
-                label="Code *"
-                hint="e.g. AL, SL, CL"
+                hint="e.g. AL, SL"
               />
             </div>
           </div>
-          <div class="row q-col-gutter-md">
+          <div class="row q-col-gutter-md q-mb-md items-center">
             <div class="col-6">
+              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Annual Quota (days) <span class="text-red">*</span></div>
               <q-input
-                dark
+                :dark="$q.dark.isActive"
+                dense
                 outlined
                 v-model.number="typeForm.annual_quota"
                 type="number"
-                label="Annual Quota (days) *"
               />
             </div>
-            <div class="col-6 column justify-center">
-              <q-toggle dark v-model="typeForm.is_paid" label="Paid Leave" color="green" />
+            <div class="col-6">
+              <q-toggle :dark="$q.dark.isActive" v-model="typeForm.is_paid" label="Paid Leave" color="green" />
             </div>
           </div>
-          <div class="row q-col-gutter-md items-center">
+          <div class="row q-col-gutter-md q-mb-md items-center">
             <div class="col-6">
               <q-toggle
-                dark
+                :dark="$q.dark.isActive"
                 v-model="typeForm.carry_forward"
-                label="Allow Carry Forward"
+                label="Carry Forward"
                 color="blue"
               />
             </div>
@@ -651,6 +733,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -1141,6 +1226,127 @@ async function initAllBalances() {
   } finally {
     initializingAll.value = false
   }
+}
+
+// ── Export Methods ─────────────────────────────────────────────────────────
+function exportRequestsPDF() {
+  if (!filteredRequests.value || filteredRequests.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Leave Requests Report', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Total Records: ${filteredRequests.value.length}`, 14, 22)
+  
+  const head = [['#', 'Employee Code', 'Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status']]
+  const body = filteredRequests.value.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || r.employees?.first_name || '—',
+    r.leave_types?.name || '—',
+    r.start_date || '—',
+    r.end_date || '—',
+    r.total_days || 0,
+    r.status || '—'
+  ])
+  
+  autoTable(doc, {
+    startY: 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('leave_requests_report.pdf')
+}
+
+function exportRequestsExcel() {
+  if (!filteredRequests.value || filteredRequests.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredRequests.value.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || r.employees?.first_name || '',
+    'Leave Type': r.leave_types?.name || '',
+    'Start Date': r.start_date || '',
+    'End Date': r.end_date || '',
+    'Days': r.total_days || 0,
+    'Status': r.status || ''
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Leave Requests')
+  XLSX.writeFile(wb, 'leave_requests_report.xlsx')
+}
+
+function exportBalancesPDF() {
+  if (!filteredBalances.value || filteredBalances.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text(`Leave Balances Report (${balanceYear.value})`, 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Total Records: ${filteredBalances.value.length}`, 14, 22)
+  
+  const head = [['#', 'Employee Code', 'Employee Name', 'Leave Type', 'Entitled', 'Used', 'Remaining']]
+  const body = filteredBalances.value.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || r.employees?.first_name || '—',
+    r.leave_types?.name || '—',
+    r.total_entitlement || 0,
+    r.used_days || 0,
+    r.remaining_days || 0
+  ])
+  
+  autoTable(doc, {
+    startY: 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('leave_balances_report.pdf')
+}
+
+function exportBalancesExcel() {
+  if (!filteredBalances.value || filteredBalances.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredBalances.value.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || r.employees?.first_name || '',
+    'Leave Type': r.leave_types?.name || '',
+    'Entitled Days': r.total_entitlement || 0,
+    'Used Days': r.used_days || 0,
+    'Remaining Days': r.remaining_days || 0
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Leave Balances')
+  XLSX.writeFile(wb, 'leave_balances_report.xlsx')
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

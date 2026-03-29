@@ -31,6 +31,28 @@
       <div class="row q-gutter-x-sm">
         <q-btn
           v-if="viewMode === 'assignments'"
+          color="positive"
+          icon="download"
+          label="Excel"
+          no-caps
+          dense
+          size="sm"
+          unelevated
+          @click="exportExcel"
+        />
+        <q-btn
+          v-if="viewMode === 'assignments'"
+          color="red-6"
+          icon="picture_as_pdf"
+          label="PDF"
+          no-caps
+          dense
+          size="sm"
+          unelevated
+          @click="exportPDF"
+        />
+        <q-btn
+          v-if="viewMode === 'assignments'"
           color="secondary"
           icon="upload_file"
           label="Upload Roster"
@@ -744,6 +766,8 @@ import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -1442,6 +1466,73 @@ onMounted(async () => {
   await Promise.all([loadShifts(), loadEmployees(), loadDepartments()])
   await loadAssignments()
 })
+
+function exportPDF() {
+  if (!filteredAssignments.value || filteredAssignments.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Shift Assignments Report', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  let filterText = `From: ${assignFilter.dateFrom} To: ${assignFilter.dateTo}`
+  if (assignFilter.shiftId) {
+    const shift = shifts.value.find(s => s.id === assignFilter.shiftId)?.name || ''
+    filterText += ` | Shift: ${shift}`
+  }
+  if (assignSearch.value) filterText += ` | Search: ${assignSearch.value}`
+  
+  doc.text(filterText, 14, 22)
+  doc.text(`Total Records: ${filteredAssignments.value.length}`, 14, 27)
+  
+  const head = [['#', 'Employee Name', 'Shift', 'Date', 'Start Time', 'End Time', 'Status']]
+  const body = filteredAssignments.value.map((r, i) => [
+    i + 1,
+    r.employees?.full_name || '—',
+    r.shifts?.name || '—',
+    r.assignment_date || '—',
+    formatTime(r.shifts?.start_time),
+    formatTime(r.shifts?.end_time),
+    r.status || '—'
+  ])
+  
+  autoTable(doc, {
+    startY: 32,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('shift_assignments_report.pdf')
+}
+
+function exportExcel() {
+  if (!filteredAssignments.value || filteredAssignments.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredAssignments.value.map((r, i) => ({
+    '#': i + 1,
+    'Employee Name': r.employees?.full_name || '',
+    'Shift': r.shifts?.name || '',
+    'Date': r.assignment_date || '',
+    'Start Time': formatTime(r.shifts?.start_time),
+    'End Time': formatTime(r.shifts?.end_time),
+    'Status': r.status || ''
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Shift Assignments')
+  XLSX.writeFile(wb, 'shift_assignments_report.xlsx')
+}
 </script>
 
 <style scoped lang="scss">

@@ -537,6 +537,21 @@ CREATE POLICY ps_admin ON payslips FOR ALL
 CREATE POLICY ps_hr ON payslips FOR SELECT
   USING (is_hr() AND branch_id = ANY(auth_branch_ids()));
 
+-- ── leave_types ───────────────────────────────────────────────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='leave_types') THEN
+    ALTER TABLE leave_types ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS lt_admin   ON leave_types;
+    DROP POLICY IF EXISTS lt_hr      ON leave_types;
+    DROP POLICY IF EXISTS lt_all     ON leave_types;
+    CREATE POLICY lt_admin ON leave_types FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+    CREATE POLICY lt_hr ON leave_types FOR ALL
+      USING (is_hr())
+      WITH CHECK (is_hr());
+    CREATE POLICY lt_all ON leave_types FOR SELECT USING (true);
+  END IF;
+END $$;
+
 -- ── leave_requests ─────────────────────────────────────────────
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='leave_requests') THEN

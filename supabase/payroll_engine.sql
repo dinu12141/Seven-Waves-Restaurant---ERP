@@ -38,6 +38,8 @@ DECLARE
     v_gross NUMERIC;
     v_total_deductions NUMERIC;
     v_net NUMERIC;
+    v_advance_deduction NUMERIC;
+    v_expense_reimbursement NUMERIC;
     
     v_run_total_gross NUMERIC := 0;
     v_run_total_net NUMERIC := 0;
@@ -79,6 +81,8 @@ BEGIN
         v_gross := 0;
         v_total_deductions := 0;
         v_net := 0;
+        v_advance_deduction := 0;
+        v_expense_reimbursement := 0;
         
         -- Get Salary Structure
         SELECT * INTO v_sal FROM salary_structures 
@@ -143,14 +147,28 @@ BEGIN
             v_epf_employer := v_epf_base * (COALESCE(v_sal.epf_employer_pct, 12) / 100);
             v_etf_employer := v_epf_base * (COALESCE(v_sal.etf_employer_pct, 3) / 100);
             
+            -- F. Advances & Expenses
+            SELECT COALESCE(SUM(amount), 0) INTO v_advance_deduction
+            FROM employee_advances
+            WHERE employee_id = v_emp.id 
+            AND status = 'approved'
+            AND payroll_run_id IS NULL;
+            
+            SELECT COALESCE(SUM(amount), 0) INTO v_expense_reimbursement
+            FROM employee_expenses
+            WHERE employee_id = v_emp.id 
+            AND status = 'approved'
+            AND payroll_run_id IS NULL;
+            
             -- Calculation for Gross & Net
             -- Gross = Basic + Allowances + OT - NoPay
             v_gross := v_basic + v_total_allowances + v_ot_amount - v_no_pay_deduction;
             
-            -- Total Deductions (Employee Side) = EPF (Emp) + Loans + Other Deductions (structure)
-            v_total_deductions := v_epf_employee + v_loan_deduction + COALESCE(v_sal.other_deductions, 0);
+            -- Total Deductions (Employee Side) = EPF (Emp) + Loans + Advances + Other Deductions
+            v_total_deductions := v_epf_employee + v_loan_deduction + v_advance_deduction + COALESCE(v_sal.other_deductions, 0);
             
-            v_net := v_gross - v_total_deductions;
+            -- Net = Gross - Deductions + Reimbursed Expenses
+            v_net := v_gross - v_total_deductions + v_expense_reimbursement;
             
             -- Insert Payslip
             INSERT INTO payslips (
@@ -160,9 +178,10 @@ BEGIN
                 overtime_hours, overtime_amount,
                 gross_salary,
                 epf_employee, epf_employer, etf_employer,
-                loan_deduction, other_deductions, total_deductions,
+                loan_deduction, advance_deduction, other_deductions, total_deductions,
+                expense_reimbursement,
                 net_salary,
-                days_absent, days_worked, -- can calculate worked days too
+                days_absent, days_worked,
                 payment_status
             ) VALUES (
                 p_company_id, p_branch_id, v_run_id, v_emp.id,
@@ -171,9 +190,10 @@ BEGIN
                 ROUND(v_ot_hours, 2), ROUND(v_ot_amount, 2),
                 ROUND(v_gross, 2),
                 ROUND(v_epf_employee, 2), ROUND(v_epf_employer, 2), ROUND(v_etf_employer, 2),
-                ROUND(v_loan_deduction, 2), COALESCE(v_sal.other_deductions, 0), ROUND(v_total_deductions, 2),
+                ROUND(v_loan_deduction, 2), ROUND(v_advance_deduction, 2), COALESCE(v_sal.other_deductions, 0), ROUND(v_total_deductions, 2),
+                ROUND(v_expense_reimbursement, 2),
                 ROUND(v_net, 2),
-                v_absent_days, 0, -- days worked logic to be added if needed
+                v_absent_days, 0,
                 'pending'
             );
             
@@ -252,6 +272,21 @@ BEGIN
             END LOOP;
         END;
     END LOOP;
+    
+    -- Update Advances and Expenses
+    BEGIN
+        -- Mark advances as deducted
+        UPDATE employee_advances
+        SET status = 'deducted', payroll_run_id = p_run_id, updated_at = now(), deducted_date = CURRENT_DATE
+        WHERE status = 'approved' AND payroll_run_id IS NULL
+        AND employee_id IN (SELECT employee_id FROM payslips WHERE payroll_run_id = p_run_id);
+
+        -- Mark expenses as reimbursed
+        UPDATE employee_expenses
+        SET status = 'reimbursed', payroll_run_id = p_run_id, updated_at = now(), reimbursed_date = CURRENT_DATE
+        WHERE status = 'approved' AND payroll_run_id IS NULL
+        AND employee_id IN (SELECT employee_id FROM payslips WHERE payroll_run_id = p_run_id);
+    END;
     
     -- Mark payslips as 'ready' (status is 'pending' payment essentially)
     -- They are already pending.

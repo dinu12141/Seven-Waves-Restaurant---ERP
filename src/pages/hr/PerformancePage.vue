@@ -4,6 +4,10 @@
 
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn color="primary" icon="add" label="New Evaluation" @click="openEval()" no-caps />
+      <div class="q-gutter-x-sm q-ml-sm">
+        <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps unelevated />
+        <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps unelevated />
+      </div>
       <q-space />
       <q-input
         dark
@@ -227,10 +231,13 @@
 
 <script setup>
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -416,6 +423,80 @@ async function approveEval(row) {
     .eq('id', row.id)
   $q.notify({ type: 'positive', message: 'Evaluation approved' })
   loadEvaluations()
+}
+
+const filteredEvaluations = computed(() => {
+  let rows = evaluations.value;
+  if(search.value) {
+    const s = search.value.toLowerCase();
+    rows = rows.filter(r => 
+      r.employees?.full_name?.toLowerCase().includes(s) ||
+      r.employees?.employee_code?.toLowerCase().includes(s) ||
+      r.evaluation_period?.toLowerCase().includes(s) ||
+      r.status?.toLowerCase().includes(s)
+    );
+  }
+  return rows;
+})
+
+function exportPDF() {
+  if (!filteredEvaluations.value || filteredEvaluations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Performance Evaluations Report', 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  if (search.value) doc.text(`Search: ${search.value}`, 14, 22)
+  doc.text(`Total Records: ${filteredEvaluations.value.length}`, 14, search.value ? 27 : 22)
+  
+  const head = [['#', 'Employee Code', 'Employee Name', 'Period', 'Score (%)', 'Grade', 'Status']]
+  const body = filteredEvaluations.value.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    r.evaluation_period || '—',
+    `${r.percentage || 0}%`,
+    r.grade || '—',
+    r.status || '—'
+  ])
+  
+  autoTable(doc, {
+    startY: search.value ? 32 : 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+  })
+  
+  doc.save('performance_evaluations_report.pdf')
+}
+
+function exportExcel() {
+  if (!filteredEvaluations.value || filteredEvaluations.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = filteredEvaluations.value.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Period': r.evaluation_period || '',
+    'Score (%)': `${r.percentage || 0}%`,
+    'Grade': r.grade || '',
+    'Status': r.status || ''
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Evaluations')
+  XLSX.writeFile(wb, 'performance_evaluations_report.xlsx')
 }
 
 onMounted(() => {

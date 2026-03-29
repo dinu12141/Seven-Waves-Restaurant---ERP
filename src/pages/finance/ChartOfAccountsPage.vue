@@ -11,30 +11,46 @@
     />
 
     <!-- Filters -->
-    <div class="fin-filters q-mb-md">
-      <q-select
-        v-model="filterType"
-        :options="['All', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense']"
-        label="Account Type"
-        dense
-        dark
-        outlined
-        style="min-width: 160px"
-        emit-value
-        map-options
-        clearable
-      />
-      <q-input
-        v-model="search"
-        label="Search accounts..."
-        dense
-        dark
-        outlined
-        style="min-width: 220px"
-        clearable
-      >
-        <template #prepend><q-icon name="search" /></template>
-      </q-input>
+    <div class="fin-filters q-mb-md row items-center justify-between">
+      <div class="row q-gutter-md items-center">
+        <q-select
+          v-model="filterType"
+          :options="['All', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense']"
+          label="Account Type"
+          dense
+          dark
+          outlined
+          style="min-width: 160px"
+          emit-value
+          map-options
+          clearable
+        />
+        <q-input
+          v-model="search"
+          label="Search accounts..."
+          dense
+          dark
+          outlined
+          style="min-width: 220px"
+          clearable
+        >
+          <template #prepend><q-icon name="search" /></template>
+        </q-input>
+      </div>
+      <div class="row q-gutter-sm">
+        <q-btn flat icon="print" color="white" round @click="printReport">
+          <q-tooltip dark>Print</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="picture_as_pdf" color="white" round @click="exportPDF">
+          <q-tooltip dark>PDF</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="table_chart" color="white" round @click="exportExcel">
+          <q-tooltip dark>Excel</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="description" color="white" round @click="exportCSV">
+          <q-tooltip dark>CSV</q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <!-- Accounts Table -->
@@ -138,6 +154,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Notify } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { fetchChartOfAccounts, createAccount, updateAccount } from 'src/services/financeService'
+import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -241,6 +258,25 @@ async function loadData() {
 }
 
 onMounted(loadData)
+
+// ── Export / Print ──
+function getExportData() {
+  const exportCols = columns.filter((c) => c.name !== 'actions')
+  return { rows: filteredAccounts.value, cols: exportCols, title: 'Chart_of_Accounts' }
+}
+function printReport() { window.print() }
+function exportCSV() {
+  const d = getExportData()
+  exportTableToCSV(d.cols, d.rows, d.title)
+}
+function exportExcel() {
+  const d = getExportData()
+  exportTableToExcel(d.cols, d.rows, d.title)
+}
+function exportPDF() {
+  const d = getExportData()
+  exportTableToPDF(d.cols, d.rows, d.title)
+}
 </script>
 
 <style scoped lang="scss">

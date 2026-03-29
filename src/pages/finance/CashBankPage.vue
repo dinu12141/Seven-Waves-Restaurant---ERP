@@ -173,9 +173,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Notify } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import { supabase } from 'src/boot/supabase'
 import {
   fetchBankAccounts,
   fetchCashTransactions,
@@ -298,7 +299,18 @@ async function loadData() {
   transactions.value = txnRes.data || []
   loading.value = false
 }
-onMounted(loadData)
+
+let realtimeChannel = null
+function setupRealtime() {
+  realtimeChannel = supabase
+    .channel('cash-bank-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => loadData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => loadData())
+    .subscribe()
+}
+
+onMounted(() => { loadData(); setupRealtime() })
+onUnmounted(() => { if (realtimeChannel) supabase.removeChannel(realtimeChannel) })
 </script>
 
 <style scoped lang="scss">

@@ -10,8 +10,25 @@
 
     <div class="fin-panel">
       <div class="fin-panel__header">
-        <span class="fin-panel__title">Trial Balance Report</span>
-        <span class="fin-panel__subtitle">All posted journal entries</span>
+        <div>
+          <span class="fin-panel__title">Trial Balance Report</span>
+          <span class="fin-panel__subtitle text-grey-4 q-ml-sm">All posted journal entries</span>
+        </div>
+        <q-space />
+        <div class="row q-gutter-sm">
+          <q-btn flat icon="print" color="white" round @click="printReport">
+            <q-tooltip dark>Print</q-tooltip>
+          </q-btn>
+          <q-btn flat icon="picture_as_pdf" color="white" round @click="exportPDF">
+            <q-tooltip dark>PDF</q-tooltip>
+          </q-btn>
+          <q-btn flat icon="table_chart" color="white" round @click="exportExcel">
+            <q-tooltip dark>Excel</q-tooltip>
+          </q-btn>
+          <q-btn flat icon="description" color="white" round @click="exportCSV">
+            <q-tooltip dark>CSV</q-tooltip>
+          </q-btn>
+        </div>
       </div>
       <q-table
         :rows="rows"
@@ -56,6 +73,7 @@
 import { ref, computed, onMounted } from 'vue'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { fetchTrialBalance } from 'src/services/financeService'
+import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 
 const loading = ref(false)
 const rows = ref([])
@@ -118,6 +136,28 @@ async function loadData() {
 }
 
 onMounted(loadData)
+
+// ── Export / Print ──
+function getExportData() {
+  const exportRows = [
+    ...rows.value,
+    { code: '', name: 'TOTALS', account_type: '', debit_total: totalDr.value, credit_total: totalCr.value }
+  ]
+  return { rows: exportRows, cols: columns, title: 'Trial_Balance' }
+}
+function printReport() { window.print() }
+function exportCSV() {
+  const d = getExportData()
+  exportTableToCSV(d.cols, d.rows, d.title)
+}
+function exportExcel() {
+  const d = getExportData()
+  exportTableToExcel(d.cols, d.rows, d.title)
+}
+function exportPDF() {
+  const d = getExportData()
+  exportTableToPDF(d.cols, d.rows, d.title)
+}
 </script>
 
 <style scoped lang="scss">

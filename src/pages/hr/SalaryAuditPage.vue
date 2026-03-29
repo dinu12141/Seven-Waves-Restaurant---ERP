@@ -15,6 +15,10 @@
         style="min-width: 300px"
       />
       <q-btn color="primary" icon="refresh" label="Load" @click="loadAudit" no-caps />
+      <div class="q-gutter-x-sm q-ml-sm">
+        <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps unelevated />
+        <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps unelevated />
+      </div>
       <q-space />
       <q-input
         dark
@@ -175,6 +179,9 @@ import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -351,6 +358,85 @@ async function saveBankRef() {
   })
   showBankRef.value = false
   loadAudit()
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function filterDataForExport() {
+  if (!search.value) return payslips.value
+  const s = search.value.toLowerCase()
+  return payslips.value.filter(r => 
+    (r.employees?.full_name || '').toLowerCase().includes(s) ||
+    (r.employees?.employee_code || '').toLowerCase().includes(s) ||
+    (r.payment_status || '').toLowerCase().includes(s) ||
+    (r.bank_reference || '').toLowerCase().includes(s)
+  )
+}
+
+function exportPDF() {
+  const data = filterDataForExport()
+  if (!data || data.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+  
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  let title = 'Salary Audit Report'
+  const runOpt = runOptions.value.find(o => o.value === filterRun.value)
+  if (runOpt) title += ` - ${runOpt.label.split('(')[0].trim()}`
+  doc.text(title, 14, 15)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  doc.text(`Total Records: ${data.length}`, 14, 22)
+  
+  const head = [['#', 'Employee Code', 'Employee Name', 'Gross', 'Deductions', 'Net', 'Bank Ref', 'Status']]
+  const body = data.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    fmt(r.gross_salary),
+    fmt(r.total_deductions),
+    fmt(r.net_salary),
+    r.bank_reference || '—',
+    r.is_held ? 'HELD' : (r.payment_status || '—').toUpperCase()
+  ])
+  
+  autoTable(doc, {
+    startY: 27,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [33, 150, 243] },
+    styles: { fontSize: 8 },
+    columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } }
+  })
+  
+  doc.save('salary_audit_report.pdf')
+}
+
+function exportExcel() {
+  const data = filterDataForExport()
+  if (!data || data.length === 0) {
+    $q.notify({ type: 'warning', message: 'No records to export.' })
+    return
+  }
+
+  const exportData = data.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Gross': Number(r.gross_salary || 0).toFixed(2),
+    'Deductions': Number(r.total_deductions || 0).toFixed(2),
+    'Net': Number(r.net_salary || 0).toFixed(2),
+    'Bank Ref': r.bank_reference || '',
+    'Status': r.is_held ? 'HELD' : (r.payment_status || '').toUpperCase()
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(exportData)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Salary Audit')
+  XLSX.writeFile(wb, 'salary_audit_report.xlsx')
 }
 
 onMounted(async () => {

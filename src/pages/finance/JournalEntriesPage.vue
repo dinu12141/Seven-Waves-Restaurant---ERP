@@ -10,26 +10,57 @@
       @primary-action="showCreateDialog = true"
     />
 
-    <div class="fin-filters q-mb-md">
-      <q-input
-        v-model="filters.dateFrom"
-        label="From"
-        type="date"
-        dense
-        dark
-        outlined
-        style="min-width: 160px"
-      />
-      <q-input
-        v-model="filters.dateTo"
-        label="To"
-        type="date"
-        dense
-        dark
-        outlined
-        style="min-width: 160px"
-      />
-      <q-btn flat dense icon="filter_list_off" color="grey-5" @click="resetFilters" />
+    <div class="fin-filters q-mb-md row items-center justify-between">
+      <div class="row q-gutter-md items-center">
+        <q-input
+          v-model="filters.search"
+          label="Search (e.g. Bank name, Reference)"
+          dense
+          dark
+          outlined
+          clearable
+          style="min-width: 250px"
+          @keyup.enter="loadData"
+          @clear="loadData"
+        >
+          <template #append>
+            <q-icon name="search" @click="loadData" class="cursor-pointer" />
+          </template>
+        </q-input>
+        <q-input
+          v-model="filters.dateFrom"
+          label="From"
+          type="date"
+          dense
+          dark
+          outlined
+          style="min-width: 160px"
+        />
+        <q-input
+          v-model="filters.dateTo"
+          label="To"
+          type="date"
+          dense
+          dark
+          outlined
+          style="min-width: 160px"
+        />
+        <q-btn flat dense icon="filter_list_off" color="grey-5" @click="resetFilters" />
+      </div>
+      <div class="row q-gutter-sm">
+        <q-btn flat icon="print" color="white" round @click="printReport">
+          <q-tooltip dark>Print</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="picture_as_pdf" color="white" round @click="exportPDF">
+          <q-tooltip dark>PDF</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="table_chart" color="white" round @click="exportExcel">
+          <q-tooltip dark>Excel</q-tooltip>
+        </q-btn>
+        <q-btn flat icon="description" color="white" round @click="exportCSV">
+          <q-tooltip dark>CSV</q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <div class="fin-panel">
@@ -275,6 +306,7 @@ import {
   reverseJournalEntry,
   fetchChartOfAccounts,
 } from 'src/services/financeService'
+import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -282,7 +314,7 @@ const entries = ref([])
 const showCreateDialog = ref(false)
 const showViewDialog = ref(false)
 const viewingEntry = ref(null)
-const filters = ref({ dateFrom: '', dateTo: '' })
+const filters = ref({ search: '', dateFrom: '', dateTo: '' })
 const accountOptions = ref([])
 
 const form = ref({
@@ -362,7 +394,7 @@ function addLine() {
   formLines.value.push({ account_code: '', account_name: '', dr_amount: 0, cr_amount: 0, memo: '' })
 }
 function resetFilters() {
-  filters.value = { dateFrom: '', dateTo: '' }
+  filters.value = { search: '', dateFrom: '', dateTo: '' }
   loadData()
 }
 function viewEntry(row) {
@@ -427,6 +459,25 @@ async function loadData() {
 }
 
 onMounted(loadData)
+
+// ── Export / Print ──
+function getExportData() {
+  const exportCols = columns.filter((c) => c.name !== 'actions')
+  return { rows: entries.value, cols: exportCols, title: 'Journal_Entries' }
+}
+function printReport() { window.print() }
+function exportCSV() {
+  const d = getExportData()
+  exportTableToCSV(d.cols, d.rows, d.title)
+}
+function exportExcel() {
+  const d = getExportData()
+  exportTableToExcel(d.cols, d.rows, d.title)
+}
+function exportPDF() {
+  const d = getExportData()
+  exportTableToPDF(d.cols, d.rows, d.title)
+}
 </script>
 
 <style scoped lang="scss">
