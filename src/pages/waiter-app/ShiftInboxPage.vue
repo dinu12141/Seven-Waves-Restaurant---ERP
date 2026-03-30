@@ -56,7 +56,9 @@
           <!-- Hint -->
           <div class="avail-hint row items-center q-mb-sm">
             <q-icon name="touch_app" size="12px" color="grey-6" class="q-mr-xs" />
-            <span class="text-grey-7" style="font-size: 0.65rem; letter-spacing: 0.5px">TAP TO MARK AVAILABILITY (OPTIONAL)</span>
+            <span class="text-grey-7" style="font-size: 0.65rem; letter-spacing: 0.5px"
+              >TAP TO MARK AVAILABILITY (OPTIONAL)</span
+            >
           </div>
 
           <div
@@ -75,17 +77,28 @@
                 'text-white': getAvail(order.id, item.id) !== 'unavailable',
                 'text-grey-6 item-name--strike': getAvail(order.id, item.id) === 'unavailable',
               }"
-            >{{ item.name || item.menu_items?.name }}</span>
+              >{{ item.name || item.menu_items?.name }}</span
+            >
             <q-space />
             <span class="text-grey-4 text-caption q-mr-sm">
-              Rs. {{ ((item.unit_price || item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
+              Rs.
+              {{ ((item.unit_price || item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
             </span>
 
             <!-- Available toggle -->
             <q-btn
-              flat dense round size="xs"
-              :icon="getAvail(order.id, item.id) === 'available' ? 'check_circle' : 'check_circle_outline'"
-              :class="getAvail(order.id, item.id) === 'available' ? 'avail-yes--on' : 'avail-btn--off'"
+              flat
+              dense
+              round
+              size="xs"
+              :icon="
+                getAvail(order.id, item.id) === 'available'
+                  ? 'check_circle'
+                  : 'check_circle_outline'
+              "
+              :class="
+                getAvail(order.id, item.id) === 'available' ? 'avail-yes--on' : 'avail-btn--off'
+              "
               @click.stop="toggleAvail(order.id, item.id, 'available')"
             >
               <q-tooltip class="bg-dark">Available</q-tooltip>
@@ -93,9 +106,14 @@
 
             <!-- Unavailable toggle -->
             <q-btn
-              flat dense round size="xs"
+              flat
+              dense
+              round
+              size="xs"
               :icon="getAvail(order.id, item.id) === 'unavailable' ? 'cancel' : 'highlight_off'"
-              :class="getAvail(order.id, item.id) === 'unavailable' ? 'avail-no--on' : 'avail-btn--off'"
+              :class="
+                getAvail(order.id, item.id) === 'unavailable' ? 'avail-no--on' : 'avail-btn--off'
+              "
               @click.stop="toggleAvail(order.id, item.id, 'unavailable')"
             >
               <q-tooltip class="bg-dark">Unavailable</q-tooltip>
@@ -116,9 +134,11 @@
             class="accept-btn full-width"
             :color="getUnavailableCount(order.id) > 0 ? 'orange-9' : 'green-9'"
             icon="check_circle"
-            :label="getUnavailableCount(order.id) > 0
-              ? `Accept (${getUnavailableCount(order.id)} unavailable)`
-              : 'Accept Order'"
+            :label="
+              getUnavailableCount(order.id) > 0
+                ? `Accept (${getUnavailableCount(order.id)} unavailable)`
+                : 'Accept Order'
+            "
             :loading="accepting[order.id]"
             @click="accept(order)"
             no-caps
@@ -190,9 +210,7 @@ function getUnavailableItemIds(orderId) {
 function getUnavailableItemNames(order) {
   const ids = getUnavailableItemIds(order.id)
   const items = order.items || order.order_items || []
-  return items
-    .filter((i) => ids.includes(i.id))
-    .map((i) => i.name || i.menu_items?.name)
+  return items.filter((i) => ids.includes(i.id)).map((i) => i.name || i.menu_items?.name)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -354,9 +372,15 @@ async function accept(order) {
 }
 
 @keyframes pop {
-  0% { transform: scale(0.7); }
-  60% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 // Unavailable banner

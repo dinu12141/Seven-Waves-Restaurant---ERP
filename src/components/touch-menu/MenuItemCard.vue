@@ -57,8 +57,8 @@
     </div>
 
     <q-card-section class="card-info-section q-pt-sm q-pb-xs flex-grow">
-      <div 
-        class="text-weight-bold ellipsis-2-lines name-text" 
+      <div
+        class="text-weight-bold ellipsis-2-lines name-text"
         :class="$q.dark.isActive ? 'text-white' : 'text-black'"
         :title="item.name"
       >

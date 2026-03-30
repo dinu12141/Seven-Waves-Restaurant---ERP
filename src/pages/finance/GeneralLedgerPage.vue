@@ -174,7 +174,7 @@ async function loadData() {
     accountCode: selectedAccount.value,
     dateFrom: dateFrom.value || undefined,
     dateTo: dateTo.value || undefined,
-    search: filtersSearch.value || undefined
+    search: filtersSearch.value || undefined,
   })
   // Calculate running balance
   let balance = 0
@@ -206,7 +206,9 @@ function getExportData() {
   const title = selectedAccount.value ? `General_Ledger_${selectedAccount.value}` : 'General_Ledger'
   return { rows: rows.value, cols: exportCols, title }
 }
-function printReport() { window.print() }
+function printReport() {
+  window.print()
+}
 function exportCSV() {
   const d = getExportData()
   exportTableToCSV(d.cols, d.rows, d.title)

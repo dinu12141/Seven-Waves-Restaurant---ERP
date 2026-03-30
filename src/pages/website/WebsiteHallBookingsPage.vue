@@ -11,7 +11,9 @@
           >
         </div>
         <h1 class="hb-header__title">Hall Bookings</h1>
-        <p class="hb-header__subtitle">Manage hall & event space booking requests from the website</p>
+        <p class="hb-header__subtitle">
+          Manage hall & event space booking requests from the website
+        </p>
       </div>
       <div class="hb-header__right">
         <q-btn
@@ -290,7 +292,10 @@
         <!-- Dialog Body -->
         <div class="hb-dialog__body">
           <!-- Hall type banner -->
-          <div class="hb-dialog__hall-banner" :class="`hb-dialog__hall-banner--${selected?.hall_type}`">
+          <div
+            class="hb-dialog__hall-banner"
+            :class="`hb-dialog__hall-banner--${selected?.hall_type}`"
+          >
             <q-icon :name="hallIcon(selected?.hall_type)" size="20px" class="q-mr-sm" />
             {{ formatHall(selected?.hall_type) }}
           </div>
@@ -341,7 +346,9 @@
           <div class="hb-dialog__divider"></div>
 
           <div class="hb-dialog__message-label">Special Requests</div>
-          <div class="hb-dialog__message">{{ selected?.special_requests || 'No special requests' }}</div>
+          <div class="hb-dialog__message">
+            {{ selected?.special_requests || 'No special requests' }}
+          </div>
 
           <!-- Admin Notes -->
           <div class="hb-dialog__notes-section">
@@ -724,10 +731,18 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   border-top: 2px solid transparent;
 
-  &--blue { border-top-color: var(--erp-primary); }
-  &--orange { border-top-color: #f59e0b; }
-  &--green { border-top-color: var(--erp-success); }
-  &--red { border-top-color: var(--erp-danger); }
+  &--blue {
+    border-top-color: var(--erp-primary);
+  }
+  &--orange {
+    border-top-color: #f59e0b;
+  }
+  &--green {
+    border-top-color: var(--erp-success);
+  }
+  &--red {
+    border-top-color: var(--erp-danger);
+  }
 
   &__icon {
     width: 36px;
@@ -740,9 +755,18 @@ onMounted(() => {
     justify-content: center;
     flex-shrink: 0;
 
-    &--warning { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-    &--success { background: var(--erp-success-subtle); color: var(--erp-success); }
-    &--danger { background: var(--erp-danger-subtle); color: var(--erp-danger); }
+    &--warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+    }
+    &--success {
+      background: var(--erp-success-subtle);
+      color: var(--erp-success);
+    }
+    &--danger {
+      background: var(--erp-danger-subtle);
+      color: var(--erp-danger);
+    }
   }
   &__value {
     font-size: 20px;
@@ -771,9 +795,18 @@ onMounted(() => {
   border-radius: var(--erp-radius-lg);
   margin-bottom: var(--erp-spacing-md);
 }
-.hb-filter-input { flex: 0 1 300px; font-size: var(--erp-font-size-table); }
-.hb-filter-select { flex: 0 1 160px; font-size: var(--erp-font-size-table); }
-.hb-filter-date  { flex: 0 1 160px; font-size: var(--erp-font-size-table); }
+.hb-filter-input {
+  flex: 0 1 300px;
+  font-size: var(--erp-font-size-table);
+}
+.hb-filter-select {
+  flex: 0 1 160px;
+  font-size: var(--erp-font-size-table);
+}
+.hb-filter-date {
+  flex: 0 1 160px;
+  font-size: var(--erp-font-size-table);
+}
 
 .hb-live-badge {
   display: flex;
@@ -794,8 +827,13 @@ onMounted(() => {
   }
 }
 @keyframes hb-live-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* ── Table ─────────────────────────────────────────────────────────── */
@@ -809,7 +847,9 @@ onMounted(() => {
   background: transparent !important;
   font-size: var(--erp-font-size-table) !important;
 }
-.hb-table__header { background: var(--erp-bg-stripe) !important; }
+.hb-table__header {
+  background: var(--erp-bg-stripe) !important;
+}
 .hb-table__th {
   font-size: var(--erp-font-size-caption) !important;
   font-weight: var(--erp-font-weight-bold) !important;
@@ -824,9 +864,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--erp-border) !important;
   transition: background 0.12s ease;
 
-  &:hover { background: var(--erp-bg-card-hover) !important; }
+  &:hover {
+    background: var(--erp-bg-card-hover) !important;
+  }
 
-  td, .q-td {
+  td,
+  .q-td {
     font-size: var(--erp-font-size-table) !important;
     color: var(--erp-text-primary) !important;
     padding: 10px 14px !important;
@@ -835,7 +878,10 @@ onMounted(() => {
 
   &--pending {
     background: rgba(245, 158, 11, 0.03) !important;
-    td, .q-td { font-weight: var(--erp-font-weight-medium); }
+    td,
+    .q-td {
+      font-weight: var(--erp-font-weight-medium);
+    }
   }
 }
 
@@ -970,9 +1016,18 @@ onMounted(() => {
     color: var(--erp-primary) !important;
     background: var(--erp-primary-subtle) !important;
   }
-  &--success:hover { color: var(--erp-success) !important; background: var(--erp-success-subtle) !important; }
-  &--danger:hover  { color: var(--erp-danger) !important;  background: var(--erp-danger-subtle) !important; }
-  &--info:hover    { color: var(--erp-primary) !important; background: var(--erp-primary-subtle) !important; }
+  &--success:hover {
+    color: var(--erp-success) !important;
+    background: var(--erp-success-subtle) !important;
+  }
+  &--danger:hover {
+    color: var(--erp-danger) !important;
+    background: var(--erp-danger-subtle) !important;
+  }
+  &--info:hover {
+    color: var(--erp-primary) !important;
+    background: var(--erp-primary-subtle) !important;
+  }
 }
 
 /* ── Empty State ──────────────────────────────────────────────────── */
@@ -1014,10 +1069,22 @@ onMounted(() => {
       color: var(--erp-text-primary) !important;
     }
   }
-  &--primary  { background: var(--erp-primary) !important; color: #fff !important; }
-  &--success  { background: var(--erp-success) !important; color: #fff !important; }
-  &--danger   { background: var(--erp-danger)  !important; color: #fff !important; }
-  &--info     { background: var(--erp-primary) !important; color: #fff !important; }
+  &--primary {
+    background: var(--erp-primary) !important;
+    color: #fff !important;
+  }
+  &--success {
+    background: var(--erp-success) !important;
+    color: #fff !important;
+  }
+  &--danger {
+    background: var(--erp-danger) !important;
+    color: #fff !important;
+  }
+  &--info {
+    background: var(--erp-primary) !important;
+    color: #fff !important;
+  }
 }
 
 /* ── Dialog ───────────────────────────────────────────────────────── */
@@ -1055,12 +1122,14 @@ onMounted(() => {
     font-weight: var(--erp-font-weight-bold);
     color: var(--erp-text-primary);
   }
-  &__phone  {
+  &__phone {
     font-size: var(--erp-font-size-caption);
     color: var(--erp-text-muted);
     margin-top: 2px;
   }
-  &__close  { color: var(--erp-text-secondary) !important; }
+  &__close {
+    color: var(--erp-text-secondary) !important;
+  }
 
   &__body {
     padding: 20px;
@@ -1079,9 +1148,18 @@ onMounted(() => {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
-    &--main      { background: rgba(67,133,245,0.1); color: var(--erp-primary); }
-    &--vip       { background: rgba(168,85,247,0.1); color: #a855f7; }
-    &--corporate { background: rgba(20,184,166,0.1); color: #14b8a6; }
+    &--main {
+      background: rgba(67, 133, 245, 0.1);
+      color: var(--erp-primary);
+    }
+    &--vip {
+      background: rgba(168, 85, 247, 0.1);
+      color: #a855f7;
+    }
+    &--corporate {
+      background: rgba(20, 184, 166, 0.1);
+      color: #14b8a6;
+    }
   }
 
   &__meta-grid {

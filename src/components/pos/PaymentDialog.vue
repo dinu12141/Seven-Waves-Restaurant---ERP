@@ -293,8 +293,7 @@ const effectiveItems = computed(() => {
       for (const item of o.order_items || []) {
         allItems.push({
           id: item.id || allItems.length,
-          menu_item_name:
-            (item.name || item.menu_item_name || 'Item') + ` (#${o.order_number})`,
+          menu_item_name: (item.name || item.menu_item_name || 'Item') + ` (#${o.order_number})`,
           quantity: item.quantity || item.qty || 1,
           unit_price: parseFloat(item.unit_price || item.price || 0),
           total_price: parseFloat(item.total_price || item.unit_price * item.quantity || 0),
@@ -397,7 +396,8 @@ const simulatedInvoice = computed(() => {
             cashierName.value,
         },
         kot_tickets: allKots,
-        restaurant_tables: props.mergedOrders[0]?.restaurant_tables ||
+        restaurant_tables:
+          props.mergedOrders[0]?.restaurant_tables ||
           (props.mergedOrders[0]?.tableNumber
             ? { table_number: props.mergedOrders[0].tableNumber }
             : null),

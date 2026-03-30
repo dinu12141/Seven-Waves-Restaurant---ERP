@@ -4,7 +4,7 @@
     @update:model-value="$emit('update:modelValue', $event)"
     persistent
   >
-    <q-card class="bg-grey-9 text-white" style="min-width: 400px; border-radius: 12px">
+    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 400px; border-radius: 12px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-weight-bold">
           <q-icon name="download" color="primary" class="q-mr-sm" />

@@ -4,7 +4,7 @@
     <div class="row q-col-gutter-lg">
       <!-- Left: Menu Books List -->
       <div class="col-12 col-md-5">
-        <q-card class="bg-dark text-white border-subtle erp-card">
+        <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card'">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Menu Books</div>
             <q-space />
@@ -96,8 +96,7 @@
       <!-- Right: Book Items Management -->
       <div class="col-12 col-md-7">
         <q-card
-          class="bg-dark text-white border-subtle erp-card"
-          :class="{ 'disabled-overlay': !selectedBookId }"
+          :class="[$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card', { 'disabled-overlay': !selectedBookId }]"
         >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-secondary">
@@ -191,7 +190,7 @@
               <template #body-cell-available="props">
                 <q-td :props="props">
                   <q-toggle
-                    dark
+                    :dark="$q.dark.isActive"
                     dense
                     :model-value="props.row.is_available !== false"
                     @update:model-value="toggleItemAvailability(props.row)"
@@ -237,7 +236,7 @@
 
     <!-- Book Create/Edit Dialog -->
     <q-dialog v-model="bookDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="width: 500px; max-width: 90vw">
+      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="width: 500px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ bookDialog.isEdit ? 'Edit Menu Book' : 'New Menu Book' }}</div>
           <q-space />
@@ -278,7 +277,7 @@
           </div>
 
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="bookDialog.form.description"
             label="Description"
@@ -289,7 +288,7 @@
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-6">
               <q-input
-                dark
+                :dark="$q.dark.isActive"
                 outlined
                 v-model="bookDialog.form.valid_from"
                 type="date"
@@ -298,7 +297,7 @@
             </div>
             <div class="col-6">
               <q-input
-                dark
+                :dark="$q.dark.isActive"
                 outlined
                 v-model="bookDialog.form.valid_to"
                 type="date"
@@ -310,7 +309,7 @@
           <div class="row q-col-gutter-md items-center">
             <div class="col-6">
               <q-input
-                dark
+                :dark="$q.dark.isActive"
                 outlined
                 v-model.number="bookDialog.form.sort_order"
                 type="number"
@@ -338,7 +337,7 @@
 
     <!-- ====== ADD ITEMS TO BOOK DIALOG ====== -->
     <q-dialog v-model="addItemsDialog" persistent>
-      <q-card dark class="bg-dark border-subtle" style="width: 560px; max-width: 95vw">
+      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="width: 560px; max-width: 95vw">
         <q-card-section class="row items-center q-pb-none">
           <div>
             <div class="text-h6">
@@ -358,7 +357,7 @@
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-6">
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="addFilterCategoryId"
@@ -377,7 +376,7 @@
             </div>
             <div class="col-6">
               <q-select
-                dark
+                :dark="$q.dark.isActive"
                 dense
                 outlined
                 v-model="addFilterSubCategoryId"
@@ -411,7 +410,7 @@
           <!-- Empty state when no menu items exist -->
           <q-banner
             v-if="allMenuItems.length === 0"
-            dark
+            :dark="$q.dark.isActive"
             dense
             class="bg-grey-9 text-grey-4 rounded-borders q-mb-sm"
           >
@@ -422,7 +421,7 @@
           <!-- ITEM SELECTOR -->
           <q-select
             v-else
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="addFilterItemId"
             :options="filteredItemOptions"
@@ -473,7 +472,7 @@
           <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
             <q-card
               v-if="selectedItemToFill"
-              dark
+              :dark="$q.dark.isActive"
               flat
               class="bg-grey-10 q-mt-xs"
               style="border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px"
@@ -525,7 +524,7 @@
               <q-separator dark />
               <q-card-section class="q-pa-md q-pt-sm">
                 <q-input
-                  dark
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model.number="overridePrice"
@@ -567,14 +566,14 @@
 
     <!-- Override Price Dialog -->
     <q-dialog v-model="priceDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
         <q-card-section>
           <div class="text-h6">Override Price</div>
           <div class="text-caption text-grey-5">{{ priceDialog.itemName }}</div>
         </q-card-section>
         <q-card-section>
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model.number="priceDialog.price"
             type="number"

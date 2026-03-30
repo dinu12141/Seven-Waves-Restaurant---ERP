@@ -285,7 +285,10 @@
           </div>
 
           <!-- Unavailable items section (collapsed, shown as info only) -->
-          <div v-if="getUnavailableItems(detailOrder).length > 0" class="unavail-section q-mt-sm q-mb-sm">
+          <div
+            v-if="getUnavailableItems(detailOrder).length > 0"
+            class="unavail-section q-mt-sm q-mb-sm"
+          >
             <div class="unavail-section__header">
               <q-icon name="block" size="12px" class="q-mr-xs" />
               {{ getUnavailableItems(detailOrder).length }} item(s) unavailable — not charged
@@ -296,16 +299,28 @@
               class="unavail-item-row"
             >
               <span class="unavail-item-row__qty">{{ item.quantity }}×</span>
-              <span class="unavail-item-row__name">{{ item.name || item.menu_items?.name || '?' }}</span>
-              <span class="unavail-item-row__price">Rs. {{ ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0) }}</span>
+              <span class="unavail-item-row__name">{{
+                item.name || item.menu_items?.name || '?'
+              }}</span>
+              <span class="unavail-item-row__price"
+                >Rs.
+                {{
+                  ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0)
+                }}</span
+              >
             </div>
           </div>
 
           <!-- Total (unavailable items excluded) -->
           <q-separator dark class="q-my-md" />
           <div class="row items-center q-mb-lg">
-            <div class="text-grey-4">Order Total
-              <span v-if="getUnavailableItems(detailOrder).length > 0" class="text-caption text-grey-6 q-ml-xs">(excl. unavailable)</span>
+            <div class="text-grey-4">
+              Order Total
+              <span
+                v-if="getUnavailableItems(detailOrder).length > 0"
+                class="text-caption text-grey-6 q-ml-xs"
+                >(excl. unavailable)</span
+              >
             </div>
             <q-space />
             <div class="text-white text-weight-bold" style="font-size: 1.2rem">

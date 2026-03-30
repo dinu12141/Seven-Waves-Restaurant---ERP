@@ -1,92 +1,96 @@
 <template>
   <q-page class="touch-menu-page column no-wrap window-height">
-    <!-- Hero / Smart Section Area -->
-    <div
-      class="q-px-md q-py-sm touch-hero border-bottom row items-center no-wrap justify-between overflow-hidden"
-    >
-      <div class="column justify-center text-left" style="max-width: 60%">
-        <h1 class="touch-hero-title font-bold q-mb-xs" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Experience Fine Dining</h1>
-        <p class="touch-hero-subtitle text-caption q-mb-none font-medium ellipsis" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
-          Explore our executive chef's seasonal recommendations and best sellers crafted just for
-          you.
-        </p>
+    <!-- ── Hero ──────────────────────────────────────────────────────── -->
+    <div class="touch-hero border-bottom">
+      <!-- Title row (always visible) -->
+      <div class="hero-title-row">
+        <div class="hero-text">
+          <h1 class="touch-hero-title" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
+            Experience Fine Dining
+          </h1>
+          <p class="touch-hero-subtitle" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">
+            Explore our executive chef's seasonal recommendations.
+          </p>
+        </div>
       </div>
 
-      <!-- Live Search & Filter -->
-      <div
-        class="col-4 row no-wrap q-gutter-x-sm items-center justify-end"
-        style="min-width: 350px"
-      >
-        <!-- Search Input -->
-        <div class="col relative-position touch-search rounded-borders tm-search-wrap">
+      <!-- Search + Filter row (single instance, repositioned via CSS on desktop) -->
+      <div class="hero-controls-row">
+        <div class="tm-search-wrap rounded-borders search-field">
           <q-input
             v-model="searchQuery"
             borderless
             dense
             color="primary"
             placeholder="What are you craving?"
-            class="q-px-md font-medium search-input shadow-inner"
+            class="q-px-sm search-input"
             debounce="300"
           >
-            <template v-slot:prepend>
-              <q-icon name="search" color="grey-5" />
-            </template>
+            <template v-slot:prepend><q-icon name="search" color="grey-5" size="18px" /></template>
             <template v-slot:append v-if="searchQuery">
               <q-icon
                 name="close"
                 @click="searchQuery = ''"
-                class="cursor-pointer text-grey-5 hover-white"
+                class="cursor-pointer text-grey-5"
+                size="16px"
               />
             </template>
           </q-input>
         </div>
 
-        <!-- Filter Dropdown Button -->
-        <q-btn
-          outline
-          :class="{
-            'text-primary border-primary bg-primary-transparent': activeCategoryId !== 'all',
-          }"
-          icon="filter_alt"
-          class="tm-filter-btn shadow-5 hover-primary transition-03"
-          style="width: 40px; height: 40px; border-radius: 8px"
-        >
-          <q-menu
-            auto-close
-            class="tm-menu shadow-10"
-            style="border-radius: 12px; min-width: 200px"
-          >
-            <q-list padding class="font-medium">
+        <!-- Single Filter button with dropdown -->
+        <q-btn outline class="tm-filter-btn" id="menu-filter-btn">
+          <q-icon name="tune" size="16px" />
+          <span class="filter-label q-ml-xs">
+            {{
+              activeMainCategory === 'all'
+                ? 'All Menu'
+                : mainCategories.find((c) => c.id === activeMainCategory)?.name || 'Menu'
+            }}
+          </span>
+          <q-icon name="expand_more" size="16px" class="q-ml-xs" />
+          <q-menu auto-close class="tm-menu" style="border-radius: 12px; min-width: 210px">
+            <q-list padding>
               <q-item
                 clickable
                 v-ripple
-                @click="selectCategory('all')"
-                :active="activeCategoryId === 'all' && !searchQuery"
+                @click="selectMainCategory('all')"
+                :active="activeMainCategory === 'all'"
                 active-class="text-primary bg-black-03"
               >
                 <q-item-section avatar>
-                  <q-icon name="restaurant_menu" size="sm" :color="$q.dark.isActive ? 'white' : 'black'" />
+                  <q-icon
+                    name="restaurant_menu"
+                    size="sm"
+                    :color="$q.dark.isActive ? 'white' : 'black'"
+                  />
                 </q-item-section>
-                <q-item-section class="text-subtitle2" :class="$q.dark.isActive ? 'text-white' : 'text-black'">All Menu</q-item-section>
+                <q-item-section
+                  class="text-subtitle2"
+                  :class="$q.dark.isActive ? 'text-white' : 'text-black'"
+                  >All Menu</q-item-section
+                >
               </q-item>
-
-              <q-separator class="q-my-xs transparency-05" />
-
+              <q-separator class="q-my-xs" style="opacity: 0.15" />
               <q-item
-                v-for="cat in categories"
-                :key="'menu-' + cat.id"
+                v-for="cat in mainCategories"
+                :key="'filter-' + cat.id"
                 clickable
                 v-ripple
-                @click="selectCategory(cat.id)"
-                :active="activeCategoryId === cat.id && !searchQuery"
+                @click="selectMainCategory(cat.id)"
+                :active="activeMainCategory === cat.id"
                 active-class="text-primary bg-black-03"
               >
                 <q-item-section avatar>
-                  <q-avatar size="30px" rounded class="border-accent">
+                  <q-avatar size="30px" rounded style="border-radius: 6px; overflow: hidden">
                     <q-img :src="getCategoryImgUrl(cat)" />
                   </q-avatar>
                 </q-item-section>
-                <q-item-section class="text-subtitle2" :class="$q.dark.isActive ? 'text-white' : 'text-black'">{{ cat.name }}</q-item-section>
+                <q-item-section
+                  class="text-subtitle2"
+                  :class="$q.dark.isActive ? 'text-white' : 'text-black'"
+                  >{{ cat.name }}</q-item-section
+                >
               </q-item>
             </q-list>
           </q-menu>
@@ -94,102 +98,77 @@
       </div>
     </div>
 
-    <!-- Category Filter Bar (Infinite CSS Marquee) -->
-    <div
-      class="category-filter-bar row items-center no-wrap q-py-xs border-bottom position-relative"
-    >
-      <!-- Marquee for Sliding Categories -->
-      <div
-        class="marquee-wrapper col"
-        @mouseenter="isPaused = true"
-        @touchstart="isPaused = true"
-        @mouseleave="isPaused = false"
-        @touchend="isPaused = false"
-      >
-        <div class="marquee-track" :class="{ paused: isPaused }">
-          <div
-            class="marquee-content row no-wrap q-gutter-x-sm items-center q-px-sm"
-            v-for="loopIndex in 6"
-            :key="'loop-' + loopIndex"
-          >
-            <!-- Category Cards -->
-            <div
-              v-for="cat in categories"
-              :key="'cat-' + loopIndex + '-' + cat.id"
-              class="category-slide-card column items-center justify-center cursor-pointer transition-03 position-relative"
-              :class="{
-                'category-slide-card--active': activeCategoryId === cat.id && !searchQuery,
-              }"
-              @click="selectCategory(cat.id)"
-            >
-              <div class="cat-img-wrapper q-mb-xs rounded-borders overflow-hidden border-accent">
-                <q-img
-                  :src="getCategoryImgUrl(cat)"
-                  class="full-width full-height object-cover"
-                  spinner-color="primary"
-                  spinner-size="12px"
-                />
-              </div>
-              <span
-                class="text-caption font-bold text-center ellipsis"
-                style="width: 100%; font-size: 10px"
-                :class="
-                  activeCategoryId === cat.id && !searchQuery
-                    ? 'text-primary'
-                    : ($q.dark.isActive ? 'text-white' : 'text-black')
-                "
-                >{{ cat.name }}</span
-              >
-            </div>
+    <!-- ── Category Pill Bar ──────────────────────────────────────────── -->
+    <div class="category-pill-bar border-bottom">
+      <div class="pill-track">
+        <button
+          v-for="cat in visibleSubCategories"
+          :key="'pill-' + cat.id"
+          class="pill-btn"
+          :class="{ 'pill-btn--active': activeCategoryId === cat.id && !searchQuery }"
+          @click="selectSubCategory(cat.id)"
+        >
+          <div class="pill-img-wrap">
+            <img :src="getCategoryImgUrl(cat)" class="pill-img" loading="lazy" />
           </div>
-        </div>
+          <span class="pill-label">{{ cat.name }}</span>
+        </button>
       </div>
     </div>
 
-    <!-- Main Content Area: Grid Only -->
+    <!-- ── Menu Grid ──────────────────────────────────────────────────── -->
     <div class="col relative-position">
-      <q-scroll-area class="full-height q-pa-md hide-scrollbar">
+      <q-scroll-area class="full-height q-pa-sm hide-scrollbar">
         <div v-if="loading" class="row justify-center q-pa-xl">
           <q-spinner-puff size="xl" color="primary" />
         </div>
 
         <div v-else-if="filteredItems.length === 0" class="column items-center q-pa-xl">
-          <q-icon name="search_off" size="64px" :color="$q.dark.isActive ? 'white' : 'black'" class="q-mb-md" />
-          <div class="text-h6 font-bold" :class="$q.dark.isActive ? 'text-white' : 'text-black'">No items found</div>
-          <div class="text-caption" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Try adjusting your filters or search query.</div>
-        </div>
-
-        <div v-else class="row q-col-gutter-md">
-          <!-- Dynamic Grid: Smaller cards, 4-6 columns on tablet -->
-          <div v-for="item in filteredItems" :key="item.id" class="col-4 col-sm-3 col-md-2">
-            <MenuItemCard
-              :item="item"
-              @add-to-cart="touchState.addToCart"
-              @request-add="openItemDetails"
-            />
+          <q-icon
+            name="search_off"
+            size="64px"
+            :color="$q.dark.isActive ? 'white' : 'black'"
+            class="q-mb-md"
+          />
+          <div class="text-h6 font-bold" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
+            No items found
+          </div>
+          <div
+            class="text-caption q-mt-xs"
+            :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-6'"
+          >
+            Try adjusting your filters or search.
           </div>
         </div>
 
+        <div v-else class="menu-grid">
+          <MenuItemCard
+            v-for="item in filteredItems"
+            :key="item.id"
+            :item="item"
+            @add-to-cart="touchState.addToCart"
+            @request-add="openItemDetails"
+          />
+        </div>
+
         <div style="height: 100px"></div>
-        <!-- Bottom padding for scrolling -->
       </q-scroll-area>
 
-      <!-- Bottom sticky gradient for elegant scroll fade -->
       <div
         class="absolute-bottom bg-gradient-bottom pointer-events-none"
         style="height: 50px"
       ></div>
     </div>
 
-    <!-- Item Details Modal (Optional feature for future extension, right now just adds to cart) -->
+    <!-- ── Item Detail Modal ───────────────────────────────────────────── -->
     <q-dialog v-model="detailsModalOpen" persistent backdrop-filter="blur(10px)">
       <q-card
         v-if="selectedItem"
         class="tm-detail-card shadow-24"
-        style="width: 500px; max-width: 90vw; border-radius: 20px"
+        style="width: 500px; max-width: 94vw; border-radius: 20px"
       >
-        <q-img :src="selectedItem.image_url" height="300px">
-          <div class="absolute-top-right bg-transparent q-pa-sm">
+        <q-img :src="selectedItem.image_url" height="260px">
+          <div class="absolute-top-right q-pa-sm">
             <q-btn
               flat
               round
@@ -214,15 +193,18 @@
               LKR {{ Number(selectedItem.price).toLocaleString('en-LK') }}
             </div>
             <div class="row q-gutter-x-sm">
-              <q-badge v-if="selectedItem.is_veg" color="positive" class="text-weight-bold p-x-md"
+              <q-badge v-if="selectedItem.is_veg" color="positive" class="text-weight-bold"
                 >Veg</q-badge
               >
-              <q-badge v-if="selectedItem.is_spicy" color="negative" class="text-weight-bold p-x-md"
+              <q-badge v-if="selectedItem.is_spicy" color="negative" class="text-weight-bold"
                 >Spicy</q-badge
               >
             </div>
           </div>
-          <p class="text-body1 line-height-1-5 q-mb-none font-medium" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
+          <p
+            class="text-body1 line-height-1-5 q-mb-none font-medium"
+            :class="$q.dark.isActive ? 'text-white' : 'text-black'"
+          >
             {{
               selectedItem.description ||
               'Deliciously crafted by our executive chefs for your perfect evening.'
@@ -241,7 +223,7 @@
         <q-card-actions class="q-pa-md border-top tm-actions-bg">
           <q-btn
             color="primary"
-            class="full-width touch-confirm-btn font-extrabold text-h6"
+            class="full-width font-extrabold text-h6"
             size="lg"
             label="Add to Order"
             icon="add_shopping_cart"
@@ -261,22 +243,41 @@ import MenuItemCard from 'src/components/touch-menu/MenuItemCard.vue'
 
 const touchState = inject('touchMenuState')
 
+const mainCategories = ref([])
 const categories = ref([])
 const items = ref([])
 const loading = ref(true)
 
+const activeMainCategory = ref('all')
 const activeCategoryId = ref('all')
 const searchQuery = ref('')
-const isPaused = ref(false)
 
 const detailsModalOpen = ref(false)
 const selectedItem = ref(null)
 
-// Computed
+// ── Computed ──────────────────────────────────────────────────────────────────
+const visibleSubCategories = computed(() => {
+  let subs = categories.value.filter((c) => c.id !== 'all')
+  if (activeMainCategory.value !== 'all') {
+    subs = subs.filter((c) => c.category_id === activeMainCategory.value)
+  }
+  const mainName =
+    activeMainCategory.value === 'all'
+      ? 'All Menu'
+      : mainCategories.value.find((c) => c.id === activeMainCategory.value)?.name || 'All'
+  return [
+    {
+      id: 'all',
+      name: mainName,
+      image_url:
+        'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
+    },
+    ...subs,
+  ]
+})
 
 const filteredItems = computed(() => {
   let result = items.value.filter((i) => i.is_available)
-
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     result = result.filter(
@@ -284,33 +285,42 @@ const filteredItems = computed(() => {
         i.name.toLowerCase().includes(q) ||
         (i.description && i.description.toLowerCase().includes(q)),
     )
-  } else if (activeCategoryId.value && activeCategoryId.value !== 'all') {
-    result = result.filter((i) => i.sub_category_id === activeCategoryId.value)
-  }
-
-  // Sort: Available first, then by name
-  return result.sort((a, b) => {
-    if (a.is_available === b.is_available) {
-      return a.name.localeCompare(b.name)
+  } else {
+    if (activeMainCategory.value !== 'all') {
+      const allowed = categories.value
+        .filter((c) => c.category_id === activeMainCategory.value)
+        .map((c) => c.id)
+      result = result.filter((i) => allowed.includes(i.sub_category_id))
     }
+    if (activeCategoryId.value !== 'all') {
+      result = result.filter((i) => i.sub_category_id === activeCategoryId.value)
+    }
+  }
+  return result.sort((a, b) => {
+    if (a.is_available === b.is_available) return a.name.localeCompare(b.name)
     return a.is_available ? -1 : 1
   })
 })
 
+// ── Data Fetching ─────────────────────────────────────────────────────────────
 async function fetchData() {
   loading.value = true
   try {
-    // 1. Load categories
+    const { data: mainCatData, error: mainCatErr } = await supabase
+      .from('categories')
+      .select('*')
+      .order('sort_order')
+    if (mainCatErr) throw mainCatErr
+    const loadedMainCategories = mainCatData || []
+
     const { data: catData, error: catErr } = await supabase
       .from('menu_sub_categories')
       .select('*')
       .eq('is_active', true)
       .order('sort_order')
     if (catErr) throw catErr
-
     const loadedCategories = catData || []
 
-    // 2. Try to find an active menu book
     const { data: books } = await supabase
       .from('menu_books')
       .select('id, name')
@@ -323,7 +333,6 @@ async function fetchData() {
     let loadedItems = []
 
     if (activeBook) {
-      // Load items from the menu book
       const { data: bookItemsData, error: biErr } = await supabase
         .from('menu_book_items')
         .select(
@@ -332,11 +341,9 @@ async function fetchData() {
         .eq('menu_book_id', activeBook.id)
         .eq('is_available', true)
         .order('sort_order')
-
       if (biErr) throw biErr
 
       if (bookItemsData && bookItemsData.length > 0) {
-        // Menu book has items — use them
         loadedItems = bookItemsData
           .filter((bi) => bi.menu_items && bi.menu_items.is_available !== false)
           .map((bi) => {
@@ -344,45 +351,26 @@ async function fetchData() {
             return {
               ...mi,
               price: Number(bi.override_price || mi.base_price),
-              image_url: mi.image_url || getPremiumFallbackImage(mi.name, mi.id),
+              image_url: mi.image_url || getPremiumFallbackImage(mi.name),
             }
           })
-
-        // Only show categories that have items in the book
         const usedSubCatIds = new Set(loadedItems.map((i) => i.sub_category_id).filter(Boolean))
-        categories.value = [
-          {
-            id: 'all',
-            name: 'All Menu',
-            image_url:
-              'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
-          },
-          ...loadedCategories.filter((c) => usedSubCatIds.has(c.id)),
-        ]
-
+        categories.value = loadedCategories.filter((c) => usedSubCatIds.has(c.id))
+        const usedMainCatIds = new Set(categories.value.map((c) => c.category_id).filter(Boolean))
+        mainCategories.value = loadedMainCategories.filter((c) => usedMainCatIds.has(c.id))
         items.value = loadedItems
         return
       }
     }
 
-    // Fallback: no menu book or book has no items → load all items
-    categories.value = [
-      {
-        id: 'all',
-        name: 'All Menu',
-        image_url:
-          'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/cat_all.png',
-      },
-      ...loadedCategories,
-    ]
-
+    categories.value = loadedCategories
+    mainCategories.value = loadedMainCategories
     const { data: itemData, error: itemErr } = await supabase.from('menu_items').select('*')
     if (itemErr) throw itemErr
-
     items.value = (itemData || []).map((i) => ({
       ...i,
-      price: i.base_price != null ? Number(i.base_price) : i.price || i.name.length * 150 + 400,
-      image_url: i.image_url || getPremiumFallbackImage(i.name, i.id),
+      price: i.base_price != null ? Number(i.base_price) : 400,
+      image_url: i.image_url || getPremiumFallbackImage(i.name),
     }))
   } catch (err) {
     console.error('Fetch error:', err)
@@ -391,106 +379,39 @@ async function fetchData() {
   }
 }
 
-// Helper to get diverse images for category cards and menu items
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getCategoryImgUrl(item) {
   if (item.image_url) return item.image_url
-  return getPremiumFallbackImage(item.name, item.id)
+  return getPremiumFallbackImage(item.name)
 }
 
 function getPremiumFallbackImage(name) {
   const n = (name || '').toLowerCase()
-
-  // --- LUXURY PREMIUM CATEGORY & ITEM MAPPING (UNSPLASH) ---
-
-  // Drinks & Liquid Gold
-  if (n.includes('bubblelicious') || n.includes('bubble'))
-    return 'https://images.unsplash.com/photo-1558857563-b371f30bb673?auto=format&fit=crop&w=600&q=80'
   if (n.includes('milkshake'))
     return 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80'
   if (n.includes('juice') || n.includes('fresh'))
     return 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('coffee') || n.includes('tea') || n.includes('hot bev') || n.includes('frappe'))
+  if (n.includes('coffee') || n.includes('tea') || n.includes('frappe'))
     return 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?auto=format&fit=crop&w=600&q=80'
-  if (
-    n.includes('mojito') ||
-    n.includes('smoothie') ||
-    n.includes('drink') ||
-    n.includes('lassi') ||
-    n.includes('potion')
-  )
-    return 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80'
-
-  // Fast Food & Western
+  if (n.includes('mojito'))
+    return 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/smoothies/lime_mint_1774785221920.png'
+  if (n.includes('smoothie'))
+    return 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/smoothies/avocado_1774783849132.png'
+  if (n.includes('lassi'))
+    return 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/smoothies/mango_lassi_1774786521116.png'
+  if (n.includes('chilled') || n.includes('delight'))
+    return 'https://clykwuzajtwvwuavmtzs.supabase.co/storage/v1/object/public/menu-images/smoothies/falooda_bombay_1774787609691.png'
+  if (n.includes('soft drink') || n.includes('cola') || n.includes('beverage'))
+    return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80'
   if (n.includes('burger'))
     return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('sandwich') || n.includes('submarine') || n.includes('bun'))
-    return 'https://images.unsplash.com/photo-1553909489-cd47e0907980?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('bread'))
-    return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('puff') || n.includes('pastry') || n.includes('patis'))
-    return 'https://images.unsplash.com/photo-1551443874-987b50448b5e?auto=format&fit=crop&w=600&q=80'
   if (n.includes('pizza'))
     return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80'
-
-  // Luxury Mains & Grills
-  if (
-    n.includes('grilled') ||
-    n.includes('steak') ||
-    n.includes('meat') ||
-    n.includes('tandoori') ||
-    n.includes('shawarma')
-  )
-    return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('pasta') || n.includes('lasagna') || n.includes('spaghetti'))
-    return 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?auto=format&fit=crop&w=600&q=80'
-
-  // Asian & Exotics
-  if (n.includes('rice') || n.includes('biryani') || n.includes('nasi') || n.includes('thai'))
+  if (n.includes('rice') || n.includes('biryani'))
     return 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('kottu'))
-    return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80'
-  if (
-    n.includes('curry') ||
-    n.includes('indian') ||
-    n.includes('devil') ||
-    n.includes('chili craze')
-  )
-    return 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80'
-  if (
-    n.includes('rotty') ||
-    n.includes('naan') ||
-    n.includes('roti') ||
-    n.includes('dose') ||
-    n.includes('hopper')
-  )
-    return 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('noodle') || n.includes('chow mein') || n.includes('chopsuey'))
-    return 'https://images.unsplash.com/photo-1582878826629-29b7ad1cb438?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('roll') || n.includes('fried') || n.includes('sizzling'))
-    return 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('vade'))
-    return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80'
-
-  // Others
-  if (
-    n.includes('dessert') ||
-    n.includes('sweet') ||
-    n.includes('cake') ||
-    n.includes('waffle') ||
-    n.includes('delight')
-  )
+  if (n.includes('dessert') || n.includes('cake') || n.includes('waffle'))
     return 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('salad') || n.includes('veg'))
-    return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('soup') || n.includes('stew') || n.includes('boil'))
-    return 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('breakfast') || n.includes('egg'))
-    return 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('bite') || n.includes('snack') || n.includes('add'))
-    return 'https://images.unsplash.com/photo-1541529086121-b4a78a444646?auto=format&fit=crop&w=600&q=80'
-
-  // Generic but unique professional fallback based on seed so it stays consistent
-  return `https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80`
+  return 'https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80'
 }
 
 function openItemDetails(item) {
@@ -499,8 +420,14 @@ function openItemDetails(item) {
   detailsModalOpen.value = true
 }
 
-function selectCategory(id) {
+function selectSubCategory(id) {
   activeCategoryId.value = id
+  searchQuery.value = ''
+}
+
+function selectMainCategory(id) {
+  activeMainCategory.value = id
+  activeCategoryId.value = 'all'
   searchQuery.value = ''
 }
 
@@ -517,14 +444,13 @@ onMounted(() => {
 <style scoped lang="scss">
 .touch-menu-page {
   font-family: 'Inter', sans-serif;
-  height: calc(100vh - 70px) !important;
   max-width: 100vw;
+  overflow-x: hidden;
   transition:
     background-color 0.25s ease,
     color 0.25s ease;
 }
 
-// ── Theme-adaptive backgrounds ─────────────────────────────────────────────
 :global(.body--dark) .touch-menu-page {
   background-color: #0b0e14;
   color: #f8fafc;
@@ -534,10 +460,19 @@ onMounted(() => {
   color: #0f172a;
 }
 
-// Hero section
+// ── Hero ──────────────────────────────────────────────────────────────────────
 .touch-hero {
-  height: 60px;
+  padding: 10px 12px 10px;
+
+  @media (min-width: 600px) {
+    padding: 14px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
 }
+
 :global(.body--dark) .touch-hero {
   background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 60%);
 }
@@ -545,20 +480,86 @@ onMounted(() => {
   background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.06), transparent 60%);
 }
 
-.touch-hero-title {
-  font-size: 18px;
-  line-height: 1.1;
-  letter-spacing: -0.5px;
-}  
+// ── Hero title row ────────────────────────────────────────────────────────────
+.hero-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
 
-// Search bar
+  @media (min-width: 600px) {
+    margin-bottom: 0;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+}
+
+.hero-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.touch-hero-title {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  margin: 0 0 1px;
+
+  @media (min-width: 400px) {
+    font-size: 18px;
+  }
+  @media (min-width: 600px) {
+    font-size: 22px;
+    margin-bottom: 3px;
+  }
+}
+
+.touch-hero-subtitle {
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+
+  @media (min-width: 600px) {
+    font-size: 13px;
+  }
+}
+
+// ── Controls row (search + filter) ───────────────────────────────────────────
+// On mobile: full-width row below the title
+// On desktop: flex row to the right of title
+.hero-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (min-width: 600px) {
+    flex-shrink: 0;
+    gap: 10px;
+  }
+}
+
+.search-field {
+  flex: 1;
+  min-width: 0;
+
+  @media (min-width: 600px) {
+    width: 260px;
+    flex: none;
+  }
+}
+
+// ── Search bar ─────────────────────────────────────────────────────────────────
 .tm-search-wrap {
+  height: 38px;
+  display: flex;
+  align-items: center;
   transition:
     background 0.2s,
     border-color 0.2s;
 }
 :global(.body--dark) .tm-search-wrap {
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 41, 59, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 :global(.body--light) .tm-search-wrap {
@@ -567,22 +568,60 @@ onMounted(() => {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-// Filter button
+.search-input {
+  width: 100%;
+  :deep(.q-field__control) {
+    height: 36px;
+    min-height: 36px;
+  }
+  :deep(.q-field__native) {
+    font-size: 13px;
+    padding: 0;
+  }
+  :deep(.q-field__prepend) {
+    padding-right: 6px;
+  }
+}
+
+// ── Filter button ──────────────────────────────────────────────────────────────
 .tm-filter-btn {
+  height: 38px !important;
+  border-radius: 10px !important;
+  padding: 0 10px !important;
+  flex-shrink: 0;
+  gap: 0;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 :global(.body--dark) .tm-filter-btn {
   background: rgba(15, 23, 42, 0.8);
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #94a3b8;
 }
 :global(.body--light) .tm-filter-btn {
   background: #ffffff;
-  border-color: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.12) !important;
   color: #475569;
 }
 
-// Filter dropdown menu
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @media (min-width: 400px) {
+    max-width: 80px;
+  }
+  @media (min-width: 600px) {
+    font-size: 13px;
+    max-width: 120px;
+  }
+}
+
+// ── Filter menu ────────────────────────────────────────────────────────────────
 .tm-menu {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -597,36 +636,171 @@ onMounted(() => {
   color: #0f172a !important;
 }
 
-// Category filter bar
-.category-filter-bar {
-  transition: background 0.25s;
-}
-:global(.body--dark) .category-filter-bar {
-  background: rgba(15, 23, 42, 0.4);
-}
-:global(.body--light) .category-filter-bar {
-  background: rgba(241, 245, 249, 0.8);
+// ── Category Pill Bar ──────────────────────────────────────────────────────────
+.category-pill-bar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  padding: 8px 12px;
+
+  @media (min-width: 600px) {
+    padding: 10px 20px;
+  }
 }
 
-// Borders
+:global(.body--dark) .category-pill-bar {
+  background: rgba(15, 23, 42, 0.3);
+}
+:global(.body--light) .category-pill-bar {
+  background: rgba(241, 245, 249, 0.6);
+}
+
+.pill-track {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+  @media (min-width: 600px) {
+    gap: 10px;
+  }
+}
+
+.pill-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 6px 8px;
+  width: 66px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: #9ca3af;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (min-width: 400px) {
+    width: 72px;
+  }
+  @media (min-width: 600px) {
+    width: 82px;
+    gap: 7px;
+    padding: 8px 7px 10px;
+  }
+
+  &:active {
+    transform: scale(0.93);
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+  }
+
+  &--active {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(239, 68, 68, 0.08));
+    border-color: rgba(249, 115, 22, 0.5);
+    color: #fb923c;
+
+    .pill-img-wrap {
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.6);
+    }
+  }
+}
+
+:global(.body--light) .pill-btn {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  color: #475569;
+
+  @media (hover: hover) {
+    &:hover {
+      background: #ffffff;
+      color: #0f172a;
+    }
+  }
+
+  &.pill-btn--active {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(239, 68, 68, 0.06));
+    border-color: rgba(249, 115, 22, 0.4);
+    color: #ea580c;
+  }
+}
+
+.pill-img-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a24;
+  flex-shrink: 0;
+  transition: box-shadow 0.2s;
+}
+
+.pill-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pill-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+
+  @media (min-width: 400px) {
+    font-size: 11px;
+  }
+  @media (min-width: 600px) {
+    font-size: 12px;
+  }
+}
+
+// ── Menu Grid ──────────────────────────────────────────────────────────────────
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+
+  @media (min-width: 420px) {
+    gap: 11px;
+  }
+  @media (min-width: 600px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (min-width: 900px) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  @media (min-width: 1200px) {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+// ── Borders ────────────────────────────────────────────────────────────────────
 .border-bottom {
   border-bottom: 1px solid rgba(128, 128, 128, 0.12);
-}
-.border-right {
-  border-right: 1px solid rgba(128, 128, 128, 0.12);
 }
 .border-top {
   border-top: 1px solid rgba(128, 128, 128, 0.12);
 }
-.border-accent {
-  border: 1px solid rgba(128, 128, 128, 0.12);
-}
 
-.transparency-05 {
-  opacity: 0.5;
-}
-
-// Item detail card
+// ── Item detail card ──────────────────────────────────────────────────────────
 .tm-detail-card {
   transition: background 0.2s;
 }
@@ -640,7 +814,6 @@ onMounted(() => {
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: #0f172a;
 }
-
 .tm-actions-bg {
   background: rgba(0, 0, 0, 0.04);
 }
@@ -651,73 +824,12 @@ onMounted(() => {
   background: rgba(0, 0, 0, 0.02);
 }
 
-// Category slide cards
-.category-slide-card {
-  width: 48px;
-  opacity: 0.7;
-  &:hover {
-    opacity: 1;
-    transform: translateY(-2px);
-  }
-  &--active {
-    opacity: 1;
-    .cat-img-wrapper {
-      border-color: var(--q-primary);
-      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-    }
-  }
-}
-
-.cat-img-wrapper {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-/* Infinite Marquee Slider */
-.marquee-wrapper {
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-}
-
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: scrollLeft 120s linear infinite;
-  &.paused {
-    animation-play-state: paused;
-  }
-}
-
-.marquee-content {
-  display: flex;
-}
-
-@keyframes scrollLeft {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-16.66666%);
-  }
-}
-
-// Bottom gradient
-.bg-gradient-bottom {
-  pointer-events: none;
-}
+// ── Gradients ──────────────────────────────────────────────────────────────────
 :global(.body--dark) .bg-gradient-bottom {
   background: linear-gradient(180deg, rgba(11, 14, 20, 0) 0%, rgba(11, 14, 20, 1) 100%);
 }
 :global(.body--light) .bg-gradient-bottom {
   background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 1) 100%);
-}
-
-.search-input:focus-within {
-  border-color: var(--q-primary);
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
 }
 
 .bg-black-06 {
@@ -726,14 +838,8 @@ onMounted(() => {
 .bg-black-03 {
   background: rgba(0, 0, 0, 0.3);
 }
-.bg-primary-transparent {
-  background: rgba(37, 99, 235, 0.1);
-}
 
 /* Typography */
-.font-medium {
-  font-weight: 500;
-}
 .font-bold {
   font-weight: 700;
 }
@@ -743,45 +849,13 @@ onMounted(() => {
 .font-black {
   font-weight: 900;
 }
-.letter-spacing-1 {
-  letter-spacing: 1px;
-}
 .font-mono {
   font-family: 'SF Mono', 'JetBrains Mono', monospace;
 }
-.line-height-1 {
-  line-height: 1.2;
+.letter-spacing-1 {
+  letter-spacing: 1px;
 }
 .line-height-1-5 {
   line-height: 1.5;
-}
-
-/* Transitions */
-.transition-02 {
-  transition: all 0.2s ease;
-}
-.transition-03 {
-  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
-}
-
-/* Hide scrollbars */
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-.touch-confirm-btn {
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  &:active {
-    transform: scale(0.97);
-  }
 }
 </style>

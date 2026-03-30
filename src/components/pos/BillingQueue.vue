@@ -126,12 +126,7 @@
           </div>
 
           <!-- ═══ SINGLE ORDER (no table group) ═══ -->
-          <div
-            v-else
-            class="queue-card"
-            :class="statusClass(item)"
-            @click="onSelect(item)"
-          >
+          <div v-else class="queue-card" :class="statusClass(item)" @click="onSelect(item)">
             <!-- Card Header -->
             <div class="row items-center justify-between q-mb-xs">
               <div class="row items-center q-gutter-x-xs">

@@ -429,16 +429,7 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'INVENTORY',
     group: 'Stock',
   },
-  {
-    label: 'Good Requests',
-    icon: 'swap_horiz',
-    to: '/inventory?tab=good_requests',
-    roles: ['admin', 'manager', 'inventory'],
-    permission: 'inventory:view',
-    section: 'INVENTORY',
-    moduleCode: 'INVENTORY',
-    group: 'Stock',
-  },
+
   {
     label: 'Stock Ledger',
     icon: 'menu_book',

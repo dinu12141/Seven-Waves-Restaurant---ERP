@@ -1,11 +1,11 @@
 <template>
-  <div class="erp-field q-mb-lg">
-    <div class="erp-field-label q-mb-xs">
+  <div class="erp-field q-mb-sm">
+    <div v-if="label" class="erp-field-label q-mb-xs">
       {{ label }} <span v-if="required" class="text-negative">*</span>
     </div>
     <q-select
       v-bind="$attrs"
-      dark
+      :dark="$q.dark.isActive"
       outlined
       dense
       hide-bottom-space
@@ -22,7 +22,7 @@
 <script setup>
 defineOptions({ inheritAttrs: false })
 defineProps({
-  label: { type: String, required: true },
+  label: { type: String, default: '' },
   required: { type: Boolean, default: false },
   bgColor: { type: String, default: 'surface-2' },
 })

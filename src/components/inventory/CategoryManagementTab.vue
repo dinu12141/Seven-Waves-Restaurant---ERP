@@ -3,7 +3,7 @@
     <div class="row q-col-gutter-lg">
       <!-- Left Column: Primary Categories -->
       <div class="col-12 col-md-5">
-        <q-card class="bg-dark text-white border-subtle erp-card">
+        <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card'">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Primary Categories</div>
             <q-space />
@@ -91,8 +91,7 @@
       <!-- Right Column: Sub Categories -->
       <div class="col-12 col-md-7">
         <q-card
-          class="bg-dark text-white border-subtle erp-card"
-          :class="{ 'disabled-overlay': !selectedCategoryId }"
+          :class="[$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card', { 'disabled-overlay': !selectedCategoryId }]"
         >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-secondary">
@@ -160,7 +159,7 @@
 
     <!-- Category Dialog -->
     <q-dialog v-model="catDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="min-width: 400px">
+      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 400px">
         <q-card-section class="row items-center">
           <div class="text-h6">{{ catDialog.isEdit ? 'Edit Category' : 'New Category' }}</div>
           <q-space />
@@ -168,14 +167,14 @@
         </q-card-section>
         <q-card-section class="q-gutter-md">
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="catDialog.form.name"
             label="Category Name"
             :rules="[(v) => !!v || 'Required']"
           />
           <q-select
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="catDialog.form.warehouse_id"
             :options="warehouseOptions"
@@ -186,7 +185,7 @@
             placeholder="Select a warehouse..."
           />
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model.number="catDialog.form.sort_order"
             type="number"
@@ -208,7 +207,7 @@
 
     <!-- Sub-Category Dialog -->
     <q-dialog v-model="subDialog.show" persistent>
-      <q-card dark class="bg-dark border-subtle" style="min-width: 400px">
+      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 400px">
         <q-card-section class="row items-center">
           <div class="text-h6">
             {{ subDialog.isEdit ? 'Edit Sub Category' : 'New Sub Category' }}
@@ -221,7 +220,7 @@
         </q-card-section>
         <q-card-section class="q-gutter-md q-pt-md">
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="subDialog.form.name"
             label="Sub Category Name"

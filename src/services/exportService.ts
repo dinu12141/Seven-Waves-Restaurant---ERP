@@ -1,6 +1,27 @@
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import logoUrl from 'src/assets/seven-waves-logo-transparent.png'
+
+let cachedLogoBase64: string | null = null
+async function getLogoBase64(): Promise<string> {
+  if (cachedLogoBase64) return cachedLogoBase64
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.drawImage(img, 0, 0)
+      cachedLogoBase64 = canvas.toDataURL('image/png')
+      resolve(cachedLogoBase64)
+    }
+    img.onerror = reject
+    img.src = logoUrl
+  })
+}
 
 /**
  * Export Document to Excel (.xlsx)
@@ -29,9 +50,18 @@ export function exportToExcel(document: any, lines: any[]) {
  * Export Document to PDF
  * Note: Uses jsPDF with autotable
  */
-export function exportToPDF(document: any, lines: any[]) {
+export async function exportToPDF(document: any, lines: any[]) {
   try {
     const doc = new jsPDF()
+
+    // Add Logo Top Right
+    try {
+      const base64Logo = await getLogoBase64()
+      const pageWidth = doc.internal.pageSize.getWidth()
+      doc.addImage(base64Logo, 'PNG', pageWidth - 50, 10, 36, 12)
+    } catch (e) {
+      console.warn('Failed to load logo for PDF', e)
+    }
 
     // Header
     doc.setFontSize(22)
@@ -138,8 +168,17 @@ export function exportTableToExcel(columns: any[], rows: any[], filename: string
 /**
  * Generic PDF Export with jsPDF-AutoTable
  */
-export function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
+export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
   const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
+
+  try {
+    const base64Logo = await getLogoBase64()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    doc.addImage(base64Logo, 'PNG', pageWidth - 50, 10, 36, 12)
+  } catch (e) {
+    console.warn('Failed to load logo for PDF header', e)
+  }
+
   doc.setFontSize(18)
   doc.setTextColor(25, 118, 210)
   doc.text('SEVEN WAVES RESTAURANT (PVT) LTD', 14, 18)

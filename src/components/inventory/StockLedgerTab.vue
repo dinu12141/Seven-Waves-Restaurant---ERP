@@ -3,7 +3,7 @@
     <!-- Filters -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="search"
@@ -13,7 +13,7 @@
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="docTypeFilter"
@@ -24,7 +24,7 @@
         style="min-width: 180px"
       />
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="directionFilter"
@@ -35,7 +35,7 @@
         style="min-width: 120px"
       />
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="dateFrom"
@@ -44,7 +44,7 @@
         style="min-width: 150px"
       />
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="dateTo"
@@ -59,7 +59,7 @@
     </div>
 
     <!-- Ledger Table (Read Only) -->
-    <q-card class="bg-grey-9 text-white" flat bordered>
+    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
       <q-card-section class="q-pb-sm">
         <div class="text-h6">
           <q-icon name="menu_book" class="q-mr-sm" />Stock Ledger — Audit Trail
@@ -70,7 +70,7 @@
           :rows="entries"
           :columns="columns"
           row-key="id"
-          dark
+          :dark="$q.dark.isActive"
           flat
           bordered
           dense
@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useStockLedger } from 'src/services/inventoryService'
 
 const { entries, loading, fetchLedger } = useStockLedger()
@@ -225,8 +225,13 @@ function formatDateTime(val) {
     d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   )
 }
+const exportTitle = computed(() => {
+  return docTypeFilter.value ? `${docTypeFilter.value} Ledger Audit Report` : 'Inventory Stock Ledger Audit Trail'
+})
+
 defineExpose({
   columns,
   rows: entries,
+  exportTitle,
 })
 </script>

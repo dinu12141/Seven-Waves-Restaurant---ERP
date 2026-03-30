@@ -66,13 +66,13 @@
         <div class="top-bar">
           <div class="top-bar-left">
             <div class="brand-icon">
-              <q-icon name="restaurant" size="18px" color="white" />
+              <q-icon name="restaurant" size="16px" color="white" />
             </div>
             <div class="top-bar-info">
               <div class="brand-name">SEVEN WAVES</div>
               <div class="top-bar-table">
-                <q-icon name="table_restaurant" size="12px" class="q-mr-xs" />
-                {{ tableMeta?.table_number ?? 'Your Table' }}
+                <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
+                {{ tableMeta?.table_number ?? 'Table' }}
               </div>
             </div>
           </div>
@@ -81,7 +81,7 @@
 
           <!-- Session TTL badge -->
           <div v-if="session.remainingSec !== null" class="ttl-badge">
-            <q-icon name="timer" size="13px" class="q-mr-xs" />
+            <q-icon name="timer" size="12px" class="q-mr-xs" />
             {{ ttlLabel }}
           </div>
 
@@ -94,7 +94,7 @@
             class="loyalty-btn q-ml-xs"
             @click="$router.push('/loyalty')"
           >
-            <q-icon name="stars" size="20px" color="amber" />
+            <q-icon name="stars" size="18px" color="amber" />
             <q-tooltip>My Loyalty Card ({{ customer.pointsBalance }} pts)</q-tooltip>
           </q-btn>
           <!-- Orders button: active + history -->
@@ -103,10 +103,10 @@
             flat
             round
             dense
-            class="q-ml-sm"
+            class="q-ml-xs"
             id="orders-menu-btn"
           >
-            <q-icon name="receipt_long" size="22px" color="white" />
+            <q-icon name="receipt_long" size="20px" color="white" />
             <q-badge
               v-if="session.activeOrders.length > 0"
               color="red"
@@ -242,16 +242,14 @@
               "
             >
               <span class="pulse-dot"></span>
-              <span class="mini-tracker-label"
-                >Order #{{ session.activeOrders.length }} In Progress</span
-              >
-              <q-icon name="chevron_right" size="14px" color="orange-4" />
+              <span class="mini-tracker-label mobile-hide">In Progress</span>
+              <q-icon name="chevron_right" size="12px" color="orange-4" />
             </div>
           </div>
 
           <!-- Cart icon -->
-          <q-btn flat round dense class="cart-btn q-ml-sm" @click="cartOpen = true">
-            <q-icon name="shopping_basket" size="22px" color="white" />
+          <q-btn flat round dense class="cart-btn q-ml-xs" @click="cartOpen = true">
+            <q-icon name="shopping_basket" size="20px" color="white" />
             <q-badge v-if="cartItemCount > 0" color="orange" floating rounded class="cart-badge">
               {{ cartItemCount }}
             </q-badge>
@@ -262,7 +260,7 @@
 
         <!-- ── Sticky search + categories ───────────────────────────── -->
         <div class="sticky-bar">
-          <div class="q-px-md q-pt-sm q-pb-xs">
+          <div class="search-bar-wrap">
             <q-input
               v-model="search"
               placeholder="Search dishes, drinks..."
@@ -279,7 +277,7 @@
             </q-input>
           </div>
 
-          <div class="category-scroll q-px-md q-pb-sm">
+          <div class="category-scroll">
             <div class="category-track">
               <button
                 v-for="cat in categories"
@@ -291,7 +289,7 @@
                 <div class="cat-img-wrapper">
                   <img v-if="cat.image" :src="cat.image" class="cat-img" />
                   <div v-else class="cat-img-placeholder">
-                    <q-icon name="restaurant" size="18px" color="grey-6" />
+                    <q-icon name="restaurant" size="16px" color="grey-6" />
                   </div>
                 </div>
                 <span class="cat-label">{{ cat.name }}</span>
@@ -307,7 +305,7 @@
         </div>
 
         <!-- ── Menu grid ─────────────────────────────────────────────── -->
-        <div v-else class="menu-content q-px-md q-pb-xl">
+        <div v-else class="menu-content q-pb-xl">
           <!-- Grouped by category (All + no search) -->
           <template v-if="selectedCategory === 'All' && !search">
             <div v-for="group in groupedItems" :key="group.name" class="category-group q-mb-xl">
@@ -389,7 +387,7 @@
     <q-drawer
       v-model="cartOpen"
       side="right"
-      :width="360"
+      :width="$q.screen.lt.sm ? $q.screen.width : 360"
       dark
       class="cart-drawer"
       overlay
@@ -1065,38 +1063,56 @@ onUnmounted(() => {
   z-index: 200;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  height: 62px;
-  background: rgba(13, 13, 20, 0.92);
+  padding: 0 12px;
+  height: 56px;
+  background: rgba(13, 13, 20, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  gap: 4px;
+
+  @media (min-width: 600px) {
+    padding: 0 20px;
+    height: 62px;
+  }
 }
 
 .top-bar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   background: linear-gradient(135deg, #f97316, #ef4444);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.45);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
   flex-shrink: 0;
+
+  @media (min-width: 600px) {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
 }
 
 .brand-name {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 800;
-  letter-spacing: 3.5px;
+  letter-spacing: 3px;
   color: #fb923c;
   line-height: 1;
+
+  @media (min-width: 400px) {
+    font-size: 0.55rem;
+    letter-spacing: 3.5px;
+  }
 }
 
 .top-bar-table {
@@ -1109,20 +1125,21 @@ onUnmounted(() => {
 }
 
 .mini-tracker-wrap {
-  margin-left: auto;
-  margin-right: 8px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .mini-tracker {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   background: rgba(249, 115, 22, 0.1);
   border: 1px solid rgba(249, 115, 22, 0.2);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 
   &:hover {
     background: rgba(249, 115, 22, 0.15);
@@ -1131,11 +1148,17 @@ onUnmounted(() => {
 }
 
 .mini-tracker-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #fb923c;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+}
+
+.mobile-hide {
+  @media (max-width: 400px) {
+    display: none;
+  }
 }
 
 .pulse-dot {
@@ -1203,23 +1226,46 @@ onUnmounted(() => {
 // ── Sticky bar ────────────────────────────────────────────────────────────────
 .sticky-bar {
   position: sticky;
-  top: 62px;
+  top: 56px;
   z-index: 100;
-  background: rgba(13, 13, 20, 0.94);
+  background: rgba(13, 13, 20, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+
+  @media (min-width: 600px) {
+    top: 62px;
+  }
+}
+
+.search-bar-wrap {
+  padding: 10px 12px 6px;
+
+  @media (min-width: 600px) {
+    padding: 12px 16px 8px;
+  }
 }
 
 .search-input {
   :deep(.q-field__control) {
     background: rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+  }
+  :deep(.q-field__native) {
+    font-size: 0.9rem;
   }
 }
 
 .category-scroll {
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+  padding: 0 12px 10px;
+
+  @media (min-width: 600px) {
+    padding: 0 16px 12px;
+  }
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -1227,33 +1273,52 @@ onUnmounted(() => {
 
 .category-track {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   width: max-content;
-  padding-bottom: 2px;
+
+  @media (min-width: 600px) {
+    gap: 10px;
+  }
 }
 
 .cat-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 6px;
-  padding-bottom: 10px;
-  width: 85px;
+  gap: 6px;
+  padding: 6px 6px 8px;
+  width: 72px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.03);
   color: #9ca3af;
   cursor: pointer;
   transition: all 0.22s ease;
   font-family: 'Inter', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: white;
+  @media (min-width: 400px) {
+    width: 78px;
   }
+  @media (min-width: 600px) {
+    width: 88px;
+    gap: 8px;
+    padding: 7px 7px 10px;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: white;
+    }
+  }
+
   &.active {
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(239, 68, 68, 0.1));
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(239, 68, 68, 0.1));
     border-color: rgba(249, 115, 22, 0.5);
     color: #fb923c;
   }
@@ -1264,8 +1329,8 @@ onUnmounted(() => {
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--erp-bg-main, #1a1a24);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  background: #1a1a24;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .cat-img {
@@ -1284,10 +1349,10 @@ onUnmounted(() => {
 }
 
 .cat-label {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.15;
   max-width: 100%;
   display: -webkit-box;
   line-clamp: 2;
@@ -1295,6 +1360,13 @@ onUnmounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+
+  @media (min-width: 400px) {
+    font-size: 0.68rem;
+  }
+  @media (min-width: 600px) {
+    font-size: 0.72rem;
+  }
 }
 
 // ── Loading ────────────────────────────────────────────────────────────────
@@ -1308,7 +1380,19 @@ onUnmounted(() => {
 
 // ── Menu content ──────────────────────────────────────────────────────────────
 .menu-content {
-  padding-top: 16px;
+  padding-top: 14px;
+  padding-left: 12px;
+  padding-right: 12px;
+
+  @media (min-width: 420px) {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  @media (min-width: 600px) {
+    padding-top: 20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 .category-header {
@@ -1331,15 +1415,21 @@ onUnmounted(() => {
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 
+  @media (min-width: 420px) {
+    gap: 12px;
+  }
   @media (min-width: 600px) {
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 14px;
   }
   @media (min-width: 900px) {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
+  }
+  @media (min-width: 1200px) {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -1353,12 +1443,18 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #f97316, #ef4444) !important;
   color: white !important;
   border-radius: 30px;
-  padding: 0 20px;
-  height: 52px;
-  font-size: 0.9rem;
-  box-shadow: 0 8px 30px rgba(249, 115, 22, 0.5);
-  min-width: 280px;
-  max-width: 90vw;
+  padding: 0 18px;
+  height: 50px;
+  font-size: 0.875rem;
+  box-shadow: 0 8px 28px rgba(249, 115, 22, 0.55);
+  min-width: 240px;
+  max-width: calc(100vw - 40px);
+
+  @media (min-width: 500px) {
+    min-width: 280px;
+    height: 52px;
+    font-size: 0.9rem;
+  }
 }
 
 .cart-fab-enter-active,
@@ -1381,11 +1477,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 12px;
+  padding: 14px 16px 12px;
 }
 
 .cart-scroll {
   height: calc(100dvh - 220px);
+
+  @media (max-width: 599px) {
+    height: calc(100dvh - 230px);
+  }
 }
 
 .cart-item {

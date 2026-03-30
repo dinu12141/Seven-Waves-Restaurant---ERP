@@ -1,5 +1,5 @@
 <template>
-  <q-card class="bg-grey-9 text-white q-mt-md" flat bordered>
+  <q-card :class="[$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black', 'q-mt-md']" flat bordered>
     <q-card-section class="row items-center q-pb-sm">
       <div class="text-subtitle1 text-weight-bold">
         <q-icon name="list_alt" class="q-mr-xs" /> Line Items
@@ -23,7 +23,7 @@
         :columns="tableColumns"
         row-key="_dummy"
         flat
-        dark
+        :dark="$q.dark.isActive"
         bordered
         dense
         class="bg-transparent"
@@ -34,19 +34,74 @@
         <!-- Item Select -->
         <template #body-cell-item_id="props">
           <q-td :props="props">
-            <q-select
-              v-if="!readonly"
-              dark
-              outlined
-              dense
-              :model-value="props.row.item_id"
-              :options="itemOptions"
-              label="Select item"
-              emit-value
-              map-options
-              style="min-width: 200px"
-              @update:model-value="onItemSelected(props.rowIndex, $event)"
-            />
+            <div v-if="!readonly">
+              <q-select
+                :dark="$q.dark.isActive"
+                outlined
+                dense
+                :model-value="props.row.item_id"
+                :options="filteredItemOptions"
+                label="Select item"
+                emit-value
+                map-options
+                use-input
+                fill-input
+                hide-selected
+                input-debounce="150"
+                style="min-width: 240px"
+                @update:model-value="onItemSelected(props.rowIndex, $event)"
+                @filter="filterItems"
+                @popup-show="searchText = ''"
+              >
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps" :disable="scope.opt.disabled">
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <!-- Show spinner while stock data is loading -->
+                      <q-spinner-dots
+                        v-if="isOutboundDoc && stockLoading"
+                        color="blue"
+                        size="14px"
+                      />
+                      <!-- Show badge only for items that have a stock record in this warehouse -->
+                      <q-badge
+                        v-else-if="isOutboundDoc && scope.opt.hasData"
+                        :color="
+                          scope.opt.stockQty <= 0
+                            ? 'negative'
+                            : scope.opt.stockQty < 5
+                              ? 'warning'
+                              : 'positive'
+                        "
+                        text-color="white"
+                      >
+                        {{
+                          scope.opt.stockQty <= 0 ? 'No Stock' : scope.opt.stockQty + ' in stock'
+                        }}
+                      </q-badge>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <!-- Zero-stock warning chip: only for items confirmed to have 0 stock in this warehouse -->
+              <q-chip
+                v-if="
+                  isOutboundDoc &&
+                  hasStockData(props.row.item_id) &&
+                  getAvailableQty(props.row.item_id) <= 0
+                "
+                color="negative"
+                text-color="white"
+                icon="warning"
+                size="sm"
+                dense
+                class="q-mt-xs"
+              >
+                Zero stock in this warehouse — cannot transfer!
+              </q-chip>
+            </div>
             <span v-else>{{ getItemName(props.row.item_id) }}</span>
           </q-td>
         </template>
@@ -54,18 +109,48 @@
         <!-- Quantity -->
         <template #body-cell-quantity="props">
           <q-td :props="props">
-            <q-input
-              v-if="!readonly"
-              dark
-              outlined
-              dense
-              :model-value="props.row.quantity"
-              type="number"
-              :step="0.01"
-              min="0"
-              style="min-width: 100px"
-              @update:model-value="(val) => updateLineItem(props.rowIndex, 'quantity', val)"
-            />
+            <div v-if="!readonly">
+              <q-input
+                :dark="$q.dark.isActive"
+                outlined
+                dense
+                :model-value="props.row.quantity"
+                type="number"
+                :step="0.01"
+                min="0"
+                :max="
+                  isOutboundDoc && hasStockData(props.row.item_id)
+                    ? getAvailableQty(props.row.item_id)
+                    : undefined
+                "
+                style="min-width: 100px"
+                :color="
+                  isOutboundDoc &&
+                  hasStockData(props.row.item_id) &&
+                  Number(props.row.quantity) > getAvailableQty(props.row.item_id)
+                    ? 'negative'
+                    : 'primary'
+                "
+                :bg-color="
+                  isOutboundDoc &&
+                  hasStockData(props.row.item_id) &&
+                  Number(props.row.quantity) > getAvailableQty(props.row.item_id)
+                    ? 'red-10'
+                    : undefined
+                "
+                @update:model-value="(val) => updateLineItem(props.rowIndex, 'quantity', val)"
+              >
+                <template v-if="isOutboundDoc && hasStockData(props.row.item_id)" #hint>
+                  <span
+                    :class="
+                      getAvailableQty(props.row.item_id) <= 0 ? 'text-negative' : 'text-grey-5'
+                    "
+                  >
+                    Avail: {{ getAvailableQty(props.row.item_id) }}
+                  </span>
+                </template>
+              </q-input>
+            </div>
             <span v-else>{{ formatNumber(props.row.quantity) }}</span>
           </q-td>
         </template>
@@ -73,9 +158,9 @@
         <!-- Unit Cost -->
         <template #body-cell-unit_cost="props">
           <q-td :props="props">
-            <q-input
+              <q-input
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.unit_cost"
@@ -94,7 +179,7 @@
           <q-td :props="props">
             <q-select
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.tax_code"
@@ -125,9 +210,9 @@
         <!-- Batch (optional) -->
         <template #body-cell-batch_no="props">
           <q-td :props="props">
-            <q-input
+              <q-input
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.batch_no"
@@ -142,9 +227,9 @@
         <!-- Expiry (optional) -->
         <template #body-cell-expiry_date="props">
           <q-td :props="props">
-            <q-input
+              <q-input
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.expiry_date"
@@ -166,9 +251,9 @@
         <!-- Counted Qty (stock count) -->
         <template v-if="isStockCount" #body-cell-counted_qty="props">
           <q-td :props="props">
-            <q-input
+              <q-input
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.counted_qty"
@@ -201,9 +286,9 @@
         <!-- Notes -->
         <template #body-cell-notes="props">
           <q-td :props="props">
-            <q-input
+              <q-input
               v-if="!readonly"
-              dark
+              :dark="$q.dark.isActive"
               outlined
               dense
               :model-value="props.row.notes"
@@ -235,14 +320,22 @@
 
         <!-- Footer Totals -->
         <template #bottom-row>
-          <q-tr class="text-weight-bold bg-grey-10">
-            <q-td colspan="1" class="text-right text-subtitle2">TOTALS</q-td>
-            <q-td class="text-right text-primary text-subtitle2">{{ formatNumber(totalQty) }}</q-td>
-            <q-td></q-td>
-            <q-td class="text-right text-positive text-subtitle2">{{
-              formatCurrency(totalCost)
-            }}</q-td>
-            <q-td :colspan="extraCols + 2"></q-td>
+          <q-tr :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-grey-2 text-black'" class="text-weight-bold">
+            <q-td class="text-right text-subtitle2">TOTALS</q-td>
+            <template v-if="!isStockCount">
+              <q-td class="text-right text-primary text-subtitle2">{{ formatNumber(totalQty) }}</q-td>
+              <q-td colspan="3"></q-td>
+              <q-td class="text-right text-positive text-subtitle2">{{ formatCurrency(totalCost) }}</q-td>
+              <q-td colspan="4"></q-td>
+            </template>
+            <template v-else>
+              <q-td></q-td>
+              <q-td class="text-right text-primary text-subtitle2">{{ formatNumber(totalQty) }}</q-td>
+              <q-td></q-td>
+              <q-td></q-td>
+              <q-td class="text-right text-positive text-subtitle2">{{ formatCurrency(totalCost) }}</q-td>
+              <q-td colspan="2"></q-td>
+            </template>
           </q-tr>
         </template>
       </q-table>
@@ -251,25 +344,68 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   items: { type: Array, default: () => [] },
   docType: { type: String, default: '' },
   readonly: { type: Boolean, default: false },
+  warehouseStock: { type: Object, default: () => ({}) }, // item_id -> qty_on_hand
+  stockLoading: { type: Boolean, default: false }, // true while fetching warehouse stock
 })
 
 const emit = defineEmits(['update:modelValue'])
 
 const isStockCount = computed(() => props.docType === 'STOCK_COUNT')
-
-const itemOptions = computed(() =>
-  props.items.map((i) => ({
-    label: `${i.code} — ${i.name} (${i.uom_code})`,
-    value: i.id,
-  })),
+const isOutboundDoc = computed(() =>
+  ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT'].includes(props.docType),
 )
+
+function getAvailableQty(itemId) {
+  if (!itemId || !props.warehouseStock) return 0
+  return Number(props.warehouseStock[itemId] ?? 0)
+}
+
+// True when this specific item has a stock record in the selected warehouse
+function hasStockData(itemId) {
+  if (!itemId || props.stockLoading) return false
+  return itemId in props.warehouseStock
+}
+
+// Build options directly as a computed (no stale ref cache)
+const allItemOptions = computed(() =>
+  props.items.map((i) => {
+    const stockQty = getAvailableQty(i.id)
+    const hasData = hasStockData(i.id)
+    return {
+      label: `${i.code} — ${i.name} (${i.uom_code})`,
+      value: i.id,
+      stockQty,
+      hasData,
+      // Only disable if we have confirmed data showing 0 stock
+      disabled: isOutboundDoc.value && hasData && stockQty <= 0,
+    }
+  }),
+)
+
+// Search text used by the filter callback
+const searchText = ref('')
+
+// Filtered options — reactive to BOTH warehouseStock changes AND search text
+// Binding :options directly to a computed ensures Quasar rerenders when stock loads
+const filteredItemOptions = computed(() => {
+  const needle = searchText.value.toLowerCase()
+  const all = allItemOptions.value
+  if (!needle) return all
+  return all.filter((opt) => opt.label.toLowerCase().includes(needle))
+})
+
+// Quasar q-select filter callback — just updates searchText, computed does the rest
+function filterItems(val, update) {
+  searchText.value = val
+  update()
+}
 
 // Simplified columns without field functions that rely on volatile local state
 const baseColumns = [
@@ -301,8 +437,6 @@ const tableColumns = computed(() => {
   const cols = isStockCount.value ? stockCountColumns : baseColumns
   return [...cols, ...noteAndAction]
 })
-
-const extraCols = computed(() => (isStockCount.value ? 2 : 3))
 
 const totalQty = computed(() => props.modelValue.reduce((s, l) => s + (Number(l.quantity) || 0), 0))
 
@@ -417,6 +551,24 @@ function formatCurrency(val) {
 
 <style scoped>
 .q-table__container {
+  background: transparent !important;
+}
+
+/* Prevent inputs/selects inside table cells from looking bold */
+:deep(.q-table td .q-field__native),
+:deep(.q-table td .q-field__input),
+:deep(.q-table td .q-field__label) {
+  font-weight: 400 !important;
+  font-size: 12px !important;
+}
+
+/* Keep wrapper from adding extra spacing inside table cells */
+:deep(.q-table td .erp-field) {
+  margin-bottom: 0 !important;
+}
+
+/* Light mode: ensure inputs inside table use proper bg */
+:deep(.q-table td .q-field--outlined .q-field__control) {
   background: transparent !important;
 }
 </style>

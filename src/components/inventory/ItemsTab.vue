@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="filter"
@@ -13,7 +13,7 @@
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="categoryFilter"
@@ -43,12 +43,6 @@
       :filter="filter"
       :loading="loading"
     >
-      <template #body-cell-avg_cost="props">
-        <q-td :props="props">
-          <span class="text-weight-bold">{{ formatCurrency(props.value) }}</span>
-        </q-td>
-      </template>
-
       <template #body-cell-last_purchase_price="props">
         <q-td :props="props">{{ formatCurrency(props.value) }}</q-td>
       </template>
@@ -64,6 +58,7 @@
 
       <template #body-cell-actions="props">
         <q-td :props="props" class="q-gutter-xs">
+          <!-- Edit item -->
           <q-btn
             flat
             dense
@@ -75,6 +70,19 @@
           >
             <q-tooltip>Edit item</q-tooltip>
           </q-btn>
+          <!-- Add stock via GRN -->
+          <q-btn
+            flat
+            dense
+            round
+            icon="add_circle"
+            size="sm"
+            color="positive"
+            @click="goToGRN(props.row)"
+          >
+            <q-tooltip>Add stock via GRN</q-tooltip>
+          </q-btn>
+          <!-- Delete -->
           <q-btn
             flat
             dense
@@ -119,11 +127,22 @@
             <BaseSelect
               label="Item Type"
               v-model="form.item_type"
-              :options="['Finish Good', 'Raw Material', 'Packing Set', 'Servable', 'Non Servable']"
+              :options="itemTypesList"
               required
-            />
+            >
+              <template #after>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="add"
+                  color="primary"
+                  @click="showItemTypeDialog = true"
+                />
+              </template>
+            </BaseSelect>
           </div>
-          <div class="col-6">
+          <div class="col-4">
             <BaseSelect
               label="Category"
               v-model="form.category_id"
@@ -131,9 +150,20 @@
               emit-value
               map-options
               clearable
-            />
+            >
+              <template #after>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="add"
+                  color="primary"
+                  @click="showCategoryDialog = true"
+                />
+              </template>
+            </BaseSelect>
           </div>
-          <div class="col-6">
+          <div class="col-4">
             <BaseSelect
               label="UOM"
               v-model="form.inventory_uom_id"
@@ -142,24 +172,35 @@
               emit-value
               map-options
               :rules="[(v) => !!v || 'Required']"
-            />
+            >
+              <template #after>
+                <q-btn flat round dense icon="add" color="primary" @click="showUomDialog = true" />
+              </template>
+            </BaseSelect>
           </div>
         </div>
       </BaseFormSection>
 
       <BaseFormSection
-        title="Pricing & Reordering"
-        description="Costing and stock management parameters"
+        title="Procurement & Reordering"
+        description="Supplier pricing and minimum stock level. Stock quantity is managed automatically via GRN receipts."
       >
         <div class="row q-col-gutter-md">
-          <div class="col-4">
-            <BaseInput label="Avg Cost" v-model.number="form.avg_cost" type="number" />
+          <div class="col-6">
+            <BaseInput
+              label="Last Purchase Price (LKR)"
+              v-model.number="form.last_purchase_price"
+              type="number"
+              hint="Reference only — cost auto-updates on GRN post"
+            />
           </div>
-          <div class="col-4">
-            <BaseInput label="Reorder Level" v-model.number="form.reorder_level" type="number" />
-          </div>
-          <div class="col-4">
-            <BaseInput label="Last Price" v-model.number="form.last_purchase_price" type="number" />
+          <div class="col-6">
+            <BaseInput
+              label="Reorder Level (Min Stock)"
+              v-model.number="form.reorder_level"
+              type="number"
+              hint="Low-stock alert fires below this quantity"
+            />
           </div>
         </div>
       </BaseFormSection>
@@ -171,6 +212,15 @@
           @click="showDialog = false"
           class="q-mr-sm"
         />
+        <q-btn
+          v-if="editingItem"
+          flat
+          icon="add_circle"
+          label="Add Stock (GRN)"
+          color="positive"
+          class="q-mr-sm"
+          @click="() => { goToGRN(editingItem); showDialog = false }"
+        />
         <BaseButton
           :label="editingItem ? 'Update' : 'Save'"
           icon="save"
@@ -180,31 +230,116 @@
         />
       </template>
     </BaseDialog>
+    <!-- Option Managers -->
+    <OptionManagerDialog
+      v-model="showItemTypeDialog"
+      title="Item Types"
+      :items="itemTypesObjects"
+      @add="handleAddItemType"
+      @delete="handleDeleteItemType"
+    />
+    <OptionManagerDialog
+      v-model="showCategoryDialog"
+      title="Categories"
+      :items="categories"
+      @add="handleCreateCategory"
+      @delete="handleDeleteCategory"
+    />
+    <OptionManagerDialog
+      v-model="showUomDialog"
+      title="UOMs"
+      :items="uoms"
+      @add="handleCreateUom"
+      @delete="handleDeleteUom"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useRouter } from 'vue-router'
 import DataTable from 'components/common/DataTable.vue'
 import BaseDialog from 'components/common/erp/BaseDialog.vue'
 import BaseFormSection from 'components/common/erp/BaseFormSection.vue'
 import BaseInput from 'components/common/erp/BaseInput.vue'
 import BaseSelect from 'components/common/erp/BaseSelect.vue'
 import BaseButton from 'components/common/erp/BaseButton.vue'
+import OptionManagerDialog from './OptionManagerDialog.vue'
 import { useItemsList, useCategoryList, useUomList } from 'src/services/inventoryService'
 
 const $q = useQuasar()
+const router = useRouter()
 const { items, loading, listItems, createItem, updateItem, deleteItem, generateNextItemCode } =
   useItemsList()
-const { categories, listCategories } = useCategoryList()
-const { uoms, listUoms } = useUomList()
+const { categories, listCategories, createCategory, deleteCategory } = useCategoryList()
+const { uoms, listUoms, createUom, deleteUom } = useUomList()
 
 const filter = ref('')
 const categoryFilter = ref('')
 const showDialog = ref(false)
 const editingItem = ref(null)
 const saving = ref(false)
+
+const defaultItemTypes = ['Finish Good', 'Raw Material', 'Packing Set', 'Servable', 'Non Servable']
+const storedTypes = JSON.parse(localStorage.getItem('erp_item_types') || 'null')
+const itemTypesList = ref(storedTypes || defaultItemTypes)
+const itemTypesObjects = computed(() => itemTypesList.value.map((t) => ({ id: t, name: t })))
+
+const showItemTypeDialog = ref(false)
+const showCategoryDialog = ref(false)
+const showUomDialog = ref(false)
+
+function handleAddItemType(name) {
+  if (!itemTypesList.value.includes(name)) {
+    itemTypesList.value.push(name)
+    localStorage.setItem('erp_item_types', JSON.stringify(itemTypesList.value))
+  }
+}
+function handleDeleteItemType(item) {
+  itemTypesList.value = itemTypesList.value.filter((t) => t !== item.id)
+  localStorage.setItem('erp_item_types', JSON.stringify(itemTypesList.value))
+}
+
+// handleAddItemType and handleDeleteItemType don't have try-catch blocks
+// For categories and UOMs we do
+
+async function handleCreateCategory(name) {
+  try {
+    const data = await createCategory(name)
+    // auto-select if adding from the add item form
+    if (form.category_id === null) form.category_id = data.id
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e?.message || 'Failed to add category' })
+  }
+}
+async function handleDeleteCategory(item) {
+  try {
+    await deleteCategory(item.id)
+    if (form.category_id === item.id) form.category_id = null
+    $q.notify({ type: 'positive', message: 'Category deleted' })
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e?.message || 'Cannot delete category in use.' })
+  }
+}
+
+async function handleCreateUom(name) {
+  try {
+    const data = await createUom(name)
+    if (form.inventory_uom_id === null) form.inventory_uom_id = data.id
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e?.message || 'Failed to add UOM' })
+  }
+}
+async function handleDeleteUom(item) {
+  try {
+    await deleteUom(item.id)
+    if (form.inventory_uom_id === item.id) form.inventory_uom_id = null
+    $q.notify({ type: 'positive', message: 'UOM deleted' })
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e?.message || 'Cannot delete UOM in use.' })
+  }
+}
 
 const emptyForm = {
   code: '',
@@ -213,9 +348,8 @@ const emptyForm = {
   item_type: 'Raw Material',
   category_id: null,
   inventory_uom_id: null,
-  avg_cost: 0,
-  reorder_level: 0,
   last_purchase_price: 0,
+  reorder_level: 0,
 }
 
 const form = reactive({ ...emptyForm })
@@ -243,7 +377,6 @@ const columns = [
     sortable: true,
     style: 'width: 100px',
   },
-  { name: 'barcode', label: 'Barcode', field: 'barcode', align: 'left', sortable: true },
   { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
   { name: 'item_type', label: 'Type', field: 'item_type', align: 'left', sortable: true },
   {
@@ -254,7 +387,7 @@ const columns = [
     sortable: true,
   },
   { name: 'uom_code', label: 'UOM', field: 'uom_code', align: 'center', style: 'width: 70px' },
-  { name: 'avg_cost', label: 'Avg Cost', field: 'avg_cost', align: 'right', sortable: true },
+
   {
     name: 'last_purchase_price',
     label: 'Last Price',
@@ -262,9 +395,9 @@ const columns = [
     align: 'right',
     sortable: true,
   },
-  { name: 'reorder_level', label: 'Reorder Lvl', field: 'reorder_level', align: 'center' },
+  { name: 'reorder_level', label: 'Min Stock', field: 'reorder_level', align: 'center' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
+  { name: 'actions', label: 'Actions', field: 'actions', align: 'center', style: 'width: 130px' },
 ]
 
 async function openCreate() {
@@ -288,11 +421,25 @@ function openEdit(row) {
     item_type: row.item_type || 'Raw Material',
     category_id: row.category_id,
     inventory_uom_id: row.inventory_uom_id,
-    avg_cost: row.avg_cost,
-    reorder_level: row.reorder_level,
     last_purchase_price: row.last_purchase_price,
+    reorder_level: row.reorder_level,
   })
   showDialog.value = true
+}
+
+/**
+ * Navigate to a new GRN document pre-filled with this item.
+ * Uses query params: ?newDoc=GRN&item_id=UUID
+ */
+function goToGRN(row) {
+  router.push({
+    path: '/inventory',
+    query: {
+      tab: 'documents',
+      newDoc: 'GRN',
+      item_id: row.id,
+    },
+  })
 }
 
 async function saveItem() {
@@ -302,15 +449,26 @@ async function saveItem() {
   }
   saving.value = true
   try {
+    // Build payload without avg_cost (it's managed by the GRN trigger)
+    const payload = {
+      code: form.code,
+      barcode: form.barcode,
+      name: form.name,
+      item_type: form.item_type,
+      category_id: form.category_id,
+      inventory_uom_id: form.inventory_uom_id,
+      last_purchase_price: form.last_purchase_price || 0,
+      reorder_level: form.reorder_level || 0,
+    }
     if (editingItem.value) {
-      await updateItem(editingItem.value.id, { ...form })
+      await updateItem(editingItem.value.id, payload)
       $q.notify({ type: 'positive', message: 'Item updated!' })
     } else {
-      await createItem({ ...form, is_active: true })
+      await createItem({ ...payload, is_active: true })
       $q.notify({ type: 'positive', message: 'Item created!' })
     }
     showDialog.value = false
-    // Refresh to get full joined data
+    // Refresh to get full joined data (category_name, uom_code, etc.)
     await listItems()
   } catch (e) {
     $q.notify({ type: 'negative', message: e.message || 'Failed to save item.' })

@@ -82,13 +82,10 @@
               <div class="text-caption">Select a posted PO to auto-fill items and supplier.</div>
             </div>
             <q-space />
-            <q-select
+            <BaseSelect
               v-model="selectedPOId"
               :options="openPOOptions"
               label="Select Posted PO"
-              dark
-              outlined
-              dense
               emit-value
               map-options
               style="min-width: 400px"
@@ -99,7 +96,7 @@
                   <q-item-section class="text-grey"> No posted POs found </q-item-section>
                 </q-item>
               </template>
-            </q-select>
+            </BaseSelect>
             <q-btn flat color="white" icon="refresh" @click="refreshOpenPOs" />
           </div>
         </q-card-section>
@@ -116,17 +113,29 @@
         :suppliers="suppliers"
       />
 
+      <!-- Stock loading banner for TRANSFER/GIN -->
+      <div
+        v-if="stockLoading"
+        class="row items-center q-pa-sm q-mb-sm bg-blue-10 text-white rounded-borders"
+        style="border-radius: 6px"
+      >
+        <q-spinner-dots color="white" size="16px" class="q-mr-sm" />
+        <span class="text-caption">Loading warehouse stock levels…</span>
+      </div>
+
       <!-- Document Lines -->
       <DocumentLinesTable
         v-model="lines"
         :items="items"
         :doc-type="header.doc_type"
+        :warehouse-stock="warehouseStock ?? {}"
+        :stock-loading="stockLoading"
         :readonly="docStatus === 'posted' || docStatus === 'cancelled'"
       />
     </template>
 
     <!-- Financial Summary (SAP Style) -->
-    <q-card v-if="header.doc_type" class="bg-grey-9 text-white q-mt-md" flat bordered>
+    <q-card v-if="header.doc_type" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" class="q-mt-md" flat bordered>
       <q-card-section>
         <div class="row items-end">
           <div class="col-12 col-md-8">
@@ -157,7 +166,7 @@
                 <span class="text-grey-5 text-caption">Tax Total</span>
                 <span class="text-subtitle1">{{ formatCurrency(totals.tax) }}</span>
               </div>
-              <q-separator dark class="full-width q-my-xs" />
+              <q-separator :dark="$q.dark.isActive" class="full-width q-my-xs" />
               <div
                 class="row full-width justify-between items-center no-wrap text-primary text-h6 text-weight-bolder"
               >
@@ -185,6 +194,7 @@ import PostButton from 'components/inventory/PostButton.vue'
 import SendEmailDialog from 'components/inventory/SendEmailDialog.vue'
 import PrintPODialog from 'components/inventory/PrintPODialog.vue'
 import ExportDocDialog from 'components/inventory/ExportDocDialog.vue'
+import BaseSelect from 'components/common/erp/BaseSelect.vue'
 import {
   createDocument,
   updateDraft,
@@ -197,6 +207,7 @@ import {
   useItemsList,
   useUomList,
   listOpenPOs,
+  fetchStockByWarehouse,
 } from 'src/services/inventoryService'
 import { useAuthStore } from 'src/stores/auth'
 
@@ -220,6 +231,7 @@ function formatCurrency(val) {
 
 const props = defineProps({
   document: { type: Object, default: null },
+  prefillItemId: { type: String, default: null },
 })
 
 const emit = defineEmits(['back', 'saved'])
@@ -328,6 +340,41 @@ const totals = computed(() => {
 })
 
 const lines = ref([])
+const warehouseStock = ref(null) // null = not loaded; {} = no stock; { id: qty } = loaded
+const stockLoading = ref(false)
+
+// Fetch available stock from source warehouse for TRANSFER / GIN docs
+async function loadWarehouseStock(warehouseId) {
+  if (!warehouseId || !['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE'].includes(header.doc_type)) {
+    warehouseStock.value = null
+    return
+  }
+  stockLoading.value = true
+  try {
+    warehouseStock.value = await fetchStockByWarehouse(warehouseId)
+  } finally {
+    stockLoading.value = false
+  }
+}
+
+watch(
+  () => header.warehouse_id,
+  (newWh) => {
+    loadWarehouseStock(newWh)
+  },
+)
+
+watch(
+  () => header.doc_type,
+  (newType) => {
+    const outbound = ['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE']
+    if (outbound.includes(newType) && header.warehouse_id) {
+      loadWarehouseStock(header.warehouse_id)
+    } else if (!outbound.includes(newType)) {
+      warehouseStock.value = null
+    }
+  },
+)
 
 watch(
   () => header.supplier_id,
@@ -380,6 +427,27 @@ onMounted(async () => {
       }))
     } catch (e) {
       $q.notify({ type: 'negative', message: 'Failed to load document: ' + e.message })
+    }
+  }
+
+  // Pre-fill item line when navigating from Items tab "Add Stock (GRN)" button
+  if (props.prefillItemId && !props.document?.id) {
+    const item = items.value.find((i) => i.id === props.prefillItemId)
+    if (item) {
+      lines.value = [
+        {
+          item_id: item.id,
+          uom_id: item.inventory_uom_id || item.uom_id || uoms.value[0]?.id || null,
+          quantity: 1,
+          unit_cost: item.avg_cost || item.last_purchase_price || 0,
+          line_total: item.avg_cost || item.last_purchase_price || 0,
+          tax_code: null,
+          tax_amount: 0,
+          batch_no: null,
+          expiry_date: null,
+          notes: null,
+        },
+      ]
     }
   }
 })
@@ -461,7 +529,7 @@ function validateDraft() {
   return true
 }
 
-// Strict for Post — must have items and valid quantities
+// Strict for Post — must have items, valid quantities, and sufficient stock for OUT movements
 function validatePost() {
   if (!validateDraft()) return false
 
@@ -478,6 +546,40 @@ function validatePost() {
     })
     return false
   }
+
+  // Stock availability check for TRANSFER and GIN documents
+  const outboundTypes = ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT']
+  if (
+    outboundTypes.includes(header.doc_type) &&
+    warehouseStock.value &&
+    Object.keys(warehouseStock.value).length > 0
+  ) {
+    for (const line of lines.value) {
+      const available = warehouseStock.value[line.item_id] ?? 0
+      const requested = Number(line.quantity) || 0
+      if (available <= 0) {
+        const item = items.value.find((i) => i.id === line.item_id)
+        $q.notify({
+          type: 'negative',
+          message: `"${item?.name || line.item_id}" has no stock in the source warehouse. Cannot transfer.`,
+          icon: 'inventory_2',
+          timeout: 4000,
+        })
+        return false
+      }
+      if (requested > available) {
+        const item = items.value.find((i) => i.id === line.item_id)
+        $q.notify({
+          type: 'negative',
+          message: `"${item?.name || line.item_id}": requested ${requested} but only ${available} available.`,
+          icon: 'inventory_2',
+          timeout: 4000,
+        })
+        return false
+      }
+    }
+  }
+
   return true
 }
 

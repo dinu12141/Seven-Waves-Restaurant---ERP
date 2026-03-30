@@ -21,8 +21,21 @@
           map-options
           class="q-mr-sm"
         />
-        <q-btn unelevated icon="picture_as_pdf" color="red-6" label="PDF" @click="exportBankPDF" class="q-mr-sm" />
-        <q-btn unelevated icon="table_chart" color="green-6" label="Excel" @click="exportBankXLSX" />
+        <q-btn
+          unelevated
+          icon="picture_as_pdf"
+          color="red-6"
+          label="PDF"
+          @click="exportBankPDF"
+          class="q-mr-sm"
+        />
+        <q-btn
+          unelevated
+          icon="table_chart"
+          color="green-6"
+          label="Excel"
+          @click="exportBankXLSX"
+        />
       </template>
     </ERPToolbar>
 
@@ -42,7 +55,9 @@
 
     <div class="fin-panel">
       <div class="fin-panel__header">
-        <span class="fin-panel__title">Outstanding Receivables ({{ filteredReceivables.length }})</span>
+        <span class="fin-panel__title"
+          >Outstanding Receivables ({{ filteredReceivables.length }})</span
+        >
       </div>
       <q-table
         :rows="filteredReceivables"
@@ -60,7 +75,8 @@
           <q-td :props="props">
             <div>{{ props.row.customers?.name || '-' }}</div>
             <div class="text-caption text-grey-5" v-if="props.row.customers?.bank_name">
-              {{ props.row.customers?.bank_name }} - {{ props.row.customers?.bank_account_number || 'N/A' }}
+              {{ props.row.customers?.bank_name }} -
+              {{ props.row.customers?.bank_account_number || 'N/A' }}
             </div>
           </q-td>
         </template>
@@ -95,19 +111,23 @@ const bankOptions = ['All Banks', 'BOC', 'HNB', 'Commercial Bank', 'Sampath Bank
 
 const filteredReceivables = computed(() => {
   if (selectedBank.value === 'All Banks') return receivables.value
-  return receivables.value.filter(r => {
-     const bName = r.customers?.bank_name || ''
-     return bName.toLowerCase().includes(selectedBank.value.toLowerCase()) || 
-            selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+  return receivables.value.filter((r) => {
+    const bName = r.customers?.bank_name || ''
+    return (
+      bName.toLowerCase().includes(selectedBank.value.toLowerCase()) ||
+      selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+    )
   })
 })
 
 const filteredAgingData = computed(() => {
   if (selectedBank.value === 'All Banks') return agingData.value
-  return agingData.value.filter(a => {
-     const bName = a.bank_name || ''
-     return bName.toLowerCase().includes(selectedBank.value.toLowerCase()) || 
-            selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+  return agingData.value.filter((a) => {
+    const bName = a.bank_name || ''
+    return (
+      bName.toLowerCase().includes(selectedBank.value.toLowerCase()) ||
+      selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+    )
   })
 })
 
@@ -187,8 +207,9 @@ const currentMonthLabel = computed(() => {
 function getCompanyBankAccount(bName) {
   if (bName === 'All Banks') return '_______________'
   const match = companyBankAccounts.value.find(
-    a => a.bank_name?.toLowerCase().includes(bName.toLowerCase()) ||
-         bName.toLowerCase().includes(a.bank_name?.toLowerCase())
+    (a) =>
+      a.bank_name?.toLowerCase().includes(bName.toLowerCase()) ||
+      bName.toLowerCase().includes(a.bank_name?.toLowerCase()),
   )
   return match?.account_number || '_______________'
 }
@@ -203,12 +224,15 @@ function exportBankPDF() {
 
   doc.setFont('times', 'normal')
   doc.setFontSize(12)
-  doc.text(currentDateStr.value, 20, y); y += 8
-  
+  doc.text(currentDateStr.value, 20, y)
+  y += 8
+
   if (bName !== 'All Banks') {
-      doc.text('THE MANAGER', 20, y); y += 6
-      doc.setFont('times', 'bold')
-      doc.text(bName.toUpperCase(), 20, y); y += 10
+    doc.text('THE MANAGER', 20, y)
+    y += 6
+    doc.setFont('times', 'bold')
+    doc.text(bName.toUpperCase(), 20, y)
+    y += 10
   }
 
   doc.setFontSize(13)
@@ -221,20 +245,24 @@ function exportBankPDF() {
   y += 10
 
   if (bName !== 'All Banks') {
-      doc.setFont('times', 'normal')
-      doc.setFontSize(11)
-      doc.text('Dear Sir,', 20, y); y += 8
+    doc.setFont('times', 'normal')
+    doc.setFontSize(11)
+    doc.text('Dear Sir,', 20, y)
+    y += 8
 
-      const bodyText = `Appreciate if you could arrange to Collect Rs. ${totalStr} from the following customer accounts as accounts receivable settlement for ${currentMonthLabel.value} to Rupee Account No.${companyAcc}`
-      const bodyLines = doc.splitTextToSize(bodyText, 170)
-      doc.text(bodyLines, 20, y); y += bodyLines.length * 5.5 + 6
+    const bodyText = `Appreciate if you could arrange to Collect Rs. ${totalStr} from the following customer accounts as accounts receivable settlement for ${currentMonthLabel.value} to Rupee Account No.${companyAcc}`
+    const bodyLines = doc.splitTextToSize(bodyText, 170)
+    doc.text(bodyLines, 20, y)
+    y += bodyLines.length * 5.5 + 6
   }
 
   doc.setFont('times', 'bold')
   doc.setFontSize(12)
-  doc.text('Seven Wave Food Court (Pvt) Ltd', 105, y, { align: 'center' }); y += 6
+  doc.text('Seven Wave Food Court (Pvt) Ltd', 105, y, { align: 'center' })
+  y += 6
   doc.setFontSize(11)
-  doc.text(`CUSTOMER COLLECTIONS \u2013 ${currentMonthLabel.value}`, 105, y, { align: 'center' }); y += 4
+  doc.text(`CUSTOMER COLLECTIONS \u2013 ${currentMonthLabel.value}`, 105, y, { align: 'center' })
+  y += 4
 
   const tableData = filteredReceivables.value.map((r, i) => [
     i + 1,
@@ -252,7 +280,12 @@ function exportBankPDF() {
     body: tableData,
     theme: 'grid',
     styles: { font: 'times', fontSize: 10, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.3 },
-    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
     columnStyles: {
       0: { halign: 'center', cellWidth: 15 },
       1: { cellWidth: 50 },
@@ -269,15 +302,20 @@ function exportBankPDF() {
   })
 
   y = doc.lastAutoTable.finalY + 15
-  if (y > 260) { doc.addPage(); y = 20 }
+  if (y > 260) {
+    doc.addPage()
+    y = 20
+  }
 
   if (bName !== 'All Banks') {
-      doc.setFont('times', 'normal')
-      doc.setFontSize(12)
-      doc.text('Thank You', 20, y); y += 20
-      doc.text('...................................', 20, y); y += 6
-      doc.setFont('times', 'bold')
-      doc.text('Director', 20, y)
+    doc.setFont('times', 'normal')
+    doc.setFontSize(12)
+    doc.text('Thank You', 20, y)
+    y += 20
+    doc.text('...................................', 20, y)
+    y += 6
+    doc.setFont('times', 'bold')
+    doc.text('Director', 20, y)
   }
 
   const filename = `AR_Export_${bName.replace(/\s+/g, '_')}_${currentDateStr.value.replace(/\//g, '')}.pdf`
@@ -292,17 +330,19 @@ function exportBankXLSX() {
 
   const wsData = []
   if (bName !== 'All Banks') {
-      wsData.push([currentDateStr.value])
-      wsData.push(['THE MANAGER'])
-      wsData.push([bName.toUpperCase()])
-      wsData.push([])
-      wsData.push([`ACCOUNTS RECEIVABLE COLLECTION \u2013 ${currentMonthLabel.value}`])
-      wsData.push([])
-      wsData.push(['Dear Sir,'])
-      wsData.push([`Appreciate if you could arrange to Collect Rs. ${fmt(totalAmount)} from the following customer accounts as accounts receivable settlement for ${currentMonthLabel.value} to Rupee Account No.${companyAcc}`])
-      wsData.push([])
+    wsData.push([currentDateStr.value])
+    wsData.push(['THE MANAGER'])
+    wsData.push([bName.toUpperCase()])
+    wsData.push([])
+    wsData.push([`ACCOUNTS RECEIVABLE COLLECTION \u2013 ${currentMonthLabel.value}`])
+    wsData.push([])
+    wsData.push(['Dear Sir,'])
+    wsData.push([
+      `Appreciate if you could arrange to Collect Rs. ${fmt(totalAmount)} from the following customer accounts as accounts receivable settlement for ${currentMonthLabel.value} to Rupee Account No.${companyAcc}`,
+    ])
+    wsData.push([])
   }
-  
+
   wsData.push(['Seven Wave Food Court (Pvt) Ltd'])
   wsData.push([`CUSTOMER COLLECTIONS \u2013 ${currentMonthLabel.value}`])
   wsData.push([])
@@ -321,11 +361,11 @@ function exportBankXLSX() {
   wsData.push(['', '', '', 'TOTAL', totalAmount])
 
   if (bName !== 'All Banks') {
-      wsData.push([])
-      wsData.push(['Thank You'])
-      wsData.push([])
-      wsData.push(['...................................'])
-      wsData.push(['Director'])
+    wsData.push([])
+    wsData.push(['Thank You'])
+    wsData.push([])
+    wsData.push(['...................................'])
+    wsData.push(['Director'])
   }
 
   const ws = XLSX.utils.aoa_to_sheet(wsData)
@@ -340,8 +380,11 @@ function exportBankXLSX() {
 
 async function loadData() {
   loading.value = true
-  
-  const { data: banks } = await supabase.from('bank_accounts').select('name, bank_name, account_number').eq('is_active', true)
+
+  const { data: banks } = await supabase
+    .from('bank_accounts')
+    .select('name, bank_name, account_number')
+    .eq('is_active', true)
   companyBankAccounts.value = banks || []
 
   const [recvRes, agingRes] = await Promise.all([fetchReceivables(), fetchReceivableAging()])

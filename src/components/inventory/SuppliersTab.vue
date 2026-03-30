@@ -14,9 +14,9 @@
       :columns="columns"
       row-key="id"
       flat
-      dark
+      :dark="$q.dark.isActive"
       bordered
-      class="bg-grey-9"
+      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
     >
       <template #body-cell-is_active="props">
         <q-td :props="props">
@@ -52,50 +52,38 @@
 
     <!-- Add/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card class="bg-grey-9 text-white" style="min-width: 500px">
+      <q-card
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 500px; max-width: 600px"
+      >
         <q-card-section class="row items-center">
           <div class="text-h6">{{ editingSupplier ? 'Edit Supplier' : 'Add Supplier' }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-separator dark />
-
-        <q-card-section class="q-gutter-md">
+        <q-card-section class="q-pt-sm">
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-4">
-              <q-input dark outlined v-model="form.code" label="Supplier Code" />
+              <BaseInput v-model="form.code" label="Supplier Code" readonly />
             </div>
             <div class="col-12 col-sm-8">
-              <q-input
-                dark
-                outlined
+              <BaseInput
                 v-model="form.name"
                 label="Supplier Name"
                 :rules="[(v) => !!v || 'Required']"
+                required
               />
             </div>
-            <div class="col-12 col-sm-6">
-              <q-input dark outlined v-model="form.contact_person" label="Contact Person" />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input dark outlined v-model="form.phone" label="Phone Number" />
+
+            <div class="col-12">
+              <BaseInput v-model="form.email" label="Email Address" type="email" />
             </div>
             <div class="col-12">
-              <q-input dark outlined v-model="form.email" label="Email Address" type="email" />
+              <BaseInput v-model="form.address" label="Address" type="textarea" rows="2" />
             </div>
             <div class="col-12">
-              <q-input
-                dark
-                outlined
-                v-model="form.address"
-                label="Address"
-                type="textarea"
-                rows="2"
-              />
-            </div>
-            <div class="col-12">
-              <q-input dark outlined v-model="form.tax_id" label="Tax ID / VAT No." />
+              <BaseInput v-model="form.tax_id" label="Tax ID / VAT No." />
             </div>
           </div>
         </q-card-section>
@@ -119,6 +107,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import BaseButton from 'components/common/erp/BaseButton.vue'
+import BaseInput from 'components/common/erp/BaseInput.vue'
 import { useSupplierList } from 'src/services/inventoryService'
 
 const $q = useQuasar()
@@ -138,8 +127,6 @@ const saving = ref(false)
 const columns = [
   { name: 'code', label: 'Code', field: 'code', align: 'left', sortable: true },
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true },
-  { name: 'contact_person', label: 'Contact', field: 'contact_person', align: 'left' },
-  { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
@@ -148,8 +135,6 @@ const columns = [
 const emptyForm = {
   code: '',
   name: '',
-  contact_person: '',
-  phone: '',
   email: '',
   address: '',
   tax_id: '',

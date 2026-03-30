@@ -3,7 +3,7 @@
     <!-- Filters -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="docTypeFilter"
@@ -14,7 +14,7 @@
         style="min-width: 200px"
       />
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="statusFilter"
@@ -25,7 +25,7 @@
         style="min-width: 150px"
       />
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="dateFrom"
@@ -34,7 +34,7 @@
         style="min-width: 150px"
       />
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="dateTo"
@@ -43,11 +43,11 @@
         style="min-width: 150px"
       />
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="search"
-        placeholder="Search doc #..."
+        placeholder="Search doc #, supplier or item..."
         style="min-width: 200px"
       >
         <template #prepend><q-icon name="search" /></template>
@@ -60,13 +60,13 @@
     </div>
 
     <!-- Documents Table -->
-    <q-card class="bg-grey-9 text-white" flat bordered>
+    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
       <q-card-section>
         <q-table
           :rows="documents"
           :columns="columns"
           row-key="id"
-          dark
+          :dark="$q.dark.isActive"
           flat
           bordered
           dense
@@ -134,6 +134,36 @@
             </q-td>
           </template>
 
+          <!-- Item Names -->
+          <template #body-cell-item_names="props">
+            <q-td :props="props" style="max-width: 200px">
+              <div
+                class="ellipsis"
+                style="max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+              >
+                {{ props.value }}
+              </div>
+              <q-tooltip v-if="props.value && props.value !== '-'" max-width="320px">
+                {{ props.value }}
+              </q-tooltip>
+            </q-td>
+          </template>
+
+          <!-- Item Codes -->
+          <template #body-cell-item_codes="props">
+            <q-td :props="props" style="max-width: 150px">
+              <div
+                class="ellipsis"
+                style="max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+              >
+                {{ props.value }}
+              </div>
+              <q-tooltip v-if="props.value && props.value !== '-'" max-width="320px">
+                {{ props.value }}
+              </q-tooltip>
+            </q-td>
+          </template>
+
           <!-- No data -->
           <template #no-data>
             <div class="full-width row flex-center text-grey-5 q-pa-lg">
@@ -148,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useDocumentList } from 'src/services/inventoryService'
 
 defineEmits(['create-document', 'view-document', 'edit-document'])
@@ -215,6 +245,22 @@ const columns = [
     align: 'left',
     field: (row) => row.supplier_name || row.target_warehouse_name || '-',
   },
+  {
+    name: 'item_names',
+    label: 'Item Name',
+    field: 'item_names',
+    align: 'left',
+    sortable: false,
+    style: 'max-width: 200px',
+  },
+  {
+    name: 'item_codes',
+    label: 'Item Code',
+    field: 'item_codes',
+    align: 'left',
+    sortable: false,
+    style: 'max-width: 150px',
+  },
   { name: 'total_qty', label: 'Qty', field: 'total_qty', align: 'right', sortable: true },
   { name: 'total_cost', label: 'Total Cost', field: 'total_cost', align: 'right', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
@@ -266,8 +312,13 @@ function getStatusIcon(s) {
 function formatCurrency(val) {
   return 'LKR ' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })
 }
+const exportTitle = computed(() => {
+  return docTypeFilter.value ? `${docTypeFilter.value} Report` : 'Inventory Documents'
+})
+
 defineExpose({
   columns,
   rows: documents,
+  exportTitle,
 })
 </script>

@@ -9,7 +9,9 @@
           <q-card-section class="row items-center no-wrap q-pa-md">
             <q-icon name="people" size="36px" color="blue" class="q-mr-md" />
             <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Total Employees</div>
+              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                Total Employees
+              </div>
               <div class="text-h5 text-weight-bold">{{ stats.total }}</div>
             </div>
           </q-card-section>
@@ -20,7 +22,9 @@
           <q-card-section class="row items-center no-wrap q-pa-md">
             <q-icon name="check_circle" size="36px" color="green" class="q-mr-md" />
             <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Permanent</div>
+              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                Permanent
+              </div>
               <div class="text-h5 text-weight-bold">{{ stats.permanent }}</div>
             </div>
           </q-card-section>
@@ -31,7 +35,9 @@
           <q-card-section class="row items-center no-wrap q-pa-md">
             <q-icon name="schedule" size="36px" color="orange" class="q-mr-md" />
             <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Probation</div>
+              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                Probation
+              </div>
               <div class="text-h5 text-weight-bold">{{ stats.probation }}</div>
             </div>
           </q-card-section>
@@ -42,7 +48,9 @@
           <q-card-section class="row items-center no-wrap q-pa-md">
             <q-icon name="description" size="36px" color="cyan" class="q-mr-md" />
             <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Contract</div>
+              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                Contract
+              </div>
               <div class="text-h5 text-weight-bold">{{ stats.contract }}</div>
             </div>
           </q-card-section>
@@ -55,36 +63,106 @@
       <!-- Buttons -->
       <div class="col-12 col-md-auto row q-gutter-sm">
         <q-btn color="primary" icon="add" label="Add Employee" @click="openForm()" no-caps />
-        <q-btn color="amber-8" text-color="dark" icon="badge" label="Add Designation" @click="openDesigDialog()" no-caps />
-        <q-btn color="indigo" icon="account_tree" label="Add Department" @click="openDeptDialog()" no-caps />
+        <q-btn
+          color="amber-8"
+          text-color="dark"
+          icon="badge"
+          label="Add Designation"
+          @click="openDesigDialog()"
+          no-caps
+        />
+        <q-btn
+          color="indigo"
+          icon="account_tree"
+          label="Add Department"
+          @click="openDeptDialog()"
+          no-caps
+        />
         <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps />
         <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps />
       </div>
-      
+
       <q-space class="gt-sm" />
 
       <!-- Filters -->
       <div class="col-12 col-md-auto row q-gutter-sm">
         <div style="width: 200px">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="line-height:1">Search</div>
-          <q-input :dark="$q.dark.isActive" dense outlined v-model="search" placeholder="Search by name/nic..." clearable>
+          <div
+            :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+            style="line-height: 1"
+          >
+            Search
+          </div>
+          <q-input
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="search"
+            placeholder="Search by name/nic..."
+            clearable
+          >
             <template #prepend><q-icon name="search" /></template>
           </q-input>
         </div>
 
         <div style="width: 140px">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="line-height:1">Status</div>
-          <q-select :dark="$q.dark.isActive" dense outlined v-model="statusFilter" :options="['All', 'Active', 'Permanent', 'Probation', 'Contract', 'Part Time', 'Resigned']" />
+          <div
+            :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+            style="line-height: 1"
+          >
+            Status
+          </div>
+          <q-select
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="statusFilter"
+            :options="[
+              'All',
+              'Active',
+              'Permanent',
+              'Probation',
+              'Contract',
+              'Part Time',
+              'Resigned',
+            ]"
+          />
         </div>
 
         <div style="width: 170px">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="line-height:1">Department</div>
-          <q-select :dark="$q.dark.isActive" dense outlined v-model="deptFilter" :options="deptFilterOptions" emit-value map-options />
+          <div
+            :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+            style="line-height: 1"
+          >
+            Department
+          </div>
+          <q-select
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="deptFilter"
+            :options="deptFilterOptions"
+            emit-value
+            map-options
+          />
         </div>
 
         <div style="width: 170px">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="line-height:1">Designation</div>
-          <q-select :dark="$q.dark.isActive" dense outlined v-model="desigFilter" :options="desigFilterOptions" emit-value map-options />
+          <div
+            :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+            style="line-height: 1"
+          >
+            Designation
+          </div>
+          <q-select
+            :dark="$q.dark.isActive"
+            dense
+            outlined
+            v-model="desigFilter"
+            :options="desigFilterOptions"
+            emit-value
+            map-options
+          />
         </div>
       </div>
     </div>
@@ -172,10 +250,21 @@
               Personal Information
             </div>
 
-            <div :class="['row q-col-gutter-x-lg q-col-gutter-y-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="[
+                'row q-col-gutter-x-lg q-col-gutter-y-md',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+              ]"
+            >
               <div class="col-12">
                 <div class="text-caption">Employee ID:</div>
-                <q-input :dark="$q.dark.isActive" outlined dense v-model="form.employee_code" readonly />
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.employee_code"
+                  readonly
+                />
               </div>
 
               <div class="col-12 col-md-6">
@@ -193,18 +282,28 @@
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Date of Birth:</div>
-                <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="form.date_of_birth" stack-label />
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  type="date"
+                  v-model="form.date_of_birth"
+                  stack-label
+                />
               </div>
 
               <div class="col-12">
                 <div class="row items-center q-gutter-x-sm">
                   <div class="col-auto">
-                    <div :class="['text-caption', $q.dark.isActive ? 'text-grey-8' : 'text-grey-7']">
+                    <div
+                      :class="['text-caption', $q.dark.isActive ? 'text-grey-8' : 'text-grey-7']"
+                    >
                       <q-icon name="cloud_upload" size="xs" /> Upload Image
                     </div>
                   </div>
                 </div>
-                <q-file :dark="$q.dark.isActive"
+                <q-file
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.user_pic"
@@ -212,9 +311,11 @@
                   label="Choose File"
                 >
                   <template v-slot:append>
-                    <span :class="['text-caption', $q.dark.isActive ? 'text-grey-6' : 'text-grey-7']" style="margin-left: 10px">{{
-                      form.user_pic ? form.user_pic.name : 'No file chosen'
-                    }}</span>
+                    <span
+                      :class="['text-caption', $q.dark.isActive ? 'text-grey-6' : 'text-grey-7']"
+                      style="margin-left: 10px"
+                      >{{ form.user_pic ? form.user_pic.name : 'No file chosen' }}</span
+                    >
                   </template>
                 </q-file>
               </div>
@@ -222,49 +323,124 @@
               <div class="col-12 col-md-4">
                 <div class="text-caption">Gender:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.gender" :options="getDynOptions('gender')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.gender"
+                    :options="getDynOptions('gender')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.gender.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('gender', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('gender', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('gender')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('gender')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
               <div class="col-12 col-md-4">
                 <div class="text-caption">Title:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.title" :options="getDynOptions('title')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.title"
+                    :options="getDynOptions('title')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.title.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('title', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('title', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('title')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('title')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
               <div class="col-12 col-md-4">
                 <div class="text-caption">Civil Status:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.civil_status" :options="getDynOptions('civil_status')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.civil_status"
+                    :options="getDynOptions('civil_status')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.civil_status.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('civil_status', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('civil_status', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('civil_status')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('civil_status')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
 
@@ -274,7 +450,13 @@
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Email:</div>
-                <q-input :dark="$q.dark.isActive" outlined dense v-model="form.email" type="email" />
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.email"
+                  type="email"
+                />
               </div>
             </div>
 
@@ -292,72 +474,156 @@
               Employee Details
             </div>
 
-            <div :class="['row q-col-gutter-x-lg q-col-gutter-y-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="[
+                'row q-col-gutter-x-lg q-col-gutter-y-md',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+              ]"
+            >
               <div class="col-12 col-md-6">
                 <div class="text-caption">Short Name</div>
                 <q-input :dark="$q.dark.isActive" outlined dense v-model="form.last_name" />
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Join Date</div>
-                <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="form.hire_date" stack-label />
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  type="date"
+                  v-model="form.hire_date"
+                  stack-label
+                />
               </div>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Designation:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.designation_id" :options="designationOptions" emit-value map-options />
-                  <q-btn flat round dense icon="add_circle_outline" color="amber-7" size="sm" class="q-ml-xs" @click="openDesigDialog()"><q-tooltip>Add designation</q-tooltip></q-btn>
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.designation_id"
+                    :options="designationOptions"
+                    emit-value
+                    map-options
+                  />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="amber-7"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openDesigDialog()"
+                    ><q-tooltip>Add designation</q-tooltip></q-btn
+                  >
                 </div>
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Department:</div>
                 <q-select
                   :dark="$q.dark.isActive"
-                  outlined dense
+                  outlined
+                  dense
                   v-model="form.department_id"
                   :options="departmentOptions"
-                  emit-value map-options
+                  emit-value
+                  map-options
                   clearable
                   placeholder="— Select Department —"
-                /></div>
+                />
+              </div>
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Salary Type:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.pay_type" :options="getDynOptions('salary_type')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.pay_type"
+                    :options="getDynOptions('salary_type')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.salary_type.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('salary_type', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('salary_type', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('salary_type')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('salary_type')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">OT Eligibility:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.ot" :options="getDynOptions('ot')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.ot"
+                    :options="getDynOptions('ot')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.ot.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('ot', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('ot', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('ot')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('ot')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
 
-
               <div class="col-12 col-md-6">
                 <div class="text-caption">Promotion Period:</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.probation_period"
@@ -365,23 +631,47 @@
                 />
               </div>
 
-
-
-
               <div class="col-12 col-md-6">
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Company Name:</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                  Company Name:
+                </div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.internal_company" :options="getDynOptions('internal_company')">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.internal_company"
+                    :options="getDynOptions('internal_company')"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.internal_company.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('internal_company', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('internal_company', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('internal_company')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('internal_company')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
             </div>
@@ -400,26 +690,62 @@
               <q-icon name="payments" size="16px" class="q-mr-xs" />Salary Configuration
             </div>
 
-            <div :class="['row q-col-gutter-x-lg q-col-gutter-y-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="[
+                'row q-col-gutter-x-lg q-col-gutter-y-md',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+              ]"
+            >
               <div class="col-12 col-md-6">
                 <div class="text-caption">Salary Method *</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.salary_method" :options="getDynSalaryMethods()" emit-value map-options>
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.salary_method"
+                    :options="getDynSalaryMethods()"
+                    emit-value
+                    map-options
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt?.label || scope.opt }}</q-item-section>
-                        <q-item-section side v-if="dynOptions.salary_method.some((o) => o.value === scope.opt?.value)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynSalaryMethod(scope.opt?.value)" />
+                        <q-item-section
+                          side
+                          v-if="dynOptions.salary_method.some((o) => o.value === scope.opt?.value)"
+                        >
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynSalaryMethod(scope.opt?.value)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('salary_method')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('salary_method')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Basic Salary (LKR)</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model.number="form.basic_salary"
@@ -430,7 +756,8 @@
 
               <div class="col-12 col-md-6" v-if="form.salary_method === 'day_salary'">
                 <div class="text-caption">Day Rate (LKR)</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model.number="form.day_rate"
@@ -440,7 +767,8 @@
               </div>
               <div class="col-12 col-md-6" v-if="form.salary_method === 'unit_salary'">
                 <div class="text-caption">Unit Rate (LKR)</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model.number="form.unit_rate"
@@ -451,10 +779,13 @@
 
               <template v-if="form.ot === 'Eligible'">
                 <div class="col-12 col-md-4">
-                  <div class="text-caption">Hourly Rate <span class="text-caption text-teal-6">(auto)</span></div>
+                  <div class="text-caption">
+                    Hourly Rate <span class="text-caption text-teal-6">(auto)</span>
+                  </div>
                   <q-input
                     :dark="$q.dark.isActive"
-                    outlined dense
+                    outlined
+                    dense
                     v-model.number="form.hourly_rate"
                     type="number"
                     readonly
@@ -470,18 +801,23 @@
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="text-caption">OT Multiplier</div>
-                  <q-input :dark="$q.dark.isActive"
-                    outlined dense
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
                     v-model.number="form.overtime_rate_multiplier"
                     type="number"
                     hint="Default: 1.5×"
                   />
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="text-caption">OT Rate <span class="text-caption text-orange-6">(auto)</span></div>
+                  <div class="text-caption">
+                    OT Rate <span class="text-caption text-orange-6">(auto)</span>
+                  </div>
                   <q-input
                     :dark="$q.dark.isActive"
-                    outlined dense
+                    outlined
+                    dense
                     :model-value="otRateDisplay"
                     readonly
                     bg-color="orange-1"
@@ -494,7 +830,6 @@
                     </template>
                   </q-input>
                 </div>
-
               </template>
               <!-- EPF / ETF block (inside Salary Config) -->
               <div class="col-12">
@@ -503,7 +838,8 @@
                   :dark="$q.dark.isActive"
                   v-model="form.epf_etf_eligible"
                   label="EPF / ETF Eligible"
-                  dense color="amber-8"
+                  dense
+                  color="amber-8"
                   :class="[$q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
                 />
               </div>
@@ -517,17 +853,21 @@
                   <div class="text-caption">EPF % (Employee)</div>
                   <q-input
                     :dark="$q.dark.isActive"
-                    outlined dense
+                    outlined
+                    dense
                     v-model.number="form.epf_employee_pct"
                     type="number"
                     suffix="%"
                   />
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="text-caption">EPF Amount <span class="text-caption text-amber-6">(auto)</span></div>
+                  <div class="text-caption">
+                    EPF Amount <span class="text-caption text-amber-6">(auto)</span>
+                  </div>
                   <q-input
                     :dark="$q.dark.isActive"
-                    outlined dense
+                    outlined
+                    dense
                     v-model="form.epf_amount"
                     readonly
                     bg-color="amber-1"
@@ -545,9 +885,18 @@
               <div class="col-12">
                 <!-- Allowances header + Add button -->
                 <div class="row items-center q-mb-xs">
-                  <div :class="['text-caption col', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Allowances (LKR)</div>
+                  <div
+                    :class="['text-caption col', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                  >
+                    Allowances (LKR)
+                  </div>
                   <q-btn
-                    flat round dense icon="add_circle" color="teal" size="sm"
+                    flat
+                    round
+                    dense
+                    icon="add_circle"
+                    color="teal"
+                    size="sm"
                     @click="addExtraAllowance"
                   >
                     <q-tooltip>Add custom allowance</q-tooltip>
@@ -557,16 +906,37 @@
                 <!-- Fixed allowances -->
                 <div class="row q-col-gutter-md q-mb-sm">
                   <div class="col-12 col-md-4">
-                    <div class="text-caption" style="font-size: 11px;">Housing</div>
-                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.housing_allowance" type="number" placeholder="0.00" />
+                    <div class="text-caption" style="font-size: 11px">Housing</div>
+                    <q-input
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
+                      v-model.number="form.housing_allowance"
+                      type="number"
+                      placeholder="0.00"
+                    />
                   </div>
                   <div class="col-12 col-md-4">
-                    <div class="text-caption" style="font-size: 11px;">Transport</div>
-                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.transport_allowance" type="number" placeholder="0.00" />
+                    <div class="text-caption" style="font-size: 11px">Transport</div>
+                    <q-input
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
+                      v-model.number="form.transport_allowance"
+                      type="number"
+                      placeholder="0.00"
+                    />
                   </div>
                   <div class="col-12 col-md-4">
-                    <div class="text-caption" style="font-size: 11px;">Meals</div>
-                    <q-input :dark="$q.dark.isActive" outlined dense v-model.number="form.meal_allowance" type="number" placeholder="0.00" />
+                    <div class="text-caption" style="font-size: 11px">Meals</div>
+                    <q-input
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
+                      v-model.number="form.meal_allowance"
+                      type="number"
+                      placeholder="0.00"
+                    />
                   </div>
                 </div>
 
@@ -580,7 +950,8 @@
                     <div class="col-12 col-md-5">
                       <q-input
                         :dark="$q.dark.isActive"
-                        outlined dense
+                        outlined
+                        dense
                         v-model="item.label"
                         placeholder="Allowance name (e.g. Attendance)"
                       />
@@ -588,7 +959,8 @@
                     <div class="col-12 col-md-5">
                       <q-input
                         :dark="$q.dark.isActive"
-                        outlined dense
+                        outlined
+                        dense
                         v-model.number="item.amount"
                         type="number"
                         placeholder="0.00"
@@ -596,7 +968,13 @@
                       />
                     </div>
                     <div class="col-auto">
-                      <q-btn flat round dense icon="remove_circle" color="negative" size="sm"
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="remove_circle"
+                        color="negative"
+                        size="sm"
                         @click="extraAllowances.splice(idx, 1)"
                       >
                         <q-tooltip>Remove</q-tooltip>
@@ -606,8 +984,19 @@
                 </div>
 
                 <!-- Total summary -->
-                <div v-if="extraAllowances.length" :class="['text-caption q-mt-xs', $q.dark.isActive ? 'text-teal-4' : 'text-teal-8']">
-                  Other allowances total: LKR {{ extraAllowances.reduce((s, a) => s + (Number(a.amount) || 0), 0).toLocaleString('en-LK', { minimumFractionDigits: 2 }) }}
+                <div
+                  v-if="extraAllowances.length"
+                  :class="[
+                    'text-caption q-mt-xs',
+                    $q.dark.isActive ? 'text-teal-4' : 'text-teal-8',
+                  ]"
+                >
+                  Other allowances total: LKR
+                  {{
+                    extraAllowances
+                      .reduce((s, a) => s + (Number(a.amount) || 0), 0)
+                      .toLocaleString('en-LK', { minimumFractionDigits: 2 })
+                  }}
                 </div>
               </div>
             </div>
@@ -626,27 +1015,59 @@
               Payment Details
             </div>
 
-            <div :class="['row q-col-gutter-x-lg q-col-gutter-y-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="[
+                'row q-col-gutter-x-lg q-col-gutter-y-md',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+              ]"
+            >
               <div class="col-12">
                 <div class="text-caption">Payment Type:</div>
                 <div class="row no-wrap items-center">
-                  <q-select :dark="$q.dark.isActive" outlined dense class="col" v-model="form.pay_type" :options="getDynOptions('payment_type')" color="amber-8">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    class="col"
+                    v-model="form.pay_type"
+                    :options="getDynOptions('payment_type')"
+                    color="amber-8"
+                  >
                     <template #option="scope">
                       <q-item v-bind="scope.itemProps">
                         <q-item-section>{{ scope.opt }}</q-item-section>
                         <q-item-section side v-if="dynOptions.payment_type.includes(scope.opt)">
-                          <q-btn flat round dense icon="close" size="xs" color="negative" @click.stop="removeDynOption('payment_type', scope.opt)" />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click.stop="removeDynOption('payment_type', scope.opt)"
+                          />
                         </q-item-section>
                       </q-item>
                     </template>
                   </q-select>
-                  <q-btn flat round dense icon="add_circle_outline" color="indigo-3" size="sm" class="q-ml-xs" @click="openAddOption('payment_type')"><q-tooltip>Add option</q-tooltip></q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="add_circle_outline"
+                    color="indigo-3"
+                    size="sm"
+                    class="q-ml-xs"
+                    @click="openAddOption('payment_type')"
+                    ><q-tooltip>Add option</q-tooltip></q-btn
+                  >
                 </div>
               </div>
 
               <div class="col-12">
                 <div class="text-caption">Bank:</div>
-                <q-select :dark="$q.dark.isActive"
+                <q-select
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.bank_name"
@@ -671,7 +1092,8 @@
 
               <div class="col-12 col-md-6">
                 <div class="text-caption">Branch:</div>
-                <q-select :dark="$q.dark.isActive"
+                <q-select
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.bank_branch"
@@ -697,7 +1119,8 @@
               </div>
               <div class="col-12 col-md-6">
                 <div class="text-caption">Account Name:</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.bank_account_name"
@@ -708,7 +1131,8 @@
 
               <div class="col-12">
                 <div class="text-caption">Account No:</div>
-                <q-input :dark="$q.dark.isActive"
+                <q-input
+                  :dark="$q.dark.isActive"
                   outlined
                   dense
                   v-model="form.bank_account_number"
@@ -732,17 +1156,16 @@
               <q-icon name="folder_open" size="16px" class="q-mr-xs" /> Employee Documents
             </div>
 
-            <div :class="['q-mb-md text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
-              Tick a document type to upload the corresponding file. You can also add a custom document name.
+            <div
+              :class="['q-mb-md text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+            >
+              Tick a document type to upload the corresponding file. You can also add a custom
+              document name.
             </div>
 
             <!-- Predefined document types with checkboxes -->
             <div class="row q-col-gutter-sm q-mb-md">
-              <div
-                v-for="(docEntry, idx) in formDocEntries"
-                :key="idx"
-                class="col-12 col-sm-6"
-              >
+              <div v-for="(docEntry, idx) in formDocEntries" :key="idx" class="col-12 col-sm-6">
                 <div
                   class="rounded-borders q-pa-sm"
                   :style="{
@@ -757,9 +1180,14 @@
                 >
                   <!-- Checkbox row -->
                   <div class="row items-center no-wrap">
-                    <q-checkbox :dark="$q.dark.isActive"
+                    <q-checkbox
+                      :dark="$q.dark.isActive"
                       :model-value="docEntry.enabled"
-                      @update:model-value="(v) => { formDocEntries[idx].enabled = v }"
+                      @update:model-value="
+                        (v) => {
+                          formDocEntries[idx].enabled = v
+                        }
+                      "
                       :label="docEntry.label"
                       dense
                       color="indigo-4"
@@ -774,15 +1202,29 @@
                   </div>
                   <!-- File upload (shown when checked) -->
                   <div v-if="docEntry.enabled" class="q-mt-sm">
-                    <q-input :dark="$q.dark.isActive" outlined dense
+                    <q-input
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
                       :model-value="docEntry.doc_name"
-                      @update:model-value="(v) => { formDocEntries[idx].doc_name = v }"
+                      @update:model-value="
+                        (v) => {
+                          formDocEntries[idx].doc_name = v
+                        }
+                      "
                       :placeholder="docEntry.label + ' – label (optional)'"
                       class="q-mb-xs"
                     />
-                    <q-file :dark="$q.dark.isActive" outlined dense
+                    <q-file
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
                       :model-value="docEntry.file"
-                      @update:model-value="(v) => { formDocEntries[idx].file = v }"
+                      @update:model-value="
+                        (v) => {
+                          formDocEntries[idx].file = v
+                        }
+                      "
                       :label="'Choose file'"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       max-file-size="10485760"
@@ -798,8 +1240,8 @@
             <div
               class="q-pa-sm q-mb-md rounded-borders"
               style="
-                background: rgba(255,255,255,0.03);
-                border: 1px dashed rgba(99,102,241,0.35);
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px dashed rgba(99, 102, 241, 0.35);
               "
             >
               <div class="text-caption text-indigo-3 q-mb-sm">
@@ -808,7 +1250,8 @@
               </div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-md-4">
-                  <q-input :dark="$q.dark.isActive"
+                  <q-input
+                    :dark="$q.dark.isActive"
                     outlined
                     dense
                     v-model="customDocEntry.doc_name"
@@ -816,7 +1259,8 @@
                   />
                 </div>
                 <div class="col-12 col-md-5">
-                  <q-file :dark="$q.dark.isActive"
+                  <q-file
+                    :dark="$q.dark.isActive"
                     outlined
                     dense
                     v-model="customDocEntry.file"
@@ -842,18 +1286,26 @@
                 </div>
               </div>
               <!-- List of added custom docs -->
-              <div
-                v-if="extraDocEntries.length"
-                class="q-mt-sm q-gutter-y-xs"
-              >
+              <div v-if="extraDocEntries.length" class="q-mt-sm q-gutter-y-xs">
                 <div
                   v-for="(ed, ei) in extraDocEntries"
                   :key="ei"
-                  :class="['row items-center text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+                  :class="[
+                    'row items-center text-caption',
+                    $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                  ]"
                 >
                   <q-icon name="description" size="14px" color="indigo-3" class="q-mr-xs" />
                   <span class="col">{{ ed.doc_name }} — {{ ed.file?.name }}</span>
-                  <q-btn flat round dense icon="close" size="xs" color="negative" @click="extraDocEntries.splice(ei,1)" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="close"
+                    size="xs"
+                    color="negative"
+                    @click="extraDocEntries.splice(ei, 1)"
+                  />
                 </div>
               </div>
             </div>
@@ -884,45 +1336,39 @@
       @hide="unsubscribeProfileRealtime"
     >
       <q-card
-        class="full-width" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
-        style="
-          
-          
-          font-family: Roboto, sans-serif;
-        "
+        class="full-width"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+        style="font-family: Roboto, sans-serif"
       >
         <!-- layout -->
-        <q-toolbar
-          class="shadow-1"
-          style="
-            
-            
-            height: 60px;
-          "
-        >
-          <q-toolbar-title class="text-weight-bold" style="font-size: 20px; ">
+        <q-toolbar class="shadow-1" style="height: 60px">
+          <q-toolbar-title class="text-weight-bold" style="font-size: 20px">
             Profile
-            <span :class="['text-caption text-weight-regular', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']" style="font-size: 14px"
+            <span
+              :class="[
+                'text-caption text-weight-regular',
+                $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+              ]"
+              style="font-size: 14px"
               >Preview</span
             >
           </q-toolbar-title>
           <q-space />
-          <q-btn flat round dense icon="close" v-close-popup :color="$q.dark.isActive ? 'grey-4' : 'grey-8'" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            v-close-popup
+            :color="$q.dark.isActive ? 'grey-4' : 'grey-8'"
+          />
         </q-toolbar>
 
         <q-scroll-area style="height: calc(100vh - 60px)">
           <div class="row q-pa-lg q-col-gutter-lg" style="margin: 0 auto; max-width: 1600px">
             <!-- Left Side -->
             <div class="col-12 col-md-4 col-lg-3">
-              <q-card
-                flat
-                bordered
-                style="
-                  
-                  
-                "
-                class="q-mb-md"
-              >
+              <q-card flat bordered style="" class="q-mb-md">
                 <q-card-section class="q-pb-sm">
                   <!-- Employee Photo -->
                   <div class="text-center q-mb-md">
@@ -936,128 +1382,190 @@
                     </q-avatar>
                   </div>
 
-                  <div :class="['text-subtitle1 text-weight-bold q-mb-sm', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">About Me</div>
+                  <div
+                    :class="[
+                      'text-subtitle1 text-weight-bold q-mb-sm',
+                      $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                    ]"
+                  >
+                    About Me
+                  </div>
 
                   <div class="q-gutter-y-sm">
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
                     >
                       Name:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmp?.full_name || viewEmp?.first_name
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.full_name || viewEmp?.first_name }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       EMP NO:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmp?.employee_code
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.employee_code }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Basic Salary:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmpSalary?.basic_salary || '0.00'
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmpSalary?.basic_salary || '0.00' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       NIC:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{ viewEmp?.nic_number }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.nic_number }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Address:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmp?.address_line1 || 'No Address'
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.address_line1 || 'No Address' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Personal Contact:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{ viewEmp?.mobile || '' }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.mobile || '' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Office Contact:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmp?.residence_phone || ''
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.residence_phone || '' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Designation:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmp?.designations?.title || 'None'
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.designations?.title || 'None' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Hour Rate:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{
-                        viewEmpSalary?.hourly_rate || '0.00'
-                      }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmpSalary?.hourly_rate || '0.00' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       EPF No:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">{{ viewEmp?.epf_no || '' }}</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >{{ viewEmp?.epf_no || '' }}</span
+                      >
                     </div>
                     <div
-                      :class="['q-pa-sm text-caption rounded-borders q-mb-md', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
-                      style="
-                        
-                        
-                      "
+                      :class="[
+                        'q-pa-sm text-caption rounded-borders q-mb-md',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                      style=""
                     >
                       Company Name:
-                      <span :class="['text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">SEVEN WAVES (PVT) LTD</span>
+                      <span
+                        :class="[
+                          'text-weight-medium',
+                          $q.dark.isActive ? 'text-white' : 'text-dark',
+                        ]"
+                        >SEVEN WAVES (PVT) LTD</span
+                      >
                     </div>
                   </div>
 
@@ -1075,7 +1583,8 @@
                   </div>
 
                   <q-btn
-                    class="full-width" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+                    class="full-width"
+                    :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
                     color="amber-8"
                     text-color="dark"
                     label="Back"
@@ -1086,18 +1595,13 @@
                 </q-card-section>
               </q-card>
 
-              <q-card
-                flat
-                bordered
-                style="
-                  
-                  
-                "
-                class="q-mb-md"
-              >
+              <q-card flat bordered style="" class="q-mb-md">
                 <q-card-section class="q-pa-sm q-px-md">
                   <div class="row items-center justify-between">
-                    <span :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Officer Areas</span>
+                    <span
+                      :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+                      >Officer Areas</span
+                    >
                     <div class="q-gutter-sm">
                       <q-btn color="amber-8" outline size="sm" label="Save Area" no-caps />
                       <q-btn
@@ -1113,20 +1617,16 @@
                 </q-card-section>
               </q-card>
 
-              <q-card
-                flat
-                bordered
-                style="
-                  
-                  
-                "
-                class="q-mb-md"
-              >
+              <q-card flat bordered style="" class="q-mb-md">
                 <q-card-section class="q-pa-sm q-px-md">
                   <div class="row items-center justify-between q-mb-sm">
-                    <span :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">HR Allowance</span>
+                    <span
+                      :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+                      >HR Allowance</span
+                    >
                   </div>
-                  <q-markup-table :dark="$q.dark.isActive"
+                  <q-markup-table
+                    :dark="$q.dark.isActive"
                     flat
                     bordered
                     dense
@@ -1136,31 +1636,53 @@
                   >
                     <thead>
                       <tr>
-                        <th :class="['text-left text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Allowance Type</th>
-                        <th :class="['text-right text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Amount</th>
+                        <th
+                          :class="[
+                            'text-left text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
+                          Allowance Type
+                        </th>
+                        <th
+                          :class="[
+                            'text-right text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
+                          Amount
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-if="viewEmpSalary?.housing_allowance > 0">
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Housing Allowance</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Housing Allowance
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(viewEmpSalary.housing_allowance).toFixed(2) }}
                         </td>
                       </tr>
                       <tr v-if="viewEmpSalary?.transport_allowance > 0">
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Transport Allowance</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Transport Allowance
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(viewEmpSalary.transport_allowance).toFixed(2) }}
                         </td>
                       </tr>
                       <tr v-if="viewEmpSalary?.meal_allowance > 0">
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Meal Allowance</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Meal Allowance
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(viewEmpSalary.meal_allowance).toFixed(2) }}
                         </td>
                       </tr>
                       <tr v-if="viewEmpSalary?.other_allowances > 0">
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Other Allowances</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Other Allowances
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(viewEmpSalary.other_allowances).toFixed(2) }}
                         </td>
@@ -1175,25 +1697,39 @@
                             0
                         "
                       >
-                        <td colspan="2" :class="['text-center', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                        <td
+                          colspan="2"
+                          :class="['text-center', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                        >
                           No allowances configured
                         </td>
                       </tr>
                       <tr>
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Total Allowances :</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Total Allowances :
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ viewEmpTotalAllowance.toFixed(2) }}
                         </td>
                       </tr>
                       <tr>
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">Basic Salary :</td>
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          Basic Salary :
+                        </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(viewEmpSalary?.basic_salary || 0).toFixed(2) }}
                         </td>
                       </tr>
                       <tr class="text-weight-bold">
-                        <td :class="$q.dark.isActive ? 'text-amber-4' : 'text-orange-9'">Total :</td>
-                        <td :class="['text-right', $q.dark.isActive ? 'text-amber-4' : 'text-orange-9']">
+                        <td :class="$q.dark.isActive ? 'text-amber-4' : 'text-orange-9'">
+                          Total :
+                        </td>
+                        <td
+                          :class="[
+                            'text-right',
+                            $q.dark.isActive ? 'text-amber-4' : 'text-orange-9',
+                          ]"
+                        >
                           {{
                             (
                               Number(viewEmpSalary?.basic_salary || 0) + viewEmpTotalAllowance
@@ -1206,21 +1742,17 @@
                 </q-card-section>
               </q-card>
 
-              <q-card
-                flat
-                bordered
-                style="
-                  
-                  
-                "
-                class="q-mb-md"
-              >
+              <q-card flat bordered style="" class="q-mb-md">
                 <q-card-section class="q-pa-sm q-px-md">
                   <div class="row items-center justify-between q-mb-sm">
-                    <span :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">HR Deduction</span>
+                    <span
+                      :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+                      >HR Deduction</span
+                    >
                     <q-btn color="amber-8" outline size="sm" label="Add Deduction" no-caps />
                   </div>
-                  <q-markup-table :dark="$q.dark.isActive"
+                  <q-markup-table
+                    :dark="$q.dark.isActive"
                     flat
                     bordered
                     dense
@@ -1230,31 +1762,52 @@
                   >
                     <thead>
                       <tr>
-                        <th :class="['text-left text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Deduction</th>
-                        <th :class="['text-right text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Amount</th>
-                        <th :class="['text-center text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">#</th>
+                        <th
+                          :class="[
+                            'text-left text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
+                          Deduction
+                        </th>
+                        <th
+                          :class="[
+                            'text-right text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
+                          Amount
+                        </th>
+                        <th
+                          :class="[
+                            'text-center text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
+                          #
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td colspan="3" :class="['text-center', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">No records</td>
+                        <td
+                          colspan="3"
+                          :class="['text-center', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                        >
+                          No records
+                        </td>
                       </tr>
                     </tbody>
                   </q-markup-table>
                 </q-card-section>
               </q-card>
 
-              <q-card
-                flat
-                bordered
-                style="
-                  
-                  
-                "
-                class="q-mb-xl"
-              >
+              <q-card flat bordered style="" class="q-mb-xl">
                 <q-card-section class="q-pa-sm q-px-md">
-                  <span :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Complains</span>
+                  <span
+                    :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+                    >Complains</span
+                  >
                 </q-card-section>
               </q-card>
             </div>
@@ -1264,15 +1817,12 @@
               <q-card
                 flat
                 bordered
-                style="
-                  
-                  
-                  min-height: 100%;
-                  border-top: 4px solid #f9a825;
-                "
+                style="min-height: 100%; border-top: 4px solid #f9a825"
                 class="q-mb-xl"
               >
-                <q-tabs v-model="viewTab" :dark="$q.dark.isActive"
+                <q-tabs
+                  v-model="viewTab"
+                  :dark="$q.dark.isActive"
                   align="left"
                   dense
                   active-color="amber-4"
@@ -1307,9 +1857,15 @@
                       style="max-width: 900px"
                     >
                       <!-- Form Inputs -->
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"></div>
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      ></div>
                       <div class="col-9">
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-model="viewEmpSystemApp"
                           label="System App Allowed"
                           dense
@@ -1319,18 +1875,34 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Name
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.first_name" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.first_name"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Title
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.title"
@@ -1338,11 +1910,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Gender
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.gender"
@@ -1350,11 +1928,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Civil Status
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.civil_status"
@@ -1362,58 +1946,132 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Date Of Birth
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="viewForm.date_of_birth" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          type="date"
+                          v-model="viewForm.date_of_birth"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Short Name
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.last_name" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.last_name"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Personal Contact (whatsapp)
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.mobile" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.mobile"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Office Contact
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.residence_phone" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.residence_phone"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">NIC</div>
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        NIC
+                      </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.nic_number" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.nic_number"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Email Address
                       </div>
                       <div class="col-9">
                         <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.email" />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Address
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.address_line1" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.address_line1"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Internal Company
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.internal_company"
@@ -1421,11 +2079,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Designation
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.designation_id"
@@ -1436,11 +2100,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Probation Period
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive"
+                        <q-input
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           type="date"
@@ -1448,16 +2118,32 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Salary
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.salary" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.salary"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"></div>
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      ></div>
                       <div class="col-9">
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-model="viewForm.epf_etf_eligible"
                           label="EPF / ETF Eligible"
                           dense
@@ -1467,20 +2153,36 @@
                       </div>
 
                       <template v-if="viewForm.epf_etf_eligible">
-                        <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                        <div
+                          :class="[
+                            'col-3 text-right q-pr-md text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
                           EPF NO
                         </div>
                         <div class="col-9">
-                          <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.epf_no" />
+                          <q-input
+                            :dark="$q.dark.isActive"
+                            outlined
+                            dense
+                            v-model="viewForm.epf_no"
+                          />
                         </div>
 
-                        <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                        <div
+                          :class="[
+                            'col-3 text-right q-pr-md text-weight-medium',
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                          ]"
+                        >
                           EPF Amount
                         </div>
                         <div class="col-9">
                           <q-input
                             :dark="$q.dark.isActive"
-                            outlined dense
+                            outlined
+                            dense
                             v-model="viewForm.epf_amount"
                             readonly
                             bg-color="amber-1"
@@ -1495,16 +2197,34 @@
                         </div>
                       </template>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Welfare Amount
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.welfare_amount" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.welfare_amount"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">OT</div>
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        OT
+                      </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.ot"
@@ -1512,25 +2232,53 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Confirm Date
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="viewForm.confirm_date" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          type="date"
+                          v-model="viewForm.confirm_date"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Resign Date
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="viewForm.resign_date" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          type="date"
+                          v-model="viewForm.resign_date"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Pay Type
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.pay_type"
@@ -1538,11 +2286,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Bank
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.bank_name"
@@ -1558,11 +2312,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Branch
                       </div>
                       <div class="col-9">
-                        <q-select :dark="$q.dark.isActive"
+                        <q-select
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.bank_branch"
@@ -1578,11 +2338,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Account Name
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive"
+                        <q-input
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.bank_account_name"
@@ -1590,34 +2356,71 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Account No
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.bank_account_number" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.bank_account_number"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Join Date
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense type="date" v-model="viewForm.hire_date" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          type="date"
+                          v-model="viewForm.hire_date"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Salary / Shift Rate
                       </div>
                       <div class="col-9">
-                        <q-input :dark="$q.dark.isActive" outlined dense v-model="viewForm.shift_rate" />
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.shift_rate"
+                        />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         Shift
                       </div>
                       <div class="col-9">
                         <q-select
                           :dark="$q.dark.isActive"
-                          outlined dense
+                          outlined
+                          dense
                           v-model="viewForm.shift"
                           :options="getDynOptions('shift')"
                           clearable
@@ -1627,7 +2430,8 @@
 
                       <div class="col-3"></div>
                       <div class="col-9 column q-gutter-y-xs q-mt-sm">
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-if="viewForm.ot === 'Eligible'"
                           v-model="viewForm.morning_ot"
                           label="Morning OT Pay"
@@ -1636,7 +2440,8 @@
                           color="amber-8"
                           :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'"
                         />
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-model="viewForm.late_deduct"
                           label="Late Pay Deduct"
                           dense
@@ -1644,7 +2449,8 @@
                           color="amber-8"
                           :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'"
                         />
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-model="viewForm.no_pay_deduct"
                           label="No Pay Deduct"
                           dense
@@ -1652,7 +2458,8 @@
                           color="amber-8"
                           :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'"
                         />
-                        <q-checkbox :dark="$q.dark.isActive"
+                        <q-checkbox
+                          :dark="$q.dark.isActive"
                           v-if="viewForm.epf_etf_eligible"
                           v-model="viewForm.epf_attend"
                           label="EPF Attend"
@@ -1663,11 +2470,17 @@
                         />
                       </div>
 
-                      <div :class="['col-3 text-right q-pr-md text-weight-medium q-mt-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium q-mt-md',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
                         User Pic
                       </div>
                       <div class="col-9 q-mt-md">
-                        <q-file :dark="$q.dark.isActive"
+                        <q-file
+                          :dark="$q.dark.isActive"
                           outlined
                           dense
                           v-model="viewForm.user_pic"
@@ -1678,11 +2491,7 @@
                       </div>
 
                       <div class="col-12 text-right q-mt-lg">
-                        <q-separator
-                          dark
-                          class="q-mb-md"
-                          style=""
-                        />
+                        <q-separator dark class="q-mb-md" style="" />
                         <q-btn
                           no-caps
                           unelevated
@@ -1699,22 +2508,38 @@
 
                   <!-- ══ DOCUMENTS TAB ══════════════════════════════════════ -->
                   <q-tab-panel name="documents" class="q-pa-md">
-
                     <!-- Tab header -->
                     <div class="row items-center q-mb-lg">
                       <div>
-                        <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-2' : 'text-grey-9']">
+                        <div
+                          :class="[
+                            'text-subtitle1 text-weight-bold',
+                            $q.dark.isActive ? 'text-grey-2' : 'text-grey-9',
+                          ]"
+                        >
                           Employee Documents
                         </div>
-                        <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">
-                          {{ empDocuments.length }} file{{ empDocuments.length !== 1 ? 's' : '' }} uploaded
+                        <div
+                          :class="[
+                            'text-caption',
+                            $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
+                          ]"
+                        >
+                          {{ empDocuments.length }} file{{
+                            empDocuments.length !== 1 ? 's' : ''
+                          }}
+                          uploaded
                         </div>
                       </div>
                       <q-space />
                       <q-btn
-                        unelevated color="amber-8" text-color="dark"
-                        icon="upload_file" label="Upload Document"
-                        no-caps size="sm"
+                        unelevated
+                        color="amber-8"
+                        text-color="dark"
+                        icon="upload_file"
+                        label="Upload Document"
+                        no-caps
+                        size="sm"
                         @click="openUploadDoc"
                       />
                     </div>
@@ -1733,15 +2558,17 @@
                       >
                         <q-card
                           flat
-                          :style="$q.dark.isActive
-                            ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px'
-                            : 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px'"
+                          :style="
+                            $q.dark.isActive
+                              ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px'
+                              : 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px'
+                          "
                           style="min-height: 130px; display: flex; flex-direction: column"
                         >
                           <!-- Card header -->
                           <div
                             class="row items-center q-px-md q-pt-md q-pb-sm"
-                            style="border-bottom: 1px solid rgba(0,0,0,0.07); flex-shrink: 0"
+                            style="border-bottom: 1px solid rgba(0, 0, 0, 0.07); flex-shrink: 0"
                           >
                             <q-icon
                               :name="docType.icon"
@@ -1749,7 +2576,12 @@
                               size="20px"
                               class="q-mr-sm"
                             />
-                            <div :class="['text-caption text-weight-bold col', $q.dark.isActive ? 'text-grey-2' : 'text-grey-8']">
+                            <div
+                              :class="[
+                                'text-caption text-weight-bold col',
+                                $q.dark.isActive ? 'text-grey-2' : 'text-grey-8',
+                              ]"
+                            >
                               {{ docType.label }}
                             </div>
                             <q-badge
@@ -1771,12 +2603,16 @@
                               v-for="doc in empDocsByType[docType.key]"
                               :key="doc.id"
                               class="row items-center q-px-md q-py-sm"
-                              style="border-bottom: 1px solid rgba(0,0,0,0.05)"
+                              style="border-bottom: 1px solid rgba(0, 0, 0, 0.05)"
                             >
                               <!-- File type icon -->
                               <q-icon
-                                :name="doc.mime_type?.startsWith('image') ? 'image' : 'picture_as_pdf'"
-                                :color="doc.mime_type?.startsWith('image') ? 'teal-6' : 'deep-orange-5'"
+                                :name="
+                                  doc.mime_type?.startsWith('image') ? 'image' : 'picture_as_pdf'
+                                "
+                                :color="
+                                  doc.mime_type?.startsWith('image') ? 'teal-6' : 'deep-orange-5'
+                                "
                                 size="18px"
                                 class="q-mr-sm flex-shrink-0"
                               />
@@ -1789,7 +2625,9 @@
                                   style="text-decoration: underline; text-underline-offset: 2px"
                                   @click="previewDoc(doc)"
                                 >
-                                  {{ doc.doc_name || doc.file_path?.split('/').pop() || 'Document' }}
+                                  {{
+                                    doc.doc_name || doc.file_path?.split('/').pop() || 'Document'
+                                  }}
                                 </div>
                                 <div class="text-grey-6" style="font-size: 10px">
                                   {{ new Date(doc.created_at).toLocaleDateString('en-GB') }}
@@ -1807,7 +2645,9 @@
                                   <q-tooltip>Verified</q-tooltip>
                                 </q-icon>
                                 <q-btn
-                                  flat round dense
+                                  flat
+                                  round
+                                  dense
                                   icon="visibility"
                                   color="blue-6"
                                   size="xs"
@@ -1817,7 +2657,9 @@
                                   <q-tooltip>View</q-tooltip>
                                 </q-btn>
                                 <q-btn
-                                  flat round dense
+                                  flat
+                                  round
+                                  dense
                                   icon="delete_outline"
                                   color="red-5"
                                   size="xs"
@@ -1833,33 +2675,49 @@
                           <div
                             v-else
                             class="col column items-center justify-center q-pa-md"
-                            :style="$q.dark.isActive
-                              ? 'border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; margin: 0 12px 12px'
-                              : 'border: 1.5px dashed #e2e8f0; border-radius: 0 0 8px 8px; margin: 0 12px 12px'"
+                            :style="
+                              $q.dark.isActive
+                                ? 'border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; margin: 0 12px 12px'
+                                : 'border: 1.5px dashed #e2e8f0; border-radius: 0 0 8px 8px; margin: 0 12px 12px'
+                            "
                           >
-                            <q-icon name="upload_file" size="24px" :color="$q.dark.isActive ? 'grey-7' : 'grey-4'" />
-                            <div :class="['text-caption q-mt-xs', $q.dark.isActive ? 'text-grey-6' : 'text-grey-5']">
+                            <q-icon
+                              name="upload_file"
+                              size="24px"
+                              :color="$q.dark.isActive ? 'grey-7' : 'grey-4'"
+                            />
+                            <div
+                              :class="[
+                                'text-caption q-mt-xs',
+                                $q.dark.isActive ? 'text-grey-6' : 'text-grey-5',
+                              ]"
+                            >
                               Not uploaded
                             </div>
                           </div>
                         </q-card>
                       </div>
                     </div>
-
                   </q-tab-panel>
-
 
                   <!-- ══ LEAVE TAB ══════════════════════════════════════════════ -->
                   <q-tab-panel name="leave" class="q-pa-md">
-
                     <!-- Header row -->
                     <div class="row items-center q-mb-md">
-                      <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'text-subtitle1 text-weight-bold',
+                          $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                        ]"
+                      >
                         Leave Balances — {{ new Date().getFullYear() }}
                       </div>
                       <q-space />
                       <q-btn
-                        flat round dense size="sm"
+                        flat
+                        round
+                        dense
+                        size="sm"
                         icon="refresh"
                         :loading="loadingLeave"
                         color="amber-7"
@@ -1877,7 +2735,10 @@
                     <!-- Empty state -->
                     <div
                       v-else-if="!empLeaveBalances.length"
-                      :class="['text-center q-pa-xl', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                      :class="[
+                        'text-center q-pa-xl',
+                        $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+                      ]"
                     >
                       <q-icon name="event_busy" size="48px" class="q-mb-sm" />
                       <div>No leave types configured for this company yet.</div>
@@ -1891,23 +2752,37 @@
                         class="col-12 col-sm-6 col-md-4"
                       >
                         <q-card
-                          flat bordered
-                          :style="lb.remaining_days <= 0
-                            ? 'border-color: rgba(239,68,68,0.3)'
-                            : lb.remaining_days < lb.total_entitlement * 0.3
-                              ? 'border-color: rgba(251,191,36,0.4)'
-                              : 'border-color: rgba(34,197,94,0.3)'"
+                          flat
+                          bordered
+                          :style="
+                            lb.remaining_days <= 0
+                              ? 'border-color: rgba(239,68,68,0.3)'
+                              : lb.remaining_days < lb.total_entitlement * 0.3
+                                ? 'border-color: rgba(251,191,36,0.4)'
+                                : 'border-color: rgba(34,197,94,0.3)'
+                          "
                         >
                           <q-card-section class="q-pa-md">
                             <!-- Leave type name + paid badge -->
                             <div class="row items-center q-mb-sm">
                               <q-icon
                                 name="event_available"
-                                :color="lb.remaining_days <= 0 ? 'red-5' : lb.remaining_days < lb.total_entitlement * 0.3 ? 'amber-7' : 'green-6'"
+                                :color="
+                                  lb.remaining_days <= 0
+                                    ? 'red-5'
+                                    : lb.remaining_days < lb.total_entitlement * 0.3
+                                      ? 'amber-7'
+                                      : 'green-6'
+                                "
                                 size="18px"
                                 class="q-mr-xs"
                               />
-                              <div :class="['text-caption text-weight-bold col ellipsis', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                              <div
+                                :class="[
+                                  'text-caption text-weight-bold col ellipsis',
+                                  $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                                ]"
+                              >
                                 {{ lb.leave_type_name }}
                               </div>
                               <q-badge
@@ -1921,26 +2796,55 @@
                             <!-- Stats row -->
                             <div class="row q-col-gutter-xs text-center q-mb-sm">
                               <div class="col-4">
-                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Entitled</div>
-                                <div class="text-weight-bold text-caption text-blue-6">{{ lb.total_entitlement }}</div>
+                                <div
+                                  style="font-size: 11px"
+                                  :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'"
+                                >
+                                  Entitled
+                                </div>
+                                <div class="text-weight-bold text-caption text-blue-6">
+                                  {{ lb.total_entitlement }}
+                                </div>
                               </div>
                               <div class="col-4">
-                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Used</div>
-                                <div class="text-weight-bold text-caption text-red-5">{{ lb.used_days }}</div>
+                                <div
+                                  style="font-size: 11px"
+                                  :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'"
+                                >
+                                  Used
+                                </div>
+                                <div class="text-weight-bold text-caption text-red-5">
+                                  {{ lb.used_days }}
+                                </div>
                               </div>
                               <div class="col-4">
-                                <div style="font-size: 11px" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Left</div>
+                                <div
+                                  style="font-size: 11px"
+                                  :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'"
+                                >
+                                  Left
+                                </div>
                                 <div
                                   class="text-weight-bold text-caption"
                                   :class="lb.remaining_days <= 0 ? 'text-red-5' : 'text-green-6'"
-                                >{{ lb.remaining_days }}</div>
+                                >
+                                  {{ lb.remaining_days }}
+                                </div>
                               </div>
                             </div>
 
                             <!-- Progress bar -->
                             <q-linear-progress
-                              :value="lb.total_entitlement > 0 ? (lb.used_days / lb.total_entitlement) : 0"
-                              :color="lb.remaining_days <= 0 ? 'red-5' : lb.remaining_days < lb.total_entitlement * 0.3 ? 'amber-7' : 'green-6'"
+                              :value="
+                                lb.total_entitlement > 0 ? lb.used_days / lb.total_entitlement : 0
+                              "
+                              :color="
+                                lb.remaining_days <= 0
+                                  ? 'red-5'
+                                  : lb.remaining_days < lb.total_entitlement * 0.3
+                                    ? 'amber-7'
+                                    : 'green-6'
+                              "
                               track-color="grey-3"
                               size="6px"
                               rounded
@@ -1948,8 +2852,13 @@
                             />
 
                             <!-- Pending -->
-                            <div v-if="lb.pending_days > 0" class="text-caption text-amber-7" style="font-size: 10px">
-                              <q-icon name="hourglass_empty" size="10px" /> {{ lb.pending_days }} days pending approval
+                            <div
+                              v-if="lb.pending_days > 0"
+                              class="text-caption text-amber-7"
+                              style="font-size: 10px"
+                            >
+                              <q-icon name="hourglass_empty" size="10px" />
+                              {{ lb.pending_days }} days pending approval
                             </div>
                           </q-card-section>
                         </q-card>
@@ -1959,37 +2868,88 @@
                     <!-- Summary totals -->
                     <div v-if="empLeaveBalances.length" class="row q-col-gutter-md q-mt-md">
                       <div class="col-12">
-                        <q-card flat :style="$q.dark.isActive ? 'background: rgba(255,255,255,0.04)' : 'background: rgba(0,0,0,0.03)'">
-                          <q-card-section class="row q-pa-sm q-col-gutter-lg justify-around text-center">
+                        <q-card
+                          flat
+                          :style="
+                            $q.dark.isActive
+                              ? 'background: rgba(255,255,255,0.04)'
+                              : 'background: rgba(0,0,0,0.03)'
+                          "
+                        >
+                          <q-card-section
+                            class="row q-pa-sm q-col-gutter-lg justify-around text-center"
+                          >
                             <div>
-                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Entitlement</div>
+                              <div
+                                :class="[
+                                  'text-caption',
+                                  $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
+                                ]"
+                              >
+                                Total Entitlement
+                              </div>
                               <div class="text-subtitle2 text-weight-bold text-blue-6">
-                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.total_entitlement), 0) }} days
+                                {{
+                                  empLeaveBalances.reduce(
+                                    (s, l) => s + Number(l.total_entitlement),
+                                    0,
+                                  )
+                                }}
+                                days
                               </div>
                             </div>
                             <div>
-                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Used</div>
+                              <div
+                                :class="[
+                                  'text-caption',
+                                  $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
+                                ]"
+                              >
+                                Total Used
+                              </div>
                               <div class="text-subtitle2 text-weight-bold text-red-5">
-                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.used_days), 0) }} days
+                                {{
+                                  empLeaveBalances.reduce((s, l) => s + Number(l.used_days), 0)
+                                }}
+                                days
                               </div>
                             </div>
                             <div>
-                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Total Remaining</div>
+                              <div
+                                :class="[
+                                  'text-caption',
+                                  $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
+                                ]"
+                              >
+                                Total Remaining
+                              </div>
                               <div class="text-subtitle2 text-weight-bold text-green-6">
-                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.remaining_days), 0) }} days
+                                {{
+                                  empLeaveBalances.reduce((s, l) => s + Number(l.remaining_days), 0)
+                                }}
+                                days
                               </div>
                             </div>
-                            <div v-if="empLeaveBalances.some(l => l.pending_days > 0)">
-                              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-6']">Pending</div>
+                            <div v-if="empLeaveBalances.some((l) => l.pending_days > 0)">
+                              <div
+                                :class="[
+                                  'text-caption',
+                                  $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
+                                ]"
+                              >
+                                Pending
+                              </div>
                               <div class="text-subtitle2 text-weight-bold text-amber-7">
-                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.pending_days), 0) }} days
+                                {{
+                                  empLeaveBalances.reduce((s, l) => s + Number(l.pending_days), 0)
+                                }}
+                                days
                               </div>
                             </div>
                           </q-card-section>
                         </q-card>
                       </div>
                     </div>
-
                   </q-tab-panel>
 
                   <!-- ══ ADVANCES TAB ═══════════════════════════════════════ -->
@@ -1997,12 +2957,20 @@
                   <q-tab-panel name="advances" class="q-pa-md">
                     <!-- Advances header -->
                     <div class="row items-center q-mb-md">
-                      <div :class="['text-subtitle1 text-weight-bold', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
+                      <div
+                        :class="[
+                          'text-subtitle1 text-weight-bold',
+                          $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                        ]"
+                      >
                         Salary Advances
                       </div>
                       <q-space />
                       <q-btn
-                        flat round dense size="sm"
+                        flat
+                        round
+                        dense
+                        size="sm"
                         icon="refresh"
                         :loading="loadingAdvances"
                         color="amber-7"
@@ -2012,9 +2980,13 @@
                         <q-tooltip>Refresh</q-tooltip>
                       </q-btn>
                       <q-btn
-                        unelevated size="sm" no-caps
-                        color="amber-8" text-color="dark"
-                        icon="add" label="New Advance"
+                        unelevated
+                        size="sm"
+                        no-caps
+                        color="amber-8"
+                        text-color="dark"
+                        icon="add"
+                        label="New Advance"
                         @click="showNewAdvance = true"
                       />
                     </div>
@@ -2029,7 +3001,14 @@
                           "
                           class="q-pa-sm text-center"
                         >
-                          <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Total Advanced</div>
+                          <div
+                            :class="[
+                              'text-caption',
+                              $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+                            ]"
+                          >
+                            Total Advanced
+                          </div>
                           <div class="text-subtitle1 text-weight-bold text-amber">
                             LKR
                             {{ fmtAdv(empAdvances.reduce((s, a) => s + Number(a.amount || 0), 0)) }}
@@ -2045,7 +3024,14 @@
                           "
                           class="q-pa-sm text-center"
                         >
-                          <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Recovered</div>
+                          <div
+                            :class="[
+                              'text-caption',
+                              $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+                            ]"
+                          >
+                            Recovered
+                          </div>
                           <div class="text-subtitle1 text-weight-bold text-green">
                             LKR
                             {{
@@ -2068,7 +3054,14 @@
                           "
                           class="q-pa-sm text-center"
                         >
-                          <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Outstanding</div>
+                          <div
+                            :class="[
+                              'text-caption',
+                              $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+                            ]"
+                          >
+                            Outstanding
+                          </div>
                           <div class="text-subtitle1 text-weight-bold text-red">
                             LKR
                             {{
@@ -2130,7 +3123,10 @@
 
                     <div
                       v-if="!loadingAdvances && !empAdvances.length"
-                      :class="['text-center q-pa-lg', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
+                      :class="[
+                        'text-center q-pa-lg',
+                        $q.dark.isActive ? 'text-grey-5' : 'text-grey-7',
+                      ]"
                     >
                       No salary advances recorded for this employee.
                     </div>
@@ -2154,7 +3150,8 @@
         </q-card-section>
         <q-separator dark />
         <q-card-section class="q-gutter-md">
-          <q-select :dark="$q.dark.isActive"
+          <q-select
+            :dark="$q.dark.isActive"
             outlined
             v-model="uploadDocForm.doc_type"
             :options="docTypeOptions"
@@ -2162,13 +3159,15 @@
             emit-value
             map-options
           />
-          <q-input :dark="$q.dark.isActive"
+          <q-input
+            :dark="$q.dark.isActive"
             outlined
             v-model="uploadDocForm.doc_name"
             label="Document Name / Label"
             hint="e.g. NIC Front Side, Contract 2025"
           />
-          <q-file :dark="$q.dark.isActive"
+          <q-file
+            :dark="$q.dark.isActive"
             outlined
             v-model="uploadDocForm.file"
             label="Select File (PDF / Image)"
@@ -2177,14 +3176,16 @@
           >
             <template #prepend><q-icon name="attach_file" /></template>
           </q-file>
-          <q-input :dark="$q.dark.isActive"
+          <q-input
+            :dark="$q.dark.isActive"
             outlined
             v-model="uploadDocForm.expiry_date"
             type="date"
             label="Expiry Date (optional)"
             stack-label
           />
-          <q-input :dark="$q.dark.isActive"
+          <q-input
+            :dark="$q.dark.isActive"
             outlined
             v-model="uploadDocForm.notes"
             label="Notes"
@@ -2210,17 +3211,38 @@
 
     <!-- ══ DOCUMENT PREVIEW DIALOG ══════════════════════════════════════════ -->
     <q-dialog v-model="showDocPreview" maximized>
-      <q-card style="background: #0f172a; color: #fff; display: flex; flex-direction: column; position: relative">
+      <q-card
+        style="
+          background: #0f172a;
+          color: #fff;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        "
+      >
         <!-- Header -->
-        <q-card-section class="row items-center q-py-sm q-px-md" style="background: #1e293b; flex-shrink: 0">
+        <q-card-section
+          class="row items-center q-py-sm q-px-md"
+          style="background: #1e293b; flex-shrink: 0"
+        >
           <q-icon name="description" color="amber-6" size="22px" class="q-mr-sm" />
-          <div class="text-subtitle1 text-weight-bold col ellipsis">{{ previewDocMeta?.doc_name || 'Document Preview' }}</div>
+          <div class="text-subtitle1 text-weight-bold col ellipsis">
+            {{ previewDocMeta?.doc_name || 'Document Preview' }}
+          </div>
           <q-space />
           <q-btn
             v-if="previewUrl"
-            unelevated color="amber-8" text-color="dark"
-            icon="download" label="Download" size="sm" no-caps class="q-mr-sm"
-            :href="previewUrl" target="_blank" type="a"
+            unelevated
+            color="amber-8"
+            text-color="dark"
+            icon="download"
+            label="Download"
+            size="sm"
+            no-caps
+            class="q-mr-sm"
+            :href="previewUrl"
+            target="_blank"
+            type="a"
           />
           <q-btn flat round dense icon="close" color="grey-4" v-close-popup />
         </q-card-section>
@@ -2228,11 +3250,19 @@
 
         <!-- Unified loading/content overlay -->
         <div class="col" style="position: relative; overflow: hidden; min-height: 0">
-
           <!-- Spinner overlay — shown while fetching URL OR while content renders -->
           <div
             v-if="previewLoading || previewContentLoading"
-            style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10"
+            style="
+              position: absolute;
+              inset: 0;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              background: #0f172a;
+              z-index: 10;
+            "
           >
             <q-spinner-orbit color="amber" size="64px" />
             <div class="text-grey-4 q-mt-lg text-subtitle2">
@@ -2249,9 +3279,16 @@
             <q-icon name="error_outline" color="red-4" size="64px" />
             <div class="text-grey-4 text-subtitle1 q-mt-md">{{ previewError }}</div>
             <q-btn
-              unelevated color="amber-8" text-color="dark"
-              label="Try Download Instead" icon="download" no-caps class="q-mt-lg"
-              :href="previewUrl" target="_blank" type="a"
+              unelevated
+              color="amber-8"
+              text-color="dark"
+              label="Try Download Instead"
+              icon="download"
+              no-caps
+              class="q-mt-lg"
+              :href="previewUrl"
+              target="_blank"
+              type="a"
             />
           </div>
 
@@ -2263,10 +3300,20 @@
           >
             <img
               :src="previewUrl"
-              style="max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; border-radius: 8px"
+              style="
+                max-width: 100%;
+                max-height: calc(100vh - 120px);
+                object-fit: contain;
+                border-radius: 8px;
+              "
               alt="Document preview"
               @load="previewContentLoading = false"
-              @error="() => { previewContentLoading = false; previewError = 'Image could not be displayed. Try downloading.' }"
+              @error="
+                () => {
+                  previewContentLoading = false
+                  previewError = 'Image could not be displayed. Try downloading.'
+                }
+              "
             />
           </div>
 
@@ -2281,7 +3328,6 @@
       </q-card>
     </q-dialog>
 
-
     <!-- ══ NEW SALARY ADVANCE DIALOG ══════════════════════════════════════════ -->
     <q-dialog v-model="showNewAdvance" persistent>
       <q-card style="min-width: 480px; background: #111827; color: #fff">
@@ -2295,7 +3341,8 @@
         <q-card-section class="q-gutter-md">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
-              <q-input :dark="$q.dark.isActive"
+              <q-input
+                :dark="$q.dark.isActive"
                 outlined
                 v-model.number="advanceForm.amount"
                 label="Advance Amount (LKR) *"
@@ -2304,7 +3351,8 @@
               />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input :dark="$q.dark.isActive"
+              <q-input
+                :dark="$q.dark.isActive"
                 outlined
                 v-model.number="advanceForm.installments"
                 label="Recovery Installments *"
@@ -2313,7 +3361,8 @@
               />
             </div>
             <div class="col-12 col-sm-6">
-              <q-input :dark="$q.dark.isActive"
+              <q-input
+                :dark="$q.dark.isActive"
                 outlined
                 v-model="advanceForm.advance_date"
                 type="date"
@@ -2333,7 +3382,9 @@
                 "
                 class="q-pa-sm"
               >
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Monthly Deduction</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                  Monthly Deduction
+                </div>
                 <div class="text-subtitle1 text-weight-bold text-amber">
                   LKR {{ (advanceForm.amount / advanceForm.installments).toFixed(2) }}
                 </div>
@@ -2343,7 +3394,8 @@
               </q-card>
             </div>
             <div class="col-12">
-              <q-input :dark="$q.dark.isActive"
+              <q-input
+                :dark="$q.dark.isActive"
                 outlined
                 v-model="advanceForm.reason"
                 label="Reason"
@@ -2352,7 +3404,8 @@
               />
             </div>
             <div class="col-12">
-              <q-input :dark="$q.dark.isActive"
+              <q-input
+                :dark="$q.dark.isActive"
                 outlined
                 v-model="advanceForm.notes"
                 label="Notes"
@@ -2382,7 +3435,7 @@
     <q-dialog v-model="showDesigDialog" persistent>
       <q-card
         class="full-width rounded-borders"
-        style="max-width: 480px;"
+        style="max-width: 480px"
         :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
       >
         <q-card-section class="row items-center">
@@ -2396,8 +3449,13 @@
         <q-separator :dark="$q.dark.isActive" />
         <q-card-section class="q-gutter-md">
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Designation Title *</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Designation Title *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.title"
@@ -2406,8 +3464,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department (optional)</div>
-            <q-select :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Department (optional)
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.department_id"
@@ -2418,8 +3481,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Description
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.description"
@@ -2427,7 +3495,12 @@
               rows="3"
             />
           </div>
-          <q-toggle :dark="$q.dark.isActive" v-model="desigForm.is_active" label="Active" color="primary" />
+          <q-toggle
+            :dark="$q.dark.isActive"
+            v-model="desigForm.is_active"
+            label="Active"
+            color="primary"
+          />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
@@ -2448,7 +3521,7 @@
     <q-dialog v-model="showDeptDialog" persistent>
       <q-card
         class="full-width rounded-borders"
-        style="max-width: 480px;"
+        style="max-width: 480px"
         :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
       >
         <q-card-section class="row items-center">
@@ -2462,8 +3535,13 @@
         <q-separator :dark="$q.dark.isActive" />
         <q-card-section class="q-gutter-md">
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department Name *</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Department Name *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="deptForm.name"
@@ -2472,8 +3550,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Description
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="deptForm.description"
@@ -2481,7 +3564,12 @@
               rows="3"
             />
           </div>
-          <q-toggle :dark="$q.dark.isActive" v-model="deptForm.is_active" label="Active" color="indigo" />
+          <q-toggle
+            :dark="$q.dark.isActive"
+            v-model="deptForm.is_active"
+            label="Active"
+            color="indigo"
+          />
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
@@ -2499,20 +3587,33 @@
 
     <!-- ══ ADD DROPDOWN OPTION DIALOG ════════════════════════════════════════ -->
     <q-dialog v-model="addOptDialog.show" persistent>
-      <q-card 
-        style="min-width: 380px; border-radius: 12px; border: 1px solid rgba(99,102,241,0.3)"
+      <q-card
+        style="min-width: 380px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.3)"
         :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
       >
         <q-card-section class="row items-center">
           <q-icon name="add_circle" size="24px" color="indigo-4" class="q-mr-sm" />
           <div class="text-h6 text-weight-bold">Add New Option</div>
           <q-space />
-          <q-btn flat round dense icon="close" v-close-popup :color="$q.dark.isActive ? 'grey-4' : 'grey-8'" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            v-close-popup
+            :color="$q.dark.isActive ? 'grey-4' : 'grey-8'"
+          />
         </q-card-section>
         <q-separator :dark="$q.dark.isActive" />
         <q-card-section class="q-pt-md">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">New Option Value</div>
-          <q-input :dark="$q.dark.isActive" outlined dense autofocus
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            New Option Value
+          </div>
+          <q-input
+            :dark="$q.dark.isActive"
+            outlined
+            dense
+            autofocus
             v-model="addOptDialog.label"
             placeholder="e.g. Sales Manager"
             hint="This will be added to the dropdown list"
@@ -2522,7 +3623,11 @@
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
           <q-btn
-            unelevated color="indigo" icon="add" label="Add Option" no-caps
+            unelevated
+            color="indigo"
+            icon="add"
+            label="Add Option"
+            no-caps
             :disable="!addOptDialog.label.trim()"
             @click="confirmAddOption"
           />
@@ -3235,7 +4340,7 @@ function recalcEpf(basicSalary, pct) {
   if (!basicSalary || !pct || isNaN(basicSalary) || isNaN(pct)) {
     return '0.00'
   }
-  return (Number(basicSalary) * Number(pct) / 100).toFixed(2)
+  return ((Number(basicSalary) * Number(pct)) / 100).toFixed(2)
 }
 
 watch(
@@ -3330,7 +4435,11 @@ async function uploadFormDocuments(empId) {
     ...Array.from(formDocEntries)
       .filter((e) => e.enabled && e.file)
       .map((e) => ({ doc_type: e.key, doc_name: e.doc_name || e.label, file: e.file })),
-    ...extraDocEntries.value.map((e) => ({ doc_type: 'other', doc_name: e.doc_name, file: e.file })),
+    ...extraDocEntries.value.map((e) => ({
+      doc_type: 'other',
+      doc_name: e.doc_name,
+      file: e.file,
+    })),
   ]
   if (!toUpload.length) return
   const errors = []
@@ -3377,27 +4486,33 @@ const uploadDocForm = reactive({
   notes: '',
 })
 
-
 // ── All known doc type metadata ────────────────────────────────────────────────
 const DOC_TYPE_META = {
-  nic_front:          { label: 'NIC Front',            icon: 'badge',             color: 'cyan'   },
-  nic_back:           { label: 'NIC Back',             icon: 'badge',             color: 'cyan'   },
-  photo:              { label: 'Photograph',            icon: 'photo_camera',      color: 'amber'  },
-  contract_letter:    { label: 'Contract Letter',       icon: 'description',       color: 'green'  },
-  gs_letter:          { label: 'GS Letter',             icon: 'article',           color: 'indigo' },
-  birth_certificate:  { label: 'Birth Certificate',     icon: 'child_care',        color: 'purple' },
-  police_report:      { label: 'Police Report',         icon: 'local_police',      color: 'blue'   },
-  driving_license:    { label: 'Driving License',       icon: 'drive_eta',         color: 'teal'   },
-  passport:           { label: 'Passport',              icon: 'travel_explore',    color: 'blue'   },
-  educational_cert:   { label: 'Educational Cert',      icon: 'school',            color: 'orange' },
-  experience_letter:  { label: 'Experience Letter',     icon: 'work',              color: 'brown'  },
-  bank_statement:     { label: 'Bank Statement',        icon: 'account_balance',   color: 'green'  },
-  cv:                 { label: 'CV / Resume',           icon: 'person_pin',        color: 'deep-purple' },
-  other:              { label: 'Other',                 icon: 'folder',            color: 'grey'   },
+  nic_front: { label: 'NIC Front', icon: 'badge', color: 'cyan' },
+  nic_back: { label: 'NIC Back', icon: 'badge', color: 'cyan' },
+  photo: { label: 'Photograph', icon: 'photo_camera', color: 'amber' },
+  contract_letter: { label: 'Contract Letter', icon: 'description', color: 'green' },
+  gs_letter: { label: 'GS Letter', icon: 'article', color: 'indigo' },
+  birth_certificate: { label: 'Birth Certificate', icon: 'child_care', color: 'purple' },
+  police_report: { label: 'Police Report', icon: 'local_police', color: 'blue' },
+  driving_license: { label: 'Driving License', icon: 'drive_eta', color: 'teal' },
+  passport: { label: 'Passport', icon: 'travel_explore', color: 'blue' },
+  educational_cert: { label: 'Educational Cert', icon: 'school', color: 'orange' },
+  experience_letter: { label: 'Experience Letter', icon: 'work', color: 'brown' },
+  bank_statement: { label: 'Bank Statement', icon: 'account_balance', color: 'green' },
+  cv: { label: 'CV / Resume', icon: 'person_pin', color: 'deep-purple' },
+  other: { label: 'Other', icon: 'folder', color: 'grey' },
 }
 
 // Base types always shown; plus any types existing in employee's actual docs
-const BASE_DOC_TYPES = ['nic_front', 'nic_back', 'photo', 'contract_letter', 'gs_letter', 'birth_certificate']
+const BASE_DOC_TYPES = [
+  'nic_front',
+  'nic_back',
+  'photo',
+  'contract_letter',
+  'gs_letter',
+  'birth_certificate',
+]
 
 const docTypeGroups = computed(() => {
   const existing = new Set(empDocuments.value.map((d) => d.doc_type))
@@ -3454,14 +4569,14 @@ async function loadEmpDocuments(empId) {
 }
 
 // ── Document Preview & Delete ──────────────────────────────────────────────────
-const showDocPreview        = ref(false)
-const previewUrl            = ref('')
-const previewIsImage        = ref(false)
-const previewLoading        = ref(false)
+const showDocPreview = ref(false)
+const previewUrl = ref('')
+const previewIsImage = ref(false)
+const previewLoading = ref(false)
 const previewContentLoading = ref(false)
-const previewError          = ref('')
-const previewDocMeta        = ref(null)
-const previewDocId          = ref(null)
+const previewError = ref('')
+const previewDocMeta = ref(null)
+const previewDocId = ref(null)
 
 // Signed URL cache: { [doc.id]: signedUrl }
 const docSignedUrls = ref({})
@@ -3478,30 +4593,32 @@ async function prefetchDocUrls(docs) {
           .from('employee-documents')
           .createSignedUrl(doc.file_path, 3600)
         if (data?.signedUrl) docSignedUrls.value[doc.id] = data.signedUrl
-      } catch { /* silent */ }
-    })
+      } catch {
+        /* silent */
+      }
+    }),
   )
 }
 
 async function previewDoc(doc) {
-  previewDocId.value          = doc.id
-  previewDocMeta.value        = doc
-  previewError.value          = ''
-  previewIsImage.value        = (doc.mime_type || '').startsWith('image')
-  previewContentLoading.value = true   // keep spinner until img/iframe @load
-  showDocPreview.value        = true
+  previewDocId.value = doc.id
+  previewDocMeta.value = doc
+  previewError.value = ''
+  previewIsImage.value = (doc.mime_type || '').startsWith('image')
+  previewContentLoading.value = true // keep spinner until img/iframe @load
+  showDocPreview.value = true
 
   // Use cached URL immediately if available
   if (docSignedUrls.value[doc.id]) {
-    previewUrl.value     = docSignedUrls.value[doc.id]
+    previewUrl.value = docSignedUrls.value[doc.id]
     previewLoading.value = false
-    previewDocId.value   = null
+    previewDocId.value = null
     return
   }
 
   // Otherwise fetch now
   previewLoading.value = true
-  previewUrl.value     = ''
+  previewUrl.value = ''
   try {
     const { data, error } = await supabase.storage
       .from('employee-documents')
@@ -3510,11 +4627,11 @@ async function previewDoc(doc) {
     docSignedUrls.value[doc.id] = data.signedUrl
     previewUrl.value = data.signedUrl
   } catch (err) {
-    previewError.value          = 'Could not load document: ' + err.message
+    previewError.value = 'Could not load document: ' + err.message
     previewContentLoading.value = false
   } finally {
     previewLoading.value = false
-    previewDocId.value   = null
+    previewDocId.value = null
   }
 }
 
@@ -3537,10 +4654,7 @@ async function deleteDoc(doc) {
     if (storageErr) throw storageErr
 
     // 2. Remove DB record
-    const { error: dbErr } = await supabase
-      .from('employee_documents')
-      .delete()
-      .eq('id', doc.id)
+    const { error: dbErr } = await supabase.from('employee_documents').delete().eq('id', doc.id)
     if (dbErr) throw dbErr
 
     // 3. Update local list
@@ -3993,7 +5107,7 @@ async function viewEmployee(emp) {
     fetchSalary(),
     loadEmpDocuments(emp.id).catch(console.error),
     loadEmpLeaveBalances(emp.id).catch(console.error),
-    loadEmpAdvances(emp.id).catch(console.error)
+    loadEmpAdvances(emp.id).catch(console.error),
   ])
 
   // Start realtime sync for this employee's leave & advances
@@ -4012,18 +5126,42 @@ function subscribeProfileRealtime(empId) {
 
   profileRealtimeChannel = supabase
     .channel(`profile-realtime-${empId}`)
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'leave_balances',
-      filter: `employee_id=eq.${empId}`
-    }, () => { loadEmpLeaveBalances(empId) })
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'leave_requests',
-      filter: `employee_id=eq.${empId}`
-    }, () => { loadEmpLeaveBalances(empId) })
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'salary_advances',
-      filter: `employee_id=eq.${empId}`
-    }, () => { loadEmpAdvances(empId) })
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'leave_balances',
+        filter: `employee_id=eq.${empId}`,
+      },
+      () => {
+        loadEmpLeaveBalances(empId)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'leave_requests',
+        filter: `employee_id=eq.${empId}`,
+      },
+      () => {
+        loadEmpLeaveBalances(empId)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'salary_advances',
+        filter: `employee_id=eq.${empId}`,
+      },
+      () => {
+        loadEmpAdvances(empId)
+      },
+    )
     .subscribe()
 }
 
@@ -4037,7 +5175,6 @@ function unsubscribeProfileRealtime() {
 async function saveEmployee() {
   saving.value = true
   try {
-
     const payload = { ...form }
     const empId = payload.id
     delete payload.id
@@ -4139,7 +5276,10 @@ async function saveEmployee() {
             ? { name: departmentOptions.value.find((d) => d.value === payload.department_id).label }
             : null,
           designations: designationOptions.value.find((d) => d.value === payload.designation_id)
-            ? { title: designationOptions.value.find((d) => d.value === payload.designation_id).label }
+            ? {
+                title: designationOptions.value.find((d) => d.value === payload.designation_id)
+                  .label,
+              }
             : null,
         },
         ...employees.value,
@@ -4394,20 +5534,23 @@ function exportPDF() {
     $q.notify({ type: 'warning', message: 'No employees to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text('Employee List', 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   let filterText = `Status: ${statusFilter.value}`
   if (deptFilter.value && deptFilter.value !== 'all') {
-    const dept = departmentOptions.value.find((d) => d.value === deptFilter.value)?.label || deptFilter.value
+    const dept =
+      departmentOptions.value.find((d) => d.value === deptFilter.value)?.label || deptFilter.value
     filterText += ` | Department: ${dept}`
   }
   if (desigFilter.value && desigFilter.value !== 'all') {
-    const desig = designationOptions.value.find((d) => d.value === desigFilter.value)?.label || desigFilter.value
+    const desig =
+      designationOptions.value.find((d) => d.value === desigFilter.value)?.label ||
+      desigFilter.value
     filterText += ` | Designation: ${desig}`
   }
   if (search.value) {
@@ -4415,7 +5558,7 @@ function exportPDF() {
   }
   doc.text(filterText, 14, 22)
   doc.text(`Total Employees: ${filteredEmployees.value.length}`, 14, 27)
-  
+
   const head = [['#', 'Name', 'Phone No', 'NIC', 'EPF No', 'Designation', 'Department']]
   const body = filteredEmployees.value.map((emp, index) => [
     index + 1,
@@ -4426,7 +5569,7 @@ function exportPDF() {
     emp.designations?.title || '—',
     emp.departments?.name || '—',
   ])
-  
+
   autoTable(doc, {
     startY: 32,
     head,
@@ -4435,7 +5578,7 @@ function exportPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('employees_list.pdf')
 }
 
@@ -4449,12 +5592,12 @@ function exportExcel() {
     '#': index + 1,
     'Employee Code': emp.employee_code || '',
     'Full Name': emp.full_name || emp.first_name + ' ' + (emp.last_name || ''),
-    'Department': emp.departments?.name || '',
-    'Designation': emp.designations?.title || '',
-    'Status': emp.employment_status || '',
+    Department: emp.departments?.name || '',
+    Designation: emp.designations?.title || '',
+    Status: emp.employment_status || '',
     'Phone No': emp.mobile || '',
-    'NIC': emp.nic_number || '',
-    'Gender': emp.gender || '',
+    NIC: emp.nic_number || '',
+    Gender: emp.gender || '',
     'Civil Status': emp.civil_status || '',
     'Bank Name': emp.bank_name || '',
     'Bank Branch': emp.bank_branch || '',
@@ -4462,7 +5605,7 @@ function exportExcel() {
     'Account No': emp.bank_account_number || '',
     'EPF No': emp.epf_no || '',
     'Basic Salary': emp.basic_salary || '0',
-    'Hire Date': emp.hire_date || ''
+    'Hire Date': emp.hire_date || '',
   }))
 
   const ws = xlsx.utils.json_to_sheet(exportData)

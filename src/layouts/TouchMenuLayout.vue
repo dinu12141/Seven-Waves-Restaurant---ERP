@@ -1,60 +1,51 @@
 <template>
   <q-layout view="hHh lpR fFf" class="touch-menu-layout">
     <q-header class="touch-menu-header">
-      <q-toolbar class="q-px-md q-py-xs">
+      <q-toolbar class="touch-toolbar">
         <!-- Brand -->
         <div class="header-logo row items-center no-wrap">
-          <q-icon name="restaurant_menu" size="28px" color="primary" class="q-mr-sm" />
+          <q-icon name="restaurant_menu" size="24px" color="primary" class="header-logo-icon" />
           <div class="column justify-center">
-            <span class="header-brand" :class="$q.dark.isActive ? 'text-white' : 'text-black'">Seven Waves</span>
+            <span class="header-brand" :class="$q.dark.isActive ? 'text-white' : 'text-black'"
+              >Seven Waves</span
+            >
             <span class="header-table text-primary text-weight-bold">
-              Table: {{ tableId || 'Menu' }}
+              TABLE: {{ tableId || 'Menu' }}
             </span>
           </div>
         </div>
 
         <q-space />
 
-        <div class="header-actions row items-center no-wrap q-gutter-x-sm">
+        <div class="header-actions row items-center no-wrap">
           <!-- Not logged in: Login button -->
           <q-btn
             v-if="!customerStore.isLoggedIn"
             outline
             color="primary"
-            icon="person_add"
             label="Sign In"
             class="touch-btn touch-btn-login"
             size="sm"
+            no-caps
             @click="goToAuth"
           />
 
-          <!-- Logged in: Customer loyalty badge -->
-          <div
-            v-else
-            class="loyalty-badge row items-center q-px-sm q-py-xs rounded-borders cursor-pointer"
-            @click="showLoyaltyPopup = true"
-          >
+          <!-- Logged in: Avatar button (opens loyalty popup) -->
+          <button v-else class="loyalty-avatar-btn" @click="showLoyaltyPopup = true">
             <div class="loyalty-avatar">
               {{ customerStore.displayName.charAt(0).toUpperCase() }}
             </div>
-            <div class="column q-ml-xs">
-              <span class="loyalty-name" :class="$q.dark.isActive ? 'text-white' : 'text-black'">{{ customerStore.displayName }}</span>
+            <!-- Show name + pts only on md+ -->
+            <div class="loyalty-info-text column q-ml-xs">
+              <span class="loyalty-name" :class="$q.dark.isActive ? 'text-white' : 'text-black'">{{
+                customerStore.displayName
+              }}</span>
               <span class="loyalty-pts">
-                <q-icon name="stars" size="10px" color="amber" class="q-mr-xs" />
-                {{ customerStore.pointsBalance }} pts · {{ customerStore.loyaltyTierDisplay }}
+                <q-icon name="stars" size="9px" color="amber" class="q-mr-xs" />
+                {{ customerStore.pointsBalance }} pts
               </span>
             </div>
-            <q-btn
-              flat
-              round
-              dense
-              icon="logout"
-              size="xs"
-              color="grey-5"
-              class="q-ml-sm"
-              @click.stop="handleLogout"
-            />
-          </div>
+          </button>
 
           <!-- Theme Toggle -->
           <q-btn
@@ -62,8 +53,8 @@
             round
             dense
             :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
-            class="touch-cart-btn"
-            size="md"
+            class="touch-icon-btn"
+            size="sm"
             @click="toggleTheme"
           >
             <q-tooltip>{{ $q.dark.isActive ? 'Light Mode' : 'Dark Mode' }}</q-tooltip>
@@ -75,8 +66,8 @@
             dense
             round
             icon="receipt_long"
-            class="touch-cart-btn position-relative"
-            size="lg"
+            class="touch-icon-btn position-relative"
+            size="sm"
             @click="ordersOpen = true"
           >
             <q-badge
@@ -96,8 +87,8 @@
             dense
             round
             icon="shopping_basket"
-            class="touch-cart-btn position-relative"
-            size="lg"
+            class="touch-icon-btn position-relative"
+            size="sm"
             @click="toggleCart"
           >
             <q-badge
@@ -115,6 +106,7 @@
     </q-header>
 
     <!-- Tracking Drawer -->
+
     <q-drawer
       v-model="ordersOpen"
       side="right"
@@ -454,38 +446,47 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .touch-menu-layout {
-  // Override Quasar's primary color to the restaurant's orange brand
-  // for the entire touch/kiosk menu so all color="primary" components match
   --q-primary: #f97316;
   --q-primary-dark: #ea580c;
   font-family: 'Inter', sans-serif;
 }
 
 .touch-menu-header {
-  backdrop-filter: blur(16px);
-  // Fallback for when body class isn't applied yet (prevents blue flash)
-  background: rgba(11, 14, 20, 0.95) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(11, 14, 20, 0.97) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-// Light mode header
 :global(.body--light) .touch-menu-header {
   background: rgba(255, 255, 255, 0.97) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
-// Dark mode header
 :global(.body--dark) .touch-menu-header {
-  background: rgba(11, 14, 20, 0.95) !important;
+  background: rgba(11, 14, 20, 0.97) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+// ── Toolbar ──────────────────────────────────────────────────────────────────
+.touch-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  min-height: 54px;
+  gap: 4px;
+
+  @media (min-width: 600px) {
+    padding: 0 20px;
+    min-height: 60px;
+  }
 }
 
 .touch-page-bg {
   transition: background-color 0.25s ease;
 }
-
 :global(.body--light) .touch-page-bg {
   background-color: #f8fafc;
 }
@@ -493,106 +494,182 @@ onUnmounted(() => {
   background-color: #0b0e14;
 }
 
+// ── Header Logo ───────────────────────────────────────────────────────────────
+.header-logo {
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.header-logo-icon {
+  flex-shrink: 0;
+}
+
 .header-brand {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+  white-space: nowrap;
+
+  @media (min-width: 400px) {
+    font-size: 17px;
+  }
+  @media (min-width: 600px) {
+    font-size: 19px;
+  }
 }
 
 .header-table {
-  font-size: 11px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+
+  @media (min-width: 400px) {
+    font-size: 10px;
+  }
+}
+
+// ── Header Actions ────────────────────────────────────────────────────────────
+.header-actions {
+  gap: 2px;
+  flex-shrink: 0;
+
+  @media (min-width: 600px) {
+    gap: 4px;
+  }
 }
 
 .touch-btn {
   border-radius: 8px;
   font-weight: 600;
   text-transform: none;
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-// Loyalty Badge
-.loyalty-badge {
-  border-radius: 12px;
-  padding: 6px 10px;
+// ── Loyalty Avatar Button ─────────────────────────────────────────────────────
+.loyalty-avatar-btn {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  transition: background 0.2s;
-}
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  max-width: 130px;
 
-:global(.body--dark) .loyalty-badge {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  &:hover {
-    background: rgba(255, 255, 255, 0.09);
+  @media (max-width: 399px) {
+    padding: 4px;
+    max-width: 38px;
+  }
+
+  :global(.body--dark) & {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    &:hover {
+      background: rgba(255, 255, 255, 0.09);
+    }
+  }
+  :global(.body--light) & {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    &:hover {
+      background: rgba(0, 0, 0, 0.07);
+    }
   }
 }
-:global(.body--light) .loyalty-badge {
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  &:hover {
-    background: rgba(0, 0, 0, 0.07);
+
+.loyalty-info-text {
+  // Hide on very small screens to prevent overflow
+  @media (max-width: 399px) {
+    display: none !important;
   }
 }
 
 .loyalty-avatar {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: linear-gradient(135deg, #f97316, #ef4444);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   color: white;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+
+  @media (min-width: 600px) {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
 }
 
 .loyalty-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
-  max-width: 120px;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .loyalty-pts {
-  font-size: 10px;
+  font-size: 9px;
   display: flex;
   align-items: center;
   line-height: 1;
   color: #94a3b8;
+  white-space: nowrap;
 }
 
-.touch-cart-btn {
+// ── Icon Buttons ──────────────────────────────────────────────────────────────
+.touch-icon-btn {
+  width: 34px;
+  height: 34px;
   transition: all 0.2s ease;
-  &:hover,
+  -webkit-tap-highlight-color: transparent;
+
   &:active {
-    color: var(--q-primary);
-    background: rgba(37, 99, 235, 0.1);
+    background: rgba(249, 115, 22, 0.12) !important;
+    color: #f97316 !important;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      color: var(--q-primary) !important;
+      background: rgba(249, 115, 22, 0.08) !important;
+    }
   }
 }
-:global(.body--dark) .touch-cart-btn {
+
+:global(.body--dark) .touch-icon-btn {
   color: #cbd5e1;
 }
-:global(.body--light) .touch-cart-btn {
+:global(.body--light) .touch-icon-btn {
   color: #475569;
 }
 
 .cart-badge {
-  padding: 4px 6px;
-  font-size: 10px;
+  padding: 3px 5px;
+  font-size: 9px;
   transform: translate(20%, -20%);
 }
 
-// Loyalty Popup
+// ── Loyalty Popup ─────────────────────────────────────────────────────────────
 .loyalty-popup {
   border-radius: 20px;
   backdrop-filter: blur(20px);
+  min-width: 300px;
+  max-width: calc(100vw - 32px);
 }
 :global(.body--dark) .loyalty-popup {
   background: rgba(15, 20, 35, 0.98) !important;
@@ -602,6 +679,21 @@ onUnmounted(() => {
   background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: #0f172a !important;
+}
+
+.loyalty-popup__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
 }
 
 .loyalty-card-display {

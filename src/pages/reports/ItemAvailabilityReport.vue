@@ -50,7 +50,11 @@
         <!-- Body -->
         <template #body="props">
           <q-tr :props="props" class="report-table__row">
-            <q-td key="order_no" :props="props" class="report-table__td report-table__td--mono text-weight-bold">
+            <q-td
+              key="order_no"
+              :props="props"
+              class="report-table__td report-table__td--mono text-weight-bold"
+            >
               {{ props.row.order_no }}
             </q-td>
             <q-td key="created_at" :props="props" class="report-table__td">

@@ -255,7 +255,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     accepting.value = orderId
 
     try {
-      console.log('[WaiterStore] Accepting order via ERP dispatch:', orderId, { unavailableItemIds })
+      console.log('[WaiterStore] Accepting order via ERP dispatch:', orderId, {
+        unavailableItemIds,
+      })
       // Pass unavailable IDs so RPC marks availability atomically before KOT generation
       const result = await dispatchAcceptOrder(orderId, unavailableItemIds)
 

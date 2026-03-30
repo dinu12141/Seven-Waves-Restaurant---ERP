@@ -266,7 +266,7 @@ body.body--light {
   font-size: var(--erp-font-size-base) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden !important;
+  /* NOTE: overflow-x:hidden removed — it breaks position:sticky in child elements */
 }
 
 /* ═══ Headings (SAP B1: tight margins) ═══════════════════════════════════ */
@@ -526,9 +526,20 @@ body.body--light {
   }
   .q-table td {
     font-size: var(--erp-font-size-table) !important;
+    font-weight: var(--erp-font-weight-regular) !important;
     padding: 5px 12px !important;
     height: var(--erp-row-height) !important;
     border-bottom: 1px solid var(--erp-border) !important;
+  }
+  /* Inputs inside table cells — keep them slim and normal weight */
+  .q-table td .q-field__native,
+  .q-table td .q-field__input {
+    font-weight: var(--erp-font-weight-regular) !important;
+    font-size: var(--erp-font-size-table) !important;
+  }
+  .q-table td .q-field__label {
+    font-size: var(--erp-font-size-small) !important;
+    font-weight: var(--erp-font-weight-regular) !important;
   }
   .q-table tbody tr:hover td {
     background: var(--erp-bg-card-hover) !important;
@@ -796,7 +807,9 @@ body.body--light {
   overflow: hidden !important;
   position: relative !important;
   height: 100% !important;
-  transition: transform 0.2s ease, box-shadow 0.25s ease !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease !important;
 
   &:hover {
     transform: translateY(-2px);
@@ -870,16 +883,36 @@ body.body--light {
   .hr-kpi-card {
     /* Make q-card section transparent so card gradient shows through */
     &.q-card {
-      &.hr-kpi-card--blue   { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) !important; }
-      &.hr-kpi-card--green  { background: linear-gradient(135deg, #065f46 0%, #10b981 100%) !important; }
-      &.hr-kpi-card--amber  { background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%) !important; }
-      &.hr-kpi-card--red    { background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%) !important; }
-      &.hr-kpi-card--purple { background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%) !important; }
-      &.hr-kpi-card--cyan   { background: linear-gradient(135deg, #164e63 0%, #06b6d4 100%) !important; }
-      &.hr-kpi-card--teal   { background: linear-gradient(135deg, #134e4a 0%, #14b8a6 100%) !important; }
-      &.hr-kpi-card--rose   { background: linear-gradient(135deg, #881337 0%, #f43f5e 100%) !important; }
-      &.hr-kpi-card--indigo { background: linear-gradient(135deg, #312e81 0%, #6366f1 100%) !important; }
-      &.hr-kpi-card--orange { background: linear-gradient(135deg, #7c2d12 0%, #f97316 100%) !important; }
+      &.hr-kpi-card--blue {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) !important;
+      }
+      &.hr-kpi-card--green {
+        background: linear-gradient(135deg, #065f46 0%, #10b981 100%) !important;
+      }
+      &.hr-kpi-card--amber {
+        background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%) !important;
+      }
+      &.hr-kpi-card--red {
+        background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%) !important;
+      }
+      &.hr-kpi-card--purple {
+        background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%) !important;
+      }
+      &.hr-kpi-card--cyan {
+        background: linear-gradient(135deg, #164e63 0%, #06b6d4 100%) !important;
+      }
+      &.hr-kpi-card--teal {
+        background: linear-gradient(135deg, #134e4a 0%, #14b8a6 100%) !important;
+      }
+      &.hr-kpi-card--rose {
+        background: linear-gradient(135deg, #881337 0%, #f43f5e 100%) !important;
+      }
+      &.hr-kpi-card--indigo {
+        background: linear-gradient(135deg, #312e81 0%, #6366f1 100%) !important;
+      }
+      &.hr-kpi-card--orange {
+        background: linear-gradient(135deg, #7c2d12 0%, #f97316 100%) !important;
+      }
     }
   }
 }
@@ -896,4 +929,3 @@ body.body--light {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
   }
 }
-

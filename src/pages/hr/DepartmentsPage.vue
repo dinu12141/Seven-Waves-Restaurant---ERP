@@ -247,22 +247,36 @@
 
     <!-- ══════════ DEPARTMENT DIALOG ══════════════ -->
     <q-dialog v-model="deptDialogOpen" persistent>
-      <q-card 
+      <q-card
         class="full-width rounded-borders"
         style="max-width: 480px; padding: 0"
         :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
       >
-        <div class="dialog-header row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+        <div
+          class="dialog-header row items-center q-pa-md"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
           <q-icon name="account_tree" size="24px" color="primary" class="q-mr-sm" />
-          <div class="text-h6 text-weight-bold">{{ editingDept ? 'Edit Department' : 'New Department' }}</div>
+          <div class="text-h6 text-weight-bold">
+            {{ editingDept ? 'Edit Department' : 'New Department' }}
+          </div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup />
         </div>
 
         <q-card-section class="q-gutter-md q-pa-lg">
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department Name *</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Department Name *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="deptForm.name"
@@ -271,8 +285,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Description
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="deptForm.description"
@@ -281,7 +300,12 @@
               placeholder="Brief description of this department…"
             />
           </div>
-          <q-toggle :dark="$q.dark.isActive" v-model="deptForm.is_active" label="Active" color="primary" />
+          <q-toggle
+            :dark="$q.dark.isActive"
+            v-model="deptForm.is_active"
+            label="Active"
+            color="primary"
+          />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
@@ -300,22 +324,36 @@
 
     <!-- ══════════ DESIGNATION DIALOG ═════════════ -->
     <q-dialog v-model="desigDialogOpen" persistent>
-      <q-card 
+      <q-card
         class="full-width rounded-borders"
         style="max-width: 480px; padding: 0"
         :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
       >
-        <div class="dialog-header row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+        <div
+          class="dialog-header row items-center q-pa-md"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
           <q-icon name="badge" size="24px" color="deep-purple-4" class="q-mr-sm" />
-          <div class="text-h6 text-weight-bold">{{ editingDesig ? 'Edit Designation' : 'New Designation' }}</div>
+          <div class="text-h6 text-weight-bold">
+            {{ editingDesig ? 'Edit Designation' : 'New Designation' }}
+          </div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup />
         </div>
 
         <q-card-section class="q-gutter-md q-pa-lg">
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Designation Title *</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Designation Title *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.title"
@@ -324,8 +362,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Department</div>
-            <q-select :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Department
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.department_id"
@@ -338,8 +381,13 @@
             />
           </div>
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Description</div>
-            <q-input :dark="$q.dark.isActive"
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Description
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
               outlined
               dense
               v-model="desigForm.description"
@@ -348,7 +396,12 @@
               placeholder="Brief description of this role…"
             />
           </div>
-          <q-toggle :dark="$q.dark.isActive" v-model="desigForm.is_active" label="Active" color="deep-purple-4" />
+          <q-toggle
+            :dark="$q.dark.isActive"
+            v-model="desigForm.is_active"
+            label="Active"
+            color="deep-purple-4"
+          />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
@@ -648,24 +701,24 @@ function exportDeptsPDF() {
     $q.notify({ type: 'warning', message: 'No records to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text('Departments Report', 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   doc.text(`Total Records: ${filteredDepts.value.length}`, 14, 22)
-  
+
   const head = [['#', 'Name', 'Description', 'Designations', 'Status']]
   const body = filteredDepts.value.map((r, i) => [
     i + 1,
     r.name || '—',
     r.description || '—',
     designationsOf(r.id).length,
-    r.is_active ? 'Active' : 'Inactive'
+    r.is_active ? 'Active' : 'Inactive',
   ])
-  
+
   autoTable(doc, {
     startY: 27,
     head,
@@ -674,7 +727,7 @@ function exportDeptsPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('departments_report.pdf')
 }
 
@@ -686,10 +739,10 @@ function exportDeptsExcel() {
 
   const exportData = filteredDepts.value.map((r, i) => ({
     '#': i + 1,
-    'Name': r.name || '',
-    'Description': r.description || '',
+    Name: r.name || '',
+    Description: r.description || '',
     'Designations Count': designationsOf(r.id).length,
-    'Status': r.is_active ? 'Active' : 'Inactive'
+    Status: r.is_active ? 'Active' : 'Inactive',
   }))
 
   const ws = XLSX.utils.json_to_sheet(exportData)
@@ -703,26 +756,26 @@ function exportDesigPDF() {
     $q.notify({ type: 'warning', message: 'No records to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   let title = 'Designations Report'
   if (selectedDept.value) title += ` - ${selectedDept.value.name}`
   doc.text(title, 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   doc.text(`Total Records: ${filteredDesignations.value.length}`, 14, 22)
-  
+
   const head = [['#', 'Title', 'Department', 'Description', 'Status']]
   const body = filteredDesignations.value.map((r, i) => [
     i + 1,
     r.title || '—',
     getDeptName(r.department_id) || '—',
     r.description || '—',
-    r.is_active ? 'Active' : 'Inactive'
+    r.is_active ? 'Active' : 'Inactive',
   ])
-  
+
   autoTable(doc, {
     startY: 27,
     head,
@@ -731,7 +784,7 @@ function exportDesigPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('designations_report.pdf')
 }
 
@@ -743,10 +796,10 @@ function exportDesigExcel() {
 
   const exportData = filteredDesignations.value.map((r, i) => ({
     '#': i + 1,
-    'Title': r.title || '',
-    'Department': getDeptName(r.department_id) || '',
-    'Description': r.description || '',
-    'Status': r.is_active ? 'Active' : 'Inactive'
+    Title: r.title || '',
+    Department: getDeptName(r.department_id) || '',
+    Description: r.description || '',
+    Status: r.is_active ? 'Active' : 'Inactive',
   }))
 
   const ws = XLSX.utils.json_to_sheet(exportData)

@@ -99,7 +99,11 @@ export function useDocumentList() {
           warehouse:warehouses!inventory_documents_warehouse_id_fkey(id, name, code, warehouse_type),
           target_wh:warehouses!inventory_documents_target_warehouse_id_fkey(id, name, code),
           supplier:suppliers(id, name),
-          creator:profiles!inventory_documents_created_by_fkey(full_name)
+          creator:profiles!inventory_documents_created_by_fkey(full_name),
+          lines:inventory_document_lines(
+            id,
+            item:items(id, name, code)
+          )
         `,
         )
         .eq('company_id', companyId)
@@ -121,14 +125,33 @@ export function useDocumentList() {
       if (err) throw err
 
       // Flatten for UI convenience
-      documents.value = (data || []).map((d: any) => ({
-        ...d,
-        warehouse_name: d.warehouse?.name || '',
-        warehouse_code: d.warehouse?.code || '',
-        target_warehouse_name: d.target_wh?.name || '',
-        supplier_name: d.supplier?.name || '',
-        created_by_name: d.creator?.full_name || '',
-      }))
+      documents.value = (data || []).map((d: any) => {
+        // Aggregate all unique item names and codes from lines
+        const itemNames: string[] = []
+        const itemCodes: string[] = []
+        if (d.lines && Array.isArray(d.lines)) {
+          d.lines.forEach((line: any) => {
+            const name = line.item?.name
+            const code = line.item?.code
+            if (name && !itemNames.includes(name)) {
+              itemNames.push(name)
+            }
+            if (code && !itemCodes.includes(code)) {
+              itemCodes.push(code)
+            }
+          })
+        }
+        return {
+          ...d,
+          warehouse_name: d.warehouse?.name || '',
+          warehouse_code: d.warehouse?.code || '',
+          target_warehouse_name: d.target_wh?.name || '',
+          supplier_name: d.supplier?.name || '',
+          created_by_name: d.creator?.full_name || '',
+          item_names: itemNames.join(', ') || '-',
+          item_codes: itemCodes.join(', ') || '-',
+        }
+      })
     } catch (e: any) {
       error.value = e.message
       console.error('[inventoryService] listDocuments error:', e)
@@ -139,6 +162,7 @@ export function useDocumentList() {
 
   return { documents, loading, error, listDocuments }
 }
+
 
 /**
  * listOpenPOs()
@@ -526,11 +550,9 @@ export function useItemsList() {
     const { data, error } = await supabase
       .from('items')
       .insert({ ...item, company_id: companyId })
-      .select()
+      .select('id')
       .single()
     if (error) throw error
-    // Optimistic: push into local list
-    items.value.push(data)
     return data
   }
 
@@ -539,12 +561,9 @@ export function useItemsList() {
       .from('items')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select('id')
       .single()
     if (error) throw error
-    // Optimistic update
-    const idx = items.value.findIndex((i: any) => i.id === id)
-    if (idx !== -1) items.value[idx] = { ...items.value[idx], ...data }
     return data
   }
 
@@ -751,7 +770,25 @@ export function useCategoryList() {
     }
   }
 
-  return { categories, loading, listCategories }
+  async function createCategory(name: string) {
+    const companyId = getCompanyId()
+    const { data, error } = await supabase
+      .from('item_categories')
+      .insert({ company_id: companyId, name, is_active: true })
+      .select()
+      .single()
+    if (error) throw error
+    categories.value.push(data)
+    return data
+  }
+
+  async function deleteCategory(id: string) {
+    const { error } = await supabase.from('item_categories').delete().eq('id', id)
+    if (error) throw error
+    categories.value = categories.value.filter((c: any) => c.id !== id)
+  }
+
+  return { categories, loading, listCategories, createCategory, deleteCategory }
 }
 
 /* ====================================================================
@@ -782,7 +819,25 @@ export function useUomList() {
     }
   }
 
-  return { uoms, loading, listUoms }
+  async function createUom(code: string) {
+    const companyId = getCompanyId()
+    const { data, error } = await supabase
+      .from('uom')
+      .insert({ company_id: companyId, code, name: code, is_active: true })
+      .select()
+      .single()
+    if (error) throw error
+    uoms.value.push(data)
+    return data
+  }
+
+  async function deleteUom(id: string) {
+    const { error } = await supabase.from('uom').delete().eq('id', id)
+    if (error) throw error
+    uoms.value = uoms.value.filter((u: any) => u.id !== id)
+  }
+
+  return { uoms, loading, listUoms, createUom, deleteUom }
 }
 
 /* ====================================================================
@@ -853,6 +908,42 @@ export function useStockDashboard() {
 
   return { stockOnHand, lowStockAlerts, loading, fetchStockOnHand }
 }
+
+/* ====================================================================
+   12b. FETCH STOCK BY WAREHOUSE
+         Returns a Map<item_id, qty_on_hand> for a given warehouse.
+         Used by the transfer/GIN document editor to validate quantities.
+         NOTE: queries v_stock_on_hand (the real-time ledger view) with
+         company_id so RLS does not filter out rows.
+==================================================================== */
+export async function fetchStockByWarehouse(warehouseId: string): Promise<Record<string, number>> {
+  if (!warehouseId) return {}
+  try {
+    const companyId = getCompanyId()
+    let query = supabase
+      .from('v_stock_on_hand')
+      .select('item_id, qty_on_hand')
+      .eq('warehouse_id', warehouseId)
+    if (companyId) query = query.eq('company_id', companyId)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    const result: Record<string, number> = {}
+    ;(data || []).forEach((r: any) => {
+      result[r.item_id] = Number(r.qty_on_hand) || 0
+    })
+    console.debug(
+      `[inventoryService] fetchStockByWarehouse(${warehouseId}): ${Object.keys(result).length} items`,
+      result,
+    )
+    return result
+  } catch (e: any) {
+    console.error('[inventoryService] fetchStockByWarehouse error:', e)
+    return {}
+  }
+}
+
 
 /* ====================================================================
    13.  STOCK LEDGER (Audit Trail)

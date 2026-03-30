@@ -5,7 +5,7 @@
       <div class="erp-dashboard-card__icon-box q-mr-md" :class="`text-${color}`">
         <q-icon :name="icon" size="28px" />
       </div>
-      <div class="column justify-center flex-grow" style="min-width: 0; min-height: 56px">
+      <div class="column justify-center flex-grow erp-dashboard-card__content">
         <div class="erp-dashboard-card__title text-uppercase text-weight-bold tracking-wide">
           {{ title }}
         </div>
@@ -15,12 +15,12 @@
         >
           {{ value }}
         </div>
-        <div class="erp-dashboard-card__subtext ellipsis">
+        <div class="erp-dashboard-card__subtext">
           <span class="q-mr-xs text-weight-bold" :class="trendClass" v-if="trend">
             <q-icon :name="trendIcon" size="14px" class="q-mr-xs" v-if="trendIcon" />
             {{ trend }}
           </span>
-          <span>{{ meta }}</span>
+          <span class="ellipsis">{{ meta }}</span>
         </div>
       </div>
     </div>
@@ -126,10 +126,19 @@ const trendClass = computed(() => {
   }
 
   &__value {
-    font-size: 26px;
+    font-size: clamp(16px, 2vw, 26px);
     font-weight: 700;
     line-height: 1.1;
     color: var(--erp-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__content {
+    min-width: 0;
+    overflow: hidden;
+    min-height: 56px;
   }
 
   &__subtext {

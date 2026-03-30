@@ -290,6 +290,10 @@ function createNewPO() {
 function editPO(row) {
   isEditing.value = true
   form.value = JSON.parse(JSON.stringify(row)) // Deep copy
+  // Ensure lines is always an array — DB row may not carry line items
+  if (!Array.isArray(form.value.lines)) {
+    form.value.lines = []
+  }
   dialogVisible.value = true
 }
 

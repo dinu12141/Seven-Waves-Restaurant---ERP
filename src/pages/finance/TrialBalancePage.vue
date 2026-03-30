@@ -141,11 +141,19 @@ onMounted(loadData)
 function getExportData() {
   const exportRows = [
     ...rows.value,
-    { code: '', name: 'TOTALS', account_type: '', debit_total: totalDr.value, credit_total: totalCr.value }
+    {
+      code: '',
+      name: 'TOTALS',
+      account_type: '',
+      debit_total: totalDr.value,
+      credit_total: totalCr.value,
+    },
   ]
   return { rows: exportRows, cols: columns, title: 'Trial_Balance' }
 }
-function printReport() { window.print() }
+function printReport() {
+  window.print()
+}
 function exportCSV() {
   const d = getExportData()
   exportTableToCSV(d.cols, d.rows, d.title)

@@ -12,6 +12,7 @@
       @primary-action="openCreateDocument"
       @export-csv="handleExport('csv')"
       @export-excel="handleExport('excel')"
+      @export-pdf="handleExport('pdf')"
     />
 
     <!-- Main content card -->
@@ -62,11 +63,6 @@
           <WarehousesTab ref="tabRef" />
         </q-tab-panel>
 
-        <!-- Good Requests -->
-        <q-tab-panel name="good_requests" class="q-pa-none">
-          <GoodRequestsTab ref="tabRef" />
-        </q-tab-panel>
-
         <!-- Suppliers -->
         <q-tab-panel name="suppliers" class="q-pa-none">
           <SuppliersTab ref="tabRef" />
@@ -86,6 +82,7 @@
         <q-tab-panel name="doc-create" class="q-pa-none">
           <DocumentCreateTab
             :document="editingDocument"
+            :prefill-item-id="prefillItemId"
             @back="tab = 'documents'"
             @saved="onDocumentSaved"
           />
@@ -103,7 +100,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
+import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardTab from 'components/inventory/DashboardTab.vue'
 import ItemsTab from 'components/inventory/ItemsTab.vue'
@@ -118,7 +115,6 @@ import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
 import MenuBookTab from 'components/inventory/MenuBookTab.vue'
 import KitchenMappingTab from 'components/inventory/KitchenMappingTab.vue'
-import GoodRequestsTab from 'components/inventory/GoodRequestsTab.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -126,7 +122,9 @@ const router = useRouter()
 const tab = ref('dashboard')
 const tabRef = ref(null)
 const editingDocument = ref(null)
+const prefillItemId = ref(null)
 
+// Watch tab query param
 watch(
   () => route.query.tab,
   (newTab) => {
@@ -134,6 +132,26 @@ watch(
       tab.value = newTab
     } else {
       tab.value = 'dashboard'
+    }
+  },
+  { immediate: true },
+)
+
+// Watch for deep-link from ItemsTab "Add Stock (GRN)" button
+// URL: /inventory?tab=documents&newDoc=GRN&item_id=UUID
+watch(
+  () => route.query,
+  (q) => {
+    if (q.newDoc && q.tab === 'documents') {
+      prefillItemId.value = q.item_id || null
+      editingDocument.value = {
+        doc_type: q.newDoc,
+        warehouse_id: '',
+        status: 'draft',
+      }
+      tab.value = 'doc-create'
+      // Clean query params without navigation
+      router.replace({ path: '/inventory', query: { tab: 'doc-create' } })
     }
   },
   { immediate: true },
@@ -148,12 +166,38 @@ function handleExport(format) {
     return
   }
 
-  const filename = `inventory_${tab.value}_${new Date().toISOString().slice(0, 10)}`
+  const customTitle = tabRef.value.exportTitle
+  let reportTitle = typeof customTitle === 'string'
+    ? customTitle
+    : (customTitle ? customTitle.value : null)
+
+  if (!reportTitle) {
+    const titleMap = {
+      'items': 'Inventory Items',
+      'warehouses': 'Warehouses',
+      'stock-levels': 'Stock Levels',
+      'suppliers': 'Suppliers',
+      'recipes': 'Recipes',
+      'menu-items': 'Menu Items',
+      'category-management': 'Categories',
+      'menu-book': 'Menu Book',
+      'kitchen-mapping': 'Kitchen Mapping',
+      'doc-create': 'Inventory Document',
+      'doc-view': 'Inventory Document'
+    }
+    const baseName = titleMap[tab.value] || `Inventory ${tab.value}`
+    reportTitle = baseName.includes('Document') ? baseName : `${baseName} Report`
+  }
+
+  const cleanTitleForFile = reportTitle.replace(/ /g, '_').toLowerCase()
+  const filename = `${cleanTitleForFile}_${new Date().toISOString().slice(0, 10)}`
 
   if (format === 'csv') {
     exportTableToCSV(columns, rows, filename)
   } else if (format === 'excel') {
     exportTableToExcel(columns, rows, filename)
+  } else if (format === 'pdf') {
+    exportTableToPDF(columns, rows, reportTitle)
   }
 }
 

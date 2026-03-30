@@ -80,7 +80,13 @@
     <div v-if="viewMode === 'definitions'">
       <div class="row q-col-gutter-sm">
         <div v-for="shift in shifts" :key="shift.id" class="col-12 col-sm-6 col-md-4 col-lg-3">
-          <q-card flat class="shift-card" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'" bordered :style="$q.dark.isActive ? 'border-color: #424242' : 'border-color: #e0e0e0'">
+          <q-card
+            flat
+            class="shift-card"
+            :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+            bordered
+            :style="$q.dark.isActive ? 'border-color: #424242' : 'border-color: #e0e0e0'"
+          >
             <!-- Color bar based on shift type -->
             <div :class="`shift-bar shift-${getShiftType(shift)}`"></div>
             <q-card-section class="q-py-sm q-px-md">
@@ -189,7 +195,9 @@
       <div class="row q-mb-md q-gutter-x-sm q-gutter-y-md items-end">
         <!-- Date filters -->
         <div class="col-auto">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">From Date</div>
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            From Date
+          </div>
           <q-input
             :dark="$q.dark.isActive"
             dense
@@ -200,7 +208,9 @@
           />
         </div>
         <div class="col-auto">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">To Date</div>
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            To Date
+          </div>
           <q-input
             :dark="$q.dark.isActive"
             dense
@@ -212,7 +222,9 @@
         </div>
         <!-- Shift filter -->
         <div class="col-auto">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Shift</div>
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            Filter by Shift
+          </div>
           <q-select
             :dark="$q.dark.isActive"
             dense
@@ -231,7 +243,9 @@
         </div>
         <!-- Employee filter -->
         <div class="col-auto">
-          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Employee</div>
+          <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            Filter by Employee
+          </div>
           <q-select
             :dark="$q.dark.isActive"
             dense
@@ -278,7 +292,7 @@
               label="Load"
               no-caps
               unelevated
-              style="height: 40px;"
+              style="height: 40px"
               @click="loadAssignments"
             />
             <!-- Clear filters -->
@@ -289,7 +303,7 @@
               icon="clear"
               label="Clear"
               no-caps
-              style="height: 40px;"
+              style="height: 40px"
               @click="clearAssignFilters"
             />
           </div>
@@ -423,7 +437,11 @@
         </q-toolbar>
         <q-card-section class="q-gutter-md q-pa-lg">
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Shift Name *</div>
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Shift Name *
+            </div>
             <q-input
               :dark="$q.dark.isActive"
               dense
@@ -435,13 +453,26 @@
           </div>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Start Time *</div>
-              <q-input :dark="$q.dark.isActive" dense outlined v-model="shiftForm.start_time" mask="time" :rules="[(v) => !!v || 'Required']">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                Start Time *
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="shiftForm.start_time"
+                mask="time"
+                :rules="[(v) => !!v || 'Required']"
+              >
                 <template v-slot:append>
                   <q-icon name="access_time" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-time :dark="$q.dark.isActive" v-model="shiftForm.start_time" format24h>
-                        <div class="row items-center justify-end"><q-btn v-close-popup label="Close" color="primary" flat /></div>
+                        <div class="row items-center justify-end">
+                          <q-btn v-close-popup label="Close" color="primary" flat />
+                        </div>
                       </q-time>
                     </q-popup-proxy>
                   </q-icon>
@@ -449,13 +480,26 @@
               </q-input>
             </div>
             <div class="col-6">
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">End Time *</div>
-              <q-input :dark="$q.dark.isActive" dense outlined v-model="shiftForm.end_time" mask="time" :rules="[(v) => !!v || 'Required']">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                End Time *
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="shiftForm.end_time"
+                mask="time"
+                :rules="[(v) => !!v || 'Required']"
+              >
                 <template v-slot:append>
                   <q-icon name="access_time" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                       <q-time :dark="$q.dark.isActive" v-model="shiftForm.end_time" format24h>
-                        <div class="row items-center justify-end"><q-btn v-close-popup label="Close" color="primary" flat /></div>
+                        <div class="row items-center justify-end">
+                          <q-btn v-close-popup label="Close" color="primary" flat />
+                        </div>
                       </q-time>
                     </q-popup-proxy>
                   </q-icon>
@@ -465,7 +509,11 @@
           </div>
           <div class="row q-col-gutter-sm items-center">
             <div class="col-8">
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Break Duration (minutes)</div>
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                Break Duration (minutes)
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -476,22 +524,44 @@
               />
             </div>
             <div class="col-4 q-pt-md">
-              <q-toggle :dark="$q.dark.isActive" v-model="shiftForm.is_overnight" label="Overnight?" color="purple" />
+              <q-toggle
+                :dark="$q.dark.isActive"
+                v-model="shiftForm.is_overnight"
+                label="Overnight?"
+                color="purple"
+              />
             </div>
           </div>
           <!-- Removed Shift Type here to avoid schema 400 errors -->
-          <q-toggle :dark="$q.dark.isActive" v-model="shiftForm.is_active" label="Active" color="positive" />
+          <q-toggle
+            :dark="$q.dark.isActive"
+            v-model="shiftForm.is_active"
+            label="Active"
+            color="positive"
+          />
 
           <!-- Preview -->
-          <q-card flat class="q-pa-md rounded-borders" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'">
-            <div :class="['text-caption q-mb-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">SHIFT PREVIEW</div>
+          <q-card
+            flat
+            class="q-pa-md rounded-borders"
+            :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+          >
+            <div
+              :class="['text-caption q-mb-md', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']"
+            >
+              SHIFT PREVIEW
+            </div>
             <div class="row q-gutter-md text-center">
               <div class="col">
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">Duration</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">
+                  Duration
+                </div>
                 <div class="text-h6 text-weight-bold">{{ previewHours }} hrs</div>
               </div>
               <div class="col">
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">Effective Hours</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-4' : 'text-grey-7']">
+                  Effective Hours
+                </div>
                 <div class="text-h6 text-weight-bold">{{ previewEffective }} hrs</div>
               </div>
             </div>
@@ -524,7 +594,9 @@
         <q-card-section class="q-gutter-md q-pa-lg">
           <!-- Multi Employee Select -->
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
               {{ assignDialog.isEdit ? 'Employee *' : 'Employees * (select multiple)' }}
             </div>
             <q-select
@@ -582,7 +654,9 @@
 
           <!-- Multi Shift Select -->
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
               {{ assignDialog.isEdit ? 'Shift *' : 'Shifts * (select multiple)' }}
             </div>
             <q-select
@@ -597,7 +671,9 @@
               map-options
               :multiple="!assignDialog.isEdit"
               use-chips
-              :rules="[(v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one shift']"
+              :rules="[
+                (v) => (Array.isArray(v) ? v.length > 0 : !!v) || 'Select at least one shift',
+              ]"
             >
               <template #option="scope">
                 <q-item v-bind="scope.itemProps">
@@ -633,14 +709,25 @@
             class="assign-summary-banner q-pa-sm rounded-borders"
             :class="$q.dark.isActive ? 'bg-grey-9 border-grey-8' : 'bg-grey-1'"
           >
-            <q-icon name="info" size="16px" class="q-mr-xs" :color="$q.dark.isActive ? 'grey-4' : 'primary'" />
-            <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-primary'">{{ assignSummary }}</span>
+            <q-icon
+              name="info"
+              size="16px"
+              class="q-mr-xs"
+              :color="$q.dark.isActive ? 'grey-4' : 'primary'"
+            />
+            <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-primary'">{{
+              assignSummary
+            }}</span>
           </div>
 
           <!-- Date Range -->
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">From Date *</div>
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                From Date *
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -651,7 +738,11 @@
               />
             </div>
             <div class="col-6">
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">To Date *</div>
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                To Date *
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -665,14 +756,20 @@
 
           <!-- Days of Week -->
           <div>
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">REPEAT ON DAYS</div>
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              REPEAT ON DAYS
+            </div>
             <div class="row q-gutter-xs">
               <q-btn
                 v-for="d in daysOfWeek"
                 :key="d.val"
                 :outline="!assignForm.days.includes(d.val)"
                 :flat="$q.dark.isActive && !assignForm.days.includes(d.val)"
-                :class="$q.dark.isActive && !assignForm.days.includes(d.val) ? 'border border-grey-7' : ''"
+                :class="
+                  $q.dark.isActive && !assignForm.days.includes(d.val) ? 'border border-grey-7' : ''
+                "
                 :color="assignForm.days.includes(d.val) ? 'primary' : 'grey-7'"
                 dense
                 no-caps
@@ -685,8 +782,12 @@
           </div>
 
           <div>
-             <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Notes</div>
-             <q-input :dark="$q.dark.isActive" dense outlined v-model="assignForm.notes" autogrow />
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Notes
+            </div>
+            <q-input :dark="$q.dark.isActive" dense outlined v-model="assignForm.notes" autogrow />
           </div>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
@@ -706,57 +807,130 @@
 
     <!-- ─── ROSTER UPLOAD & TEMPLATE DIALOG ─── -->
     <q-dialog v-model="uploadDialog.open" persistent>
-      <q-card style="min-width: 500px; padding: 0" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'">
-        <q-card-section class="row items-center q-pa-md" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+      <q-card
+        style="min-width: 500px; padding: 0"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+      >
+        <q-card-section
+          class="row items-center q-pa-md"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
           <div class="text-h6 text-weight-bold">Monthly Roster Upload</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
-        
+
         <q-card-section class="q-pa-lg row q-col-gutter-md">
           <div class="col-12">
-            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Select Month/Year *</div>
-            <q-input :dark="$q.dark.isActive" dense outlined v-model="uploadForm.month" type="month" />
+            <div
+              :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+            >
+              Select Month/Year *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.month"
+              type="month"
+            />
           </div>
 
           <div class="col-12">
             <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">1. Download Template</div>
+            <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">
+              1. Download Template
+            </div>
             <div class="row q-col-gutter-sm items-end">
               <div class="col-12 col-sm-6">
-                <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Filter by Department (Optional)</div>
-                <q-select :dark="$q.dark.isActive" dense outlined v-model="uploadForm.department_id" :options="departments" option-label="name" option-value="id" emit-value map-options clearable />
+                <div
+                  :class="[
+                    'text-caption q-mb-xs',
+                    $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                  ]"
+                >
+                  Filter by Department (Optional)
+                </div>
+                <q-select
+                  :dark="$q.dark.isActive"
+                  dense
+                  outlined
+                  v-model="uploadForm.department_id"
+                  :options="departments"
+                  option-label="name"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  clearable
+                />
               </div>
               <div class="col-12 col-sm-6 text-right">
-                <q-btn label="Download Template" color="secondary" icon="download" @click="generateTemplate" unelevated no-caps size="md" />
+                <q-btn
+                  label="Download Template"
+                  color="secondary"
+                  icon="download"
+                  @click="generateTemplate"
+                  unelevated
+                  no-caps
+                  size="md"
+                />
               </div>
             </div>
-            <div class="text-caption q-mt-sm text-grey-6">Downloads an Excel template pre-filled with exactly the employees in the selected department.</div>
+            <div class="text-caption q-mt-sm text-grey-6">
+              Downloads an Excel template pre-filled with exactly the employees in the selected
+              department.
+            </div>
           </div>
 
           <div class="col-12">
             <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">2. Upload Filled Roster</div>
+            <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">
+              2. Upload Filled Roster
+            </div>
             <div>
-              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">Select Excel File *</div>
-              <q-file :dark="$q.dark.isActive" dense outlined v-model="uploadForm.file" accept=".xlsx, .xls, .csv">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                Select Excel File *
+              </div>
+              <q-file
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="uploadForm.file"
+                accept=".xlsx, .xls, .csv"
+              >
                 <template v-slot:prepend>
                   <q-icon name="attach_file" />
                 </template>
               </q-file>
             </div>
-            <div class="text-caption q-mt-sm text-grey-6">Upload the filled template. Valid shift names (e.g. "Morning Shift", "Night") mapped to correctly dated columns will be assigned. Enter "Off" or "-" to leave empty.</div>
+            <div class="text-caption q-mt-sm text-grey-6">
+              Upload the filled template. Valid shift names (e.g. "Morning Shift", "Night") mapped
+              to correctly dated columns will be assigned. Enter "Off" or "-" to leave empty.
+            </div>
           </div>
         </q-card-section>
-        
+
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey" v-close-popup no-caps />
-          <q-btn label="Process Upload" color="primary" icon="upload" @click="processRosterUpload" :loading="uploading" unelevated no-caps />
+          <q-btn
+            label="Process Upload"
+            color="primary"
+            icon="upload"
+            @click="processRosterUpload"
+            :loading="uploading"
+            unelevated
+            no-caps
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
-
   </q-page>
 </template>
 
@@ -788,12 +962,12 @@ const assignFilter = reactive({
   dateFrom: (() => {
     const d = new Date()
     d.setDate(d.getDate() - d.getDay()) // start of this week (Sunday)
-    return d.toISOString().split('T')[0]
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })(),
   dateTo: (() => {
     const d = new Date()
     d.setDate(d.getDate() - d.getDay() + 6) // end of this week (Saturday)
-    return d.toISOString().split('T')[0]
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })(),
   shiftId: null,
   employeeId: null,
@@ -849,8 +1023,15 @@ const assignForm = reactive({
   id: null,
   employee_ids: [], // multi-select for create, single value for edit
   shift_ids: [], // multi-select for create, single value for edit
-  date_from: new Date().toISOString().split('T')[0],
-  date_to: new Date().toISOString().split('T')[0],
+  date_from: (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })(),
+  date_to: (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30) // Default repeat window: 30 days
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })(),
   days: [1, 2, 3, 4, 5], // Mon-Fri by default
   notes: '',
 })
@@ -865,12 +1046,35 @@ const daysOfWeek = [
   { val: 6, short: 'Sat', label: 'Saturday' },
 ]
 
-// Summary of how many assignments will be created
 const assignSummary = computed(() => {
   const empCount = Array.isArray(assignForm.employee_ids) ? assignForm.employee_ids.length : 0
   const shiftCount = Array.isArray(assignForm.shift_ids) ? assignForm.shift_ids.length : 0
-  if (empCount === 0 || shiftCount === 0) return ''
-  return `${empCount} employee(s) × ${shiftCount} shift(s) will be assigned for selected dates`
+
+  let matchCount = 0
+  if (assignForm.date_from && assignForm.date_to) {
+    const from = new Date(
+      assignForm.date_from.split('-')[0],
+      assignForm.date_from.split('-')[1] - 1,
+      assignForm.date_from.split('-')[2],
+    )
+    const to = new Date(
+      assignForm.date_to.split('-')[0],
+      assignForm.date_to.split('-')[1] - 1,
+      assignForm.date_to.split('-')[2],
+    )
+    if (from <= to) {
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        if (assignForm.days.includes(d.getDay())) {
+          matchCount++
+        }
+      }
+    }
+  }
+
+  if (empCount === 0 || shiftCount === 0 || matchCount === 0)
+    return 'Select employees, shifts, and a valid date range to preview...'
+
+  return `${matchCount} MATCHING DAY(S) IN RANGE • ${empCount} employee(s) × ${shiftCount} shift(s) = ${empCount * shiftCount * matchCount} assignments will be created.`
 })
 
 function toggleDay(val) {
@@ -880,12 +1084,16 @@ function toggleDay(val) {
 }
 
 function openAssignDialog() {
+  const today = new Date()
+  const nextMonth = new Date(today)
+  nextMonth.setDate(today.getDate() + 30)
+
   Object.assign(assignForm, {
     id: null,
     employee_ids: [],
     shift_ids: [],
-    date_from: new Date().toISOString().split('T')[0],
-    date_to: new Date().toISOString().split('T')[0],
+    date_from: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+    date_to: `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(nextMonth.getDate()).padStart(2, '0')}`,
     days: [1, 2, 3, 4, 5],
     notes: '',
   })
@@ -1061,23 +1269,23 @@ const uploading = ref(false)
 function generateTemplate() {
   const [yyyy, mm] = uploadForm.month.split('-')
   const daysInMonth = new Date(yyyy, mm, 0).getDate()
-  
+
   const header = ['Employee Code', 'Employee Name']
   for (let i = 1; i <= daysInMonth; i++) {
     header.push(`${yyyy}-${mm}-${String(i).padStart(2, '0')}`)
   }
   const data = [header]
-  
-  const filteredEmps = uploadForm.department_id 
-    ? employees.value.filter(e => e.department_id === uploadForm.department_id)
+
+  const filteredEmps = uploadForm.department_id
+    ? employees.value.filter((e) => e.department_id === uploadForm.department_id)
     : employees.value
 
-  filteredEmps.forEach(e => {
-     const row = [e.employee_code, e.full_name]
-     for (let i = 1; i <= daysInMonth; i++) row.push('-')
-     data.push(row)
+  filteredEmps.forEach((e) => {
+    const row = [e.employee_code, e.full_name]
+    for (let i = 1; i <= daysInMonth; i++) row.push('-')
+    data.push(row)
   })
-  
+
   const ws = XLSX.utils.aoa_to_sheet(data)
   // Auto-width for the first 2 columns
   ws['!cols'] = [{ wch: 15 }, { wch: 25 }]
@@ -1091,7 +1299,7 @@ async function processRosterUpload() {
     $q.notify({ type: 'warning', message: 'Please select a file and month' })
     return
   }
-  
+
   uploading.value = true
   try {
     const file = uploadForm.file
@@ -1100,26 +1308,30 @@ async function processRosterUpload() {
     const sheetName = workbook.SheetNames[0]
     const sheet = workbook.Sheets[sheetName]
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1 })
-    
+
     if (data.length < 2) throw new Error('File is empty or missing data rows')
-    
-    const headers = data[0].map(h => (h !== undefined && h !== null) ? h.toString().toLowerCase().trim() : '')
-    const empIdx = headers.findIndex(h => h.includes('code') || h.includes('employee'))
-    
+
+    const headers = data[0].map((h) =>
+      h !== undefined && h !== null ? h.toString().toLowerCase().trim() : '',
+    )
+    const empIdx = headers.findIndex((h) => h.includes('code') || h.includes('employee'))
+
     if (empIdx === -1 && data[0][0]) {
-       // Graceful fallback to assume 1st col
+      // Graceful fallback to assume 1st col
     }
     const safeEmpIdx = empIdx !== -1 ? empIdx : 0
 
     const shiftMap = {}
-    shifts.value.forEach(s => { 
-      shiftMap[s.name.toLowerCase().trim()] = s.id 
-      shiftMap[s.name.split(' ')[0].toLowerCase().trim()] = s.id 
+    shifts.value.forEach((s) => {
+      shiftMap[s.name.toLowerCase().trim()] = s.id
+      shiftMap[s.name.split(' ')[0].toLowerCase().trim()] = s.id
     })
-    
+
     const empMap = {}
-    employees.value.forEach(e => { if (e.employee_code) empMap[e.employee_code.toString().toLowerCase().trim()] = e.id })
-    
+    employees.value.forEach((e) => {
+      if (e.employee_code) empMap[e.employee_code.toString().toLowerCase().trim()] = e.id
+    })
+
     const [yyyy, mm] = uploadForm.month.split('-')
     const daysInMonth = new Date(yyyy, mm, 0).getDate()
     const inserts = []
@@ -1129,57 +1341,63 @@ async function processRosterUpload() {
       if (!row || !row[safeEmpIdx]) continue
       const empCode = row[safeEmpIdx].toString().toLowerCase().trim()
       const empId = empMap[empCode]
-      
+
       if (!empId) continue // Silently skip rows not matching a valid code
-      
+
       for (let c = 0; c < headers.length; c++) {
         if (c === safeEmpIdx || !data[0][c]) continue
-        
+
         let dayOrDate = data[0][c].toString().trim()
         let dayNum = parseInt(dayOrDate, 10)
         if (dayOrDate.includes('-')) dayNum = parseInt(dayOrDate.split('-').pop(), 10)
-        
+
         if (isNaN(dayNum) || dayNum < 1 || dayNum > daysInMonth) continue
-        
+
         const cellVal = row[c]
         if (!cellVal) continue
         const shiftName = cellVal.toString().toLowerCase().trim()
-        
+
         if (['off', 'x', '-', 'leave'].includes(shiftName)) continue
-        
+
         let shiftId = shiftMap[shiftName] || shiftMap[shiftName.replace(' shift', '')]
         if (!shiftId) {
-          const sObj = shifts.value.find(s => s.name.toLowerCase().includes(shiftName) || shiftName.includes(s.name.toLowerCase()))
+          const sObj = shifts.value.find(
+            (s) =>
+              s.name.toLowerCase().includes(shiftName) || shiftName.includes(s.name.toLowerCase()),
+          )
           if (sObj) shiftId = sObj.id
         }
-        
+
         if (shiftId) {
           const dateStr = `${yyyy}-${mm}-${String(dayNum).padStart(2, '0')}`
           inserts.push({
-             company_id: authStore.currentBranch?.company_id,
-             branch_id: authStore.currentBranch?.id,
-             employee_id: empId,
-             shift_id: shiftId,
-             assignment_date: dateStr,
-             status: 'scheduled',
-             notes: 'Roster Bulk Import'
+            company_id: authStore.currentBranch?.company_id,
+            branch_id: authStore.currentBranch?.id,
+            employee_id: empId,
+            shift_id: shiftId,
+            assignment_date: dateStr,
+            status: 'scheduled',
+            notes: 'Roster Bulk Import',
           })
         }
       }
     }
 
-    if (inserts.length === 0) throw new Error('No valid shift assignments found to import. Check shift names and headers.')
+    if (inserts.length === 0)
+      throw new Error('No valid shift assignments found to import. Check shift names and headers.')
 
     const { error } = await supabase
-       .from('shift_assignments')
-       .upsert(inserts, { onConflict: 'employee_id,shift_id,assignment_date' })
-       
+      .from('shift_assignments')
+      .upsert(inserts, { onConflict: 'employee_id,shift_id,assignment_date' })
+
     if (error) throw error
-    
-    $q.notify({ type: 'positive', message: `Successfully imported ${inserts.length} shift assignments!` })
+
+    $q.notify({
+      type: 'positive',
+      message: `Successfully imported ${inserts.length} shift assignments!`,
+    })
     uploadDialog.open = false
     await loadAssignments()
-
   } catch (err) {
     console.error('Upload Error:', err)
     $q.notify({ type: 'negative', message: err.message || 'Error processing Excel file' })
@@ -1354,6 +1572,10 @@ async function saveAssignment() {
         .from('shift_assignments')
         .upsert(inserts, { onConflict: 'employee_id,shift_id,assignment_date' })
       if (error) throw error
+
+      if (assignForm.date_from < assignFilter.dateFrom) assignFilter.dateFrom = assignForm.date_from
+      if (assignForm.date_to > assignFilter.dateTo) assignFilter.dateTo = assignForm.date_to
+
       $q.notify({ type: 'positive', message: `${inserts.length} shift assignment(s) created` })
     }
     assignDialog.open = false
@@ -1472,23 +1694,23 @@ function exportPDF() {
     $q.notify({ type: 'warning', message: 'No records to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text('Shift Assignments Report', 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   let filterText = `From: ${assignFilter.dateFrom} To: ${assignFilter.dateTo}`
   if (assignFilter.shiftId) {
-    const shift = shifts.value.find(s => s.id === assignFilter.shiftId)?.name || ''
+    const shift = shifts.value.find((s) => s.id === assignFilter.shiftId)?.name || ''
     filterText += ` | Shift: ${shift}`
   }
   if (assignSearch.value) filterText += ` | Search: ${assignSearch.value}`
-  
+
   doc.text(filterText, 14, 22)
   doc.text(`Total Records: ${filteredAssignments.value.length}`, 14, 27)
-  
+
   const head = [['#', 'Employee Name', 'Shift', 'Date', 'Start Time', 'End Time', 'Status']]
   const body = filteredAssignments.value.map((r, i) => [
     i + 1,
@@ -1497,9 +1719,9 @@ function exportPDF() {
     r.assignment_date || '—',
     formatTime(r.shifts?.start_time),
     formatTime(r.shifts?.end_time),
-    r.status || '—'
+    r.status || '—',
   ])
-  
+
   autoTable(doc, {
     startY: 32,
     head,
@@ -1508,7 +1730,7 @@ function exportPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('shift_assignments_report.pdf')
 }
 
@@ -1521,11 +1743,11 @@ function exportExcel() {
   const exportData = filteredAssignments.value.map((r, i) => ({
     '#': i + 1,
     'Employee Name': r.employees?.full_name || '',
-    'Shift': r.shifts?.name || '',
-    'Date': r.assignment_date || '',
+    Shift: r.shifts?.name || '',
+    Date: r.assignment_date || '',
     'Start Time': formatTime(r.shifts?.start_time),
     'End Time': formatTime(r.shifts?.end_time),
-    'Status': r.status || ''
+    Status: r.status || '',
   }))
 
   const ws = XLSX.utils.json_to_sheet(exportData)

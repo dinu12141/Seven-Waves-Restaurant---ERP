@@ -1032,7 +1032,8 @@ function handleLogout() {
     ok: { color: 'orange-8', unelevated: true, noCaps: true, label: 'Lock Terminal' },
   }).onOk(async () => {
     // Remember who was logged in to show in the lock screen chip
-    previousCashierName.value = authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
+    previousCashierName.value =
+      authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
 
     // Sign out the current user (clears auth state, session, cache)
     await authStore.signOut()

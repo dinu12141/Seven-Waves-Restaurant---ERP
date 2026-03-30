@@ -117,7 +117,15 @@ export const useCashierStore = defineStore('cashier', () => {
     const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 
     // Fetch all unpaid statuses (last 7 days) + paid orders (today only)
-    const unpaidStatuses = ['pending', 'pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced']
+    const unpaidStatuses = [
+      'pending',
+      'pending_waiter',
+      'accepted',
+      'preparing',
+      'ready',
+      'served',
+      'invoiced',
+    ]
     const paidStatuses = ['paid']
 
     const [unpaidRes, paidRes] = await Promise.all([
@@ -189,9 +197,15 @@ export const useCashierStore = defineStore('cashier', () => {
     const combined = [...(unpaidRes.data || []), ...(paidRes.data || [])]
     // De-duplicate by id (shouldn't happen but guard anyway)
     const seen = new Set()
-    const deduped = combined.filter((o) => { if (seen.has(o.id)) return false; seen.add(o.id); return true })
+    const deduped = combined.filter((o) => {
+      if (seen.has(o.id)) return false
+      seen.add(o.id)
+      return true
+    })
 
-    console.log(`[CashierStore] Received ${deduped.length} orders (${unpaidRes.data?.length ?? 0} unpaid + ${paidRes.data?.length ?? 0} paid)`)
+    console.log(
+      `[CashierStore] Received ${deduped.length} orders (${unpaidRes.data?.length ?? 0} unpaid + ${paidRes.data?.length ?? 0} paid)`,
+    )
     billingOrders.value = deduped.map(normalizeQueueEntry)
   }
 

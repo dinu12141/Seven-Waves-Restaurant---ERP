@@ -8,12 +8,13 @@
 
     <!-- KPI Cards -->
     <div class="row q-col-gutter-md q-mb-lg items-stretch">
-
       <div class="col-12 col-sm-6 col-md-3">
         <q-card flat class="hr-kpi-card hr-kpi-card--amber">
           <q-card-section class="hr-kpi-inner">
-            <div class="hr-kpi-icon"><q-icon name="pending_actions" size="22px" color="white" /></div>
-            <div style="flex:1">
+            <div class="hr-kpi-icon">
+              <q-icon name="pending_actions" size="22px" color="white" />
+            </div>
+            <div style="flex: 1">
               <div class="hr-kpi-label">Pending Requests</div>
               <div class="hr-kpi-value">{{ kpi.pending }}</div>
             </div>
@@ -26,7 +27,7 @@
         <q-card flat class="hr-kpi-card hr-kpi-card--green">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="check_circle" size="22px" color="white" /></div>
-            <div style="flex:1">
+            <div style="flex: 1">
               <div class="hr-kpi-label">Approved (Month)</div>
               <div class="hr-kpi-value">{{ kpi.approvedMonth }}</div>
             </div>
@@ -39,7 +40,7 @@
         <q-card flat class="hr-kpi-card hr-kpi-card--red">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="cancel" size="22px" color="white" /></div>
-            <div style="flex:1">
+            <div style="flex: 1">
               <div class="hr-kpi-label">Rejected (Month)</div>
               <div class="hr-kpi-value">{{ kpi.rejectedMonth }}</div>
             </div>
@@ -52,7 +53,7 @@
         <q-card flat class="hr-kpi-card hr-kpi-card--cyan">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="category" size="22px" color="white" /></div>
-            <div style="flex:1">
+            <div style="flex: 1">
               <div class="hr-kpi-label">Leave Types</div>
               <div class="hr-kpi-value">{{ kpi.types }}</div>
             </div>
@@ -61,7 +62,6 @@
         </q-card>
       </div>
     </div>
-
 
     <!-- Main Tabs Card -->
     <q-card
@@ -188,7 +188,14 @@
           <!-- Filters -->
           <div class="row q-col-gutter-sm q-mb-md">
             <div class="col-12 col-sm-3">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Status</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Status
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -206,7 +213,14 @@
               />
             </div>
             <div class="col-12 col-sm-3">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Employee
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -219,7 +233,14 @@
               />
             </div>
             <div class="col-12 col-sm-3">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Leave Type
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -232,7 +253,14 @@
               />
             </div>
             <div class="col-12 col-sm-3">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Month</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Month
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -262,7 +290,9 @@
                 <div :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
                   {{ props.row.employees?.full_name || props.row.employees?.first_name }}
                 </div>
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">{{ props.row.employees?.employee_code }}</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                  {{ props.row.employees?.employee_code }}
+                </div>
               </q-td>
             </template>
 
@@ -413,7 +443,14 @@
         <q-tab-panel name="balances" class="q-pa-md">
           <div class="row q-col-gutter-sm q-mb-md items-center">
             <div class="col-auto">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Year</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Year
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -425,7 +462,14 @@
               />
             </div>
             <div class="col-auto">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Employee
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -439,7 +483,14 @@
               />
             </div>
             <div class="col-auto">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type</div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Leave Type
+              </div>
               <q-select
                 :dark="$q.dark.isActive"
                 dense
@@ -472,7 +523,9 @@
                 <div :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
                   {{ props.row.employees?.full_name || props.row.employees?.first_name }}
                 </div>
-                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">{{ props.row.employees?.employee_code }}</div>
+                <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
+                  {{ props.row.employees?.employee_code }}
+                </div>
               </q-td>
             </template>
             <template #body-cell-leave_type="props">
@@ -521,8 +574,18 @@
 
     <!-- ══ NEW LEAVE REQUEST DIALOG ══════════════════════════════════════ -->
     <q-dialog v-model="showNewRequest" persistent>
-      <q-card style="min-width: 520px" :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']">
-        <q-card-section class="row items-center" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+      <q-card
+        style="min-width: 520px"
+        :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']"
+      >
+        <q-card-section
+          class="row items-center"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
           <q-icon name="event_note" size="24px" color="amber-6" class="q-mr-sm" />
           <div class="text-h6 text-weight-bold">New Leave Request</div>
           <q-space />
@@ -530,7 +593,14 @@
         </q-card-section>
         <q-card-section class="q-pt-md">
           <div class="q-mb-md">
-            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Employee <span class="text-red">*</span></div>
+            <div
+              :class="[
+                'text-caption text-weight-medium q-mb-xs',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+              ]"
+            >
+              Employee <span class="text-red">*</span>
+            </div>
             <q-select
               :dark="$q.dark.isActive"
               dense
@@ -542,7 +612,14 @@
             />
           </div>
           <div class="q-mb-md">
-            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type <span class="text-red">*</span></div>
+            <div
+              :class="[
+                'text-caption text-weight-medium q-mb-xs',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+              ]"
+            >
+              Leave Type <span class="text-red">*</span>
+            </div>
             <q-select
               :dark="$q.dark.isActive"
               dense
@@ -555,7 +632,14 @@
           </div>
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-6">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Start Date <span class="text-red">*</span></div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Start Date <span class="text-red">*</span>
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -566,7 +650,14 @@
               />
             </div>
             <div class="col-6">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">End Date <span class="text-red">*</span></div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                End Date <span class="text-red">*</span>
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -585,8 +676,22 @@
             <span class="text-amber text-weight-bold">{{ reqForm.total_days }} working day(s)</span>
           </div>
           <div class="q-mb-sm">
-            <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Reason</div>
-            <q-input :dark="$q.dark.isActive" dense outlined v-model="reqForm.reason" type="textarea" rows="2" />
+            <div
+              :class="[
+                'text-caption text-weight-medium q-mb-xs',
+                $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+              ]"
+            >
+              Reason
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="reqForm.reason"
+              type="textarea"
+              rows="2"
+            />
           </div>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
@@ -649,8 +754,18 @@
 
     <!-- ══ LEAVE TYPE DIALOG ══════════════════════════════════════════════ -->
     <q-dialog v-model="showLeaveTypeDialog" persistent>
-      <q-card style="min-width: 480px" :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']">
-        <q-card-section class="row items-center" :style="{ borderBottom: $q.dark.isActive ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.1)' }">
+      <q-card
+        style="min-width: 480px"
+        :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']"
+      >
+        <q-card-section
+          class="row items-center"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
           <q-icon name="category" size="24px" color="cyan" class="q-mr-sm" />
           <div class="text-h6 text-weight-bold">
             {{ editingType ? 'Edit Leave Type' : 'New Leave Type' }}
@@ -661,11 +776,25 @@
         <q-card-section class="q-pt-md">
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-8">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Leave Type Name <span class="text-red">*</span></div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Leave Type Name <span class="text-red">*</span>
+              </div>
               <q-input :dark="$q.dark.isActive" dense outlined v-model="typeForm.name" />
             </div>
             <div class="col-4">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Code <span class="text-red">*</span></div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Code <span class="text-red">*</span>
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -677,7 +806,14 @@
           </div>
           <div class="row q-col-gutter-md q-mb-md items-center">
             <div class="col-6">
-              <div :class="['text-caption text-weight-medium q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">Annual Quota (days) <span class="text-red">*</span></div>
+              <div
+                :class="[
+                  'text-caption text-weight-medium q-mb-xs',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
+                Annual Quota (days) <span class="text-red">*</span>
+              </div>
               <q-input
                 :dark="$q.dark.isActive"
                 dense
@@ -687,7 +823,12 @@
               />
             </div>
             <div class="col-6">
-              <q-toggle :dark="$q.dark.isActive" v-model="typeForm.is_paid" label="Paid Leave" color="green" />
+              <q-toggle
+                :dark="$q.dark.isActive"
+                v-model="typeForm.is_paid"
+                label="Paid Leave"
+                color="green"
+              />
             </div>
           </div>
           <div class="row q-col-gutter-md q-mb-md items-center">
@@ -1234,16 +1375,27 @@ function exportRequestsPDF() {
     $q.notify({ type: 'warning', message: 'No records to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text('Leave Requests Report', 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   doc.text(`Total Records: ${filteredRequests.value.length}`, 14, 22)
-  
-  const head = [['#', 'Employee Code', 'Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status']]
+
+  const head = [
+    [
+      '#',
+      'Employee Code',
+      'Employee Name',
+      'Leave Type',
+      'Start Date',
+      'End Date',
+      'Days',
+      'Status',
+    ],
+  ]
   const body = filteredRequests.value.map((r, i) => [
     i + 1,
     r.employees?.employee_code || '—',
@@ -1252,9 +1404,9 @@ function exportRequestsPDF() {
     r.start_date || '—',
     r.end_date || '—',
     r.total_days || 0,
-    r.status || '—'
+    r.status || '—',
   ])
-  
+
   autoTable(doc, {
     startY: 27,
     head,
@@ -1263,7 +1415,7 @@ function exportRequestsPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('leave_requests_report.pdf')
 }
 
@@ -1280,8 +1432,8 @@ function exportRequestsExcel() {
     'Leave Type': r.leave_types?.name || '',
     'Start Date': r.start_date || '',
     'End Date': r.end_date || '',
-    'Days': r.total_days || 0,
-    'Status': r.status || ''
+    Days: r.total_days || 0,
+    Status: r.status || '',
   }))
 
   const ws = XLSX.utils.json_to_sheet(exportData)
@@ -1295,16 +1447,18 @@ function exportBalancesPDF() {
     $q.notify({ type: 'warning', message: 'No records to export.' })
     return
   }
-  
+
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text(`Leave Balances Report (${balanceYear.value})`, 14, 15)
-  
+
   doc.setFontSize(10)
   doc.setTextColor(100)
   doc.text(`Total Records: ${filteredBalances.value.length}`, 14, 22)
-  
-  const head = [['#', 'Employee Code', 'Employee Name', 'Leave Type', 'Entitled', 'Used', 'Remaining']]
+
+  const head = [
+    ['#', 'Employee Code', 'Employee Name', 'Leave Type', 'Entitled', 'Used', 'Remaining'],
+  ]
   const body = filteredBalances.value.map((r, i) => [
     i + 1,
     r.employees?.employee_code || '—',
@@ -1312,9 +1466,9 @@ function exportBalancesPDF() {
     r.leave_types?.name || '—',
     r.total_entitlement || 0,
     r.used_days || 0,
-    r.remaining_days || 0
+    r.remaining_days || 0,
   ])
-  
+
   autoTable(doc, {
     startY: 27,
     head,
@@ -1323,7 +1477,7 @@ function exportBalancesPDF() {
     headStyles: { fillColor: [33, 150, 243] },
     styles: { fontSize: 8 },
   })
-  
+
   doc.save('leave_balances_report.pdf')
 }
 
@@ -1340,7 +1494,7 @@ function exportBalancesExcel() {
     'Leave Type': r.leave_types?.name || '',
     'Entitled Days': r.total_entitlement || 0,
     'Used Days': r.used_days || 0,
-    'Remaining Days': r.remaining_days || 0
+    'Remaining Days': r.remaining_days || 0,
   }))
 
   const ws = XLSX.utils.json_to_sheet(exportData)

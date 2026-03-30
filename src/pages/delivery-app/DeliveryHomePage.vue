@@ -250,24 +250,48 @@
                 <span class="item-qty">{{ item.quantity }}×</span>
                 <span
                   class="item-name"
-                  :class="{ 'item-name--strike': getItemAvailability(a.id, item.id) === 'unavailable' }"
+                  :class="{
+                    'item-name--strike': getItemAvailability(a.id, item.id) === 'unavailable',
+                  }"
                 >
                   {{ item.name }}
                 </span>
                 <!-- Availability Toggle Buttons -->
                 <div class="avail-toggle-group">
                   <q-btn
-                    flat dense round size="xs"
-                    :icon="getItemAvailability(a.id, item.id) === 'available' ? 'check_circle' : 'check_circle_outline'"
-                    :class="getItemAvailability(a.id, item.id) === 'available' ? 'avail-btn--yes' : 'avail-btn--inactive'"
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    :icon="
+                      getItemAvailability(a.id, item.id) === 'available'
+                        ? 'check_circle'
+                        : 'check_circle_outline'
+                    "
+                    :class="
+                      getItemAvailability(a.id, item.id) === 'available'
+                        ? 'avail-btn--yes'
+                        : 'avail-btn--inactive'
+                    "
                     @click.stop="toggleAvailability(a.id, item.id, 'available')"
                   >
                     <q-tooltip>Available</q-tooltip>
                   </q-btn>
                   <q-btn
-                    flat dense round size="xs"
-                    :icon="getItemAvailability(a.id, item.id) === 'unavailable' ? 'cancel' : 'highlight_off'"
-                    :class="getItemAvailability(a.id, item.id) === 'unavailable' ? 'avail-btn--no' : 'avail-btn--inactive'"
+                    flat
+                    dense
+                    round
+                    size="xs"
+                    :icon="
+                      getItemAvailability(a.id, item.id) === 'unavailable'
+                        ? 'cancel'
+                        : 'highlight_off'
+                    "
+                    :class="
+                      getItemAvailability(a.id, item.id) === 'unavailable'
+                        ? 'avail-btn--no'
+                        : 'avail-btn--inactive'
+                    "
                     @click.stop="toggleAvailability(a.id, item.id, 'unavailable')"
                   >
                     <q-tooltip>Unavailable</q-tooltip>
@@ -277,7 +301,8 @@
               <!-- Unavailable summary banner -->
               <div v-if="getUnavailableCount(a.id) > 0" class="unavail-summary">
                 <q-icon name="warning_amber" size="13px" class="q-mr-xs" />
-                {{ getUnavailableCount(a.id) }} item(s) unavailable — will be excluded from KOT &amp; bill
+                {{ getUnavailableCount(a.id) }} item(s) unavailable — will be excluded from KOT
+                &amp; bill
               </div>
             </div>
 
@@ -360,9 +385,7 @@ function getUnavailableItemIds(assignment) {
 
 function getUnavailableItemNames(assignment) {
   const unavailIds = getUnavailableItemIds(assignment)
-  return (assignment.items || [])
-    .filter((i) => unavailIds.includes(i.id))
-    .map((i) => i.name)
+  return (assignment.items || []).filter((i) => unavailIds.includes(i.id)).map((i) => i.name)
 }
 
 // ── KPI Calculations ─────────────────────
@@ -871,9 +894,15 @@ async function onRefresh(done) {
 }
 
 @keyframes avail-pop {
-  0% { transform: scale(0.8); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .unavail-summary {

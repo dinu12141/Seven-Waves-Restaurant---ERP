@@ -44,7 +44,7 @@
         </button>
 
         <!-- Column menu dropdown -->
-        <div v-if="colMenuOpen" class="bdg-col-menu" v-click-away="() => (colMenuOpen = false)">
+        <div v-if="colMenuOpen" ref="colMenuRef" class="bdg-col-menu">
           <div class="bdg-col-menu__header">Columns</div>
           <label v-for="col in hideableColumns" :key="col.name" class="bdg-col-menu__item">
             <input
@@ -58,8 +58,24 @@
         </div>
 
         <!-- Export -->
-        <button class="bdg-icon-btn" @click="exportData('csv')" title="Export CSV">
+        <button class="bdg-icon-btn" title="Export Options">
           <q-icon name="download" size="18px" />
+          <q-menu auto-close class="bg-dark text-white">
+            <q-list dense style="min-width: 140px">
+              <q-item clickable @click="exportData('csv')">
+                <q-item-section avatar><q-icon name="table_view" size="18px" /></q-item-section>
+                <q-item-section>Export CSV</q-item-section>
+              </q-item>
+              <q-item clickable @click="exportData('excel')">
+                <q-item-section avatar><q-icon name="grid_on" size="18px" /></q-item-section>
+                <q-item-section>Export Excel</q-item-section>
+              </q-item>
+              <q-item clickable @click="exportData('pdf')">
+                <q-item-section avatar><q-icon name="picture_as_pdf" size="18px" /></q-item-section>
+                <q-item-section>Export PDF</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
         </button>
 
         <!-- Refresh slot / generic -->
@@ -356,6 +372,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, reactive } from 'vue'
 import StatusChip from 'components/common/StatusChip.vue'
+import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 const props = defineProps({
@@ -399,6 +416,7 @@ const searchFocused = ref(false)
 const searchRef = ref(null)
 const filterDrawerOpen = ref(false)
 const colMenuOpen = ref(false)
+const colMenuRef = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(props.pageSizes[1] || 20)
 const sortBy = ref('')
@@ -416,9 +434,19 @@ function handleGlobalKey(e) {
 }
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKey)
+  window.addEventListener('click', handleOutsideClick)
   loadColumnPreferences()
 })
-onUnmounted(() => window.removeEventListener('keydown', handleGlobalKey))
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKey)
+  window.removeEventListener('click', handleOutsideClick)
+})
+
+function handleOutsideClick(e) {
+  if (colMenuOpen.value && colMenuRef.value && !colMenuRef.value.contains(e.target)) {
+    colMenuOpen.value = false
+  }
+}
 
 // ─── Column visibility (persisted to localStorage) ────────────────────────────
 function loadColumnPreferences() {
@@ -642,25 +670,17 @@ function skeletonWidth() {
 // ─── Export ──────────────────────────────────────────────────────────────────
 function exportData(format) {
   emit('export', { format, rows: filteredRows.value })
-  // CSV stub
+
+  const title = props.title || 'Export_Data'
+  const sub = props.subtitle || ''
+  const filename = props.storageKey || title.toLowerCase().replace(/\s+/g, '_')
+
   if (format === 'csv') {
-    const headers = visibleColumns.value.map((c) => c.label).join(',')
-    const rows = filteredRows.value.map((row) =>
-      visibleColumns.value
-        .map((col) => {
-          const val = getCellValue(row, col)
-          return `"${String(val ?? '').replace(/"/g, '""')}"`
-        })
-        .join(','),
-    )
-    const csv = [headers, ...rows].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${props.storageKey || 'export'}_${Date.now()}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    exportTableToCSV(visibleColumns.value, filteredRows.value, filename)
+  } else if (format === 'excel') {
+    exportTableToExcel(visibleColumns.value, filteredRows.value, filename)
+  } else if (format === 'pdf') {
+    exportTableToPDF(visibleColumns.value, filteredRows.value, title, sub)
   }
 }
 </script>

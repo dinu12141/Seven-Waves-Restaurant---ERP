@@ -264,7 +264,9 @@ function getExportData() {
   const exportCols = columns.filter((c) => c.name !== 'actions')
   return { rows: filteredAccounts.value, cols: exportCols, title: 'Chart_of_Accounts' }
 }
-function printReport() { window.print() }
+function printReport() {
+  window.print()
+}
 function exportCSV() {
   const d = getExportData()
   exportTableToCSV(d.cols, d.rows, d.title)

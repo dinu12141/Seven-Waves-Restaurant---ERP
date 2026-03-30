@@ -4,7 +4,7 @@
     @update:model-value="$emit('update:modelValue', $event)"
     persistent
   >
-    <q-card class="bg-grey-9 text-white" style="min-width: 550px; border-radius: 12px">
+    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 550px; border-radius: 12px">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6 text-weight-bold">
           <q-icon name="send" color="primary" class="q-mr-sm" />
@@ -22,7 +22,7 @@
         <div class="row q-col-gutter-sm">
           <div class="col-12">
             <q-input
-              dark
+              :dark="$q.dark.isActive"
               outlined
               label="Recipient Email"
               v-model="email"
@@ -41,7 +41,7 @@
 
           <div class="col-12 q-mt-sm">
             <q-input
-              dark
+              :dark="$q.dark.isActive"
               outlined
               type="textarea"
               label="Custom Message for Supplier"

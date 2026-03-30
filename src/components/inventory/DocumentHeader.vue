@@ -1,5 +1,5 @@
 <template>
-  <q-card class="bg-grey-9 text-white" flat bordered>
+  <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
     <q-card-section>
       <div class="row items-center q-mb-md">
         <q-icon :name="docTypeIcon" size="28px" :color="docTypeColor" class="q-mr-sm" />
@@ -15,10 +15,7 @@
             <!-- Vendor Selection (SAP Style) -->
             <template v-if="showSupplier">
               <div class="col-4">
-                <q-select
-                  dark
-                  outlined
-                  dense
+                <BaseSelect
                   v-model="form.supplier_id"
                   :options="supplierOptions"
                   label="Vendor Code"
@@ -28,10 +25,7 @@
                 />
               </div>
               <div class="col-8">
-                <q-input
-                  dark
-                  outlined
-                  dense
+                <BaseInput
                   :model-value="selectedVendorName"
                   label="Vendor Name"
                   readonly
@@ -40,10 +34,7 @@
             </template>
 
             <div class="col-6">
-              <q-select
-                dark
-                outlined
-                dense
+              <BaseSelect
                 v-model="form.warehouse_id"
                 :options="warehouseOptions"
                 :label="isTransfer ? 'From Warehouse' : 'Warehouse'"
@@ -53,10 +44,7 @@
               />
             </div>
             <div v-if="isTransfer" class="col-6">
-              <q-select
-                dark
-                outlined
-                dense
+              <BaseSelect
                 v-model="form.target_warehouse_id"
                 :options="warehouseOptions.filter((w) => w.value !== form.warehouse_id)"
                 label="To Warehouse"
@@ -66,10 +54,7 @@
               />
             </div>
             <div class="col-6">
-              <q-input
-                dark
-                outlined
-                dense
+              <BaseInput
                 v-model="form.reference_no"
                 label="Ref. No."
                 placeholder="External Ref / PO #"
@@ -84,49 +69,41 @@
           <div class="column q-gutter-y-xs">
             <div class="row items-center no-wrap">
               <div class="text-caption text-grey-5 col-5">Posting Date</div>
-              <q-input
-                class="col-7"
-                dark
-                outlined
-                dense
+              <BaseInput
+                class="col-7 q-mb-none"
                 v-model="form.posting_date"
                 type="date"
+                label=""
                 :readonly="readonly"
               />
             </div>
             <div class="row items-center no-wrap">
               <div class="text-caption text-grey-5 col-5">Delivery Date</div>
-              <q-input
-                class="col-7"
-                dark
-                outlined
-                dense
+              <BaseInput
+                class="col-7 q-mb-none"
                 v-model="form.delivery_date"
                 type="date"
+                label=""
                 :readonly="readonly"
               />
             </div>
             <div class="row items-center no-wrap">
               <div class="text-caption text-grey-5 col-5">Doc. Date</div>
-              <q-input
-                class="col-7"
-                dark
-                outlined
-                dense
+              <BaseInput
+                class="col-7 q-mb-none"
                 v-model="form.doc_date"
                 type="date"
+                label=""
                 :readonly="readonly"
               />
             </div>
             <div class="row items-center no-wrap">
               <div class="text-caption text-grey-5 col-5">Doc. Type</div>
-              <q-select
-                class="col-7"
-                dark
-                outlined
-                dense
+              <BaseSelect
+                class="col-7 q-mb-none"
                 v-model="form.doc_type"
                 :options="docTypeItems"
+                label=""
                 emit-value
                 map-options
                 :readonly="readonly || !showDocType"
@@ -139,10 +116,7 @@
       <!-- Remarks -->
       <div class="row q-mt-md">
         <div class="col-12">
-          <q-input
-            dark
-            outlined
-            dense
+          <BaseInput
             v-model="form.remarks"
             label="Remarks"
             type="textarea"
@@ -158,6 +132,8 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 import StatusChip from 'components/common/StatusChip.vue'
+import BaseInput from 'components/common/erp/BaseInput.vue'
+import BaseSelect from 'components/common/erp/BaseSelect.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },

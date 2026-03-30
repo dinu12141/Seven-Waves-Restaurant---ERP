@@ -56,7 +56,6 @@
       </div>
     </div>
 
-
     <!-- Payroll Cycles -->
     <div class="fin-panel">
       <div class="fin-panel__header">
@@ -88,7 +87,8 @@
               size="sm"
               color="blue-4"
               @click="openPayslipsDialog(props.row)"
-            ><q-tooltip>View Employee Payslips</q-tooltip></q-btn>
+              ><q-tooltip>View Employee Payslips</q-tooltip></q-btn
+            >
           </q-td>
         </template>
       </q-table>
@@ -101,9 +101,11 @@
           <div>
             <div class="text-h6 text-weight-bold">Employee Payslips</div>
             <div class="text-caption text-grey-4">
-              {{ selectedCycle?.cycle_name }} &nbsp;|&nbsp;
-              {{ selectedCycle?.period_start }} → {{ selectedCycle?.period_end }} &nbsp;|&nbsp;
-              <span :class="cycleStatusClass(selectedCycle?.status)">{{ selectedCycle?.status }}</span>
+              {{ selectedCycle?.cycle_name }} &nbsp;|&nbsp; {{ selectedCycle?.period_start }} →
+              {{ selectedCycle?.period_end }} &nbsp;|&nbsp;
+              <span :class="cycleStatusClass(selectedCycle?.status)">{{
+                selectedCycle?.status
+              }}</span>
             </div>
           </div>
           <q-space />
@@ -126,7 +128,9 @@
           </div>
           <div class="col-auto">
             <div class="text-caption text-grey-4">Total Net</div>
-            <div class="text-h6 text-white text-weight-bold">{{ fmt(selectedCycle?.total_net) }}</div>
+            <div class="text-h6 text-white text-weight-bold">
+              {{ fmt(selectedCycle?.total_net) }}
+            </div>
           </div>
         </q-card-section>
 
@@ -210,8 +214,6 @@ const ytdTotal = computed(() => {
     .reduce((s, c) => s + Number(c.total_net || 0), 0)
 })
 
-
-
 const cycleCols = [
   { name: 'cycle_name', label: 'Cycle', field: 'cycle_name', align: 'left' },
   {
@@ -279,8 +281,6 @@ function fmt(v) {
   return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })
 }
 
-
-
 function cycleStatusClass(s) {
   const m = {
     draft: 'fin-badge fin-badge--muted',
@@ -324,14 +324,16 @@ async function openPayslipsDialog(cycle) {
 
   const { data } = await supabase
     .from('payslips')
-    .select(`
+    .select(
+      `
       id, basic_salary, total_allowances, gross_salary,
       epf_employee, epf_employer, etf_employer,
       total_deductions, net_salary,
       payment_method, payment_status, paid_at,
       advance_deduction, loan_deduction, other_deductions,
       employees(first_name, last_name, employee_code, designations(title), departments(name))
-    `)
+    `,
+    )
     .eq('payroll_run_id', cycle.id)
     .order('net_salary', { ascending: false })
 
@@ -344,10 +346,16 @@ function setupRealtime() {
   realtimeChannel = supabase
     .channel('payroll-overview-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_runs' }, () => loadData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_runs' }, () =>
+      loadData(),
+    )
     .on('postgres_changes', { event: '*', schema: 'public', table: 'payslips' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'salary_structures' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_allowances' }, () => loadData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'salary_structures' }, () =>
+      loadData(),
+    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_allowances' }, () =>
+      loadData(),
+    )
     .subscribe()
 }
 

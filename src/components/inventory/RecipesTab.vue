@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="filter"
@@ -182,7 +182,7 @@
               type="textarea"
               rows="3"
               outlined
-              dark
+              :dark="$q.dark.isActive"
               dense
               class="q-mt-sm"
             />
@@ -248,7 +248,7 @@
             />
           </div>
 
-          <q-list bordered class="rounded-borders bg-dark">
+          <q-list bordered :class="$q.dark.isActive ? 'rounded-borders bg-grey-9' : 'rounded-borders bg-grey-2'">
             <!-- Header Row -->
             <div
               class="row q-pa-sm bg-grey-10 text-weight-bold text-grey-4 text-caption items-center"
@@ -276,7 +276,7 @@
                   option-value="id"
                   dense
                   outlined
-                  dark
+                  :dark="$q.dark.isActive"
                   use-input
                   input-debounce="0"
                   @filter="filterItems"
@@ -297,7 +297,7 @@
                   type="number"
                   dense
                   outlined
-                  dark
+                  :dark="$q.dark.isActive"
                   hide-bottom-space
                   placeholder="0.0"
                   :rules="[(v) => v > 0 || 'Must be > 0']"
@@ -313,7 +313,7 @@
                   map-options
                   dense
                   outlined
-                  dark
+                  :dark="$q.dark.isActive"
                   hide-bottom-space
                   placeholder="UOM"
                 />
@@ -324,7 +324,7 @@
                   type="number"
                   dense
                   outlined
-                  dark
+                  :dark="$q.dark.isActive"
                   hide-bottom-space
                   placeholder="0"
                   suffix="%"
@@ -400,7 +400,7 @@
           <div v-if="!selectedRecipe?.recipe_items?.length" class="q-pa-xl text-center text-grey">
             No ingredients added yet.
           </div>
-          <q-list v-else bordered separator class="bg-dark">
+          <q-list v-else bordered separator :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
             <q-item v-for="(item, idx) in selectedRecipe.recipe_items" :key="idx" class="q-py-md">
               <q-item-section avatar>
                 <q-avatar color="grey-9" text-color="primary" icon="layers" size="md" />

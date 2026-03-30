@@ -304,13 +304,22 @@ let realtimeChannel = null
 function setupRealtime() {
   realtimeChannel = supabase
     .channel('cash-bank-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => loadData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bank_accounts' }, () =>
+      loadData(),
+    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () =>
+      loadData(),
+    )
     .subscribe()
 }
 
-onMounted(() => { loadData(); setupRealtime() })
-onUnmounted(() => { if (realtimeChannel) supabase.removeChannel(realtimeChannel) })
+onMounted(() => {
+  loadData()
+  setupRealtime()
+})
+onUnmounted(() => {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
+})
 </script>
 
 <style scoped lang="scss">

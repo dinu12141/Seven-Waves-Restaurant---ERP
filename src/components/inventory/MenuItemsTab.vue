@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="filter"
@@ -13,7 +13,7 @@
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="categoryFilter"
@@ -34,7 +34,7 @@
       </q-select>
 
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="subCategoryFilter"
@@ -168,7 +168,7 @@
                     <ERPFormField label="Item Name" required :error="vErrors.name">
                       <q-input
                         v-model="form.name"
-                        dark
+                        :dark="$q.dark.isActive"
                         dense
                         outlined
                         placeholder="Enter item name"
@@ -212,7 +212,7 @@
                         v-model="form.base_price"
                         type="number"
                         step="1"
-                        dark
+                        :dark="$q.dark.isActive"
                         dense
                         outlined
                         placeholder="0.00"
@@ -228,7 +228,7 @@
                       label="Description"
                       helper="Displayed to customers ordering online"
                     >
-                      <q-input v-model="form.description" dark type="textarea" outlined autogrow />
+                      <q-input v-model="form.description" :dark="$q.dark.isActive" type="textarea" outlined autogrow />
                     </ERPFormField>
                   </div>
                 </div>
@@ -240,7 +240,7 @@
                     <ERPFormField label="Category" required :error="vErrors.category_id">
                       <q-select
                         v-model="form.category_id"
-                        dark
+                        :dark="$q.dark.isActive"
                         :options="categoryOptions"
                         emit-value
                         map-options
@@ -271,7 +271,7 @@
                     >
                       <q-select
                         v-model="form.sub_category_id"
-                        dark
+                        :dark="$q.dark.isActive"
                         :options="subCategoryOptions"
                         emit-value
                         map-options
@@ -302,7 +302,7 @@
                     <ERPFormField label="Routing Kitchen" helper="Where KOTs are dispatched">
                       <q-select
                         v-model="form.kitchen_id"
-                        dark
+                        :dark="$q.dark.isActive"
                         :options="kitchenOptions"
                         emit-value
                         map-options
@@ -343,13 +343,13 @@
 
     <!-- Inline Add Dialogs -->
     <q-dialog v-model="catDialog.show">
-      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
         <q-card-section>
           <div class="text-h6">New Category</div>
         </q-card-section>
         <q-card-section>
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="catDialog.name"
             label="Category Name"
@@ -371,7 +371,7 @@
     </q-dialog>
 
     <q-dialog v-model="subCatDialog.show">
-      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
         <q-card-section>
           <div class="text-h6">New Sub Category</div>
           <div v-if="form.category_id" class="text-caption text-grey-5">
@@ -380,7 +380,7 @@
         </q-card-section>
         <q-card-section>
           <q-input
-            dark
+            :dark="$q.dark.isActive"
             outlined
             v-model="subCatDialog.name"
             label="Sub Category Name"
@@ -402,14 +402,14 @@
     </q-dialog>
 
     <q-dialog v-model="kitchenDialog.show">
-      <q-card dark class="bg-dark border-subtle" style="min-width: 350px">
+      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
         <q-card-section>
           <div class="text-h6">New Kitchen Station</div>
         </q-card-section>
         <q-card-section class="q-gutter-md">
-          <q-input dark outlined v-model="kitchenDialog.name" label="Kitchen Name" autofocus />
+          <q-input :dark="$q.dark.isActive" outlined v-model="kitchenDialog.name" label="Kitchen Name" autofocus />
           <q-toggle
-            dark
+            :dark="$q.dark.isActive"
             color="green"
             v-model="kitchenDialog.is_cashier_display"
             label="Is Cashier Display"

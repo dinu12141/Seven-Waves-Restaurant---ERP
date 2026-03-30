@@ -72,7 +72,11 @@
             </transition>
 
             <!-- Sign In button -->
-            <button type="submit" class="lock-signin-btn" :disabled="loading || !email || !password">
+            <button
+              type="submit"
+              class="lock-signin-btn"
+              :disabled="loading || !email || !password"
+            >
               <q-spinner-dots v-if="loading" color="white" size="20px" />
               <template v-else>
                 <q-icon name="login" size="18px" class="q-mr-sm" />
@@ -193,8 +197,12 @@ async function handleSignIn() {
 }
 
 @keyframes overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ── Lock Card ─────────────────────────────────────────── */
@@ -297,7 +305,9 @@ async function handleSignIn() {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 0 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   height: 46px;
 
   &:focus-within {

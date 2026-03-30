@@ -80,7 +80,6 @@
       <q-tab name="cashflow" label="CASH FLOW" icon="swap_vert" />
     </q-tabs>
 
-
     <q-tab-panels v-model="activeTab" animated dark class="bg-transparent" id="report-print-area">
       <!-- ═══════ MONTHLY P&L SUMMARY ═══════ -->
       <q-tab-panel name="monthly" class="q-pa-none">
@@ -346,9 +345,30 @@
           <div class="fin-panel__header row items-center justify-between">
             <span class="fin-panel__title">Cost of Goods Sold (COGS)</span>
             <div class="row q-gutter-x-sm items-center">
-              <q-radio v-model="cogsGroupBy" val="item" label="Item-wise" dark dense color="blue-4" />
-              <q-radio v-model="cogsGroupBy" val="kitchen" label="Kitchen-wise" dark dense color="blue-4" />
-              <q-radio v-model="cogsGroupBy" val="table" label="Table-wise" dark dense color="blue-4" />
+              <q-radio
+                v-model="cogsGroupBy"
+                val="item"
+                label="Item-wise"
+                dark
+                dense
+                color="blue-4"
+              />
+              <q-radio
+                v-model="cogsGroupBy"
+                val="kitchen"
+                label="Kitchen-wise"
+                dark
+                dense
+                color="blue-4"
+              />
+              <q-radio
+                v-model="cogsGroupBy"
+                val="table"
+                label="Table-wise"
+                dark
+                dense
+                color="blue-4"
+              />
               <q-space class="q-ml-md" />
               <q-select
                 v-model="cogsFilterId"
@@ -377,14 +397,28 @@
             >
               <template #body-cell-gross_profit="props">
                 <q-td :props="props">
-                  <span :class="props.row.gross_profit >= 0 ? 'text-green-4 text-weight-bold' : 'text-red-4 text-weight-bold'">
+                  <span
+                    :class="
+                      props.row.gross_profit >= 0
+                        ? 'text-green-4 text-weight-bold'
+                        : 'text-red-4 text-weight-bold'
+                    "
+                  >
                     {{ fmt(props.row.gross_profit) }}
                   </span>
                 </q-td>
               </template>
               <template #body-cell-gp_percent="props">
                 <q-td :props="props">
-                  <q-badge :color="props.row.gp_percent >= 60 ? 'green-8' : (props.row.gp_percent >= 30 ? 'orange-8' : 'red-8')">
+                  <q-badge
+                    :color="
+                      props.row.gp_percent >= 60
+                        ? 'green-8'
+                        : props.row.gp_percent >= 30
+                          ? 'orange-8'
+                          : 'red-8'
+                    "
+                  >
                     {{ props.row.gp_percent.toFixed(1) }}%
                   </q-badge>
                 </q-td>
@@ -392,7 +426,8 @@
             </q-table>
           </div>
           <div v-else class="text-grey-6 text-center q-pa-xl">
-            <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><br />Click Generate to view Cost Operations
+            <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><br />Click Generate to view
+            Cost Operations
           </div>
         </div>
       </q-tab-panel>
@@ -405,10 +440,14 @@
             <span class="fin-panel__subtitle">{{ dateFrom }} to {{ dateTo }}</span>
           </div>
           <div class="fin-panel__body q-pa-md" v-if="cashFlowData">
-            
-            <div class="fin-summary-row q-mb-md" style="border-radius: 6px; border: 1px solid #388bfd">
+            <div
+              class="fin-summary-row q-mb-md"
+              style="border-radius: 6px; border: 1px solid #388bfd"
+            >
               <span class="fin-summary-row__label text-h6">Opening Cash Balance</span>
-              <span class="fin-summary-row__value text-h6 text-blue-4">{{ fmt(cashFlowData.opening_balance) }}</span>
+              <span class="fin-summary-row__value text-h6 text-blue-4">{{
+                fmt(cashFlowData.opening_balance)
+              }}</span>
             </div>
 
             <!-- Operating -->
@@ -417,14 +456,22 @@
               :rows="cashFlowData.operating_activities"
               :columns="cfCols"
               row-key="category"
-              flat dark dense hide-bottom
+              flat
+              dark
+              dense
+              hide-bottom
               :rows-per-page-options="[0]"
               class="fin-table q-mb-md"
               no-data-label="No operating cash flows"
             />
             <div class="fin-summary-row q-mb-md" style="border-radius: 6px">
               <span class="fin-summary-row__label">Net Cash from Operating Activities</span>
-              <span :class="['fin-summary-row__value', cashFlowData.net_operating >= 0 ? 'text-green-4' : 'text-red-4']">
+              <span
+                :class="[
+                  'fin-summary-row__value',
+                  cashFlowData.net_operating >= 0 ? 'text-green-4' : 'text-red-4',
+                ]"
+              >
                 {{ fmt(cashFlowData.net_operating) }}
               </span>
             </div>
@@ -435,14 +482,22 @@
               :rows="cashFlowData.investing_activities"
               :columns="cfCols"
               row-key="category"
-              flat dark dense hide-bottom
+              flat
+              dark
+              dense
+              hide-bottom
               :rows-per-page-options="[0]"
               class="fin-table q-mb-md"
               no-data-label="No investing cash flows"
             />
             <div class="fin-summary-row q-mb-md" style="border-radius: 6px">
               <span class="fin-summary-row__label">Net Cash from Investing Activities</span>
-              <span :class="['fin-summary-row__value', cashFlowData.net_investing >= 0 ? 'text-green-4' : 'text-red-4']">
+              <span
+                :class="[
+                  'fin-summary-row__value',
+                  cashFlowData.net_investing >= 0 ? 'text-green-4' : 'text-red-4',
+                ]"
+              >
                 {{ fmt(cashFlowData.net_investing) }}
               </span>
             </div>
@@ -453,34 +508,59 @@
               :rows="cashFlowData.financing_activities"
               :columns="cfCols"
               row-key="category"
-              flat dark dense hide-bottom
+              flat
+              dark
+              dense
+              hide-bottom
               :rows-per-page-options="[0]"
               class="fin-table q-mb-md"
               no-data-label="No financing cash flows"
             />
             <div class="fin-summary-row q-mb-md" style="border-radius: 6px">
               <span class="fin-summary-row__label">Net Cash from Financing Activities</span>
-              <span :class="['fin-summary-row__value', cashFlowData.net_financing >= 0 ? 'text-green-4' : 'text-red-4']">
+              <span
+                :class="[
+                  'fin-summary-row__value',
+                  cashFlowData.net_financing >= 0 ? 'text-green-4' : 'text-red-4',
+                ]"
+              >
                 {{ fmt(cashFlowData.net_financing) }}
               </span>
             </div>
 
             <!-- Net Flow & Closing Balance -->
-            <div class="fin-summary-row q-mt-lg" style="border-radius: 6px; border: 1px solid #388bfd">
+            <div
+              class="fin-summary-row q-mt-lg"
+              style="border-radius: 6px; border: 1px solid #388bfd"
+            >
               <span class="fin-summary-row__label text-h6">Net Change in Cash</span>
-              <span :class="['fin-summary-row__value text-h6', cashFlowData.net_cash_flow >= 0 ? 'text-green-4' : 'text-red-4']">
+              <span
+                :class="[
+                  'fin-summary-row__value text-h6',
+                  cashFlowData.net_cash_flow >= 0 ? 'text-green-4' : 'text-red-4',
+                ]"
+              >
                 {{ fmt(cashFlowData.net_cash_flow) }}
               </span>
             </div>
-            
-            <div class="fin-summary-row q-mt-md" style="border-radius: 6px; border: 1px solid #388bfd; background: rgba(56, 139, 253, 0.1);">
-              <span class="fin-summary-row__label text-h6">Closing Cash Balance</span>
-              <span class="fin-summary-row__value text-h6 text-green-4">{{ fmt(cashFlowData.closing_balance) }}</span>
-            </div>
 
+            <div
+              class="fin-summary-row q-mt-md"
+              style="
+                border-radius: 6px;
+                border: 1px solid #388bfd;
+                background: rgba(56, 139, 253, 0.1);
+              "
+            >
+              <span class="fin-summary-row__label text-h6">Closing Cash Balance</span>
+              <span class="fin-summary-row__value text-h6 text-green-4">{{
+                fmt(cashFlowData.closing_balance)
+              }}</span>
+            </div>
           </div>
           <div v-else class="text-grey-6 text-center q-pa-xl">
-            <q-icon name="swap_vert" size="48px" class="q-mb-sm" /><br />Click Generate to view Cash Flow
+            <q-icon name="swap_vert" size="48px" class="q-mb-sm" /><br />Click Generate to view Cash
+            Flow
           </div>
         </div>
       </q-tab-panel>
@@ -504,13 +584,7 @@ import {
 } from 'src/services/financeService'
 
 const route = useRoute()
-const validTabs = [
-  'monthly',
-  'pnl',
-  'bs',
-  'cogs',
-  'cashflow'
-]
+const validTabs = ['monthly', 'pnl', 'bs', 'cogs', 'cashflow']
 const loading = ref(false)
 const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : 'monthly')
 const now = new Date()
@@ -570,7 +644,7 @@ const cogsGrouped = computed(() => {
   const groupMap = new Map()
 
   let dataToProcess = cogsRaw.value
-  
+
   if (cogsFilterId.value) {
     dataToProcess = dataToProcess.filter((row) => {
       if (cogsGroupBy.value === 'item') return row.menu_item_id === cogsFilterId.value
@@ -593,7 +667,13 @@ const cogsGrouped = computed(() => {
     }
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { name: label, quantity_sold: 0, gross_sales: 0, net_sales: 0, total_cogs: 0 })
+      groupMap.set(key, {
+        name: label,
+        quantity_sold: 0,
+        gross_sales: 0,
+        net_sales: 0,
+        total_cogs: 0,
+      })
     }
     const g = groupMap.get(key)
     g.quantity_sold += Number(row.quantity_sold) || 0
@@ -667,12 +747,12 @@ function getExportData() {
       { category: '', amount: null },
       { category: '*** SUMMARY ***', amount: null },
       { category: 'Net Change in Cash', amount: cashFlowData.value.net_cash_flow },
-      { category: 'CLOSING CASH BALANCE', amount: cashFlowData.value.closing_balance }
+      { category: 'CLOSING CASH BALANCE', amount: cashFlowData.value.closing_balance },
     ]
     return {
       rows: cfRows,
       cols: cfCols,
-      title: `Cash_Flow_Statement_${dateFrom.value}_${dateTo.value}`
+      title: `Cash_Flow_Statement_${dateFrom.value}_${dateTo.value}`,
     }
   }
   return null
@@ -752,22 +832,51 @@ const monthlyCols = [
 
 const cfCols = [
   { name: 'category', label: 'Category', field: 'category', align: 'left' },
-  { name: 'amount', label: 'Net Amount', field: 'amount', align: 'right', format: v => (v === null || v === undefined) ? '' : fmt(v) }
+  {
+    name: 'amount',
+    label: 'Net Amount',
+    field: 'amount',
+    align: 'right',
+    format: (v) => (v === null || v === undefined ? '' : fmt(v)),
+  },
 ]
 
 const cogsCols = computed(() => {
-  const lbl = cogsGroupBy.value === 'item' ? 'Menu Item' : cogsGroupBy.value === 'kitchen' ? 'Kitchen' : 'Table'
+  const lbl =
+    cogsGroupBy.value === 'item'
+      ? 'Menu Item'
+      : cogsGroupBy.value === 'kitchen'
+        ? 'Kitchen'
+        : 'Table'
   return [
     { name: 'name', label: lbl, field: 'name', align: 'left' },
     { name: 'quantity_sold', label: 'Qty Sold', field: 'quantity_sold', align: 'right' },
-    { name: 'gross_sales', label: 'Gross Sales', field: 'gross_sales', align: 'right', format: (v) => fmt(v) },
-    { name: 'net_sales', label: 'Net Sales', field: 'net_sales', align: 'right', format: (v) => fmt(v) },
-    { name: 'total_cogs', label: 'Total COGS', field: 'total_cogs', align: 'right', format: (v) => fmt(v), classes: 'text-red-3' },
+    {
+      name: 'gross_sales',
+      label: 'Gross Sales',
+      field: 'gross_sales',
+      align: 'right',
+      format: (v) => fmt(v),
+    },
+    {
+      name: 'net_sales',
+      label: 'Net Sales',
+      field: 'net_sales',
+      align: 'right',
+      format: (v) => fmt(v),
+    },
+    {
+      name: 'total_cogs',
+      label: 'Total COGS',
+      field: 'total_cogs',
+      align: 'right',
+      format: (v) => fmt(v),
+      classes: 'text-red-3',
+    },
     { name: 'gross_profit', label: 'Gross Profit', field: 'gross_profit', align: 'right' },
     { name: 'gp_percent', label: 'GP %', field: 'gp_percent', align: 'right' },
   ]
 })
-
 
 // ── Data Loading ──
 async function loadCurrentReport() {
@@ -798,8 +907,6 @@ async function loadCurrentReport() {
   }
   loading.value = false
 }
-
-
 
 onMounted(loadCurrentReport)
 </script>

@@ -465,7 +465,9 @@ function getExportData() {
   const exportCols = columns.filter((c) => c.name !== 'actions')
   return { rows: entries.value, cols: exportCols, title: 'Journal_Entries' }
 }
-function printReport() { window.print() }
+function printReport() {
+  window.print()
+}
 function exportCSV() {
   const d = getExportData()
   exportTableToCSV(d.cols, d.rows, d.title)

@@ -111,6 +111,12 @@
               </q-item-section>
               <q-item-section>Export Excel</q-item-section>
             </q-item>
+            <q-item clickable v-close-popup @click="$emit('export-pdf')">
+              <q-item-section avatar>
+                <q-icon name="picture_as_pdf" size="20px" />
+              </q-item-section>
+              <q-item-section>Export PDF</q-item-section>
+            </q-item>
           </q-list>
         </q-btn-dropdown>
 
@@ -193,6 +199,7 @@ defineEmits([
   'filter',
   'export-csv',
   'export-excel',
+  'export-pdf',
   'primary-action',
 ])
 

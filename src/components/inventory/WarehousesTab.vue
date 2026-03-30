@@ -10,7 +10,14 @@
 
     <div v-if="!loading" class="row q-col-gutter-md">
       <div v-for="wh in warehouses" :key="wh.id" class="col-12 col-sm-6 col-md-4">
-        <q-card class="bg-grey-9 text-white warehouse-card" flat bordered>
+        <q-card
+          :class="[
+            'warehouse-card',
+            $q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black',
+          ]"
+          flat
+          bordered
+        >
           <q-card-section>
             <div class="row items-center q-mb-sm">
               <q-avatar
@@ -25,7 +32,7 @@
               </div>
               <q-space />
               <q-btn-dropdown flat dense round icon="more_vert" color="grey-5">
-                <q-list dark>
+                <q-list :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'">
                   <q-item clickable v-close-popup @click="openEdit(wh)">
                     <q-item-section avatar><q-icon name="edit" /></q-item-section>
                     <q-item-section>Edit</q-item-section>
@@ -36,7 +43,7 @@
                     </q-item-section>
                     <q-item-section>{{ wh.is_active ? 'Deactivate' : 'Activate' }}</q-item-section>
                   </q-item>
-                  <q-separator dark />
+                  <q-separator :dark="$q.dark.isActive" />
                   <q-item clickable v-close-popup @click="deleteWh(wh)">
                     <q-item-section avatar
                       ><q-icon name="delete" color="negative"
@@ -47,7 +54,7 @@
               </q-btn-dropdown>
             </div>
 
-            <q-separator dark class="q-my-sm" />
+            <q-separator :dark="$q.dark.isActive" class="q-my-sm" />
 
             <div class="row q-gutter-sm text-caption">
               <q-chip
@@ -117,40 +124,34 @@
 
     <!-- Add/Edit Dialog -->
     <q-dialog v-model="showDialog" persistent>
-      <q-card class="bg-grey-9 text-white" style="min-width: 450px">
+      <q-card
+        :class="[$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black']"
+        style="min-width: 450px"
+      >
         <q-card-section class="row items-center">
           <div class="text-h6">{{ editingWh ? 'Edit Warehouse' : 'Add Warehouse' }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
-        <q-separator dark />
-        <q-card-section class="q-gutter-md">
-          <q-input
-            dark
-            outlined
+        <q-card-section class="q-pt-sm">
+          <BaseInput
             v-model="form.code"
             label="Warehouse Code"
             :rules="[(v) => !!v || 'Required']"
           />
-          <q-input
-            dark
-            outlined
+          <BaseInput
             v-model="form.name"
             label="Warehouse Name"
             :rules="[(v) => !!v || 'Required']"
           />
-          <q-select
-            dark
-            outlined
+          <BaseSelect
             v-model="form.warehouse_type"
             :options="typeOptions"
             label="Type"
             emit-value
             map-options
           />
-          <q-select
-            dark
-            outlined
+          <BaseSelect
             v-model="form.category"
             :options="['Selling', 'Brand', 'Stores', 'Service']"
             label="Category"
@@ -159,15 +160,20 @@
           />
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input dark outlined v-model="form.city" label="City" />
+              <BaseInput v-model="form.city" label="City" />
             </div>
             <div class="col-6">
-              <q-input dark outlined v-model="form.contact_no" label="Contact No" />
+              <BaseInput v-model="form.contact_no" label="Contact No" />
             </div>
           </div>
-          <q-toggle dark v-model="form.is_default" label="Default Warehouse" color="primary" />
           <q-toggle
-            dark
+            :dark="$q.dark.isActive"
+            v-model="form.is_default"
+            label="Default Warehouse"
+            color="primary"
+          />
+          <q-toggle
+            :dark="$q.dark.isActive"
             v-model="form.allow_negative_stock"
             label="Allow Negative Stock"
             color="orange"
@@ -192,6 +198,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import BaseButton from 'components/common/erp/BaseButton.vue'
+import BaseInput from 'components/common/erp/BaseInput.vue'
+import BaseSelect from 'components/common/erp/BaseSelect.vue'
 import { useWarehouseList } from 'src/services/inventoryService'
 
 const $q = useQuasar()

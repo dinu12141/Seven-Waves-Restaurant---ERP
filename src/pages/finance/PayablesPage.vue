@@ -21,8 +21,21 @@
           map-options
           class="q-mr-sm"
         />
-        <q-btn unelevated icon="picture_as_pdf" color="red-6" label="PDF" @click="exportBankPDF" class="q-mr-sm" />
-        <q-btn unelevated icon="table_chart" color="green-6" label="Excel" @click="exportBankXLSX" />
+        <q-btn
+          unelevated
+          icon="picture_as_pdf"
+          color="red-6"
+          label="PDF"
+          @click="exportBankPDF"
+          class="q-mr-sm"
+        />
+        <q-btn
+          unelevated
+          icon="table_chart"
+          color="green-6"
+          label="Excel"
+          @click="exportBankXLSX"
+        />
       </template>
     </ERPToolbar>
 
@@ -94,10 +107,12 @@ const bankOptions = ['All Banks', 'BOC', 'HNB', 'Commercial Bank', 'Sampath Bank
 
 const filteredPayables = computed(() => {
   if (selectedBank.value === 'All Banks') return payables.value
-  return payables.value.filter(p => {
-     const bName = p.bank_name || ''
-     return bName.toLowerCase().includes(selectedBank.value.toLowerCase()) || 
-            selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+  return payables.value.filter((p) => {
+    const bName = p.bank_name || ''
+    return (
+      bName.toLowerCase().includes(selectedBank.value.toLowerCase()) ||
+      selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+    )
   })
 })
 
@@ -158,8 +173,9 @@ const currentMonthLabel = computed(() => {
 function getCompanyBankAccount(bName) {
   if (bName === 'All Banks') return '_______________'
   const match = companyBankAccounts.value.find(
-    a => a.bank_name?.toLowerCase().includes(bName.toLowerCase()) ||
-         bName.toLowerCase().includes(a.bank_name?.toLowerCase())
+    (a) =>
+      a.bank_name?.toLowerCase().includes(bName.toLowerCase()) ||
+      bName.toLowerCase().includes(a.bank_name?.toLowerCase()),
   )
   return match?.account_number || '_______________'
 }
@@ -174,12 +190,15 @@ function exportBankPDF() {
 
   doc.setFont('times', 'normal')
   doc.setFontSize(12)
-  doc.text(currentDateStr.value, 20, y); y += 8
-  
+  doc.text(currentDateStr.value, 20, y)
+  y += 8
+
   if (bName !== 'All Banks') {
-      doc.text('THE MANAGER', 20, y); y += 6
-      doc.setFont('times', 'bold')
-      doc.text(bName.toUpperCase(), 20, y); y += 10
+    doc.text('THE MANAGER', 20, y)
+    y += 6
+    doc.setFont('times', 'bold')
+    doc.text(bName.toUpperCase(), 20, y)
+    y += 10
   }
 
   doc.setFontSize(13)
@@ -192,20 +211,24 @@ function exportBankPDF() {
   y += 10
 
   if (bName !== 'All Banks') {
-      doc.setFont('times', 'normal')
-      doc.setFontSize(11)
-      doc.text('Dear Sir,', 20, y); y += 8
+    doc.setFont('times', 'normal')
+    doc.setFontSize(11)
+    doc.text('Dear Sir,', 20, y)
+    y += 8
 
-      const bodyText = `Appreciate if you could arrange to Transfer Rs. ${totalStr} to the following supplier accounts as accounts payable settlement for ${currentMonthLabel.value} from Rupee Account No.${companyAcc}`
-      const bodyLines = doc.splitTextToSize(bodyText, 170)
-      doc.text(bodyLines, 20, y); y += bodyLines.length * 5.5 + 6
+    const bodyText = `Appreciate if you could arrange to Transfer Rs. ${totalStr} to the following supplier accounts as accounts payable settlement for ${currentMonthLabel.value} from Rupee Account No.${companyAcc}`
+    const bodyLines = doc.splitTextToSize(bodyText, 170)
+    doc.text(bodyLines, 20, y)
+    y += bodyLines.length * 5.5 + 6
   }
 
   doc.setFont('times', 'bold')
   doc.setFontSize(12)
-  doc.text('Seven Wave Food Court (Pvt) Ltd', 105, y, { align: 'center' }); y += 6
+  doc.text('Seven Wave Food Court (Pvt) Ltd', 105, y, { align: 'center' })
+  y += 6
   doc.setFontSize(11)
-  doc.text(`SUPPLIER PAYMENTS \u2013 ${currentMonthLabel.value}`, 105, y, { align: 'center' }); y += 4
+  doc.text(`SUPPLIER PAYMENTS \u2013 ${currentMonthLabel.value}`, 105, y, { align: 'center' })
+  y += 4
 
   const tableData = filteredPayables.value.map((p, i) => [
     i + 1,
@@ -223,7 +246,12 @@ function exportBankPDF() {
     body: tableData,
     theme: 'grid',
     styles: { font: 'times', fontSize: 10, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.3 },
-    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
     columnStyles: {
       0: { halign: 'center', cellWidth: 15 },
       1: { cellWidth: 50 },
@@ -240,15 +268,20 @@ function exportBankPDF() {
   })
 
   y = doc.lastAutoTable.finalY + 15
-  if (y > 260) { doc.addPage(); y = 20 }
+  if (y > 260) {
+    doc.addPage()
+    y = 20
+  }
 
   if (bName !== 'All Banks') {
-      doc.setFont('times', 'normal')
-      doc.setFontSize(12)
-      doc.text('Thank You', 20, y); y += 20
-      doc.text('...................................', 20, y); y += 6
-      doc.setFont('times', 'bold')
-      doc.text('Director', 20, y)
+    doc.setFont('times', 'normal')
+    doc.setFontSize(12)
+    doc.text('Thank You', 20, y)
+    y += 20
+    doc.text('...................................', 20, y)
+    y += 6
+    doc.setFont('times', 'bold')
+    doc.text('Director', 20, y)
   }
 
   const filename = `AP_Export_${bName.replace(/\s+/g, '_')}_${currentDateStr.value.replace(/\//g, '')}.pdf`
@@ -263,17 +296,19 @@ function exportBankXLSX() {
 
   const wsData = []
   if (bName !== 'All Banks') {
-      wsData.push([currentDateStr.value])
-      wsData.push(['THE MANAGER'])
-      wsData.push([bName.toUpperCase()])
-      wsData.push([])
-      wsData.push([`ACCOUNTS PAYABLE TRANSFER \u2013 ${currentMonthLabel.value}`])
-      wsData.push([])
-      wsData.push(['Dear Sir,'])
-      wsData.push([`Appreciate if you could arrange to Transfer Rs. ${fmt(totalAmount)} to the following supplier accounts as accounts payable settlement for ${currentMonthLabel.value} from Rupee Account No.${companyAcc}`])
-      wsData.push([])
+    wsData.push([currentDateStr.value])
+    wsData.push(['THE MANAGER'])
+    wsData.push([bName.toUpperCase()])
+    wsData.push([])
+    wsData.push([`ACCOUNTS PAYABLE TRANSFER \u2013 ${currentMonthLabel.value}`])
+    wsData.push([])
+    wsData.push(['Dear Sir,'])
+    wsData.push([
+      `Appreciate if you could arrange to Transfer Rs. ${fmt(totalAmount)} to the following supplier accounts as accounts payable settlement for ${currentMonthLabel.value} from Rupee Account No.${companyAcc}`,
+    ])
+    wsData.push([])
   }
-  
+
   wsData.push(['Seven Wave Food Court (Pvt) Ltd'])
   wsData.push([`SUPPLIER PAYMENTS \u2013 ${currentMonthLabel.value}`])
   wsData.push([])
@@ -292,11 +327,11 @@ function exportBankXLSX() {
   wsData.push(['', '', '', 'TOTAL', totalAmount])
 
   if (bName !== 'All Banks') {
-      wsData.push([])
-      wsData.push(['Thank You'])
-      wsData.push([])
-      wsData.push(['...................................'])
-      wsData.push(['Director'])
+    wsData.push([])
+    wsData.push(['Thank You'])
+    wsData.push([])
+    wsData.push(['...................................'])
+    wsData.push(['Director'])
   }
 
   const ws = XLSX.utils.aoa_to_sheet(wsData)
@@ -311,8 +346,11 @@ function exportBankXLSX() {
 
 async function loadData() {
   loading.value = true
-  
-  const { data: banks } = await supabase.from('bank_accounts').select('name, bank_name, account_number').eq('is_active', true)
+
+  const { data: banks } = await supabase
+    .from('bank_accounts')
+    .select('name, bank_name, account_number')
+    .eq('is_active', true)
   companyBankAccounts.value = banks || []
 
   const { data } = await fetchPayableAging()

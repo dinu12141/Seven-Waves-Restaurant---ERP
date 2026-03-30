@@ -3,7 +3,7 @@
     <!-- Filters -->
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-input
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="search"
@@ -14,7 +14,7 @@
       </q-input>
 
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="warehouseFilter"
@@ -27,7 +27,7 @@
       />
 
       <q-select
-        dark
+        :dark="$q.dark.isActive"
         outlined
         dense
         v-model="statusFilter"
@@ -47,13 +47,13 @@
     </div>
 
     <!-- Stock Table -->
-    <q-card class="bg-grey-9 text-white" flat bordered>
+    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
       <q-card-section>
         <q-table
           :rows="filteredStock"
           :columns="columns"
           row-key="id"
-          dark
+          :dark="$q.dark.isActive"
           flat
           dense
           class="bg-transparent"
