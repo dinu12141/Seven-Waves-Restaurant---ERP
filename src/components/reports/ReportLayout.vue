@@ -69,18 +69,6 @@
             >
           </q-btn>
 
-          <!-- Export CSV -->
-          <q-btn
-            flat
-            dense
-            round
-            icon="table_view"
-            class="sap-icon-strip__btn"
-            @click="$emit('export-csv')"
-          >
-            <q-tooltip :delay="400" anchor="bottom middle" self="top middle">Export CSV</q-tooltip>
-          </q-btn>
-
           <!-- Export Excel -->
           <q-btn
             flat
@@ -88,7 +76,7 @@
             round
             icon="grid_on"
             class="sap-icon-strip__btn"
-            @click="$emit('export-excel')"
+            @click="handleExportExcel"
           >
             <q-tooltip :delay="400" anchor="bottom middle" self="top middle"
               >Export Excel</q-tooltip
@@ -264,17 +252,23 @@
       <div v-if="!hideSapHeader" class="sap-header">
         <div class="sap-header__left">
           <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="sap-header__title">{{ title }}</div>
+          <div class="sap-header__trn">TRN :</div>
+          <div class="sap-header__title sap-header__title--underline">{{ title }}</div>
           <div class="sap-header__meta">
             <span
-              >Location: <strong>{{ branchLabel }}</strong></span
+              >Location : <strong>{{ branchLabel }}</strong></span
             >
-            <span class="q-ml-lg">{{ reportDateLabel }}</span>
+            <span class="sap-header__meta-sep">|</span>
+            <span>Date : {{ reportDateLabel }}</span>
           </div>
         </div>
         <div class="sap-header__right">
-          <div class="sap-header__page">Page 1</div>
-          <div class="sap-header__date">{{ todayLabel }}</div>
+          <img
+            src="~assets/seven-waves-logo-transparent.png"
+            alt="Seven Waves"
+            class="sap-header__logo"
+            @error="(e) => (e.target.style.display = 'none')"
+          />
         </div>
       </div>
       <slot :filters="appliedFilters || filters" />
@@ -286,6 +280,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
+import { exportTableToPDF } from 'src/services/exportService'
+import ExcelJS from 'exceljs'
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -294,9 +290,18 @@ const props = defineProps({
   branches: { type: Array, default: () => [] },
   autoRefreshInterval: { type: Number, default: 60000 },
   hideSapHeader: { type: Boolean, default: false },
+  exportColumns: { type: Array, default: null },
+  exportRows: { type: Array, default: null },
 })
 
-const emit = defineEmits(['filter-change', 'export-csv', 'export-excel', 'export-pdf', 'refresh'])
+const emit = defineEmits([
+  'filter-change',
+  'export-csv',
+  'export-excel',
+  'export-pdf',
+  'print',
+  'refresh',
+])
 
 const authStore = useAuthStore()
 
@@ -316,9 +321,6 @@ const filters = ref({
 
 // ── SAP Header computed values ──────────────────────────────────────
 const branchLabel = computed(() => authStore.currentBranch?.name || 'All Branches')
-const todayLabel = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-)
 const reportDateLabel = computed(() => {
   const f = appliedFilters.value || filters.value
   if (f.dateFrom && f.dateTo) {
@@ -483,6 +485,18 @@ function formatDate(d) {
   })
 }
 
+// ── Build subtitle for exports ──────────────────────────────────────
+function getExportSubtitle() {
+  const f = appliedFilters.value || filters.value
+  const branch = authStore.currentBranch?.name || 'All Branches'
+  if (f.dateFrom && f.dateTo) {
+    const from = new Date(f.dateFrom).toLocaleDateString('en-GB')
+    const to = new Date(f.dateTo).toLocaleDateString('en-GB')
+    return `Location: ${branch} | ${from} To ${to}`
+  }
+  return `Location: ${branch}`
+}
+
 function handlePrint() {
   // Set print metadata for the footer
   const page = document.querySelector('.report-page')
@@ -496,29 +510,26 @@ function handlePrint() {
     const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
     page.setAttribute('data-print-date', `${dateStr} ${timeStr}`)
   }
-  // Set document title for the print filename (includes report name + date)
   const origTitle = document.title
   const dateStr = new Date().toISOString().slice(0, 10)
   document.title = `${props.title.replace(/\s+/g, '_')}_${dateStr}`
 
-  // Brief delay to let attributes render, then print
   setTimeout(() => {
     window.print()
     document.title = origTitle
   }, 100)
 }
 
-// ── File name helper ────────────────────────────────────────────────
-function getFileBaseName() {
-  const dateStr = new Date().toISOString().slice(0, 10) // 2026-03-22
-  return `${props.title.replace(/\s+/g, '_')}_${dateStr}`
-}
-
 // ── PDF Export ──────────────────────────────────────────────────────
 async function handleExportPDF() {
-  const sapContent = document.querySelector('.report-sap-document')
+  // If exportColumns & exportRows are provided, use jsPDF+autoTable (clean PDF)
+  if (props.exportColumns && props.exportRows) {
+    await exportTableToPDF(props.exportColumns, props.exportRows, props.title, getExportSubtitle())
+    return
+  }
+  // Otherwise fall back to html2canvas or emit
+  const sapContent = document.querySelector('.report-content')
   if (!sapContent) {
-    // If no SAP content found, emit event for custom handling
     emit('export-pdf')
     return
   }
@@ -527,55 +538,174 @@ async function handleExportPDF() {
     const html2canvas = (await import('html2canvas')).default
     const { jsPDF } = await import('jspdf')
 
-    // Capture the SAP report content as a canvas
+    // Force ALL elements to white bg + dark text for capture
+    sapContent.classList.add('pdf-export-mode')
+    const allElements = sapContent.querySelectorAll('*')
+    const origStyles = []
+    allElements.forEach((el) => {
+      const s = el.style
+      origStyles.push({
+        bg: s.backgroundColor,
+        color: s.color,
+      })
+      // Only force bg on non-header elements (keep navy headers)
+      const cs = getComputedStyle(el)
+      const bgR = parseInt(cs.backgroundColor?.match(/\d+/)?.[0] || '255')
+      if (bgR < 50) {
+        // Dark element — likely table header, keep it
+      } else {
+        s.backgroundColor = '#ffffff'
+      }
+      // Force dark text for readability
+      const colR = parseInt(cs.color?.match(/\d+/)?.[0] || '0')
+      if (colR > 200) {
+        s.color = '#1a1a1a'
+      }
+    })
+    sapContent.style.backgroundColor = '#ffffff'
+
     const canvas = await html2canvas(sapContent, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      windowWidth: 1200,
     })
+
+    // Restore ALL styles
+    allElements.forEach((el, i) => {
+      el.style.backgroundColor = origStyles[i].bg
+      el.style.color = origStyles[i].color
+    })
+    sapContent.style.backgroundColor = ''
+    sapContent.classList.remove('pdf-export-mode')
 
     const imgData = canvas.toDataURL('image/png')
     const imgWidth = canvas.width
     const imgHeight = canvas.height
 
-    // Calculate PDF dimensions (A4 landscape or portrait based on aspect ratio)
-    const pdfWidth = 297 // A4 landscape width in mm
-    const pdfHeight = 210 // A4 landscape height in mm
     const ratio = imgWidth / imgHeight
-
-    let orientation = 'landscape'
-    let pageW = pdfWidth
-    let pageH = pdfHeight
-    if (ratio < 1) {
-      orientation = 'portrait'
-      pageW = 210
-      pageH = 297
-    }
+    const orientation = ratio >= 1 ? 'landscape' : 'portrait'
+    const pageW = orientation === 'landscape' ? 297 : 210
+    const pageH = orientation === 'landscape' ? 210 : 297
 
     const pdf = new jsPDF(orientation, 'mm', 'a4')
     const margin = 10
     const usableW = pageW - margin * 2
     const scaledH = (imgHeight * usableW) / imgWidth
-
-    // If content exceeds one page, split across pages
-    let yOffset = 0
     const usableH = pageH - margin * 2
 
+    let yOffset = 0
     while (yOffset < scaledH) {
       if (yOffset > 0) pdf.addPage()
-
       pdf.addImage(imgData, 'PNG', margin, margin - yOffset, usableW, scaledH)
-
       yOffset += usableH
     }
 
-    pdf.save(`${getFileBaseName()}.pdf`)
+    const fileDate = new Date().toISOString().slice(0, 10)
+    pdf.save(`${props.title.replace(/\s+/g, '_')}_${fileDate}.pdf`)
   } catch (err) {
     console.error('[ReportLayout] PDF export error:', err)
-    // Fallback: emit event
     emit('export-pdf')
   }
+}
+
+// ── Excel Export ────────────────────────────────────────────────────
+async function handleExportExcel() {
+  // If exportColumns & exportRows are provided, use ExcelJS (styled Excel)
+  if (props.exportColumns && props.exportRows) {
+    const cols = props.exportColumns
+    const rows = props.exportRows
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'Seven Waves Restaurant ERP'
+    const ws = wb.addWorksheet(props.title)
+
+    const navyFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }
+    const lightFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FC' } }
+    const thinBorder = {
+      top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+      bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+      left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+      right: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+    }
+
+    // Auto-size columns
+    ws.columns = cols.map(() => ({ width: 20 }))
+
+    // Row 1: Company Name
+    const r1 = ws.addRow(['SEVEN WAVES RESTAURANT (PVT) LTD'])
+    ws.mergeCells(`A1:${String.fromCharCode(64 + cols.length)}1`)
+    r1.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF1A1A2E' } }
+    r1.height = 24
+
+    // Row 2: Report Title
+    const r2 = ws.addRow([props.title])
+    ws.mergeCells(`A2:${String.fromCharCode(64 + cols.length)}2`)
+    r2.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF333333' } }
+
+    // Row 3: Subtitle / Date
+    const r3 = ws.addRow([getExportSubtitle()])
+    ws.mergeCells(`A3:${String.fromCharCode(64 + cols.length)}3`)
+    r3.getCell(1).font = { size: 10, color: { argb: 'FF666666' } }
+
+    // Row 4: Spacer
+    ws.addRow([])
+
+    // Row 5: Column Headers
+    const headerRow = ws.addRow(cols.map((c) => c.label))
+    headerRow.height = 22
+    headerRow.eachCell((cell) => {
+      cell.fill = navyFill
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } }
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+      cell.border = thinBorder
+    })
+
+    // Data Rows
+    rows.forEach((r, idx) => {
+      const rowData = cols.map((c) => (typeof c.field === 'function' ? c.field(r) : r[c.field]))
+      const row = ws.addRow(rowData)
+      row.eachCell((cell, colNumber) => {
+        cell.border = thinBorder
+        cell.font = { size: 10, color: { argb: 'FF1A1A1A' } }
+        const colDef = cols[colNumber - 1]
+        cell.alignment = {
+          horizontal:
+            colDef?.align === 'right' ? 'right' : colDef?.align === 'center' ? 'center' : 'left',
+          vertical: 'middle',
+        }
+        if (idx % 2 === 1) cell.fill = lightFill
+      })
+    })
+
+    // Footer
+    ws.addRow([])
+    const lastCol = String.fromCharCode(64 + cols.length)
+    const footerRow = ws.addRow([
+      `Generated: ${new Date().toLocaleString()} • Seven Waves Restaurant ERP • Confidential`,
+    ])
+    ws.mergeCells(`A${footerRow.number}:${lastCol}${footerRow.number}`)
+    footerRow.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
+    footerRow.getCell(1).alignment = { horizontal: 'center' }
+
+    // Write & Download
+    const buffer = await wb.xlsx.writeBuffer()
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${props.title.replace(/\s+/g, '_')}_${dateStr}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    return
+  }
+  // Fallback: emit for individual report handling
+  emit('export-excel')
 }
 
 // ── SAP Toolbar actions ─────────────────────────────────────────────
@@ -1052,4 +1182,101 @@ onUnmounted(() => {
 
 /* ── Print Styles ─────────────────────────────────────────────────────── */
 /* NOTE: All print styles are in src/css/report-print.css (global) */
+
+/* ── PDF Export Mode (applied temporarily during html2canvas capture) ── */
+:deep(.pdf-export-mode) {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #dee2e6 !important;
+  border-radius: 0 !important;
+
+  .sap-header {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    border-bottom: 2px solid #1a1a2e !important;
+
+    &__company {
+      color: #1a1a2e !important;
+      font-weight: 800 !important;
+    }
+    &__title {
+      color: #333 !important;
+    }
+    &__meta {
+      color: #555 !important;
+    }
+    &__logo {
+      opacity: 1 !important;
+      height: 44px !important;
+    }
+  }
+
+  .report-table,
+  .q-table {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+
+  /* Keep dark navy table headers — matches print CSS */
+  .report-table__header-row,
+  .q-table thead tr {
+    background: #1a1a2e !important;
+  }
+
+  .report-table__th,
+  .q-table th {
+    color: #fff !important;
+    background: #1a1a2e !important;
+    border: none !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+  }
+
+  .report-table__row,
+  .report-table__td,
+  .q-table td {
+    color: #1a1a1a !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    background: #ffffff !important;
+  }
+
+  .report-table__row:nth-child(even),
+  .q-table tbody tr:nth-child(even) {
+    background: #f8f9fc !important;
+  }
+
+  .report-table__total-row,
+  .report-table__total-row td {
+    background: #e8edf3 !important;
+    color: #1a1a2e !important;
+    border-top: 2px solid #1a1a2e !important;
+    font-weight: 700 !important;
+  }
+
+  .report-empty {
+    color: #666 !important;
+  }
+
+  .q-badge {
+    color: #333 !important;
+    background: #e8edf3 !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .text-red {
+    color: #c62828 !important;
+  }
+  .text-weight-bold,
+  .text-weight-bolder {
+    color: #1a1a1a !important;
+  }
+
+  /* Hide pagination and controls in PDF */
+  .q-table__bottom,
+  .q-table__control {
+    display: none !important;
+  }
+}
 </style>

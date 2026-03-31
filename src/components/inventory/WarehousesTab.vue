@@ -32,7 +32,10 @@
               </div>
               <q-space />
               <q-btn-dropdown flat dense round icon="more_vert" color="grey-5">
-                <q-list :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'">
+                <q-list
+                  :dark="$q.dark.isActive"
+                  :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+                >
                   <q-item clickable v-close-popup @click="openEdit(wh)">
                     <q-item-section avatar><q-icon name="edit" /></q-item-section>
                     <q-item-section>Edit</q-item-section>

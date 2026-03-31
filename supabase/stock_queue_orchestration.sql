@@ -33,21 +33,22 @@ DECLARE
     rec_wh RECORD;
     v_docs_created INT := 0;
     v_lines_created INT := 0;
+    v_warnings JSONB := '[]'::jsonb;
 BEGIN
     -- Fetch order
     SELECT * INTO v_order FROM orders WHERE id = p_order_id;
     IF v_order IS NULL THEN
-        RAISE EXCEPTION 'Order % not found', p_order_id;
+        RETURN jsonb_build_object('success', false, 'error', 'Order not found');
     END IF;
     v_company_id := v_order.company_id;
 
     -- Check stock_queue status (idempotency)
-    SELECT * INTO v_sq FROM stock_queue WHERE order_id = p_order_id FOR UPDATE;
+    SELECT * INTO v_sq FROM stock_queue WHERE order_id = p_order_id FOR UPDATE SKIP LOCKED;
     IF v_sq IS NULL THEN
-        RETURN jsonb_build_object('success', true, 'message', 'No stock_queue entry for order', 'docs_created', 0);
+        RETURN jsonb_build_object('success', true, 'message', 'No pending stock_queue entry for order', 'docs_created', 0);
     END IF;
 
-    IF v_sq.status = 'issued' THEN
+    IF v_sq.status IN ('issued', 'processed', 'completed') THEN
         RETURN jsonb_build_object('success', true, 'message', 'Stock already issued', 'docs_created', 0);
     END IF;
 
@@ -69,21 +70,22 @@ BEGIN
     END IF;
 
     -- Build BOM requirements into temp table
-    CREATE TEMPORARY TABLE IF NOT EXISTS temp_stock_bom_reqs (
+    CREATE TEMPORARY TABLE IF NOT EXISTS _temp_bom_reqs (
         warehouse_id UUID,
         item_id UUID,
         uom_id UUID,
-        qty NUMERIC
+        qty NUMERIC,
+        unit_cost NUMERIC DEFAULT 0
     ) ON COMMIT DROP;
-    DELETE FROM temp_stock_bom_reqs;
+    DELETE FROM _temp_bom_reqs;
 
     -- Iterate order items -> resolve recipe -> accumulate ingredient requirements
     FOR v_item IN
-        SELECT oi.*, w.id AS warehouse_id
+        SELECT oi.*, w.id AS resolved_warehouse_id
         FROM order_items oi
-        JOIN warehouses w ON w.kitchen_id = oi.kitchen_id
-                         AND w.company_id = v_company_id
-                         AND w.is_active = true
+        LEFT JOIN warehouses w ON w.kitchen_id = oi.kitchen_id
+                          AND w.company_id = v_company_id
+                          AND w.is_active = true
         WHERE oi.order_id = p_order_id
           AND oi.status != 'cancelled'
     LOOP
@@ -105,31 +107,53 @@ BEGIN
               AND is_active = true;
         END IF;
 
-        IF v_recipe IS NOT NULL THEN
-            FOR v_ri IN
-                SELECT ri.*, i.inventory_uom_id
-                FROM recipe_items ri
-                JOIN items i ON i.id = ri.item_id
-                WHERE ri.recipe_id = v_recipe.id
-            LOOP
-                v_needed_qty := (v_ri.qty_per_serving * v_item.quantity);
-                v_needed_qty := get_converted_qty(v_ri.uom_id, v_ri.inventory_uom_id, v_needed_qty);
-
-                IF EXISTS (SELECT 1 FROM temp_stock_bom_reqs WHERE warehouse_id = v_item.warehouse_id AND item_id = v_ri.item_id) THEN
-                    UPDATE temp_stock_bom_reqs
-                    SET qty = qty + v_needed_qty
-                    WHERE warehouse_id = v_item.warehouse_id AND item_id = v_ri.item_id;
-                ELSE
-                    INSERT INTO temp_stock_bom_reqs VALUES (v_item.warehouse_id, v_ri.item_id, v_ri.inventory_uom_id, v_needed_qty);
-                END IF;
-            END LOOP;
+        IF v_recipe IS NULL THEN
+            CONTINUE;
         END IF;
+
+        -- Fallback warehouse resolution
+        IF v_item.resolved_warehouse_id IS NULL THEN
+            SELECT id INTO v_item.resolved_warehouse_id
+            FROM warehouses
+            WHERE company_id = v_company_id AND branch_id = v_order.branch_id
+              AND is_default = true AND is_active = true LIMIT 1;
+        END IF;
+        IF v_item.resolved_warehouse_id IS NULL THEN
+            SELECT id INTO v_item.resolved_warehouse_id
+            FROM warehouses
+            WHERE company_id = v_company_id AND branch_id = v_order.branch_id
+              AND warehouse_type = 'main_store' AND is_active = true LIMIT 1;
+        END IF;
+        IF v_item.resolved_warehouse_id IS NULL THEN
+            CONTINUE;
+        END IF;
+
+        FOR v_ri IN
+            SELECT ri.*, i.inventory_uom_id, COALESCE(i.avg_cost, 0) AS avg_cost
+            FROM recipe_items ri
+            JOIN items i ON i.id = ri.item_id
+            WHERE ri.recipe_id = v_recipe.id
+        LOOP
+            v_needed_qty := (v_ri.qty_per_serving / GREATEST(v_recipe.yield_qty, 1)) * v_item.quantity;
+            IF v_ri.uom_id IS DISTINCT FROM v_ri.inventory_uom_id AND v_ri.inventory_uom_id IS NOT NULL THEN
+                v_needed_qty := get_converted_qty(v_ri.uom_id, v_ri.inventory_uom_id, v_needed_qty);
+            END IF;
+
+            IF EXISTS (SELECT 1 FROM _temp_bom_reqs WHERE warehouse_id = v_item.resolved_warehouse_id AND item_id = v_ri.item_id) THEN
+                UPDATE _temp_bom_reqs
+                SET qty = qty + v_needed_qty
+                WHERE warehouse_id = v_item.resolved_warehouse_id AND item_id = v_ri.item_id;
+            ELSE
+                INSERT INTO _temp_bom_reqs VALUES (v_item.resolved_warehouse_id, v_ri.item_id, v_ri.inventory_uom_id, v_needed_qty, v_ri.avg_cost);
+            END IF;
+        END LOOP;
     END LOOP;
 
     -- Generate inventory documents per warehouse
-    FOR rec_wh IN SELECT DISTINCT warehouse_id FROM temp_stock_bom_reqs LOOP
+    FOR rec_wh IN SELECT DISTINCT warehouse_id FROM _temp_bom_reqs LOOP
         v_doc_number := generate_inv_doc_number(v_company_id, 'BOM_DEDUCT');
 
+        -- 1. INSERT AS DRAFT
         INSERT INTO inventory_documents (
             company_id, branch_id, doc_type, doc_number, doc_date,
             warehouse_id, reference_id, reference_type, status,
@@ -137,10 +161,11 @@ BEGIN
         ) VALUES (
             v_company_id, v_order.branch_id, 'BOM_DEDUCT', v_doc_number, CURRENT_DATE,
             rec_wh.warehouse_id, p_order_id, 'order', 'draft',
-            'Auto-issue via stock_queue for Order #' || v_order.order_number,
-            v_order.waiter_id
+            'Auto BOM deduction for Order #' || v_order.order_number,
+            v_order.assigned_waiter_id
         ) RETURNING id INTO v_doc_id;
 
+        -- 2. INSERT LINES (no trigger violation on draft)
         WITH inserted AS (
             INSERT INTO inventory_document_lines (
                 document_id, line_number, item_id, uom_id, quantity, unit_cost
@@ -148,15 +173,20 @@ BEGIN
             SELECT
                 v_doc_id,
                 ROW_NUMBER() OVER (ORDER BY t.item_id),
-                t.item_id, t.uom_id, t.qty, COALESCE(i.avg_cost, 0)
-            FROM temp_stock_bom_reqs t
-            JOIN items i ON i.id = t.item_id
+                t.item_id, t.uom_id, t.qty, t.unit_cost
+            FROM _temp_bom_reqs t
             WHERE t.warehouse_id = rec_wh.warehouse_id
             RETURNING 1
         )
         SELECT count(*) INTO v_lines_created FROM inserted;
 
-        -- Post the document (fires trg_post_inventory -> post_inventory_document)
+        -- Update document totals before posting
+        UPDATE inventory_documents 
+        SET total_qty = (SELECT COALESCE(SUM(quantity), 0) FROM inventory_document_lines WHERE document_id = v_doc_id),
+            total_cost = (SELECT COALESCE(SUM(quantity * unit_cost), 0) FROM inventory_document_lines WHERE document_id = v_doc_id)
+        WHERE id = v_doc_id;
+
+        -- 3. POST THE DOCUMENT (This triggers trg_post_inventory which does ledger and stock update math)
         UPDATE inventory_documents
         SET status = 'posted'
         WHERE id = v_doc_id;
@@ -169,13 +199,13 @@ BEGIN
 
     -- Log order event
     INSERT INTO order_status_events (order_id, old_status, new_status, created_by, created_at)
-    VALUES (p_order_id, 'stock_pending', 'stock_issued', v_order.waiter_id, now());
+    VALUES (p_order_id, 'stock_pending', 'stock_issued', v_order.assigned_waiter_id, now());
 
     RETURN jsonb_build_object(
         'success', true,
         'docs_created', v_docs_created,
         'lines_created', v_lines_created,
-        'message', 'Stock issued successfully'
+        'message', 'Stock issued successfully via trigger orchestration'
     );
 END;
 $$;
@@ -202,7 +232,11 @@ BEGIN
       AND issue_stage = p_current_stage;
 
     IF v_sq IS NOT NULL THEN
-        PERFORM issue_stock_for_order(p_order_id);
+        BEGIN
+            PERFORM issue_stock_for_order(p_order_id);
+        EXCEPTION WHEN OTHERS THEN
+            PERFORM mark_stock_queue_failed(p_order_id, SQLERRM);
+        END;
     END IF;
 END;
 $$;

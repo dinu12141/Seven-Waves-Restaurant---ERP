@@ -3,6 +3,8 @@
     title="User Activity Log"
     subtitle="System audit trail — user actions, logins, and changes"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="filteredRows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

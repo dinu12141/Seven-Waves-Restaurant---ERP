@@ -127,6 +127,7 @@
       <DocumentLinesTable
         v-model="lines"
         :items="items"
+        :uoms="uoms"
         :doc-type="header.doc_type"
         :warehouse-stock="warehouseStock ?? {}"
         :stock-loading="stockLoading"
@@ -135,7 +136,13 @@
     </template>
 
     <!-- Financial Summary (SAP Style) -->
-    <q-card v-if="header.doc_type" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" class="q-mt-md" flat bordered>
+    <q-card
+      v-if="header.doc_type"
+      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+      class="q-mt-md"
+      flat
+      bordered
+    >
       <q-card-section>
         <div class="row items-end">
           <div class="col-12 col-md-8">

@@ -204,16 +204,21 @@
     text-align: center;
   }
   &__company {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     color: var(--erp-text-primary, #f8fafc);
     letter-spacing: -0.2px;
+  }
+  &__trn {
+    font-size: 11px;
+    color: var(--erp-text-muted, #64748b);
+    margin-top: 1px;
   }
   &__title {
     font-size: 12px;
     font-weight: 600;
     color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 2px;
+    margin-top: 4px;
   }
   &__title--underline {
     text-decoration: underline;
@@ -223,12 +228,26 @@
     color: var(--erp-text-muted, #64748b);
     margin-top: 4px;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  &__meta-sep {
+    color: var(--erp-border, rgba(255, 255, 255, 0.15));
+    font-size: 12px;
   }
   &__right {
     text-align: right;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+  &__logo {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.95;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   }
   &__page {
     font-size: 11px;
@@ -257,23 +276,54 @@
 .sap-table__th {
   font-size: 10px !important;
   font-weight: 700 !important;
-  color: var(--erp-text-secondary, #94a3b8) !important;
+  color: #333333 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.3px !important;
   padding: 6px 6px !important;
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
+  background: #ffffff !important;
+  border-bottom: 2px solid #ccc !important;
+  border-top: 2px solid #ccc !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
   white-space: nowrap !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+
+  // Quasar renders the col label inside a span — force dark gray on it
+  span,
+  .q-table__sort-icon,
+  div {
+    color: #333333 !important;
+  }
+
+  &:last-child {
+    border-right: none !important;
+  }
+}
+
+// Extra-specific override for Quasar's q-th which applies its own color
+.sap-table.q-table th.sap-table__th,
+.sap-table .q-table__top th.sap-table__th {
+  color: #333333 !important;
+
+  span {
+    color: #333333 !important;
+  }
 }
 
 .sap-table__row {
-  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.03)) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
 
   td,
   .q-td {
     font-size: 11px !important;
-    color: var(--erp-text-primary, #f8fafc) !important;
+    color: var(--erp-text-primary, #1e293b) !important;
     padding: 4px 6px !important;
     height: 28px !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
+
+    &:last-child {
+      border-right: none !important;
+    }
   }
 
   &--void td,
@@ -387,15 +437,20 @@
 
 /* ── 14. Grand Total Row ───────────────────────────────────────────── */
 .sap-table__grand-total {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-top: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.15)) !important;
+  background: rgba(27, 58, 107, 0.25) !important;
+  border-top: 2px solid #1b3a6b !important;
+  border-bottom: 2px solid #1b3a6b !important;
 
   td,
   .q-td {
     font-size: 12px !important;
     padding: 8px 6px !important;
     color: var(--erp-text-primary, #f8fafc) !important;
+    border-right: 1px solid rgba(27, 58, 107, 0.3) !important;
+
+    &:last-child {
+      border-right: none !important;
+    }
   }
 }
 
@@ -419,9 +474,9 @@
 
 /* ── 16. Bill Subtotal Row (for e-journal) ─────────────────────────── */
 .sap-table__bill-subtotal {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.08)) !important;
-  border-bottom: 2px solid var(--erp-border, rgba(255, 255, 255, 0.06)) !important;
+  background: rgba(37, 99, 235, 0.05) !important;
+  border-top: 1px solid rgba(37, 99, 235, 0.18) !important;
+  border-bottom: 2px solid rgba(37, 99, 235, 0.25) !important;
 
   td,
   .q-td {
@@ -429,6 +484,31 @@
     padding: 3px 6px !important;
     height: 24px !important;
     color: var(--erp-text-secondary, #94a3b8) !important;
+    border-right: 1px solid rgba(37, 99, 235, 0.12) !important;
+
+    &:last-child {
+      border-right: none !important;
+    }
+  }
+}
+
+/* ── 16b. Service Charge Row (Type L) ───────────────────────────────── */
+.ej-row--service {
+  td,
+  .q-td {
+    background: rgba(245, 158, 11, 0.05) !important;
+    color: #fbbf24 !important;
+    font-style: italic !important;
+  }
+}
+
+/* ── 16c. Payment Row (Type P) ──────────────────────────────────────── */
+.ej-row--payment {
+  td,
+  .q-td {
+    background: rgba(22, 163, 74, 0.06) !important;
+    color: #4ade80 !important;
+    font-weight: 600 !important;
   }
 }
 
@@ -475,6 +555,22 @@
     background: rgba(0, 0, 0, 0.15);
     color: #e5e7eb;
     border-color: rgba(255, 255, 255, 0.1);
+  }
+  // SAP B1 row-type codes: S=Sale, L=Service charge, P=Payment
+  &--s {
+    background: rgba(37, 99, 235, 0.1);
+    color: #93c5fd;
+    border-color: rgba(37, 99, 235, 0.2);
+  }
+  &--l {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  &--p {
+    background: rgba(22, 163, 74, 0.1);
+    color: #4ade80;
+    border-color: rgba(22, 163, 74, 0.2);
   }
 }
 
@@ -666,6 +762,13 @@
 /* ═══════════════════════════════════════════════════════════════════════
    PRINT STYLES — UNIFIED FOR ALL REPORTS
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* Remove browser's built-in "Page X" and date print headers/footers */
+@page {
+  margin: 10mm 8mm 10mm 8mm;
+  size: A4 landscape;
+}
+
 @media print {
   /* Flat report tables */
   .report-table__td,
@@ -676,13 +779,23 @@
 
   /* SAP headers */
   .sap-header {
-    background: none !important;
+    background: #fff !important;
     border-bottom: 2pt solid #1a1a2e !important;
     padding: 6pt 0 !important;
+    color: #1a1a1a !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
   }
   .sap-header__company {
-    font-size: 12pt !important;
+    font-size: 13pt !important;
     color: #1a1a2e !important;
+    font-weight: 800 !important;
+  }
+  .sap-header__trn {
+    font-size: 8pt !important;
+    color: #555 !important;
+    margin-top: 1pt !important;
   }
   .sap-header__title {
     font-size: 10pt !important;
@@ -694,6 +807,12 @@
     color: #555 !important;
     font-size: 8pt !important;
   }
+  .sap-header__logo {
+    height: 40px !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
   /* SAP table headers */
   .sap-table__th,
@@ -701,7 +820,10 @@
     font-size: 6pt !important;
     padding: 3pt 3pt !important;
     color: #fff !important;
-    background: #1a1a2e !important;
+    background: #1b3a6b !important;
+    border-right: 0.5pt solid rgba(255, 255, 255, 0.3) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* SAP normal rows */
@@ -710,6 +832,8 @@
     padding: 2pt 3pt !important;
     height: auto !important;
     color: #222 !important;
+    border-right: 0.5pt solid #ccc !important;
+    border-bottom: 0.5pt solid #ddd !important;
   }
 
   /* SAP native rows */

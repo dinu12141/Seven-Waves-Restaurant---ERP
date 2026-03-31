@@ -3,6 +3,8 @@
     title="Expense Summary"
     subtitle="Expense tracking and analysis by category"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

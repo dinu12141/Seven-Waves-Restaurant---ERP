@@ -3,33 +3,14 @@
     title="Waiter Wise Sale"
     subtitle="Waiter Wise Sales — Performance and table-level breakdown per waiter"
     :kpis="kpiData"
-    :hide-sap-header="true"
+    :export-columns="columns"
+    :export-rows="displayRows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
     @refresh="loadData"
   >
     <template #default>
-      <!-- SAP-style Report Header -->
-      <div class="sap-header">
-        <div class="sap-header__left">
-          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="sap-header__title">Waiter Wise Sales</div>
-          <div class="sap-header__meta">
-            <div>
-              Location : <strong>{{ branchName }}</strong>
-            </div>
-            <div>
-              Date From : <strong>{{ reportDateRange }}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="sap-header__right">
-          <div class="sap-header__page">Page 1</div>
-          <div class="sap-header__date">{{ todayFormatted }}</div>
-        </div>
-      </div>
-
       <!-- ── Data Table ───────────────────────────── -->
       <q-table
         :rows="displayRows"
@@ -132,6 +113,11 @@
             <q-td key="avg_table_sal" :props="props" class="sap-table__td--num">{{
               fmtN(props.row.avg_table_sal)
             }}</q-td>
+            <q-td key="invoice_no" :props="props">
+              <a v-if="props.row.invoice_no" href="#" class="inv-link" @click.prevent="openInvoice(props.row)">
+                {{ props.row.invoice_no }}
+              </a>
+            </q-td>
           </q-tr>
         </template>
 
@@ -152,6 +138,8 @@
       </q-table>
     </template>
   </ReportLayout>
+
+  <InvoiceViewDialog v-model="showInvoiceDialog" :invoice-id="selectedInvoiceId" :order-id="selectedOrderId" />
 </template>
 
 <script setup>
@@ -159,12 +147,23 @@ import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
+import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 const rawOrders = ref([])
 const currentFilters = ref({})
+
+const showInvoiceDialog = ref(false)
+const selectedInvoiceId = ref(null)
+const selectedOrderId = ref(null)
+
+function openInvoice(row) {
+  selectedInvoiceId.value = row.__invoiceId || null
+  selectedOrderId.value = row.__orderId || null
+  showInvoiceDialog.value = true
+}
 
 // ── Column Definitions (SAP B1 format) ────────────────────
 const columns = [
@@ -206,18 +205,16 @@ const columns = [
     align: 'right',
     style: 'width:100px',
   },
+  {
+    name: 'invoice_no',
+    label: 'Invoice No',
+    field: 'invoice_no',
+    align: 'left',
+    style: 'width:140px',
+  },
 ]
 
 // ── Helpers ────────────────────────────────────────────────
-const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
-const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-)
-const reportDateRange = computed(() => {
-  const f = currentFilters.value
-  if (f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)} To : ${fmtDate(f.dateTo)}`
-  return fmtDate(new Date().toISOString().slice(0, 10))
-})
 
 function fmtDate(d) {
   if (!d) return ''
@@ -318,11 +315,23 @@ const displayRows = computed(() => {
         result.push({
           __type: 'item',
           __rowKey: `row-${dateKey}-${waiterId}-${tableKey}`,
+          __orderId: tableData.orders[0]?.id || null,
+          __invoiceId: (() => {
+            const inv = Array.isArray(tableData.orders[0]?.invoices) ? tableData.orders[0].invoices[0] : tableData.orders[0]?.invoices
+            return inv?.id || null
+          })(),
           table_no: tableData.tableNum || '—',
           no_customer: customers,
           amount,
           avg_w_sales: '',
           avg_table_sal: avgTableSale,
+          invoice_no: (() => {
+            const invNos = tableData.orders.map(o => {
+              const inv = Array.isArray(o.invoices) ? o.invoices[0] : o.invoices
+              return inv?.invoice_no || ''
+            }).filter(Boolean)
+            return invNos.length > 0 ? invNos[0] : ''
+          })(),
         })
       }
 
@@ -409,7 +418,8 @@ async function loadData(filters = {}) {
         waiter_id,
         table_id,
         waiter:profiles!orders_waiter_id_fkey ( full_name ),
-        restaurant_tables ( table_number, section )
+        restaurant_tables ( table_number, section ),
+        invoices ( id, invoice_no )
       `,
       )
       .not('status', 'eq', 'cancelled')
@@ -451,4 +461,12 @@ function exportExcel() {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
+
+.inv-link {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { text-decoration: underline; color: #0d47a1; }
+}
 </style>

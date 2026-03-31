@@ -3,6 +3,8 @@
     title="Hourly Sales Report"
     subtitle="Sales trend analysis by hour of day — identify peak and off-peak periods"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

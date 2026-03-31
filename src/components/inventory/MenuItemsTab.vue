@@ -228,7 +228,13 @@
                       label="Description"
                       helper="Displayed to customers ordering online"
                     >
-                      <q-input v-model="form.description" :dark="$q.dark.isActive" type="textarea" outlined autogrow />
+                      <q-input
+                        v-model="form.description"
+                        :dark="$q.dark.isActive"
+                        type="textarea"
+                        outlined
+                        autogrow
+                      />
                     </ERPFormField>
                   </div>
                 </div>
@@ -343,7 +349,10 @@
 
     <!-- Inline Add Dialogs -->
     <q-dialog v-model="catDialog.show">
-      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
+      <q-card
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 350px"
+      >
         <q-card-section>
           <div class="text-h6">New Category</div>
         </q-card-section>
@@ -371,7 +380,10 @@
     </q-dialog>
 
     <q-dialog v-model="subCatDialog.show">
-      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
+      <q-card
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 350px"
+      >
         <q-card-section>
           <div class="text-h6">New Sub Category</div>
           <div v-if="form.category_id" class="text-caption text-grey-5">
@@ -402,12 +414,21 @@
     </q-dialog>
 
     <q-dialog v-model="kitchenDialog.show">
-      <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
+      <q-card
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 350px"
+      >
         <q-card-section>
           <div class="text-h6">New Kitchen Station</div>
         </q-card-section>
         <q-card-section class="q-gutter-md">
-          <q-input :dark="$q.dark.isActive" outlined v-model="kitchenDialog.name" label="Kitchen Name" autofocus />
+          <q-input
+            :dark="$q.dark.isActive"
+            outlined
+            v-model="kitchenDialog.name"
+            label="Kitchen Name"
+            autofocus
+          />
           <q-toggle
             :dark="$q.dark.isActive"
             color="green"

@@ -3,6 +3,8 @@
     title="Purchase Summary"
     subtitle="Purchase order totals and trends"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

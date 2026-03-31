@@ -212,25 +212,11 @@ export const REPORT_GROUPS = [
         description: 'Cancelled and voided transactions',
       },
       {
-        id: 'refund-report',
-        label: 'Refund Report',
-        icon: 'undo',
-        route: '/reports/refund-report',
-        description: 'Refund transactions',
-      },
-      {
         id: 'payment-summary',
         label: 'Payment Method Summary',
         icon: 'payments',
         route: '/reports/payment-summary',
         description: 'Payment mode breakdown',
-      },
-      {
-        id: 'tax-summary',
-        label: 'Tax Summary Report',
-        icon: 'account_balance',
-        route: '/reports/tax-summary',
-        description: 'Tax collected by type and rate',
       },
     ],
   },
@@ -304,6 +290,13 @@ export const REPORT_GROUPS = [
     icon: 'inventory_2',
     color: '#f59e0b',
     reports: [
+      {
+        id: 'daily-kitchen-usage',
+        label: 'Kitchen Usage Report',
+        icon: 'soup_kitchen',
+        route: '/reports/kitchen-usage',
+        description: 'Daily, weekly and monthly kitchen item usage by BOM deductions',
+      },
       {
         id: 'stock-on-hand',
         label: 'Stock on Hand',

@@ -3,6 +3,8 @@
     title="Staff Sales Performance"
     subtitle="Staff productivity metrics — orders handled, revenue generated, average order value"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

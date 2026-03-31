@@ -3,11 +3,30 @@
     title="Void / Cancelled Bills Report"
     subtitle="All voided and cancelled transactions with reasons"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
     @refresh="loadData"
   >
+    <template #extra-filters>
+      <div class="report-filter-group" style="min-width: 200px">
+        <label class="report-filter-label">Status</label>
+        <q-select
+          v-model="extraFilters.status"
+          :options="statusOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          clearable
+          placeholder="All"
+          class="report-filter-input"
+        />
+      </div>
+    </template>
+
     <template #default>
       <q-table
         :rows="rows"
@@ -36,6 +55,12 @@
             <q-td key="bill_number" :props="props" class="report-table__td--mono">{{
               props.row.bill_number
             }}</q-td>
+            <q-td key="invoice_no" :props="props">
+              <a v-if="props.row.invoice_no" href="#" class="inv-link" @click.prevent="openInvoice(props.row)">
+                {{ props.row.invoice_no }}
+              </a>
+              <span v-else class="text-grey">—</span>
+            </q-td>
             <q-td key="date" :props="props">{{ fmtDateTime(props.row.date) }}</q-td>
             <q-td key="branch" :props="props">{{ props.row.branch }}</q-td>
             <q-td
@@ -70,18 +95,37 @@
       </q-table>
     </template>
   </ReportLayout>
+
+  <InvoiceViewDialog v-model="showInvoiceDialog" :invoice-id="selectedInvoiceId" :order-id="selectedOrderId" />
 </template>
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
+import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtDateTime, applyBranchSecurity } from 'src/services/reportService'
 
 const loading = ref(false)
 const rows = ref([])
+const showInvoiceDialog = ref(false)
+const selectedInvoiceId = ref(null)
+const selectedOrderId = ref(null)
+
+function openInvoice(row) {
+  selectedInvoiceId.value = row.invoice_id || null
+  selectedOrderId.value = row.id || null
+  showInvoiceDialog.value = true
+}
+const extraFilters = ref({ status: null })
+const statusOptions = [
+  { label: 'All', value: null },
+  { label: 'Void', value: 'void' },
+  { label: 'Cancelled', value: 'cancelled' }
+]
 const columns = [
   { name: 'bill_number', label: 'Bill #', field: 'bill_number', align: 'left', sortable: true },
+  { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', sortable: true },
   { name: 'date', label: 'Date & Time', field: 'date', align: 'left', sortable: true },
   { name: 'branch', label: 'Branch', field: 'branch', align: 'left', sortable: true },
   { name: 'total', label: 'Amount', field: 'total', align: 'right', sortable: true },
@@ -112,25 +156,37 @@ async function loadData(filters = {}) {
     let query = supabase
       .from('orders')
       .select(
-        'id,order_number,created_at,total_amount,status,order_type,branches(name),waiter:profiles!orders_waiter_id_fkey(full_name)',
+        'id,order_number,created_at,total_amount,status,order_type,branches(name),waiter:profiles!orders_waiter_id_fkey(full_name),invoices(id,invoice_no)',
       )
-      .in('status', ['cancelled', 'void'])
+      
+    if (extraFilters.value.status) {
+      query = query.eq('status', extraFilters.value.status)
+    } else {
+      query = query.in('status', ['cancelled', 'void'])
+    }
+    
     if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
     if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
     const { data, error } = await query.order('created_at', { ascending: false }).limit(1000)
     if (error) throw error
-    rows.value = (data || []).map((r) => ({
-      id: r.id,
-      bill_number: r.order_number || `#${r.id?.slice(0, 8)}`,
-      date: r.created_at,
-      branch: r.branches?.name || '—',
-      total: Number(r.total_amount || 0),
-      status: r.status,
-      cashier: r.waiter?.full_name || '—',
-      payment_method: r.order_type || '—',
-    }))
+    rows.value = (data || []).map((r) => {
+      const invs = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []
+      const firstInv = invs[0] || null
+      return {
+        id: r.id,
+        bill_number: r.order_number || `#${r.id?.slice(0, 8)}`,
+        invoice_no: firstInv?.invoice_no || '',
+        invoice_id: firstInv?.id || null,
+        date: r.created_at,
+        branch: r.branches?.name || '—',
+        total: Number(r.total_amount || 0),
+        status: r.status,
+        cashier: r.waiter?.full_name || '—',
+        payment_method: r.order_type || '—',
+      }
+    })
   } catch (e) {
     console.error('[VoidCancelled]', e)
   } finally {
@@ -146,4 +202,12 @@ function exportExcel() {
 </script>
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
+
+.inv-link {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { text-decoration: underline; color: #0d47a1; }
+}
 </style>

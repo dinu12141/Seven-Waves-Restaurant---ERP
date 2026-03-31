@@ -3,7 +3,13 @@
     <div class="row q-col-gutter-lg">
       <!-- Left Column: Primary Categories -->
       <div class="col-12 col-md-5">
-        <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card'">
+        <q-card
+          :class="
+            $q.dark.isActive
+              ? 'bg-grey-9 text-white border-subtle erp-card'
+              : 'bg-white text-black erp-card'
+          "
+        >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Primary Categories</div>
             <q-space />
@@ -91,7 +97,12 @@
       <!-- Right Column: Sub Categories -->
       <div class="col-12 col-md-7">
         <q-card
-          :class="[$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card', { 'disabled-overlay': !selectedCategoryId }]"
+          :class="[
+            $q.dark.isActive
+              ? 'bg-grey-9 text-white border-subtle erp-card'
+              : 'bg-white text-black erp-card',
+            { 'disabled-overlay': !selectedCategoryId },
+          ]"
         >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-secondary">
@@ -159,7 +170,11 @@
 
     <!-- Category Dialog -->
     <q-dialog v-model="catDialog.show" persistent>
-      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 400px">
+      <q-card
+        :dark="$q.dark.isActive"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 400px"
+      >
         <q-card-section class="row items-center">
           <div class="text-h6">{{ catDialog.isEdit ? 'Edit Category' : 'New Category' }}</div>
           <q-space />
@@ -207,7 +222,11 @@
 
     <!-- Sub-Category Dialog -->
     <q-dialog v-model="subDialog.show" persistent>
-      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 400px">
+      <q-card
+        :dark="$q.dark.isActive"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 400px"
+      >
         <q-card-section class="row items-center">
           <div class="text-h6">
             {{ subDialog.isEdit ? 'Edit Sub Category' : 'New Sub Category' }}

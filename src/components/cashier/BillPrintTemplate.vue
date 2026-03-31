@@ -15,34 +15,28 @@
     <!-- ── Invoice Meta ── -->
     <div class="bill-meta">
       <div class="meta-row">
-        <span class="meta-label">Invoice No :</span>
-        <span class="meta-value">{{ invoice.invoice_number }}</span>
+        <span class="meta-label">Bill # :</span>
+        <span class="meta-value">{{ invoiceDisplayNumber }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">{{ orderTypeLabel }} NO :</span>
+        <span class="meta-value">{{ orderIdByType }}</span>
       </div>
       <div class="meta-row">
         <span class="meta-label">KOT Ref. :</span>
         <span class="meta-value">{{ kotNumber }}</span>
       </div>
-      <div class="meta-row meta-row-split">
-        <span>
-          <span class="meta-label">Served By:</span>
-          <span class="meta-value">{{ waiterName }}</span>
-        </span>
-        <span>
-          <span class="meta-label">Pax :</span>
-          <span class="meta-value">{{ paxCount }}</span>
-        </span>
+      <div class="meta-row">
+        <span class="meta-label">Served By :</span>
+        <span class="meta-value">{{ waiterName }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Cashier :</span>
+        <span class="meta-value">{{ cashierNameDisplay }}</span>
       </div>
       <div class="meta-row meta-row-split">
         <span class="meta-value">{{ formatDateTime(invoice.created_at) }}</span>
         <span class="meta-value">{{ tableDisplay }}</span>
-      </div>
-      <div v-if="invoice.invoice_number" class="meta-row">
-        <span class="meta-label">Bill #</span>
-        <span class="meta-value">{{ invoice.invoice_number }}</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Type :</span>
-        <span class="meta-value order-type-value">{{ orderTypeLabel }}</span>
       </div>
       <div v-if="customerName" class="meta-row">
         <span class="meta-label">Customer :</span>
@@ -101,9 +95,13 @@
         <span class="total-label">Delivery Charge :</span>
         <span class="total-value">{{ fmtNum(invoiceDeliveryCharge) }}</span>
       </div>
+      <div v-if="displayServiceCharge > 0" class="total-row">
+        <span class="total-label">Service Charge (10%) :</span>
+        <span class="total-value">{{ fmtNum(displayServiceCharge) }}</span>
+      </div>
       <div class="total-row total-row-bold">
         <span class="total-label">Bill Amount :</span>
-        <span class="total-value">{{ fmtNum(invoice.grand_total) }}</span>
+        <span class="total-value">{{ fmtNum(parseFloat(invoice.grand_total || 0)) }}</span>
       </div>
       <template v-if="invoice.payments?.length">
         <div v-for="pmt in invoice.payments" :key="pmt.id" class="total-row">
@@ -157,6 +155,10 @@ const props = defineProps({
     type: String,
     default: 'LKR',
   },
+  cashierName: {
+    type: String,
+    default: '',
+  },
 })
 
 const logoUrl = computed(() => logoImage)
@@ -164,7 +166,14 @@ const logoUrl = computed(() => logoImage)
 const tableDisplay = computed(() => {
   const t = props.invoice.orders?.restaurant_tables
   if (!t) return ''
-  return t.section ? `${t.section}/${t.table_number}` : `T${t.table_number}`
+
+  if (t.section) return `${t.section}/${t.table_number}`
+
+  // If table_number already starts with 'T' (like 'T01'), don't add another 'T'
+  const num = String(t.table_number)
+  if (num.toUpperCase().startsWith('T')) return num
+
+  return `T${num}`
 })
 
 const kotNumber = computed(() => {
@@ -179,6 +188,28 @@ const kotNumber = computed(() => {
 
 const waiterName = computed(() => {
   return props.invoice.orders?.waiter?.full_name || '—'
+})
+
+const cashierNameDisplay = computed(() => {
+  // 1. If we have a real invoice, check its stored cashier first
+  if (props.invoice.cashier?.full_name) return props.invoice.cashier.full_name
+  if (props.invoice.profiles?.full_name) return props.invoice.profiles.full_name
+
+  // 2. Use the passed prop if available (for simulated bills before payment)
+  if (props.cashierName) return props.cashierName
+
+  // 3. Fallback to owner of the order or generic string
+  return props.invoice.orders?.waiter?.full_name || 'Cashier'
+})
+
+const invoiceDisplayNumber = computed(() => {
+  return props.invoice.invoice_number || props.invoice.id?.slice(0, 8).toUpperCase() || '—'
+})
+
+const orderIdByType = computed(() => {
+  const order = props.invoice.orders
+  if (!order) return '—'
+  return order.order_number || '—'
 })
 
 const orderTypeLabel = computed(() => {
@@ -198,10 +229,6 @@ const customerName = computed(() => {
 
 const customerPhone = computed(() => {
   return props.invoice.customer_phone || props.invoice.orders?.customer_phone || ''
-})
-
-const paxCount = computed(() => {
-  return props.invoice.orders?.pax || 1
 })
 
 const totalQty = computed(() => {
@@ -243,6 +270,24 @@ const invoiceDeliveryCharge = computed(() => {
 
 const deliveryAddress = computed(() => {
   return props.invoice.orders?.delivery_address || ''
+})
+
+const displayServiceCharge = computed(() => {
+  // 1. From invoice directly
+  if (parseFloat(props.invoice.service_charge || 0) > 0) {
+    return parseFloat(props.invoice.service_charge)
+  }
+  // 2. From the related order
+  const order = props.invoice.orders
+  if (parseFloat(order?.service_charge || 0) > 0) {
+    return parseFloat(order.service_charge)
+  }
+  // 3. Force calculate for Dine-in if we see the gap in total vs subtotal
+  if (orderTypeLabel.value === 'DINE IN') {
+    const sub = parseFloat(props.invoice.subtotal || itemsSubtotal.value)
+    return sub * 0.1
+  }
+  return 0
 })
 
 function fmtNum(val) {
@@ -455,32 +500,42 @@ defineExpose({ printReceipt })
   margin-bottom: 4px;
 }
 
+.bill-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
 .bill-logo {
-  width: 110px;
+  width: 45px;
   height: auto;
-  margin: 0 auto 4px;
+  margin-bottom: 4px;
   display: block;
 }
 
 .restaurant-name {
-  font-size: 9px;
-  font-weight: bold;
+  font-size: 10px;
+  font-weight: 800;
   text-align: center;
   text-transform: uppercase;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
 }
 
 .restaurant-address {
-  font-size: 8px;
+  font-size: 8.5px;
   text-align: center;
-  color: #333;
+  color: #222;
   margin-bottom: 1px;
 }
 
 .restaurant-tel {
-  font-size: 8px;
+  font-size: 8.5px;
   text-align: center;
-  color: #333;
+  font-weight: 600;
+  color: #222;
 }
 
 .bill-divider {

@@ -292,6 +292,7 @@ SELECT
   i.code           AS item_code,
   i.name           AS item_name,
   u.name           AS uom_name,
+  u.code           AS uom_code,
   soh.qty_on_hand,
   soh.total_value,
   i.avg_cost,

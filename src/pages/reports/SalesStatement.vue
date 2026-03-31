@@ -3,7 +3,6 @@
     title="Sales Statement"
     subtitle="Comprehensive breakdown of total sales, settlements, and collections"
     :kpis="kpiData"
-    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -15,22 +14,6 @@
       </div>
 
       <div v-else>
-        <!-- ── SAP Header ───────────────────────────────── -->
-        <div class="sap-header" style="flex-direction: column; text-align: center">
-          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="sap-header__meta" style="text-align: left; margin-top: 4px">
-            <span
-              >Location : <strong>{{ branchName }}</strong></span
-            >
-            <span class="q-ml-lg"
-              >Date From:<strong>{{ reportDateRange }}</strong></span
-            >
-          </div>
-          <div class="sap-header__title sap-header__title--underline" style="margin-top: 6px">
-            Sales Statement
-          </div>
-        </div>
-
         <!-- ════════════════════════════════════════════════ -->
         <!--  SECTION 1: Two-column Statement Layout        -->
         <!-- ════════════════════════════════════════════════ -->
@@ -209,21 +192,6 @@ const paymentBreakdown = ref({ cash: 0, card: 0, other: 0 })
 const currentFilters = ref({})
 
 // ── Helpers ────────────────────────────────────────────────
-const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
-const reportDateRange = computed(() => {
-  const f = currentFilters.value
-  if (f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)}  To: ${fmtDate(f.dateTo)}`
-  return fmtDate(new Date().toISOString().slice(0, 10))
-})
-
-function fmtDate(d) {
-  if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function fmtN(val) {
   const n = Number(val || 0)

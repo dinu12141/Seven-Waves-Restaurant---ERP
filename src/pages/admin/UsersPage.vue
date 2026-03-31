@@ -156,6 +156,37 @@
               </template>
             </q-input>
 
+            <!-- User Code (for waiter/cashier) -->
+            <q-input
+              v-model="form.user_code"
+              label="User Code (Numeric Login)"
+              outlined
+              dense
+              autocomplete="off"
+              dark
+              hint="Unique numeric code for quick login (e.g. 1001)"
+              :rules="[val => !val || /^\d+$/.test(val) || 'Must be numbers only']"
+              maxlength="10"
+              @input="e => form.user_code = (e.target?.value || '').replace(/\D/g, '')"
+            >
+              <template v-slot:prepend>
+                <q-icon name="pin" />
+              </template>
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="auto_awesome"
+                  size="sm"
+                  color="primary"
+                  @click="autoGenerateCode"
+                >
+                  <q-tooltip>Auto-generate next code</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
+
             <q-input
               v-model="form.phone"
               label="Phone Number"
@@ -279,6 +310,33 @@
               </q-btn>
             </template>
           </q-input>
+
+          <q-input
+            v-if="newlyCreatedUser.user_code"
+            readonly
+            outlined
+            dark
+            v-model="newlyCreatedUser.user_code"
+            label="User Code (Numeric Login)"
+            type="text"
+            class="q-mb-md"
+          >
+            <template v-slot:prepend>
+              <q-icon name="pin" color="amber" />
+            </template>
+            <template v-slot:append>
+              <q-btn
+                round
+                dense
+                flat
+                icon="content_copy"
+                color="primary"
+                @click="copyToClipboard(newlyCreatedUser.user_code)"
+              >
+                <q-tooltip>Copy User Code</q-tooltip>
+              </q-btn>
+            </template>
+          </q-input>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
@@ -308,6 +366,7 @@ const rolesList = ref([]) // For role selection
 const newlyCreatedUser = reactive({
   email: '',
   password: '',
+  user_code: '',
 })
 
 const copyToClipboard = async (text) => {
@@ -323,6 +382,7 @@ const copyToClipboard = async (text) => {
 const columns = [
   { name: 'full_name', label: 'Name', align: 'left', field: 'full_name', sortable: true },
   { name: 'email', label: 'Email', align: 'left', field: 'email', sortable: true },
+  { name: 'user_code', label: 'User Code', align: 'center', field: 'user_code', sortable: true },
   { name: 'phone', label: 'Phone', align: 'left', field: 'phone' },
   { name: 'status', label: 'Status', align: 'center', field: 'is_active', sortable: true },
   { name: 'actions', label: 'Actions', align: 'center', field: 'actions' },
@@ -335,6 +395,7 @@ const form = reactive({
   email: '',
   phone: '',
   password: '',
+  user_code: '',
   roleId: null,
   is_active: true,
 })
@@ -431,10 +492,22 @@ const openDialog = () => {
     email: '',
     phone: '',
     password: '',
+    user_code: '',
     roleId: null,
     is_active: true,
   })
   dialogVisible.value = true
+}
+
+const autoGenerateCode = async () => {
+  try {
+    const { data, error } = await supabase.rpc('generate_next_user_code')
+    if (error) throw error
+    form.user_code = data || ''
+  } catch (err) {
+    console.error('Error generating code:', err)
+    $q.notify({ type: 'negative', message: 'Failed to generate code' })
+  }
 }
 
 const editUser = (user) => {
@@ -453,6 +526,7 @@ const saveUser = async () => {
         .update({
           full_name: form.full_name,
           phone: form.phone,
+          user_code: form.user_code || null,
           is_active: form.is_active,
           updated_at: new Date(),
         })
@@ -489,8 +563,17 @@ const saveUser = async () => {
         if (roleError) console.error('[UsersPage] Role assignment error:', roleError)
       }
 
+      // Set user_code on profile if provided
+      if (form.user_code && newUserId) {
+        await supabase
+          .from('profiles')
+          .update({ user_code: form.user_code })
+          .eq('id', newUserId)
+      }
+
       newlyCreatedUser.email = form.email
       newlyCreatedUser.password = form.password
+      newlyCreatedUser.user_code = form.user_code || ''
       credentialsDialogVisible.value = true
     }
 

@@ -3,6 +3,8 @@
     title="Discount Report"
     subtitle="All discounts applied — amounts, percentages, and approval details"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

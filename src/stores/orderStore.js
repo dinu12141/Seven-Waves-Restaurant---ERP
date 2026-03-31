@@ -40,7 +40,14 @@ export const useOrderStore = defineStore('posOrder', () => {
 
   const taxAmount = computed(() => taxableAmount.value * (taxRate.value / 100))
 
-  const total = computed(() => taxableAmount.value + taxAmount.value)
+  const serviceChargeAmount = computed(() => {
+    if (orderType.value === 'dine-in') {
+      return subtotal.value * 0.1
+    }
+    return 0
+  })
+
+  const total = computed(() => taxableAmount.value + taxAmount.value + serviceChargeAmount.value)
 
   // ── Actions ──────────────────────────────────────────────
 
@@ -152,6 +159,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         customer_name: customerName.value || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
+        service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
         accepted_at: new Date().toISOString(),
       }
@@ -270,6 +278,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         customer_name: customerName.value || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
+        service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
       }
       if (companyId) orderPayload.company_id = companyId
@@ -387,6 +396,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     discountAmount,
     taxableAmount,
     taxAmount,
+    serviceChargeAmount,
     total,
     // actions
     addItem,

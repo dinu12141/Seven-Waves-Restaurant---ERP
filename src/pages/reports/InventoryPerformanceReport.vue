@@ -3,6 +3,8 @@
     title="Inventory Performance & Margin Analysis"
     subtitle="Slow/Fast moving items, High/Low margin, and Profit movement report"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

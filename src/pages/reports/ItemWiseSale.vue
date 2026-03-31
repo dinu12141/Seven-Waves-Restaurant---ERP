@@ -3,31 +3,47 @@
     title="Item Wise Sale Report"
     subtitle="POS Sales Report By Item — Quantity sold per item, grouped by subgroup"
     :kpis="kpiData"
-    :hide-sap-header="true"
+    :export-columns="columns"
+    :export-rows="displayRows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
     @refresh="loadData"
   >
-    <template #default>
-      <!-- SAP-style Report Header -->
-      <div class="sap-header">
-        <div class="sap-header__left">
-          <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-          <div class="sap-header__title">POS Sales Report By Item</div>
-          <div class="sap-header__meta">
-            <span
-              >Location: <strong>{{ branchName }}</strong></span
-            >
-            <span class="q-ml-lg">{{ reportDateRange }}</span>
-          </div>
-        </div>
-        <div class="sap-header__right">
-          <div class="sap-header__page">Page 1</div>
-          <div class="sap-header__date">{{ todayFormatted }}</div>
-        </div>
+    <!-- Extra Filters -->
+    <template #extra-filters>
+      <div class="report-filter-group" style="min-width: 200px">
+        <label class="report-filter-label">Category</label>
+        <q-select
+          v-model="extraFilters.category"
+          :options="categoryOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          clearable
+          placeholder="All Categories"
+          class="report-filter-input"
+        />
       </div>
 
+      <div class="report-filter-group" style="min-width: 200px">
+        <label class="report-filter-label">Item</label>
+        <q-select
+          v-model="extraFilters.item"
+          :options="filteredItemOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          clearable
+          placeholder="All Items"
+          class="report-filter-input"
+        />
+      </div>
+    </template>
+
+    <template #default>
       <!-- ── Data Table ───────────────────────────── -->
       <q-table
         :rows="displayRows"
@@ -150,6 +166,11 @@
                 >{{ props.row.gp_pct }}%</q-badge
               >
             </q-td>
+            <q-td key="invoice_no" :props="props">
+              <a v-if="props.row.invoice_no" href="#" class="inv-link" @click.prevent="openInvoice(props.row)">
+                {{ props.row.invoice_no }}
+              </a>
+            </q-td>
           </q-tr>
         </template>
 
@@ -170,19 +191,81 @@
       </q-table>
     </template>
   </ReportLayout>
+
+  <InvoiceViewDialog v-model="showInvoiceDialog" :invoice-id="selectedInvoiceId" :order-id="selectedOrderId" />
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
+import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 const rawItems = ref([])
 const currentFilters = ref({})
+
+const showInvoiceDialog = ref(false)
+const selectedInvoiceId = ref(null)
+const selectedOrderId = ref(null)
+
+function openInvoice(row) {
+  selectedInvoiceId.value = row.__invoiceId || null
+  selectedOrderId.value = row.__orderId || null
+  showInvoiceDialog.value = true
+}
+
+const extraFilters = ref({
+  category: null,
+  item: null,
+})
+
+const rawCategories = ref([])
+const rawMenuItems = ref([])
+
+const categoryOptions = computed(() => {
+  return [
+    { label: 'All Categories', value: null },
+    ...rawCategories.value.map(c => ({ label: c.name, value: c.id }))
+  ]
+})
+
+const filteredItemOptions = computed(() => {
+  let items = rawMenuItems.value
+  if (extraFilters.value.category) {
+    items = items.filter(i => i.category_id === extraFilters.value.category)
+  }
+  return [
+    { label: 'All Items', value: null },
+    ...items.map(i => ({ label: i.name, value: i.id }))
+  ]
+})
+
+watch(() => extraFilters.value.category, () => {
+  extraFilters.value.item = null
+})
+
+async function loadFilterOptions() {
+  const companyId = authStore.currentBranch?.company_id
+  if (!companyId) return
+
+  try {
+    const { data: cats } = await supabase.from('categories').select('id, name').eq('company_id', companyId).order('name')
+    if (cats) rawCategories.value = cats
+
+    const { data: items } = await supabase.from('menu_items').select('id, name, category_id').eq('company_id', companyId).order('name')
+    if (items) rawMenuItems.value = items
+  } catch (err) {
+    console.error('[ItemWiseSale] Error loading filter options', err)
+  }
+}
+
+onMounted(() => {
+  loadFilterOptions()
+})
 
 // ── Column Definitions (SAP B1 format) ────────────────────
 const columns = [
@@ -239,28 +322,10 @@ const columns = [
     style: 'width:55px',
     sortable: true,
   },
+  { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', style: 'width:130px' },
 ]
 
 // ── Helpers ────────────────────────────────────────────────
-const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
-const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-)
-const reportDateRange = computed(() => {
-  const f = currentFilters.value
-  if (f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)} To ${fmtDate(f.dateTo)}`
-  return fmtDate(new Date().toISOString().slice(0, 10))
-})
-
-function fmtDate(d) {
-  if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 function fmtN(val) {
   const n = Number(val || 0)
   return n.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })
@@ -437,13 +502,14 @@ async function loadData(filters = {}) {
           total_amount,
           delivery_charge,
           branch_id,
-          created_at
+          created_at,
+          invoices ( id, invoice_no )
         ),
         menu_items (
           id,
           name,
           base_price,
-          item_categories ( id, name )
+          categories ( id, name )
         )
       `)
 
@@ -472,7 +538,11 @@ async function loadData(filters = {}) {
       if (!order || order.status === 'cancelled') continue
 
       const menuItem = oi.menu_items || {}
-      const category = menuItem.item_categories || {}
+      const category = menuItem.categories || {}
+
+      if (extraFilters.value.category && category.id !== extraFilters.value.category) continue
+      if (extraFilters.value.item && menuItem.id !== extraFilters.value.item) continue
+
       const key = `${oi.menu_item_id}__${category.name || 'UNCATEGORIZED'}`
       const qty = Number(oi.quantity || 0)
       const itemTotal = Number(oi.total_price || oi.quantity * oi.unit_price || 0)
@@ -486,6 +556,8 @@ async function loadData(filters = {}) {
       const deliveryShare = Number(order.delivery_charge || 0) * ratio
 
       if (!itemMap[key]) {
+        const orderInvs = Array.isArray(order.invoices) ? order.invoices : order.invoices ? [order.invoices] : []
+        const firstInv = orderInvs[0] || null
         itemMap[key] = {
           menu_item_id: oi.menu_item_id,
           description: menuItem.name || 'Unknown Item',
@@ -501,6 +573,9 @@ async function loadData(filters = {}) {
           amt_with_tax: 0,
           del_cost: 0,
           cost: 0,
+          invoice_no: firstInv?.invoice_no || '',
+          __invoiceId: firstInv?.id || null,
+          __orderId: order.id || null,
         }
       }
 
@@ -539,4 +614,12 @@ function exportExcel() {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
+
+.inv-link {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { text-decoration: underline; color: #0d47a1; }
+}
 </style>

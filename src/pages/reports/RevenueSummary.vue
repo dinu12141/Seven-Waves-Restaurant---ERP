@@ -3,6 +3,8 @@
     title="Revenue Summary"
     subtitle="Daily/weekly revenue trends and growth analysis"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

@@ -24,6 +24,26 @@
             <p class="welcome-sub">Sign in to manage your restaurant</p>
           </div>
 
+          <!-- Login Mode Toggle -->
+          <div class="login-mode-toggle">
+            <button
+              class="mode-btn"
+              :class="{ active: loginMode === 'email' }"
+              @click="loginMode = 'email'"
+            >
+              <q-icon name="mail_outline" size="16px" class="q-mr-xs" />
+              Email Login
+            </button>
+            <button
+              class="mode-btn"
+              :class="{ active: loginMode === 'code' }"
+              @click="loginMode = 'code'"
+            >
+              <q-icon name="pin" size="16px" class="q-mr-xs" />
+              User Code
+            </button>
+          </div>
+
           <!-- Error Banner -->
           <div v-if="errorMessage" class="error-banner">
             <q-icon name="error_outline" size="18px" class="q-mr-sm" />
@@ -40,27 +60,55 @@
           </div>
 
           <q-form @submit.prevent="handleLogin" class="login-form">
-            <!-- Email -->
-            <div class="field-group">
-              <label class="field-label">Email Address</label>
-              <div
-                class="custom-input-wrapper"
-                :class="{ focused: emailFocused, 'has-value': email }"
-              >
-                <q-icon name="mail_outline" size="18px" class="input-icon" />
-                <input
-                  v-model="email"
-                  type="email"
-                  placeholder="you@sevenwaves.lk"
-                  class="custom-input"
-                  autocomplete="email"
-                  @focus="emailFocused = true"
-                  @blur="emailFocused = false"
-                />
+            <!-- EMAIL MODE -->
+            <template v-if="loginMode === 'email'">
+              <div class="field-group">
+                <label class="field-label">Email Address</label>
+                <div
+                  class="custom-input-wrapper"
+                  :class="{ focused: emailFocused, 'has-value': email }"
+                >
+                  <q-icon name="mail_outline" size="18px" class="input-icon" />
+                  <input
+                    v-model="email"
+                    type="email"
+                    placeholder="you@sevenwaves.lk"
+                    class="custom-input"
+                    autocomplete="email"
+                    @focus="emailFocused = true"
+                    @blur="emailFocused = false"
+                  />
+                </div>
               </div>
-            </div>
+            </template>
 
-            <!-- Password -->
+            <!-- USER CODE MODE -->
+            <template v-else>
+              <div class="field-group">
+                <label class="field-label">User Code</label>
+                <div
+                  class="custom-input-wrapper"
+                  :class="{ focused: codeFocused, 'has-value': userCode }"
+                >
+                  <q-icon name="pin" size="18px" class="input-icon" />
+                  <input
+                    v-model="userCode"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Enter your numeric code (e.g. 1001)"
+                    class="custom-input"
+                    autocomplete="off"
+                    maxlength="10"
+                    @focus="codeFocused = true"
+                    @blur="codeFocused = false"
+                    @input="filterNumericOnly"
+                  />
+                </div>
+              </div>
+            </template>
+
+            <!-- Password (shared) -->
             <div class="field-group">
               <label class="field-label">Password</label>
               <div
@@ -101,6 +149,7 @@
               </template>
             </button>
           </q-form>
+
         </div>
 
         <!-- Footer -->
@@ -156,35 +205,63 @@ import { useAuthStore } from 'src/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+const loginMode = ref('email') // 'email' or 'code'
 const email = ref('')
+const userCode = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 const emailFocused = ref(false)
+const codeFocused = ref(false)
 const pwFocused = ref(false)
 
+// Filter input to only allow digits
+function filterNumericOnly(e) {
+  userCode.value = e.target.value.replace(/\D/g, '')
+}
+
 const handleLogin = async () => {
-  if (!email.value || !password.value) {
-    errorMessage.value = 'Please enter your email and password.'
-    return
+  errorMessage.value = ''
+
+  // Validation based on mode
+  if (loginMode.value === 'email') {
+    if (!email.value || !password.value) {
+      errorMessage.value = 'Please enter your email and password.'
+      return
+    }
+  } else {
+    if (!userCode.value || !password.value) {
+      errorMessage.value = 'Please enter your user code and password.'
+      return
+    }
+    if (!/^\d+$/.test(userCode.value)) {
+      errorMessage.value = 'User code must contain only numbers.'
+      return
+    }
   }
 
   loading.value = true
-  errorMessage.value = ''
 
   try {
-    const { error } = await authStore.signIn(email.value, password.value)
+    let result
 
-    if (error) {
-      errorMessage.value = error.message || 'Invalid email or password'
+    if (loginMode.value === 'email') {
+      // Standard email/password login
+      result = await authStore.signIn(email.value, password.value)
+    } else {
+      // Numeric code login via Edge Function
+      result = await authStore.signInWithCode(userCode.value, password.value)
+    }
+
+    if (result.error) {
+      errorMessage.value = result.error.message || 'Invalid credentials'
       loading.value = false
       return
     }
 
+    // Role-based redirect
     let redirect = '/dashboard'
-    // Kitchen role check FIRST — a kitchen user must land on kitchen display
-    // even if they also have cashier role
     if (authStore.hasRole('kitchen') && !authStore.isAdmin && !authStore.hasRole('manager')) {
       redirect = '/kitchen'
     } else if (
@@ -214,7 +291,7 @@ const handleLogin = async () => {
 
 .login-wrapper {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   font-family: 'Inter', 'Roboto', sans-serif;
 }
 
@@ -222,10 +299,13 @@ const handleLogin = async () => {
 .form-panel {
   width: 420px;
   min-width: 380px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  padding: 36px 44px;
+  padding: 32px 44px;
   position: relative;
   z-index: 2;
   box-shadow: 10px 0 50px rgba(0, 0, 0, 0.5);
@@ -235,9 +315,10 @@ const handleLogin = async () => {
 /* Brand */
 .brand {
   display: flex;
-  margin-bottom: 52px;
+  margin-bottom: 24px;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 .brand-logo {
   height: 64px;
@@ -262,6 +343,43 @@ const handleLogin = async () => {
   letter-spacing: 1px;
 }
 
+/* Login Mode Toggle */
+.login-mode-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 16px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  gap: 4px;
+}
+.mode-btn:hover:not(.active) {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.5);
+}
+.mode-btn.active {
+  background: #ffffff;
+  color: #1565c0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 /* Welcome */
 .form-body {
   flex: 1;
@@ -279,7 +397,7 @@ const handleLogin = async () => {
 .welcome-sub {
   font-size: 14px;
   color: #64748b;
-  margin: 0 0 28px;
+  margin: 0 0 16px;
 }
 
 /* Error */
@@ -376,6 +494,16 @@ const handleLogin = async () => {
 }
 .toggle-icon:hover {
   color: #1565c0;
+}
+
+/* Code hint */
+.code-hint {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
 }
 
 /* Button */

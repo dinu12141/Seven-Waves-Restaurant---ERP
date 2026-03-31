@@ -2525,9 +2525,7 @@
                             $q.dark.isActive ? 'text-grey-5' : 'text-grey-6',
                           ]"
                         >
-                          {{ empDocuments.length }} file{{
-                            empDocuments.length !== 1 ? 's' : ''
-                          }}
+                          {{ empDocuments.length }} file{{ empDocuments.length !== 1 ? 's' : '' }}
                           uploaded
                         </div>
                       </div>
@@ -2908,9 +2906,7 @@
                                 Total Used
                               </div>
                               <div class="text-subtitle2 text-weight-bold text-red-5">
-                                {{
-                                  empLeaveBalances.reduce((s, l) => s + Number(l.used_days), 0)
-                                }}
+                                {{ empLeaveBalances.reduce((s, l) => s + Number(l.used_days), 0) }}
                                 days
                               </div>
                             </div>

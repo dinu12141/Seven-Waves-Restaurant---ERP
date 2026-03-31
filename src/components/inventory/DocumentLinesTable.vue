@@ -1,5 +1,9 @@
 <template>
-  <q-card :class="[$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black', 'q-mt-md']" flat bordered>
+  <q-card
+    :class="[$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black', 'q-mt-md']"
+    flat
+    bordered
+  >
     <q-card-section class="row items-center q-pb-sm">
       <div class="text-subtitle1 text-weight-bold">
         <q-icon name="list_alt" class="q-mr-xs" /> Line Items
@@ -33,7 +37,7 @@
       >
         <!-- Item Select -->
         <template #body-cell-item_id="props">
-          <q-td :props="props">
+          <q-td :props="props" style="max-width: 200px; white-space: normal">
             <div v-if="!readonly">
               <q-select
                 :dark="$q.dark.isActive"
@@ -48,7 +52,7 @@
                 fill-input
                 hide-selected
                 input-debounce="150"
-                style="min-width: 240px"
+                style="min-width: 160px"
                 @update:model-value="onItemSelected(props.rowIndex, $event)"
                 @filter="filterItems"
                 @popup-show="searchText = ''"
@@ -78,7 +82,9 @@
                         text-color="white"
                       >
                         {{
-                          scope.opt.stockQty <= 0 ? 'No Stock' : scope.opt.stockQty + ' in stock'
+                          scope.opt.stockQty <= 0
+                            ? 'No Stock'
+                            : scope.opt.stockQty + ' ' + (scope.opt.uom || '') + ' in stock'
                         }}
                       </q-badge>
                     </q-item-section>
@@ -155,10 +161,31 @@
           </q-td>
         </template>
 
+        <!-- UOM -->
+        <template #body-cell-uom_id="props">
+          <q-td :props="props">
+            <q-select
+              v-if="!readonly"
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              :model-value="props.row.uom_id"
+              :options="uoms"
+              option-value="id"
+              option-label="code"
+              emit-value
+              map-options
+              style="min-width: 100px"
+              @update:model-value="(val) => updateLineItem(props.rowIndex, 'uom_id', val)"
+            />
+            <span v-else>{{ getUomCode(props.row.uom_id) }}</span>
+          </q-td>
+        </template>
+
         <!-- Unit Cost -->
         <template #body-cell-unit_cost="props">
           <q-td :props="props">
-              <q-input
+            <q-input
               v-if="!readonly"
               :dark="$q.dark.isActive"
               outlined
@@ -210,7 +237,7 @@
         <!-- Batch (optional) -->
         <template #body-cell-batch_no="props">
           <q-td :props="props">
-              <q-input
+            <q-input
               v-if="!readonly"
               :dark="$q.dark.isActive"
               outlined
@@ -227,7 +254,7 @@
         <!-- Expiry (optional) -->
         <template #body-cell-expiry_date="props">
           <q-td :props="props">
-              <q-input
+            <q-input
               v-if="!readonly"
               :dark="$q.dark.isActive"
               outlined
@@ -251,7 +278,7 @@
         <!-- Counted Qty (stock count) -->
         <template v-if="isStockCount" #body-cell-counted_qty="props">
           <q-td :props="props">
-              <q-input
+            <q-input
               v-if="!readonly"
               :dark="$q.dark.isActive"
               outlined
@@ -286,7 +313,7 @@
         <!-- Notes -->
         <template #body-cell-notes="props">
           <q-td :props="props">
-              <q-input
+            <q-input
               v-if="!readonly"
               :dark="$q.dark.isActive"
               outlined
@@ -320,20 +347,32 @@
 
         <!-- Footer Totals -->
         <template #bottom-row>
-          <q-tr :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-grey-2 text-black'" class="text-weight-bold">
+          <q-tr
+            :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-grey-2 text-black'"
+            class="text-weight-bold"
+          >
             <q-td class="text-right text-subtitle2">TOTALS</q-td>
             <template v-if="!isStockCount">
-              <q-td class="text-right text-primary text-subtitle2">{{ formatNumber(totalQty) }}</q-td>
-              <q-td colspan="3"></q-td>
-              <q-td class="text-right text-positive text-subtitle2">{{ formatCurrency(totalCost) }}</q-td>
+              <q-td class="text-right text-primary text-subtitle2">{{
+                formatNumber(totalQty)
+              }}</q-td>
+              <q-td colspan="4"></q-td>
+              <q-td class="text-right text-positive text-subtitle2">{{
+                formatCurrency(totalCost)
+              }}</q-td>
               <q-td colspan="4"></q-td>
             </template>
             <template v-else>
               <q-td></q-td>
-              <q-td class="text-right text-primary text-subtitle2">{{ formatNumber(totalQty) }}</q-td>
+              <q-td></q-td>
+              <q-td class="text-right text-primary text-subtitle2">{{
+                formatNumber(totalQty)
+              }}</q-td>
               <q-td></q-td>
               <q-td></q-td>
-              <q-td class="text-right text-positive text-subtitle2">{{ formatCurrency(totalCost) }}</q-td>
+              <q-td class="text-right text-positive text-subtitle2">{{
+                formatCurrency(totalCost)
+              }}</q-td>
               <q-td colspan="2"></q-td>
             </template>
           </q-tr>
@@ -349,6 +388,7 @@ import { computed, ref } from 'vue'
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   items: { type: Array, default: () => [] },
+  uoms: { type: Array, default: () => [] },
   docType: { type: String, default: '' },
   readonly: { type: Boolean, default: false },
   warehouseStock: { type: Object, default: () => ({}) }, // item_id -> qty_on_hand
@@ -373,6 +413,11 @@ function hasStockData(itemId) {
   return itemId in props.warehouseStock
 }
 
+function getUomCode(id) {
+  const uom = props.uoms.find((u) => u.id === id)
+  return uom ? uom.code : id
+}
+
 // Build options directly as a computed (no stale ref cache)
 const allItemOptions = computed(() =>
   props.items.map((i) => {
@@ -383,6 +428,7 @@ const allItemOptions = computed(() =>
       value: i.id,
       stockQty,
       hasData,
+      uom: i.uom_code,
       // Only disable if we have confirmed data showing 0 stock
       disabled: isOutboundDoc.value && hasData && stockQty <= 0,
     }
@@ -411,6 +457,7 @@ function filterItems(val, update) {
 const baseColumns = [
   { name: 'item_id', label: 'Item No/Desc', field: 'item_id', align: 'left' },
   { name: 'quantity', label: 'Qty', field: 'quantity', align: 'right' },
+  { name: 'uom_id', label: 'UOM', field: 'uom_id', align: 'left' },
   { name: 'unit_cost', label: 'Unit Price', field: 'unit_cost', align: 'right' },
   { name: 'tax_code', label: 'Tax Code', field: 'tax_code', align: 'left' },
   { name: 'tax_amount', label: 'Tax Amount', field: 'tax_amount', align: 'right' },
@@ -421,6 +468,7 @@ const baseColumns = [
 
 const stockCountColumns = [
   { name: 'item_id', label: 'Item', field: 'item_id', align: 'left' },
+  { name: 'uom_id', label: 'UOM', field: 'uom_id', align: 'left' },
   { name: 'system_qty', label: 'System Qty', field: 'system_qty', align: 'right' },
   { name: 'counted_qty', label: 'Counted Qty', field: 'counted_qty', align: 'right' },
   { name: 'variance_qty', label: 'Variance', field: 'variance_qty', align: 'right' },

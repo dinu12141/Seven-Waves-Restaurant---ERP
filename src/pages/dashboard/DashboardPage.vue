@@ -43,8 +43,8 @@
     <div class="kpi-grid">
       <!-- Gross Revenue -->
       <div class="kpi-card kpi-card--revenue">
-        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--revenue">
-          <q-icon name="payments" size="22px" />
+        <div class="kpi-card__icon-wrap">
+          <q-icon name="payments" size="22px" color="white" />
         </div>
         <div class="kpi-card__body">
           <div class="kpi-card__label">Gross Revenue</div>
@@ -64,12 +64,13 @@
             Sales
           </div>
         </div>
+        <q-icon name="savings" size="64px" class="kpi-card__bg-icon" />
       </div>
 
       <!-- Active Orders -->
       <div class="kpi-card kpi-card--orders">
-        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--orders">
-          <q-icon name="receipt_long" size="22px" />
+        <div class="kpi-card__icon-wrap">
+          <q-icon name="receipt_long" size="22px" color="white" />
         </div>
         <div class="kpi-card__body">
           <div class="kpi-card__label">Active Orders</div>
@@ -79,12 +80,13 @@
             {{ kpi2 }} Pending Actions
           </div>
         </div>
+        <q-icon name="restaurant_menu" size="64px" class="kpi-card__bg-icon" />
       </div>
 
       <!-- Table Occupancy -->
       <div class="kpi-card kpi-card--tables">
-        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--tables">
-          <q-icon name="table_restaurant" size="22px" />
+        <div class="kpi-card__icon-wrap">
+          <q-icon name="table_restaurant" size="22px" color="white" />
         </div>
         <div class="kpi-card__body">
           <div class="kpi-card__label">Table Occupancy</div>
@@ -94,8 +96,8 @@
           <div class="kpi-card__progress-row">
             <q-linear-progress
               :value="kpi3"
-              color="teal-4"
-              track-color="white-1"
+              color="white"
+              track-color="rgba(255,255,255,0.25)"
               size="4px"
               rounded
               class="kpi-card__progress"
@@ -105,12 +107,13 @@
             >
           </div>
         </div>
+        <q-icon name="chair" size="64px" class="kpi-card__bg-icon" />
       </div>
 
       <!-- Active Staff -->
       <div class="kpi-card kpi-card--staff">
-        <div class="kpi-card__icon-wrap kpi-card__icon-wrap--staff">
-          <q-icon name="groups" size="22px" />
+        <div class="kpi-card__icon-wrap">
+          <q-icon name="groups" size="22px" color="white" />
         </div>
         <div class="kpi-card__body">
           <div class="kpi-card__label">Active Staff</div>
@@ -120,6 +123,7 @@
             <span class="kpi-card__sub kpi-card__sub--staff q-ml-xs">On Floor</span>
           </div>
         </div>
+        <q-icon name="badge" size="64px" class="kpi-card__bg-icon" />
       </div>
     </div>
 
@@ -1002,93 +1006,58 @@ onUnmounted(() => {
 }
 
 .kpi-card {
-  background: var(--erp-bg-main);
-  border: 1px solid var(--erp-border-strong);
   border-radius: var(--erp-radius-lg);
-  padding: 14px 16px 12px;
+  padding: 16px 18px 14px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  gap: 14px;
   position: relative;
   overflow: hidden;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: var(--erp-radius-lg);
-    pointer-events: none;
-  }
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: none;
 
   &:hover {
-    box-shadow: var(--erp-shadow-card);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   }
 
-  // Accent glow top border per card
+  // Full gradient backgrounds — HR Document Management style
   &--revenue {
-    border-top: 2px solid var(--erp-primary);
-    &::after {
-      box-shadow: inset 0 40px 30px -20px rgba(37, 99, 235, 0.07);
-    }
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   }
   &--orders {
-    border-top: 2px solid var(--erp-warning);
-    &::after {
-      box-shadow: inset 0 40px 30px -20px rgba(245, 158, 11, 0.07);
-    }
+    background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%);
   }
   &--tables {
-    border-top: 2px solid var(--erp-teal);
-    &::after {
-      box-shadow: inset 0 40px 30px -20px rgba(13, 148, 136, 0.07);
-    }
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
   }
   &--staff {
-    border-top: 2px solid var(--erp-accent);
-    &::after {
-      box-shadow: inset 0 40px 30px -20px rgba(124, 58, 237, 0.07);
-    }
+    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
   }
 
+  // Frosted white icon circle
   &__icon-wrap {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
     border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-
-    &--revenue {
-      background: var(--erp-primary-subtle);
-      color: var(--erp-primary-light);
-    }
-    &--orders {
-      background: var(--erp-warning-subtle);
-      color: var(--erp-warning-light);
-    }
-    &--tables {
-      background: var(--erp-teal-subtle);
-      color: var(--erp-teal-light);
-    }
-    &--staff {
-      background: var(--erp-accent-subtle);
-      color: var(--erp-accent-light);
-    }
   }
 
   &__body {
     flex: 1;
     min-width: 0;
+    position: relative;
+    z-index: 1;
   }
 
   &__label {
     font-size: var(--erp-font-size-caption);
     font-weight: var(--erp-font-weight-semibold);
-    color: var(--erp-text-muted);
+    color: rgba(255, 255, 255, 0.75);
     text-transform: uppercase;
     letter-spacing: 0.6px;
     margin-bottom: 6px;
@@ -1097,7 +1066,7 @@ onUnmounted(() => {
   &__value {
     font-size: var(--erp-font-size-kpi);
     font-weight: var(--erp-font-weight-black);
-    color: var(--erp-text-primary);
+    color: #ffffff;
     line-height: 1;
     margin-bottom: 8px;
     display: flex;
@@ -1107,12 +1076,12 @@ onUnmounted(() => {
   &__currency {
     font-size: var(--erp-font-size-table);
     font-weight: var(--erp-font-weight-semibold);
-    color: var(--erp-text-tertiary);
+    color: rgba(255, 255, 255, 0.7);
   }
   &__unit {
     font-size: 16px;
     font-weight: var(--erp-font-weight-semibold);
-    color: var(--erp-text-tertiary);
+    color: rgba(255, 255, 255, 0.7);
     margin-left: 2px;
   }
 
@@ -1121,17 +1090,10 @@ onUnmounted(() => {
     font-weight: var(--erp-font-weight-medium);
     display: flex;
     align-items: center;
-    &--up {
-      color: var(--erp-success-light);
-    }
-    &--warn {
-      color: var(--erp-warning);
-    }
-    &--info {
-      color: var(--erp-info-light);
-    }
-    &--staff {
-      color: var(--erp-accent-light);
+    color: rgba(255, 255, 255, 0.8);
+    // All sub variants use same white tint on gradient bg
+    &--up, &--warn, &--info, &--staff {
+      color: rgba(255, 255, 255, 0.8);
     }
   }
 
@@ -1150,15 +1112,25 @@ onUnmounted(() => {
     margin-top: 4px;
   }
   &__avatar-dot {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    border: 2px solid var(--erp-dash-avatar-ring);
-    margin-left: -6px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    margin-left: -5px;
     &:first-child {
       margin-left: 0;
     }
+  }
+
+  // Large watermark background icon
+  &__bg-icon {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    opacity: 0.08;
+    pointer-events: none;
+    color: white !important;
   }
 }
 
@@ -1478,14 +1450,14 @@ onUnmounted(() => {
 }
 
 .table-map-scroll {
-  height: 320px;
+  height: 240px;
 }
 
 .table-map-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  padding: 4px 2px 8px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 2px 2px 6px;
 }
 
 .table-map-empty {
@@ -1499,32 +1471,33 @@ onUnmounted(() => {
 }
 
 .table-cell {
-  aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
+  padding: 7px 4px 6px;
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    transform 0.15s,
+    box-shadow 0.15s;
   cursor: default;
   user-select: none;
   min-width: 0;
 
   &:hover {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
 
   &__number {
-    font-size: 14px;
+    font-size: 11px;
     font-weight: 800;
     line-height: 1;
+    letter-spacing: 0.3px;
   }
   &__cap {
-    font-size: 9px;
-    opacity: 0.8;
+    font-size: 8px;
+    opacity: 0.75;
     display: flex;
     align-items: center;
     gap: 1px;
@@ -1534,21 +1507,21 @@ onUnmounted(() => {
     background: linear-gradient(135deg, #065f46 0%, #047857 100%);
     border: 1px solid rgba(16, 185, 129, 0.3);
     color: #6ee7b7;
-    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
+    box-shadow: 0 1px 4px rgba(5, 150, 105, 0.2);
   }
 
   &--occupied {
     background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%);
     border: 1px solid rgba(249, 115, 22, 0.4);
     color: #fed7aa;
-    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25);
+    box-shadow: 0 1px 4px rgba(234, 88, 12, 0.25);
     animation: occupied-pulse 2.5s infinite;
   }
 
   &--clickable {
     cursor: pointer;
     &:hover {
-      transform: scale(1.1);
+      transform: scale(1.08);
     }
   }
 }

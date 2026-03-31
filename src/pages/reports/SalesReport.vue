@@ -3,6 +3,8 @@
     title="Sales Report"
     subtitle="Daily, weekly and monthly revenue breakdown by branch, category, and payment mode"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="onFilterChange"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -93,6 +95,12 @@
             <q-td key="order_no" :props="props" class="report-table__td report-table__td--mono">
               {{ props.row.order_no }}
             </q-td>
+            <q-td key="invoice_no" :props="props" class="report-table__td">
+              <a v-if="props.row.invoice_no" href="#" class="inv-link" @click.prevent="openInvoice(props.row)">
+                {{ props.row.invoice_no }}
+              </a>
+              <span v-else class="text-grey">—</span>
+            </q-td>
             <q-td key="created_at" :props="props" class="report-table__td">
               {{ formatDateTime(props.row.created_at) }}
             </q-td>
@@ -175,6 +183,8 @@
       </q-table>
     </template>
   </ReportLayout>
+
+  <InvoiceViewDialog v-model="showInvoiceDialog" :invoice-id="selectedInvoiceId" :order-id="selectedOrderId" />
 </template>
 
 <script setup>
@@ -182,11 +192,22 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
+import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 const rows = ref([])
 const currentFilters = ref({})
+
+const showInvoiceDialog = ref(false)
+const selectedInvoiceId = ref(null)
+const selectedOrderId = ref(null)
+
+function openInvoice(row) {
+  selectedInvoiceId.value = row.invoice_id || null
+  selectedOrderId.value = row.id || null
+  showInvoiceDialog.value = true
+}
 
 const extraFilters = ref({
   category: null,
@@ -252,6 +273,7 @@ const statusOptions = [
 
 const columns = [
   { name: 'order_no', label: 'Order #', field: 'order_no', align: 'left', sortable: true },
+  { name: 'invoice_no', label: 'Invoice No', field: 'invoice_no', align: 'left', sortable: true },
   { name: 'created_at', label: 'Date & Time', field: 'created_at', align: 'left', sortable: true },
   { name: 'branch', label: 'Branch', field: 'branch', align: 'left', sortable: true },
   { name: 'subtotal', label: 'Subtotal', field: 'subtotal', align: 'right', sortable: true },
@@ -336,6 +358,7 @@ async function loadData() {
         branches (name),
         waiter:profiles!orders_waiter_id_fkey (full_name),
         invoices (
+          id, invoice_no,
           payments (
             amount,
             payment_methods (name)
@@ -395,9 +418,13 @@ async function loadData() {
           return null
         }
 
+        const firstInv = invoices[0] || null
+
         return {
           id: r.id,
           order_no: r.order_number || `#${r.id?.slice(0, 8)}`,
+          invoice_no: firstInv?.invoice_no || '',
+          invoice_id: firstInv?.id || null,
           created_at: r.created_at,
           branch: r.branches?.name || '—',
           subtotal: Number(r.subtotal || 0),
@@ -489,4 +516,12 @@ function downloadFile(content, filename, mime) {
 
 <style scoped lang="scss">
 @import 'src/pages/reports/report-common.scss';
+
+.inv-link {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { text-decoration: underline; color: #0d47a1; }
+}
 </style>

@@ -3,6 +3,8 @@
     title="GRN Report"
     subtitle="Goods Received Notes — inventory receipts and receiving details"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

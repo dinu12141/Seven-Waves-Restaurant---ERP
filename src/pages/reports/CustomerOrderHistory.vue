@@ -3,6 +3,8 @@
     title="Customer Order History"
     subtitle="Customer-centric order history with spend analysis"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

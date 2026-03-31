@@ -3,6 +3,8 @@
     title="Reorder Level Report"
     subtitle="Items at or below minimum stock level — requires immediate attention"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

@@ -60,7 +60,11 @@
     </div>
 
     <!-- Documents Table -->
-    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
+    <q-card
+      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+      flat
+      bordered
+    >
       <q-card-section>
         <q-table
           :rows="documents"
@@ -139,7 +143,12 @@
             <q-td :props="props" style="max-width: 200px">
               <div
                 class="ellipsis"
-                style="max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                style="
+                  max-width: 180px;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
               >
                 {{ props.value }}
               </div>
@@ -154,7 +163,12 @@
             <q-td :props="props" style="max-width: 150px">
               <div
                 class="ellipsis"
-                style="max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                style="
+                  max-width: 130px;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
               >
                 {{ props.value }}
               </div>

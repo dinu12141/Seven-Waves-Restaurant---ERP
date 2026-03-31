@@ -3,6 +3,8 @@
     title="Refund Report"
     subtitle="All refund transactions with original bill reference"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

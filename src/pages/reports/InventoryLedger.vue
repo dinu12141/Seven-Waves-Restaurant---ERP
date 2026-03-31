@@ -3,6 +3,8 @@
     title="Inventory Ledger"
     subtitle="Stock movement history — receipts, issues, adjustments and current balances"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="onFilterChange"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

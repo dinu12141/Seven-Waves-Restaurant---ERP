@@ -248,115 +248,291 @@
             />
           </div>
 
-          <q-list bordered :class="$q.dark.isActive ? 'rounded-borders bg-grey-9' : 'rounded-borders bg-grey-2'">
-            <!-- Header Row -->
-            <div
-              class="row q-pa-sm bg-grey-10 text-weight-bold text-grey-4 text-caption items-center"
-            >
-              <div class="col-4">Item (Inventory)</div>
-              <div class="col-2">Qty</div>
-              <div class="col-2">UOM</div>
-              <div class="col-2">Waste %</div>
-              <div class="col-1 text-right">Cost</div>
-              <div class="col-1 text-center"></div>
-            </div>
-
-            <!-- Ingredient Rows -->
-            <div
-              v-for="(ing, index) in form.ingredients"
-              :key="index"
-              class="row q-pa-sm q-col-gutter-sm items-center"
-              style="border-top: 1px solid var(--border)"
-            >
-              <div class="col-4">
-                <q-select
-                  v-model="ing.item"
-                  :options="inventoryItems"
-                  option-label="name"
-                  option-value="id"
-                  dense
-                  outlined
-                  :dark="$q.dark.isActive"
-                  use-input
-                  input-debounce="0"
-                  @filter="filterItems"
-                  hide-bottom-space
-                  placeholder="Select item"
+          <!-- Ingredient Table -->
+          <div style="overflow-x: auto; -webkit-overflow-scrolling: touch">
+            <div style="min-width: 560px">
+              <!-- Header -->
+              <div
+                class="row no-wrap items-center rounded-borders q-px-xs q-py-xs"
+                style="gap: 4px"
+                :style="{
+                  background: $q.dark.isActive ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+                }"
+              >
+                <div style="width: 16px; flex-shrink: 0"></div>
+                <div
+                  class="col"
+                  style="
+                    min-width: 100px;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                  "
                 >
-                  <template v-if="ing.item" #selected>
-                    <div>
-                      <span class="text-weight-bold">{{ ing.item.name }}</span>
-                      <span class="text-caption text-grey-5 q-ml-xs">({{ ing.item.code }})</span>
+                  ITEM
+                </div>
+                <div
+                  style="
+                    width: 80px;
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                  "
+                >
+                  CODE
+                </div>
+                <div
+                  style="
+                    width: 76px;
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                  "
+                >
+                  QTY
+                </div>
+                <div
+                  style="
+                    width: 72px;
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                  "
+                >
+                  UOM
+                </div>
+                <div
+                  style="
+                    width: 80px;
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                    text-align: right;
+                  "
+                >
+                  COST
+                </div>
+                <div style="width: 22px; flex-shrink: 0"></div>
+              </div>
+
+              <!-- Ingredient Rows -->
+              <div class="q-gutter-y-xs q-mt-xs">
+                <div
+                  v-for="(ing, index) in form.ingredients"
+                  :key="index"
+                  class="row no-wrap items-center rounded-borders"
+                  style="gap: 4px; padding: 3px 4px; min-width: 480px"
+                  :style="{
+                    border: '1px solid',
+                    borderColor: $q.dark.isActive ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
+                    background:
+                      index % 2 === 0
+                        ? $q.dark.isActive
+                          ? 'rgba(255,255,255,0.02)'
+                          : 'rgba(0,0,0,0.01)'
+                        : $q.dark.isActive
+                          ? 'rgba(0,0,0,0.18)'
+                          : 'rgba(0,0,0,0.03)',
+                  }"
+                >
+                  <!-- # -->
+                  <div style="width: 16px; flex-shrink: 0; text-align: center">
+                    <span style="font-size: 10px; font-weight: 600; color: #bdbdbd">{{
+                      index + 1
+                    }}</span>
+                  </div>
+
+                  <!-- ITEM -->
+                  <div class="col" style="min-width: 90px">
+                    <q-select
+                      v-model="ing.item"
+                      :options="inventoryItems"
+                      option-label="name"
+                      option-value="id"
+                      dense
+                      outlined
+                      :dark="$q.dark.isActive"
+                      use-input
+                      fill-input
+                      hide-selected
+                      input-debounce="0"
+                      @filter="filterItems"
+                      hide-bottom-space
+                      placeholder="Search item..."
+                      @update:model-value="(item) => onIngItemChange(ing, item)"
+                      :input-style="{ fontSize: '11px', padding: '0 4px', fontWeight: '500' }"
+                    >
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps" dense style="min-height: 36px">
+                          <q-item-section>
+                            <q-item-label style="font-size: 12px; font-weight: 500">{{
+                              scope.opt.name
+                            }}</q-item-label>
+                            <q-item-label caption style="font-size: 10px">{{
+                              scope.opt.code
+                            }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- CODE -->
+                  <div style="width: 80px; flex-shrink: 0">
+                    <div
+                      class="rounded-borders"
+                      style="
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        padding: 0 6px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        border: 1px solid;
+                        overflow: hidden;
+                        white-space: nowrap;
+                        font-family: monospace;
+                        letter-spacing: 0.2px;
+                      "
+                      :style="{
+                        borderColor: $q.dark.isActive
+                          ? 'rgba(255,255,255,0.12)'
+                          : 'rgba(0,0,0,0.12)',
+                        color: $q.dark.isActive ? '#78909c' : '#546e7a',
+                        background: $q.dark.isActive ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
+                      }"
+                      :title="ing.item?.code"
+                    >
+                      {{ ing.item?.code || '—' }}
                     </div>
-                  </template>
-                </q-select>
-              </div>
-              <div class="col-2">
-                <q-input
-                  v-model.number="ing.qty_per_serving"
-                  type="number"
-                  dense
-                  outlined
-                  :dark="$q.dark.isActive"
-                  hide-bottom-space
-                  placeholder="0.0"
-                  :rules="[(v) => v > 0 || 'Must be > 0']"
-                />
-              </div>
-              <div class="col-2">
-                <q-select
-                  v-model="ing.uom_id"
-                  :options="uoms"
-                  option-label="name"
-                  option-value="id"
-                  emit-value
-                  map-options
-                  dense
-                  outlined
-                  :dark="$q.dark.isActive"
-                  hide-bottom-space
-                  placeholder="UOM"
-                />
-              </div>
-              <div class="col-2">
-                <q-input
-                  v-model.number="ing.wastage_percent"
-                  type="number"
-                  dense
-                  outlined
-                  :dark="$q.dark.isActive"
-                  hide-bottom-space
-                  placeholder="0"
-                  suffix="%"
-                />
-              </div>
-              <div class="col-1 text-right">
-                <div class="text-caption text-amber-4 text-weight-medium">
-                  {{ ing.item ? formatCurrency(getLineCost(ing)) : '—' }}
+                  </div>
+
+                  <!-- QTY -->
+                  <div style="width: 76px; flex-shrink: 0">
+                    <q-input
+                      v-model.number="ing.qty_per_serving"
+                      type="number"
+                      dense
+                      outlined
+                      :dark="$q.dark.isActive"
+                      hide-bottom-space
+                      placeholder="0"
+                      :input-style="{
+                        fontSize: '12px',
+                        padding: '0 4px',
+                        textAlign: 'right',
+                        fontWeight: '500',
+                      }"
+                    />
+                  </div>
+
+                  <!-- UOM -->
+                  <div style="width: 72px; flex-shrink: 0">
+                    <q-select
+                      v-model="ing.uom_id"
+                      :options="uoms"
+                      option-label="code"
+                      option-value="id"
+                      emit-value
+                      map-options
+                      dense
+                      outlined
+                      :dark="$q.dark.isActive"
+                      hide-bottom-space
+                      placeholder="—"
+                      @update:model-value="(uomId) => onIngUomChange(ing, uomId)"
+                    >
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps" dense style="min-height: 36px">
+                          <q-item-section>
+                            <q-item-label style="font-size: 12px; font-weight: 600">{{
+                              scope.opt.code
+                            }}</q-item-label>
+                            <q-item-label caption style="font-size: 10px">{{
+                              scope.opt.name
+                            }}</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- COST -->
+                  <div style="width: 80px; flex-shrink: 0">
+                    <div
+                      class="rounded-borders text-weight-bold"
+                      style="
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                        padding: 0 8px;
+                        font-size: 11px;
+                        border: 1px solid;
+                      "
+                      :style="{
+                        borderColor: ing.item
+                          ? 'rgba(255,152,0,0.4)'
+                          : $q.dark.isActive
+                            ? 'rgba(255,255,255,0.1)'
+                            : 'rgba(0,0,0,0.1)',
+                        background: ing.item
+                          ? $q.dark.isActive
+                            ? 'rgba(255,152,0,0.12)'
+                            : 'rgba(255,152,0,0.08)'
+                          : 'transparent',
+                        color: ing.item ? '#e65100' : $q.dark.isActive ? '#616161' : '#bdbdbd',
+                      }"
+                    >
+                      {{ ing.item ? formatCurrency(getLineCost(ing)) : '—' }}
+                    </div>
+                  </div>
+
+                  <!-- DELETE -->
+                  <div
+                    style="
+                      width: 22px;
+                      flex-shrink: 0;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                    "
+                  >
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      size="xs"
+                      color="negative"
+                      @click="removeIngredient(index)"
+                    >
+                      <q-tooltip>Remove</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+
+                <div
+                  v-if="form.ingredients.length === 0"
+                  class="text-grey-5 q-pa-md row justify-center text-italic"
+                  style="font-size: 12px"
+                >
+                  No ingredients added yet.
                 </div>
               </div>
-              <div class="col-1 text-center">
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="delete"
-                  size="sm"
-                  color="negative"
-                  @click="removeIngredient(index)"
-                >
-                  <q-tooltip>Remove</q-tooltip>
-                </q-btn>
-              </div>
             </div>
-
-            <div
-              v-if="form.ingredients.length === 0"
-              class="text-grey-5 q-pa-lg row justify-center text-italic"
-            >
-              No ingredients added. Start by clicking 'Add Component'.
-            </div>
-          </q-list>
+            <!-- /min-width -->
+          </div>
+          <!-- /overflow-x -->
         </div>
       </div>
 
@@ -425,8 +601,10 @@
                 <div v-if="item.item?.avg_cost" class="text-caption text-amber-4">
                   {{
                     formatCurrency(
-                      item.qty_per_serving *
+                      ((item.qty_per_serving *
                         (1 + (item.wastage_percent || 0) / 100) *
+                        (Number(item.uom?.conversion_factor) || 1)) /
+                        (Number(item.item?.inv_uom?.conversion_factor) || 1)) *
                         item.item.avg_cost,
                     )
                   }}
@@ -571,12 +749,51 @@ const foodCostPct = computed(() => {
   return price > 0 ? (estimatedCost.value / price) * 100 : 0
 })
 
+/**
+ * Get the UOM conversion factor for a given uom_id.
+ * e.g. G → 0.001 (relative to KG), ML → 0.001 (relative to L), KG → 1, L → 1
+ */
+function getUomConversionFactor(uomId) {
+  if (!uomId) return 1
+  const uom = uoms.value.find((u) => u.id === uomId)
+  return uom ? Number(uom.conversion_factor) || 1 : 1
+}
+
+/**
+ * Get the stock/inventory UOM conversion factor for an item.
+ * The item's avg_cost is expressed per stock UOM unit.
+ */
+function getItemStockUomFactor(item) {
+  const stockUomId = item.inventory_uom_id || item.uom_id || null
+  return getUomConversionFactor(stockUomId)
+}
+
+/**
+ * Calculate cost for one BOM ingredient line.
+ *
+ * Uses ing.bom_factor — auto-computed on item/UOM selection.
+ * bom_factor = how many stock-UOM units equal 1 BOM-UOM unit.
+ *
+ * Formula: qty × bom_factor × (1 + wastage/100) × avg_cost_per_stock_uom
+ *
+ * Example: Orange GRNed in KG (avg_cost = Rs.300/kg), BOM in G (bom_factor=0.001)
+ *   cost = 250 × 0.001 × 1.0 × 300 = Rs.75  ✓
+ * Example: Milk GRNed in L (avg_cost = Rs.280/L), BOM in ML (bom_factor=0.001)
+ *   cost = 500 × 0.001 × 1.0 × 280 = Rs.140  ✓
+ * Example: Eggs GRNed in PCS (avg_cost = Rs.50/pcs), BOM in PCS (bom_factor=1)
+ *   cost = 2 × 1 × 1.0 × 50 = Rs.100  ✓
+ */
 function getLineCost(ing) {
   if (!ing.item) return 0
   const qty = Number(ing.qty_per_serving) || 0
   const wastage = Number(ing.wastage_percent) || 0
   const avgCost = Number(ing.item.avg_cost) || 0
-  return qty * (1 + wastage / 100) * avgCost
+
+  // Use stored bom_factor (set on item/UOM change), fallback to computed
+  const factor =
+    Number(ing.bom_factor) > 0 ? Number(ing.bom_factor) : computeBomFactor(ing.item, ing.uom_id)
+
+  return qty * factor * (1 + wastage / 100) * avgCost
 }
 
 function filterMenuItemsList(val, update) {
@@ -630,6 +847,10 @@ async function fetchMenuItems() {
 }
 
 // ── Dialog actions ─────────────────────────────────────────
+function emptyIngredient() {
+  return { item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0, bom_factor: 1 }
+}
+
 function openRecipeDialog() {
   form.value = {
     recipe_id: null,
@@ -638,13 +859,38 @@ function openRecipeDialog() {
     yield_qty: 1,
     yield_unit: '',
     notes: '',
-    ingredients: [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }],
+    ingredients: [emptyIngredient()],
   }
   dialogOpen.value = true
 }
 
 function addIngredient() {
-  form.value.ingredients.push({ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 })
+  form.value.ingredients.push(emptyIngredient())
+}
+
+/**
+ * Compute bom_factor: how many stock-UOM units = 1 BOM-UOM unit.
+ * e.g. BOM=G, stock=KG → G.conversion_factor(0.001) / KG.conversion_factor(1) = 0.001
+ * e.g. BOM=KG, stock=KG → 1/1 = 1
+ * e.g. BOM=ML, stock=L  → 0.001/1 = 0.001
+ * e.g. BOM=BTL, stock=BTL → 1/1 = 1
+ * Works for ANY UOM pair — as long as conversions are in the same measurement family.
+ */
+function computeBomFactor(item, uomId) {
+  if (!item || !uomId) return 1
+  const bomUomConv = getUomConversionFactor(uomId)
+  const stockUomConv = getItemStockUomFactor(item)
+  return stockUomConv > 0 ? bomUomConv / stockUomConv : bomUomConv
+}
+
+function onIngItemChange(ing, item) {
+  ing.item = item
+  ing.bom_factor = computeBomFactor(item, ing.uom_id)
+}
+
+function onIngUomChange(ing, uomId) {
+  ing.uom_id = uomId
+  ing.bom_factor = computeBomFactor(ing.item, uomId)
 }
 
 function removeIngredient(index) {
@@ -670,16 +916,18 @@ async function loadExistingRecipeForMenuItem(menuItem) {
 
     // Map recipe_items
     if (existing.recipe_items?.length) {
-      form.value.ingredients = existing.recipe_items.map((ri) => ({
-        item: ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null,
-        qty_per_serving: ri.qty_per_serving,
-        uom_id: ri.uom_id,
-        wastage_percent: ri.wastage_percent || 0,
-      }))
+      form.value.ingredients = existing.recipe_items.map((ri) => {
+        const item = ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null
+        return {
+          item,
+          qty_per_serving: ri.qty_per_serving,
+          uom_id: ri.uom_id,
+          wastage_percent: ri.wastage_percent || 0,
+          bom_factor: computeBomFactor(item, ri.uom_id),
+        }
+      })
     } else {
-      form.value.ingredients = [
-        { item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 },
-      ]
+      form.value.ingredients = [emptyIngredient()]
     }
   } else {
     form.value.recipe_id = null
@@ -705,14 +953,18 @@ async function editRecipe(row) {
 
   // Map recipe_items
   if (row.recipe_items?.length) {
-    form.value.ingredients = row.recipe_items.map((ri) => ({
-      item: ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null,
-      qty_per_serving: ri.qty_per_serving,
-      uom_id: ri.uom_id,
-      wastage_percent: ri.wastage_percent || 0,
-    }))
+    form.value.ingredients = row.recipe_items.map((ri) => {
+      const item = ri.item || allInventoryItems.value.find((i) => i.id === ri.item_id) || null
+      return {
+        item,
+        qty_per_serving: ri.qty_per_serving,
+        uom_id: ri.uom_id,
+        wastage_percent: ri.wastage_percent || 0,
+        bom_factor: computeBomFactor(item, ri.uom_id),
+      }
+    })
   } else {
-    form.value.ingredients = [{ item: null, qty_per_serving: 0, uom_id: null, wastage_percent: 0 }]
+    form.value.ingredients = [emptyIngredient()]
   }
   dialogOpen.value = true
 }

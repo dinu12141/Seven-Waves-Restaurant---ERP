@@ -3,6 +3,8 @@
     title="Cashier Performance"
     subtitle="Cashier throughput analysis — transaction volumes and speed"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

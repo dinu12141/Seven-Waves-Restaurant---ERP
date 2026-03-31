@@ -25,11 +25,7 @@
                 />
               </div>
               <div class="col-8">
-                <BaseInput
-                  :model-value="selectedVendorName"
-                  label="Vendor Name"
-                  readonly
-                />
+                <BaseInput :model-value="selectedVendorName" label="Vendor Name" readonly />
               </div>
             </template>
 

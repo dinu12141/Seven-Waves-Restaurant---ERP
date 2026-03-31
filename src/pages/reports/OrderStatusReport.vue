@@ -3,6 +3,8 @@
     title="Order Status Report"
     subtitle="Orders breakdown by current status"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

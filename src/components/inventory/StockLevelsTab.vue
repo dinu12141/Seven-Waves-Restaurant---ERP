@@ -47,7 +47,11 @@
     </div>
 
     <!-- Stock Table -->
-    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
+    <q-card
+      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+      flat
+      bordered
+    >
       <q-card-section>
         <q-table
           :rows="filteredStock"

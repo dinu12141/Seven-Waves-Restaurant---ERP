@@ -5,34 +5,32 @@
       <!-- Title row (always visible) -->
       <div class="hero-title-row">
         <div class="hero-text">
-          <h1 class="touch-hero-title" :class="$q.dark.isActive ? 'text-white' : 'text-black'">
-            Experience Fine Dining
-          </h1>
-          <p class="touch-hero-subtitle" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">
-            Explore our executive chef's seasonal recommendations.
-          </p>
+          <h1 class="touch-hero-title">Experience Fine Dining</h1>
+          <p class="touch-hero-subtitle">Explore our executive chef's seasonal recommendations.</p>
         </div>
       </div>
 
       <!-- Search + Filter row (single instance, repositioned via CSS on desktop) -->
       <div class="hero-controls-row">
-        <div class="tm-search-wrap rounded-borders search-field">
+        <div class="tm-search-wrap search-field shadow-2">
           <q-input
             v-model="searchQuery"
             borderless
             dense
             color="primary"
-            placeholder="What are you craving?"
-            class="q-px-sm search-input"
+            placeholder="Search any item..."
+            class="search-input"
             debounce="300"
           >
-            <template v-slot:prepend><q-icon name="search" color="grey-5" size="18px" /></template>
+            <template v-slot:prepend>
+              <q-icon name="search" color="grey-7" size="20px" class="q-pl-sm" />
+            </template>
             <template v-slot:append v-if="searchQuery">
               <q-icon
-                name="close"
+                name="cancel"
                 @click="searchQuery = ''"
-                class="cursor-pointer text-grey-5"
-                size="16px"
+                class="cursor-pointer text-grey-5 q-pr-sm"
+                size="18px"
               />
             </template>
           </q-input>
@@ -525,6 +523,19 @@ onMounted(() => {
   }
 }
 
+:global(.body--dark) .touch-hero-title {
+  color: #ffffff !important;
+}
+:global(.body--dark) .touch-hero-subtitle {
+  color: #cbd5e1 !important;
+}
+:global(.body--light) .touch-hero-title {
+  color: #0f172a !important;
+}
+:global(.body--light) .touch-hero-subtitle {
+  color: #475569 !important;
+}
+
 // ── Controls row (search + filter) ───────────────────────────────────────────
 // On mobile: full-width row below the title
 // On desktop: flex row to the right of title
@@ -551,35 +562,50 @@ onMounted(() => {
 
 // ── Search bar ─────────────────────────────────────────────────────────────────
 .tm-search-wrap {
-  height: 38px;
+  height: 42px;
   display: flex;
   align-items: center;
-  transition:
-    background 0.2s,
-    border-color 0.2s;
+  border-radius: 50px;
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
 :global(.body--dark) .tm-search-wrap {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+:global(.body--dark) .tm-search-wrap:focus-within {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--q-primary);
+  box-shadow: 0 0 0 1px var(--q-primary);
 }
 :global(.body--light) .tm-search-wrap {
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+:global(.body--light) .tm-search-wrap:focus-within {
+  border-color: var(--q-primary);
+  box-shadow:
+    0 0 0 1px var(--q-primary),
+    0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .search-input {
   width: 100%;
   :deep(.q-field__control) {
-    height: 36px;
-    min-height: 36px;
+    height: 40px;
+    min-height: 40px;
   }
   :deep(.q-field__native) {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 500;
     padding: 0;
   }
+  :deep(.q-field__native::placeholder) {
+    font-weight: 400;
+  }
   :deep(.q-field__prepend) {
-    padding-right: 6px;
+    padding-right: 8px;
   }
 }
 
@@ -759,6 +785,7 @@ onMounted(() => {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
 

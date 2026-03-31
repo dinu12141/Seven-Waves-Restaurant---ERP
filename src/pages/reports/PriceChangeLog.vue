@@ -3,6 +3,8 @@
     title="Price Change Log"
     subtitle="Item price modification history — track all price changes"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

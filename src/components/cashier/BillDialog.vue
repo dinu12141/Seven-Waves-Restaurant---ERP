@@ -208,6 +208,10 @@
                 <span>Tax</span>
                 <span>{{ fmtCurrency(order?.tax_amount || 0) }}</span>
               </div>
+              <div v-if="(order?.service_charge || 0) > 0" class="preview-row service-charge">
+                <span>Service Charge (10%)</span>
+                <span>{{ fmtCurrency(order?.service_charge || 0) }}</span>
+              </div>
               <div v-if="orderDeliveryCharge > 0" class="preview-row delivery">
                 <span>🚴 Delivery Charge</span>
                 <span>{{ fmtCurrency(orderDeliveryCharge) }}</span>

@@ -3,6 +3,8 @@
     title="Pickup vs Delivery Summary"
     subtitle="Order type comparison — dine-in, pickup, delivery, online"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

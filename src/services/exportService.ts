@@ -3,9 +3,15 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import logoUrl from 'src/assets/seven-waves-logo-transparent.png'
 
-let cachedLogoBase64: string | null = null
-async function getLogoBase64(): Promise<string> {
-  if (cachedLogoBase64) return cachedLogoBase64
+interface LogoData {
+  data: string
+  width: number
+  height: number
+}
+
+let cachedLogoData: LogoData | null = null
+async function getLogoData(): Promise<LogoData> {
+  if (cachedLogoData) return cachedLogoData
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'Anonymous'
@@ -15,12 +21,61 @@ async function getLogoBase64(): Promise<string> {
       canvas.height = img.height
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.drawImage(img, 0, 0)
-      cachedLogoBase64 = canvas.toDataURL('image/png')
-      resolve(cachedLogoBase64)
+      cachedLogoData = { data: canvas.toDataURL('image/png'), width: img.width, height: img.height }
+      resolve(cachedLogoData)
     }
     img.onerror = reject
     img.src = logoUrl
   })
+}
+
+/**
+ * Reusable SAP B1 compliant generic header renderer for PDFs
+ */
+async function drawSAPHeader(doc: jsPDF, title: string, subtitle: string) {
+  try {
+    const logoObj = await getLogoData()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    // Calculate aspect ratio dynamically so the logo is completely undistorted
+    const logoHeight = 16 // fixed height in mm for header
+    const logoWidth = (logoObj.width / logoObj.height) * logoHeight
+    const logoX = pageWidth - logoWidth - 14 // 14mm right margin
+    doc.addImage(logoObj.data, 'PNG', logoX, 10, logoWidth, logoHeight)
+  } catch (e) {
+    console.warn('Failed to load logo for PDF header', e)
+  }
+
+  // Company Name
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(27, 58, 107) // #1b3a6b Navy
+  doc.text('SEVEN WAVES RESTAURANT (PVT) LTD', 14, 16)
+  
+  // TRN
+  doc.setFontSize(10)
+  doc.setTextColor(112, 128, 144) // Gray
+  doc.setFont('helvetica', 'normal')
+  doc.text('TRN :', 14, 21)
+
+  // Title
+  const cleanTitle = title.replace(/_/g, ' ')
+  doc.setFontSize(12)
+  doc.setTextColor(27, 58, 107) // #1b3a6b
+  doc.setFont('helvetica', 'bold')
+  doc.text(cleanTitle, 14, 27)
+  
+  // Underline for title
+  const titleWidth = doc.getTextWidth(cleanTitle)
+  doc.setDrawColor(27, 58, 107)
+  doc.setLineWidth(0.4)
+  doc.line(14, 28, 14 + titleWidth, 28)
+
+  // Subtitle / Meta (Location and Date)
+  doc.setFontSize(9)
+  doc.setTextColor(100, 100, 100)
+  doc.setFont('helvetica', 'normal')
+  const subText = subtitle || `Generated: ${new Date().toLocaleString()}`
+  doc.text(subText, 14, 33)
 }
 
 /**
@@ -54,26 +109,13 @@ export async function exportToPDF(document: any, lines: any[]) {
   try {
     const doc = new jsPDF()
 
-    // Add Logo Top Right
-    try {
-      const base64Logo = await getLogoBase64()
-      const pageWidth = doc.internal.pageSize.getWidth()
-      doc.addImage(base64Logo, 'PNG', pageWidth - 50, 10, 36, 12)
-    } catch (e) {
-      console.warn('Failed to load logo for PDF', e)
-    }
+    // Render exact UI SAP B1 header
+    await drawSAPHeader(doc, `${document.doc_type} Document`, `Ref No: ${document.doc_number}`)
 
-    // Header
-    doc.setFontSize(22)
-    doc.setTextColor(25, 118, 210) // Quasar Primary Blue
-    doc.text('Seven Waves Restaurant', 14, 22)
-
-    doc.setFontSize(14)
-    doc.setTextColor(0)
-    doc.text(`${document.doc_type} Document: ${document.doc_number}`, 14, 32)
-
+    // Additional inventory metadata rows below the main header
     doc.setFontSize(10)
     doc.setTextColor(100)
+    doc.setFont('helvetica', 'normal')
     doc.text(`Date: ${document.doc_date || 'N/A'}`, 14, 40)
     doc.text(`Warehouse: ${document.warehouse_name || 'N/A'}`, 14, 45)
     if (document.supplier_name) doc.text(`Supplier: ${document.supplier_name}`, 14, 50)
@@ -89,11 +131,11 @@ export async function exportToPDF(document: any, lines: any[]) {
     ])
 
     autoTable(doc, {
-      startY: 60,
+      startY: 55,
       head: [['#', 'Item Description', 'Quantity', 'Unit Cost', 'Total']],
       body: tableRows,
       theme: 'grid',
-      headStyles: { fillColor: [25, 118, 210], halign: 'center' },
+      headStyles: { fillColor: [27, 58, 107], halign: 'center' }, // #1b3a6b Navy headers
       columnStyles: {
         2: { halign: 'right' },
         3: { halign: 'right' },
@@ -171,26 +213,7 @@ export function exportTableToExcel(columns: any[], rows: any[], filename: string
 export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
   const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
 
-  try {
-    const base64Logo = await getLogoBase64()
-    const pageWidth = doc.internal.pageSize.getWidth()
-    doc.addImage(base64Logo, 'PNG', pageWidth - 50, 10, 36, 12)
-  } catch (e) {
-    console.warn('Failed to load logo for PDF header', e)
-  }
-
-  doc.setFontSize(18)
-  doc.setTextColor(25, 118, 210)
-  doc.text('SEVEN WAVES RESTAURANT (PVT) LTD', 14, 18)
-  
-  doc.setFontSize(12)
-  doc.setTextColor(0)
-  doc.text(title.replace(/_/g, ' '), 14, 26)
-  
-  doc.setFontSize(9)
-  doc.setTextColor(100)
-  const subText = subtitle ? `${subtitle} | ` : ''
-  doc.text(`${subText}Generated: ${new Date().toLocaleString()}`, 14, 33)
+  await drawSAPHeader(doc, title, subtitle)
 
   const heads = columns.map((c) => c.label)
   const body = rows.map((r) =>
@@ -205,9 +228,47 @@ export async function exportTableToPDF(columns: any[], rows: any[], title: strin
     head: [heads],
     body,
     theme: 'grid',
-    headStyles: { fillColor: [25, 118, 210], halign: 'center', fontSize: 8 },
+    headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
     styles: { fontSize: 7 },
     columnStyles: Object.fromEntries(columns.map((c, i) => [i, { halign: c.align || 'left' }])),
   })
   doc.save(`${title}_${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
+/**
+ * Print report as PDF — generates the same PDF as exportTableToPDF
+ * but opens it in a new tab for printing instead of downloading.
+ */
+export async function printTableAsPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
+  const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
+
+  await drawSAPHeader(doc, title, subtitle)
+
+  const heads = columns.map((c: any) => c.label)
+  const body = rows.map((r: any) =>
+    columns.map((c: any) => {
+      const val = typeof c.field === 'function' ? c.field(r) : r[c.field]
+      return c.format ? c.format(val) : (val ?? '-')
+    }),
+  )
+
+  autoTable(doc, {
+    startY: 38,
+    head: [heads],
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
+    styles: { fontSize: 7 },
+    columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
+  })
+
+  // Open in new tab for printing instead of downloading
+  const pdfBlob = doc.output('blob')
+  const url = URL.createObjectURL(pdfBlob)
+  const printWindow = window.open(url, '_blank')
+  if (printWindow) {
+    printWindow.addEventListener('load', () => {
+      printWindow.print()
+    })
+  }
 }

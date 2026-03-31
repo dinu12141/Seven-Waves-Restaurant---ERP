@@ -11,9 +11,9 @@ const fs = require('fs')
 const path = require('path')
 const dir = path.join(__dirname, 'src/components/inventory')
 
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.vue'))
+const files = fs.readdirSync(dir).filter((f) => f.endsWith('.vue'))
 
-files.forEach(file => {
+files.forEach((file) => {
   const filePath = path.join(dir, file)
   let content = fs.readFileSync(filePath, 'utf8')
   const original = content
@@ -25,12 +25,12 @@ files.forEach(file => {
   // Fix class="bg-grey-9 text-white" → dynamic :class
   content = content.replace(
     /class="bg-grey-9 text-white"/g,
-    ':class="$q.dark.isActive ? \'bg-grey-9 text-white\' : \'bg-white text-black\'"'
+    ":class=\"$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'\"",
   )
   // Same but with q-mt-md appended
   content = content.replace(
     /class="bg-grey-9 text-white q-mt-md"/g,
-    ':class="[$q.dark.isActive ? \'bg-grey-9 text-white\' : \'bg-white text-black\', \'q-mt-md\']"'
+    ":class=\"[$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black', 'q-mt-md']\"",
   )
 
   // Fix already-broken patterns from previous script run: :dark=" $q.dark.isActive\

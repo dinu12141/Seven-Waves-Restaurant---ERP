@@ -271,12 +271,10 @@ const routes = [
             path: 'void-cancelled',
             component: () => import('pages/reports/VoidCancelledReport.vue'),
           },
-          { path: 'refund-report', component: () => import('pages/reports/RefundReport.vue') },
           {
             path: 'payment-summary',
             component: () => import('pages/reports/PaymentMethodSummary.vue'),
           },
-          { path: 'tax-summary', component: () => import('pages/reports/TaxSummaryReport.vue') },
           // ── Operations Reports ────────────────────────────
           {
             path: 'kitchen-orders',
@@ -300,6 +298,10 @@ const routes = [
             component: () => import('pages/reports/PickupDeliverySummary.vue'),
           },
           { path: 'reservation', component: () => import('pages/reports/ReservationReport.vue') },
+          {
+            path: 'kitchen-usage',
+            component: () => import('pages/reports/DailyKitchenUsage.vue'),
+          },
           {
             path: 'customer-history',
             component: () => import('pages/reports/CustomerOrderHistory.vue'),

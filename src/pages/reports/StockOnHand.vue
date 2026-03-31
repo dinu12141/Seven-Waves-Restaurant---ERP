@@ -3,6 +3,8 @@
     title="Stock on Hand"
     subtitle="Current stock levels per item and warehouse — with reorder alerts"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

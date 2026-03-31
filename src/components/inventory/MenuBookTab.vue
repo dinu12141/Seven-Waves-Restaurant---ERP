@@ -4,7 +4,13 @@
     <div class="row q-col-gutter-lg">
       <!-- Left: Menu Books List -->
       <div class="col-12 col-md-5">
-        <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card'">
+        <q-card
+          :class="
+            $q.dark.isActive
+              ? 'bg-grey-9 text-white border-subtle erp-card'
+              : 'bg-white text-black erp-card'
+          "
+        >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Menu Books</div>
             <q-space />
@@ -96,7 +102,12 @@
       <!-- Right: Book Items Management -->
       <div class="col-12 col-md-7">
         <q-card
-          :class="[$q.dark.isActive ? 'bg-grey-9 text-white border-subtle erp-card' : 'bg-white text-black erp-card', { 'disabled-overlay': !selectedBookId }]"
+          :class="[
+            $q.dark.isActive
+              ? 'bg-grey-9 text-white border-subtle erp-card'
+              : 'bg-white text-black erp-card',
+            { 'disabled-overlay': !selectedBookId },
+          ]"
         >
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-secondary">
@@ -236,7 +247,11 @@
 
     <!-- Book Create/Edit Dialog -->
     <q-dialog v-model="bookDialog.show" persistent>
-      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="width: 500px; max-width: 90vw">
+      <q-card
+        :dark="$q.dark.isActive"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="width: 500px; max-width: 90vw"
+      >
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ bookDialog.isEdit ? 'Edit Menu Book' : 'New Menu Book' }}</div>
           <q-space />
@@ -337,7 +352,11 @@
 
     <!-- ====== ADD ITEMS TO BOOK DIALOG ====== -->
     <q-dialog v-model="addItemsDialog" persistent>
-      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="width: 560px; max-width: 95vw">
+      <q-card
+        :dark="$q.dark.isActive"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="width: 560px; max-width: 95vw"
+      >
         <q-card-section class="row items-center q-pb-none">
           <div>
             <div class="text-h6">
@@ -566,7 +585,11 @@
 
     <!-- Override Price Dialog -->
     <q-dialog v-model="priceDialog.show" persistent>
-      <q-card :dark="$q.dark.isActive" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" style="min-width: 350px">
+      <q-card
+        :dark="$q.dark.isActive"
+        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+        style="min-width: 350px"
+      >
         <q-card-section>
           <div class="text-h6">Override Price</div>
           <div class="text-caption text-grey-5">{{ priceDialog.itemName }}</div>

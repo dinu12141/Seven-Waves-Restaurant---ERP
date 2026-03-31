@@ -32,6 +32,28 @@
     overflow: visible !important;
   }
 
+  /* Override ALL dark-mode CSS custom properties to light values */
+  :root,
+  html,
+  body,
+  #q-app,
+  [data-v-app] {
+    --erp-bg-primary: #ffffff !important;
+    --erp-bg-secondary: #f8f9fc !important;
+    --erp-bg-surface: #ffffff !important;
+    --erp-bg-card: #ffffff !important;
+    --erp-text-primary: #1a1a1a !important;
+    --erp-text-secondary: #333333 !important;
+    --erp-text-muted: #555555 !important;
+    --erp-border: #dee2e6 !important;
+    --erp-sidebar-bg: #ffffff !important;
+    --erp-header-bg: #ffffff !important;
+    --q-dark: #ffffff !important;
+    --q-dark-page: #ffffff !important;
+    background-color: #fff !important;
+    color: #1a1a1a !important;
+  }
+
   /* ── 2. HIDE ALL ERP CHROME ────────────────────────────────────── */
 
   /* MainLayout: header, sidebar, nav tabs, top bar */
@@ -116,7 +138,7 @@
 
   /* ── 3. LAYOUT RESET ───────────────────────────────────────────── */
 
-  /* Remove all layout offsets from Quasar */
+  /* Remove all layout offsets from Quasar & force white background */
   .q-layout,
   .q-page-container,
   .q-layout__section--marginal,
@@ -125,18 +147,27 @@
     margin: 0 !important;
     min-height: 0 !important;
     overflow: visible !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
   }
 
   .q-page-container {
     padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
+    background: #fff !important;
   }
 
   /* ── 4. REPORT PAGE ────────────────────────────────────────────── */
-  .report-page {
+  .report-page,
+  .report-content,
+  .reports-main,
+  .reports-layout,
+  #q-app,
+  [data-v-app] {
     padding: 0 !important;
     background: #fff !important;
+    color: #1a1a1a !important;
     min-height: 0 !important;
   }
 
@@ -148,6 +179,8 @@
     border-bottom: 2pt solid #1a1a2e !important;
     margin-bottom: 8pt !important;
     page-break-inside: avoid !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
   }
 
   .sap-header__company {
@@ -172,6 +205,14 @@
     font-size: 8pt !important;
     color: #555 !important;
     text-align: right !important;
+  }
+
+  .sap-header__logo {
+    height: 36pt !important;
+    width: auto !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* ── 6. REPORT CONTENT WRAPPER ─────────────────────────────────── */

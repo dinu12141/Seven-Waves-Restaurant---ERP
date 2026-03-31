@@ -1117,8 +1117,10 @@ export function useRecipeList() {
           variant:item_variants(id, name, price),
           recipe_items(
             id, item_id, qty_per_serving, uom_id, wastage_percent, notes,
-            item:items(id, code, name, avg_cost),
-            uom:uom(id, code, name)
+            item:items(id, code, name, avg_cost, inventory_uom_id,
+              inv_uom:uom!items_inventory_uom_id_fkey(id, code, name, conversion_factor)
+            ),
+            uom:uom(id, code, name, conversion_factor)
           )
         `)
         .eq('company_id', companyId)
@@ -1130,7 +1132,18 @@ export function useRecipeList() {
         const items = r.recipe_items || []
         const totalCost = items.reduce((s: number, ri: any) => {
           const qty = ri.qty_per_serving * (1 + (ri.wastage_percent || 0) / 100)
-          return s + qty * (ri.item?.avg_cost || 0)
+          const avgCost = ri.item?.avg_cost || 0
+
+          // UOM conversion: BOM UOM → item stock UOM
+          // e.g. 250g (factor=0.001) with stock in KG (factor=1) → 0.25 KG
+          const bomUomFactor = Number(ri.uom?.conversion_factor) || 1
+          // Item's inventory UOM — fetched via items.inv_uom in listItems, but recipe_items
+          // only joins uom (bom uom). We need to get the item's stock uom separately.
+          // Use the item object which includes inventory_uom_id via join
+          const stockUomFactor = Number(ri.item?.inv_uom?.conversion_factor) || 1
+          const conversionRatio = stockUomFactor > 0 ? bomUomFactor / stockUomFactor : bomUomFactor
+
+          return s + qty * conversionRatio * avgCost
         }, 0)
         return {
           ...r,

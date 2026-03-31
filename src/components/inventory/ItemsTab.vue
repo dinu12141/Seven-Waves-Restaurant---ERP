@@ -219,7 +219,12 @@
           label="Add Stock (GRN)"
           color="positive"
           class="q-mr-sm"
-          @click="() => { goToGRN(editingItem); showDialog = false }"
+          @click="
+            () => {
+              goToGRN(editingItem)
+              showDialog = false
+            }
+          "
         />
         <BaseButton
           :label="editingItem ? 'Update' : 'Save'"

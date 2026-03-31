@@ -167,23 +167,22 @@ function handleExport(format) {
   }
 
   const customTitle = tabRef.value.exportTitle
-  let reportTitle = typeof customTitle === 'string'
-    ? customTitle
-    : (customTitle ? customTitle.value : null)
+  let reportTitle =
+    typeof customTitle === 'string' ? customTitle : customTitle ? customTitle.value : null
 
   if (!reportTitle) {
     const titleMap = {
-      'items': 'Inventory Items',
-      'warehouses': 'Warehouses',
+      items: 'Inventory Items',
+      warehouses: 'Warehouses',
       'stock-levels': 'Stock Levels',
-      'suppliers': 'Suppliers',
-      'recipes': 'Recipes',
+      suppliers: 'Suppliers',
+      recipes: 'Recipes',
       'menu-items': 'Menu Items',
       'category-management': 'Categories',
       'menu-book': 'Menu Book',
       'kitchen-mapping': 'Kitchen Mapping',
       'doc-create': 'Inventory Document',
-      'doc-view': 'Inventory Document'
+      'doc-view': 'Inventory Document',
     }
     const baseName = titleMap[tab.value] || `Inventory ${tab.value}`
     reportTitle = baseName.includes('Document') ? baseName : `${baseName} Report`

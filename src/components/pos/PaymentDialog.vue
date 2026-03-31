@@ -47,6 +47,7 @@
               ref="printTemplateRef"
               :invoice="printInvoice"
               :branch-name="branchName"
+              :cashier-name="cashierName"
             />
             <!-- Otherwise use simulated invoice from cart or queue order -->
             <BillPrintTemplate
@@ -54,6 +55,7 @@
               ref="printTemplateRef"
               :invoice="simulatedInvoice"
               :branch-name="branchName"
+              :cashier-name="cashierName"
             />
           </div>
 
@@ -204,10 +206,12 @@ const props = defineProps({
   discountPercent: { type: Number, default: 0 },
   discountValue: { type: Number, default: 0 },
   taxValue: { type: Number, default: 0 },
+  serviceCharge: { type: Number, default: 0 },
   itemCount: { type: Number, default: 0 },
   orderType: { type: String, default: 'dine-in' },
   cartItems: { type: Array, default: () => [] },
   customerName: { type: String, default: '' },
+  orderNumber: { type: String, default: '—' },
   loading: Boolean,
   // ── Queue order prop (billing queue orders from DB) ──
   queueOrder: { type: Object, default: null },
@@ -271,6 +275,14 @@ const effectiveSubtotal = computed(() => {
   if (isQueueOrder.value)
     return parseFloat(props.queueOrder.subtotal || props.queueOrder.total_amount || 0)
   return props.subtotalAmount
+})
+
+const effectiveServiceCharge = computed(() => {
+  if (isMergeMode.value) {
+    return props.mergedOrders.reduce((sum, o) => sum + parseFloat(o.service_charge || 0), 0)
+  }
+  if (isQueueOrder.value) return parseFloat(props.queueOrder.service_charge || 0)
+  return props.serviceCharge // Display simulated service charge for POS direct billing
 })
 
 const effectiveItemCount = computed(() => {
@@ -371,6 +383,7 @@ const simulatedInvoice = computed(() => {
       subtotal: effectiveSubtotal.value,
       grand_total: effectiveTotalAmount.value,
       delivery_charge: 0,
+      service_charge: effectiveServiceCharge.value,
       customer_name: effectiveCustomerName.value,
       customer_phone: props.mergedOrders[0]?.customer_phone || '',
       invoice_items: effectiveItems.value,
@@ -396,6 +409,7 @@ const simulatedInvoice = computed(() => {
             cashierName.value,
         },
         kot_tickets: allKots,
+        order_number: props.mergedOrders.map((o) => o.order_number).join(', '),
         restaurant_tables:
           props.mergedOrders[0]?.restaurant_tables ||
           (props.mergedOrders[0]?.tableNumber
@@ -409,11 +423,14 @@ const simulatedInvoice = computed(() => {
   const qo = props.queueOrder // shorthand for queue order
 
   return {
-    invoice_number: isQueueOrder.value ? qo.invoices?.[0]?.invoice_number || '—' : '—',
+    invoice_number: isQueueOrder.value
+      ? qo.invoices?.[0]?.invoice_number || props.orderNumber
+      : 'PENDING',
     created_at: now,
     subtotal: effectiveSubtotal.value,
     grand_total: effectiveTotalAmount.value,
     delivery_charge: isQueueOrder.value ? parseFloat(qo.delivery_charge || 0) : 0,
+    service_charge: effectiveServiceCharge.value,
     customer_name: effectiveCustomerName.value,
     customer_phone: isQueueOrder.value ? qo.customer_phone || '' : '',
     invoice_items: effectiveItems.value,
@@ -438,6 +455,7 @@ const simulatedInvoice = computed(() => {
           : cashierName.value,
       },
       kot_tickets: isQueueOrder.value ? qo.kot_tickets || [] : [],
+      order_number: isQueueOrder.value ? qo.order_number : props.orderNumber,
       restaurant_tables: isQueueOrder.value
         ? qo.restaurant_tables || (qo.tableNumber ? { table_number: qo.tableNumber } : null)
         : null,

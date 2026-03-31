@@ -11,30 +11,34 @@
       <q-btn flat round icon="refresh" color="grey-5" :loading="loading" @click="refreshAll" />
     </div>
 
-    <!-- KPI Top Row -->
+    <!-- KPI Top Row — each card is now clickable -->
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6 col-md-3">
-        <div class="kpi-card kpi--blue">
+        <div class="kpi-card kpi--blue kpi-clickable" @click="openDetail('waiters')">
           <div class="kpi-val">{{ onShiftWaiters.length }}</div>
           <div class="kpi-lbl">On-Shift Waiters</div>
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="blue-4" />
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card kpi--orange">
+        <div class="kpi-card kpi--orange kpi-clickable" @click="openDetail('waiting')">
           <div class="kpi-val">{{ unacceptedOrders.length }}</div>
           <div class="kpi-lbl">Waiting Orders</div>
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="orange-4" />
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card kpi--green">
+        <div class="kpi-card kpi--green kpi-clickable" @click="openDetail('active')">
           <div class="kpi-val">{{ totalActiveOrders }}</div>
           <div class="kpi-lbl">Active Orders</div>
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="green-4" />
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="kpi-card kpi--purple">
+        <div class="kpi-card kpi--purple kpi-clickable" @click="openDetail('served')">
           <div class="kpi-val">{{ totalServedToday }}</div>
           <div class="kpi-lbl">Served Today</div>
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="purple-4" />
         </div>
       </div>
     </div>
@@ -50,24 +54,9 @@
         no-caps
         color="amber"
         label="View"
-        @click="showUnaccepted = !showUnaccepted"
+        @click="openDetail('waiting')"
       />
     </div>
-    <q-slide-transition>
-      <div v-if="showUnaccepted" class="q-mb-lg">
-        <div
-          v-for="order in unacceptedOrders"
-          :key="order.id"
-          class="order-mini-card q-mb-sm row items-center"
-        >
-          <q-icon name="receipt_long" color="amber" size="16px" class="q-mr-sm" />
-          <span class="text-white text-weight-bold">#{{ order.order_number }}</span>
-          <span class="text-grey-5 q-ml-sm">Table {{ order.table_number || '—' }}</span>
-          <q-space />
-          <span class="text-grey-6 text-caption">{{ fmtTime(order.created_at) }}</span>
-        </div>
-      </div>
-    </q-slide-transition>
 
     <!-- Waiter Performance List -->
     <div class="section-title q-mb-sm">ON-SHIFT WAITERS</div>
@@ -144,6 +133,202 @@
       <WaiterLeaderboard />
     </div>
 
+    <!-- ══════════════════════════════════════════════════════
+         KPI DETAIL DIALOG
+         ══════════════════════════════════════════════════════ -->
+    <q-dialog v-model="detailDialogOpen" position="right" full-height>
+      <q-card class="detail-drawer">
+        <!-- Header -->
+        <q-bar class="detail-drawer-bar">
+          <q-icon :name="detailConfig.icon" :color="detailConfig.color" />
+          <div class="q-ml-sm text-weight-bold text-white">{{ detailConfig.title }}</div>
+          <q-space />
+          <q-badge :color="detailConfig.badgeColor" class="text-weight-bold q-mr-sm">
+            {{ detailConfig.count }}
+          </q-badge>
+          <q-btn flat dense icon="close" color="grey-4" v-close-popup />
+        </q-bar>
+
+        <!-- Loading -->
+        <div v-if="detailLoading" class="column items-center q-pa-xl">
+          <q-spinner-orbit size="40px" :color="detailConfig.color" />
+          <div class="text-grey-5 q-mt-md text-caption">Loading...</div>
+        </div>
+
+        <q-scroll-area v-else style="height: calc(100vh - 50px)">
+          <q-card-section class="q-pa-md">
+
+            <!-- ── WAITERS ── -->
+            <template v-if="detailMode === 'waiters'">
+              <div v-if="onShiftWaiters.length === 0" class="text-grey-6 text-center q-pa-xl text-caption">
+                No waiters currently on shift.
+              </div>
+              <div
+                v-for="w in onShiftWaiters"
+                :key="w.id"
+                class="detail-item q-mb-sm"
+              >
+                <div class="row items-center q-mb-xs">
+                  <q-avatar size="36px" class="waiter-avatar q-mr-sm text-weight-bold text-white" style="font-size:12px">
+                    {{ initials(w.display_name || w.employee_name) }}
+                  </q-avatar>
+                  <div class="col">
+                    <div class="text-white text-weight-bold text-body2">{{ w.display_name || w.employee_name }}</div>
+                    <div class="text-caption text-grey-5">{{ w.waiter_code }}</div>
+                  </div>
+                  <q-btn round flat icon="mail" color="blue-4" size="xs" @click="openMessageDrawer(w); detailDialogOpen = false">
+                    <q-tooltip>Message</q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="row q-gutter-xs q-mt-xs">
+                  <q-chip dense size="sm" color="blue-10" text-color="blue-3" icon="assignment_ind">
+                    {{ w.active_orders }} active
+                  </q-chip>
+                  <q-chip dense size="sm" color="green-10" text-color="green-3" icon="check_circle">
+                    {{ w.served_count }} served
+                  </q-chip>
+                  <q-chip dense size="sm" color="amber-10" text-color="amber-3" icon="stars">
+                    {{ w.current_points }} pts
+                  </q-chip>
+                  <q-chip v-if="w.unread_alerts > 0" dense size="sm" color="red-10" text-color="red-3" icon="notifications">
+                    {{ w.unread_alerts }} unread
+                  </q-chip>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── WAITING ORDERS ── -->
+            <template v-else-if="detailMode === 'waiting'">
+              <div v-if="unacceptedOrders.length === 0" class="text-grey-6 text-center q-pa-xl text-caption">
+                No orders waiting for a waiter.
+              </div>
+              <div
+                v-for="order in unacceptedOrders"
+                :key="order.id"
+                class="detail-item detail-item--orange q-mb-sm"
+              >
+                <div class="row items-center">
+                  <div class="col">
+                    <div class="row items-center q-mb-xs">
+                      <q-icon name="receipt_long" color="orange-4" size="16px" class="q-mr-xs" />
+                      <span class="text-white text-weight-bold">#{{ order.order_number }}</span>
+                      <q-badge color="orange-9" text-color="white" class="q-ml-sm text-caption">WAITING</q-badge>
+                    </div>
+                    <div class="row items-center q-gutter-sm">
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="table_restaurant" size="12px" class="q-mr-xs" />
+                        Table {{ order.table_number || '—' }}
+                      </span>
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="schedule" size="12px" class="q-mr-xs" />
+                        {{ fmtTime(order.created_at) }}
+                      </span>
+                      <span class="text-caption" :class="waitTimeColor(order.created_at)">
+                        {{ waitDuration(order.created_at) }}
+                      </span>
+                    </div>
+                  </div>
+                  <q-icon name="hourglass_top" color="orange-4" size="20px" class="q-ml-sm" />
+                </div>
+              </div>
+            </template>
+
+            <!-- ── ACTIVE ORDERS ── -->
+            <template v-else-if="detailMode === 'active'">
+              <div v-if="activeOrdersList.length === 0" class="text-grey-6 text-center q-pa-xl text-caption">
+                No active orders right now.
+              </div>
+              <div
+                v-for="order in activeOrdersList"
+                :key="order.id"
+                class="detail-item detail-item--green q-mb-sm"
+              >
+                <div class="row items-center">
+                  <div class="col">
+                    <div class="row items-center q-mb-xs">
+                      <q-icon name="receipt_long" color="green-4" size="16px" class="q-mr-xs" />
+                      <span class="text-white text-weight-bold">#{{ order.order_number }}</span>
+                      <q-badge
+                        :color="statusColor(order.status)"
+                        text-color="white"
+                        class="q-ml-sm text-caption"
+                      >
+                        {{ statusLabel(order.status) }}
+                      </q-badge>
+                    </div>
+                    <div class="row items-center q-gutter-sm">
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="table_restaurant" size="12px" class="q-mr-xs" />
+                        Table {{ order.table_number || '—' }}
+                      </span>
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="person" size="12px" class="q-mr-xs" />
+                        {{ order.waiter_name || 'Unassigned' }}
+                      </span>
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="schedule" size="12px" class="q-mr-xs" />
+                        {{ fmtTime(order.created_at) }}
+                      </span>
+                    </div>
+                    <div v-if="order.total_amount" class="text-green-3 text-caption q-mt-xs text-weight-bold">
+                      LKR {{ Number(order.total_amount).toLocaleString() }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── SERVED TODAY ── -->
+            <template v-else-if="detailMode === 'served'">
+              <div v-if="servedDetailList.length === 0" class="text-grey-6 text-center q-pa-xl text-caption">
+                No orders served yet today.
+              </div>
+              <div class="text-caption text-grey-5 q-mb-md" v-if="servedDetailList.length > 0">
+                <q-icon name="monetization_on" color="purple-3" class="q-mr-xs" />
+                Total Revenue:
+                <span class="text-purple-3 text-weight-bold q-ml-xs">
+                  LKR {{ servedTotalRevenue.toLocaleString() }}
+                </span>
+              </div>
+              <div
+                v-for="order in servedDetailList"
+                :key="order.id"
+                class="detail-item detail-item--purple q-mb-sm"
+              >
+                <div class="row items-center">
+                  <div class="col">
+                    <div class="row items-center q-mb-xs">
+                      <q-icon name="check_circle" color="purple-4" size="16px" class="q-mr-xs" />
+                      <span class="text-white text-weight-bold">#{{ order.order_number }}</span>
+                      <q-badge color="purple-9" text-color="white" class="q-ml-sm text-caption">SERVED</q-badge>
+                    </div>
+                    <div class="row items-center q-gutter-sm">
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="table_restaurant" size="12px" class="q-mr-xs" />
+                        Table {{ order.table_number || '—' }}
+                      </span>
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="person" size="12px" class="q-mr-xs" />
+                        {{ order.waiter_name || '—' }}
+                      </span>
+                      <span class="text-grey-4 text-caption">
+                        <q-icon name="schedule" size="12px" class="q-mr-xs" />
+                        {{ fmtTime(order.updated_at) }}
+                      </span>
+                    </div>
+                    <div class="text-purple-3 text-caption q-mt-xs text-weight-bold">
+                      LKR {{ Number(order.total_amount || 0).toLocaleString() }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+          </q-card-section>
+        </q-scroll-area>
+      </q-card>
+    </q-dialog>
+
     <!-- Message Drawer -->
     <q-dialog v-model="msgDrawerOpen" position="right" full-height>
       <q-card class="msg-drawer">
@@ -213,13 +398,14 @@ const authStore = useAuthStore()
 const $q = useQuasar()
 
 const loading = ref(false)
-const showUnaccepted = ref(false)
 
 // Data
 const waiterProfiles = ref([])
 const unacceptedOrders = ref([])
 const hierarchyMap = ref([])
 const servedOrdersToday = ref([])
+const activeOrdersList = ref([])
+const servedDetailList = ref([])
 
 // Realtime
 let profilesChannel = null
@@ -232,6 +418,65 @@ const msgBody = ref('')
 const msgPriority = ref('normal')
 const sending = ref(false)
 
+// ── Detail Dialog ────────────────────────────────────────────────────────────
+const detailDialogOpen = ref(false)
+const detailMode = ref('') // 'waiters' | 'waiting' | 'active' | 'served'
+const detailLoading = ref(false)
+
+const detailConfigMap = {
+  waiters: {
+    title: 'On-Shift Waiters',
+    icon: 'badge',
+    color: 'blue-4',
+    badgeColor: 'blue-9',
+    countFn: () => onShiftWaiters.value.length,
+  },
+  waiting: {
+    title: 'Waiting Orders',
+    icon: 'hourglass_top',
+    color: 'orange-4',
+    badgeColor: 'orange-9',
+    countFn: () => unacceptedOrders.value.length,
+  },
+  active: {
+    title: 'Active Orders',
+    icon: 'soup_kitchen',
+    color: 'green-4',
+    badgeColor: 'green-9',
+    countFn: () => activeOrdersList.value.length,
+  },
+  served: {
+    title: 'Served Today',
+    icon: 'check_circle',
+    color: 'purple-4',
+    badgeColor: 'purple-9',
+    countFn: () => servedDetailList.value.length,
+  },
+}
+
+const detailConfig = computed(() => {
+  const cfg = detailConfigMap[detailMode.value] || detailConfigMap.waiters
+  return {
+    ...cfg,
+    count: cfg.countFn(),
+  }
+})
+
+async function openDetail(mode) {
+  detailMode.value = mode
+  detailDialogOpen.value = true
+  detailLoading.value = true
+  try {
+    if (mode === 'active') await loadActiveOrders()
+    if (mode === 'served') await loadServedTodayDetail()
+    if (mode === 'waiting') await loadUnacceptedOrders()
+    if (mode === 'waiters') await loadWaiters()
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+// ── Computed ─────────────────────────────────────────────────────────────────
 const currentBranch = computed(() => authStore.currentBranch?.name || '—')
 const today = computed(() =>
   new Date().toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' }),
@@ -243,6 +488,11 @@ const totalActiveOrders = computed(() =>
 )
 const totalServedToday = computed(() => servedOrdersToday.value.length)
 
+const servedTotalRevenue = computed(() =>
+  servedDetailList.value.reduce((sum, o) => sum + Number(o.total_amount || 0), 0),
+)
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function initials(name) {
   return name
     ? name
@@ -269,6 +519,42 @@ function htColor(t) {
       general: 'orange-8',
     }[t] || 'grey-8'
   )
+}
+
+function statusLabel(s) {
+  return (
+    {
+      accepted: 'Accepted',
+      preparing: 'Preparing',
+      ready: 'Ready',
+      pending_waiter: 'Waiting',
+    }[s] || s
+  )
+}
+function statusColor(s) {
+  return (
+    {
+      accepted: 'blue-9',
+      preparing: 'orange-9',
+      ready: 'green-9',
+      pending_waiter: 'amber-9',
+    }[s] || 'grey-9'
+  )
+}
+
+function waitDuration(dt) {
+  if (!dt) return ''
+  const mins = Math.floor((Date.now() - new Date(dt).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`
+}
+function waitTimeColor(dt) {
+  if (!dt) return 'text-grey-5'
+  const mins = Math.floor((Date.now() - new Date(dt).getTime()) / 60000)
+  if (mins < 5) return 'text-green-4'
+  if (mins < 15) return 'text-amber-4'
+  return 'text-red-4'
 }
 
 // ─── Data Loading ───────────────────────────────────────────────────────────
@@ -301,7 +587,6 @@ async function loadWaiters() {
   const branchId = authStore.currentBranch?.id
   if (!branchId) return
 
-  // Get active waiter profiles in this branch
   const { data: profiles } = await supabase
     .from('waiter_profiles')
     .select(
@@ -318,10 +603,8 @@ async function loadWaiters() {
     return
   }
 
-  // Enrich with active orders, unread alerts
   const enriched = await Promise.all(
     profiles.map(async (wp) => {
-      // Active orders
       const { count: activeOrders } = await supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
@@ -329,7 +612,6 @@ async function loadWaiters() {
         .eq('branch_id', branchId)
         .in('status', ['accepted', 'preparing', 'ready'])
 
-      // Unread notifications
       const { count: unreadAlerts } = await supabase
         .from('waiter_notifications')
         .select('id', { count: 'exact', head: true })
@@ -365,6 +647,27 @@ async function loadUnacceptedOrders() {
     .eq('status', 'pending_waiter')
     .order('created_at', { ascending: true })
   unacceptedOrders.value = data || []
+}
+
+async function loadActiveOrders() {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+  const { data } = await supabase
+    .from('orders')
+    .select(
+      `
+      id, order_number, table_number, status, created_at, total_amount,
+      waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
+    `,
+    )
+    .eq('branch_id', branchId)
+    .in('status', ['accepted', 'preparing', 'ready'])
+    .order('created_at', { ascending: true })
+
+  activeOrdersList.value = (data || []).map((o) => ({
+    ...o,
+    waiter_name: o.waiter?.full_name || null,
+  }))
 }
 
 async function loadHierarchy() {
@@ -404,6 +707,30 @@ async function loadServedToday() {
   servedOrdersToday.value = data || []
 }
 
+async function loadServedTodayDetail() {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const { data } = await supabase
+    .from('orders')
+    .select(
+      `
+      id, order_number, table_number, status, total_amount, updated_at,
+      waiter:profiles!orders_assigned_waiter_id_fkey ( full_name )
+    `,
+    )
+    .eq('branch_id', branchId)
+    .eq('status', 'served')
+    .gte('updated_at', todayStart.toISOString())
+    .order('updated_at', { ascending: false })
+
+  servedDetailList.value = (data || []).map((o) => ({
+    ...o,
+    waiter_name: o.waiter?.full_name || null,
+  }))
+}
+
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 async function loadLeaderboard() {
   const branchId = authStore.currentBranch?.id
@@ -423,7 +750,6 @@ async function loadLeaderboard() {
     return
   }
 
-  // Enrich with recent ledger entries (last 10 per waiter)
   const enriched = await Promise.all(
     profiles.map(async (wp) => {
       const { data: ledger } = await supabase
@@ -473,7 +799,6 @@ async function sendMessage() {
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    // Get sender employee id
     const { data: senderEmp } = await supabase
       .from('employees')
       .select('id')
@@ -495,7 +820,6 @@ async function sendMessage() {
 
     if (msgErr) throw msgErr
 
-    // Dispatch to waiter notifications so it appears in their app
     if (selectedWaiter.value.id) {
       const { error: notifErr } = await supabase.from('waiter_notifications').insert({
         waiter_profile_id: selectedWaiter.value.id,
@@ -541,12 +865,35 @@ async function sendMessage() {
   letter-spacing: 1.5px;
   color: #4b5563;
 }
+
+// ── KPI Cards ──────────────────────────────────────────────────────────────
 .kpi-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
+  position: relative;
+}
+.kpi-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  user-select: none;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.07) !important;
+  }
+  &:active {
+    transform: translateY(0px);
+    box-shadow: none;
+  }
+}
+.kpi-chevron {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  opacity: 0.5;
 }
 .kpi-val {
   font-size: 1.7rem;
@@ -561,34 +908,28 @@ async function sendMessage() {
   color: #6b7280;
   margin-top: 4px;
 }
-.kpi--blue .kpi-val {
-  color: #60a5fa;
-}
+.kpi--blue .kpi-val { color: #60a5fa; }
 .kpi--blue {
   border-color: rgba(96, 165, 250, 0.2);
   background: rgba(96, 165, 250, 0.06);
 }
-.kpi--orange .kpi-val {
-  color: #f97316;
-}
+.kpi--orange .kpi-val { color: #f97316; }
 .kpi--orange {
   border-color: rgba(249, 115, 22, 0.2);
   background: rgba(249, 115, 22, 0.06);
 }
-.kpi--green .kpi-val {
-  color: #4ade80;
-}
+.kpi--green .kpi-val { color: #4ade80; }
 .kpi--green {
   border-color: rgba(34, 197, 94, 0.2);
   background: rgba(34, 197, 94, 0.06);
 }
-.kpi--purple .kpi-val {
-  color: #a78bfa;
-}
+.kpi--purple .kpi-val { color: #a78bfa; }
 .kpi--purple {
   border-color: rgba(167, 139, 250, 0.2);
   background: rgba(167, 139, 250, 0.06);
 }
+
+// ── Alert Banner ───────────────────────────────────────────────────────────
 .alert-banner {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.25);
@@ -604,6 +945,8 @@ async function sendMessage() {
   border-radius: 8px;
   padding: 10px 14px;
 }
+
+// ── Waiter Cards ───────────────────────────────────────────────────────────
 .waiter-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -630,6 +973,8 @@ async function sendMessage() {
     background: rgba(248, 113, 113, 0.08);
   }
 }
+
+// ── Hierarchy ──────────────────────────────────────────────────────────────
 .hierarchy-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -637,6 +982,34 @@ async function sendMessage() {
   padding: 10px 14px;
   font-size: 0.85rem;
 }
+
+// ── Detail Drawer ──────────────────────────────────────────────────────────
+.detail-drawer {
+  width: 400px;
+  max-width: 95vw;
+  background: #0d1117 !important;
+  color: #fff !important;
+  border-left: 1px solid rgba(255,255,255,0.08);
+}
+.detail-drawer-bar {
+  background: #161b22;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  color: #fff;
+}
+.detail-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: background 0.15s ease;
+  &:hover { background: rgba(255,255,255,0.05); }
+  &--orange { border-left: 3px solid rgba(249, 115, 22, 0.6); }
+  &--green  { border-left: 3px solid rgba(34, 197, 94, 0.6); }
+  &--purple { border-left: 3px solid rgba(167, 139, 250, 0.6); }
+  &--blue   { border-left: 3px solid rgba(96, 165, 250, 0.6); }
+}
+
+// ── Message Drawer ─────────────────────────────────────────────────────────
 .msg-drawer {
   width: 380px;
   max-width: 90vw;
@@ -647,7 +1020,7 @@ async function sendMessage() {
   background: #1f2937;
 }
 
-// ─── Leaderboard ─────────────────────────────────────────────────────────────
+// ── Leaderboard ────────────────────────────────────────────────────────────
 .lb-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);

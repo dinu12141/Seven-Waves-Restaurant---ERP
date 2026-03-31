@@ -59,7 +59,11 @@
     </div>
 
     <!-- Ledger Table (Read Only) -->
-    <q-card :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'" flat bordered>
+    <q-card
+      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+      flat
+      bordered
+    >
       <q-card-section class="q-pb-sm">
         <div class="text-h6">
           <q-icon name="menu_book" class="q-mr-sm" />Stock Ledger — Audit Trail
@@ -226,7 +230,9 @@ function formatDateTime(val) {
   )
 }
 const exportTitle = computed(() => {
-  return docTypeFilter.value ? `${docTypeFilter.value} Ledger Audit Report` : 'Inventory Stock Ledger Audit Trail'
+  return docTypeFilter.value
+    ? `${docTypeFilter.value} Ledger Audit Report`
+    : 'Inventory Stock Ledger Audit Trail'
 })
 
 defineExpose({

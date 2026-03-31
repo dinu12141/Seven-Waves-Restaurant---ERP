@@ -3,6 +3,8 @@
     title="Rider Performance Report"
     subtitle="Per-rider delivery metrics and performance ranking"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

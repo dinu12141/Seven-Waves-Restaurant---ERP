@@ -3,6 +3,8 @@
     title="Payment Method Summary"
     subtitle="Revenue breakdown by payment method — cash, card, online, etc."
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

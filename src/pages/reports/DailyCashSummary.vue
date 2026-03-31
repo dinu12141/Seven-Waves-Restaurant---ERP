@@ -3,6 +3,8 @@
     title="Daily Cash Summary"
     subtitle="Cash register reconciliation — opening, sales, expenses, closing"
     :kpis="kpiData"
+    :export-columns="columns"
+    :export-rows="rows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

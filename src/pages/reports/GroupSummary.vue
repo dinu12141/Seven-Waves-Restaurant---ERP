@@ -3,35 +3,12 @@
     title="Group Summary"
     subtitle="Department Summary — Sales broken down by menu category groups"
     :kpis="kpiData"
-    :hide-sap-header="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
     @refresh="loadData"
   >
     <template #default>
-      <!-- SAP-style Report Header -->
-      <div class="sap-header">
-        <div class="sap-header__left">
-          <div class="sap-header__center">
-            <div class="sap-header__company">SEVEN WAVES RESTAURANT (PVT) LTD</div>
-            <div class="sap-header__title sap-header__title--underline">Group Summary</div>
-          </div>
-          <div class="sap-header__meta">
-            <div>
-              Location: <strong>{{ branchName }}</strong>
-            </div>
-            <div>
-              From Date : <strong>{{ reportDateRange }}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="sap-header__right">
-          <div class="sap-header__page">Page 1 of 1</div>
-          <div class="sap-header__date">{{ todayFormatted }}</div>
-        </div>
-      </div>
-
       <!-- ── Data Table ───────────────────────────── -->
       <table class="sap-native-table">
         <thead>
@@ -151,24 +128,6 @@ const rawItems = ref([])
 const currentFilters = ref({})
 
 // ── Helpers ────────────────────────────────────────────────
-const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES RESTAURANT')
-const todayFormatted = computed(() =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-)
-const reportDateRange = computed(() => {
-  const f = currentFilters.value
-  if (f.dateFrom && f.dateTo) return `${fmtDate(f.dateFrom)} || To Date : ${fmtDate(f.dateTo)}`
-  return fmtDate(new Date().toISOString().slice(0, 10))
-})
-
-function fmtDate(d) {
-  if (!d) return ''
-  return new Date(d).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function fmtN(val) {
   const n = Number(val || 0)
@@ -260,7 +219,7 @@ async function loadData(filters = {}) {
         ),
         menu_items (
           id, name,
-          item_categories ( id, name )
+          categories ( id, name )
         )
       `)
 
@@ -286,7 +245,7 @@ async function loadData(filters = {}) {
       if (!order || order.status === 'cancelled') continue
 
       const menuItem = oi.menu_items || {}
-      const category = menuItem.item_categories || {}
+      const category = menuItem.categories || {}
       const itemTotal = Number(oi.total_price || oi.quantity * oi.unit_price || 0)
       const orderSubtotal = Number(order.subtotal || order.total_amount || 1)
       const ratio = orderSubtotal > 0 ? itemTotal / orderSubtotal : 0

@@ -31,7 +31,7 @@ interface AuthState {
 // ── Auth cache helpers ─────────────────────────────────────────
 // Caches roles, permissions, branches in localStorage so repeat
 // logins are instant — one network call (signInWithPassword) instead of 4.
-const CACHE_KEY = (uid: string) => `erp_auth_${uid}`
+const CACHE_KEY = (uid: string) => `erp_auth_v2_${uid}`
 
 interface AuthCache {
   roles: UserRole[]
@@ -65,6 +65,22 @@ function loadAuthCache(uid: string): AuthCache | null {
 function clearAuthCache(uid: string) {
   try { localStorage.removeItem(CACHE_KEY(uid)) } catch {}
 }
+
+/** One-time migration: purge old-format cache keys that lack the v2 prefix */
+function purgeOldCacheKeys() {
+  try {
+    const toDelete: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('erp_auth_') && !key.startsWith('erp_auth_v2_')) {
+        toDelete.push(key)
+      }
+    }
+    toDelete.forEach((k) => localStorage.removeItem(k))
+  } catch {}
+}
+// Run immediately at module load
+purgeOldCacheKeys()
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
@@ -290,6 +306,85 @@ export const useAuthStore = defineStore('auth', {
         this._backgroundFetchNonCritical()
 
         return { data, error: null }
+      } catch (err: any) {
+        this.error = err.message || 'An unexpected error occurred'
+        return { data: null, error: err }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Sign In with Numeric User Code (for Waiters / Cashiers):
+     * Calls the login-with-code Edge Function which:
+     *   1. Looks up the email by user_code
+     *   2. Signs in with email+password
+     *   3. Returns session + roles
+     */
+    async signInWithCode(userCode: string, password: string): Promise<{ data: any; error: any }> {
+      this.loading = true
+      this.error = null
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/login-with-code`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({ user_code: userCode, password }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || result.error) {
+          const msg = result.error || 'Invalid user code or password'
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
+        // Set the session from the edge function response
+        if (result.session) {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: result.session.access_token,
+            refresh_token: result.session.refresh_token,
+          })
+
+          if (sessionError) {
+            this.error = 'Failed to establish session'
+            return { data: null, error: { message: 'Failed to establish session' } }
+          }
+
+          this.user = sessionData.user
+          this.session = sessionData.session
+        }
+
+        // Apply roles from edge function response (instant — no extra DB call)
+        if (result.roles && Array.isArray(result.roles)) {
+          this.roles = result.roles as UserRole[]
+        }
+
+        // Fetch remaining data (permissions, branches) in parallel
+        await Promise.all([
+          this._fetchPermissions(),
+          this._fetchBranches(),
+        ])
+
+        // Cache for fast future logins
+        if (this.user) {
+          saveAuthCache(this.user.id, {
+            roles: this.roles,
+            permissions: this.permissions,
+            branches: this.branches,
+          })
+        }
+
+        // Profile, modules, notifications — background
+        this._backgroundFetchNonCritical()
+
+        return { data: result, error: null }
       } catch (err: any) {
         this.error = err.message || 'An unexpected error occurred'
         return { data: null, error: err }
