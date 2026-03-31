@@ -1,27 +1,23 @@
 <template>
-  <div class="erp-dashboard-card q-pa-md" :class="colorClass">
-    <div class="erp-dashboard-card__glow"></div>
-    <div class="row no-wrap items-center relative-position z-top full-height">
-      <div class="erp-dashboard-card__icon-box q-mr-md" :class="`text-${color}`">
-        <q-icon :name="icon" size="28px" />
-      </div>
-      <div class="column justify-center flex-grow erp-dashboard-card__content">
-        <div class="erp-dashboard-card__title text-uppercase text-weight-bold tracking-wide">
-          {{ title }}
-        </div>
-        <div
-          class="erp-dashboard-card__value erp-num q-my-xs tracking-tight"
-          :title="String(value)"
-        >
-          {{ value }}
-        </div>
-        <div class="erp-dashboard-card__subtext">
-          <span class="q-mr-xs text-weight-bold" :class="trendClass" v-if="trend">
-            <q-icon :name="trendIcon" size="14px" class="q-mr-xs" v-if="trendIcon" />
-            {{ trend }}
-          </span>
-          <span class="ellipsis">{{ meta }}</span>
-        </div>
+  <div class="sys-kpi-card" :class="gradientClass">
+    <!-- Watermark icon -->
+    <q-icon :name="icon" size="72px" class="sys-kpi-watermark" />
+
+    <!-- Frosted icon wrap -->
+    <div class="sys-kpi-icon-wrap">
+      <q-icon :name="icon" size="22px" color="white" />
+    </div>
+
+    <!-- Body -->
+    <div class="sys-kpi-body">
+      <div class="sys-kpi-label">{{ title }}</div>
+      <div class="sys-kpi-value">{{ value }}</div>
+      <div v-if="trend || meta" class="sys-kpi-meta">
+        <span v-if="trend" :class="trendClass" class="q-mr-xs">
+          <q-icon v-if="trendIcon" :name="trendIcon" size="12px" class="q-mr-xs" />
+          {{ trend }}
+        </span>
+        <span v-if="meta" class="ellipsis">{{ meta }}</span>
       </div>
     </div>
   </div>
@@ -34,135 +30,131 @@ const props = defineProps({
   title: String,
   value: [String, Number],
   icon: String,
-  color: { type: String, default: 'primary' },
+  color: { type: String, default: 'blue' },
   trend: String,
   trendIcon: String,
-  trendColor: { type: String, default: 'neutral' }, // positive, negative, neutral
+  trendColor: { type: String, default: 'neutral' },
   meta: String,
+  isCurrency: Boolean,
 })
 
-const colorClass = computed(() => `erp-dashboard-card--${props.color}`)
+const gradientClass = computed(() => `sys-kpi-card--${props.color}`)
+
 const trendClass = computed(() => {
   if (props.trendColor === 'positive') return 'text-positive'
   if (props.trendColor === 'negative') return 'text-negative'
-  return 'erp-dashboard-card__trend-neutral'
+  return 'sys-kpi-meta--neutral'
 })
 </script>
 
 <style scoped lang="scss">
-.erp-dashboard-card {
-  background: var(--erp-bg-card);
-  border: 1px solid var(--erp-border-strong);
+.sys-kpi-card {
   border-radius: 12px;
+  padding: 16px 18px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
   position: relative;
   overflow: hidden;
+  border: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
   height: 100%;
-  min-height: 105px;
-  min-width: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--erp-shadow-card);
+  min-height: 0;
 
   &:hover {
-    transform: translateY(-4px);
-    border-color: var(--erp-border-hover);
-    box-shadow: var(--erp-shadow-lg);
-
-    .erp-dashboard-card__glow {
-      opacity: 0.15;
-    }
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   }
 
-  &__glow {
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at center, currentColor 0%, transparent 60%);
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  &--primary {
-    color: var(--erp-primary);
-  }
-  &--green {
-    color: #10b981;
-  }
+  // Gradient variants — exact same as main dashboard
   &--blue {
-    color: #3b82f6;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  &--orange {
-    color: #f59e0b;
+  &--green, &--primary {
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--orange, &--amber {
+    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--red {
-    color: #ef4444;
+    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  &--purple {
-    color: #8b5cf6;
+  &--purple, &--deep-purple {
+    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  &--teal {
-    color: #0d9488;
+  &--teal, &--cyan {
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
+  &--indigo {
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+    box-shadow: 0 4px 14px rgba(67, 56, 202, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+}
 
-  &__icon-box {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    background: var(--erp-bg-hover);
-    border: 1px solid var(--erp-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+// Frosted icon wrap — 46×46px, exact match
+.sys-kpi-icon-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 
-  &__title {
-    font-size: 11px;
-    letter-spacing: 0.8px;
-    line-height: 1.2;
-    color: var(--erp-text-muted);
-  }
+// Body
+.sys-kpi-body {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
 
-  &__value {
-    font-size: clamp(16px, 2vw, 26px);
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--erp-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+// Label — 10px, same as main dashboard
+.sys-kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
 
-  &__content {
-    min-width: 0;
-    overflow: hidden;
-    min-height: 56px;
-  }
+// Value — 22px / 900, same as main dashboard
+.sys-kpi-value {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  margin-bottom: 8px;
+}
 
-  &__subtext {
-    font-size: 11.5px;
-    font-weight: 500;
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    color: var(--erp-text-muted);
-  }
+// Meta / trend row
+.sys-kpi-meta {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+}
+.sys-kpi-meta--neutral {
+  color: rgba(255, 255, 255, 0.65);
+}
 
-  &__trend-neutral {
-    color: var(--erp-text-muted);
-  }
-
-  .tracking-wide {
-    letter-spacing: 1px;
-  }
-  .tracking-tight {
-    letter-spacing: -0.5px;
-  }
-  .z-top {
-    z-index: 2;
-    position: relative;
-  }
+// Watermark icon
+.sys-kpi-watermark {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  opacity: 0.08;
+  pointer-events: none;
+  color: white !important;
 }
 </style>

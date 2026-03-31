@@ -1,137 +1,131 @@
 <template>
   <q-page class="waiter-page-dark">
-    <!-- Toolbar -->
-    <div class="inner-header q-px-md q-py-sm row items-center">
-      <div class="text-weight-bold text-white">Incoming Orders</div>
-      <q-space />
-      <q-badge v-if="store.pendingCount > 0" color="red" class="q-px-sm">
-        {{ store.pendingCount }} pending
-      </q-badge>
-      <q-btn
-        round
-        flat
-        dense
-        icon="refresh"
-        color="grey-5"
-        class="q-ml-sm"
-        :loading="store.loading"
-        @click="store.loadPendingOrders()"
-      />
+    <!-- ── Sticky Header ─────────────────────────────── -->
+    <div class="inbox-header">
+      <div class="inbox-header__left">
+        <q-icon name="move_to_inbox" size="20px" color="orange-8" />
+        <span class="inbox-header__title">Incoming Orders</span>
+      </div>
+      <div class="inbox-header__right">
+        <q-chip
+          v-if="store.pendingCount > 0"
+          dense
+          color="red-6"
+          text-color="white"
+          class="inbox-count-chip"
+        >
+          {{ store.pendingCount }} pending
+        </q-chip>
+        <q-btn
+          round flat dense
+          icon="refresh"
+          color="grey-6"
+          size="sm"
+          :loading="store.loading"
+          @click="store.loadPendingOrders()"
+        />
+      </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="store.loading" class="column items-center q-pa-xl">
+    <!-- ── Loading ──────────────────────────────────── -->
+    <div v-if="store.loading" class="inbox-loading">
       <q-spinner-orbit size="40px" color="orange" />
     </div>
 
-    <!-- Empty -->
-    <div v-else-if="store.pendingOrders.length === 0" class="empty-state">
-      <q-icon name="inbox" size="52px" class="text-grey-7 q-mb-md" />
-      <div class="text-grey-5">No pending orders</div>
-      <div class="text-caption text-grey-7 q-mt-xs">Orders will appear here in real time</div>
+    <!-- ── Empty State ─────────────────────────────── -->
+    <div v-else-if="store.pendingOrders.length === 0" class="inbox-empty">
+      <div class="inbox-empty__icon">
+        <q-icon name="inbox" size="36px" color="grey-4" />
+      </div>
+      <div class="inbox-empty__title">No pending orders</div>
+      <div class="inbox-empty__sub">Orders will appear here in real time</div>
     </div>
 
-    <!-- Order Cards -->
-    <div v-else class="q-pa-md">
-      <div v-for="order in store.pendingOrders" :key="order.id" class="order-card q-mb-md">
+    <!-- ── Order Cards ─────────────────────────────── -->
+    <div v-else class="inbox-list">
+      <div v-for="order in store.pendingOrders" :key="order.id" class="inbox-card">
         <!-- Card Header -->
-        <div class="order-card__header row items-center">
-          <div class="col">
-            <div class="text-white text-weight-bold text-subtitle2">#{{ order.order_number }}</div>
-            <div class="text-caption text-grey-5">
-              <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
+        <div class="inbox-card__header">
+          <div class="inbox-card__meta">
+            <div class="inbox-card__order-num">#{{ order.order_number }}</div>
+            <div class="inbox-card__details">
+              <q-icon name="table_restaurant" size="11px" />
               Table {{ order.tableNumber || order.table_number || '—' }}
-              <span class="q-mx-xs text-grey-7">·</span>
-              <q-icon name="schedule" size="11px" class="q-mr-xs" />
+              <span class="inbox-card__dot">·</span>
+              <q-icon name="schedule" size="11px" />
               {{ fmtTime(order.created_at) }}
             </div>
           </div>
-          <q-chip dense color="amber-9" text-color="white" icon="pending" class="text-caption">
+          <q-chip dense color="amber-1" text-color="amber-10" icon="pending" class="inbox-status-chip">
             Waiting
           </q-chip>
         </div>
 
         <!-- Items with Availability Toggles -->
-        <div class="order-card__items">
+        <div class="inbox-card__items">
           <!-- Hint -->
-          <div class="avail-hint row items-center q-mb-sm">
-            <q-icon name="touch_app" size="12px" color="grey-6" class="q-mr-xs" />
-            <span class="text-grey-7" style="font-size: 0.65rem; letter-spacing: 0.5px"
-              >TAP TO MARK AVAILABILITY (OPTIONAL)</span
-            >
+          <div class="inbox-avail-hint">
+            <q-icon name="touch_app" size="12px" color="grey-5" class="q-mr-xs" />
+            TAP TO MARK AVAILABILITY (OPTIONAL)
           </div>
 
           <div
             v-for="item in order.items || order.order_items || []"
             :key="item.id"
-            class="item-row row items-center"
+            class="inbox-item"
             :class="{
-              'item-row--available': getAvail(order.id, item.id) === 'available',
-              'item-row--unavailable': getAvail(order.id, item.id) === 'unavailable',
+              'inbox-item--available': getAvail(order.id, item.id) === 'available',
+              'inbox-item--unavailable': getAvail(order.id, item.id) === 'unavailable',
             }"
           >
-            <q-badge color="grey-8" :label="item.quantity + 'x'" class="q-mr-sm item-qty" />
+            <q-badge
+              :color="getAvail(order.id, item.id) === 'unavailable' ? 'red-3' : 'grey-3'"
+              :text-color="getAvail(order.id, item.id) === 'unavailable' ? 'red-9' : 'grey-8'"
+              :label="item.quantity + 'x'"
+              class="inbox-item__qty"
+            />
             <span
-              class="text-body2 item-name"
-              :class="{
-                'text-white': getAvail(order.id, item.id) !== 'unavailable',
-                'text-grey-6 item-name--strike': getAvail(order.id, item.id) === 'unavailable',
-              }"
-              >{{ item.name || item.menu_items?.name }}</span
-            >
+              class="inbox-item__name"
+              :class="{ 'inbox-item__name--strike': getAvail(order.id, item.id) === 'unavailable' }"
+            >{{ item.name || item.menu_items?.name }}</span>
             <q-space />
-            <span class="text-grey-4 text-caption q-mr-sm">
-              Rs.
-              {{ ((item.unit_price || item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
+            <span class="inbox-item__price">
+              Rs. {{ ((item.unit_price || item.menu_items?.price || 0) * item.quantity).toFixed(0) }}
             </span>
 
             <!-- Available toggle -->
             <q-btn
-              flat
-              dense
-              round
-              size="xs"
-              :icon="
-                getAvail(order.id, item.id) === 'available'
-                  ? 'check_circle'
-                  : 'check_circle_outline'
-              "
-              :class="
-                getAvail(order.id, item.id) === 'available' ? 'avail-yes--on' : 'avail-btn--off'
-              "
+              flat dense round size="xs"
+              :icon="getAvail(order.id, item.id) === 'available' ? 'check_circle' : 'check_circle_outline'"
+              :class="getAvail(order.id, item.id) === 'available' ? 'avail-yes--on' : 'avail-btn--off'"
               @click.stop="toggleAvail(order.id, item.id, 'available')"
             >
-              <q-tooltip class="bg-dark">Available</q-tooltip>
+              <q-tooltip>Available</q-tooltip>
             </q-btn>
 
             <!-- Unavailable toggle -->
             <q-btn
-              flat
-              dense
-              round
-              size="xs"
+              flat dense round size="xs"
               :icon="getAvail(order.id, item.id) === 'unavailable' ? 'cancel' : 'highlight_off'"
-              :class="
-                getAvail(order.id, item.id) === 'unavailable' ? 'avail-no--on' : 'avail-btn--off'
-              "
+              :class="getAvail(order.id, item.id) === 'unavailable' ? 'avail-no--on' : 'avail-btn--off'"
               @click.stop="toggleAvail(order.id, item.id, 'unavailable')"
             >
-              <q-tooltip class="bg-dark">Unavailable</q-tooltip>
+              <q-tooltip>Unavailable</q-tooltip>
             </q-btn>
           </div>
 
           <!-- Unavailable summary banner -->
-          <div v-if="getUnavailableCount(order.id) > 0" class="unavail-banner q-mt-sm">
+          <div v-if="getUnavailableCount(order.id) > 0" class="inbox-unavail-banner">
             <q-icon name="warning_amber" size="13px" class="q-mr-xs" />
             {{ getUnavailableCount(order.id) }} item(s) unavailable — will be excluded from KOT
           </div>
         </div>
 
         <!-- Accept Button -->
-        <div class="order-card__footer">
+        <div class="inbox-card__footer">
           <q-btn
-            unelevated
-            class="accept-btn full-width"
+            unelevated no-caps
+            class="inbox-accept-btn full-width"
             :color="getUnavailableCount(order.id) > 0 ? 'orange-9' : 'green-9'"
             icon="check_circle"
             :label="
@@ -141,7 +135,6 @@
             "
             :loading="accepting[order.id]"
             @click="accept(order)"
-            no-caps
           />
         </div>
       </div>
@@ -156,7 +149,6 @@ import { reactive, computed, ref } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useQuasar } from 'quasar'
-import { supabase } from 'src/boot/supabase'
 
 const appStore = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
@@ -233,24 +225,12 @@ async function accept(order) {
     const result = await orderStore.acceptOrder(orderId, unavailIds.length > 0 ? unavailIds : null)
 
     if (result.success) {
-      // Notify customer about unavailable items via order_notifications table
+      // RPC now handles: customer notification + order total recalculation
       if (unavailIds.length > 0 && unavailNames.length > 0) {
-        try {
-          await supabase.from('order_notifications').insert({
-            order_id: orderId,
-            notification_type: 'item_unavailable',
-            title: 'Items Unavailable',
-            message: `Sorry, the following items are currently unavailable: ${unavailNames.join(', ')}. They have been removed from your order.`,
-            is_read: false,
-          })
-        } catch (e) {
-          console.warn('Could not send customer notification:', e)
-        }
-
         $q.notify({
           type: 'warning',
           icon: 'info',
-          message: `Order accepted — ${unavailNames.length} item(s) excluded from KOT`,
+          message: `Order accepted — ${unavailNames.length} item(s) excluded from bill`,
           caption: unavailNames.join(', '),
           position: 'top',
           timeout: 5000,
@@ -277,142 +257,270 @@ async function accept(order) {
 <style lang="scss" scoped>
 @import './waiter-shared.scss';
 
-.inner-header {
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  height: 48px;
+// ─── Sticky Header ──────────────────────────────────────────────
+.inbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.inbox-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inbox-header__title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+.inbox-header__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inbox-count-chip {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  height: 22px !important;
 }
 
-.order-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+// ─── Loading ────────────────────────────────────────────────────
+.inbox-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+}
+
+// ─── Empty State ────────────────────────────────────────────────
+.inbox-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 28px;
+  text-align: center;
+}
+.inbox-empty__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.inbox-empty__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.inbox-empty__sub {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  margin-top: 4px;
+}
+
+// ─── Order List ─────────────────────────────────────────────────
+.inbox-list {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+// ─── Order Card ─────────────────────────────────────────────────
+.inbox-card {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
   border-radius: 14px;
   overflow: hidden;
-  transition: border-color 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
 
   &__header {
-    padding: 14px 14px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
   }
 
   &__items {
-    padding: 10px 14px;
+    padding: 10px 16px;
   }
 
   &__footer {
-    padding: 10px 14px 14px;
+    padding: 10px 16px 14px;
   }
 }
 
-// Hint text
-.avail-hint {
-  opacity: 0.6;
+.inbox-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.inbox-card__order-num {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+.inbox-card__details {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
+}
+.inbox-card__dot {
+  color: #cbd5e1;
+  margin: 0 2px;
+}
+.inbox-status-chip {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  height: 22px !important;
 }
 
-// Item rows
-.item-row {
-  padding: 5px 6px;
+// ─── Availability Hint ──────────────────────────────────────────
+.inbox-avail-hint {
+  display: flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+// ─── Item Rows ──────────────────────────────────────────────────
+.inbox-item {
+  display: flex;
+  align-items: center;
+  padding: 7px 8px;
   border-radius: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid #f8fafc;
   transition: all 0.2s ease;
+  gap: 8px;
 
   &:last-child {
     border-bottom: none;
   }
 
   &--available {
-    background: rgba(34, 197, 94, 0.07);
-    border-color: rgba(34, 197, 94, 0.1);
+    background: #f0fdf4;
+    border-color: #dcfce7;
   }
 
   &--unavailable {
-    background: rgba(239, 68, 68, 0.07);
-    border-color: rgba(239, 68, 68, 0.1);
-    opacity: 0.75;
+    background: #fef2f2;
+    border-color: #fee2e2;
+    opacity: 0.8;
   }
 }
 
-.item-qty {
-  font-size: 10px !important;
+.inbox-item__qty {
+  font-size: 0.62rem !important;
   font-weight: 700 !important;
+  min-width: 26px;
+  height: 20px !important;
 }
 
-.item-name {
+.inbox-item__name {
   flex: 1;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
   transition: all 0.2s;
 
   &--strike {
     text-decoration: line-through;
+    color: #94a3b8;
   }
 }
 
-// Toggle buttons
+.inbox-item__price {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+// ─── Toggle Buttons ─────────────────────────────────────────────
 .avail-btn--off {
-  color: rgba(255, 255, 255, 0.2) !important;
+  color: #cbd5e1 !important;
   transition: all 0.15s;
 
   &:hover {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: #94a3b8 !important;
   }
 }
 
 .avail-yes--on {
-  color: #22c55e !important;
-  background: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  background: rgba(34, 197, 94, 0.12) !important;
   border-radius: 50%;
   animation: pop 0.25s ease;
 }
 
 .avail-no--on {
-  color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
   border-radius: 50%;
   animation: pop 0.25s ease;
 }
 
 @keyframes pop {
-  0% {
-    transform: scale(0.7);
-  }
-  60% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
-// Unavailable banner
-.unavail-banner {
+// ─── Unavailable Banner ─────────────────────────────────────────
+.inbox-unavail-banner {
   display: flex;
   align-items: center;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px dashed rgba(245, 158, 11, 0.35);
+  color: #d97706;
+  background: #fffbeb;
+  border: 1px dashed #fcd34d;
   border-radius: 8px;
-  padding: 5px 10px;
+  padding: 6px 10px;
+  margin-top: 8px;
 }
 
-// Accept button
-.accept-btn {
+// ─── Accept Button ──────────────────────────────────────────────
+.inbox-accept-btn {
   height: 46px;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.88rem;
   letter-spacing: 0.2px;
   transition: all 0.2s;
-}
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-// Empty state
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 24px;
-  text-align: center;
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 }
 </style>

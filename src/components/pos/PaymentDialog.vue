@@ -544,7 +544,7 @@ async function confirmPayment() {
 
 /**
  * Process merged payment for all orders in the table group.
- * Calls merge_table_orders_and_pay RPC.
+ * Calls merge_table_orders_and_pay RPC — now creates a consolidated invoice.
  */
 async function processMergedPayment(methodName) {
   isProcessing.value = true
@@ -563,12 +563,38 @@ async function processMergedPayment(methodName) {
 
     isPaid.value = true
 
+    // Fetch the consolidated invoice for receipt printing
+    if (data.invoice_id) {
+      try {
+        const realInvoice = await cashierStore.fetchInvoiceDetails(data.invoice_id)
+        if (realInvoice) {
+          // Enrich with ALL KOT tickets from ALL merged orders (invoice only links to anchor order)
+          if (realInvoice.orders) {
+            const allKots = props.mergedOrders.flatMap((o) => o.kot_tickets || [])
+            // De-duplicate by id
+            const kotMap = new Map()
+            for (const k of allKots) {
+              kotMap.set(k.id, k)
+            }
+            // Also include any from the fetched invoice (anchor order)
+            for (const k of realInvoice.orders.kot_tickets || []) {
+              kotMap.set(k.id, k)
+            }
+            realInvoice.orders.kot_tickets = Array.from(kotMap.values())
+          }
+          printInvoice.value = realInvoice
+        }
+      } catch (invErr) {
+        console.warn('[PaymentDialog] Could not fetch consolidated invoice:', invErr)
+      }
+    }
+
     // Notify parent
     emit('paid', orderIds)
 
     Notify.create({
       message: 'Table Payment Successful!',
-      caption: `${data.order_count} orders merged (${orderNums}) — ${methodName}`,
+      caption: `${data.order_count} orders merged (${orderNums}) — Invoice #${data.invoice_number || '—'} — ${methodName}`,
       color: 'positive',
       icon: 'verified',
       position: 'top',

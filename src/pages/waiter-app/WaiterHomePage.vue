@@ -21,12 +21,12 @@
               </q-chip>
               <q-chip
                 dense
-                :color="store.isOnShift ? 'green-9' : 'grey-8'"
+                :color="effectiveOnShift ? 'green-9' : 'grey-8'"
                 text-color="white"
-                :icon="store.isOnShift ? 'schedule' : 'schedule'"
+                :icon="effectiveOnShift ? 'schedule' : 'schedule'"
                 class="text-caption"
               >
-                {{ store.isOnShift ? shiftName : 'Off Shift' }}
+                {{ effectiveOnShift ? shiftName : 'Off Shift' }}
               </q-chip>
             </div>
           </div>
@@ -92,7 +92,7 @@
       </div>
 
       <!-- ── Points Summary Card ──────────────────── -->
-      <div class="q-px-md q-mt-md" v-if="store.isOnShift">
+      <div class="q-px-md q-mt-md" v-if="effectiveOnShift">
         <div class="points-summary-card">
           <div class="points-summary-left">
             <div class="points-summary-icon"><q-icon name="star" size="24px" color="amber" /></div>
@@ -175,7 +175,7 @@
       </div>
 
       <!-- ── Kitchen Alerts ────────────────────────── -->
-      <div v-if="store.isOnShift && store.readyAlerts.length" class="q-px-md q-mt-lg">
+      <div v-if="effectiveOnShift && store.readyAlerts.length" class="q-px-md q-mt-lg">
         <div class="section-title">
           <q-icon name="local_fire_department" size="18px" color="amber-5" class="q-mr-xs" />
           Kitchen Ready ({{ store.readyCount }})
@@ -247,7 +247,7 @@
       </div>
 
       <!-- ── OFF-SHIFT LOCKED SCREEN ─────────────── -->
-      <div v-if="!store.isOnShift && !store.loading" class="off-shift-lock q-px-md">
+      <div v-if="!effectiveOnShift && !store.loading" class="off-shift-lock q-px-md">
         <div class="off-shift-card">
           <div class="off-shift-icon-wrap">
             <q-icon name="lock" size="48px" color="grey-5" />
@@ -288,7 +288,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, inject } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useAuthStore } from 'stores/auth'
 import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
@@ -296,6 +296,10 @@ import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
 const store = useWaiterAppStore()
 const authStore = useAuthStore()
 const leaderboardRef = ref(null)
+
+// Injected from WaiterAppLayout — includes admin/manager bypass
+const isEffectivelyOnShift = inject('isEffectivelyOnShift', computed(() => store.isOnShift))
+const effectiveOnShift = computed(() => isEffectivelyOnShift.value)
 
 const displayName = computed(
   () => store.profile?.display_name || authStore.userDisplayName || 'Waiter',

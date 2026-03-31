@@ -22,32 +22,59 @@
 
     <!-- Stats Row -->
     <div class="row q-col-gutter-md q-mb-lg">
+      <!-- Total Tables -->
       <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <q-icon name="table_restaurant" size="28px" color="primary" class="q-mb-sm" />
-          <div class="stat-value">{{ tables.length }}</div>
-          <div class="stat-label">Total Tables</div>
+        <div class="tm-kpi-card tm-kpi-card--blue">
+          <div class="tm-kpi-icon-wrap">
+            <q-icon name="table_restaurant" size="22px" color="white" />
+          </div>
+          <div class="tm-kpi-body">
+            <div class="tm-kpi-label">Total Tables</div>
+            <div class="tm-kpi-value">{{ tables.length }}</div>
+          </div>
+          <q-icon name="table_restaurant" size="64px" class="tm-kpi-watermark" />
         </div>
       </div>
+
+      <!-- With QR -->
       <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <q-icon name="qr_code_2" size="28px" color="positive" class="q-mb-sm" />
-          <div class="stat-value">{{ tables.filter((t) => t.has_qr).length }}</div>
-          <div class="stat-label">With QR</div>
+        <div class="tm-kpi-card tm-kpi-card--green">
+          <div class="tm-kpi-icon-wrap">
+            <q-icon name="qr_code_2" size="22px" color="white" />
+          </div>
+          <div class="tm-kpi-body">
+            <div class="tm-kpi-label">With QR</div>
+            <div class="tm-kpi-value">{{ tables.filter((t) => t.has_qr).length }}</div>
+          </div>
+          <q-icon name="qr_code_2" size="64px" class="tm-kpi-watermark" />
         </div>
       </div>
+
+      <!-- With Device -->
       <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <q-icon name="devices" size="28px" color="orange" class="q-mb-sm" />
-          <div class="stat-value">{{ tables.filter((t) => t.has_device).length }}</div>
-          <div class="stat-label">With Device</div>
+        <div class="tm-kpi-card tm-kpi-card--orange">
+          <div class="tm-kpi-icon-wrap">
+            <q-icon name="devices" size="22px" color="white" />
+          </div>
+          <div class="tm-kpi-body">
+            <div class="tm-kpi-label">With Device</div>
+            <div class="tm-kpi-value">{{ tables.filter((t) => t.has_device).length }}</div>
+          </div>
+          <q-icon name="devices" size="64px" class="tm-kpi-watermark" />
         </div>
       </div>
+
+      <!-- Available -->
       <div class="col-6 col-md-3">
-        <div class="stat-card">
-          <q-icon name="check_circle" size="28px" color="teal" class="q-mb-sm" />
-          <div class="stat-value">{{ tables.filter((t) => t.status === 'available').length }}</div>
-          <div class="stat-label">Available</div>
+        <div class="tm-kpi-card tm-kpi-card--teal">
+          <div class="tm-kpi-icon-wrap">
+            <q-icon name="check_circle" size="22px" color="white" />
+          </div>
+          <div class="tm-kpi-body">
+            <div class="tm-kpi-label">Available</div>
+            <div class="tm-kpi-value">{{ tables.filter((t) => t.status === 'available').length }}</div>
+          </div>
+          <q-icon name="check_circle" size="64px" class="tm-kpi-watermark" />
         </div>
       </div>
     </div>
@@ -1144,6 +1171,83 @@ async function toggleDevice(device) {
   font-size: 0.875rem;
   color: #6b7280;
   margin-top: 2px;
+}
+
+// ── KPI Stats Cards ───────────────────────────────────────────────────────────
+.tm-kpi-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px 14px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: none;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  cursor: default;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  // Colour themes
+  &--blue   { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); }
+  &--green  { background: linear-gradient(135deg, #064e3b 0%, #059669 100%); }
+  &--orange { background: linear-gradient(135deg, #78350f 0%, #d97706 100%); }
+  &--teal   { background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%); }
+}
+
+.tm-kpi-icon-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tm-kpi-body {
+  flex: 1;
+  min-width: 0;
+  z-index: 1;
+}
+
+.tm-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 4px;
+}
+
+.tm-kpi-value {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.tm-kpi-watermark {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  opacity: 0.08;
+  color: #ffffff !important;
+  pointer-events: none;
+  z-index: 0;
 }
 
 // ── Tables Grid layout ────────────────────────────────────────────────────────

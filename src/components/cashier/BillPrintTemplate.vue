@@ -46,6 +46,9 @@
         <span class="meta-label">Phone :</span>
         <span class="meta-value">{{ customerPhone }}</span>
       </div>
+      <div v-if="isConsolidatedBill" class="meta-row" style="margin-top:2px">
+        <span class="meta-label" style="font-weight:700; font-size:9px"> ** CONSOLIDATED BILL **</span>
+      </div>
     </div>
 
     <!-- ── Divider ── -->
@@ -206,9 +209,23 @@ const invoiceDisplayNumber = computed(() => {
   return props.invoice.invoice_number || props.invoice.id?.slice(0, 8).toUpperCase() || '—'
 })
 
+// Detect consolidated/merged bill from the invoice notes
+const isConsolidatedBill = computed(() => {
+  return !!(props.invoice.notes && props.invoice.notes.includes('Consolidated Bill'))
+    || !!(props.invoice._mergedNote)
+})
+
 const orderIdByType = computed(() => {
+  // For consolidated bills, extract order numbers from notes
+  if (isConsolidatedBill.value) {
+    const notes = props.invoice.notes || props.invoice._mergedNote || ''
+    const match = notes.match(/Orders:\s*(.+)$/i)
+    if (match) return match[1].trim()
+  }
+  // For simulated merged invoice from PaymentDialog
   const order = props.invoice.orders
   if (!order) return '—'
+  // order_number might be comma-joined (e.g. "158, 157") from the simulated invoice
   return order.order_number || '—'
 })
 

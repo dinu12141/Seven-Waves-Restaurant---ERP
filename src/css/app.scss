@@ -4,3 +4,25 @@
 @import 'erp-theme';
 @import 'theme-overrides';
 @import 'report-print.css';
+
+// ── Order Reminder Toast (persistent 5-min alert) ──────────────────────────
+.order-reminder-toast {
+  background: #c2410c !important;   // deep-orange-800
+  border-left: 4px solid #fdba74 !important;
+  box-shadow: 0 8px 32px rgba(234, 88, 12, 0.45) !important;
+  border-radius: 14px !important;
+  font-size: 0.88rem !important;
+  animation: reminder-ring 0.4s ease-in-out 2;
+
+  .q-notification__message { font-weight: 800 !important; font-size: 0.9rem !important; }
+  .q-notification__caption { opacity: 0.9 !important; margin-top: 3px !important; }
+}
+
+@keyframes reminder-ring {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+

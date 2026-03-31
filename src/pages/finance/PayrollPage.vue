@@ -11,9 +11,9 @@
     <!-- KPIs -->
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(59, 130, 246, 0.12)">
-            <q-icon name="groups" size="20px" color="blue" />
+        <div class="fin-kpi-card fin-kpi-card--blue">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="groups" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Total Employees</div>
@@ -22,9 +22,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(16, 185, 129, 0.12)">
-            <q-icon name="payments" size="20px" color="green" />
+        <div class="fin-kpi-card fin-kpi-card--green">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="payments" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Latest Payroll</div>
@@ -33,9 +33,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(245, 158, 11, 0.12)">
-            <q-icon name="event" size="20px" color="orange" />
+        <div class="fin-kpi-card fin-kpi-card--amber">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="event" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Total Cycles</div>
@@ -44,9 +44,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(139, 92, 246, 0.12)">
-            <q-icon name="account_balance" size="20px" color="purple" />
+        <div class="fin-kpi-card fin-kpi-card--purple">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="account_balance" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">YTD Payroll</div>
@@ -55,6 +55,7 @@
         </div>
       </div>
     </div>
+
 
     <!-- Payroll Cycles -->
     <div class="fin-panel">

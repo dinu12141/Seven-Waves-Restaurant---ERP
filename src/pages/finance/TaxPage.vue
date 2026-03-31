@@ -11,9 +11,9 @@
     <!-- Tax Summary Cards -->
     <div class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(16, 185, 129, 0.12)">
-            <q-icon name="arrow_downward" size="20px" color="green" />
+        <div class="fin-kpi-card fin-kpi-card--green">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="arrow_downward" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Tax Collected</div>
@@ -22,9 +22,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(239, 68, 68, 0.12)">
-            <q-icon name="arrow_upward" size="20px" color="red" />
+        <div class="fin-kpi-card fin-kpi-card--red">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="arrow_upward" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Tax Paid</div>
@@ -33,9 +33,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(59, 130, 246, 0.12)">
-            <q-icon name="balance" size="20px" color="blue" />
+        <div class="fin-kpi-card fin-kpi-card--blue">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="balance" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Net Tax Payable</div>

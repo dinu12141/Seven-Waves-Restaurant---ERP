@@ -3,6 +3,49 @@ import { supabase } from 'src/boot/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import { ROLE_LANDING, ROLE_PRIORITY, canAccessRoute } from 'src/config/roles'
 
+// ── Login Audit Helper ─────────────────────────────────────────
+function detectDevice(): { device_type: string; browser: string; os: string } {
+  const ua = navigator.userAgent
+  let device_type = 'Desktop'
+  if (/Mobi|Android|iPhone|iPod/.test(ua)) device_type = 'Mobile'
+  else if (/iPad|Tablet/.test(ua)) device_type = 'Tablet'
+
+  let browser = 'Unknown'
+  if (/Edg\//.test(ua)) browser = 'Edge'
+  else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) browser = 'Chrome'
+  else if (/Firefox\//.test(ua)) browser = 'Firefox'
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari'
+  else if (/OPR\/|Opera/.test(ua)) browser = 'Opera'
+
+  let os = 'Unknown'
+  if (/Windows/.test(ua)) os = 'Windows'
+  else if (/Android/.test(ua)) os = 'Android'
+  else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS'
+  else if (/Mac OS X/.test(ua)) os = 'macOS'
+  else if (/Linux/.test(ua)) os = 'Linux'
+
+  return { device_type, browser, os }
+}
+
+async function writeLoginAudit(payload: {
+  user_id?: string
+  email?: string
+  full_name?: string
+  role?: string
+  status?: string
+}) {
+  try {
+    const { device_type, browser, os } = detectDevice()
+    await supabase.from('login_audit_logs').insert({
+      ...payload,
+      device_type,
+      browser,
+      os,
+      logged_at: new Date().toISOString(),
+    })
+  } catch { /* non-critical */ }
+}
+
 export type UserRole =
   | 'admin'
   | 'manager'
@@ -305,6 +348,15 @@ export const useAuthStore = defineStore('auth', {
         // Profile, modules, notifications — always background
         this._backgroundFetchNonCritical()
 
+        // 🔐 Audit log — fire & forget
+        writeLoginAudit({
+          user_id: data.user.id,
+          email: data.user.email,
+          full_name: this.profile?.full_name,
+          role: this.roles[0] || 'unknown',
+          status: 'success',
+        })
+
         return { data, error: null }
       } catch (err: any) {
         this.error = err.message || 'An unexpected error occurred'
@@ -383,6 +435,14 @@ export const useAuthStore = defineStore('auth', {
 
         // Profile, modules, notifications — background
         this._backgroundFetchNonCritical()
+
+        // 🔐 Audit log — fire & forget
+        writeLoginAudit({
+          user_id: this.user?.id,
+          email: this.user?.email,
+          role: this.roles[0] || 'unknown',
+          status: 'success',
+        })
 
         return { data: result, error: null }
       } catch (err: any) {

@@ -3,12 +3,12 @@
     <!-- ── Top Bar ───────────────────────────────────────────────────────── -->
     <q-header class="waiter-top-bar">
       <q-toolbar class="waiter-toolbar">
-        <!-- Brand -->
-        <q-icon name="restaurant" size="20px" color="orange-8" />
-        <div class="waiter-brand q-ml-sm">
-          <span class="brand-name">Seven Waves</span>
-          <span class="brand-tag">WAITER</span>
-        </div>
+        <!-- Brand Logo -->
+        <img
+          src="~assets/seven-waves-logo-transparent.png"
+          alt="Seven Waves"
+          class="waiter-logo"
+        /><span class="brand-tag q-ml-sm">WAITER</span>
         <q-space />
 
         <!-- Shift chip -->
@@ -58,19 +58,37 @@
           <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
         </q-btn>
 
-        <!-- Notification Bell -->
+        <!-- Notification Bell (unified alerts + notifs hub) -->
         <q-btn
           flat
           round
           dense
           icon="notifications"
-          color="grey-7"
+          :color="totalAlertCount > 0 ? 'orange-8' : pushSubscribed ? 'orange-6' : 'grey-7'"
           class="q-ml-sm"
           to="/waiter-app/notifs"
         >
-          <q-badge v-if="store.unreadNotifCount > 0" color="red" floating rounded>
-            {{ store.unreadNotifCount > 9 ? '9+' : store.unreadNotifCount }}
+          <q-badge
+            v-if="totalAlertCount > 0"
+            color="red"
+            floating
+            rounded
+          >
+            {{ totalAlertCount > 9 ? '9+' : totalAlertCount }}
           </q-badge>
+          <q-tooltip v-if="!pushSubscribed">Enable push notifications</q-tooltip>
+        </q-btn>
+
+        <!-- Push enable button (if not subscribed) -->
+        <q-btn
+          v-if="!pushSubscribed && pushPermission !== 'denied'"
+          flat round dense
+          icon="notifications_off"
+          color="grey-5"
+          class="q-ml-xs"
+          @click="requestPushPermission"
+        >
+          <q-tooltip>Tap to enable push alerts</q-tooltip>
         </q-btn>
 
         <!-- User avatar + logout menu -->
@@ -175,6 +193,34 @@
       <span class="q-ml-sm">— You are not assigned to a shift today. Contact your manager.</span>
     </div>
 
+    <!-- ── PWA Install Banner ────────────────────────────────────────────── -->
+    <transition name="banner-slide">
+      <div v-if="showInstallBanner" class="pwa-install-banner">
+        <q-icon name="install_mobile" size="18px" class="q-mr-sm" />
+        <span class="pwa-banner-text">Install the Waiter App for a better experience!</span>
+        <q-btn flat dense no-caps size="sm" color="orange-8" label="Install" class="q-ml-auto" @click="installPwa" />
+        <q-btn flat round dense icon="close" size="xs" color="grey-6" class="q-ml-xs" @click="showInstallBanner = false" />
+      </div>
+    </transition>
+
+    <!-- ── Push Permission Banner ─────────────────────────────────────────── -->
+    <transition name="banner-slide">
+      <div
+        v-if="!pushSubscribed && pushPermission === 'default' && store.isOnShift"
+        class="push-prompt-banner"
+      >
+        <q-icon name="notifications_active" size="18px" class="q-mr-sm" color="orange-8" />
+        <span class="push-banner-text">Enable push alerts for new orders!</span>
+        <q-btn
+          flat dense no-caps size="sm"
+          color="orange-8"
+          label="Enable"
+          class="q-ml-auto"
+          @click="requestPushPermission"
+        />
+      </div>
+    </transition>
+
     <!-- ── Page Content ──────────────────────────────────────────────────── -->
     <q-page-container class="waiter-page-container">
       <router-view v-slot="{ Component }">
@@ -216,7 +262,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, provide } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar, Notify } from 'quasar'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
@@ -224,6 +270,7 @@ import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
 import { supabase } from 'src/boot/supabase'
+import { useWaiterPush } from 'src/composables/useWaiterPush'
 
 const store = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
@@ -231,8 +278,16 @@ const authStore = useAuthStore()
 const uiStore = useUIStore()
 const $q = useQuasar()
 const router = useRouter()
+const { pushPermission, pushSubscribed, subscribePush, checkExistingSubscription } = useWaiterPush()
 
-// ── Auth guard ────────────────────────────────────────────────────────────────
+// PWA install prompt
+const deferredInstallPrompt = ref(null)
+const showInstallBanner = ref(false)
+
+// Detect if running as installed PWA
+const isPwa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+
+// ── Auth guard + push setup ───────────────────────────────────────────────────
 onMounted(async () => {
   // Check session — redirect to login if unauthenticated
   const {
@@ -243,16 +298,64 @@ onMounted(async () => {
     return
   }
   // Ensure authStore is FULLY populated (branches, roles) before store.initialize().
-  // This prevents a race condition where loadPendingOrders() fires before currentBranch is set.
   if (!authStore.initialized || !authStore.branches.length) {
     await authStore.fetchUserData()
   }
   await store.initialize()
+
+  // Check existing push subscription
+  await checkExistingSubscription()
+
+  // Auto-prompt for push permission after 6 seconds if not yet subscribed
+  if (!pushSubscribed.value && Notification.permission === 'default') {
+    setTimeout(() => {
+      if (!pushSubscribed.value) {
+        requestPushPermission()
+      }
+    }, 6000)
+  }
+
+  // PWA install prompt listener
+  window.addEventListener('beforeinstallprompt', handleInstallPrompt)
 })
 onUnmounted(() => {
   store.cleanup()
   if (removeShiftGuard) removeShiftGuard()
+  window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
 })
+
+function handleInstallPrompt(e) {
+  e.preventDefault()
+  deferredInstallPrompt.value = e
+  if (!isPwa) showInstallBanner.value = true
+}
+
+async function installPwa() {
+  if (!deferredInstallPrompt.value) return
+  deferredInstallPrompt.value.prompt()
+  const { outcome } = await deferredInstallPrompt.value.userChoice
+  if (outcome === 'accepted') {
+    showInstallBanner.value = false
+    Notify.create({ type: 'positive', message: '✅ App installed! Open it from your home screen.', position: 'top', timeout: 4000 })
+  }
+  deferredInstallPrompt.value = null
+}
+
+async function requestPushPermission() {
+  const userId = authStore.user?.id
+  if (!userId) return
+  const result = await subscribePush(userId)
+  if (result.success) {
+    Notify.create({
+      type: 'positive',
+      icon: 'notifications_active',
+      message: '🔔 Push notifications enabled!',
+      caption: 'You will be alerted for new orders and kitchen updates.',
+      position: 'top',
+      timeout: 4000,
+    })
+  }
+}
 
 function initials(name) {
   if (!name) return '?'
@@ -280,6 +383,15 @@ const isAdminOrManager = computed(
 const isEffectivelyOnShift = computed(() => isAdminOrManager.value || store.isOnShift)
 provide('isEffectivelyOnShift', isEffectivelyOnShift)
 provide('isAdminOrManager', isAdminOrManager)
+
+// ── Unified alert count for the top bell badge ─────────────────────────────────
+// Combines: kitchen ready alerts + new order alerts + unread general notifications
+const totalAlertCount = computed(
+  () =>
+    store.readyCount +
+    orderStore.newOrderAlertCount +
+    store.unreadNotifCount,
+)
 
 // ── Off-shift route guard ────────────────────────────────────────────────────
 // Block off-shift waiters from accessing functional pages
@@ -328,12 +440,6 @@ const tabs = computed(() => [
     to: '/waiter-app/orders',
     badge: { value: store.myOrderCount },
   },
-  {
-    label: 'Alerts',
-    icon: 'notifications_active',
-    to: '/waiter-app/alerts',
-    badge: { value: store.readyCount + orderStore.newOrderAlertCount },
-  },
 ])
 </script>
 
@@ -354,6 +460,14 @@ const tabs = computed(() => [
   height: 52px;
   min-height: 52px;
   padding: 0 14px;
+}
+
+// ─── Logo ───────────────────────────────────────────────────────────────────
+.waiter-logo {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .waiter-brand {
@@ -631,4 +745,87 @@ const tabs = computed(() => [
 .tab-fade-leave-to {
   opacity: 0;
 }
+
+// ─── PWA Install Banner ───────────────────────────────────────────────────────
+.pwa-install-banner {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, rgba(234,88,12,0.08), rgba(251,191,36,0.06));
+  border-bottom: 1px solid rgba(234, 88, 12, 0.2);
+  color: #ea580c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-height: 38px;
+  gap: 4px;
+}
+
+.pwa-banner-text {
+  flex: 1;
+  font-size: 0.72rem;
+  color: #9a3412;
+}
+
+// ─── Push Permission Banner ───────────────────────────────────────────────────
+.push-prompt-banner {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, rgba(234,88,12,0.06), rgba(251,191,36,0.04));
+  border-bottom: 1px solid rgba(234, 88, 12, 0.15);
+  min-height: 38px;
+  gap: 4px;
+}
+
+.push-banner-text {
+  flex: 1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9a3412;
+}
+
+// ─── Banner Slide Animation ───────────────────────────────────────────────────
+.banner-slide-enter-active,
+.banner-slide-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.banner-slide-enter-from,
+.banner-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.banner-slide-enter-to,
+.banner-slide-leave-from {
+  max-height: 60px;
+  opacity: 1;
+}
+
+// ─── Mobile Safe Area Support ─────────────────────────────────────────────────
+// Ensure content doesn't go behind notch or home indicator
+.waiter-page-container {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+  padding-top: env(safe-area-inset-top);
+}
+
+.waiter-top-bar {
+  padding-top: env(safe-area-inset-top) !important;
+}
+
+.waiter-toolbar {
+  height: calc(52px + env(safe-area-inset-top));
+  min-height: calc(52px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
+}
+
+.bottom-nav-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 </style>

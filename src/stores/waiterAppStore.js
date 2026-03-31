@@ -63,8 +63,23 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
       // Load all waiters for admin selector
       const roles = authStore.roles || []
-      if (roles.includes('admin') || roles.includes('manager')) {
+      const isAdmin = roles.includes('admin') || roles.includes('manager')
+      if (isAdmin) {
         await loadAllWaiters()
+      }
+
+      // ── Final admin/manager override ──
+      // Ensure admin/manager is ALWAYS on-shift regardless of shift_assignments
+      if (isAdmin && !isOnShift.value) {
+        isOnShift.value = true
+        shiftInfo.value = {
+          id: null,
+          date: null,
+          shift_name: 'Admin Mode',
+          shift_start: null,
+          shift_end: null,
+          branch_name: authStore.currentBranch?.name,
+        }
       }
     } catch (e) {
       console.error('[WaiterApp] initialize error:', e)
@@ -294,6 +309,21 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   }
 
   async function loadShiftInfo() {
+    // ── Admin / Manager bypass: always on shift ──
+    const roles = authStore.roles || []
+    if (roles.includes('admin') || roles.includes('manager')) {
+      isOnShift.value = true
+      shiftInfo.value = {
+        id: null,
+        date: null,
+        shift_name: 'Admin Mode',
+        shift_start: null,
+        shift_end: null,
+        branch_name: authStore.currentBranch?.name,
+      }
+      return
+    }
+
     // Wait for profile to be available (it loads in parallel)
     // If not available, do a quick lookup
     let employeeId = profile.value?.employee_id

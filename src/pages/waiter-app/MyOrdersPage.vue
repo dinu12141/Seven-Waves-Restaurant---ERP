@@ -1,66 +1,76 @@
 <template>
-  <q-page class="waiter-page-dark">
-    <!-- Toolbar -->
-    <div class="inner-header q-px-md q-py-sm row items-center">
-      <div class="text-weight-bold text-white">My Orders</div>
-      <q-space />
-      <q-badge v-if="myOrders.length > 0" color="blue-9" class="q-px-sm q-mr-sm">
-        {{ myOrders.length }} active
-      </q-badge>
-      <q-btn round flat dense icon="refresh" color="grey-5" :loading="loading" @click="doRefresh" />
+  <q-page class="waiter-orders-light">
+    <!-- ── Header ─────────────────────────────────────── -->
+    <div class="orders-header">
+      <div class="orders-header__left">
+        <q-icon name="assignment" size="20px" color="orange-8" />
+        <div class="orders-header__text">
+          <div class="orders-header__title">My Orders</div>
+          <div class="orders-header__sub">{{ myOrders.length }} active</div>
+        </div>
+      </div>
+      <q-btn
+        flat round dense
+        icon="refresh"
+        color="grey-6"
+        size="sm"
+        :loading="loading"
+        @click="doRefresh"
+      />
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && myOrders.length === 0" class="column items-center q-pa-xl">
-      <q-spinner-orbit size="40px" color="blue" />
+    <div v-if="loading && myOrders.length === 0" class="orders-loading">
+      <q-spinner-orbit size="40px" color="orange" />
     </div>
 
     <!-- Empty -->
-    <div v-else-if="myOrders.length === 0" class="empty-state">
-      <q-icon name="assignment_ind" size="52px" class="text-grey-7 q-mb-md" />
-      <div class="text-grey-5">No active orders</div>
-      <div class="text-caption text-grey-7 q-mt-xs">Accept orders from the Inbox tab</div>
+    <div v-else-if="myOrders.length === 0" class="orders-empty">
+      <div class="orders-empty__icon">
+        <q-icon name="assignment_ind" size="36px" color="grey-4" />
+      </div>
+      <div class="orders-empty__title">No active orders</div>
+      <div class="orders-empty__sub">Accept orders from the Inbox tab</div>
     </div>
 
     <!-- Orders grouped by status -->
-    <div v-else class="q-pa-md">
+    <div v-else class="orders-list">
       <template v-for="group in groupedOrders" :key="group.status">
-        <div class="group-label q-mb-sm q-mt-md">{{ group.label }}</div>
+        <div class="group-label">{{ group.label }}</div>
         <div
           v-for="order in group.orders"
           :key="order.id"
-          class="order-card q-mb-sm"
+          :ref="el => { if (el) orderCardRefs[order.id] = el }"
+          class="order-card"
           :class="{
             'order-card--ready': order.status === 'ready',
             'order-card--preparing': order.status === 'preparing',
+            'order-card--highlighted': highlightedOrderId === order.id,
           }"
           @click="showDetail(order)"
         >
           <!-- Card Header -->
-          <div class="order-card__header row items-center no-wrap">
-            <!-- Table badge -->
+          <div class="order-card__header">
             <div class="table-badge">
               <q-icon name="table_restaurant" size="13px" />
               <span>{{ order.tableNumber || order.table_number || '—' }}</span>
             </div>
-            <div class="col q-ml-sm">
-              <div class="text-white text-weight-bold">#{{ order.order_number }}</div>
-              <div class="text-caption text-grey-5">
+            <div class="order-card__info">
+              <div class="order-card__number">#{{ order.order_number }}</div>
+              <div class="order-card__meta">
                 {{ itemCount(order) }} item{{ itemCount(order) !== 1 ? 's' : '' }}
-                <span class="q-mx-xs text-grey-7">·</span>
+                <span class="dot-sep">·</span>
                 Rs. {{ orderTotal(order).toFixed(0) }}
               </div>
             </div>
-            <div class="col-auto column items-end q-gutter-xs">
-              <q-chip
-                dense
-                :color="statusColor(order.status)"
-                text-color="white"
-                class="status-chip"
+            <div class="order-card__right">
+              <div
+                class="status-pill"
+                :class="'status-pill--' + order.status"
               >
                 {{ statusLabel(order.status) }}
-              </q-chip>
-              <div class="text-caption time-label">
+              </div>
+              <div class="time-label">
                 {{ relativeTime(order.accepted_at || order.created_at) }}
               </div>
             </div>
@@ -78,13 +88,11 @@
                 'progress-step--pending': getStepState(order, step.key) === 'pending',
               }"
             >
-              <!-- Connector line (before step, not on first) -->
               <div
                 v-if="idx > 0"
                 class="progress-connector"
                 :class="{ 'progress-connector--done': getStepState(order, step.key) !== 'pending' }"
               />
-              <!-- Step dot+icon -->
               <div class="progress-dot">
                 <q-icon v-if="getStepState(order, step.key) === 'done'" name="check" size="10px" />
                 <q-icon
@@ -98,7 +106,7 @@
             </div>
           </div>
 
-          <!-- KOT chips row with view icon -->
+          <!-- KOT chips row -->
           <div v-if="order.kot_tickets?.length" class="order-card__kot">
             <div
               v-for="kot in order.kot_tickets"
@@ -109,19 +117,18 @@
               <q-icon :name="kotIcon(kot.status)" size="10px" />
               KOT #{{ kot.kot_number || '?' }}
               <span class="kot-kitchen">{{ kot.kitchens?.name || '' }}</span>
-              <!-- View KOT button -->
               <button class="kot-view-btn" @click.stop="openKot(kot)" title="View KOT">
                 <q-icon name="receipt_long" size="11px" />
               </button>
             </div>
           </div>
 
-          <!-- Ready action quick-bar -->
+          <!-- Ready action bar -->
           <div v-if="order.status === 'ready'" class="order-card__ready-bar">
             <q-btn
               unelevated
               class="full-width serve-btn"
-              color="green-9"
+              color="green-8"
               icon="check_circle"
               label="Mark as Served"
               :loading="serving[order.id]"
@@ -133,33 +140,30 @@
       </template>
     </div>
 
-    <!-- ── Order Detail Bottom Sheet ──────────────────────────── -->
+    <!-- ── Order Detail Bottom Sheet ──────────────────────── -->
     <q-dialog v-model="showDetailSheet" position="bottom" @hide="detailOrder = null">
       <q-card class="detail-sheet" v-if="detailOrder">
-        <!-- Sheet Handle + Close -->
         <div class="sheet-handle-wrap">
           <div class="sheet-handle" />
         </div>
         <q-bar class="detail-bar">
           <div class="detail-bar__title">
-            <span class="text-weight-bold text-white">Order #{{ detailOrder.order_number }}</span>
-            <q-chip
-              dense
-              :color="statusColor(detailOrder.status)"
-              text-color="white"
-              size="sm"
-              class="q-ml-sm"
+            <span class="text-weight-bold">Order #{{ detailOrder.order_number }}</span>
+            <div
+              class="status-pill q-ml-sm"
+              :class="'status-pill--' + detailOrder.status"
+              style="font-size: 0.6rem"
             >
               {{ statusLabel(detailOrder.status) }}
-            </q-chip>
+            </div>
           </div>
           <q-space />
-          <q-btn dense flat icon="close" v-close-popup color="grey-4" />
+          <q-btn dense flat icon="close" v-close-popup color="grey-5" />
         </q-bar>
 
         <q-card-section class="q-pt-sm">
           <!-- Meta row -->
-          <div class="detail-meta row q-gutter-sm q-mb-md">
+          <div class="detail-meta">
             <div class="meta-chip">
               <q-icon name="table_restaurant" size="13px" class="q-mr-xs" />
               Table {{ detailOrder.tableNumber || detailOrder.table_number || '—' }}
@@ -174,10 +178,10 @@
             </div>
           </div>
 
-          <!-- ═══ Detail Progress Tracker (bigger) ═══ -->
-          <div class="detail-progress-tracker q-mb-lg">
+          <!-- ═══ Detail Progress Tracker (vertical) ═══ -->
+          <div class="detail-progress-tracker q-mt-md q-mb-lg">
             <div class="detail-progress-title q-mb-sm">
-              <q-icon name="route" size="14px" color="blue-4" class="q-mr-xs" />
+              <q-icon name="route" size="14px" color="orange-7" class="q-mr-xs" />
               <span>Order Progress</span>
             </div>
             <div class="detail-progress-steps">
@@ -192,17 +196,14 @@
                 }"
               >
                 <div class="detail-step__indicator">
-                  <!-- Vertical connector (before, not on first) -->
                   <div
                     v-if="idx > 0"
                     class="detail-step__vline"
                     :class="{
                       'detail-step__vline--done': getStepState(detailOrder, step.key) !== 'pending',
-                      'detail-step__vline--active':
-                        getStepState(detailOrder, step.key) === 'active',
+                      'detail-step__vline--active': getStepState(detailOrder, step.key) === 'active',
                     }"
                   />
-                  <!-- Dot -->
                   <div class="detail-step__dot">
                     <q-icon
                       v-if="getStepState(detailOrder, step.key) === 'done'"
@@ -247,13 +248,13 @@
                   <q-icon :name="kotIcon(kot.status)" size="16px" />
                 </div>
                 <div class="kot-row__info">
-                  <div class="text-white text-weight-medium">KOT #{{ kot.kot_number || '—' }}</div>
-                  <div class="text-caption text-grey-5">{{ kot.kitchens?.name || 'Kitchen' }}</div>
+                  <div class="kot-row__name">KOT #{{ kot.kot_number || '—' }}</div>
+                  <div class="kot-row__kitchen">{{ kot.kitchens?.name || 'Kitchen' }}</div>
                 </div>
                 <div class="kot-row__status">
-                  <q-chip dense :color="kotColor(kot.status)" text-color="white" size="xs">
+                  <div class="kot-status-pill" :class="`kot-status-pill--${kot.status}`">
                     {{ kotLabel(kot.status) }}
-                  </q-chip>
+                  </div>
                 </div>
               </div>
             </div>
@@ -265,26 +266,22 @@
             <div v-for="item in getAvailableItems(detailOrder)" :key="item.id" class="item-row">
               <div class="item-row__qty">{{ item.quantity }}×</div>
               <div class="item-row__name">
-                <div class="text-white">{{ item.name || item.menu_items?.name || '?' }}</div>
-                <div v-if="item.notes" class="text-caption text-amber-5 q-mt-xs">
-                  📝 {{ item.notes }}
-                </div>
+                <div>{{ item.name || item.menu_items?.name || '?' }}</div>
+                <div v-if="item.notes" class="item-row__notes">📝 {{ item.notes }}</div>
               </div>
               <div class="item-row__price">
                 Rs.
-                {{
-                  ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0)
-                }}
+                {{ ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0) }}
               </div>
               <div class="item-row__status">
-                <q-chip dense :color="itemStatusColor(item.status)" text-color="white" size="xs">
+                <div class="item-status-pill" :class="`item-status-pill--${item.status}`">
                   {{ itemLabel(item.status) }}
-                </q-chip>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Unavailable items section (collapsed, shown as info only) -->
+          <!-- Unavailable items section -->
           <div
             v-if="getUnavailableItems(detailOrder).length > 0"
             class="unavail-section q-mt-sm q-mb-sm"
@@ -299,31 +296,23 @@
               class="unavail-item-row"
             >
               <span class="unavail-item-row__qty">{{ item.quantity }}×</span>
-              <span class="unavail-item-row__name">{{
-                item.name || item.menu_items?.name || '?'
-              }}</span>
-              <span class="unavail-item-row__price"
-                >Rs.
-                {{
-                  ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0)
-                }}</span
-              >
+              <span class="unavail-item-row__name">{{ item.name || item.menu_items?.name || '?' }}</span>
+              <span class="unavail-item-row__price">
+                Rs. {{ ((item.unit_price || item.menu_items?.base_price || 0) * item.quantity).toFixed(0) }}
+              </span>
             </div>
           </div>
 
-          <!-- Total (unavailable items excluded) -->
-          <q-separator dark class="q-my-md" />
-          <div class="row items-center q-mb-lg">
-            <div class="text-grey-4">
+          <!-- Total -->
+          <div class="detail-divider" />
+          <div class="detail-total">
+            <div class="detail-total__label">
               Order Total
-              <span
-                v-if="getUnavailableItems(detailOrder).length > 0"
-                class="text-caption text-grey-6 q-ml-xs"
-                >(excl. unavailable)</span
-              >
+              <span v-if="getUnavailableItems(detailOrder).length > 0" class="detail-total__excl">
+                (excl. unavailable)
+              </span>
             </div>
-            <q-space />
-            <div class="text-white text-weight-bold" style="font-size: 1.2rem">
+            <div class="detail-total__amount">
               Rs. {{ orderTotal(detailOrder).toFixed(0) }}
             </div>
           </div>
@@ -332,26 +321,20 @@
           <q-btn
             v-if="detailOrder.status === 'ready'"
             unelevated
-            class="full-width"
-            color="green-9"
+            class="full-width q-mt-md"
+            color="green-8"
             icon="check_circle"
             label="Mark as Served"
             :loading="serving[detailOrder.id]"
             @click="markServed(detailOrder.id)"
             no-caps
-            style="
-              height: 50px;
-              border-radius: 12px;
-              font-weight: 700;
-              font-size: 15px;
-              letter-spacing: 0.3px;
-            "
+            style="height: 50px; border-radius: 12px; font-weight: 700; font-size: 15px"
           />
         </q-card-section>
       </q-card>
     </q-dialog>
 
-    <!-- ── KOT Receipt Dialog (same component as Kitchen Display) ──── -->
+    <!-- ── KOT Receipt Dialog ──── -->
     <q-dialog
       v-model="showKotSheet"
       transition-show="scale"
@@ -380,13 +363,16 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted, onUnmounted } from 'vue'
+import { computed, ref, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
 import KotReceipt from 'src/components/common/KotReceipt.vue'
 
+const route = useRoute()
+const router = useRouter()
 const appStore = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
 const $q = useQuasar()
@@ -394,6 +380,10 @@ const $q = useQuasar()
 const showDetailSheet = ref(false)
 const detailOrder = ref(null)
 const serving = reactive({})
+
+// ── Highlight / deep-link state ──────────────────────────────────
+const orderCardRefs = reactive({})
+const highlightedOrderId = ref(null)
 
 // ── KOT viewer state ────────────────────────────────────────
 const showKotSheet = ref(false)
@@ -408,27 +398,67 @@ onMounted(() => {
   clockTimer = setInterval(() => {
     now.value = Date.now()
   }, 30000)
+
+  // Check for highlight query parameter (from reminder notification deep-link)
+  handleHighlightQuery()
 })
+
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
 })
 
+// Watch for route changes (if already on this page and a new reminder fires)
+watch(
+  () => route.query.highlight,
+  (newId) => {
+    if (newId) handleHighlightQuery()
+  },
+)
+
+/**
+ * Scroll to and highlight a specific order card, then auto-open its detail sheet.
+ */
+async function handleHighlightQuery() {
+  const targetId = route.query.highlight
+  if (!targetId) return
+
+  // Set highlight immediately
+  highlightedOrderId.value = targetId
+
+  // Wait for DOM to render the order cards
+  await nextTick()
+  await new Promise((r) => setTimeout(r, 300))
+
+  // Scroll into view
+  const el = orderCardRefs[targetId]
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+    // Auto-open the detail sheet for this order
+    const order = myOrders.value.find((o) => o.id === targetId)
+    if (order) {
+      setTimeout(() => showDetail(order), 500)
+    }
+  }
+
+  // Clear highlight after 6 seconds
+  setTimeout(() => {
+    highlightedOrderId.value = null
+  }, 6000)
+
+  // Clean up query param without triggering navigation
+  router.replace({ query: {} }).catch(() => {})
+}
+
 // ── Merged orders from both stores ───────────────────────────────
-// waiterOrderStore is the authoritative shift-aware source
-// waiterAppStore has richer nested data (order_items with joins)
-// We merge: prefer waiterOrderStore's status/realtime, but keep appStore's order_items
 const myOrders = computed(() => {
   const base = orderStore.myOrders.length > 0 ? orderStore.myOrders : appStore.myOrders
-  // Enrich with appStore's detailed data if available
   return base.map((o) => {
     const appOrder = appStore.myOrders.find((a) => a.id === o.id)
     return {
       ...o,
-      // Prefer appStore's order_items (has base_price+name) over orderStore's items
       order_items: appOrder?.order_items || o.order_items || [],
-      // Prefer appStore's kot_tickets detail
       kot_tickets: appOrder?.kot_tickets || o.kot_tickets || [],
-      // Normalize table number
       table_number: o.table_number || o.tableNumber || appOrder?.table_number || '—',
     }
   })
@@ -465,12 +495,9 @@ const PROGRESS_STEPS = [
   { key: 'served', label: 'Served', icon: 'done_all', desc: 'Delivered to customer' },
 ]
 
-// Map order status → progress step state
 function getStepState(order, stepKey) {
   const statusOrder = ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served']
   const orderStatus = order.status
-
-  // Map step key to its corresponding status
   const stepToStatus = {
     accepted: 'accepted',
     kitchen: 'sent_to_kitchen',
@@ -478,18 +505,14 @@ function getStepState(order, stepKey) {
     ready: 'ready',
     served: 'served',
   }
-
   const stepStatusIndex = statusOrder.indexOf(stepToStatus[stepKey])
   const currentIndex = statusOrder.indexOf(orderStatus)
-
-  // Also check KOT statuses to determine more granular progress
   const kotTickets = order.kot_tickets || []
   const anyKotPreparing = kotTickets.some((k) => k.status === 'preparing')
   const anyKotReady = kotTickets.some((k) => k.status === 'ready')
   const allKotReady =
     kotTickets.length > 0 && kotTickets.every((k) => k.status === 'ready' || k.status === 'served')
 
-  // Special "kitchen" step: active when status is accepted but KOTs exist
   if (stepKey === 'kitchen') {
     if (currentIndex > 1) return 'done'
     if (currentIndex === 0 && kotTickets.length > 0) return 'done'
@@ -497,23 +520,18 @@ function getStepState(order, stepKey) {
     if (currentIndex === 0 && kotTickets.length === 0) return 'pending'
     return 'pending'
   }
-
-  // Special "preparing" step: also consider KOT statuses
   if (stepKey === 'preparing') {
     if (currentIndex > 2) return 'done'
     if (currentIndex === 2 || anyKotPreparing) return 'active'
     if (currentIndex > 0 || kotTickets.length > 0) return 'pending'
     return 'pending'
   }
-
-  // Special "ready" step: check allKotReady
   if (stepKey === 'ready') {
     if (currentIndex > 3) return 'done'
     if (currentIndex === 3 || allKotReady) return 'active'
     if (anyKotReady && !allKotReady) return 'pending'
     return 'pending'
   }
-
   if (stepStatusIndex < currentIndex) return 'done'
   if (stepStatusIndex === currentIndex) return 'active'
   return 'pending'
@@ -521,35 +539,25 @@ function getStepState(order, stepKey) {
 
 // ── Helpers ───────────────────────────────────────────────────────
 function getOrderItems(order) {
-  // Support both waiterAppStore format (order_items) and waiterOrderStore format (items)
   return order.order_items || order.items || []
 }
-
-// Only items that are NOT marked unavailable (available + unchecked)
 function getAvailableItems(order) {
   return getOrderItems(order).filter((i) => i.availability_status !== 'unavailable')
 }
-
-// Items explicitly marked unavailable
 function getUnavailableItems(order) {
   return getOrderItems(order).filter((i) => i.availability_status === 'unavailable')
 }
-
 function itemCount(order) {
-  // Count only available items
   return getAvailableItems(order).reduce((s, i) => s + (i.quantity || 0), 0) || 0
 }
-
 function orderTotal(order) {
-  // Always compute from available items only (do NOT use total_amount which includes unavailable)
   return getAvailableItems(order).reduce((sum, item) => {
     const price = item.unit_price || item.menu_items?.base_price || 0
     return sum + price * item.quantity
   }, 0)
 }
-
 function relativeTime(dateStr) {
-  void now.value // subscribe to clock tick for reactivity
+  void now.value
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
@@ -559,105 +567,37 @@ function relativeTime(dateStr) {
   const rem = mins % 60
   return rem > 0 ? `${hrs}h ${rem}m ago` : `${hrs}h ago`
 }
-
 function fmtDateTime(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
 }
-
-function statusColor(s) {
-  return (
-    {
-      accepted: 'blue-8',
-      sent_to_kitchen: 'deep-orange-8',
-      preparing: 'orange-8',
-      ready: 'green-7',
-      served: 'grey-7',
-    }[s] || 'grey-7'
-  )
-}
 function statusLabel(s) {
   return (
-    {
-      accepted: 'Accepted',
-      sent_to_kitchen: 'In Kitchen',
-      preparing: 'Preparing',
-      ready: '🔔 Ready',
-      served: 'Served',
-    }[s] || s
-  )
-}
-
-function itemStatusColor(s) {
-  return (
-    {
-      queued: 'grey-7',
-      sent_to_kitchen: 'deep-orange-8',
-      ready: 'green-8',
-      served: 'teal-8',
-      pending: 'grey-7',
-    }[s] || 'grey-7'
+    { accepted: 'Accepted', sent_to_kitchen: 'In Kitchen', preparing: 'Preparing', ready: '🔔 Ready', served: 'Served' }[s] || s
   )
 }
 function itemLabel(s) {
   return (
-    {
-      queued: 'Queued',
-      sent_to_kitchen: 'Kitchen',
-      ready: 'Ready',
-      served: 'Served',
-      pending: 'Pending',
-    }[s] ||
-    s ||
-    '—'
-  )
-}
-
-function kotColor(s) {
-  return (
-    {
-      created: 'blue-grey-7',
-      printed: 'indigo-7',
-      preparing: 'orange-8',
-      ready: 'green-7',
-      served: 'teal-8',
-      cancelled: 'red-9',
-    }[s] || 'grey-8'
+    { queued: 'Queued', sent_to_kitchen: 'Kitchen', ready: 'Ready', served: 'Served', pending: 'Pending' }[s] || s || '—'
   )
 }
 function kotLabel(s) {
   return (
-    {
-      created: 'Created',
-      printed: 'Printed',
-      preparing: 'Cooking',
-      ready: '✔ Ready',
-      served: 'Served',
-      cancelled: 'Cancelled',
-    }[s] || s
+    { created: 'Created', printed: 'Printed', preparing: 'Cooking', ready: '✔ Ready', served: 'Served', cancelled: 'Cancelled' }[s] || s
   )
 }
 function kotIcon(s) {
   return (
-    {
-      created: 'receipt',
-      printed: 'print',
-      preparing: 'soup_kitchen',
-      ready: 'task_alt',
-      served: 'done_all',
-      cancelled: 'cancel',
-    }[s] || 'receipt'
+    { created: 'receipt', printed: 'print', preparing: 'soup_kitchen', ready: 'task_alt', served: 'done_all', cancelled: 'cancel' }[s] || 'receipt'
   )
 }
-
 function showDetail(order) {
   detailOrder.value = order
   showDetailSheet.value = true
 }
 
 // ── KOT viewer ────────────────────────────────────────
-// Fetch full KOT data (same query as kitchen display) for KotReceipt component
 async function openKot(kot) {
   activeKot.value = null
   activeKotOrder.value = null
@@ -666,8 +606,7 @@ async function openKot(kot) {
   try {
     const { data, error } = await supabase
       .from('kot_tickets')
-      .select(
-        `
+      .select(`
         id, kot_number, status, printed_at, created_at,
         order:orders (
           order_number, order_type, notes, customer_name,
@@ -681,17 +620,14 @@ async function openKot(kot) {
           )
         ),
         kitchen:kitchens ( name )
-      `,
-      )
+      `)
       .eq('id', kot.id)
       .single()
 
     if (error) throw error
 
-    // Build KotReceipt-compatible object (same as kitchen display enrichTicket)
     activeKot.value = {
       ...data,
-      // Items array for KotReceipt component
       items: (data.kot_items || []).map((ki) => ({
         id: ki.id,
         name: ki.order_item?.menu_item?.name || 'Unknown Item',
@@ -700,7 +636,6 @@ async function openKot(kot) {
         notes: ki.notes || '',
         status: ki.status,
       })),
-      // Private props for template binding
       _tableNumber: data.order?.table?.table_number || '—',
       _waiterName: data.order?.waiter?.full_name || '',
       _customerName: data.order?.customer_name || '',
@@ -731,7 +666,6 @@ async function markServed(orderId) {
       position: 'top',
     })
     showDetailSheet.value = false
-    // Refresh both stores
     await Promise.all([orderStore.fetchMyOrders(), appStore.loadMyOrders()])
   } catch (e) {
     $q.notify({ type: 'negative', message: e.message, position: 'top' })
@@ -742,12 +676,85 @@ async function markServed(orderId) {
 </script>
 
 <style lang="scss" scoped>
-@import './waiter-shared.scss';
+.waiter-orders-light {
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: 'Inter', 'Roboto', sans-serif;
+}
 
-.inner-header {
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  height: 48px;
+// ─── Header ──────────────────────────────────────────────────
+.orders-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.orders-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.orders-header__text {
+  display: flex;
+  flex-direction: column;
+}
+.orders-header__title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+}
+.orders-header__sub {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+// ─── Loading / Empty ─────────────────────────────────────────
+.orders-loading {
+  display: flex;
+  justify-content: center;
+  padding: 72px 0;
+}
+.orders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 64px 24px;
+  text-align: center;
+}
+.orders-empty__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.orders-empty__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.orders-empty__sub {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+// ─── Orders List ─────────────────────────────────────────────
+.orders-list {
+  padding: 14px 16px;
 }
 
 .group-label {
@@ -755,61 +762,133 @@ async function markServed(orderId) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #4b5563;
+  color: #64748b;
+  margin: 16px 0 8px;
+  &:first-child { margin-top: 0; }
 }
 
-// ── Order Card ──────────────────────────────────────────────────────
+// ─── Order Card ──────────────────────────────────────────────
 .order-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
   border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-  transition:
-    background 0.12s,
-    border-color 0.12s,
-    transform 0.1s;
+  margin-bottom: 10px;
+  transition: all 0.12s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  -webkit-tap-highlight-color: transparent;
 
   &:active {
     transform: scale(0.98);
-    background: rgba(255, 255, 255, 0.07);
   }
 
   &--ready {
-    border-color: rgba(34, 197, 94, 0.35);
-    background: rgba(34, 197, 94, 0.06);
-    animation: card-pulse 2s ease-in-out infinite;
+    border-color: #86efac;
+    background: #f0fdf4;
+    animation: card-pulse-ready 2s ease-in-out infinite;
+  }
+  &--preparing {
+    border-color: #fed7aa;
+    background: #fff7ed;
   }
 
-  &--preparing {
-    border-color: rgba(251, 146, 60, 0.25);
-    background: rgba(251, 146, 60, 0.04);
+  &--highlighted {
+    border-color: #fb923c;
+    background: #fff7ed;
+    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25), 0 4px 16px rgba(251, 146, 60, 0.15);
+    animation: card-highlight-pulse 1s ease-in-out 4;
   }
 
   &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 14px 10px;
   }
-
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+  &__number {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+  }
+  &__meta {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 1px;
+  }
+  &__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+  }
   &__kot {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     padding: 0 14px 10px;
   }
-
   &__ready-bar {
     padding: 8px 12px 12px;
-    border-top: 1px solid rgba(34, 197, 94, 0.15);
+    border-top: 1px solid #dcfce7;
   }
 }
 
-@keyframes card-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.2);
+@keyframes card-pulse-ready {
+  0%, 100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); }
+  50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.08); }
+}
+
+@keyframes card-highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25), 0 4px 16px rgba(251, 146, 60, 0.15);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    box-shadow: 0 0 0 6px rgba(251, 146, 60, 0.35), 0 8px 24px rgba(251, 146, 60, 0.25);
+  }
+}
+
+.dot-sep {
+  color: #cbd5e1;
+  margin: 0 2px;
+}
+
+// ─── Status Pill ─────────────────────────────────────────────
+.status-pill {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 3px 10px;
+  border-radius: 20px;
+
+  &--accepted {
+    color: #2563eb;
+    background: #dbeafe;
+  }
+  &--sent_to_kitchen {
+    color: #c2410c;
+    background: #ffedd5;
+  }
+  &--preparing {
+    color: #d97706;
+    background: #fef3c7;
+  }
+  &--ready {
+    color: #15803d;
+    background: #dcfce7;
+  }
+  &--served {
+    color: #64748b;
+    background: #f1f5f9;
   }
 }
 
@@ -817,28 +896,23 @@ async function markServed(orderId) {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 4px 8px;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #d1d5db;
+  color: #475569;
   flex-shrink: 0;
 }
-
-.status-chip {
-  font-size: 10px !important;
-  font-weight: 600 !important;
-  height: 20px !important;
-}
 .time-label {
-  font-size: 0.65rem;
-  color: #6b7280;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: #94a3b8;
 }
 
 // ═══════════════════════════════════════════════════════════
-// ── PROGRESS TRACKER (Card Inline) ────────────────────────
+// ── PROGRESS TRACKER (Card Inline)
 // ═══════════════════════════════════════════════════════════
 .progress-tracker {
   display: flex;
@@ -846,7 +920,6 @@ async function markServed(orderId) {
   padding: 6px 14px 12px;
   gap: 0;
 }
-
 .progress-step {
   display: flex;
   flex-direction: column;
@@ -855,22 +928,20 @@ async function markServed(orderId) {
   position: relative;
   min-width: 0;
 }
-
 .progress-connector {
   position: absolute;
   top: 9px;
   right: 50%;
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #e2e8f0;
   z-index: 0;
   transition: background 0.3s ease;
 
   &--done {
-    background: linear-gradient(90deg, rgba(59, 130, 246, 0.6), rgba(59, 130, 246, 0.3));
+    background: linear-gradient(90deg, #3b82f6, #93c5fd);
   }
 }
-
 .progress-dot {
   width: 20px;
   height: 20px;
@@ -886,37 +957,29 @@ async function markServed(orderId) {
   .progress-step--done & {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: #fff;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
   }
-
   .progress-step--active & {
     background: linear-gradient(135deg, #f97316, #ea580c);
     color: #fff;
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
     animation: active-dot-pulse 1.5s ease-in-out infinite;
   }
-
   .progress-step--pending & {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    background: #f1f5f9;
+    border: 1.5px solid #e2e8f0;
   }
-
   &__empty {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
+    background: #cbd5e1;
   }
 }
 
 @keyframes active-dot-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(249, 115, 22, 0);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3); }
+  50% { box-shadow: 0 0 0 5px rgba(249, 115, 22, 0); }
 }
 
 .progress-label {
@@ -928,187 +991,12 @@ async function markServed(orderId) {
   text-align: center;
   line-height: 1.1;
 
-  .progress-step--done & {
-    color: #60a5fa;
-  }
-  .progress-step--active & {
-    color: #fb923c;
-  }
-  .progress-step--pending & {
-    color: #374151;
-  }
+  .progress-step--done & { color: #2563eb; }
+  .progress-step--active & { color: #ea580c; }
+  .progress-step--pending & { color: #94a3b8; }
 }
 
-// ═══════════════════════════════════════════════════════════
-// ── DETAIL PROGRESS TRACKER (Bottom Sheet — Vertical) ─────
-// ═══════════════════════════════════════════════════════════
-.detail-progress-tracker {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  padding: 14px 16px;
-}
-
-.detail-progress-title {
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-}
-
-.detail-progress-steps {
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-step {
-  display: flex;
-  gap: 14px;
-  min-height: 48px;
-
-  &__indicator {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 24px;
-    flex-shrink: 0;
-    position: relative;
-  }
-
-  &__vline {
-    width: 2px;
-    height: 14px;
-    background: rgba(255, 255, 255, 0.08);
-    transition: background 0.3s ease;
-
-    &--done {
-      background: linear-gradient(180deg, #3b82f6, rgba(59, 130, 246, 0.4));
-    }
-    &--active {
-      background: linear-gradient(180deg, #f97316, rgba(249, 115, 22, 0.2));
-    }
-  }
-
-  &__dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.3s ease;
-  }
-
-  &--done .detail-step__dot {
-    color: #60a5fa;
-  }
-
-  &__dot-active {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f97316, #ea580c);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 14px rgba(249, 115, 22, 0.4);
-    animation: detail-dot-pulse 1.5s ease-in-out infinite;
-  }
-
-  &__dot-empty {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    background: transparent;
-  }
-
-  &__content {
-    flex: 1;
-    padding-bottom: 10px;
-    min-width: 0;
-  }
-
-  &__label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    transition: color 0.3s ease;
-  }
-  &--done .detail-step__label {
-    color: #60a5fa;
-  }
-  &--active .detail-step__label {
-    color: #fb923c;
-  }
-  &--pending .detail-step__label {
-    color: #374151;
-  }
-
-  &__desc {
-    font-size: 0.72rem;
-    margin-top: 2px;
-  }
-  &--done .detail-step__desc {
-    color: rgba(96, 165, 250, 0.5);
-  }
-  &--active .detail-step__desc {
-    color: rgba(251, 146, 60, 0.6);
-  }
-  &--pending .detail-step__desc {
-    color: #1f2937;
-  }
-
-  &__live-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 4px;
-    font-size: 0.6rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #fb923c;
-    background: rgba(249, 115, 22, 0.1);
-    border: 1px solid rgba(249, 115, 22, 0.2);
-    border-radius: 6px;
-    padding: 2px 8px;
-  }
-}
-
-@keyframes detail-dot-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0);
-  }
-}
-
-.live-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #fb923c;
-  animation: live-blink 1s ease-in-out infinite;
-}
-
-@keyframes live-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
-
-// KOT chips on card
+// ── KOT chips on card ──────────────────────────────────────
 .kot-chip {
   display: flex;
   align-items: center;
@@ -1128,31 +1016,50 @@ async function markServed(orderId) {
     margin-left: 2px;
   }
 
-  &--created,
-  &--printed {
-    background: rgba(148, 163, 184, 0.1);
-    color: #94a3b8;
-    border-color: rgba(148, 163, 184, 0.15);
+  &--created, &--printed {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #e2e8f0;
   }
   &--preparing {
-    background: rgba(251, 146, 60, 0.12);
-    color: #fb923c;
-    border-color: rgba(251, 146, 60, 0.2);
+    background: #fff7ed;
+    color: #ea580c;
+    border-color: #fed7aa;
   }
   &--ready {
-    background: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
-    border-color: rgba(34, 197, 94, 0.25);
+    background: #f0fdf4;
+    color: #15803d;
+    border-color: #bbf7d0;
   }
   &--served {
-    background: rgba(45, 212, 191, 0.1);
-    color: #2dd4bf;
-    border-color: rgba(45, 212, 191, 0.2);
+    background: #f0fdfa;
+    color: #0d9488;
+    border-color: #99f6e4;
   }
   &--cancelled {
-    background: rgba(239, 68, 68, 0.1);
-    color: #f87171;
-    border-color: rgba(239, 68, 68, 0.15);
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+  }
+}
+.kot-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: 4px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.85;
+  transition: opacity 0.1s, background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+  &:active {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -1163,16 +1070,17 @@ async function markServed(orderId) {
   font-size: 13px;
 }
 
-// ── Detail Sheet ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// ── DETAIL SHEET (Bottom Sheet)
+// ═══════════════════════════════════════════════════════════
 .detail-sheet {
-  background: #111827;
-  color: #fff;
+  background: #fff;
+  color: #0f172a;
   border-radius: 20px 20px 0 0;
   width: 100%;
   max-height: 88vh;
   overflow-y: auto;
 }
-
 .sheet-handle-wrap {
   display: flex;
   justify-content: center;
@@ -1182,17 +1090,18 @@ async function markServed(orderId) {
   width: 36px;
   height: 4px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
 }
-
 .detail-bar {
-  background: #1f2937;
+  background: #f8fafc;
   min-height: 44px;
   padding: 0 14px;
+  border-bottom: 1px solid #e2e8f0;
 
   &__title {
     display: flex;
     align-items: center;
+    color: #0f172a;
   }
 }
 
@@ -1204,18 +1113,148 @@ async function markServed(orderId) {
 .meta-chip {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 5px 10px;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #475569;
 
   &--elapsed {
-    color: #fbbf24;
-    border-color: rgba(251, 191, 36, 0.2);
-    background: rgba(251, 191, 36, 0.06);
+    color: #d97706;
+    border-color: #fde68a;
+    background: #fffbeb;
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── DETAIL PROGRESS TRACKER (Vertical)
+// ═══════════════════════════════════════════════════════════
+.detail-progress-tracker {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.detail-progress-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+}
+.detail-progress-steps {
+  display: flex;
+  flex-direction: column;
+}
+.detail-step {
+  display: flex;
+  gap: 14px;
+  min-height: 48px;
+
+  &__indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  &__vline {
+    width: 2px;
+    height: 14px;
+    background: #e2e8f0;
+    transition: background 0.3s ease;
+    &--done  { background: linear-gradient(180deg, #3b82f6, #93c5fd); }
+    &--active { background: linear-gradient(180deg, #f97316, #fdba74); }
+  }
+  &__dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+  }
+  &--done .detail-step__dot { color: #2563eb; }
+  &__dot-active {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(249, 115, 22, 0.3);
+    animation: detail-dot-pulse 1.5s ease-in-out infinite;
+  }
+  &__dot-empty {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #e2e8f0;
+    background: transparent;
+  }
+  &__content {
+    flex: 1;
+    padding-bottom: 10px;
+    min-width: 0;
+  }
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.3s ease;
+  }
+  &--done .detail-step__label { color: #2563eb; }
+  &--active .detail-step__label { color: #ea580c; }
+  &--pending .detail-step__label { color: #94a3b8; }
+
+  &__desc {
+    font-size: 0.72rem;
+    margin-top: 2px;
+  }
+  &--done .detail-step__desc { color: #93c5fd; }
+  &--active .detail-step__desc { color: #fdba74; }
+  &--pending .detail-step__desc { color: #cbd5e1; }
+
+  &__live-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ea580c;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 6px;
+    padding: 2px 8px;
+  }
+}
+
+@keyframes detail-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+}
+
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ea580c;
+  animation: live-blink 1s ease-in-out infinite;
+}
+
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 .section-label {
@@ -1223,11 +1262,11 @@ async function markServed(orderId) {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: #4b5563;
+  color: #64748b;
   margin-bottom: 8px;
 }
 
-// KOT list in detail
+// ── KOT list in detail ────────────────────────────────────
 .kot-list {
   display: flex;
   flex-direction: column;
@@ -1237,8 +1276,8 @@ async function markServed(orderId) {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px 12px;
 
@@ -1249,38 +1288,66 @@ async function markServed(orderId) {
     align-items: center;
     justify-content: center;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: #f1f5f9;
   }
-  &__info {
-    flex: 1;
+  &__info { flex: 1; }
+  &__name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f172a;
   }
-  &__status {
-    flex-shrink: 0;
+  &__kitchen {
+    font-size: 0.68rem;
+    color: #94a3b8;
   }
+  &__status { flex-shrink: 0; }
 
   &--ready {
-    border-color: rgba(34, 197, 94, 0.25);
-    background: rgba(34, 197, 94, 0.06);
-    .kot-row__icon {
-      color: #4ade80;
-    }
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    .kot-row__icon { color: #15803d; }
   }
   &--preparing {
-    border-color: rgba(251, 146, 60, 0.2);
-    background: rgba(251, 146, 60, 0.05);
-    .kot-row__icon {
-      color: #fb923c;
-    }
+    border-color: #fed7aa;
+    background: #fff7ed;
+    .kot-row__icon { color: #ea580c; }
   }
-  &--created,
-  &--printed {
-    .kot-row__icon {
-      color: #94a3b8;
-    }
+  &--created, &--printed {
+    .kot-row__icon { color: #64748b; }
   }
 }
 
-// Item rows in detail
+.kot-status-pill {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 6px;
+
+  &--created, &--printed {
+    color: #64748b;
+    background: #f1f5f9;
+  }
+  &--preparing {
+    color: #d97706;
+    background: #fef3c7;
+  }
+  &--ready {
+    color: #15803d;
+    background: #dcfce7;
+  }
+  &--served {
+    color: #0d9488;
+    background: #ccfbf1;
+  }
+  &--cancelled {
+    color: #dc2626;
+    background: #fef2f2;
+  }
+}
+
+// ── Item rows in detail ─────────────────────────────────────
 .items-list {
   display: flex;
   flex-direction: column;
@@ -1291,15 +1358,13 @@ async function markServed(orderId) {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid #f1f5f9;
 
-  &:last-child {
-    border-bottom: none;
-  }
+  &:last-child { border-bottom: none; }
 
   &__qty {
     font-size: 0.85rem;
-    color: #f97316;
+    color: #ea580c;
     font-weight: 700;
     min-width: 26px;
     padding-top: 1px;
@@ -1307,10 +1372,16 @@ async function markServed(orderId) {
   &__name {
     flex: 1;
     font-size: 0.9rem;
+    color: #0f172a;
+  }
+  &__notes {
+    font-size: 0.72rem;
+    color: #d97706;
+    margin-top: 3px;
   }
   &__price {
     font-size: 0.85rem;
-    color: #d1d5db;
+    color: #475569;
     font-weight: 600;
     white-space: nowrap;
     padding-top: 1px;
@@ -1321,35 +1392,66 @@ async function markServed(orderId) {
   }
 }
 
-// ── KOT view button (inside chip) ────────────────────────────────
-.kot-view-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.12);
-  border: none;
-  border-radius: 4px;
-  padding: 2px 4px;
-  margin-left: 4px;
-  cursor: pointer;
-  color: inherit;
-  opacity: 0.85;
-  transition:
-    opacity 0.1s,
-    background 0.1s;
-  -webkit-tap-highlight-color: transparent;
-  line-height: 1;
+.item-status-pill {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 7px;
+  border-radius: 5px;
 
-  &:active {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.22);
+  &--queued, &--pending {
+    color: #64748b;
+    background: #f1f5f9;
+  }
+  &--sent_to_kitchen {
+    color: #c2410c;
+    background: #ffedd5;
+  }
+  &--ready {
+    color: #15803d;
+    background: #dcfce7;
+  }
+  &--served {
+    color: #0d9488;
+    background: #ccfbf1;
   }
 }
 
-// ── Unavailable Items Section ─────────────────────────────────────
+// ── Detail Total ─────────────────────────────────────────
+.detail-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 12px 0;
+}
+.detail-total {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+
+  &__label {
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  &__excl {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-left: 4px;
+  }
+  &__amount {
+    margin-left: auto;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+  }
+}
+
+// ── Unavailable Items Section ───────────────────────────────
 .unavail-section {
-  background: rgba(239, 68, 68, 0.05);
-  border: 1px dashed rgba(239, 68, 68, 0.2);
+  background: #fef2f2;
+  border: 1px dashed #fecaca;
   border-radius: 10px;
   padding: 8px 12px;
 
@@ -1360,7 +1462,7 @@ async function markServed(orderId) {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #ef4444;
+    color: #dc2626;
     opacity: 0.7;
     margin-bottom: 6px;
   }
@@ -1370,23 +1472,23 @@ async function markServed(orderId) {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  opacity: 0.45;
+  opacity: 0.5;
   text-decoration: line-through;
 
   &__qty {
     font-size: 0.78rem;
-    color: #ef4444;
+    color: #dc2626;
     font-weight: 700;
     min-width: 22px;
   }
   &__name {
     flex: 1;
     font-size: 0.8rem;
-    color: #9ca3af;
+    color: #64748b;
   }
   &__price {
     font-size: 0.78rem;
-    color: #6b7280;
+    color: #94a3b8;
     white-space: nowrap;
   }
 }

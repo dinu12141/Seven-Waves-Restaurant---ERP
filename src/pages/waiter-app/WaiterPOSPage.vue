@@ -5,15 +5,21 @@
          ══════════════════════════════════════════════════════ -->
     <div class="wpos-top-bar">
       <div class="wpos-top-left">
-        <q-btn flat dense round icon="arrow_back" color="grey-4" @click="goBack" class="q-mr-xs" />
-        <q-icon name="point_of_sale" size="20px" color="orange-5" />
-        <span class="wpos-brand">Manual Order</span>
-        <q-chip dense color="orange-9" text-color="white" class="wpos-chip">WAITER POS</q-chip>
+        <q-btn flat dense round icon="arrow_back" size="sm" color="grey-7" @click="goBack" />
+        <div class="wpos-brand-wrap">
+          <div class="wpos-brand-title">New Order</div>
+          <div class="wpos-brand-sub">
+            <q-icon name="storefront" size="10px" class="q-mr-xs" />Waiter POS
+          </div>
+        </div>
       </div>
       <div class="wpos-top-right">
-        <div class="wpos-total-box">
-          <div class="wpos-total-label">Total</div>
-          <div class="wpos-total-value">LKR {{ fmtCurrency(store.total) }}</div>
+        <div class="wpos-total-box" :class="{ 'wpos-total-box--active': store.total > 0 }">
+          <div class="wpos-total-label">Order Total</div>
+          <div class="wpos-total-value">
+            <span class="wpos-total-curr">LKR</span>
+            {{ fmtCurrency(store.total) }}
+          </div>
         </div>
       </div>
     </div>
@@ -34,7 +40,7 @@
                 :class="{ active: store.orderType === 'dine-in' }"
                 @click="store.orderType = 'dine-in'"
               >
-                <q-icon name="table_restaurant" size="14px" /> Table
+                <q-icon name="table_restaurant" size="14px" /> Dine-In
               </button>
               <button
                 class="wpos-type-btn"
@@ -45,7 +51,7 @@
               </button>
             </div>
           </div>
-          <div class="wpos-info-field wpos-table-field" v-if="store.orderType === 'dine-in'">
+          <div class="wpos-info-field" v-if="store.orderType === 'dine-in'">
             <span class="wpos-info-label">Table</span>
             <button class="wpos-table-trigger" @click="tablePickerOpen = true">
               <q-icon name="table_restaurant" size="14px" />
@@ -71,9 +77,7 @@
                     v-for="n in 80"
                     :key="n"
                     class="wpos-table-num-btn"
-                    :class="{
-                      active: selectedTableNum === n,
-                    }"
+                    :class="{ active: selectedTableNum === n }"
                     @click="selectTableNum(n)"
                   >
                     {{ n }}
@@ -82,9 +86,10 @@
               </q-card-section>
             </q-card>
           </q-dialog>
+
           <div class="wpos-info-field">
-            <span class="wpos-info-label">Customer</span>
-            <input v-model="store.customerName" class="wpos-cust-input" placeholder="Walk-in" />
+            <span class="wpos-info-label">Guest</span>
+            <input v-model="store.customerName" class="wpos-cust-input" placeholder="Walk-in Customer" />
           </div>
         </div>
 
@@ -109,7 +114,7 @@
               <span class="wpos-cart-col wpos-col-name">
                 {{ item.name }}
                 <span v-if="item.variant" class="wpos-variant">({{ item.variant }})</span>
-                <span v-if="item.notes" class="wpos-notes">{{ item.notes }}</span>
+                <span v-if="item.notes" class="wpos-notes">📝 {{ item.notes }}</span>
               </span>
               <span class="wpos-cart-col wpos-col-qty">
                 <button class="qty-btn" @click.stop="changeQty(idx, -1)">−</button>
@@ -120,26 +125,21 @@
                 fmtCurrency(item.price * item.qty)
               }}</span>
               <span class="wpos-cart-col wpos-col-act">
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="close"
-                  size="xs"
-                  color="red-4"
-                  @click.stop="removeItem(idx)"
-                />
+                <q-btn flat dense round icon="close" size="xs" color="red-4" @click.stop="removeItem(idx)" />
               </span>
             </div>
           </div>
           <div v-else class="wpos-cart-empty">
-            <q-icon name="receipt_long" size="40px" color="grey-8" />
-            <div class="wpos-empty-text">Add items to start an order</div>
+            <div class="wpos-cart-empty__icon">
+              <q-icon name="receipt_long" size="32px" color="grey-4" />
+            </div>
+            <div class="wpos-empty-title">No items yet</div>
+            <div class="wpos-empty-sub">Search or browse the menu to add items</div>
           </div>
         </div>
 
         <!-- Cart Summary -->
-        <div class="wpos-cart-summary">
+        <div class="wpos-cart-summary" v-if="store.cartItems.length">
           <div class="wpos-summary-row">
             <span>Items</span>
             <span>{{ store.itemCount }}</span>
@@ -153,31 +153,25 @@
         <!-- Action Buttons -->
         <div class="wpos-actions">
           <q-btn
-            unelevated
-            color="grey-8"
-            icon="delete_outline"
-            label="Clear"
-            no-caps
+            unelevated no-caps dense
+            color="grey-3" text-color="grey-8"
+            icon="delete_outline" label="Clear"
             class="wpos-action-btn"
             @click="handleClear"
             :disable="store.isEmpty"
           />
           <q-btn
-            unelevated
-            color="orange-9"
-            icon="note_add"
-            label="Note"
-            no-caps
+            unelevated no-caps dense
+            color="amber-2" text-color="amber-10"
+            icon="note_add" label="Note"
             class="wpos-action-btn"
             @click="handleAddNote"
             :disable="selectedItemIdx < 0"
           />
           <q-btn
-            unelevated
+            unelevated no-caps dense
             class="wpos-action-btn wpos-send-btn"
-            icon="send"
-            label="SEND TO KITCHEN"
-            no-caps
+            icon="send" label="SEND TO KITCHEN"
             :loading="store.isSending"
             :disable="store.isEmpty"
             @click="handleSendToKitchen"
@@ -191,13 +185,12 @@
         <div class="wpos-search-wrap">
           <q-input
             v-model="searchQuery"
-            dense
-            outlined
+            dense outlined
             placeholder="Search menu items..."
             class="wpos-search-input"
           >
             <template v-slot:prepend>
-              <q-icon name="search" size="18px" color="orange-5" />
+              <q-icon name="search" size="18px" color="grey-5" />
             </template>
             <template v-slot:append v-if="searchQuery">
               <q-icon name="close" size="14px" class="cursor-pointer" @click="searchQuery = ''" />
@@ -228,8 +221,9 @@
               class="wpos-item-btn"
               @click="addToCart(item)"
             >
-              <div class="wpos-item-icon">
-                <q-icon name="restaurant" size="20px" color="orange-4" />
+              <div class="wpos-item-thumb">
+                <img v-if="item.image" :src="item.image" class="wpos-item-img" loading="lazy" />
+                <q-icon v-else name="restaurant" size="20px" color="orange-4" />
               </div>
               <div class="wpos-item-info">
                 <div class="wpos-item-name">{{ item.name }}</div>
@@ -237,7 +231,7 @@
               </div>
             </button>
             <div v-if="searchResults.length === 0" class="wpos-no-items">
-              <q-icon name="search_off" size="32px" color="grey-7" />
+              <q-icon name="search_off" size="32px" color="grey-4" />
               <div>No items found</div>
             </div>
           </template>
@@ -250,7 +244,7 @@
               class="wpos-item-btn"
               @click="addToCart(item)"
             >
-              <div class="wpos-item-icon">
+              <div class="wpos-item-thumb">
                 <img v-if="item.image" :src="item.image" class="wpos-item-img" loading="lazy" />
                 <q-icon v-else name="restaurant" size="20px" color="orange-4" />
               </div>
@@ -260,7 +254,7 @@
               </div>
             </button>
             <div v-if="filteredItems.length === 0" class="wpos-no-items">
-              <q-icon name="inventory_2" size="32px" color="grey-7" />
+              <q-icon name="inventory_2" size="32px" color="grey-4" />
               <div>No items in this category</div>
             </div>
           </template>
@@ -490,25 +484,30 @@ function fmtCurrency(val) {
 </script>
 
 <style lang="scss" scoped>
-// ── Layout ──────────────────────────────────────────────
+// ─── Layout ─────────────────────────────────────────────────────────────────
 .waiter-pos {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--erp-bg-page, #f1f5f9);
+  background: #f8fafc;
   padding: 0 !important;
+  font-family: 'Inter', 'Roboto', sans-serif;
 }
 
-// ── Top Bar ─────────────────────────────────────────────
+// ─── Top Bar ────────────────────────────────────────────────────────────────
 .wpos-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 0 12px;
   background: #fff;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0);
-  min-height: 52px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid #e2e8f0;
+  height: 56px;
+  min-height: 56px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .wpos-top-left {
@@ -517,18 +516,25 @@ function fmtCurrency(val) {
   gap: 8px;
 }
 
-.wpos-brand {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--erp-text-primary, #1e293b);
-  letter-spacing: -0.3px;
+.wpos-brand-wrap {
+  display: flex;
+  flex-direction: column;
 }
-
-.wpos-chip {
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  height: 20px !important;
-  letter-spacing: 1px;
+.wpos-brand-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+}
+.wpos-brand-sub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .wpos-top-right {
@@ -538,51 +544,65 @@ function fmtCurrency(val) {
 
 .wpos-total-box {
   text-align: right;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
   padding: 6px 14px;
+  transition: all 0.25s ease;
+
+  &--active {
+    background: linear-gradient(135deg, #fff7ed, #fef3c7);
+    border-color: #fdba74;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.1);
+  }
 }
 
 .wpos-total-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--erp-text-muted, #94a3b8);
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .wpos-total-value {
-  font-size: 18px;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #ea580c;
   line-height: 1.1;
 }
+.wpos-total-curr {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-right: 2px;
+}
 
-// ── Body ────────────────────────────────────────────────
+// ─── Body ───────────────────────────────────────────────────────────────────
 .wpos-body {
   flex: 1;
   display: flex;
   overflow: hidden;
 }
 
-// ── Left Panel (Cart) ───────────────────────────────────
+// ─── Left Panel (Cart) ─────────────────────────────────────────────────────
 .wpos-left {
   width: 340px;
   min-width: 280px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--erp-border, #e2e8f0);
+  border-right: 1px solid #e2e8f0;
   background: #fff;
 }
 
 // Order Info
 .wpos-order-info {
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0);
+  gap: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fafbfc;
 }
 
 .wpos-info-field {
@@ -592,37 +612,38 @@ function fmtCurrency(val) {
 }
 
 .wpos-info-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--erp-text-muted, #94a3b8);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  min-width: 60px;
+  letter-spacing: 0.8px;
+  min-width: 50px;
 }
 
 .wpos-type-btns {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 
 .wpos-type-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
-  color: var(--erp-text-secondary, #64748b);
-  font-size: 11px;
+  color: #64748b;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 
   &.active {
     background: #fff7ed;
-    border-color: #fdba74;
+    border-color: #fb923c;
     color: #ea580c;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.08);
   }
 }
 
@@ -632,13 +653,13 @@ function fmtCurrency(val) {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 32px;
   padding: 0 10px;
-  border-radius: 6px;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
-  color: var(--erp-text-primary, #1e293b);
-  font-size: 12px;
+  color: #1e293b;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -650,14 +671,14 @@ function fmtCurrency(val) {
 }
 
 .wpos-table-placeholder {
-  color: var(--erp-text-muted, #94a3b8);
+  color: #94a3b8;
   font-weight: 400;
 }
 
 :deep(.wpos-table-picker-card) {
   background: #fff !important;
-  border: 1px solid var(--erp-border, #e2e8f0);
-  border-radius: 16px 16px 0 0 !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px 18px 0 0 !important;
   max-height: 60vh;
   width: 100%;
   max-width: 520px;
@@ -681,11 +702,11 @@ function fmtCurrency(val) {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
   background: #f8fafc;
-  color: var(--erp-text-primary, #1e293b);
-  font-size: 13px;
+  color: #1e293b;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -695,81 +716,59 @@ function fmtCurrency(val) {
     border-color: #fdba74;
     color: #ea580c;
   }
-
-  &:active {
-    transform: scale(0.92);
-  }
-
+  &:active { transform: scale(0.92); }
   &.active {
     background: #fff7ed;
     border-color: #ea580c;
     color: #ea580c;
-    box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.15);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
   }
 }
 
 .wpos-cust-input {
   flex: 1;
-  height: 28px;
-  background: #f8fafc;
-  border: 1px solid var(--erp-border, #e2e8f0);
-  border-radius: 6px;
-  color: var(--erp-text-primary, #1e293b);
-  padding: 0 8px;
-  font-size: 12px;
+  height: 32px;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  color: #1e293b;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
   outline: none;
   transition: border-color 0.15s;
 
-  &:focus {
-    border-color: #fdba74;
-  }
-
-  &::placeholder {
-    color: var(--erp-text-muted, #94a3b8);
-  }
+  &:focus { border-color: #fb923c; }
+  &::placeholder { color: #cbd5e1; }
 }
 
-// Cart
+// ─── Cart ───────────────────────────────────────────────────────────────────
 .wpos-cart-wrap {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wpos-cart-header {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0);
-  font-size: 9px;
+  padding: 8px 14px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.6rem;
   font-weight: 700;
-  color: var(--erp-text-muted, #94a3b8);
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .wpos-cart-col {
-  &.wpos-col-num {
-    width: 24px;
-    text-align: center;
-  }
-  &.wpos-col-name {
-    flex: 1;
-    min-width: 0;
-  }
-  &.wpos-col-qty {
-    width: 80px;
-    text-align: center;
-  }
-  &.wpos-col-amt {
-    width: 70px;
-    text-align: right;
-  }
-  &.wpos-col-act {
-    width: 28px;
-    text-align: center;
-  }
+  &.wpos-col-num { width: 24px; text-align: center; }
+  &.wpos-col-name { flex: 1; min-width: 0; }
+  &.wpos-col-qty { width: 80px; text-align: center; }
+  &.wpos-col-amt { width: 70px; text-align: right; }
+  &.wpos-col-act { width: 28px; text-align: center; }
 }
 
 .wpos-cart-items {
@@ -779,45 +778,43 @@ function fmtCurrency(val) {
 .wpos-cart-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: background 0.12s;
-  font-size: 12px;
-  color: var(--erp-text-primary, #1e293b);
+  font-size: 0.78rem;
+  color: #1e293b;
 
-  &:hover {
-    background: #f8fafc;
-  }
-
+  &:hover { background: #fafbfc; }
   &.selected {
     background: #fff7ed;
     border-left: 3px solid #ea580c;
+    padding-left: 11px;
   }
 }
 
 .wpos-variant {
-  font-size: 10px;
-  color: var(--erp-text-muted, #94a3b8);
+  font-size: 0.65rem;
+  color: #94a3b8;
   margin-left: 4px;
 }
 
 .wpos-notes {
   display: block;
-  font-size: 9px;
+  font-size: 0.62rem;
   color: #d97706;
   font-style: italic;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .qty-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid var(--erp-border, #e2e8f0);
-  background: #f8fafc;
-  color: var(--erp-text-primary, #1e293b);
-  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #1e293b;
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -825,22 +822,16 @@ function fmtCurrency(val) {
   justify-content: center;
   transition: all 0.12s;
 
-  &:hover {
-    background: #fff7ed;
-    border-color: #fdba74;
-  }
-
-  &:active {
-    transform: scale(0.9);
-  }
+  &:hover { background: #fff7ed; border-color: #fdba74; }
+  &:active { transform: scale(0.9); }
 }
 
 .qty-val {
   font-weight: 700;
-  font-size: 13px;
-  min-width: 22px;
+  font-size: 0.82rem;
+  min-width: 24px;
   text-align: center;
-  color: var(--erp-text-primary, #1e293b);
+  color: #0f172a;
 }
 
 .wpos-cart-empty {
@@ -848,54 +839,68 @@ function fmtCurrency(val) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 60px 20px;
+  gap: 6px;
+  padding: 48px 20px;
+
+  &__icon {
+    width: 60px; height: 60px; border-radius: 16px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
 }
 
-.wpos-empty-text {
-  font-size: 12px;
-  color: var(--erp-text-muted, #94a3b8);
-  font-weight: 500;
+.wpos-empty-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.wpos-empty-sub {
+  font-size: 0.7rem;
+  color: #cbd5e1;
 }
 
-// Summary
+// ─── Summary ────────────────────────────────────────────────────────────────
 .wpos-cart-summary {
-  padding: 10px 12px;
-  border-top: 1px solid var(--erp-border, #e2e8f0);
-  background: #f8fafc;
+  padding: 10px 14px;
+  border-top: 1px solid #e2e8f0;
+  background: #fafbfc;
 }
 
 .wpos-summary-row {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  color: var(--erp-text-secondary, #64748b);
+  font-size: 0.72rem;
+  color: #64748b;
   padding: 2px 0;
 
   &.wpos-summary-total {
-    font-size: 15px;
+    font-size: 0.95rem;
     font-weight: 800;
     color: #ea580c;
     margin-top: 4px;
-    padding-top: 6px;
-    border-top: 1px solid var(--erp-border, #e2e8f0);
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
   }
 }
 
-// Action Buttons
+// ─── Action Buttons ─────────────────────────────────────────────────────────
 .wpos-actions {
   display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--erp-border, #e2e8f0);
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid #e2e8f0;
   background: #fff;
 }
 
 .wpos-action-btn {
   flex: 1;
-  height: 42px;
-  border-radius: 8px !important;
-  font-size: 11px !important;
+  height: 44px;
+  border-radius: 10px !important;
+  font-size: 0.72rem !important;
   font-weight: 700 !important;
 }
 
@@ -903,20 +908,15 @@ function fmtCurrency(val) {
   flex: 2;
   background: linear-gradient(135deg, #059669, #10b981) !important;
   color: white !important;
-  animation: send-glow 2s ease-in-out infinite;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: box-shadow 0.3s ease;
+
+  &:hover { box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35); }
 }
 
-@keyframes send-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
-  }
-}
-
-// ── Right Panel (Menu Browser) ──────────────────────────
+// ─── Right Panel (Menu Browser) ──────────────────────────────────────────────
 .wpos-right {
   flex: 1;
   display: flex;
@@ -927,43 +927,44 @@ function fmtCurrency(val) {
 
 // Search
 .wpos-search-wrap {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0);
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .wpos-search-input {
   :deep(.q-field__control) {
     border-radius: 10px !important;
     background: #f8fafc !important;
-    border: 1px solid var(--erp-border, #e2e8f0) !important;
+    border: 1.5px solid #e2e8f0 !important;
+    height: 36px;
   }
   :deep(.q-field__native) {
-    font-size: 13px;
-    color: var(--erp-text-primary, #1e293b);
+    font-size: 0.82rem;
+    color: #1e293b;
   }
 }
 
 // Category Tabs
 .wpos-cat-tabs {
   display: flex;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 10px 14px;
   overflow-x: auto;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0);
-
-  &::-webkit-scrollbar {
-    height: 0;
-  }
+  border-bottom: 1px solid #e2e8f0;
+  background: #fafbfc;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { height: 0; }
 }
 
 .wpos-cat-tab {
   padding: 6px 14px;
   border-radius: 20px;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  border: 1.5px solid #e2e8f0;
   background: #fff;
-  color: var(--erp-text-secondary, #64748b);
-  font-size: 11px;
+  color: #64748b;
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -971,23 +972,22 @@ function fmtCurrency(val) {
 
   &.active {
     background: #fff7ed;
-    border-color: #fdba74;
+    border-color: #fb923c;
     color: #ea580c;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.06);
   }
-
-  &:hover:not(.active) {
-    background: #f8fafc;
-  }
+  &:hover:not(.active) { background: #f8fafc; }
 }
 
 // Items Grid
 .wpos-items-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
   align-content: start;
 }
 
@@ -995,45 +995,42 @@ function fmtCurrency(val) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  padding: 12px 8px 10px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
   background: #fff;
-  color: var(--erp-text-primary, #1e293b);
+  color: #1e293b;
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 
   &:hover {
     border-color: #fdba74;
     background: #fff7ed;
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   }
-
-  &:active {
-    transform: scale(0.97);
-  }
+  &:active { transform: scale(0.97); }
 }
 
-.wpos-item-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: #fff7ed;
+.wpos-item-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .wpos-item-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .wpos-item-info {
@@ -1042,19 +1039,20 @@ function fmtCurrency(val) {
 }
 
 .wpos-item-name {
-  font-size: 11px;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #1e293b;
 }
 
 .wpos-item-price {
-  font-size: 10px;
+  font-size: 0.68rem;
   font-weight: 700;
   color: #059669;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .wpos-no-items {
@@ -1064,12 +1062,12 @@ function fmtCurrency(val) {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 60px 20px;
-  color: var(--erp-text-muted, #94a3b8);
-  font-size: 12px;
+  padding: 56px 20px;
+  color: #94a3b8;
+  font-size: 0.78rem;
 }
 
-// ── Mobile: stack panels vertically ─────────────────────
+// ─── Mobile: stack panels vertically ─────────────────────────────────────────
 @media (max-width: 720px) {
   .wpos-body {
     flex-direction: column-reverse;
@@ -1078,9 +1076,9 @@ function fmtCurrency(val) {
   .wpos-left {
     width: 100%;
     min-width: 100%;
-    max-height: 45vh;
+    max-height: 42vh;
     border-right: none;
-    border-top: 1px solid var(--erp-border, #e2e8f0);
+    border-top: 2px solid #e2e8f0;
   }
 
   .wpos-right {
@@ -1090,6 +1088,19 @@ function fmtCurrency(val) {
 
   .wpos-items-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .wpos-item-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+  }
+
+  .wpos-table-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 </style>

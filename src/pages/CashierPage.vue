@@ -7,8 +7,8 @@
           <q-icon name="point_of_sale" size="22px" color="primary" />
         </div>
         <div>
-          <div class="text-h6 text-white text-weight-bold">Cashier Station</div>
-          <div class="text-caption text-grey-5">{{ branchName }} &nbsp;·&nbsp; {{ now }}</div>
+          <div class="text-h6 cashier-title text-weight-bold">Cashier Station</div>
+          <div class="text-caption text-grey-6">{{ branchName }} &nbsp;·&nbsp; {{ now }}</div>
         </div>
       </div>
 
@@ -175,15 +175,15 @@
               @click.stop="markServed(order)"
             />
 
-            <!-- Main billing CTA -->
+            <!-- View Invoice CTA -->
             <q-btn
               unelevated
               no-caps
-              :icon="order.invoices?.length > 0 ? 'payments' : 'receipt_long'"
-              :label="order.invoices?.length > 0 ? 'Collect Payment' : 'Generate Invoice'"
+              icon="visibility"
+              label="View Invoice"
               size="sm"
               class="action-btn-primary"
-              :color="order.invoices?.length > 0 ? 'green-7' : 'primary'"
+              color="primary"
               :loading="store.processing && store.selectedOrderId === order.id"
               @click="openBill(order)"
             />
@@ -192,7 +192,9 @@
       </transition-group>
     </div>
 
-    <!-- ── Bill Dialog ── -->
+    <!-- ── Invoice View Dialog (read-only) ── -->
+    <InvoiceViewDialog v-model="invoiceViewOpen" :order="selectedOrder" />
+    <!-- ── Bill Dialog (full payment flow) ── -->
     <BillDialog v-model="billDialogOpen" :order="selectedOrder" @paid="onOrderPaid" />
   </q-page>
 </template>
@@ -203,6 +205,7 @@ import { useQuasar } from 'quasar'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
 import BillDialog from 'src/components/cashier/BillDialog.vue'
+import InvoiceViewDialog from 'src/components/cashier/InvoiceViewDialog.vue'
 
 const $q = useQuasar()
 const store = useCashierStore()
@@ -210,6 +213,7 @@ const authStore = useAuthStore()
 
 // ── State ──────────────────────────────────────────────────
 const activeTab = ref('all')
+const invoiceViewOpen = ref(false)
 const billDialogOpen = ref(false)
 const selectedOrder = ref(null)
 
@@ -252,15 +256,14 @@ function tabCount(tab) {
 function openBill(order) {
   selectedOrder.value = order
   store.selectedOrderId = order.id
-  billDialogOpen.value = true
+  invoiceViewOpen.value = true
 }
 
 async function markServed(order) {
   $q.dialog({
     title: 'Mark as Served',
     message: `Mark Order #${order.order_number} as served?`,
-    dark: true,
-    cancel: { flat: true, noCaps: true, color: 'grey-5' },
+    cancel: { flat: true, noCaps: true, color: 'grey-7' },
     ok: { unelevated: true, noCaps: true, color: 'teal', label: 'Mark Served' },
   }).onOk(async () => {
     try {
@@ -314,7 +317,7 @@ onUnmounted(() => {
 .cashier-page {
   padding: 0;
   min-height: 100vh;
-  background: #0d0d14;
+  background: var(--erp-bg-main, var(--q-color-background, #f5f5f5));
   display: flex;
   flex-direction: column;
 }
@@ -325,8 +328,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--erp-border, rgba(0,0,0,0.08));
+  background: var(--erp-bg-card, #ffffff);
   flex-shrink: 0;
 }
 
@@ -367,29 +370,35 @@ onUnmounted(() => {
 }
 
 .stat-chip.wip {
-  background: rgba(255, 152, 0, 0.12);
-  color: #ffb74d;
-  border: 1px solid rgba(255, 152, 0, 0.2);
+  background: rgba(255, 152, 0, 0.15);
+  color: #e65100;
+  border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
 .stat-chip.ready {
-  background: rgba(76, 175, 80, 0.12);
-  color: #66bb6a;
-  border: 1px solid rgba(76, 175, 80, 0.2);
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .stat-chip.invoiced {
-  background: rgba(33, 150, 243, 0.12);
-  color: #42a5f5;
-  border: 1px solid rgba(33, 150, 243, 0.2);
+  background: rgba(33, 150, 243, 0.15);
+  color: #1565c0;
+  border: 1px solid rgba(33, 150, 243, 0.3);
 }
+
+/* Dark mode overrides for stat chips */
+:global(.body--dark) .stat-chip.wip    { color: #ffb74d; }
+:global(.body--dark) .stat-chip.ready  { color: #66bb6a; }
+:global(.body--dark) .stat-chip.invoiced { color: #42a5f5; }
 
 /* ── Tabs ── */
 .cashier-tabs {
   display: flex;
   gap: 4px;
   padding: 10px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--erp-border, rgba(0,0,0,0.08));
+  background: var(--erp-bg-card, #ffffff);
   flex-shrink: 0;
 }
 
@@ -400,7 +409,7 @@ onUnmounted(() => {
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--erp-text-muted, #6b7280);
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -409,8 +418,8 @@ onUnmounted(() => {
 }
 
 .cashier-tab:hover {
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--erp-text-primary, #111827);
+  background: var(--erp-bg-hover, rgba(0,0,0,0.04));
 }
 
 .cashier-tab.active {
@@ -444,7 +453,7 @@ onUnmounted(() => {
   width: 72px;
   height: 72px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--erp-bg-hover, rgba(0,0,0,0.04));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,27 +468,28 @@ onUnmounted(() => {
 
 .orders-grid-inner {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
 }
 
 /* ── Order Card ── */
 .order-card {
-  background: #13131e;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
+  background: var(--erp-bg-card, #ffffff);
+  border: 1px solid var(--erp-border, rgba(0,0,0,0.08));
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0 0 12px;
+  gap: 7px;
+  padding: 0 0 10px;
   transition: all 0.2s ease;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .order-card:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--erp-border-hover, rgba(33,150,243,0.3));
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   transform: translateY(-2px);
 }
 
@@ -493,13 +503,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 0;
+  padding: 8px 12px 0;
 }
 
 .order-number {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--erp-text-primary, #111827);
   letter-spacing: -0.5px;
 }
 
@@ -512,44 +522,44 @@ onUnmounted(() => {
 }
 
 .card-info {
-  padding: 0 14px;
+  padding: 0 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .info-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.68rem;
+  color: var(--erp-text-muted, #6b7280);
 }
 
 .info-sep {
-  color: rgba(255, 255, 255, 0.15);
+  color: var(--erp-border, rgba(0,0,0,0.2));
   margin: 0 2px;
 }
 
 /* Items preview */
 .items-preview {
-  padding: 0 14px;
+  padding: 0 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
 }
 
 .item-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--erp-bg-hover, rgba(0,0,0,0.05));
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 0.6rem;
+  color: var(--erp-text-secondary, #374151);
+  border: 1px solid var(--erp-border, rgba(0,0,0,0.08));
 }
 
 .item-chip.more {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--erp-text-muted, #9ca3af);
   font-style: italic;
 }
 
@@ -558,21 +568,21 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 4px 14px;
-  margin-top: 2px;
+  padding: 2px 12px;
+  margin-top: 0;
 }
 
 .amount-label {
-  font-size: 0.62rem;
-  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.58rem;
+  color: var(--erp-text-muted, #9ca3af);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .amount-value {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--erp-text-primary, #111827);
   font-variant-numeric: tabular-nums;
 }
 
@@ -581,34 +591,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin: 0 14px;
-  background: rgba(33, 150, 243, 0.07);
-  border: 1px solid rgba(33, 150, 243, 0.12);
+  background: rgba(33, 150, 243, 0.08);
+  border: 1px solid rgba(33, 150, 243, 0.2);
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--erp-text-secondary, #374151);
 }
 
 /* Actions */
 .card-actions {
   display: flex;
-  gap: 8px;
-  padding: 0 14px;
+  gap: 6px;
+  padding: 0 12px;
   margin-top: auto;
 }
 
 .action-btn-secondary {
   flex: 0 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--erp-border, rgba(0,0,0,0.1)) !important;
   border-radius: 8px !important;
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--erp-text-muted, #6b7280) !important;
   font-weight: 600;
   padding: 0 10px;
 }
 
 .action-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: rgba(255, 255, 255, 0.7) !important;
+  background: var(--erp-bg-hover, rgba(0,0,0,0.04)) !important;
+  color: var(--erp-text-primary, #111827) !important;
 }
 
 .action-btn-primary {
@@ -631,5 +641,9 @@ onUnmounted(() => {
 .order-card-anim-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+/* ── Title theme ── */
+.cashier-title {
+  color: var(--erp-text-primary, #111827);
 }
 </style>

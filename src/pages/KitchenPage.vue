@@ -1,6 +1,6 @@
 <template>
   <q-page class="kds-page">
-    <div class="q-pa-md full-height-container">
+    <div class="kds-container">
       <!-- Header -->
       <div class="row items-center justify-between q-mb-md">
         <div class="row items-center q-gutter-x-sm">
@@ -442,8 +442,21 @@ watch(
 <style scoped>
 .kds-page {
   background: var(--erp-bg-page);
-  min-height: 100vh;
   color: var(--erp-text-primary);
+  /* Fill exactly the remaining viewport below the navbar — no scroll */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kds-container {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .kds-title {
@@ -465,18 +478,15 @@ watch(
   border: 1px solid var(--erp-border);
 }
 
-.full-height-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
 
 .full-height-board {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .kitchen-banner {
+
   display: flex;
   align-items: center;
   color: var(--erp-text-secondary);
@@ -561,12 +571,8 @@ watch(
 
 /* Responsive */
 @media (max-width: 1023px) {
-  .full-height-container {
-    height: auto;
-    min-height: 100vh;
-  }
-  .full-height-board {
-    height: auto;
+  .kds-container {
+    overflow-y: auto;
   }
   .kanban-col-wrapper {
     height: auto;

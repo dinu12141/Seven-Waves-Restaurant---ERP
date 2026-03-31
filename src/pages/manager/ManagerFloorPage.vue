@@ -15,33 +15,50 @@
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6 col-md-3">
         <div class="kpi-card kpi--blue kpi-clickable" @click="openDetail('waiters')">
-          <div class="kpi-val">{{ onShiftWaiters.length }}</div>
-          <div class="kpi-lbl">On-Shift Waiters</div>
-          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="blue-4" />
+          <div class="kpi-icon-wrap"><q-icon name="people" size="22px" color="white" /></div>
+          <div class="kpi-body">
+            <div class="kpi-lbl">On-Shift Waiters</div>
+            <div class="kpi-val">{{ onShiftWaiters.length }}</div>
+          </div>
+          <q-icon name="people" size="64px" class="kpi-watermark" />
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" />
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-card kpi--orange kpi-clickable" @click="openDetail('waiting')">
-          <div class="kpi-val">{{ unacceptedOrders.length }}</div>
-          <div class="kpi-lbl">Waiting Orders</div>
-          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="orange-4" />
+          <div class="kpi-icon-wrap"><q-icon name="hourglass_top" size="22px" color="white" /></div>
+          <div class="kpi-body">
+            <div class="kpi-lbl">Waiting Orders</div>
+            <div class="kpi-val">{{ unacceptedOrders.length }}</div>
+          </div>
+          <q-icon name="pending_actions" size="64px" class="kpi-watermark" />
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" />
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-card kpi--green kpi-clickable" @click="openDetail('active')">
-          <div class="kpi-val">{{ totalActiveOrders }}</div>
-          <div class="kpi-lbl">Active Orders</div>
-          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="green-4" />
+          <div class="kpi-icon-wrap"><q-icon name="receipt_long" size="22px" color="white" /></div>
+          <div class="kpi-body">
+            <div class="kpi-lbl">Active Orders</div>
+            <div class="kpi-val">{{ totalActiveOrders }}</div>
+          </div>
+          <q-icon name="restaurant" size="64px" class="kpi-watermark" />
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" />
         </div>
       </div>
       <div class="col-6 col-md-3">
         <div class="kpi-card kpi--purple kpi-clickable" @click="openDetail('served')">
-          <div class="kpi-val">{{ totalServedToday }}</div>
-          <div class="kpi-lbl">Served Today</div>
-          <q-icon name="chevron_right" size="14px" class="kpi-chevron" color="purple-4" />
+          <div class="kpi-icon-wrap"><q-icon name="check_circle" size="22px" color="white" /></div>
+          <div class="kpi-body">
+            <div class="kpi-lbl">Served Today</div>
+            <div class="kpi-val">{{ totalServedToday }}</div>
+          </div>
+          <q-icon name="task_alt" size="64px" class="kpi-watermark" />
+          <q-icon name="chevron_right" size="14px" class="kpi-chevron" />
         </div>
       </div>
     </div>
+
 
     <!-- Unaccepted Orders Alert -->
     <div v-if="unacceptedOrders.length > 0" class="alert-banner q-mb-lg">
@@ -868,65 +885,97 @@ async function sendMessage() {
 
 // ── KPI Cards ──────────────────────────────────────────────────────────────
 .kpi-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
-  padding: 16px;
-  text-align: center;
+  padding: 16px 18px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
   position: relative;
+  overflow: hidden;
+  border: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+}
+.kpi-icon-wrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-body {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+.kpi-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+.kpi-val {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.kpi-watermark {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  opacity: 0.08;
+  pointer-events: none;
+  color: white !important;
 }
 .kpi-clickable {
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   user-select: none;
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    background: rgba(255, 255, 255, 0.07) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
   }
   &:active {
-    transform: translateY(0px);
-    box-shadow: none;
+    transform: translateY(0px) !important;
+    box-shadow: none !important;
   }
 }
 .kpi-chevron {
   position: absolute;
   bottom: 8px;
   right: 10px;
-  opacity: 0.5;
+  opacity: 0.6;
+  color: white !important;
+  z-index: 1;
 }
-.kpi-val {
-  font-size: 1.7rem;
-  font-weight: 800;
-  line-height: 1;
-}
-.kpi-lbl {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-.kpi--blue .kpi-val { color: #60a5fa; }
+
+// Gradient colour variants
 .kpi--blue {
-  border-color: rgba(96, 165, 250, 0.2);
-  background: rgba(96, 165, 250, 0.06);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
 }
-.kpi--orange .kpi-val { color: #f97316; }
 .kpi--orange {
-  border-color: rgba(249, 115, 22, 0.2);
-  background: rgba(249, 115, 22, 0.06);
+  background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
 }
-.kpi--green .kpi-val { color: #4ade80; }
 .kpi--green {
-  border-color: rgba(34, 197, 94, 0.2);
-  background: rgba(34, 197, 94, 0.06);
+  background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
 }
-.kpi--purple .kpi-val { color: #a78bfa; }
 .kpi--purple {
-  border-color: rgba(167, 139, 250, 0.2);
-  background: rgba(167, 139, 250, 0.06);
+  background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 // ── Alert Banner ───────────────────────────────────────────────────────────

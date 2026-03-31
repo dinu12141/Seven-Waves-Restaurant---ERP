@@ -29,9 +29,9 @@
     <!-- KPIs -->
     <div v-if="selectedCycle && records.length" class="row q-col-gutter-md q-mb-md">
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(16, 185, 129, 0.12)">
-            <q-icon name="payments" size="20px" color="green" />
+        <div class="fin-kpi-card fin-kpi-card--green">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="payments" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Total Net</div>
@@ -40,9 +40,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(59, 130, 246, 0.12)">
-            <q-icon name="check_circle" size="20px" color="blue" />
+        <div class="fin-kpi-card fin-kpi-card--blue">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="check_circle" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Paid</div>
@@ -51,9 +51,9 @@
         </div>
       </div>
       <div class="col-12 col-sm-4">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" style="background: rgba(245, 158, 11, 0.12)">
-            <q-icon name="pending" size="20px" color="orange" />
+        <div class="fin-kpi-card fin-kpi-card--amber">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="pending" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Pending</div>

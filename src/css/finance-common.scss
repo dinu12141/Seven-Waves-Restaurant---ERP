@@ -12,20 +12,57 @@
 .fin-kpi-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: var(--erp-fin-bg-panel);
-  border: 1px solid var(--erp-fin-border);
-  border-radius: 8px;
-  padding: 14px 16px;
-  transition: border-color 0.2s;
+  gap: 14px;
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: none;
+
   &:hover {
-    border-color: var(--erp-primary);
+    transform: translateY(-2px);
   }
+
+  /* Dynamic gradient via --fin-grad CSS variable (set per card) */
+  background: var(--fin-grad, linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%));
+  box-shadow: var(--fin-shadow, 0 4px 14px rgba(37, 99, 235, 0.25)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+
+/* Colour variants */
+.fin-kpi-card--blue {
+  --fin-grad: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  --fin-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+.fin-kpi-card--green {
+  --fin-grad: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  --fin-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+}
+.fin-kpi-card--amber,
+.fin-kpi-card--orange {
+  --fin-grad: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+  --fin-shadow: 0 4px 14px rgba(217, 119, 6, 0.25);
+}
+.fin-kpi-card--red {
+  --fin-grad: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+  --fin-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
+}
+.fin-kpi-card--purple {
+  --fin-grad: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+  --fin-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+}
+.fin-kpi-card--teal,
+.fin-kpi-card--cyan {
+  --fin-grad: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+  --fin-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+}
+
 .fin-kpi-card__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2) !important; /* frosted override */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,16 +70,20 @@
 }
 .fin-kpi-card__label {
   font-size: 11px;
-  font-weight: 500;
-  color: var(--erp-fin-text-secondary);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .fin-kpi-card__value {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--erp-fin-text-primary);
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
   margin-top: 2px;
+  line-height: 1.1;
+}
+.fin-kpi-card__body {
+  flex: 1;
 }
 
 /* ─── Panels ────────────────────────────────────────────────────── */

@@ -90,14 +90,19 @@
                 v-for="item in order.items || order.order_items"
                 :key="item.id"
                 class="row justify-between text-caption"
+                :class="{ 'item-unavailable': item.availability_status === 'unavailable' }"
               >
-                <span class="text-white"
-                  >{{ item.quantity }}x {{ item.item_name || item.menu_items?.name }}</span
-                >
-                <span class="text-grey-5 font-mono"
-                  >LKR
-                  {{ Math.round(item.unit_price * item.quantity).toLocaleString('en-LK') }}</span
-                >
+                <span :class="item.availability_status === 'unavailable' ? 'text-grey-7 text-strike' : 'text-white'">
+                  {{ item.quantity }}x {{ item.item_name || item.menu_items?.name }}
+                  <q-badge v-if="item.availability_status === 'unavailable'" color="red-9" class="q-ml-xs" style="font-size: 8px">
+                    Unavailable
+                  </q-badge>
+                </span>
+                <span
+                  class="font-mono"
+                  :class="item.availability_status === 'unavailable' ? 'text-grey-8 text-strike' : 'text-grey-5'"
+                >LKR
+                  {{ Math.round(item.unit_price * item.quantity).toLocaleString('en-LK') }}</span>
               </div>
             </div>
 
@@ -467,5 +472,13 @@ onUnmounted(() => {
 
 .font-mono {
   font-family: 'SF Mono', 'JetBrains Mono', monospace;
+}
+
+.text-strike {
+  text-decoration: line-through;
+}
+
+.item-unavailable {
+  opacity: 0.6;
 }
 </style>

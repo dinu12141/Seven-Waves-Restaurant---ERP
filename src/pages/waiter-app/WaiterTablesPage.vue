@@ -2,74 +2,71 @@
   <q-page class="waiter-tables">
     <q-pull-to-refresh @refresh="onRefresh" color="orange">
       <!-- ── Header ────────────────────────────────── -->
-      <div class="page-header q-px-md q-pt-md">
-        <div class="row items-center justify-between">
-          <div>
-            <div class="page-title">Floor View</div>
-            <div class="page-subtitle">{{ occupiedCount }}/{{ tables.length }} occupied</div>
+      <div class="tables-header">
+        <div class="tables-header__left">
+          <q-icon name="grid_view" size="20px" color="orange-8" />
+          <div class="tables-header__text">
+            <div class="tables-header__title">Floor View</div>
+            <div class="tables-header__sub">{{ occupiedCount }}/{{ tables.length }} occupied</div>
           </div>
-          <q-btn
-            flat
-            round
-            dense
-            icon="refresh"
-            color="grey-4"
-            :loading="loading"
-            @click="loadTables"
-          />
         </div>
+        <q-btn
+          flat round dense
+          icon="refresh"
+          color="grey-6"
+          size="sm"
+          :loading="loading"
+          @click="loadTables"
+        />
+      </div>
 
-        <!-- Status Legend -->
-        <div class="legend-row q-mt-sm">
-          <div class="legend-item">
-            <span class="legend-dot legend-dot--available"></span> Vacant
-          </div>
-          <div class="legend-item">
-            <span class="legend-dot legend-dot--occupied"></span> Occupied
-          </div>
-          <div class="legend-item">
-            <span class="legend-dot legend-dot--billing"></span> Billing
-          </div>
-          <div class="legend-item">
-            <span class="legend-dot legend-dot--reserved"></span> Reserved
-          </div>
+      <!-- ── Status Legend ──────────────────────────── -->
+      <div class="tables-legend">
+        <div class="legend-item">
+          <span class="legend-dot legend-dot--available"></span> Vacant
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot legend-dot--occupied"></span> Occupied
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot legend-dot--billing"></span> Billing
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot legend-dot--reserved"></span> Reserved
         </div>
       </div>
 
-      <!-- ── Filter Chips ──────────────────────────── -->
-      <div class="q-px-md q-mt-sm">
-        <div class="filter-chips">
-          <q-chip
-            v-for="f in filters"
-            :key="f.value"
-            dense
-            clickable
-            :color="activeFilter === f.value ? 'orange-9' : 'grey-9'"
-            :text-color="activeFilter === f.value ? 'white' : 'grey-4'"
-            @click="activeFilter = f.value"
-            class="filter-chip"
-          >
-            {{ f.label }} ({{ f.count }})
-          </q-chip>
-        </div>
+      <!-- ── Filter Tabs ───────────────────────────── -->
+      <div class="tables-filters">
+        <button
+          v-for="f in filters"
+          :key="f.value"
+          class="tables-filter-btn"
+          :class="{ active: activeFilter === f.value }"
+          @click="activeFilter = f.value"
+        >
+          {{ f.label }} ({{ f.count }})
+        </button>
       </div>
 
       <!-- ── Loading ───────────────────────────────── -->
-      <div v-if="loading && !tables.length" class="loading-wrap">
-        <q-spinner-orbit size="48px" color="orange" />
+      <div v-if="loading && !tables.length" class="tables-loading">
+        <q-spinner-orbit size="40px" color="orange" />
       </div>
 
       <!-- ── Empty ─────────────────────────────────── -->
-      <div v-else-if="!filteredTables.length" class="empty-state">
-        <q-icon name="table_restaurant" size="56px" color="grey-7" />
-        <div class="empty-title">No tables found</div>
-        <div class="empty-sub">
+      <div v-else-if="!filteredTables.length" class="tables-empty">
+        <div class="tables-empty__icon">
+          <q-icon name="table_restaurant" size="36px" color="grey-4" />
+        </div>
+        <div class="tables-empty__title">No tables found</div>
+        <div class="tables-empty__sub">
           {{ activeFilter === 'all' ? 'No tables configured.' : 'No tables with this status.' }}
         </div>
       </div>
 
       <!-- ── Table Grid ────────────────────────────── -->
-      <div v-else class="table-grid q-px-md q-mt-md">
+      <div v-else class="table-grid">
         <div
           v-for="table in filteredTables"
           :key="table.id"
@@ -94,7 +91,7 @@
           <!-- Running bill / guests if occupied -->
           <div class="table-card__info" v-if="table.occupied">
             <div class="info-row" v-if="table.runningBill > 0">
-              <q-icon name="receipt" size="11px" color="amber-4" />
+              <q-icon name="receipt" size="11px" color="amber-8" />
               <span class="bill-amount">Rs. {{ Number(table.runningBill).toFixed(0) }}</span>
             </div>
             <div class="info-row" v-if="table.orderCount">
@@ -108,10 +105,8 @@
             <div v-if="expandedTable === table.id" class="table-card__actions">
               <q-btn
                 v-if="!table.occupied"
-                flat
-                dense
-                no-caps
-                color="orange-4"
+                flat dense no-caps
+                color="orange-8"
                 icon="add"
                 label="New Order"
                 class="action-mini"
@@ -119,10 +114,8 @@
               />
               <q-btn
                 v-if="table.occupied"
-                flat
-                dense
-                no-caps
-                color="blue-4"
+                flat dense no-caps
+                color="blue-8"
                 icon="add"
                 label="Add Items"
                 class="action-mini"
@@ -130,10 +123,8 @@
               />
               <q-btn
                 v-if="table.occupied"
-                flat
-                dense
-                no-caps
-                color="amber-4"
+                flat dense no-caps
+                color="amber-9"
                 icon="receipt_long"
                 label="Bill"
                 class="action-mini"
@@ -324,31 +315,61 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .waiter-tables {
   min-height: 100vh;
+  background: #f8fafc;
+  font-family: 'Inter', 'Roboto', sans-serif;
 }
 
-// ── Header ──────────────────────────────
-.page-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--erp-text-primary, #1e293b);
-}
-.page-subtitle {
-  font-size: 12px;
-  color: var(--erp-text-muted, #94a3b8);
-  margin-top: 2px;
-}
-
-.legend-row {
+// ─── Header ──────────────────────────────────────────────────────
+.tables-header {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.tables-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tables-header__text {
+  display: flex;
+  flex-direction: column;
+}
+.tables-header__title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+}
+.tables-header__sub {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+// ─── Legend ──────────────────────────────────────────────────────
+.tables-legend {
+  display: flex;
+  gap: 14px;
   flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
 }
 .legend-item {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  color: var(--erp-text-secondary, #64748b);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -356,69 +377,101 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  &--available {
-    background: #059669;
-  }
-  &--occupied {
-    background: #2563eb;
-  }
-  &--billing {
-    background: #d97706;
-  }
-  &--reserved {
-    background: #7c3aed;
-  }
+  &--available { background: #059669; }
+  &--occupied { background: #2563eb; }
+  &--billing { background: #d97706; }
+  &--reserved { background: #7c3aed; }
 }
 
-// ── Filter Chips ────────────────────────
-.filter-chips {
+// ─── Filter Tabs ─────────────────────────────────────────────────
+.tables-filters {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { height: 0; }
 }
-.filter-chip {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  height: 26px !important;
+.tables-filter-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  &.active {
+    background: #fff7ed;
+    border-color: #fb923c;
+    color: #ea580c;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.06);
+  }
+  &:hover:not(.active) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
 }
 
-// ── Loading / Empty ─────────────────────
-.loading-wrap {
+// ─── Loading ─────────────────────────────────────────────────────
+.tables-loading {
   display: flex;
   justify-content: center;
-  padding: 60px 0;
+  padding: 72px 0;
 }
-.empty-state {
+
+// ─── Empty State ─────────────────────────────────────────────────
+.tables-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 60px 20px;
+  gap: 6px;
+  padding: 64px 24px;
   text-align: center;
 }
-.empty-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--erp-text-secondary, #64748b);
+.tables-empty__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
 }
-.empty-sub {
-  font-size: 12px;
-  color: var(--erp-text-muted, #94a3b8);
+.tables-empty__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.tables-empty__sub {
+  font-size: 0.75rem;
+  color: #cbd5e1;
 }
 
-// ── Table Grid ──────────────────────────
+// ─── Table Grid ──────────────────────────────────────────────────
 .table-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  padding: 14px 16px;
+
   @media (max-width: 400px) {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
+// ─── Table Card ──────────────────────────────────────────────────
 .table-card {
   background: #fff;
-  border: 1px solid var(--erp-border, #e2e8f0);
+  border: 1.5px solid #e2e8f0;
   border-radius: 14px;
   padding: 12px;
   cursor: pointer;
@@ -431,30 +484,34 @@ onUnmounted(() => {
   }
 
   &--available {
-    border-top: 3px solid #059669;
+    border-left: 3.5px solid #059669;
     &:hover {
       border-color: #a7f3d0;
+      border-left-color: #059669;
     }
   }
   &--occupied {
-    border-top: 3px solid #2563eb;
-    background: #eff6ff;
+    border-left: 3.5px solid #2563eb;
+    background: #f8faff;
     &:hover {
       border-color: #93c5fd;
+      border-left-color: #2563eb;
     }
   }
   &--billing {
-    border-top: 3px solid #d97706;
-    background: #fffbeb;
+    border-left: 3.5px solid #d97706;
+    background: #fffdf7;
     animation: billing-pulse 2s ease-in-out infinite;
     &:hover {
       border-color: #fcd34d;
+      border-left-color: #d97706;
     }
   }
   &--reserved {
-    border-top: 3px solid #7c3aed;
+    border-left: 3.5px solid #7c3aed;
     &:hover {
       border-color: #c4b5fd;
+      border-left-color: #7c3aed;
     }
   }
 
@@ -465,26 +522,27 @@ onUnmounted(() => {
     margin-bottom: 6px;
   }
   &__number {
-    font-size: 18px;
+    font-size: 1.1rem;
     font-weight: 800;
-    color: var(--erp-text-primary, #1e293b);
+    color: #0f172a;
+    letter-spacing: -0.3px;
   }
   &__capacity {
     display: flex;
     align-items: center;
     gap: 2px;
-    font-size: 10px;
-    color: var(--erp-text-muted, #94a3b8);
+    font-size: 0.65rem;
+    color: #94a3b8;
     font-weight: 600;
   }
   &__status-badge {
     display: inline-block;
-    font-size: 9px;
+    font-size: 0.58rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
     &--available {
       color: #059669;
       background: #ecfdf5;
@@ -511,7 +569,7 @@ onUnmounted(() => {
   &__actions {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid var(--erp-border, #e2e8f0);
+    border-top: 1px solid #f1f5f9;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -522,8 +580,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
-  color: var(--erp-text-secondary, #64748b);
+  font-size: 0.65rem;
+  color: #64748b;
+  font-weight: 500;
 }
 .bill-amount {
   font-weight: 700;
@@ -531,24 +590,19 @@ onUnmounted(() => {
 }
 
 .action-mini {
-  font-size: 10px !important;
+  font-size: 0.65rem !important;
   font-weight: 600 !important;
-  border-radius: 6px !important;
-  height: 28px !important;
+  border-radius: 8px !important;
+  height: 30px !important;
   justify-content: flex-start !important;
 }
 
 @keyframes billing-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(217, 119, 6, 0);
-  }
+  0%, 100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); }
+  50% { box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.08); }
 }
 
-// ── Expand Transition ───────────────────
+// ─── Expand Transition ───────────────────────────────────────────
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.2s ease;

@@ -135,7 +135,7 @@ export const useCashierStore = defineStore('cashier', () => {
           `
           id, order_number, order_type, order_source, status, payment_status,
           customer_name, customer_phone, subtotal, tax_amount, discount_amount,
-          total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
+          total_amount, delivery_charge, service_charge, notes, created_at, updated_at, accepted_at, waiter_id,
           table_id, table_number, branch_id,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
@@ -162,7 +162,7 @@ export const useCashierStore = defineStore('cashier', () => {
           `
           id, order_number, order_type, order_source, status, payment_status,
           customer_name, customer_phone, subtotal, tax_amount, discount_amount,
-          total_amount, delivery_charge, notes, created_at, updated_at, accepted_at, waiter_id,
+          total_amount, delivery_charge, service_charge, notes, created_at, updated_at, accepted_at, waiter_id,
           table_id, table_number, branch_id,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
@@ -437,6 +437,7 @@ export const useCashierStore = defineStore('cashier', () => {
         payment_status,
         customer_name,
         customer_phone,
+        notes,
         created_at,
         orders!order_id (
           order_number,
@@ -715,6 +716,7 @@ export const useCashierStore = defineStore('cashier', () => {
       tax_amount: order.tax_amount,
       discount_amount: order.discount_amount,
       total_amount: order.total_amount,
+      service_charge: order.service_charge || 0,
       notes: order.notes,
       created_at: order.created_at,
       updated_at: order.updated_at,

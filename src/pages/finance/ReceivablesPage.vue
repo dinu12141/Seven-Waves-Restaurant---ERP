@@ -41,9 +41,9 @@
 
     <div class="row q-col-gutter-md q-mb-md">
       <div v-for="(bucket, i) in agingBuckets" :key="i" class="col-12 col-sm-6 col-md">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" :style="{ background: bucket.bg }">
-            <q-icon name="schedule" size="18px" :color="bucket.color" />
+        <div :class="['fin-kpi-card', bucket.colorClass]">
+          <div class="fin-kpi-card__icon">
+            <q-icon name="schedule" size="18px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">{{ bucket.label }}</div>
@@ -137,21 +137,11 @@ const agingBuckets = computed(() => {
     if (buckets[r.aging_bucket] !== undefined) buckets[r.aging_bucket] += Number(r.balance || 0)
   })
   return [
-    { label: 'Current', total: buckets.current, bg: 'rgba(16,185,129,0.12)', color: 'green' },
-    {
-      label: '1-30 Days',
-      total: buckets['1-30 days'],
-      bg: 'rgba(245,158,11,0.12)',
-      color: 'orange',
-    },
-    { label: '31-60 Days', total: buckets['31-60 days'], bg: 'rgba(239,68,68,0.12)', color: 'red' },
-    {
-      label: '61-90 Days',
-      total: buckets['61-90 days'],
-      bg: 'rgba(139,92,246,0.12)',
-      color: 'purple',
-    },
-    { label: '90+ Days', total: buckets['90+ days'], bg: 'rgba(220,38,38,0.15)', color: 'red' },
+    { label: 'Current', total: buckets.current, colorClass: 'fin-kpi-card--green' },
+    { label: '1-30 Days', total: buckets['1-30 days'], colorClass: 'fin-kpi-card--amber' },
+    { label: '31-60 Days', total: buckets['31-60 days'], colorClass: 'fin-kpi-card--red' },
+    { label: '61-90 Days', total: buckets['61-90 days'], colorClass: 'fin-kpi-card--purple' },
+    { label: '90+ Days', total: buckets['90+ days'], colorClass: 'fin-kpi-card--red' },
   ]
 })
 

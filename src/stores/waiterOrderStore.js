@@ -30,6 +30,11 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   // Each entry: { id, order_number, table_name, created_at, order_id }
   const newOrderAlerts = ref([])
 
+  // ── Order Reminder Timers ──────────────────────────────────────
+  // Map of orderId → { timerId, acceptedAt, orderNumber, tableNumber }
+  const orderReminders = ref(new Map())
+  const REMINDER_MS = 5 * 60 * 1000 // 5 minutes
+
   // Realtime channels
   let ordersChannel = null
   let kotChannel = null
@@ -292,10 +297,15 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
 
       Notify.create({
         type: 'positive',
+        icon: 'check_circle',
         message: 'Order Accepted!',
+        caption: 'You have 5 min to check on this order.',
         position: 'top',
-        timeout: 2000,
+        timeout: 3000,
       })
+
+      // ── Start 5-minute follow-up reminder ─────────────────
+      startOrderReminder(orderId)
 
       return { success: true, data: result.data }
     } catch (e) {
@@ -506,10 +516,13 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
         }
       }
 
-      // If status changed to terminal, remove from my list
+      // If status changed to terminal, remove from my list and clear reminder
       // Note: 'served' stays visible (waiter can see served orders)
-      if (['invoiced', 'paid', 'cancelled'].includes(newRow.status)) {
-        myOrders.value = myOrders.value.filter((o) => o.id !== newRow.id)
+      if (['served', 'invoiced', 'paid', 'cancelled'].includes(newRow.status)) {
+        clearOrderReminder(newRow.id)
+        if (['invoiced', 'paid', 'cancelled'].includes(newRow.status)) {
+          myOrders.value = myOrders.value.filter((o) => o.id !== newRow.id)
+        }
       }
     }
   }
@@ -574,6 +587,79 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
     newOrderAlerts.value = []
   }
 
+  // ── Order Reminder Logic ─────────────────────────────────
+
+  function startOrderReminder(orderId) {
+    // Clear any existing timer for this order
+    clearOrderReminder(orderId)
+
+    const order = myOrders.value.find((o) => o.id === orderId)
+    const orderNumber = order?.order_number || ''
+    const tableNumber = order?.tableNumber || '—'
+    const acceptedAt = Date.now()
+
+    const timerId = setTimeout(() => {
+      // Double-check the order still exists and isn't served/cancelled
+      const stillActive = myOrders.value.find(
+        (o) => o.id === orderId && !['served', 'completed', 'cancelled', 'invoiced', 'paid'].includes(o.status),
+      )
+      if (!stillActive) return
+
+      // Fire urgent reminder notification
+      Notify.create({
+        type: 'warning',
+        icon: 'alarm',
+        color: 'deep-orange-9',
+        textColor: 'white',
+        message: `⏰ 5-Min Check — Order #${orderNumber}`,
+        caption: `Table ${tableNumber} · Have you attended to this order?`,
+        position: 'top',
+        timeout: 0, // persistent until dismissed
+        multiLine: true,
+        classes: 'order-reminder-toast text-weight-bold',
+        actions: [
+          {
+            label: 'View Order',
+            color: 'white',
+            handler: () => {
+              // Navigate to orders page with highlight query to focus on this specific order
+              import('src/router/index').then(({ default: router }) => {
+                router.push({ path: '/waiter-app/orders', query: { highlight: orderId } }).catch(() => {})
+              })
+            },
+          },
+          { icon: 'close', color: 'white', round: true, dense: true },
+        ],
+      })
+
+      // Buzz the device
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500])
+
+      // Remove timer from map
+      orderReminders.value.delete(orderId)
+    }, REMINDER_MS)
+
+    orderReminders.value.set(orderId, {
+      timerId,
+      acceptedAt,
+      orderNumber,
+      tableNumber,
+    })
+  }
+
+  function clearOrderReminder(orderId) {
+    const entry = orderReminders.value.get(orderId)
+    if (entry) {
+      clearTimeout(entry.timerId)
+      orderReminders.value.delete(orderId)
+    }
+  }
+
+  function clearAllReminders() {
+    orderReminders.value.forEach((entry) => clearTimeout(entry.timerId))
+    orderReminders.value.clear()
+  }
+
   function cleanup() {
     if (ordersChannel) {
       supabase.removeChannel(ordersChannel)
@@ -583,6 +669,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       supabase.removeChannel(kotChannel)
       kotChannel = null
     }
+    clearAllReminders()
     pendingOrders.value = []
     myOrders.value = []
   }

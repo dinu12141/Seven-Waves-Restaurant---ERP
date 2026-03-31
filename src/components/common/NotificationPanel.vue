@@ -75,6 +75,7 @@
           >
             {{ unreadCount }}
           </q-badge>
+
         </button>
       </div>
 
@@ -175,25 +176,56 @@ const activeTab = ref('all')
 const hasNewNotification = ref(false)
 let pulseTimeout = null
 
-const tabs = [
-  { label: 'All', value: 'all', icon: 'inbox' },
-  { label: 'Unread', value: 'unread', icon: 'mark_email_unread' },
-  { label: 'Orders', value: 'orders', icon: 'receipt_long' },
-  { label: 'Kitchen', value: 'kitchen', icon: 'soup_kitchen' },
-]
+// Order-related types that admins should NOT see
+const ORDER_TYPES = ['order_new', 'order_accepted', 'payment_complete', 'kitchen_ready', 'delivery_accepted']
+
+// Tabs: admins see System tab, others see Orders/Kitchen
+const isAdmin = computed(() => authStore.isAdmin)
+
+const tabs = computed(() =>
+  isAdmin.value
+    ? [
+        { label: 'All',    value: 'all',    icon: 'inbox' },
+        { label: 'Unread', value: 'unread', icon: 'mark_email_unread' },
+        { label: 'System', value: 'system', icon: 'settings_suggest' },
+      ]
+    : [
+        { label: 'All',     value: 'all',     icon: 'inbox' },
+        { label: 'Unread',  value: 'unread',  icon: 'mark_email_unread' },
+        { label: 'Orders',  value: 'orders',  icon: 'receipt_long' },
+        { label: 'Kitchen', value: 'kitchen', icon: 'soup_kitchen' },
+      ]
+)
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 const notifications = computed(() => store.notifications)
-const unreadCount = computed(() => store.unreadCount)
+
+// For admins: badge count only reflects system-level unread, not orders
+const unreadCount = computed(() => {
+  if (isAdmin.value) {
+    return store.notifications.filter(
+      (n) => !n.is_read && !ORDER_TYPES.includes(n.type)
+    ).length
+  }
+  return store.unreadCount
+})
 
 const filteredNotifications = computed(() => {
   let list = notifications.value
+
+  // Admins only see system-level notifications — never order/kitchen/payment events
+  if (isAdmin.value) {
+    list = list.filter((n) => !ORDER_TYPES.includes(n.type))
+  }
+
   if (activeTab.value === 'unread') {
     list = list.filter((n) => !n.is_read)
   } else if (activeTab.value === 'orders') {
     list = list.filter((n) => ['order_new', 'order_accepted', 'payment_complete'].includes(n.type))
   } else if (activeTab.value === 'kitchen') {
     list = list.filter((n) => ['kitchen_ready', 'order_accepted'].includes(n.type))
+  } else if (activeTab.value === 'system') {
+    list = list.filter((n) => ['system', 'warning', 'alert', 'info'].includes(n.type) || n.type?.startsWith('login'))
   }
   return list
 })

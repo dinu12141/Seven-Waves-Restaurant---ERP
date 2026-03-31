@@ -134,15 +134,15 @@
       <!-- ── LEFT COLUMN ── -->
       <div class="dash-grid__left">
         <!-- Revenue Chart -->
-        <div class="dash-card">
+        <div class="dash-card dash-card--chart">
           <div class="dash-card__header">
             <div>
-              <div class="dash-card__title">Revenue Trend</div>
-              <div class="dash-card__sub">Sales performance · {{ timeFilter }}</div>
+              <div class="dash-card__title dash-card__title--light">Revenue Trend</div>
+              <div class="dash-card__sub dash-card__sub--light">Sales performance · {{ timeFilter }}</div>
             </div>
             <div class="dash-card__header-right">
               <div class="legend-dot legend-dot--revenue"></div>
-              <span class="legend-label">Revenue</span>
+              <span class="legend-label legend-label--light">Revenue</span>
             </div>
           </div>
           <DashboardChart
@@ -459,33 +459,77 @@ const chartOptions = ref({
     toolbar: { show: false },
     background: 'transparent',
     sparkline: { enabled: false },
+    dropShadow: {
+      enabled: true,
+      top: 0,
+      left: 0,
+      blur: 8,
+      color: '#06b6d4',
+      opacity: 0.4,
+    },
   },
-  colors: ['#2563EB'],
+  colors: ['#06b6d4'],
   dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 2.5 },
+  stroke: { curve: 'smooth', width: 3 },
   fill: {
     type: 'gradient',
-    gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.01, stops: [0, 90, 100] },
+    gradient: {
+      shade: 'dark',
+      type: 'vertical',
+      shadeIntensity: 0.5,
+      gradientToColors: ['#8b5cf6'],
+      inverseColors: false,
+      opacityFrom: 0.6,
+      opacityTo: 0.02,
+      stops: [0, 85, 100],
+    },
   },
   xaxis: {
     categories: [],
-    labels: { style: { colors: '#64748b', fontSize: '10px', fontFamily: 'inherit' } },
+    labels: { style: { colors: '#94a3b8', fontSize: '10px', fontFamily: 'inherit' } },
     axisBorder: { show: false },
     axisTicks: { show: false },
   },
-  yaxis: { labels: { show: false } },
+  yaxis: {
+    labels: {
+      show: true,
+      style: { colors: '#64748b', fontSize: '10px', fontFamily: 'inherit' },
+      formatter: (val) => {
+        if (val >= 1000000) return 'LKR ' + (val / 1000000).toFixed(1) + 'M'
+        if (val >= 1000) return 'LKR ' + (val / 1000).toFixed(0) + 'K'
+        return val > 0 ? 'LKR ' + val : '0'
+      },
+    },
+  },
   grid: {
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(148,163,184,0.08)',
     strokeDashArray: 4,
     xaxis: { lines: { show: false } },
+    yaxis: { lines: { show: true } },
+    padding: { left: 10, right: 10 },
   },
-  tooltip: { theme: 'dark', x: { show: true } },
+  markers: {
+    size: 0,
+    hover: { size: 5, sizeOffset: 2 },
+  },
+  crosshairs: {
+    show: true,
+    stroke: { color: '#06b6d4', width: 1, dashArray: 3 },
+  },
+  tooltip: {
+    theme: 'dark',
+    x: { show: true },
+    style: { fontSize: '12px' },
+    y: {
+      formatter: (val) => 'LKR ' + (val || 0).toLocaleString(),
+    },
+  },
 })
 
 const donutSeries = computed(() => [dineInCount.value || 0, takeawayCount.value || 0])
 const donutOptions = ref({
   chart: { type: 'donut', background: 'transparent' },
-  colors: ['#2563EB', '#0EA5E9'],
+  colors: ['#06b6d4', '#8b5cf6'],
   labels: ['Dine In', 'Takeaway'],
   legend: { show: true, position: 'bottom', fontSize: '11px', labels: { colors: '#94a3b8' } },
   stroke: { show: false },
@@ -493,9 +537,11 @@ const donutOptions = ref({
   plotOptions: {
     pie: {
       donut: {
-        size: '65%',
+        size: '68%',
         labels: {
           show: true,
+          name: { color: '#94a3b8', fontSize: '11px' },
+          value: { color: '#fff', fontSize: '18px', fontWeight: 700 },
           total: { show: true, label: 'Total', color: '#94a3b8', fontSize: '11px' },
         },
       },
@@ -1021,18 +1067,22 @@ onUnmounted(() => {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   }
 
-  // Full gradient backgrounds — HR Document Management style
+  // Full gradient backgrounds — consistent with Quick Actions style
   &--revenue {
     background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--orders {
-    background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%);
+    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--tables {
     background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--staff {
     background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
 
   // Frosted white icon circle
@@ -1191,6 +1241,53 @@ onUnmounted(() => {
     margin-top: 2px;
   }
 
+  &--chart {
+    background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #0c1a2e 100%);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    box-shadow: 0 4px 24px rgba(6, 182, 212, 0.08), 0 1px 4px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -40px;
+      left: 20px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    // Force ApexCharts to be transparent — remove white plot background
+    :deep(.apexcharts-canvas),
+    :deep(.apexcharts-canvas svg),
+    :deep(.apexcharts-inner),
+    :deep(.apexcharts-plot-series) {
+      background: transparent !important;
+    }
+    :deep(.apexcharts-canvas rect:first-child) {
+      fill: transparent !important;
+    }
+  }
+
+  &__title--light {
+    color: #f8fafc;
+  }
+  &__sub--light {
+    color: rgba(148, 163, 184, 0.8);
+  }
+
   &--table-map {
     padding-bottom: 16px;
   }
@@ -1201,13 +1298,16 @@ onUnmounted(() => {
   height: 10px;
   border-radius: 50%;
   &--revenue {
-    background: var(--erp-primary);
-    box-shadow: 0 0 6px var(--erp-primary);
+    background: #06b6d4;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.7);
   }
 }
 .legend-label {
   font-size: var(--erp-font-size-caption);
   color: var(--erp-text-muted);
+  &--light {
+    color: rgba(148, 163, 184, 0.85);
+  }
 }
 
 // ── Split Row (donut + feed) ──────────────────────────────────────────────────
@@ -1334,82 +1434,72 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 12px 8px;
+  gap: 8px;
+  padding: 16px 8px 14px;
   border-radius: var(--erp-radius-lg);
-  background: var(--erp-bg-stripe);
-  border: 1px solid var(--erp-border);
+  border: none;
   text-decoration: none;
-  color: var(--erp-text-secondary);
+  color: #ffffff;
   font-size: var(--erp-font-size-caption);
-  font-weight: var(--erp-font-weight-semibold);
-  letter-spacing: 0.3px;
-  transition: all 0.2s;
+  font-weight: var(--erp-font-weight-bold);
+  letter-spacing: 0.4px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  // Watermark bg icon
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--erp-radius-lg);
+  }
 
   span {
-    color: var(--erp-text-secondary);
+    color: rgba(255, 255, 255, 0.92);
+    position: relative;
+    z-index: 1;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.6px;
   }
   .q-icon {
-    transition: color 0.2s;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
   }
 
   &:hover {
-    background: var(--erp-bg-active);
-    border-color: var(--erp-border-hover);
-    transform: translateY(-2px);
-    span {
-      color: var(--erp-text-primary);
-    }
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    span { color: #ffffff; }
   }
 
   &--pos {
-    &:hover {
-      border-color: rgba(37, 99, 235, 0.4);
-      .q-icon {
-        color: var(--erp-primary-light);
-      }
-    }
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--kitchen {
-    &:hover {
-      border-color: rgba(245, 158, 11, 0.4);
-      .q-icon {
-        color: var(--erp-warning-light);
-      }
-    }
+    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--orders {
-    &:hover {
-      border-color: rgba(16, 185, 129, 0.4);
-      .q-icon {
-        color: var(--erp-success-light);
-      }
-    }
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--tables {
-    &:hover {
-      border-color: rgba(13, 148, 136, 0.4);
-      .q-icon {
-        color: var(--erp-teal-light);
-      }
-    }
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--reports {
-    &:hover {
-      border-color: rgba(139, 92, 246, 0.4);
-      .q-icon {
-        color: var(--erp-accent-light);
-      }
-    }
+    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--inventory {
-    &:hover {
-      border-color: rgba(249, 115, 22, 0.4);
-      .q-icon {
-        color: var(--erp-orange-light);
-      }
-    }
+    background: linear-gradient(135deg, #7c2d12 0%, #ea580c 100%);
+    box-shadow: 0 4px 14px rgba(234, 88, 12, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
   }
 }
 
@@ -1455,9 +1545,9 @@ onUnmounted(() => {
 
 .table-map-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  padding: 2px 2px 6px;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  padding: 2px 2px 4px;
 }
 
 .table-map-empty {
@@ -1471,13 +1561,13 @@ onUnmounted(() => {
 }
 
 .table-cell {
+  aspect-ratio: 1;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 7px 4px 6px;
   transition:
     transform 0.15s,
     box-shadow 0.15s;
@@ -1490,13 +1580,13 @@ onUnmounted(() => {
   }
 
   &__number {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 800;
     line-height: 1;
     letter-spacing: 0.3px;
   }
   &__cap {
-    font-size: 8px;
+    font-size: 7px;
     opacity: 0.75;
     display: flex;
     align-items: center;
