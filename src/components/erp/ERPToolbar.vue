@@ -92,11 +92,11 @@
         <q-btn-dropdown
           v-if="showExport && canExport"
           outline
+          no-caps
           class="erp-toolbar__secondary-btn"
           color="white"
           label="Export"
           icon="file_download"
-          no-caps
         >
           <q-list dense class="erp-toolbar__dropdown-list" style="min-width: 140px">
             <q-item clickable v-close-popup @click="$emit('export-csv')">
@@ -123,7 +123,10 @@
         <q-btn
           v-if="primaryAction && canCreate"
           unelevated
-          class="erp-toolbar__primary-btn"
+          no-caps
+          dense
+          size="sm"
+          class="erp-toolbar__primary-btn q-px-md"
           color="primary"
           :label="primaryActionLabel"
           icon="add"
@@ -264,6 +267,7 @@ const canExport = computed(() => canExportData(props.moduleName))
   &__branch :deep(.q-field__control) {
     height: 38px !important;
     min-height: 38px !important;
+    max-height: 38px !important;
     border-radius: 8px;
     background: var(--erp-bg-input) !important;
     border: 1px solid var(--erp-border);
@@ -278,6 +282,21 @@ const canExport = computed(() => canExportData(props.moduleName))
     &.q-field__control--focused {
       border-color: var(--erp-primary);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+  }
+
+  /* Force the inner native fieldset to match height */
+  &__search,
+  &__branch {
+    :deep(.q-field__native),
+    :deep(.q-field__prefix),
+    :deep(.q-field__suffix),
+    :deep(.q-field__prepend),
+    :deep(.q-field__append) {
+      min-height: 38px !important;
+      height: 38px !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
     }
   }
 

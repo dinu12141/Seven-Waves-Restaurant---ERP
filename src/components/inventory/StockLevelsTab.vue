@@ -48,7 +48,7 @@
 
     <!-- Stock Table -->
     <q-card
-      :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
+      class="stock-table-card"
       flat
       bordered
     >
@@ -83,23 +83,20 @@
           <!-- Qty Cell -->
           <template #body-cell-qty_on_hand="props">
             <q-td :props="props" class="text-right">
-              <span class="text-h6 text-weight-bold" :class="getQtyColor(props.row)">
+              <span class="stock-qty" :class="getQtyColor(props.row)">
                 {{ props.value.toLocaleString() }}
               </span>
-              <span class="text-caption text-grey-5 q-ml-xs">{{ props.row.uom_code }}</span>
+              <span class="stock-qty__uom">{{ props.row.uom_code }}</span>
             </q-td>
           </template>
 
           <!-- Status Cell -->
           <template #body-cell-stock_status="props">
-            <q-td :props="props" class="text-center">
-              <q-badge
-                :color="getStatusColor(props.value)"
-                class="text-weight-bold text-uppercase"
-                style="padding: 4px 8px"
-              >
-                {{ props.value.replace('_', ' ') }}
-              </q-badge>
+            <q-td :props="props">
+              <span class="stock-status" :class="`stock-status--${props.value}`">
+                <span class="stock-status__dot" />
+                {{ props.value?.replaceAll('_', ' ') }}
+              </span>
             </q-td>
           </template>
 
@@ -236,16 +233,6 @@ function getWhColor(type) {
   return map[type] || 'grey'
 }
 
-function getStatusColor(status) {
-  const map = {
-    normal: 'green-8',
-    low_stock: 'orange-9',
-    out_of_stock: 'red-9',
-    overstock: 'blue-8',
-  }
-  return map[status] || 'grey'
-}
-
 function getQtyColor(row) {
   if (row.qty_on_hand <= 0) return 'text-red'
   if (row.stock_status === 'low_stock') return 'text-orange'
@@ -260,3 +247,71 @@ defineExpose({
   rows: filteredStock,
 })
 </script>
+
+<style scoped lang="scss">
+// ── Table card ────────────────────────────────────────────────
+.stock-table-card {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  color: var(--erp-text-primary);
+}
+
+// ── ON HAND qty cell ──────────────────────────────────────────
+// Professional: same visual weight as other data columns, but
+// monospaced and slightly bold for numeric clarity
+.stock-qty {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.stock-qty__uom {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--erp-text-muted);
+  margin-left: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+// ── STATUS inline chip ────────────────────────────────────────
+// Replaces the large q-badge pill with a compact dot + text format
+.stock-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  // Normal / OK
+  &--normal, &--OK {
+    color: var(--erp-success);
+    .stock-status__dot { background: var(--erp-success); }
+  }
+  // Low Stock
+  &--low_stock, &--LOW_STOCK {
+    color: var(--erp-warning);
+    .stock-status__dot { background: var(--erp-warning); }
+  }
+  // Out of Stock
+  &--out_of_stock, &--OUT_OF_STOCK {
+    color: var(--erp-danger);
+    .stock-status__dot { background: var(--erp-danger); }
+  }
+  // Overstock
+  &--overstock, &--OVER_STOCK {
+    color: var(--erp-primary);
+    .stock-status__dot { background: var(--erp-primary); }
+  }
+}
+</style>

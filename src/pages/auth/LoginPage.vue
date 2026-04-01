@@ -181,7 +181,7 @@
             <q-icon name="receipt_long" size="20px" color="amber" />
             <div class="stat-info">
               <div class="stat-value">Real-Time</div>
-              <div class="stat-label">KOT & Orders</div>
+              <div class="stat-label">KOT &amp; Orders</div>
             </div>
           </div>
           <div class="stat-card">
@@ -287,11 +287,13 @@ const handleLogin = async () => {
 .login-page {
   min-height: 100vh;
   padding: 0 !important;
+  background: transparent !important;
 }
 
 .login-wrapper {
   display: flex;
   height: 100vh;
+  min-height: 100vh;
   font-family: 'Inter', 'Roboto', sans-serif;
 }
 
@@ -301,7 +303,7 @@ const handleLogin = async () => {
   min-width: 380px;
   height: 100vh;
   max-height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -506,7 +508,7 @@ const handleLogin = async () => {
   font-style: italic;
 }
 
-/* Button */
+/* Login Button */
 .login-btn {
   margin-top: 8px;
   height: 52px;
@@ -524,6 +526,7 @@ const handleLogin = async () => {
   letter-spacing: 0.3px;
   transition: all 0.25s ease;
   box-shadow: 0 4px 18px rgba(21, 101, 192, 0.3);
+  width: 100%;
 }
 .login-btn:hover:not(:disabled) {
   transform: translateY(-2px);
@@ -539,6 +542,7 @@ const handleLogin = async () => {
 
 /* Footer */
 .form-footer {
+  flex-shrink: 0;
   text-align: center;
   font-size: 12px;
   color: #94a3b8;
@@ -601,13 +605,6 @@ const handleLogin = async () => {
 .caption-accent {
   color: #ffd54f;
 }
-.caption-desc {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 0;
-  max-width: 380px;
-  line-height: 1.6;
-}
 
 /* Floating stats */
 .floating-cards {
@@ -649,19 +646,119 @@ const handleLogin = async () => {
   letter-spacing: 0.5px;
 }
 
-/* ─── RESPONSIVE ─────────────────────────────────── */
+/* ─── MOBILE RESPONSIVE ──────────────────────────── */
 @media (max-width: 768px) {
+  /* Deep rich gradient on the WRAPPER, not q-page */
   .login-wrapper {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+    box-sizing: border-box;
+    background: linear-gradient(160deg, #0d1b3e 0%, #1a2d5a 35%, #0d47a1 75%, #1565c0 100%);
   }
+
+  /* Hide the food background panel on mobile */
+  .image-panel {
+    display: none;
+  }
+
+  /* Card floats over the gradient */
   .form-panel {
     width: 100%;
     min-width: unset;
-    padding: 28px 24px;
-    min-height: 100vh;
+    max-width: 440px;
+    height: auto;
+    max-height: none;
+    min-height: unset;
+    overflow-y: visible;
+    padding: 28px 24px 24px;
+    border-radius: 20px;
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.97);
+    border-right: none;
   }
-  .image-panel {
-    display: none;
+
+  /* Brand: centered row on mobile */
+  .brand {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .brand-logo {
+    height: 42px;
+  }
+  .brand-name {
+    font-size: 19px;
+  }
+  .brand-sub {
+    font-size: 10px;
+  }
+
+  /* Form body: flow naturally instead of vertically centering */
+  .form-body {
+    flex: none;
+    justify-content: flex-start;
+  }
+
+  /* Center welcome text on mobile */
+  .welcome-title {
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .welcome-sub {
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* Bigger touch targets */
+  .custom-input-wrapper {
+    height: 52px;
+  }
+  /* 16px minimum prevents iOS auto-zoom on focus */
+  .custom-input {
+    font-size: 16px;
+  }
+
+  .login-btn {
+    height: 56px;
+    font-size: 16px;
+    border-radius: 14px;
+    margin-top: 12px;
+  }
+
+  .mode-btn {
+    padding: 10px 10px;
+    font-size: 12px;
+  }
+
+  .form-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+}
+
+/* Extra-small phones (≤380px) */
+@media (max-width: 380px) {
+  .login-wrapper {
+    padding: 16px 14px;
+  }
+  .form-panel {
+    padding: 22px 18px 20px;
+  }
+  .welcome-title {
+    font-size: 20px;
   }
 }
 </style>

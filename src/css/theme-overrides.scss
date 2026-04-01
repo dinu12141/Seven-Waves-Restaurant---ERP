@@ -381,14 +381,40 @@ body.body--light {
       color: var(--erp-text-primary) !important;
     }
 
-    // Hero section gradient adapts to light
+    // Hero section — keep vibrant gradient in light mode (not washed out)
     .hero-section {
       background: linear-gradient(
         135deg,
-        rgba(37, 99, 235, 0.06),
-        rgba(124, 58, 237, 0.04),
-        transparent
+        #2e1065 0%,
+        #5b21b6 45%,
+        #7c3aed 100%
       ) !important;
+      box-shadow: 0 6px 24px rgba(91, 33, 182, 0.25) !important;
+    }
+
+    // Keep hero text white — it's on a dark gradient
+    .hero-name,
+    .hero-branch {
+      color: #ffffff !important;
+    }
+
+    // Glassmorphism role badge — keep visible on dark gradient
+    .hero-role-badge {
+      background: rgba(255, 255, 255, 0.18) !important;
+      border-color: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+    }
+
+    // Status badges — keep colored and visible
+    .hero-status-badge--live {
+      background: rgba(16, 185, 129, 0.3) !important;
+      border-color: rgba(16, 185, 129, 0.5) !important;
+      color: #d1fae5 !important;
+    }
+    .hero-status-badge--offline {
+      background: rgba(239, 68, 68, 0.3) !important;
+      border-color: rgba(239, 68, 68, 0.5) !important;
+      color: #fee2e2 !important;
     }
 
     // Items preview panel
@@ -532,8 +558,8 @@ body.body--light {
     background: var(--erp-bg-card) !important;
   }
 
-  /* text-white utility — force dark text for readability */
-  .text-white {
+  /* text-white utility — force dark text for readability, EXCEPT on dark gradient areas */
+  .text-white:not(.hero-section *) {
     color: var(--erp-text-primary) !important;
   }
 

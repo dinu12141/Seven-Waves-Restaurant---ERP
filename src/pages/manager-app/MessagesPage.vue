@@ -1,20 +1,30 @@
 <template>
-  <q-page class="mgr-messages-page" padding>
-    <div class="row items-center q-mb-md">
-      <q-icon name="mail" size="24px" color="cyan-4" class="q-mr-sm" />
-      <div class="text-h6 text-white text-weight-bold">Messages</div>
-      <q-space />
-      <q-btn flat round icon="edit" color="cyan-4" @click="composeOpen = true">
-        <q-tooltip>New Message</q-tooltip>
-      </q-btn>
-      <q-btn
-        flat
-        round
-        icon="refresh"
-        color="grey-5"
-        :loading="store.loading"
-        @click="store.loadMessages()"
-      />
+  <q-page class="mgr-messages-page" :class="{ lt: !$q.dark.isActive }" padding>
+    <!-- Page Header -->
+    <div class="page-header q-mb-md">
+      <div class="page-header__left">
+        <div class="page-header__icon-wrap page-header__icon-wrap--indigo">
+          <q-icon name="mail" size="20px" />
+        </div>
+        <div>
+          <div class="page-header__title">Messages</div>
+          <div class="page-header__sub">Team communication hub</div>
+        </div>
+      </div>
+      <div class="row items-center q-gutter-xs">
+        <q-btn flat round icon="edit" size="sm" class="page-header__action" @click="composeOpen = true">
+          <q-tooltip>New Message</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="refresh"
+          size="sm"
+          class="page-header__refresh"
+          :loading="store.loading"
+          @click="store.loadMessages()"
+        />
+      </div>
     </div>
 
     <!-- Filter -->
@@ -31,8 +41,9 @@
     </q-tabs>
 
     <!-- Messages List -->
-    <div v-if="filtered.length === 0" class="text-grey-6 text-caption text-center q-pa-lg">
-      No messages.
+    <div v-if="filtered.length === 0" class="empty-state q-pa-lg">
+      <q-icon name="inbox" size="40px" class="empty-state__icon" />
+      <div class="empty-state__text">No messages</div>
     </div>
     <div v-else>
       <div
@@ -50,10 +61,10 @@
             class="q-mr-sm"
           />
           <div class="col">
-            <div class="text-white text-weight-bold" style="font-size: 0.85rem">
+            <div class="msg-subject">
               {{ msg.subject || 'No Subject' }}
             </div>
-            <div class="text-caption text-grey-5">
+            <div class="msg-meta">
               {{
                 isSent(msg)
                   ? `To: ${msg.receiver?.full_name || '—'}`
@@ -74,14 +85,14 @@
               {{ msg.is_read ? 'Viewed' : 'Not Viewed' }}
             </q-chip>
           </div>
-          <span class="text-caption text-grey-7">{{ fmtDate(msg.created_at) }}</span>
+          <span class="msg-time">{{ fmtDate(msg.created_at) }}</span>
         </div>
-        <div class="q-px-sm q-pb-sm text-caption text-grey-4" style="white-space: pre-wrap">
+        <div class="q-px-sm q-pb-sm msg-body">
           {{ truncate(msg.message_body, 120) }}
         </div>
         <!-- Read At info for sent messages -->
         <div v-if="isSent(msg) && msg.is_read && msg.read_at" class="q-px-sm q-pb-sm">
-          <span class="text-caption text-green-6">
+          <span class="msg-read-at">
             <q-icon name="done_all" size="12px" class="q-mr-xs" />
             Viewed {{ fmtDateFull(msg.read_at) }}
           </span>
@@ -241,35 +252,162 @@ function truncate(str, len) {
 
 <style lang="scss" scoped>
 .mgr-messages-page {
-  background: #090c14;
   min-height: 100vh;
+  padding-bottom: 80px !important;
+  background: #090c14;
 }
+.mgr-messages-page.lt {
+  background: #f1f5f9;
+}
+
+// ─── Page Header ─────────────────────────────────────────────────────────────
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-header__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-header__icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.page-header__icon-wrap--indigo {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+.lt .page-header__icon-wrap--indigo {
+  background: rgba(99, 102, 241, 0.08);
+}
+.page-header__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f3f4f6;
+}
+.lt .page-header__title {
+  color: #1e293b;
+}
+.page-header__sub {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 1px;
+}
+.lt .page-header__sub {
+  color: #94a3b8;
+}
+.page-header__refresh {
+  color: #6b7280 !important;
+}
+.page-header__action {
+  color: #06b6d4 !important;
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
 .msg-tabs {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 10px;
-  :deep(.q-tab) {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    min-height: 36px;
-  }
-  :deep(.q-tab--active) {
-    color: #22d3ee;
-  }
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.25s ease;
 }
+.lt .msg-tabs {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+.msg-tabs :deep(.q-tab) {
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-height: 38px;
+}
+.msg-tabs :deep(.q-tab) { color: #6b7280; }
+.lt .msg-tabs :deep(.q-tab) { color: #94a3b8; }
+.msg-tabs :deep(.q-tab--active) { color: #22d3ee; }
+.lt .msg-tabs :deep(.q-tab--active) { color: #0891b2; }
+
+// ─── Empty State ─────────────────────────────────────────────────────────────
+.empty-state {
+  text-align: center;
+}
+.empty-state__icon {
+  color: #374151;
+  margin-bottom: 8px;
+}
+.lt .empty-state__icon {
+  color: #cbd5e1;
+}
+.empty-state__text {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+// ─── Message Cards ───────────────────────────────────────────────────────────
 .msg-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   transition: border-color 0.15s;
-  &--unread {
-    border-left: 3px solid #22d3ee;
-  }
-  &:active {
-    border-color: rgba(34, 211, 238, 0.3);
-  }
 }
+.msg-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.lt .msg-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.msg-card--unread {
+  border-left: 3px solid #22d3ee !important;
+}
+.lt .msg-card--unread {
+  border-left-color: #0891b2 !important;
+}
+.msg-card:active {
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.msg-subject {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #f3f4f6;
+}
+.lt .msg-subject {
+  color: #1e293b;
+}
+.msg-meta {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+.lt .msg-meta {
+  color: #94a3b8;
+}
+.msg-time {
+  font-size: 0.68rem;
+  color: #4b5563;
+}
+.lt .msg-time {
+  color: #94a3b8;
+}
+.msg-body {
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  color: #9ca3af;
+}
+.lt .msg-body {
+  color: #64748b;
+}
+.msg-read-at {
+  font-size: 0.7rem;
+  color: #10b981;
+}
+
+// ─── Compose Dialog ──────────────────────────────────────────────────────────
 .compose-card {
   width: 100%;
   max-width: 480px;

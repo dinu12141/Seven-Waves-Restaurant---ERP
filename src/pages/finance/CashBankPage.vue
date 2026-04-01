@@ -28,7 +28,10 @@
             />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">{{ acct.name }}</div>
+            <div class="fin-kpi-card__label">
+              {{ acct.name }}
+              <q-tooltip>{{ acct.name }}</q-tooltip>
+            </div>
             <div class="fin-kpi-card__value">{{ fmt(acct.current_balance) }}</div>
           </div>
         </div>

@@ -1,19 +1,20 @@
 <template>
-  <q-page class="mgr-home-page" padding>
-    <!-- Header -->
-    <div class="row items-center q-mb-lg">
-      <div>
-        <div class="text-h6 text-weight-bold">Dashboard</div>
-        <div class="text-caption text-grey">
-          {{ authStore.currentBranch?.name || '—' }} · {{ today }}
-        </div>
+  <q-page class="mgr-home-page" :class="{ lt: !$q.dark.isActive }" padding>
+    <!-- Welcome Header -->
+    <div class="welcome-section q-mb-lg">
+      <div class="welcome-greeting">
+        {{ greeting }}, <span class="welcome-name">{{ firstName }}</span>
       </div>
-      <q-space />
+      <div class="welcome-sub">
+        <q-icon name="store" size="13px" class="q-mr-xs" />
+        {{ authStore.currentBranch?.name || '—' }} · {{ today }}
+      </div>
       <q-btn
         flat
         round
         icon="refresh"
-        color="grey"
+        size="sm"
+        class="welcome-refresh"
         :loading="store.loading"
         @click="store.refresh()"
       />
@@ -22,45 +23,74 @@
     <!-- KPI Cards -->
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6">
-        <div class="kpi-card kpi--cyan">
-          <div class="kpi-val">{{ store.onShiftWaiters.length }}</div>
-          <div class="kpi-lbl">On-Shift Waiters</div>
+      <div class="kpi-card kpi--cyan" style="cursor:pointer" @click="openShiftStaffDialog">
+          <div class="kpi-icon-wrap kpi-icon--cyan">
+            <q-icon name="groups" size="18px" />
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-val">{{ store.onShiftCount }}</div>
+            <div class="kpi-lbl">On-Shift</div>
+          </div>
+          <q-icon name="chevron_right" size="18px" style="opacity:0.3" />
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--orange">
-          <div class="kpi-val">{{ store.pendingOrderCount }}</div>
-          <div class="kpi-lbl">Pending Orders</div>
+          <div class="kpi-icon-wrap kpi-icon--orange">
+            <q-icon name="pending_actions" size="18px" />
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-val">{{ store.pendingOrderCount }}</div>
+            <div class="kpi-lbl">Pending</div>
+          </div>
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--green">
-          <div class="kpi-val">{{ store.totalActiveOrders }}</div>
-          <div class="kpi-lbl">Active Orders</div>
+          <div class="kpi-icon-wrap kpi-icon--green">
+            <q-icon name="restaurant" size="18px" />
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-val">{{ store.totalActiveOrders }}</div>
+            <div class="kpi-lbl">Active</div>
+          </div>
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--purple">
-          <div class="kpi-val">{{ store.servedTodayCount }}</div>
-          <div class="kpi-lbl">Served Today</div>
+          <div class="kpi-icon-wrap kpi-icon--purple">
+            <q-icon name="check_circle" size="18px" />
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-val">{{ store.servedTodayCount }}</div>
+            <div class="kpi-lbl">Served</div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Delayed Orders Alert -->
-    <div v-if="store.delayedOrders.length > 0" class="alert-banner q-mb-lg">
-      <q-icon name="warning" size="18px" class="q-mr-sm" />
-      <span class="text-weight-bold">{{ store.delayedOrders.length }} delayed order(s)</span>
-      <q-space />
-      <q-btn flat dense no-caps color="amber" label="View" to="/manager-app/orders" />
+    <div v-if="store.delayedOrders.length > 0" class="alert-banner alert-banner--warning q-mb-md">
+      <div class="alert-banner__icon">
+        <q-icon name="warning_amber" size="18px" />
+      </div>
+      <div class="alert-banner__content">
+        <span class="alert-banner__title">{{ store.delayedOrders.length }} delayed order(s)</span>
+        <span class="alert-banner__sub">Require immediate attention</span>
+      </div>
+      <q-btn flat dense no-caps label="View" class="alert-banner__action" to="/manager-app/orders" />
     </div>
 
     <!-- Unread Messages -->
-    <div v-if="store.unreadMessageCount > 0" class="alert-banner alert-banner--info q-mb-lg">
-      <q-icon name="mail" size="18px" class="q-mr-sm" />
-      <span class="text-weight-bold">{{ store.unreadMessageCount }} unread message(s)</span>
-      <q-space />
-      <q-btn flat dense no-caps color="cyan" label="Open" to="/manager-app/messages" />
+    <div v-if="store.unreadMessageCount > 0" class="alert-banner alert-banner--info q-mb-md">
+      <div class="alert-banner__icon alert-banner__icon--info">
+        <q-icon name="mail" size="18px" />
+      </div>
+      <div class="alert-banner__content">
+        <span class="alert-banner__title">{{ store.unreadMessageCount }} unread message(s)</span>
+        <span class="alert-banner__sub">From your team</span>
+      </div>
+      <q-btn flat dense no-caps label="Open" class="alert-banner__action alert-banner__action--info" to="/manager-app/messages" />
     </div>
 
     <!-- Quick Actions -->
@@ -71,37 +101,284 @@
           class="quick-action-btn full-width"
           unelevated
           no-caps
-          :icon="action.icon"
-          :label="action.label"
           :to="action.to"
-        />
+        >
+          <div class="qa-icon-wrap" :style="{ background: action.bg }">
+            <q-icon :name="action.icon" size="18px" color="white" />
+          </div>
+          <span class="qa-label">{{ action.label }}</span>
+        </q-btn>
       </div>
     </div>
 
     <!-- Waiter Rankings (with period filter) -->
     <WaiterLeaderboard />
+
+    <!-- ══════════════════════════════════════════════════════════
+         TODAY'S SHIFT STAFF DIALOG
+    ══════════════════════════════════════════════════════════ -->
+    <q-dialog v-model="shiftStaffOpen" position="bottom" maximized>
+      <q-card class="shift-staff-card">
+        <!-- Header -->
+        <div class="ss-header">
+          <div class="ss-header__left">
+            <div class="ss-header__icon-wrap">
+              <q-icon name="fingerprint" size="22px" />
+            </div>
+            <div>
+              <div class="ss-header__title">Today's Shift Staff</div>
+              <div class="ss-header__sub">
+                {{ todayFormatted }} · {{ store.todayShiftStaff.length }} assigned
+              </div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" class="ss-close-btn" @click="shiftStaffOpen = false" />
+        </div>
+
+        <!-- Summary Chips -->
+        <div class="ss-summary">
+          <div class="ss-chip ss-chip--present">
+            <q-icon name="check_circle" size="14px" />
+            <span>{{ presentStaff.length }} Present</span>
+          </div>
+          <div class="ss-chip ss-chip--absent">
+            <q-icon name="cancel" size="14px" />
+            <span>{{ absentStaff.length }} Absent</span>
+          </div>
+          <div class="ss-chip ss-chip--total">
+            <q-icon name="people" size="14px" />
+            <span>{{ store.todayShiftStaff.length }} Total</span>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <q-tabs
+          v-model="ssTab"
+          dense
+          no-caps
+          class="ss-tabs"
+          active-color="cyan"
+          indicator-color="cyan"
+        >
+          <q-tab name="all" label="All Staff" />
+          <q-tab name="present" :label="`Present (${presentStaff.length})`" />
+          <q-tab name="absent" :label="`Absent (${absentStaff.length})`" />
+        </q-tabs>
+
+        <!-- Department Filter Chips -->
+        <div class="ss-dept-filter">
+          <q-chip
+            v-for="dept in departments"
+            :key="dept"
+            clickable
+            dense
+            :outline="ssDeptFilter !== dept"
+            :color="ssDeptFilter === dept ? 'cyan-8' : undefined"
+            :text-color="ssDeptFilter === dept ? 'white' : undefined"
+            size="sm"
+            class="ss-dept-chip"
+            @click="ssDeptFilter = ssDeptFilter === dept ? null : dept"
+          >
+            {{ dept }}
+          </q-chip>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="store.todayShiftStaffLoading" class="ss-loading">
+          <q-spinner-orbit size="36px" color="cyan" />
+          <div>Loading shift data…</div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="filteredShiftStaff.length === 0" class="ss-empty">
+          <q-icon name="event_busy" size="40px" />
+          <div class="ss-empty__text">No staff found for this filter</div>
+          <div class="ss-empty__sub">Try changing the tab or department filter</div>
+        </div>
+
+        <!-- Staff List -->
+        <div v-else class="ss-list-area">
+          <div
+            v-for="staff in filteredShiftStaff"
+            :key="staff.id"
+            class="ss-staff-row"
+          >
+            <q-avatar
+              size="38px"
+              class="ss-avatar"
+              :style="{ background: avatarBg(staff.employee_name) }"
+            >
+              {{ initials(staff.employee_name) }}
+            </q-avatar>
+
+            <div class="ss-staff-info">
+              <div class="ss-staff-name">{{ staff.employee_name }}</div>
+              <div class="ss-staff-meta">
+                <span>{{ staff.designation }}</span>
+                <span class="ss-dot">·</span>
+                <span>{{ staff.department }}</span>
+              </div>
+              <div class="ss-staff-shift">
+                <q-icon name="schedule" size="11px" class="q-mr-xs" />
+                {{ staff.shift_name }}
+                <span class="ss-shift-time">{{ fmtTime(staff.shift_start) }} – {{ fmtTime(staff.shift_end) }}</span>
+              </div>
+            </div>
+
+            <div class="ss-staff-status">
+              <q-chip
+                dense
+                size="sm"
+                :color="statusChipColor(staff.status)"
+                text-color="white"
+                class="ss-status-chip"
+              >
+                {{ statusLabel(staff.status) }}
+              </q-chip>
+              <div class="ss-staff-code">{{ staff.employee_code }}</div>
+            </div>
+          </div>
+        </div>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useAuthStore } from 'stores/auth'
 import WaiterLeaderboard from 'src/components/waiter/WaiterLeaderboard.vue'
+import { useQuasar } from 'quasar'
 
 const store = useManagerAppStore()
 const authStore = useAuthStore()
+const $q = useQuasar()
+
+const firstName = computed(() => {
+  const name = authStore.userDisplayName || ''
+  return name.split(/\s+/)[0] || 'Manager'
+})
+
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good Morning'
+  if (h < 17) return 'Good Afternoon'
+  return 'Good Evening'
+})
 
 const today = computed(() =>
   new Date().toLocaleDateString('en', { weekday: 'long', month: 'short', day: 'numeric' }),
 )
 
 const quickActions = [
-  { label: 'Floor Overview', icon: 'supervisor_account', to: '/manager-app/floor' },
-  { label: 'Monitor Orders', icon: 'receipt_long', to: '/manager-app/orders' },
-  { label: 'View Waiters', icon: 'groups', to: '/manager-app/waiters' },
-  { label: 'Alerts', icon: 'notifications_active', to: '/manager-app/alerts' },
+  { label: 'Floor Overview', icon: 'supervisor_account', to: '/manager-app/floor', bg: 'linear-gradient(135deg, #06b6d4, #0284c7)' },
+  { label: 'Monitor Orders', icon: 'receipt_long', to: '/manager-app/orders', bg: 'linear-gradient(135deg, #f97316, #ea580c)' },
+  { label: 'View Waiters', icon: 'groups', to: '/manager-app/waiters', bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
+  { label: 'Alerts', icon: 'notifications_active', to: '/manager-app/alerts', bg: 'linear-gradient(135deg, #ef4444, #dc2626)' },
 ]
+
+// ─── Shift Staff Dialog ─────────────────────────────────────────────────────
+const shiftStaffOpen = ref(false)
+const ssTab = ref('all')
+const ssDeptFilter = ref(null)
+
+const todayFormatted = computed(() =>
+  new Date().toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' }),
+)
+
+async function openShiftStaffDialog() {
+  shiftStaffOpen.value = true
+  ssTab.value = 'all'
+  ssDeptFilter.value = null
+  await store.loadTodayShiftStaff()
+}
+
+const presentStaff = computed(() =>
+  store.todayShiftStaff.filter(s => ['active', 'present', 'checked_in'].includes(s.status))
+)
+const absentStaff = computed(() =>
+  store.todayShiftStaff.filter(s => !['active', 'present', 'checked_in'].includes(s.status))
+)
+
+const departments = computed(() => {
+  const set = new Set(store.todayShiftStaff.map(s => s.department))
+  return [...set].sort()
+})
+
+const filteredShiftStaff = computed(() => {
+  let list = store.todayShiftStaff
+
+  // Tab filter
+  if (ssTab.value === 'present') {
+    list = list.filter(s => ['active', 'present', 'checked_in'].includes(s.status))
+  } else if (ssTab.value === 'absent') {
+    list = list.filter(s => !['active', 'present', 'checked_in'].includes(s.status))
+  }
+
+  // Dept filter
+  if (ssDeptFilter.value) {
+    list = list.filter(s => s.department === ssDeptFilter.value)
+  }
+
+  return list
+})
+
+function initials(name) {
+  return (name || '')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase())
+    .join('')
+}
+
+function avatarBg(name) {
+  const colors = [
+    'linear-gradient(135deg, #06b6d4, #0284c7)',
+    'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    'linear-gradient(135deg, #f97316, #ea580c)',
+    'linear-gradient(135deg, #10b981, #059669)',
+    'linear-gradient(135deg, #ef4444, #dc2626)',
+    'linear-gradient(135deg, #3b82f6, #2563eb)',
+  ]
+  let hash = 0
+  for (const c of (name || '')) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff
+  return colors[hash % colors.length]
+}
+
+function fmtTime(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hr = parseInt(h)
+  const ampm = hr >= 12 ? 'PM' : 'AM'
+  return `${hr % 12 || 12}:${m} ${ampm}`
+}
+
+function statusChipColor(status) {
+  const map = {
+    active: 'green-8',
+    present: 'green-8',
+    checked_in: 'green-8',
+    scheduled: 'blue-grey-6',
+    absent: 'red-7',
+    late: 'orange-8',
+    on_leave: 'purple-6',
+  }
+  return map[status] || 'grey-7'
+}
+
+function statusLabel(status) {
+  const map = {
+    active: 'Present',
+    present: 'Present',
+    checked_in: 'Checked In',
+    scheduled: 'Scheduled',
+    absent: 'Absent',
+    late: 'Late',
+    on_leave: 'On Leave',
+  }
+  return map[status] || status?.replace(/_/g, ' ') || 'Unknown'
+}
 </script>
 
 <style lang="scss" scoped>
@@ -109,181 +386,508 @@ const quickActions = [
 
 .mgr-home-page {
   min-height: 100vh;
-}
-.body--dark .mgr-home-page {
+  padding-bottom: 80px !important;
   background: #090c14;
+  transition: background 0.25s ease;
+
+  &.lt {
+    background: #f1f5f9;
+  }
 }
 
+// ─── Welcome Section ─────────────────────────────────────────────────────────
+.welcome-section {
+  position: relative;
+  padding: 4px 0;
+}
+.welcome-greeting {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: #9ca3af;
+  transition: color 0.25s ease;
+}
+.lt .welcome-greeting { color: #64748b; }
+.welcome-name {
+  font-weight: 800;
+  color: #f3f4f6;
+  transition: color 0.25s ease;
+}
+.lt .welcome-name { color: #1e293b; }
+.welcome-sub {
+  font-size: 0.72rem;
+  color: #6b7280;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+}
+.lt .welcome-sub { color: #94a3b8; }
+.welcome-refresh {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280 !important;
+}
+
+// ─── Section Title ─────────────────────────────────────────────────────────────────
 .section-title {
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: #6b7280;
+  color: #4b5563;
+  transition: color 0.25s ease;
 }
+.lt .section-title { color: #94a3b8; }
 
+// ─── KPI Cards ───────────────────────────────────────────────────────────────
 .kpi-card {
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   transition: all 0.2s ease;
 }
-.body--dark .kpi-card {
-  background: rgba(255, 255, 255, 0.04);
+.kpi-card {
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
-.body--light .kpi-card {
+.lt .kpi-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+.kpi-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-icon--cyan {
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
+}
+.kpi-icon--orange {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+.kpi-icon--green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+.kpi-icon--purple {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.kpi-content {
+  flex: 1;
+}
 .kpi-val {
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 800;
   line-height: 1;
 }
 .kpi-lbl {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #6b7280;
-  margin-top: 4px;
-}
-.kpi--cyan .kpi-val {
-  color: #0ea5e9;
-}
-.body--dark .kpi--cyan {
-  border-color: rgba(34, 211, 238, 0.2);
-  background: rgba(34, 211, 238, 0.06);
-}
-.body--light .kpi--cyan {
-  border-color: rgba(14, 165, 233, 0.3);
-  background: rgba(14, 165, 233, 0.05);
+  margin-top: 3px;
 }
 
-.kpi--orange .kpi-val {
-  color: #f97316;
-}
-.body--dark .kpi--orange {
-  border-color: rgba(249, 115, 22, 0.2);
-  background: rgba(249, 115, 22, 0.06);
-}
-.body--light .kpi--orange {
-  border-color: rgba(249, 115, 22, 0.3);
-  background: rgba(249, 115, 22, 0.05);
-}
+.kpi--cyan .kpi-val { color: #0ea5e9; }
+.kpi--orange .kpi-val { color: #f97316; }
+.kpi--green .kpi-val { color: #10b981; }
+.kpi--purple .kpi-val { color: #8b5cf6; }
 
-.kpi--green .kpi-val {
-  color: #10b981;
-}
-.body--dark .kpi--green {
-  border-color: rgba(34, 197, 94, 0.2);
-  background: rgba(34, 197, 94, 0.06);
-}
-.body--light .kpi--green {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.05);
-}
+.kpi--cyan { border-color: rgba(34, 211, 238, 0.15); }
+.kpi--orange { border-color: rgba(249, 115, 22, 0.15); }
+.kpi--green { border-color: rgba(34, 197, 94, 0.15); }
+.kpi--purple { border-color: rgba(167, 139, 250, 0.15); }
 
-.kpi--purple .kpi-val {
-  color: #8b5cf6;
-}
-.body--dark .kpi--purple {
-  border-color: rgba(167, 139, 250, 0.2);
-  background: rgba(167, 139, 250, 0.06);
-}
-.body--light .kpi--purple {
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.05);
-}
+.lt .kpi--cyan { border-color: rgba(14, 165, 233, 0.2); }
+.lt .kpi--orange { border-color: rgba(249, 115, 22, 0.2); }
+.lt .kpi--green { border-color: rgba(16, 185, 129, 0.2); }
+.lt .kpi--purple { border-color: rgba(139, 92, 246, 0.2); }
 
+// ─── Alert Banners ───────────────────────────────────────────────────────────
 .alert-banner {
-  border-radius: 10px;
-  padding: 12px 16px;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
+  gap: 10px;
 }
-.body--dark .alert-banner {
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+
+.alert-banner__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
 }
-.body--light .alert-banner {
+.alert-banner__icon--info {
+  background: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+}
+
+.alert-banner__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.alert-banner__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.alert-banner__sub {
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+
+.alert-banner--warning {
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.lt .alert-banner--warning {
   background: #fffbeb;
-  border: 1px solid #fde68a;
+  border-color: #fde68a;
   color: #d97706;
 }
 
 .alert-banner--info {
-  border-radius: 10px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-}
-.body--dark .alert-banner--info {
-  background: rgba(34, 211, 238, 0.06);
-  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: rgba(34, 211, 238, 0.04);
+  border: 1px solid rgba(34, 211, 238, 0.15);
   color: #22d3ee;
+  transition: background 0.25s ease, color 0.25s ease;
 }
-.body--light .alert-banner--info {
+.lt .alert-banner--info {
   background: #f0fdfa;
-  border: 1px solid #ccfbf1;
+  border-color: #ccfbf1;
   color: #0d9488;
 }
 
+.alert-banner__action {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: #fbbf24 !important;
+  border-radius: 6px !important;
+}
+.alert-banner__action--info {
+  color: #22d3ee !important;
+}
+.lt .alert-banner__action { color: #d97706 !important; }
+.lt .alert-banner__action--info { color: #0d9488 !important; }
+
+// ─── Quick Actions ───────────────────────────────────────────────────────────
 .quick-action-btn {
   font-weight: 600 !important;
-  font-size: 0.8rem !important;
-  height: 52px !important;
-}
-.body--dark .quick-action-btn {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  font-size: 0.78rem !important;
+  height: 56px !important;
   border-radius: 12px !important;
-  color: #d1d5db !important;
-}
-.body--dark .quick-action-btn:hover {
-  background: rgba(34, 211, 238, 0.06) !important;
-}
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-start !important;
+  padding: 0 14px !important;
 
-.body--light .quick-action-btn {
+  :deep(.q-btn__content) {
+    flex-direction: row !important;
+    gap: 10px;
+    justify-content: flex-start;
+  }
+}
+.quick-action-btn {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #d1d5db !important;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease !important;
+}
+.quick-action-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.lt .quick-action-btn {
   background: #ffffff !important;
   border: 1px solid #e5e7eb !important;
-  border-radius: 12px !important;
   color: #374151 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
-.body--light .quick-action-btn:hover {
-  background: #f3f4f6 !important;
-}
-
-.quick-action-btn :deep(.q-icon) {
-  color: #0ea5e9;
-  margin-right: 8px;
+.lt .quick-action-btn:hover {
+  background: #f9fafb !important;
 }
 
-.performer-card {
-  border-radius: 12px;
-  padding: 12px 14px;
+.qa-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.body--dark .performer-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+.qa-label {
+  font-size: 0.78rem;
+  font-weight: 600;
 }
-.body--light .performer-card {
+
+// ─── Shift Staff Dialog ─────────────────────────────────────────────────────
+// Note: q-dialog teleports to body; these styles are scoped but use :deep
+// to penetrate the dialog. We'll keep them here and rely on the Quasar
+// data-attribute for scoping.
+</style>
+
+<!-- Unscoped styles for teleported dialog -->
+<style lang="scss">
+.shift-staff-card {
+  background: #0d1117;
+  border-radius: 20px 20px 0 0 !important;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  color: #e5e7eb;
+  overflow: hidden;
+}
+.body--light .shift-staff-card {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #1e293b;
 }
-.rank-medal {
-  font-size: 1.1rem;
-  min-width: 28px;
-  text-align: center;
+
+.ss-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 16px 10px;
 }
-.performer-avatar {
-  background: linear-gradient(135deg, #0ea5e9, #8b5cf6) !important;
-  font-size: 13px !important;
+.ss-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
+.ss-header__icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
+}
+.ss-header__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f3f4f6;
+}
+.body--light .ss-header__title { color: #0f172a; }
+.ss-header__sub {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+.body--light .ss-header__sub { color: #94a3b8; }
+.ss-close-btn {
+  color: #6b7280 !important;
+}
+
+// Summary chips
+.ss-summary {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+.ss-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.ss-chip--present {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.ss-chip--absent {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.ss-chip--total {
+  background: rgba(6, 182, 212, 0.08);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.15);
+}
+.body--light .ss-chip--present {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #16a34a;
+}
+.body--light .ss-chip--absent {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+.body--light .ss-chip--total {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0284c7;
+}
+
+// Tabs
+.ss-tabs {
+  margin: 0 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.body--light .ss-tabs {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+.ss-tabs .q-tab {
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-height: 36px;
+  color: #6b7280;
+}
+.body--light .ss-tabs .q-tab { color: #94a3b8; }
+.ss-tabs .q-tab--active { color: #06b6d4; }
+.body--light .ss-tabs .q-tab--active { color: #0891b2; }
+
+// Dept filter
+.ss-dept-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 16px 6px;
+}
+.ss-dept-chip {
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+}
+
+// Loading / Empty
+.ss-loading, .ss-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+.ss-empty__text {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+.ss-empty__sub {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+// Staff list area
+.ss-list-area {
+  flex: 1;
+  min-height: 100px;
+  max-height: calc(92vh - 280px);
+  overflow-y: auto;
+  padding: 0 12px 16px;
+}
+
+// Staff row
+.ss-staff-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+.body--light .ss-staff-row {
+  border-color: #f1f5f9;
+}
+.ss-staff-row:last-child { border-bottom: none; }
+
+.ss-avatar {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.ss-staff-info {
+  flex: 1;
+  min-width: 0;
+}
+.ss-staff-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.body--light .ss-staff-name { color: #1e293b; }
+.ss-staff-meta {
+  font-size: 0.66rem;
+  color: #6b7280;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.body--light .ss-staff-meta { color: #94a3b8; }
+.ss-dot { opacity: 0.5; }
+.ss-staff-shift {
+  font-size: 0.62rem;
+  color: #4b5563;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+}
+.body--light .ss-staff-shift { color: #94a3b8; }
+.ss-shift-time {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.ss-staff-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.ss-status-chip {
+  font-size: 0.6rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+.ss-staff-code {
+  font-size: 0.58rem;
+  color: #4b5563;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+.body--light .ss-staff-code { color: #94a3b8; }
 </style>

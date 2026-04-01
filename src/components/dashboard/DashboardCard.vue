@@ -59,7 +59,7 @@ const trendClass = computed(() => {
   border: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
   height: 100%;
-  min-height: 0;
+  min-height: 96px;
 
   &:hover {
     transform: translateY(-2px);
@@ -97,6 +97,7 @@ const trendClass = computed(() => {
   }
 }
 
+
 // Frosted icon wrap — 46×46px, exact match
 .sys-kpi-icon-wrap {
   width: 46px;
@@ -127,13 +128,18 @@ const trendClass = computed(() => {
   margin-bottom: 6px;
 }
 
-// Value — 22px / 900, same as main dashboard
+// Value — auto-shrink for long numbers
 .sys-kpi-value {
   font-size: 22px;
   font-weight: 900;
   color: #ffffff;
   line-height: 1;
   margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 // Meta / trend row

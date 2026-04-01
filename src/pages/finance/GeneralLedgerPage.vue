@@ -5,77 +5,84 @@
       title="General Ledger"
       breadcrumbs="Finance / General Ledger / Ledger View"
       showRefresh
+      showExport
       @refresh="loadData"
+      @export-pdf="exportPDF"
+      @export-excel="exportExcel"
+      @export-csv="exportCSV"
     />
 
-    <div class="fin-filters q-mb-md row items-center justify-between">
-      <div class="row q-gutter-md items-center">
+    <div class="fin-filters q-mt-sm q-mb-md">
+      <div class="row no-wrap items-center q-gutter-sm">
         <q-select
           v-model="selectedAccount"
-          :options="accountOptions"
-          label="Account"
+          :options="filteredAccounts"
+          label="Filter by Account"
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
-          style="min-width: 260px"
+          style="width: 220px; flex-shrink: 0;"
           clearable
           emit-value
           map-options
+          use-input
+          input-debounce="0"
           option-value="code"
           option-label="label"
+          @filter="filterAccounts"
           @update:model-value="loadData"
         />
         <q-input
           v-model="filtersSearch"
-          label="Search (e.g. Bank name, Reference)"
+          placeholder="Search entries..."
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
           clearable
-          style="min-width: 250px"
+          style="width: 165px; flex-shrink: 0;"
           @keyup.enter="loadData"
           @clear="loadData"
         >
-          <template #append>
-            <q-icon name="search" @click="loadData" class="cursor-pointer" />
+          <template #prepend>
+            <q-icon name="search" size="14px" class="cursor-pointer" @click="loadData" />
           </template>
         </q-input>
         <q-input
           v-model="dateFrom"
-          label="From"
+          prefix="From:"
           type="date"
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
-          style="min-width: 160px"
+          style="width: 178px; flex-shrink: 0;"
           @update:model-value="loadData"
         />
         <q-input
           v-model="dateTo"
-          label="To"
+          prefix="To:"
           type="date"
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
-          style="min-width: 160px"
+          style="width: 168px; flex-shrink: 0;"
           @update:model-value="loadData"
         />
-      </div>
-      <div class="row q-gutter-sm">
-        <q-btn flat icon="print" color="white" round @click="printReport">
-          <q-tooltip dark>Print</q-tooltip>
+        <q-btn
+          flat dense round icon="filter_list_off"
+          color="grey-5" size="sm"
+          @click="selectedAccount = null; filtersSearch = ''; dateFrom = ''; dateTo = ''; loadData()"
+        >
+          <q-tooltip>Reset Filters</q-tooltip>
         </q-btn>
-        <q-btn flat icon="picture_as_pdf" color="white" round @click="exportPDF">
-          <q-tooltip dark>PDF</q-tooltip>
-        </q-btn>
-        <q-btn flat icon="table_chart" color="white" round @click="exportExcel">
-          <q-tooltip dark>Excel</q-tooltip>
-        </q-btn>
-        <q-btn flat icon="description" color="white" round @click="exportCSV">
-          <q-tooltip dark>CSV</q-tooltip>
+        <q-btn flat dense round icon="print"
+          :color="$q.dark.isActive ? 'grey-4' : 'grey-7'"
+          size="sm" @click="printReport"
+        >
+          <q-tooltip>Print</q-tooltip>
         </q-btn>
       </div>
     </div>
+
 
     <div class="fin-panel">
       <div class="fin-panel__header">
@@ -88,12 +95,12 @@
         :columns="columns"
         row-key="id"
         flat
-        dark
+        :dark="$q.dark.isActive"
         dense
         :rows-per-page-options="[25, 50, 0]"
         class="fin-table"
         :loading="loading"
-        no-data-label="Select an account to view ledger"
+        no-data-label="Select an account or search to view ledger entries"
       >
         <template #body-cell-balance="props">
           <q-td :props="props">
@@ -116,10 +123,24 @@ import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/serv
 const loading = ref(false)
 const rows = ref([])
 const accountOptions = ref([])
+const filteredAccounts = ref([])
 const selectedAccount = ref(null)
 const filtersSearch = ref('')
 const dateFrom = ref('')
 const dateTo = ref('')
+
+function filterAccounts(val, update) {
+  update(() => {
+    if (!val) {
+      filteredAccounts.value = accountOptions.value
+    } else {
+      const needle = val.toLowerCase()
+      filteredAccounts.value = accountOptions.value.filter(
+        (a) => a.label.toLowerCase().includes(needle)
+      )
+    }
+  })
+}
 
 const columns = [
   {
@@ -193,6 +214,7 @@ async function loadData() {
 async function loadAccounts() {
   const { data } = await fetchChartOfAccounts()
   accountOptions.value = (data || []).map((a) => ({ code: a.code, label: `${a.code} - ${a.name}` }))
+  filteredAccounts.value = accountOptions.value
 }
 
 onMounted(async () => {

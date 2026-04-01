@@ -18,6 +18,8 @@ export const useOrderStore = defineStore('orders', () => {
   const kotItems = ref(new Map())
   const statusLogs = ref([])
   const tables = ref(new Map())
+  const kitchens = ref([]) // Array of { id, name } for the current branch
+  const profiles = ref(new Map()) // userId -> { full_name } for waiter search
   const loading = ref(false)
 
   // ── Getters ──────────────────────────────────────────────
@@ -55,6 +57,19 @@ export const useOrderStore = defineStore('orders', () => {
       ...order,
       items: [...orderItems.value.values()].filter((i) => i.order_id === orderId),
     }
+  })
+
+  /**
+   * Returns a Set of order IDs that contain at least one item
+   * belonging to the given kitchenId. Used for kitchen filtering.
+   */
+  const orderIdsByKitchen = computed(() => (kitchenId) => {
+    if (!kitchenId) return null // null = show all
+    const ids = new Set()
+    for (const item of orderItems.value.values()) {
+      if (item.kitchen_id === kitchenId) ids.add(item.order_id)
+    }
+    return ids
   })
 
   // ── Actions ──────────────────────────────────────────────
@@ -179,6 +194,34 @@ export const useOrderStore = defineStore('orders', () => {
       if (tablesData) {
         tables.value = new Map(tablesData.map((t) => [t.id, t]))
       }
+
+      // ── Kitchens ─────────────────────────────────────────
+      const { data: kitchensData } = await supabase
+        .from('kitchens')
+        .select('id, name')
+        .eq('branch_id', branchId)
+        .order('name')
+
+      if (kitchensData) {
+        kitchens.value = kitchensData
+      }
+
+      // ── Waiter Profiles (for search by name) ─────────────
+      const waiterIds = [
+        ...new Set(
+          (ordersData || [])
+            .flatMap((o) => [o.assigned_waiter_id, o.waiter_id].filter(Boolean))
+        ),
+      ]
+      if (waiterIds.length) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', waiterIds)
+        if (profilesData) {
+          profiles.value = new Map(profilesData.map((p) => [p.id, p]))
+        }
+      }
     } finally {
       loading.value = false
     }
@@ -192,6 +235,8 @@ export const useOrderStore = defineStore('orders', () => {
     kotItems.value = new Map()
     statusLogs.value = []
     tables.value = new Map()
+    kitchens.value = []
+    profiles.value = new Map()
   }
 
   async function updateOrderStatus(orderId, status) {
@@ -212,6 +257,8 @@ export const useOrderStore = defineStore('orders', () => {
     kotItems,
     statusLogs,
     tables,
+    kitchens,
+    profiles,
     loading,
     // getters
     activeOrders,
@@ -220,6 +267,7 @@ export const useOrderStore = defineStore('orders', () => {
     kotByKitchen,
     pendingKotCount,
     orderWithItems,
+    orderIdsByKitchen,
     // actions
     handleRealtimeEvent,
 

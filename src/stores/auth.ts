@@ -177,8 +177,9 @@ export const useAuthStore = defineStore('auth', {
             this.roles = cache.roles
             this.permissions = cache.permissions
             this.branches = cache.branches
-            // Refresh silently in background
+            // Refresh cache silently + always fetch profile (not cached)
             this._backgroundRefreshUserData()
+            this._fetchProfile().catch(() => {})
           } else {
             await this.fetchUserData()
           }

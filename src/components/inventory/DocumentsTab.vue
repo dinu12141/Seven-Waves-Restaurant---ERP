@@ -1,62 +1,73 @@
 <template>
   <div class="q-pa-md">
     <!-- Filters -->
-    <div class="row items-center q-mb-md q-gutter-sm">
-      <q-select
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="docTypeFilter"
-        :options="docTypeOptions"
-        label="Document Type"
-        emit-value
-        map-options
-        style="min-width: 200px"
-      />
-      <q-select
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="statusFilter"
-        :options="statusOptions"
-        label="Status"
-        emit-value
-        map-options
-        style="min-width: 150px"
-      />
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="dateFrom"
-        type="date"
-        label="From"
-        style="min-width: 150px"
-      />
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="dateTo"
-        type="date"
-        label="To"
-        style="min-width: 150px"
-      />
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="search"
-        placeholder="Search doc #, supplier or item..."
-        style="min-width: 200px"
-      >
-        <template #prepend><q-icon name="search" /></template>
-      </q-input>
-      <q-space />
-      <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
-        <q-tooltip>Refresh</q-tooltip>
-      </q-btn>
-      <q-btn color="primary" icon="add" label="New Document" @click="$emit('create-document')" />
+    <div class="row q-col-gutter-sm q-mb-md items-center">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-select
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="docTypeFilter"
+          :options="docTypeOptions"
+          label="Document Type"
+          emit-value
+          map-options
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-select
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="statusFilter"
+          :options="statusOptions"
+          label="Status"
+          emit-value
+          map-options
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="dateFrom"
+          type="date"
+          label="From"
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-6 col-lg-2">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="dateTo"
+          type="date"
+          label="To"
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-12 col-md-6 col-lg-2">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="search"
+          placeholder="Search..."
+          clearable
+        >
+          <template #prepend><q-icon name="search" /></template>
+        </q-input>
+      </div>
+      <div class="col-12 col-sm-12 col-md-12 col-lg-2 row justify-end q-gutter-sm items-center">
+        <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
+          <q-tooltip>Refresh</q-tooltip>
+        </q-btn>
+        <q-btn color="primary" icon="add" label="New Document" @click="$emit('create-document')" />
+      </div>
     </div>
 
     <!-- Documents Table -->

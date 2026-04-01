@@ -10,55 +10,60 @@
       @primary-action="showCreateDialog = true"
     />
 
-    <div class="fin-filters q-mb-md row items-center justify-between">
-      <div class="row q-gutter-md items-center">
+    <div class="fin-filters q-mb-md">
+      <div class="row no-wrap items-center q-gutter-sm">
         <q-input
           v-model="filters.search"
-          label="Search (e.g. Bank name, Reference)"
+          placeholder="Search entries..."
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
           clearable
-          style="min-width: 250px"
+          style="width: 220px; flex-shrink: 0;"
           @keyup.enter="loadData"
           @clear="loadData"
         >
           <template #append>
-            <q-icon name="search" @click="loadData" class="cursor-pointer" />
+            <q-icon name="search" @click="loadData" class="cursor-pointer" size="16px" />
           </template>
         </q-input>
+
         <q-input
           v-model="filters.dateFrom"
-          label="From"
+          prefix="From:"
           type="date"
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
-          style="min-width: 160px"
+          style="width: 185px; flex-shrink: 0;"
         />
+
         <q-input
           v-model="filters.dateTo"
-          label="To"
+          prefix="To:"
           type="date"
           dense
-          dark
+          :dark="$q.dark.isActive"
           outlined
-          style="min-width: 160px"
+          style="width: 175px; flex-shrink: 0;"
         />
-        <q-btn flat dense icon="filter_list_off" color="grey-5" @click="resetFilters" />
-      </div>
-      <div class="row q-gutter-sm">
-        <q-btn flat icon="print" color="white" round @click="printReport">
-          <q-tooltip dark>Print</q-tooltip>
+
+        <q-space />
+
+        <q-btn flat dense round icon="filter_list_off" color="grey-5" size="sm" @click="resetFilters">
+          <q-tooltip :dark="$q.dark.isActive">Reset Filters</q-tooltip>
         </q-btn>
-        <q-btn flat icon="picture_as_pdf" color="white" round @click="exportPDF">
-          <q-tooltip dark>PDF</q-tooltip>
+        <q-btn flat dense round icon="print" :color="$q.dark.isActive ? 'white' : 'primary'" size="sm" @click="printReport">
+          <q-tooltip :dark="$q.dark.isActive">Print</q-tooltip>
         </q-btn>
-        <q-btn flat icon="table_chart" color="white" round @click="exportExcel">
-          <q-tooltip dark>Excel</q-tooltip>
+        <q-btn flat dense round icon="picture_as_pdf" :color="$q.dark.isActive ? 'white' : 'primary'" size="sm" @click="exportPDF">
+          <q-tooltip :dark="$q.dark.isActive">PDF</q-tooltip>
         </q-btn>
-        <q-btn flat icon="description" color="white" round @click="exportCSV">
-          <q-tooltip dark>CSV</q-tooltip>
+        <q-btn flat dense round icon="table_chart" :color="$q.dark.isActive ? 'white' : 'primary'" size="sm" @click="exportExcel">
+          <q-tooltip :dark="$q.dark.isActive">Excel</q-tooltip>
+        </q-btn>
+        <q-btn flat dense round icon="description" :color="$q.dark.isActive ? 'white' : 'primary'" size="sm" @click="exportCSV">
+          <q-tooltip :dark="$q.dark.isActive">CSV</q-tooltip>
         </q-btn>
       </div>
     </div>
@@ -72,7 +77,7 @@
         :columns="columns"
         row-key="id"
         flat
-        dark
+        :dark="$q.dark.isActive"
         dense
         :rows-per-page-options="[20, 50, 0]"
         class="fin-table"
@@ -138,22 +143,22 @@
         <q-card-section class="q-gutter-sm fin-form">
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input v-model="form.doc_date" label="Date *" type="date" dense dark outlined />
+              <q-input v-model="form.doc_date" label="Date *" type="date" stack-label dense :dark="$q.dark.isActive" outlined />
             </div>
             <div class="col-6">
-              <q-input v-model="form.description" label="Description *" dense dark outlined />
+              <q-input v-model="form.description" label="Description *" dense :dark="$q.dark.isActive" outlined />
             </div>
           </div>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input v-model="form.reference_type" label="Reference Type" dense dark outlined />
+              <q-input v-model="form.reference_type" label="Reference Type" dense :dark="$q.dark.isActive" outlined />
             </div>
             <div class="col-6">
               <q-input
                 v-model="form.entry_type"
                 label="Entry Type"
                 dense
-                dark
+                :dark="$q.dark.isActive"
                 outlined
                 placeholder="manual"
               />
@@ -172,7 +177,7 @@
                 :options="accountOptions"
                 label="Account"
                 dense
-                dark
+                :dark="$q.dark.isActive"
                 outlined
                 emit-value
                 map-options
@@ -184,7 +189,7 @@
               />
             </div>
             <div class="col-3">
-              <q-input v-model="line.account_name" label="Name" dense dark outlined readonly />
+              <q-input v-model="line.account_name" label="Name" dense :dark="$q.dark.isActive" outlined readonly />
             </div>
             <div class="col-2">
               <q-input
@@ -192,7 +197,7 @@
                 label="Debit"
                 type="number"
                 dense
-                dark
+                :dark="$q.dark.isActive"
                 outlined
               />
             </div>
@@ -202,12 +207,12 @@
                 label="Credit"
                 type="number"
                 dense
-                dark
+                :dark="$q.dark.isActive"
                 outlined
               />
             </div>
             <div class="col-1">
-              <q-input v-model="line.memo" label="Memo" dense dark outlined />
+              <q-input v-model="line.memo" label="Memo" dense :dark="$q.dark.isActive" outlined />
             </div>
             <div class="col-1">
               <q-btn
@@ -284,7 +289,7 @@
             :columns="lineCols"
             row-key="id"
             flat
-            dark
+            :dark="$q.dark.isActive"
             dense
             hide-bottom
             :rows-per-page-options="[0]"
@@ -298,7 +303,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Notify } from 'quasar'
+import { Notify, useQuasar } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import {
   fetchJournalEntries,
@@ -316,6 +321,7 @@ const showViewDialog = ref(false)
 const viewingEntry = ref(null)
 const filters = ref({ search: '', dateFrom: '', dateTo: '' })
 const accountOptions = ref([])
+const $q = useQuasar()
 
 const form = ref({
   doc_date: new Date().toISOString().split('T')[0],

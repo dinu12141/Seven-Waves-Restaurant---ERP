@@ -233,14 +233,18 @@
         v-for="kpi in kpis"
         :key="kpi.label"
         class="report-kpi-card"
-        :class="`report-kpi-card--${kpi.color || 'default'}`"
+        :class="`report-kpi-card--${kpi.color || 'blue'}`"
       >
-        <div class="report-kpi-card__icon">
-          <q-icon :name="kpi.icon" size="18px" />
+        <!-- Watermark -->
+        <q-icon :name="kpi.icon" size="64px" class="report-kpi-card__watermark" />
+        <!-- Frosted icon wrap -->
+        <div class="report-kpi-card__icon-wrap">
+          <q-icon :name="kpi.icon" size="20px" color="white" />
         </div>
+        <!-- Body -->
         <div class="report-kpi-card__body">
-          <div class="report-kpi-card__value">{{ kpi.value }}</div>
           <div class="report-kpi-card__label">{{ kpi.label }}</div>
+          <div class="report-kpi-card__value">{{ kpi.value }}</div>
           <div v-if="kpi.sub" class="report-kpi-card__sub">{{ kpi.sub }}</div>
         </div>
       </div>
@@ -1084,75 +1088,128 @@ onUnmounted(() => {
 /* ── KPI Row ─────────────────────────────────────────────────────────── */
 .report-kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .report-kpi-card {
+  border-radius: 12px;
+  padding: 16px 18px 14px;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--erp-bg-card, #1e293b);
-  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
-  border-radius: 8px;
-  border-top: 2px solid transparent;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  min-height: 88px;
+  cursor: default;
 
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
+  }
+
+  // ── Gradient Variants ──────────────────────────────────────
   &--blue {
-    border-top-color: var(--erp-primary, #2563eb);
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--green {
-    border-top-color: var(--erp-success, #16a34a);
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
-  &--amber {
-    border-top-color: var(--erp-warning, #f59e0b);
+  &--amber, &--orange {
+    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--red {
-    border-top-color: var(--erp-danger, #dc2626);
+    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--purple {
-    border-top-color: #7c3aed;
+    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--teal {
-    border-top-color: #0d9488;
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--indigo {
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+    box-shadow: 0 4px 14px rgba(67, 56, 202, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--pink {
+    background: linear-gradient(135deg, #831843 0%, #db2777 100%);
+    box-shadow: 0 4px 14px rgba(219, 39, 119, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
   }
   &--default {
-    border-top-color: var(--erp-border, rgba(255, 255, 255, 0.06));
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
-  &__icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
+  // ── Frosted icon wrap ─────────────────────────────────────
+  &__icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: var(--erp-text-secondary, #94a3b8);
+    backdrop-filter: blur(4px);
   }
 
-  &__value {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--erp-text-primary, #f8fafc);
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
+  // ── Body ──────────────────────────────────────────────────
+  &__body {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
   }
 
+  // ── Label ─────────────────────────────────────────────────
   &__label {
-    font-size: 11px;
-    color: var(--erp-text-muted, #64748b);
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-top: 2px;
+    letter-spacing: 0.6px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
+  // ── Value ─────────────────────────────────────────────────
+  &__value {
+    font-size: 19px;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // ── Sub ───────────────────────────────────────────────────
   &__sub {
     font-size: 11px;
-    color: var(--erp-text-secondary, #94a3b8);
-    margin-top: 2px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 4px;
+  }
+
+  // ── Watermark ─────────────────────────────────────────────
+  &__watermark {
+    position: absolute;
+    right: -12px;
+    bottom: -12px;
+    opacity: 0.08;
+    pointer-events: none;
+    color: white !important;
   }
 }
 

@@ -89,9 +89,13 @@
           :key="tab.to"
           :to="tab.to"
           custom
-          v-slot="{ isActive, navigate }"
+          v-slot="{ isActive, isExactActive, navigate }"
         >
-          <button class="nav-tab" :class="{ 'nav-tab--active': isActive }" @click="navigate">
+          <button
+            class="nav-tab"
+            :class="{ 'nav-tab--active': tab.exact ? isExactActive : isActive }"
+            @click="navigate"
+          >
             <div class="nav-tab__icon-wrap">
               <q-icon :name="tab.icon" size="22px" />
               <q-badge
@@ -168,6 +172,7 @@ const tabs = computed(() => [
     label: 'Queue',
     icon: 'list_alt',
     to: '/delivery-app',
+    exact: true,
     badge: { value: store.pendingCount },
   },
   {
@@ -383,10 +388,11 @@ body.body--light {
     background: #f8fafc;
   }
 
-  .delivery-top-bar {
-    background: rgba(255, 255, 255, 0.97) !important;
+  // Top bar — use high-specificity to beat scoped !important
+  .delivery-top-bar.q-header {
+    background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
   }
 
   .brand-name {
@@ -396,6 +402,11 @@ body.body--light {
   .brand-tag {
     color: #7c3aed;
     background: rgba(124, 58, 237, 0.08);
+  }
+
+  // Theme toggle and avatar button in toolbar
+  .delivery-toolbar .q-btn {
+    color: #475569;
   }
 
   .top-avatar {
@@ -418,10 +429,11 @@ body.body--light {
     color: #475569;
   }
 
-  .delivery-bottom-nav {
-    background: rgba(255, 255, 255, 0.98) !important;
-    border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  // Bottom nav — use high-specificity
+  .delivery-bottom-nav.q-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06) !important;
   }
 
   .nav-tab {

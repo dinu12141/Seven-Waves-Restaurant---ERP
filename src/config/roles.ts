@@ -320,6 +320,14 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Stations',
   },
   {
+    label: 'Delivery App',
+    icon: 'delivery_dining',
+    to: '/delivery-app',
+    roles: ['admin', 'manager', 'delivery'],
+    section: 'OPERATIONS',
+    group: 'Stations',
+  },
+  {
     label: 'Orders',
     icon: 'receipt_long',
     to: '/orders',

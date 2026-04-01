@@ -1,61 +1,72 @@
 <template>
   <div class="q-pa-md">
     <!-- Filters -->
-    <div class="row items-center q-mb-md q-gutter-sm">
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="search"
-        placeholder="Search item or doc #..."
-        style="min-width: 250px"
-      >
-        <template #prepend><q-icon name="search" /></template>
-      </q-input>
-      <q-select
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="docTypeFilter"
-        :options="docTypeOptions"
-        label="Doc Type"
-        emit-value
-        map-options
-        style="min-width: 180px"
-      />
-      <q-select
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="directionFilter"
-        :options="directionOptions"
-        label="Direction"
-        emit-value
-        map-options
-        style="min-width: 120px"
-      />
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="dateFrom"
-        type="date"
-        label="From"
-        style="min-width: 150px"
-      />
-      <q-input
-        :dark="$q.dark.isActive"
-        outlined
-        dense
-        v-model="dateTo"
-        type="date"
-        label="To"
-        style="min-width: 150px"
-      />
-      <q-space />
-      <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
-        <q-tooltip>Refresh</q-tooltip>
-      </q-btn>
+    <div class="row q-col-gutter-sm q-mb-md items-center">
+      <div class="col-12 col-sm-12 col-md-4 col-lg-3">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="search"
+          placeholder="Search item or doc #..."
+          clearable
+        >
+          <template #prepend><q-icon name="search" /></template>
+        </q-input>
+      </div>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-select
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="docTypeFilter"
+          :options="docTypeOptions"
+          label="Doc Type"
+          emit-value
+          map-options
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-select
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="directionFilter"
+          :options="directionOptions"
+          label="Direction"
+          emit-value
+          map-options
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-6 col-lg-2">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="dateFrom"
+          type="date"
+          label="From"
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-6 col-lg-2">
+        <q-input
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="dateTo"
+          type="date"
+          label="To"
+          clearable
+        />
+      </div>
+      <div class="col-12 col-sm-12 col-md-12 col-lg-1 row justify-end items-center">
+        <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
+          <q-tooltip>Refresh</q-tooltip>
+        </q-btn>
+      </div>
     </div>
 
     <!-- Ledger Table (Read Only) -->

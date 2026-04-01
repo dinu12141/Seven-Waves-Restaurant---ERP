@@ -103,12 +103,46 @@
             </template>
           </q-select>
         </div>
-        <div class="col-12 col-md-6">
-          <q-input
-            v-model="filters.search"
-            placeholder="Search by Order ID or Table..."
+      <!-- Kitchen Filter -->
+        <div class="col-12 col-md-3">
+          <q-select
+            v-model="filters.kitchen"
+            :options="kitchenOptions"
+            label="Kitchen"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
             dense
             outlined
+            :dark="$q.dark.isActive"
+            options-dense
+            clearable
+            clear-icon="close"
+          >
+            <template v-slot:prepend>
+              <q-icon name="soup_kitchen" />
+            </template>
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section avatar>
+                  <q-icon name="soup_kitchen" size="16px" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.name }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <q-input
+            v-model="filters.search"
+            placeholder="Order #, Table, Waiter, Customer, KOT #..."
+            dense
+            outlined
+            clearable
             :dark="$q.dark.isActive"
           >
             <template v-slot:prepend>
@@ -274,8 +308,16 @@ const allProcessedOrders = computed(() => {
 const filters = ref({
   branch: 'All',
   source: 'All',
+  kitchen: null, // null = All kitchens
   search: '',
 })
+
+// Kitchen options — loaded from store (populated after fetchInitialOrders)
+// Guard: kitchens may be undefined before store hydrates
+const kitchenOptions = computed(() => [
+  { id: null, name: 'All Kitchens' },
+  ...(Array.isArray(orderStore.kitchens) ? orderStore.kitchens : []),
+])
 const detailsOpen = ref(false)
 const selectedOrderId = ref(null)
 
@@ -332,25 +374,51 @@ function getTimeAgo(createdAt) {
 
 // --- Computed Columns ---
 const filteredOrders = computed(() => {
-  // Use activeOrders from store
+  // Get the set of order IDs that match the selected kitchen
+  const kitchenOrderIds = filters.value.kitchen
+    ? orderStore.orderIdsByKitchen(filters.value.kitchen)
+    : null
+
   return orderStore.activeOrders.filter((order) => {
-    // Filter by Branch (if selecting from UI, though we only fetch one branch currently)
-    // If 'All' is selected, we show all loaded orders.
-    // Since we fetch by currentBranch of the user, this filter might be redundant or local.
-    // If the user has access to multiple branches, we might need to handle that.
-    // For now, let's assume loaded orders are relevant.
-    if (filters.value.branch !== 'All' && order.branch_name !== filters.value.branch) return true // Simplified, assuming backend filtering for now
+    // Kitchen filter
+    if (kitchenOrderIds && !kitchenOrderIds.has(order.id)) return false
 
     // Filter by Source
     if (filters.value.source !== 'All' && order.order_type !== filters.value.source) return false
 
-    // Filter by Search
+    // Filter by Search — multi-field: order#, table, customer, phone, KOT#, waiter name
     if (filters.value.search) {
-      const s = filters.value.search.toLowerCase()
-      const matchesId = order.id.toLowerCase().includes(s) // ID is UUID, might check partial
-      const matchesTable = order.table_id ? String(order.table_id).includes(s) : false
-      // We might need to map table_id to table number if we had the table map handy
-      if (!matchesId && !matchesTable) return false
+      const s = filters.value.search.toLowerCase().trim()
+      if (!s) return true
+
+      // Order number (e.g. "166", "#166")
+      const orderNum = String(order.order_number || '').toLowerCase()
+      // Table number — resolved from restaurant_tables Map (orders.table_number is often null)
+      const tableObj = order.table_id ? orderStore.tables.get(order.table_id) : null
+      const tableNum = String(tableObj?.table_number || order.table_number || '').toLowerCase()
+      // Customer name / phone
+      const custName = (order.customer_name || '').toLowerCase()
+      const custPhone = (order.customer_phone || '').toLowerCase()
+      // Waiter name — resolved from profiles Map
+      const waiterId = order.assigned_waiter_id || order.waiter_id
+      const waiterName = waiterId
+        ? (orderStore.profiles.get(waiterId)?.full_name || '').toLowerCase()
+        : ''
+      // KOT numbers for this order
+      const kotNums = [...orderStore.kotTickets.values()]
+        .filter((k) => k.order_id === order.id)
+        .map((k) => String(k.kot_number || '').toLowerCase())
+
+      const matches =
+        orderNum.includes(s) ||
+        (`#${orderNum}`.includes(s)) ||
+        tableNum.includes(s) ||
+        custName.includes(s) ||
+        custPhone.includes(s) ||
+        waiterName.includes(s) ||
+        kotNums.some((kn) => kn.includes(s))
+
+      if (!matches) return false
     }
 
     return true
@@ -462,137 +530,170 @@ async function cancelOrder(order) {
 </script>
 
 <style scoped>
-/* View mode toggle */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORDERS MANAGEMENT — Professional Light/Dark Theme
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* --- View Mode Toggle --- */
 .erp-view-toggle {
   display: flex;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
+  gap: 1px;
 }
 .body--dark .erp-view-toggle {
-  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
 }
 .body--light .erp-view-toggle {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
 }
-
 .erp-view-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: none;
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: all 0.2s ease;
 }
-.body--dark .erp-view-btn {
-  color: rgba(255, 255, 255, 0.4);
-}
-.body--dark .erp-view-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
-}
-.body--dark .erp-view-btn--active {
-  background: rgba(37, 99, 235, 0.15);
-  color: #3b82f6;
-}
+.body--dark .erp-view-btn { color: rgba(255,255,255,0.4); }
+.body--dark .erp-view-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+.body--dark .erp-view-btn--active { background: rgba(37,99,235,0.2); color: #60a5fa; }
+.body--light .erp-view-btn { color: #9ca3af; }
+.body--light .erp-view-btn:hover { background: #e5e7eb; color: #374151; }
+.body--light .erp-view-btn--active { background: #dbeafe; color: #2563eb; }
 
-.body--light .erp-view-btn {
-  color: #9ca3af;
-}
-.body--light .erp-view-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-.body--light .erp-view-btn--active {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-/* Kanban Board */
+/* --- Kanban Board --- */
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 14px;
   margin-top: 0;
 }
-
-.kanban-column {
-  min-width: 0;
-}
-
+.kanban-column { min-width: 0; }
 .kanban-column-inner {
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 260px);
   overflow: hidden;
-}
-.body--dark .kanban-column-inner {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-.body--light .kanban-column-inner {
-  background: #fdfdfd;
-  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.2s ease;
 }
 
+/* ── Dark ── */
+.body--dark .kanban-column-inner {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* ── Light — premium white columns with subtle shadow ── */
+.body--light .kanban-column-inner {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+}
+.body--light .kanban-column-inner:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* --- Column Header — color-coded top border accent --- */
 .kanban-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 14px 16px;
   flex-shrink: 0;
+  position: relative;
 }
 .body--dark .kanban-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .body--light .kanban-header {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(180deg, #fafbfc 0%, #ffffff 100%);
+}
+
+/* Color accent bars for each column */
+.body--light .kanban-column:nth-child(1) .kanban-column-inner {
+  border-top: 3px solid #f59e0b;
+}
+.body--light .kanban-column:nth-child(2) .kanban-column-inner {
+  border-top: 3px solid #3b82f6;
+}
+.body--light .kanban-column:nth-child(3) .kanban-column-inner {
+  border-top: 3px solid #10b981;
+}
+.body--light .kanban-column:nth-child(4) .kanban-column-inner {
+  border-top: 3px solid #6b7280;
+}
+
+.body--dark .kanban-column:nth-child(1) .kanban-column-inner {
+  border-top: 3px solid #f59e0b;
+}
+.body--dark .kanban-column:nth-child(2) .kanban-column-inner {
+  border-top: 3px solid #3b82f6;
+}
+.body--dark .kanban-column:nth-child(3) .kanban-column-inner {
+  border-top: 3px solid #10b981;
+}
+.body--dark .kanban-column:nth-child(4) .kanban-column-inner {
+  border-top: 3px solid #6b7280;
 }
 
 .kanban-header-left {
   display: flex;
   align-items: center;
-  font-size: 14px;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
 }
-.body--dark .kanban-header-left {
-  color: #e5e7eb;
-}
-.body--light .kanban-header-left {
-  color: #374151;
-}
+.body--dark .kanban-header-left { color: #e5e7eb; }
+.body--light .kanban-header-left { color: #1f2937; font-weight: 600; }
 
+/* --- Scroll Area --- */
 .kanban-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
 }
 
+/* Custom scrollbar */
+.body--light .kanban-scroll::-webkit-scrollbar { width: 5px; }
+.body--light .kanban-scroll::-webkit-scrollbar-track { background: transparent; }
+.body--light .kanban-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 99px;
+}
+.body--light .kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+.body--dark .kanban-scroll::-webkit-scrollbar { width: 5px; }
+.body--dark .kanban-scroll::-webkit-scrollbar-track { background: transparent; }
+.body--dark .kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+}
+
+/* --- Empty state --- */
 .kanban-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 16px;
-  color: #6b7280;
+  padding: 48px 16px;
 }
+.body--light .kanban-empty { color: #9ca3af; }
+.body--dark .kanban-empty { color: #6b7280; }
 
+/* --- Responsive --- */
 @media (max-width: 1024px) {
-  .kanban-board {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .kanban-column-inner {
-    height: 400px;
-  }
+  .kanban-board { grid-template-columns: repeat(2, 1fr); }
+  .kanban-column-inner { height: 400px; }
 }
-
 @media (max-width: 600px) {
-  .kanban-board {
-    grid-template-columns: 1fr;
-  }
+  .kanban-board { grid-template-columns: 1fr; }
 }
 </style>

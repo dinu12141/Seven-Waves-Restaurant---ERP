@@ -239,110 +239,130 @@ const typeColor = computed(() => {
 </script>
 
 <style scoped>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORDER KANBAN CARD — Professional Light/Dark Theme
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .order-card {
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: all 0.2s ease;
   border-radius: 10px;
+  overflow: hidden;
 }
 
+/* ── Dark Theme ────────────────────────────────────────────────────────────── */
 .body--dark .order-card {
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  background: #1a1a2e;
 }
 .body--dark .order-card.order-status-pending {
-  background: #212121;
+  border-left: 3px solid #f59e0b;
+  background: linear-gradient(135deg, #1f1d2b 0%, #1a1a2e 100%);
 }
 .body--dark .order-card.order-status-preparing {
-  background: #263238;
+  border-left: 3px solid #3b82f6;
+  background: linear-gradient(135deg, #1a2332 0%, #1a1a2e 100%);
 }
 .body--dark .order-card.order-status-ready {
-  background: #1b5e20;
+  border-left: 3px solid #10b981;
+  background: linear-gradient(135deg, #152520 0%, #1a1a2e 100%);
 }
 .body--dark .order-card.order-status-completed {
-  background: #1a1a1a;
+  border-left: 3px solid #6b7280;
+  background: #161622;
+  opacity: 0.85;
 }
 .body--dark .order-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  border-color: rgba(255,255,255,0.12);
 }
 
+/* ── Light Theme — Clean professional cards ────────────────────────────────── */
 .body--light .order-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.body--light .order-card.order-status-pending {
+  border-left: 3px solid #f59e0b;
+}
+.body--light .order-card.order-status-preparing {
+  border-left: 3px solid #3b82f6;
+}
+.body--light .order-card.order-status-ready {
+  border-left: 3px solid #10b981;
+}
+.body--light .order-card.order-status-completed {
+  border-left: 3px solid #9ca3af;
+  background: #fafafa;
 }
 .body--light .order-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   border-color: #d1d5db;
 }
 
+/* ── Items Preview ─────────────────────────────────────────────────────────── */
 .items-preview {
-  margin: 4px 0;
+  margin: 6px 0;
 }
 .item-line {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 2px 0;
+  line-height: 1.4;
 }
-.body--dark .item-line {
-  color: rgba(255, 255, 255, 0.65);
-}
-.body--light .item-line {
-  color: #4b5563;
-}
-
-.body--dark .card-text-muted {
-  color: #9e9e9e !important;
-}
-.body--light .card-text-muted {
-  color: #6b7280 !important;
-}
-
-.body--dark .card-icon-muted {
-  color: #757575 !important;
-}
-.body--light .card-icon-muted {
-  color: #9ca3af !important;
-}
-
-.body--dark .card-separator {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-.body--light .card-separator {
-  background: #e5e7eb !important;
-}
-
-.body--dark .card-btn-view {
-  color: #9e9e9e !important;
-}
-.body--light .card-btn-view {
-  color: #6b7280 !important;
-}
+.body--dark .item-line { color: rgba(255,255,255,0.65); }
+.body--light .item-line { color: #4b5563; }
 
 .item-qty {
   font-weight: 700;
-  color: #f59e0b;
-  min-width: 22px;
+  min-width: 24px;
+  font-size: 0.75rem;
 }
+.body--dark .item-qty { color: #fbbf24; }
+.body--light .item-qty { color: #d97706; }
+
 .item-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
+/* ── Muted helpers ─────────────────────────────────────────────────────────── */
+.body--dark .card-text-muted { color: #9e9e9e !important; }
+.body--light .card-text-muted { color: #9ca3af !important; font-size: 0.78rem; }
+
+.body--dark .card-icon-muted { color: #757575 !important; }
+.body--light .card-icon-muted { color: #9ca3af !important; }
+
+/* ── Separator ─────────────────────────────────────────────────────────────── */
+.body--dark .card-separator { background: rgba(255,255,255,0.06) !important; }
+.body--light .card-separator { background: #f3f4f6 !important; }
+
+/* ── Action buttons ────────────────────────────────────────────────────────── */
+.body--dark .card-btn-view { color: #9e9e9e !important; }
+.body--light .card-btn-view { color: #6b7280 !important; }
+.body--light .card-btn-view:hover { color: #374151 !important; background: #f3f4f6 !important; }
+
+/* ── Customer row ──────────────────────────────────────────────────────────── */
 .cust-row {
   display: flex;
   align-items: center;
 }
 
+/* ── Status badge ──────────────────────────────────────────────────────────── */
 .status-badge {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;
+  letter-spacing: 0.04em;
 }
 </style>

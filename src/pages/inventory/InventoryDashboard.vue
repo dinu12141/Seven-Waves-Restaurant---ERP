@@ -7,7 +7,7 @@
     />
 
     <!-- KPI Cards -->
-    <div class="row q-col-gutter-md q-mb-lg">
+    <div class="row q-col-gutter-md q-mb-lg items-stretch">
       <div v-for="(stat, i) in kpis" :key="i" class="col-12 col-sm-6 col-md-4 col-lg-2">
         <DashboardCard v-bind="stat" />
       </div>

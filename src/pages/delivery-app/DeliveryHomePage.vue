@@ -3,40 +3,46 @@
     <q-pull-to-refresh @refresh="onRefresh" color="purple">
       <!-- ── Hero Header ───────────────────────────── -->
       <div class="hero-section">
-        <div class="row items-center q-gutter-md">
-          <q-avatar size="52px" class="hero-avatar text-weight-bold text-white">
-            {{ initials(authStore.userDisplayName) }}
-          </q-avatar>
-          <div class="col">
-            <div class="text-h6 text-white text-weight-bold" style="line-height: 1.2">
-              {{ authStore.userDisplayName || 'Rider' }}
+        <!-- Decorative orbs -->
+        <div class="hero-orb hero-orb--1" />
+        <div class="hero-orb hero-orb--2" />
+
+        <div class="hero-inner">
+          <!-- Avatar -->
+          <div class="hero-avatar-wrap">
+            <div class="hero-avatar-ring">
+              <div class="hero-avatar">
+                {{ initials(riderName) }}
+              </div>
             </div>
-            <div class="row items-center q-gutter-xs q-mt-xs">
-              <q-chip
-                dense
-                color="deep-purple-9"
-                text-color="white"
-                icon="delivery_dining"
-                class="text-caption"
-              >
-                Delivery Rider
-              </q-chip>
-              <q-chip
-                dense
-                :color="store.isConnected ? 'green-9' : 'red-9'"
-                text-color="white"
-                :icon="store.isConnected ? 'wifi' : 'wifi_off'"
-                class="text-caption"
-              >
-                {{ store.isConnected ? 'Live' : 'Offline' }}
-              </q-chip>
+            <!-- Live pulse badge -->
+            <div class="hero-live-badge" :class="{ 'hero-live-badge--offline': !store.isConnected }">
+              <div class="hero-live-dot" />
             </div>
           </div>
-        </div>
-        <!-- Branch indicator -->
-        <div class="branch-row q-mt-sm" v-if="authStore.currentBranch">
-          <q-icon name="store" size="13px" color="grey-5" class="q-mr-xs" />
-          <span class="text-caption text-grey-5">{{ authStore.currentBranch.name }}</span>
+
+          <!-- Info -->
+          <div class="hero-info">
+            <div class="hero-name">{{ riderName }}</div>
+
+            <!-- Role + Status chips -->
+            <div class="hero-badges">
+              <span class="hero-role-badge">
+                <q-icon name="delivery_dining" size="12px" class="q-mr-xs" />
+                Delivery Rider
+              </span>
+              <span class="hero-status-badge" :class="store.isConnected ? 'hero-status-badge--live' : 'hero-status-badge--offline'">
+                <span class="hero-status-dot" />
+                {{ store.isConnected ? 'Live' : 'Offline' }}
+              </span>
+            </div>
+
+            <!-- Branch -->
+            <div class="hero-branch" v-if="authStore.currentBranch">
+              <q-icon name="store" size="12px" />
+              {{ authStore.currentBranch.name }}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -417,6 +423,15 @@ const delayedCount = computed(() => {
   }).length
 })
 
+// ── Rider display name ──────────────────
+// Priority: profile full_name → email prefix (before @) → 'Rider'
+const riderName = computed(() => {
+  if (authStore.profile?.full_name) return authStore.profile.full_name
+  const email = authStore.user?.email || ''
+  if (email) return email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return 'Rider'
+})
+
 // ── Helpers ──────────────────────────────
 function initials(name) {
   if (!name) return '?'
@@ -522,22 +537,169 @@ async function onRefresh(done) {
 
 // ── Hero ──────────────────────────────────
 .hero-section {
-  padding: 20px 16px 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(124, 77, 255, 0.08),
-    rgba(206, 147, 216, 0.05),
-    transparent
-  );
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  padding: 22px 20px 20px;
+  background: linear-gradient(135deg, #3d1a78 0%, #6d28d9 50%, #7c3aed 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
 }
-.hero-avatar {
-  background: linear-gradient(135deg, #7c4dff, #b388ff) !important;
-  font-size: 18px !important;
+
+// Decorative background orbs
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  &--1 {
+    width: 140px;
+    height: 140px;
+    background: rgba(196, 181, 253, 0.28);
+    top: -40px;
+    right: -30px;
+    filter: blur(18px);
+  }
+  &--2 {
+    width: 100px;
+    height: 100px;
+    background: rgba(167, 139, 250, 0.22);
+    bottom: -30px;
+    left: 20px;
+    filter: blur(14px);
+  }
 }
-.branch-row {
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+// Glowing avatar
+.hero-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.hero-avatar-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #c4b5fd, #7c3aed, #4c1d95);
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.5);
+}
+.hero-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+.hero-live-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #3d1a78;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &--offline {
+    background: #ef4444;
+  }
+}
+.hero-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: hero-ping 1.8s ease-in-out infinite;
+}
+@keyframes hero-ping {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+// Info block
+.hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.hero-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.hero-role-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #ede9fe;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.hero-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  &--live {
+    color: #d1fae5;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  &--offline {
+    color: #fee2e2;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+}
+.hero-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hero-ping 1.8s ease-in-out infinite;
+}
+.hero-branch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.3px;
 }
 
 // ── KPI Cards ─────────────────────────────
@@ -925,20 +1087,30 @@ body.body--light {
     background: #f8fafc;
   }
 
-  // Hero
+  // Hero — vibrant gradient persists in light mode
   .hero-section {
-    background: linear-gradient(
-      135deg,
-      rgba(124, 58, 237, 0.06),
-      rgba(167, 139, 250, 0.04),
-      transparent
-    );
-    border-bottom: 1px solid #e2e8f0;
-
-    .text-h6,
-    .text-white {
-      color: #0f172a !important;
-    }
+    background: linear-gradient(135deg, #2e1065 0%, #5b21b6 45%, #7c3aed 100%) !important;
+    border-bottom: 1px solid rgba(91, 33, 182, 0.4) !important;
+    box-shadow: 0 6px 24px rgba(91, 33, 182, 0.25) !important;
+  }
+  // Keep hero text white on gradient background
+  .hero-name, .hero-branch {
+    color: #fff !important;
+  }
+  .hero-role-badge {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #fff !important;
+  }
+  .hero-status-badge--live {
+    background: rgba(16, 185, 129, 0.3) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    color: #d1fae5 !important;
+  }
+  .hero-status-badge--offline {
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    color: #fee2e2 !important;
   }
 
   // KPI Cards
@@ -1028,6 +1200,40 @@ body.body--light {
   }
   .time-ago {
     color: #94a3b8;
+  }
+
+  // Items preview (availability toggles)
+  .items-preview {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+  .items-preview-header {
+    border-bottom-color: #e2e8f0;
+  }
+  .items-label {
+    color: #475569;
+  }
+  .tap-hint {
+    color: #94a3b8;
+  }
+  .item-row {
+    &:not(:last-child) {
+      border-bottom-color: #f1f5f9;
+    }
+  }
+  .item-qty {
+    color: #7c3aed;
+  }
+  .item-name {
+    color: #334155;
+  }
+  .avail-btn--inactive {
+    color: #94a3b8 !important;
+    opacity: 0.6;
+  }
+  .unavail-summary {
+    background: #fffbeb;
+    border-color: rgba(245, 158, 11, 0.3);
   }
 
   // Empty / Loading

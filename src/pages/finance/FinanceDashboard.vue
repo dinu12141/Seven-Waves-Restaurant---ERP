@@ -11,25 +11,20 @@
     <!-- KPI Cards -->
     <div class="row q-col-gutter-md q-mb-md">
       <div v-for="(kpi, i) in kpis" :key="i" class="col-12 col-sm-6 col-md-4 col-lg-2">
-        <div class="fin-kpi-card">
-          <div class="fin-kpi-card__icon" :style="{ background: kpi.bg }">
-            <q-icon :name="kpi.icon" size="20px" :color="kpi.color" />
-          </div>
-          <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">{{ kpi.label }}</div>
-            <div class="fin-kpi-card__value">
-              {{ kpi.isCurrency ? formatCurrency(kpi.value) : kpi.value }}
-            </div>
-          </div>
-        </div>
+        <DashboardCard
+          :title="kpi.label"
+          :value="kpi.isCurrency ? formatCurrency(kpi.value) : kpi.value"
+          :icon="kpi.icon"
+          :color="kpi.color"
+        />
       </div>
     </div>
 
     <!-- Main Content Row -->
-    <div class="row q-col-gutter-md q-mb-md">
+    <div class="row q-col-gutter-md q-mb-md items-stretch">
       <!-- Revenue & Expense Chart -->
       <div class="col-12 col-md-8">
-        <div class="fin-panel">
+        <div class="fin-panel full-height">
           <div class="fin-panel__header">
             <span class="fin-panel__title">Revenue vs Expenses</span>
             <span class="fin-panel__subtitle">Last 7 days</span>
@@ -39,6 +34,7 @@
               v-if="chartReady"
               title=""
               type="area"
+              height="285"
               :series="chartSeries"
               :options="chartOptions"
               :loading="loading"
@@ -48,44 +44,9 @@
         </div>
       </div>
 
-      <!-- Quick Actions & Recent Activity -->
+      <!-- Recent Activity -->
       <div class="col-12 col-md-4">
-        <div class="fin-panel">
-          <div class="fin-panel__header">
-            <span class="fin-panel__title">Quick Actions</span>
-          </div>
-          <div class="fin-panel__body q-pa-sm">
-            <q-list dense class="fin-action-list">
-              <q-item
-                v-for="action in quickActions"
-                :key="action.to"
-                clickable
-                class="fin-action-item"
-                @click="$router.push(action.to)"
-              >
-                <q-item-section avatar>
-                  <q-avatar
-                    size="32px"
-                    :color="action.color"
-                    text-color="white"
-                    :icon="action.icon"
-                  />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-body2 text-weight-medium text-white">{{
-                    action.label
-                  }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-6" size="18px" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </div>
-
-        <!-- Pending Items -->
-        <div class="fin-panel q-mt-md">
+        <div class="fin-panel full-height">
           <div class="fin-panel__header">
             <span class="fin-panel__title">Recent Journal Entries</span>
             <q-btn
@@ -104,15 +65,15 @@
                   <q-avatar size="28px" color="blue-grey-8" text-color="white" icon="receipt" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-caption text-white">{{
+                  <q-item-label class="text-body2 text-weight-medium">{{
                     je.description || je.reference_type
                   }}</q-item-label>
-                  <q-item-label caption class="text-grey-5">{{
+                  <q-item-label caption>{{
                     formatDate(je.doc_date)
                   }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <div class="text-caption text-right text-white">
+                  <div class="text-subtitle2 text-right text-weight-bold" style="color: var(--erp-text-primary)">
                     {{ formatCurrency(je.total_dr) }}
                   </div>
                 </q-item-section>
@@ -150,7 +111,7 @@
               :columns="balanceCols"
               row-key="code"
               flat
-              dark
+              :dark="$q.dark.isActive"
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -180,7 +141,7 @@
               :columns="expenseCols"
               row-key="id"
               flat
-              dark
+              :dark="$q.dark.isActive"
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -196,9 +157,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
+import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import {
   fetchDashboardKPIs,
   fetchJournalEntries,
@@ -208,6 +171,8 @@ import {
 
 const loading = ref(false)
 const chartReady = ref(false)
+const $q = useQuasar()
+
 const kpis = ref([
   {
     label: 'Today Revenue',
@@ -259,24 +224,6 @@ const kpis = ref([
   },
 ])
 
-const quickActions = [
-  {
-    label: 'New Journal Entry',
-    icon: 'add_circle',
-    color: 'blue-8',
-    to: '/finance/journal-entries',
-  },
-  { label: 'Record Expense', icon: 'money_off', color: 'red-8', to: '/finance/expenses' },
-  {
-    label: 'Cash Transaction',
-    icon: 'account_balance_wallet',
-    color: 'green-8',
-    to: '/finance/cash-bank',
-  },
-  { label: 'Run Payroll', icon: 'play_circle', color: 'purple-8', to: '/finance/payroll/run' },
-  { label: 'Financial Reports', icon: 'assessment', color: 'orange-8', to: '/finance/reports' },
-]
-
 const recentJournals = ref([])
 const accountBalances = ref([])
 const recentExpenses = ref([])
@@ -317,22 +264,25 @@ const chartSeries = ref([
   { name: 'Revenue', data: [] },
   { name: 'Expenses', data: [] },
 ])
-const chartOptions = ref({
-  chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
-  theme: { mode: 'dark' },
-  xaxis: {
-    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    labels: { style: { colors: '#9ca3af' } },
-  },
-  yaxis: { labels: { style: { colors: '#9ca3af' } } },
-  colors: ['#10b981', '#ef4444'],
-  grid: { borderColor: '#1f2937', strokeDashArray: 4 },
-  dataLabels: { enabled: false },
-  stroke: { curve: 'smooth', width: 2 },
-  fill: {
-    type: 'gradient',
-    gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] },
-  },
+const chartOptions = computed(() => {
+  const isDark = $q.dark.isActive
+  return {
+    chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
+    theme: { mode: isDark ? 'dark' : 'light' },
+    xaxis: {
+      categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      labels: { style: { colors: '#9ca3af' } },
+    },
+    yaxis: { labels: { style: { colors: '#9ca3af' } } },
+    colors: ['#10b981', '#ef4444'],
+    grid: { borderColor: isDark ? '#1f2937' : '#e5e7eb', strokeDashArray: 4 },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] },
+    },
+  }
 })
 
 function formatCurrency(val) {

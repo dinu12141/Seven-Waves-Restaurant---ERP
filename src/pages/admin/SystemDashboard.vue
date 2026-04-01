@@ -311,10 +311,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import { supabase } from 'src/boot/supabase'
 import { date } from 'quasar'
+
+const $q = useQuasar()
 
 // ── KPI cards ──────────────────────────────────────────────────
 const kpis = ref([
@@ -429,37 +432,48 @@ const chartSeries = computed(() => {
   return [{ name: 'Logins', data: hours }]
 })
 
-const chartOptions = {
-  chart: { background: 'transparent', toolbar: { show: false }, animations: { enabled: true } },
-  theme: { mode: 'dark' },
-  colors: ['#3b82f6'],
-  plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
-  xaxis: {
-    categories: Array.from({ length: 24 }, (_, i) =>
-      i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`
-    ),
-    labels: { style: { colors: '#9ca3af', fontSize: '10px' } },
-    axisBorder: { show: false }, axisTicks: { show: false },
-  },
-  yaxis: { labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: v => Math.round(v) }, min: 0 },
-  grid: { borderColor: 'rgba(255,255,255,0.08)' },
-  tooltip: { theme: 'dark', y: { formatter: v => `${v} login${v!==1?'s':''}` } },
-  dataLabels: { enabled: false },
-}
+const chartOptions = computed(() => {
+  const isDark = $q.dark.isActive
+  const labelColor = isDark ? '#9ca3af' : '#64748b'
+  const gridColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+  return {
+    chart: { background: 'transparent', toolbar: { show: false }, animations: { enabled: true } },
+    theme: { mode: isDark ? 'dark' : 'light' },
+    colors: ['#3b82f6'],
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
+    xaxis: {
+      categories: Array.from({ length: 24 }, (_, i) =>
+        i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`
+      ),
+      labels: { style: { colors: labelColor, fontSize: '10px' } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: { labels: { style: { colors: labelColor, fontSize: '10px' }, formatter: v => Math.round(v) }, min: 0 },
+    grid: { borderColor: gridColor },
+    tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => `${v} login${v!==1?'s':''}` } },
+    dataLabels: { enabled: false },
+  }
+})
 
 // API ping sparkline
 const pingChartSeries = ref([{ name: 'ms', data: [] }])
-const pingChartOptions = {
-  chart: { background: 'transparent', toolbar: { show: false }, sparkline: { enabled: false } },
-  theme: { mode: 'dark' }, colors: ['#0d9488'],
-  stroke: { width: 2, curve: 'smooth' },
-  xaxis: { labels: { show: false } },
-  yaxis: { labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: v => `${v}ms` } },
-  grid: { borderColor: 'rgba(255,255,255,0.08)' },
-  tooltip: { theme: 'dark' },
-  dataLabels: { enabled: false },
-  markers: { size: 3 },
-}
+const pingChartOptions = computed(() => {
+
+  const isDark = $q.dark.isActive
+  const labelColor = isDark ? '#9ca3af' : '#64748b'
+  const gridColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+  return {
+    chart: { background: 'transparent', toolbar: { show: false }, sparkline: { enabled: false } },
+    theme: { mode: isDark ? 'dark' : 'light' }, colors: ['#0d9488'],
+    stroke: { width: 2, curve: 'smooth' },
+    xaxis: { labels: { show: false } },
+    yaxis: { labels: { style: { colors: labelColor, fontSize: '10px' }, formatter: v => `${v}ms` } },
+    grid: { borderColor: gridColor },
+    tooltip: { theme: isDark ? 'dark' : 'light' },
+    dataLabels: { enabled: false },
+    markers: { size: 3 },
+  }
+})
 
 // ── Helpers ────────────────────────────────────────────────────
 function formatTime(ts) {
@@ -532,8 +546,8 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #0d1117;
-  border-left: 1px solid rgba(255,255,255,0.08);
+  background: var(--erp-bg-card);
+  border-left: 1px solid var(--erp-border);
 }
 
 .drawer-header {
@@ -542,7 +556,7 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
   justify-content: space-between;
   padding: 20px;
   gap: 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid var(--erp-border);
 
   &__left { display: flex; align-items: center; gap: 14px; }
 
@@ -570,22 +584,22 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
 .drawer-body {
   flex: 1; overflow-y: auto; padding: 20px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.1) transparent;
+  scrollbar-color: var(--erp-border) transparent;
 }
 
 .drawer-section-label {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.8px; color: #6b7280;
+  letter-spacing: 0.8px; color: var(--erp-text-muted);
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--erp-border);
 }
 
 // ── Drawer table ───────────────────────────────────────────────
 .drawer-table-wrap {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--erp-border);
 }
 .drawer-row {
   display: grid;
@@ -593,23 +607,23 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
   gap: 8px;
   padding: 9px 12px;
   font-size: 12px;
-  color: #d1d5db;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--erp-text-primary);
+  border-bottom: 1px solid var(--erp-border);
   align-items: center;
 
   &--head {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; color: #6b7280;
-    background: rgba(255,255,255,0.04);
+    letter-spacing: 0.5px; color: var(--erp-text-muted);
+    background: var(--erp-bg-stripe);
   }
-  &:not(&--head):hover { background: rgba(255,255,255,0.04); }
+  &:not(&--head):hover { background: var(--erp-bg-hover); }
 }
-.drawer-name { font-weight: 600; color: #f3f4f6; }
-.drawer-email { font-size: 11px; color: #9ca3af; }
-.drawer-stat { font-weight: 700; color: #60a5fa; }
+.drawer-name { font-weight: 600; color: var(--erp-text-primary); }
+.drawer-email { font-size: 11px; color: var(--erp-text-secondary); }
+.drawer-stat { font-weight: 700; color: var(--erp-primary-light); }
 .drawer-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 40px; color: #4b5563; font-size: 13px; text-align: center;
+  padding: 40px; color: var(--erp-text-muted); font-size: 13px; text-align: center;
 }
 
 // ── Metric grid ────────────────────────────────────────────────
@@ -619,43 +633,44 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
   gap: 12px;
 }
 .metric-box {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--erp-bg-input);
+  border: 1px solid var(--erp-border);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
   transition: background 0.2s;
-  &:hover { background: rgba(255,255,255,0.07); }
+  &:hover { background: var(--erp-bg-hover); }
 }
 .metric-val {
-  font-size: 22px; font-weight: 900; color: #ffffff;
+  font-size: 22px; font-weight: 900; color: var(--erp-text-primary);
   margin: 8px 0 4px;
 }
 .metric-lbl {
   font-size: 10px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.5px; color: rgba(255,255,255,0.6);
+  letter-spacing: 0.5px; color: var(--erp-text-muted);
 }
 
 // ── Log panel ──────────────────────────────────────────────────
 .log-panel {
-  background: var(--erp-bg-panel, #161b22);
-  border: 1px solid var(--erp-border, rgba(255,255,255,0.08));
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--erp-shadow-sm);
 }
 .log-panel__header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-stripe);
 }
 .log-panel__title {
-  font-size: 13px; font-weight: 700; color: #f3f4f6;
+  font-size: 13px; font-weight: 700; color: var(--erp-text-primary);
   display: flex; align-items: center;
 }
-.log-panel__meta { font-size: 11px; color: #6b7280; }
+.log-panel__meta { font-size: 11px; color: var(--erp-text-muted); }
 .log-panel__body { padding: 12px; flex: 1; overflow: hidden; }
 
 .log-row {
@@ -665,36 +680,36 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
   gap: 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 12px; color: #d1d5db;
+  border-bottom: 1px solid var(--erp-border);
+  font-size: 12px; color: var(--erp-text-primary);
   transition: background 0.3s;
 
   &--head {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; color: #6b7280;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    letter-spacing: 0.5px; color: var(--erp-text-muted);
+    border-bottom: 1px solid var(--erp-border-strong);
     padding: 6px 10px; border-radius: 0;
   }
   &--new {
-    background: rgba(59,130,246,0.12);
+    background: var(--erp-primary-subtle);
     animation: pulse-in 0.4s ease;
   }
-  &:not(&--head):hover { background: rgba(255,255,255,0.04); }
+  &:not(&--head):hover { background: var(--erp-bg-hover); }
 }
 @keyframes pulse-in {
   0%   { background: rgba(59,130,246,0.3); transform: translateX(-4px); }
-  100% { background: rgba(59,130,246,0.12); transform: translateX(0); }
+  100% { background: var(--erp-primary-subtle); transform: translateX(0); }
 }
 
-.log-time { color: #9ca3af; font-size: 11px; font-family: monospace; }
-.log-user__name { font-weight: 600; color: #f3f4f6; font-size: 12px; }
-.log-user__email { font-size: 10px; color: #6b7280; }
-.log-device { display: flex; align-items: center; color: #9ca3af; }
-.log-browser { font-size: 11px; color: #9ca3af; }
-.log-os { font-size: 10px; color: #4b5563; }
+.log-time { color: var(--erp-text-secondary); font-size: 11px; font-family: monospace; }
+.log-user__name { font-weight: 600; color: var(--erp-text-primary); font-size: 12px; }
+.log-user__email { font-size: 10px; color: var(--erp-text-muted); }
+.log-device { display: flex; align-items: center; color: var(--erp-text-secondary); }
+.log-browser { font-size: 11px; color: var(--erp-text-secondary); }
+.log-os { font-size: 10px; color: var(--erp-text-muted); }
 .log-empty {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; padding: 40px; color: #4b5563; font-size: 13px;
+  justify-content: center; padding: 40px; color: var(--erp-text-muted); font-size: 13px;
 }
 
 .log-slide-enter-active { transition: all 0.35s ease; }
@@ -703,10 +718,12 @@ onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
 .device-breakdown { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .device-item {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(255,255,255,0.05);
+  background: var(--erp-bg-input);
+  border: 1px solid var(--erp-border);
   border-radius: 8px; padding: 6px 12px;
-  font-size: 12px; color: #d1d5db;
+  font-size: 12px; color: var(--erp-text-primary);
 }
-.device-count { font-weight: 700; color: #60a5fa; }
-.device-label { color: #9ca3af; }
+.device-count { font-weight: 700; color: var(--erp-primary-light); }
+.device-label { color: var(--erp-text-secondary); }
 </style>
+

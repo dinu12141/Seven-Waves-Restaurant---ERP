@@ -33,6 +33,10 @@ export const useManagerAppStore = defineStore('managerApp', () => {
   // Served today counter
   const servedTodayCount = ref(0)
 
+  // Today's full shift staff (all roles)
+  const todayShiftStaff = ref([])
+  const todayShiftStaffLoading = ref(false)
+
   // Realtime channels
   let ordersChannel = null
   let kotChannel = null
@@ -50,6 +54,15 @@ export const useManagerAppStore = defineStore('managerApp', () => {
       messages.value.filter((m) => !m.is_read && m.receiver_employee_id === _myEmployeeId).length,
   )
   const unreadAlertCount = computed(() => alerts.value.filter((a) => !a.is_resolved).length)
+  const onShiftCount = computed(() => {
+    // If shift staff loaded, use that (all roles); fallback to waiters only
+    if (todayShiftStaff.value.length > 0) {
+      return todayShiftStaff.value.filter(s =>
+        ['active', 'present', 'checked_in'].includes(s.status)
+      ).length || todayShiftStaff.value.length
+    }
+    return onShiftWaiters.value.length
+  })
 
   // ─── Private ──────────────────────────────────────────────────────────────
   let _myEmployeeId = null
@@ -82,6 +95,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         loadAlerts(),
         loadHierarchy(),
         loadServedToday(),
+        loadTodayShiftStaff(),
       ])
       await loadLeaderboard()
       subscribeRealtime()
@@ -382,6 +396,56 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     servedTodayCount.value = count || 0
   }
 
+  // ─── Today's Shift Staff (ALL roles) ──────────────────────────────────────
+  async function loadTodayShiftStaff() {
+    const branchId = authStore.currentBranch?.id
+    if (!branchId) return
+
+    todayShiftStaffLoading.value = true
+    try {
+      const today = new Date().toISOString().split('T')[0]
+
+      const { data, error } = await supabase
+        .from('shift_assignments')
+        .select(`
+          id, status, assignment_date, notes,
+          employees ( id, full_name, employee_code, phone, department_id,
+                      departments ( name ),
+                      designations ( title ) ),
+          shifts ( id, name, start_time, end_time )
+        `)
+        .eq('branch_id', branchId)
+        .eq('assignment_date', today)
+
+      if (error) {
+        console.error('[ManagerApp] loadTodayShiftStaff error:', error)
+        todayShiftStaff.value = []
+        return
+      }
+
+      todayShiftStaff.value = (data || []).map(sa => ({
+        id: sa.id,
+        status: sa.status || 'scheduled',
+        assignment_date: sa.assignment_date,
+        notes: sa.notes,
+        employee_id: sa.employees?.id,
+        employee_name: sa.employees?.full_name || 'Unknown',
+        employee_code: sa.employees?.employee_code || '',
+        phone: sa.employees?.phone || '',
+        department: sa.employees?.departments?.name || 'Unassigned',
+        designation: sa.employees?.designations?.title || 'Staff',
+        shift_name: sa.shifts?.name || '',
+        shift_start: sa.shifts?.start_time || '',
+        shift_end: sa.shifts?.end_time || '',
+      }))
+    } catch (e) {
+      console.error('[ManagerApp] loadTodayShiftStaff exception:', e)
+      todayShiftStaff.value = []
+    } finally {
+      todayShiftStaffLoading.value = false
+    }
+  }
+
   // ─── Realtime ─────────────────────────────────────────────────────────────
   function subscribeRealtime() {
     const branchId = authStore.currentBranch?.id
@@ -451,13 +515,28 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         .subscribe()
     }
 
-    // Alerts channel
+    // Alerts channel — show toast on new alerts
     alertsChannel = supabase
       .channel(`mgr-alerts-${branchId}-${ts}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'manager_alerts',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        (payload) => {
+          const a = payload.new
+          alerts.value.unshift(a)
+          // Show in-app toast notification
+          _showAlertToast(a)
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'manager_alerts',
           filter: `branch_id=eq.${branchId}`,
@@ -465,6 +544,23 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         () => loadAlerts(),
       )
       .subscribe()
+  }
+
+  // Show toast for a new alert
+  function _showAlertToast(alert) {
+    if (!alert) return
+    const colorMap = { critical: 'negative', warning: 'warning', info: 'info' }
+    const iconMap = { critical: 'error', warning: 'warning_amber', info: 'notifications' }
+    const color = colorMap[alert.severity] || 'info'
+    const icon = iconMap[alert.severity] || 'notifications'
+
+    // Use Quasar Notify if available (imported at top-level via useQuasar in components)
+    // We broadcast a custom event that the layout listens for
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mgr-alert', {
+        detail: { title: alert.title, body: alert.body, severity: alert.severity, color, icon, id: alert.id },
+      }))
+    }
   }
 
   function cleanup() {
@@ -490,6 +586,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
         loadAlerts(),
         loadHierarchy(),
         loadServedToday(),
+        loadTodayShiftStaff(),
       ])
       await loadLeaderboard()
     } finally {
@@ -510,11 +607,14 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     messages,
     alerts,
     servedTodayCount,
+    todayShiftStaff,
+    todayShiftStaffLoading,
     // computed
     pendingOrderCount,
     totalActiveOrders,
     unreadMessageCount,
     unreadAlertCount,
+    onShiftCount,
     // actions
     initialize,
     cleanup,
@@ -526,6 +626,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     loadHierarchy,
     loadLeaderboard,
     loadServedToday,
+    loadTodayShiftStaff,
     sendMessage,
     markMessageRead,
     resolveAlert,

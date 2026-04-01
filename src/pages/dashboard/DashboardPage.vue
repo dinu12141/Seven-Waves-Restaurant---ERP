@@ -417,7 +417,14 @@ import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
 const authStore = useAuthStore()
 const loading = ref(false)
-const timeFilter = ref('daily')
+// ── Time Filter — persisted in localStorage, defaults to 'monthly' ───────────
+const PERIOD_KEY = 'sw-dash-period'
+const _savedPeriod = localStorage.getItem(PERIOD_KEY)
+const timeFilter = ref(
+  ['daily', 'weekly', 'monthly'].includes(_savedPeriod) ? _savedPeriod : 'monthly',
+)
+watch(timeFilter, (val) => localStorage.setItem(PERIOD_KEY, val))
+
 
 // ── KPIs ────────────────────────────────────────────────────────
 const kpi1 = ref('0')

@@ -71,11 +71,11 @@ const loading = ref(false)
 let timer = null
 
 const kpis = ref([
-  { title: 'Total Staff', value: '45', icon: 'people', color: 'blue', isCurrency: false },
+  { title: 'Total Staff', value: '45', icon: 'groups', color: 'blue', isCurrency: false },
   { title: 'On-Shift Now', value: '0', icon: 'directions_run', color: 'green', isCurrency: false },
-  { title: 'Leave Today', value: '0', icon: 'event_busy', color: 'purple', isCurrency: false },
+  { title: 'On Leave Today', value: '0', icon: 'event_busy', color: 'purple', isCurrency: false },
   { title: 'Pending Payroll', value: '0', icon: 'payments', color: 'orange', isCurrency: true },
-  { title: 'Avg Score', value: '4.8', icon: 'star', color: 'teal', isCurrency: false },
+  { title: 'Avg Rating', value: '4.8', icon: 'star', color: 'teal', isCurrency: false },
   { title: 'Open Shifts', value: '0', icon: 'schedule', color: 'indigo', isCurrency: false },
 ])
 

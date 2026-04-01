@@ -5,56 +5,52 @@
     <!-- KPI Row -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="people" size="36px" color="blue" class="q-mr-md" />
-            <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
-                Total Employees
-              </div>
-              <div class="text-h5 text-weight-bold">{{ stats.total }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <div class="sys-kpi-card sys-kpi-card--blue">
+          <q-icon name="groups" size="64px" class="sys-kpi-watermark" />
+          <div class="sys-kpi-icon-wrap">
+            <q-icon name="groups" size="20px" color="white" />
+          </div>
+          <div class="sys-kpi-body">
+            <div class="sys-kpi-label">Total Employees</div>
+            <div class="sys-kpi-value">{{ stats.total }}</div>
+          </div>
+        </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="check_circle" size="36px" color="green" class="q-mr-md" />
-            <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
-                Permanent
-              </div>
-              <div class="text-h5 text-weight-bold">{{ stats.permanent }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <div class="sys-kpi-card sys-kpi-card--green">
+          <q-icon name="verified" size="64px" class="sys-kpi-watermark" />
+          <div class="sys-kpi-icon-wrap">
+            <q-icon name="verified" size="20px" color="white" />
+          </div>
+          <div class="sys-kpi-body">
+            <div class="sys-kpi-label">Permanent</div>
+            <div class="sys-kpi-value">{{ stats.permanent }}</div>
+          </div>
+        </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="schedule" size="36px" color="orange" class="q-mr-md" />
-            <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
-                Probation
-              </div>
-              <div class="text-h5 text-weight-bold">{{ stats.probation }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <div class="sys-kpi-card sys-kpi-card--amber">
+          <q-icon name="pending_actions" size="64px" class="sys-kpi-watermark" />
+          <div class="sys-kpi-icon-wrap">
+            <q-icon name="pending_actions" size="20px" color="white" />
+          </div>
+          <div class="sys-kpi-body">
+            <div class="sys-kpi-label">Probation</div>
+            <div class="sys-kpi-value">{{ stats.probation }}</div>
+          </div>
+        </div>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="erp-stat-card" flat>
-          <q-card-section class="row items-center no-wrap q-pa-md">
-            <q-icon name="description" size="36px" color="cyan" class="q-mr-md" />
-            <div>
-              <div :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">
-                Contract
-              </div>
-              <div class="text-h5 text-weight-bold">{{ stats.contract }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <div class="sys-kpi-card sys-kpi-card--teal">
+          <q-icon name="description" size="64px" class="sys-kpi-watermark" />
+          <div class="sys-kpi-icon-wrap">
+            <q-icon name="description" size="20px" color="white" />
+          </div>
+          <div class="sys-kpi-body">
+            <div class="sys-kpi-label">Contract</div>
+            <div class="sys-kpi-value">{{ stats.contract }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -5619,6 +5615,82 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+// Gradient KPI cards — matches DashboardCard.vue
+.sys-kpi-card {
+  border-radius: 12px;
+  padding: 16px 18px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  min-height: 88px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+  &--blue {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--green {
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--amber {
+    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  &--teal {
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+}
+.sys-kpi-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sys-kpi-body {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+.sys-kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sys-kpi-value {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sys-kpi-watermark {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  opacity: 0.08;
+  pointer-events: none;
+  color: white !important;
+}
+
 .erp-stat-card {
   background: var(--erp-bg-form-card, #111827);
   border: 1px solid var(--erp-input-border, #374151);

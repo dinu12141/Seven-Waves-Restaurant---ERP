@@ -893,45 +893,41 @@ body.body--light {
     background: rgba(124, 58, 237, 0.08);
   }
 
-  // Progress stepper
-  .progress-stepper {
+  // Progress stepper — use extra specificity to beat scoped CSS
+  .delivery-active-page .progress-stepper {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
-  .step__circle {
+  .delivery-active-page .step__circle {
     border-color: #cbd5e1;
     color: #94a3b8;
-    background: #ffffff;
+    background: #f8fafc !important;
   }
-  .step__label {
+  .delivery-active-page .step__label {
     color: #94a3b8;
   }
-  .step__connector {
+  .delivery-active-page .step__connector {
     background: #e2e8f0;
   }
-  .step--done {
-    .step__circle {
-      background: #16a34a;
-      border-color: #16a34a;
-      color: #fff;
-    }
-    .step__label {
-      color: #16a34a;
-    }
-    .step__connector {
-      background: #16a34a;
-    }
+  .delivery-active-page .step--done .step__circle {
+    background: #16a34a !important;
+    border-color: #16a34a;
+    color: #fff;
   }
-  .step--current {
-    .step__circle {
-      background: #2563eb;
-      border-color: #2563eb;
-      color: #fff;
-    }
-    .step__label {
-      color: #2563eb;
-    }
+  .delivery-active-page .step--done .step__label {
+    color: #16a34a;
+  }
+  .delivery-active-page .step--done .step__connector {
+    background: #16a34a;
+  }
+  .delivery-active-page .step--current .step__circle {
+    background: #2563eb !important;
+    border-color: #2563eb;
+    color: #fff;
+  }
+  .delivery-active-page .step--current .step__label {
+    color: #2563eb;
   }
 
   // Kitchen alert
@@ -991,7 +987,7 @@ body.body--light {
 
   // Timing
   .timing-section {
-    background: #f8fafc;
+    background: #f1f5f9;
   }
   .timing-label {
     color: #94a3b8;
