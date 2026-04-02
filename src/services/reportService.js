@@ -248,6 +248,13 @@ export const REPORT_GROUPS = [
         description: 'Track available vs unavailable items marked by waiters',
       },
       {
+        id: 'item-availability',
+        label: 'Item Availability',
+        icon: 'inventory_2',
+        route: '/reports/item-availability',
+        description: 'Track available vs unavailable items marked by waiters during KOT',
+      },
+      {
         id: 'delivery-performance',
         label: 'Delivery Performance',
         icon: 'local_shipping',
@@ -305,13 +312,6 @@ export const REPORT_GROUPS = [
         description: 'Current stock levels per item',
       },
       {
-        id: 'inventory-ledger',
-        label: 'Stock Movement',
-        icon: 'swap_vert',
-        route: '/reports/inventory',
-        description: 'Stock movement history',
-      },
-      {
         id: 'wastage',
         label: 'Wastage Report',
         icon: 'delete_sweep',
@@ -345,13 +345,6 @@ export const REPORT_GROUPS = [
         icon: 'troubleshoot',
         route: '/reports/variance',
         description: 'Physical vs system stock variance',
-      },
-      {
-        id: 'inventory-performance',
-        label: 'Inventory Performance',
-        icon: 'trending_up',
-        route: '/reports/inventory-performance',
-        description: 'Item performance & margin analysis',
       },
     ],
   },

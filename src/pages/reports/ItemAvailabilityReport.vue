@@ -4,7 +4,7 @@
     subtitle="Track items marked as available or unavailable by waiters during order acceptance"
     :kpis="kpiData"
     :export-columns="columns"
-    :export-rows="rows"
+    :export-rows="filteredRows"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -136,7 +136,6 @@ const availabilityOptions = [
   { label: 'All Items', value: null },
   { label: '✅ Available', value: 'available' },
   { label: '❌ Unavailable', value: 'unavailable' },
-  { label: '⬜ Unchecked', value: 'unchecked' },
 ]
 
 const filteredRows = computed(() => {
@@ -175,7 +174,6 @@ const kpiData = computed(() => {
   const total = rows.value.length
   const available = rows.value.filter((r) => r.availability === 'available').length
   const unavailable = rows.value.filter((r) => r.availability === 'unavailable').length
-  const unchecked = rows.value.filter((r) => !r.availability).length
   const lostRevenue = rows.value
     .filter((r) => r.availability === 'unavailable')
     .reduce((s, r) => s + r.unit_price * r.quantity, 0)
@@ -184,7 +182,6 @@ const kpiData = computed(() => {
     { label: 'Total Items', value: total, icon: 'inventory_2', color: 'blue' },
     { label: 'Available', value: available, icon: 'check_circle', color: 'green' },
     { label: 'Unavailable', value: unavailable, icon: 'cancel', color: 'red' },
-    { label: 'Unchecked', value: unchecked, icon: 'help_outline', color: 'grey' },
     {
       label: 'Lost Revenue',
       value: fmtLKR(lostRevenue),

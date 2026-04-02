@@ -2,7 +2,6 @@
   <ReportLayout
     title="Expense Summary"
     subtitle="Expense tracking and analysis by category"
-    :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"
@@ -68,7 +67,7 @@
   </ReportLayout>
 </template>
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
@@ -82,21 +81,7 @@ const columns = [
   { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true },
   { name: 'approved_by', label: 'Approved By', field: 'approved_by', align: 'left' },
 ]
-const kpiData = computed(() => [
-  {
-    label: 'Total Expenses',
-    value: fmtLKR(rows.value.reduce((s, r) => s + r.amount, 0)),
-    icon: 'trending_down',
-    color: 'red',
-  },
-  { label: 'Entries', value: rows.value.length, icon: 'receipt', color: 'blue' },
-  {
-    label: 'Categories',
-    value: new Set(rows.value.map((r) => r.category)).size,
-    icon: 'category',
-    color: 'purple',
-  },
-])
+
 async function loadData(filters = {}) {
   loading.value = true
   try {

@@ -2,7 +2,6 @@
   <ReportLayout
     :title="reportTitle"
     subtitle="Detailed analysis of items used in the kitchen (BOM-based deductions)"
-    :kpis="kpiData"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -152,26 +151,6 @@ const totals = computed(() => ({
   cost: filteredRows.value.reduce((s, r) => s + r.total_cost, 0),
 }))
 
-const kpiData = computed(() => [
-  {
-    label: 'Total Items Used',
-    value: filteredRows.value.length,
-    icon: 'restaurant_menu',
-    color: 'blue',
-  },
-  {
-    label: 'Total Usage Value',
-    value: fmtLKR(totals.value.cost),
-    icon: 'trending_down',
-    color: 'red',
-  },
-  {
-    label: 'Kitchens Active',
-    value: new Set(rows.value.map((r) => r.warehouse)).size,
-    icon: 'soup_kitchen',
-    color: 'teal',
-  },
-])
 
 async function loadWarehouses() {
   const { data } = await supabase.from('warehouses').select('id, name').eq('is_active', true)

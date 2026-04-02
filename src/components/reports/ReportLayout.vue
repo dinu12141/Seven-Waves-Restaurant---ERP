@@ -244,7 +244,7 @@
         <!-- Body -->
         <div class="report-kpi-card__body">
           <div class="report-kpi-card__label">{{ kpi.label }}</div>
-          <div class="report-kpi-card__value">{{ kpi.value }}</div>
+          <div v-fit-text="{ min: 11, max: 22 }" class="report-kpi-card__value">{{ kpi.value }}</div>
           <div v-if="kpi.sub" class="report-kpi-card__sub">{{ kpi.sub }}</div>
         </div>
       </div>
@@ -311,14 +311,16 @@ const authStore = useAuthStore()
 
 const filtersOpen = ref(false)
 const advancedOpen = ref(false)
-const activePreset = ref('This Month')
+const activePreset = ref('Last 30 Days')
 const appliedFilters = ref(null)
 
 const today = new Date()
 const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+const thirtyDaysAgo = new Date(today)
+thirtyDaysAgo.setDate(today.getDate() - 30)
 
 const filters = ref({
-  dateFrom: firstOfMonth.toISOString().slice(0, 10),
+  dateFrom: thirtyDaysAgo.toISOString().slice(0, 10),
   dateTo: today.toISOString().slice(0, 10),
   branch: null,
 })
@@ -417,6 +419,11 @@ const datePresets = [
     to: () => today.toISOString().slice(0, 10),
   },
   {
+    label: 'Last 30 Days',
+    from: () => thirtyDaysAgo.toISOString().slice(0, 10),
+    to: () => today.toISOString().slice(0, 10),
+  },
+  {
     label: 'This Month',
     from: () => firstOfMonth.toISOString().slice(0, 10),
     to: () => today.toISOString().slice(0, 10),
@@ -431,6 +438,25 @@ const datePresets = [
       const d = new Date(today.getFullYear(), today.getMonth(), 0)
       return d.toISOString().slice(0, 10)
     },
+  },
+  {
+    label: 'Last 3 Months',
+    from: () => {
+      const d = new Date(today)
+      d.setMonth(d.getMonth() - 3)
+      return d.toISOString().slice(0, 10)
+    },
+    to: () => today.toISOString().slice(0, 10),
+  },
+  {
+    label: 'This Year',
+    from: () => `${today.getFullYear()}-01-01`,
+    to: () => today.toISOString().slice(0, 10),
+  },
+  {
+    label: 'All Time',
+    from: () => '2020-01-01',
+    to: () => today.toISOString().slice(0, 10),
   },
 ]
 
@@ -460,12 +486,12 @@ function applyFilters() {
 
 function clearFilters() {
   filters.value = {
-    dateFrom: firstOfMonth.toISOString().slice(0, 10),
+    dateFrom: thirtyDaysAgo.toISOString().slice(0, 10),
     dateTo: today.toISOString().slice(0, 10),
     branch: null,
   }
   appliedFilters.value = null
-  activePreset.value = 'This Month'
+  activePreset.value = 'Last 30 Days'
   emit('filter-change', filters.value)
 }
 
@@ -518,10 +544,26 @@ function handlePrint() {
   const dateStr = new Date().toISOString().slice(0, 10)
   document.title = `${props.title.replace(/\s+/g, '_')}_${dateStr}`
 
+  // ── Force all rows visible for print ───────────────────────────────
+  // Find all hidden table rows (pagination hides rows beyond current page)
+  // and temporarily remove the inline display:none style
+  const hiddenRows = document.querySelectorAll('.q-table tbody tr[style*="display: none"]')
+  hiddenRows.forEach((tr) => {
+    tr.dataset.wasHidden = 'true'
+    tr.style.removeProperty('display')
+  })
+
+  // Trigger print after a short delay to allow DOM update
   setTimeout(() => {
     window.print()
     document.title = origTitle
-  }, 100)
+
+    // Restore hidden rows
+    document.querySelectorAll('.q-table tbody tr[data-was-hidden="true"]').forEach((tr) => {
+      tr.style.display = 'none'
+      delete tr.dataset.wasHidden
+    })
+  }, 200)
 }
 
 // ── PDF Export ──────────────────────────────────────────────────────
@@ -1094,71 +1136,105 @@ onUnmounted(() => {
 }
 
 .report-kpi-card {
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px 18px 14px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   min-height: 88px;
   cursor: default;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
+  // Shimmer overlay
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
   }
 
-  // ── Gradient Variants ──────────────────────────────────────
+  // Top accent line
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 14px 14px 0 0;
+    pointer-events: none;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  // ── Gradient Variants (always colorful, overrides light mode) ──────
   &--blue {
-    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4) !important;
   }
   &--green {
-    background: linear-gradient(135deg, #065f46 0%, #059669 100%);
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #065f46 0%, #059669 100%) !important;
+    box-shadow: 0 4px 20px rgba(5, 150, 105, 0.4) !important;
   }
   &--amber, &--orange {
-    background: linear-gradient(135deg, #78350f 0%, #d97706 100%);
-    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #92400e 0%, #d97706 100%) !important;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.4) !important;
   }
   &--red {
-    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
-    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%) !important;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4) !important;
   }
   &--purple {
-    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%) !important;
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4) !important;
   }
   &--teal {
-    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%);
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #134e4a 0%, #0d9488 100%) !important;
+    box-shadow: 0 4px 20px rgba(13, 148, 136, 0.4) !important;
   }
   &--indigo {
-    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
-    box-shadow: 0 4px 14px rgba(67, 56, 202, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%) !important;
+    box-shadow: 0 4px 20px rgba(67, 56, 202, 0.4) !important;
   }
   &--pink {
-    background: linear-gradient(135deg, #831843 0%, #db2777 100%);
-    box-shadow: 0 4px 14px rgba(219, 39, 119, 0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: linear-gradient(135deg, #831843 0%, #db2777 100%) !important;
+    box-shadow: 0 4px 20px rgba(219, 39, 119, 0.4) !important;
+  }
+  &--cyan {
+    background: linear-gradient(135deg, #164e63 0%, #0891b2 100%) !important;
+    box-shadow: 0 4px 20px rgba(8, 145, 178, 0.4) !important;
+  }
+  &--rose {
+    background: linear-gradient(135deg, #881337 0%, #e11d48 100%) !important;
+    box-shadow: 0 4px 20px rgba(225, 29, 72, 0.4) !important;
   }
   &--default {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
   }
 
   // ── Frosted icon wrap ─────────────────────────────────────
   &__icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.2);
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.22) !important;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    position: relative;
+    z-index: 1;
   }
 
   // ── Body ──────────────────────────────────────────────────
@@ -1172,10 +1248,10 @@ onUnmounted(() => {
   // ── Label ─────────────────────────────────────────────────
   &__label {
     font-size: 10px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.75);
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.8) !important;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.8px;
     margin-bottom: 5px;
     white-space: nowrap;
     overflow: hidden;
@@ -1184,14 +1260,16 @@ onUnmounted(() => {
 
   // ── Value ─────────────────────────────────────────────────
   &__value {
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 900;
-    color: #ffffff;
-    line-height: 1;
+    color: #ffffff !important;
+    line-height: 1.1;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    display: block;
+    width: 100%;
   }
 
   // ── Sub ───────────────────────────────────────────────────

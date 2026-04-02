@@ -283,7 +283,7 @@ const routes = [
           { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue') },
           {
             path: 'item-availability',
-            component: () => import('pages/reports/ItemAvailabilityReport.vue'),
+            component: () => import('pages/reports/ItemAvailability.vue'),
           },
           {
             path: 'delivery-performance',
@@ -323,10 +323,6 @@ const routes = [
             component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue'),
           },
           { path: 'variance', component: () => import('pages/reports/VarianceReport.vue') },
-          {
-            path: 'inventory-performance',
-            component: () => import('pages/reports/InventoryPerformanceReport.vue'),
-          },
           {
             path: 'kot-deduction-log',
             component: () => import('pages/reports/KotDeductionLog.vue'),

@@ -71,7 +71,7 @@
 
         <!-- User Avatar & Menu -->
         <q-btn flat round dense class="erp-avatar-btn q-ml-xs">
-          <q-avatar size="26px" class="erp-user-avatar">
+          <q-avatar size="32px" class="erp-user-avatar">
             <span>{{ userInitials }}</span>
           </q-avatar>
           <q-menu anchor="bottom right" self="top right" :offset="[0, 8]">
@@ -503,23 +503,35 @@ watch(
 .erp-header {
   background-color: var(--erp-bg-header) !important;
   border-bottom: 1px solid var(--erp-border) !important;
-  box-shadow: none !important;
+  box-shadow: 0 1px 0 var(--erp-border), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 .erp-toolbar {
   padding: 0 16px;
   gap: 8px;
+  align-items: center !important;
 
   &--top {
     height: var(--erp-header-height) !important;
     min-height: var(--erp-header-height) !important;
+    max-height: var(--erp-header-height) !important;
     border-bottom: 1px solid var(--erp-border);
+    display: flex !important;
+    align-items: center !important;
+
+    // Force Quasar internal toolbar to same height
+    :deep(.q-toolbar__content) {
+      height: var(--erp-header-height) !important;
+      min-height: var(--erp-header-height) !important;
+      align-items: center !important;
+      padding: 0 !important;
+    }
   }
 
   &--bottom {
-    height: 30px !important;
-    min-height: 30px !important;
-    max-height: 30px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
     background: var(--erp-bg-toolbar-bottom);
     padding: 0 !important;
     display: flex !important;
@@ -528,6 +540,22 @@ watch(
   }
 }
 
+// ─── User Avatar Button ────────────────────────────────────────────────────────
+.erp-avatar-btn {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  padding: 0 !important;
+}
+
+.erp-user-avatar {
+  background: var(--erp-primary) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+// ─── Toolbar Buttons ───────────────────────────────────────────────────────────
 .erp-toolbar-btn {
   color: var(--erp-text-secondary) !important;
   &:hover {

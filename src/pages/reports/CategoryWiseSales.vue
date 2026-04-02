@@ -491,7 +491,6 @@ const totals = computed(() => {
 
 const kpiData = computed(() => [
   { label: 'Active Categories', value: rows.value.length, icon: 'category', color: 'blue' },
-  { label: 'Selected Items', value: totals.value.items, icon: 'list_alt', color: 'cyan' },
   { label: 'Filtered Net Rev', value: fmtLKR(totals.value.net), icon: 'payments', color: 'green' },
   {
     label: 'Total Est. Profit',

@@ -378,36 +378,42 @@ const DOC_TYPE_TO_MOVEMENT = {
 async function loadData() {
   loading.value = true
   try {
-    // S1-2: Query live enterprise inventory_ledger instead of dead stock_movements
+    // inventory_ledger uses posted_at (not created_at), doc_type/doc_number are direct columns
     let query = supabase
       .from('inventory_ledger')
       .select(
         `
         id,
-        created_at,
+        posted_at,
         quantity,
         direction,
         unit_cost,
+        total_cost,
+        doc_type,
+        doc_number,
         notes,
         warehouse_id,
-        items ( name, sku, company_id, reorder_level, item_categories(name) ),
-        warehouses ( name ),
-        inventory_documents ( doc_number, doc_type, reference_no )
+        company_id,
+        items (
+          id, name, code, company_id, reorder_level,
+          item_categories ( name )
+        ),
+        warehouses ( name )
       `,
       )
-      .order('created_at', { ascending: false })
+      .order('posted_at', { ascending: false })
 
     if (currentFilters.value.dateFrom) {
-      query = query.gte('created_at', currentFilters.value.dateFrom + 'T00:00:00')
+      query = query.gte('posted_at', currentFilters.value.dateFrom + 'T00:00:00')
     }
     if (currentFilters.value.dateTo) {
-      query = query.lte('created_at', currentFilters.value.dateTo + 'T23:59:59')
+      query = query.lte('posted_at', currentFilters.value.dateTo + 'T23:59:59')
     }
 
     // Security: restrict non-admin users to their own company's items
     const companyId = authStore.companyId
     if (companyId) {
-      query = query.eq('items.company_id', companyId)
+      query = query.eq('company_id', companyId)
     }
 
     const { data, error } = await query.limit(1000)
@@ -417,10 +423,14 @@ async function loadData() {
     const whMap = {}
 
     rows.value = (data || []).map((r) => {
-      const docType = r.inventory_documents?.doc_type || 'adjustment'
+      const docType = r.doc_type || 'ADJUSTMENT'
       const movType = DOC_TYPE_TO_MOVEMENT[docType] || 'adjustment'
-      const cat = r.items?.item_categories?.name || '—'
-      cats.add(cat)
+      // item_categories may be a single object or array depending on FK
+      const catName =
+        (Array.isArray(r.items?.item_categories)
+          ? r.items?.item_categories[0]?.name
+          : r.items?.item_categories?.name) || '—'
+      cats.add(catName)
       if (r.warehouse_id && r.warehouses?.name) {
         whMap[r.warehouse_id] = r.warehouses.name
       }
@@ -428,20 +438,21 @@ async function loadData() {
       const qIn = r.direction === 'IN' ? qty : 0
       const qOut = r.direction === 'OUT' ? qty : 0
       const uc = Number(r.unit_cost || 0)
+      const tv = Number(r.total_cost || uc * qty)
       return {
         id: r.id,
-        date: r.created_at,
-        ref_no: r.inventory_documents?.doc_number || r.inventory_documents?.reference_no || '—',
+        date: r.posted_at,
+        ref_no: r.doc_number || '—',
         item_name: r.items?.name || '—',
-        sku: r.items?.sku || '—',
-        category: cat,
+        sku: r.items?.code || '—',
+        category: catName,
         movement_type: movType,
         qty_in: qIn,
         qty_out: qOut,
-        balance: '—', // inventory_ledger is event-sourced; running balance computed on demand
+        balance: '—',
         uom: '—',
         unit_cost: uc,
-        total_value: uc * qty,
+        total_value: tv,
         warehouse: r.warehouses?.name || '—',
         warehouse_id: r.warehouse_id,
         notes: r.notes || '',
@@ -451,7 +462,7 @@ async function loadData() {
     // Build dropdown options
     categoryOptions.value = [
       { label: 'All Categories', value: null },
-      ...[...cats].map((c) => ({ label: c, value: c })),
+      ...[...cats].filter((c) => c !== '—').map((c) => ({ label: c, value: c })),
     ]
     warehouseOptions.value = [
       { label: 'All Warehouses', value: null },
@@ -463,6 +474,7 @@ async function loadData() {
     loading.value = false
   }
 }
+
 
 function formatMovement(type) {
   const labels = {

@@ -2,7 +2,6 @@
   <ReportLayout
     title="Order Status Report"
     subtitle="Orders breakdown by current status"
-    :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"
@@ -99,11 +98,7 @@ const totals = computed(() => ({
   count: rows.value.reduce((s, r) => s + r.count, 0),
   total: rows.value.reduce((s, r) => s + r.total, 0),
 }))
-const kpiData = computed(() => [
-  { label: 'Total Orders', value: totals.value.count, icon: 'receipt_long', color: 'blue' },
-  { label: 'Total Revenue', value: fmtLKR(totals.value.total), icon: 'payments', color: 'green' },
-  { label: 'Status Types', value: rows.value.length, icon: 'fact_check', color: 'purple' },
-])
+
 async function loadData(filters = {}) {
   loading.value = true
   try {

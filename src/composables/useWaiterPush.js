@@ -10,7 +10,9 @@ import { supabase } from 'src/boot/supabase'
 const EDGE_FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/waiter-push-notify`
 
 /** Reactive permission state */
-const pushPermission = ref(Notification.permission || 'default')
+const pushPermission = ref(
+  typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+)
 const pushSubscribed = ref(false)
 const pushLoading = ref(false)
 const pushError = ref(null)

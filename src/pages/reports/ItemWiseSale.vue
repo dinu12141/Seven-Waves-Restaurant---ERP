@@ -463,12 +463,6 @@ const kpiData = computed(() => {
     { label: 'Total Items Sold', value: gt.quantity, icon: 'shopping_cart', color: 'blue' },
     { label: 'Gross Sales', value: `LKR ${fmtN(gt.gross_amt)}`, icon: 'payments', color: 'green' },
     {
-      label: 'Total Discounts',
-      value: `LKR ${fmtN(gt.disc_amt)}`,
-      icon: 'local_offer',
-      color: 'amber',
-    },
-    {
       label: 'Net Revenue',
       value: `LKR ${fmtN(gt.amt_with_tax)}`,
       icon: 'trending_up',

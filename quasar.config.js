@@ -12,7 +12,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler'],
+    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'directives'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -30,7 +30,7 @@ export default defineConfig((ctx) => {
         node: 'node20',
       },
 
-      vueRouterMode: 'history', // 'history' for clean URLs — required for QR code /c/TOKEN links
+      vueRouterMode: ctx.mode.capacitor ? 'hash' : 'history', // hash for Capacitor (no server-side routing); history for web/PWA/Electron
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -170,6 +170,8 @@ export default defineConfig((ctx) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-capacitor-apps/configuring-capacitor
     capacitor: {
       hideSplashscreen: true,
+      // Capacitor CLI preparation — sync Android platform after build
+      capacitorCliPreparationParams: ['sync', 'android'],
     },
 
     // ═══════════════════════════════════════════════════════════════

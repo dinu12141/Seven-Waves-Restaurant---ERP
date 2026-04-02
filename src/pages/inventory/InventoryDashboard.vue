@@ -284,18 +284,38 @@ async function notifyAdmins(items) {
 
   if (!adminIds.length) return
 
-  // Build notification rows — one per admin per item (dedupe via upsert not possible here, just insert)
   const outOfStock = items.filter(i => i.stock_status === 'OUT_OF_STOCK')
   const lowOnly    = items.filter(i => i.stock_status !== 'OUT_OF_STOCK')
 
+  // ── De-duplicate: check if same notification already exists today ──────────
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const titlesToCheck = []
+  if (outOfStock.length) titlesToCheck.push(`🚨 ${outOfStock.length} Item(s) Out of Stock`)
+  if (lowOnly.length)    titlesToCheck.push(`⚠️ ${lowOnly.length} Low Stock Alert(s)`)
+
+  if (!titlesToCheck.length) return
+
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('title')
+    .in('title', titlesToCheck)
+    .eq('ref_type', 'inventory')
+    .gte('created_at', todayStart.toISOString())
+    .limit(titlesToCheck.length)
+
+  const alreadySent = new Set((existing || []).map(n => n.title))
+
   const rows = []
+  const osTitle = `🚨 ${outOfStock.length} Item(s) Out of Stock`
+  const lsTitle = `⚠️ ${lowOnly.length} Low Stock Alert(s)`
 
   for (const userId of adminIds) {
-    if (outOfStock.length) {
+    if (outOfStock.length && !alreadySent.has(osTitle)) {
       rows.push({
         user_id: userId,
         type:    'alert',
-        title:   `🚨 ${outOfStock.length} Item(s) Out of Stock`,
+        title:   osTitle,
         message: outOfStock.map(i => `${i.item_name} (${i.warehouse_name})`).join(', '),
         icon:    'remove_shopping_cart',
         color:   'red',
@@ -303,11 +323,11 @@ async function notifyAdmins(items) {
         ref_type:   'inventory',
       })
     }
-    if (lowOnly.length) {
+    if (lowOnly.length && !alreadySent.has(lsTitle)) {
       rows.push({
         user_id: userId,
         type:    'warning',
-        title:   `⚠️ ${lowOnly.length} Low Stock Alert(s)`,
+        title:   lsTitle,
         message: lowOnly.map(i => `${i.item_name}: ${Number(i.qty_on_hand).toFixed(1)} ${i.uom_code} left`).join(' | '),
         icon:    'warning_amber',
         color:   'orange',
@@ -322,7 +342,6 @@ async function notifyAdmins(items) {
   }
 }
 
-// ── Fetch data ────────────────────────────────────────────────────────────────
 const _lastNotifiedCount = ref(-1)   // track so we don't spam on every poll
 
 async function fetchData() {

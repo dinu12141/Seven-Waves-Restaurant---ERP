@@ -4,7 +4,7 @@
     subtitle="Daily, weekly and monthly revenue breakdown by branch, category, and payment mode"
     :kpis="kpiData"
     :export-columns="columns"
-    :export-rows="rows"
+    :export-rows="filteredRows"
     @filter-change="onFilterChange"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -69,13 +69,13 @@
       </div>
 
       <q-table
-        :rows="rows"
+        :rows="filteredRows"
         :columns="columns"
         row-key="id"
         flat
         class="report-table"
         :loading="loading"
-        :rows-per-page-options="[25, 50, 100]"
+        :rows-per-page-options="[25, 50, 100, 0]"
         rows-per-page-label="Rows/page"
         :pagination="{ rowsPerPage: 25 }"
         binary-state-sort
@@ -291,11 +291,23 @@ const columns = [
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: true },
 ]
 
+// filteredRows — applies client-side extra filters on top of server-filtered rows
+const filteredRows = computed(() => {
+  let r = rows.value
+  if (extraFilters.value.paymentMode) {
+    r = r.filter((x) => x.payment_mode?.toLowerCase() === extraFilters.value.paymentMode)
+  }
+  if (extraFilters.value.status) {
+    r = r.filter((x) => x.status === extraFilters.value.status)
+  }
+  return r
+})
+
 const totals = computed(() => ({
-  subtotal: rows.value.reduce((s, r) => s + (r.subtotal || 0), 0),
-  discount: rows.value.reduce((s, r) => s + (r.discount || 0), 0),
-  tax: rows.value.reduce((s, r) => s + (r.tax || 0), 0),
-  total: rows.value.reduce((s, r) => s + (r.total || 0), 0),
+  subtotal: filteredRows.value.reduce((s, r) => s + (r.subtotal || 0), 0),
+  discount: filteredRows.value.reduce((s, r) => s + (r.discount || 0), 0),
+  tax: filteredRows.value.reduce((s, r) => s + (r.tax || 0), 0),
+  total: filteredRows.value.reduce((s, r) => s + (r.total || 0), 0),
 }))
 
 const kpiData = computed(() => [
@@ -304,7 +316,7 @@ const kpiData = computed(() => [
     value: fmtLKR(totals.value.total),
     icon: 'payments',
     color: 'blue',
-    sub: `${rows.value.length} orders`,
+    sub: `${filteredRows.value.length} orders`,
   },
   {
     label: 'Gross Sales',
@@ -319,14 +331,8 @@ const kpiData = computed(() => [
     color: 'amber',
   },
   {
-    label: 'Tax Collected',
-    value: fmtLKR(totals.value.tax),
-    icon: 'account_balance',
-    color: 'purple',
-  },
-  {
     label: 'Avg. Order Value',
-    value: rows.value.length ? fmtLKR(totals.value.total / rows.value.length) : 'LKR 0',
+    value: filteredRows.value.length ? fmtLKR(totals.value.total / filteredRows.value.length) : 'LKR 0',
     icon: 'trending_up',
     color: 'teal',
   },
@@ -358,7 +364,7 @@ async function loadData() {
         branches (name),
         waiter:profiles!orders_waiter_id_fkey (full_name),
         invoices (
-          id, invoice_no,
+          id, invoice_number, invoice_no,
           payments (
             amount,
             payment_methods (name)
@@ -387,7 +393,7 @@ async function loadData() {
       if (branchId) query = query.eq('branch_id', branchId)
     }
 
-    const { data, error } = await query.limit(500)
+    const { data, error } = await query.limit(1000)
     if (error) throw error
 
     rows.value = (data || [])
@@ -418,12 +424,16 @@ async function loadData() {
           return null
         }
 
+        // Filter by category if set (requires order_items join — skip for now, filter client-side)
         const firstInv = invoices[0] || null
+        // Support both invoice_no (text) and invoice_number (int) columns
+        const invoiceLabel = firstInv?.invoice_no || 
+          (firstInv?.invoice_number ? `INV-${firstInv.invoice_number}` : '')
 
         return {
           id: r.id,
           order_no: r.order_number || `#${r.id?.slice(0, 8)}`,
-          invoice_no: firstInv?.invoice_no || '',
+          invoice_no: invoiceLabel,
           invoice_id: firstInv?.id || null,
           created_at: r.created_at,
           branch: r.branches?.name || '—',
@@ -461,7 +471,7 @@ function formatDateTime(dt) {
 
 function exportCSV() {
   const headers = columns.map((c) => c.label).join(',')
-  const rowsCSV = rows.value
+  const rowsCSV = filteredRows.value
     .map((r) =>
       [
         r.order_no,

@@ -1,0 +1,17 @@
+{
+  "name": "restaurant-erp",
+  "version": "0.0.1",
+  "description": "Seven Waves Restaurant Management",
+  "author": "dinu12141 <kmudinusha@gmail.com>",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^7.6.1",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.2",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2"
+  }
+}

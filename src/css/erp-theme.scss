@@ -487,6 +487,11 @@ h3,
 /* ═══ Quasar Global Overrides (SAP B1 compact) ════════════════════════ */
 body.body--dark,
 body.body--light {
+  /* Toolbar compact — override Quasar's default 50px min-height */
+  .q-toolbar {
+    min-height: var(--erp-header-height) !important;
+  }
+
   /* Inputs */
   .q-field--outlined .q-field__control {
     border-radius: var(--erp-radius-md);
@@ -734,6 +739,7 @@ body.body--light {
 
   .q-toolbar {
     color: var(--erp-text-primary);
+    min-height: var(--erp-header-height) !important;
   }
 
   .q-drawer {

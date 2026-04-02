@@ -136,6 +136,19 @@
     display: none !important;
   }
 
+  /* CRITICAL: Show ALL table rows during print — override Quasar's pagination display:none */
+  .q-table tbody tr,
+  .q-table tbody tr.q-virtual-scroll__content,
+  .q-table tr[style*="display: none"],
+  .q-table__middle tbody tr {
+    display: table-row !important;
+  }
+
+  /* Override any Quasar virtual scroll hiding */
+  .q-virtual-scroll__content {
+    display: contents !important;
+  }
+
   /* ── 3. LAYOUT RESET ───────────────────────────────────────────── */
 
   /* Remove all layout offsets from Quasar & force white background */

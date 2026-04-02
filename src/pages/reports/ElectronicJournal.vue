@@ -535,12 +535,6 @@ const kpiData = computed(() => [
     color: 'amber',
   },
   {
-    label: 'Tax Collected',
-    value: `LKR ${fmtN(grandTotals.value.tax)}`,
-    icon: 'account_balance',
-    color: 'purple',
-  },
-  {
     label: 'Void / Cancelled',
     value: rawOrders.value.filter((o) => o.status === 'cancelled' || o.status === 'void').length,
     icon: 'cancel',

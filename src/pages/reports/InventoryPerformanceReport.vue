@@ -2,7 +2,6 @@
   <ReportLayout
     title="Inventory Performance & Margin Analysis"
     subtitle="Slow/Fast moving items, High/Low margin, and Profit movement report"
-    :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"
@@ -109,7 +108,6 @@ import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService
 const authStore = useAuthStore()
 const loading = ref(false)
 const rows = ref([])
-const kpiData = ref([])
 const analysisType = ref('All')
 
 const columns = [
@@ -151,9 +149,6 @@ const filteredRows = computed(() => {
   return rows.value
 })
 
-const totalProfit = computed(() =>
-  filteredRows.value.reduce((s, r) => s + (r.net_amt - r.total_cost), 0),
-)
 
 async function loadData(filters = {}) {
   loading.value = true
@@ -170,15 +165,6 @@ async function loadData(filters = {}) {
     if (error) throw error
     rows.value = data || []
 
-    kpiData.value = [
-      { label: 'Total Items Analyzed', value: rows.value.length, color: 'info' },
-      {
-        label: 'High Margin Items (>40%)',
-        value: rows.value.filter((r) => r.gp_percent >= 40).length,
-        color: 'blue',
-      },
-      { label: 'Total Profit Movement', value: formatCurrency(totalProfit.value), color: 'green' },
-    ]
   } catch (err) {
     console.error(err)
   } finally {
