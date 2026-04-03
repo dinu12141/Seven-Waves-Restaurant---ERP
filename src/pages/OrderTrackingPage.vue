@@ -135,6 +135,30 @@
         </div>
       </div>
 
+      <!-- ── Live Driver Map (delivery orders only) ────────────── -->
+      <div
+        v-if="isDeliveryOrder && isDriverOnWay && order.delivery_lat && order.delivery_lng"
+        class="live-map-section"
+      >
+        <div class="section-label">
+          <q-icon name="local_shipping" size="14px" class="q-mr-xs" style="color:#f97316" />
+          Live Driver Location
+          <span class="live-pulse" />
+        </div>
+        <div class="live-map-wrap">
+          <GoogleMapTracker
+            :api-key="GOOGLE_MAPS_KEY"
+            :channel-name="driverChannel"
+            :dest-lat="order.delivery_lat"
+            :dest-lng="order.delivery_lng"
+            :customer-name="'Destination'"
+            :customer-address="order.delivery_address || ''"
+            :broadcast-own-position="false"
+            style="height:260px;border-radius:16px;overflow:hidden;"
+          />
+        </div>
+      </div>
+
       <!-- Loyalty points earned -->
       <div v-if="order.status === 'paid' && customer.isLoggedIn" class="loyalty-earned">
         <q-icon name="stars" size="20px" color="amber" class="q-mr-sm" />
@@ -171,6 +195,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import GoogleMapTracker from 'src/components/delivery/GoogleMapTracker.vue'
+
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 import {
   getOrderStatus,
   subscribeToOrder,
@@ -206,6 +233,19 @@ const isDeliveryOrder = computed(() => {
   if (!order.value) return false
   return order.value.order_type === 'delivery' || order.value.order_type === 'website_delivery'
 })
+
+// Show live map when driver has picked up and is heading to customer
+const isDriverOnWay = computed(() => {
+  if (!order.value) return false
+  return ['picked_up', 'out_for_delivery'].includes(order.value.status)
+})
+
+// Broadcast channel name — must match what GoogleMapTracker (driver) uses
+const driverChannel = computed(() => {
+  return order.value?.id ? `delivery:order-${order.value.id}` : ''
+})
+
+
 
 const statusSteps = computed(() => {
   if (isDeliveryOrder.value) {
@@ -762,4 +802,51 @@ onUnmounted(async () => {
   font-size: 0.95rem;
   box-shadow: 0 6px 24px rgba(249, 115, 22, 0.35);
 }
+
+// ── Live Driver Map section ──────────────────────────
+.live-map-section {
+  margin-bottom: 28px;
+
+  .section-label {
+    display: flex;
+    align-items: center;
+  }
+
+  .live-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    margin-left: 8px;
+    animation: livePing 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+}
+
+.live-map-wrap {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  // Force the map component to take proper dimensions inside the tracking page
+  :deep(.gmap-tracker-page) {
+    height: 260px !important;
+    min-height: 260px !important;
+    border-radius: 16px;
+  }
+  :deep(.gmap-container) {
+    border-radius: 16px;
+  }
+  // Hide the back button & top overlay inside the embedded map
+  :deep(.top-controls .q-btn:first-child) {
+    display: none;
+  }
+}
+
+@keyframes livePing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
 </style>
+
