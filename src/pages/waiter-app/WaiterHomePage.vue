@@ -404,7 +404,7 @@ async function onRefresh(done) {
   font-size: 18px !important;
 }
 .hero-name {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--erp-text-primary, #1e293b);
   line-height: 1.2;
@@ -503,13 +503,13 @@ async function onRefresh(done) {
   height: 28px;
 }
 .kpi-value {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1;
 }
 .kpi-label {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   opacity: 0.85;
@@ -519,7 +519,7 @@ async function onRefresh(done) {
 .section-title {
   display: flex;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -529,10 +529,10 @@ async function onRefresh(done) {
 
 // ── Quick Buttons ────────────────────────
 .quick-btn {
-  height: 44px;
+  height: 48px;
   border-radius: 10px !important;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 14px;
   position: relative;
 }
 
@@ -564,12 +564,12 @@ async function onRefresh(done) {
   min-width: 0;
 }
 .ready-alert__title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #b45309;
 }
 .ready-alert__sub {
-  font-size: 11px;
+  font-size: 13px;
   color: #78716c;
   margin-top: 1px;
 }
@@ -611,7 +611,7 @@ async function onRefresh(done) {
   min-width: 0;
 }
 .order-number {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--erp-text-primary, #1e293b);
 }
@@ -624,17 +624,17 @@ async function onRefresh(done) {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 12px;
   color: #7c3aed;
   font-weight: 600;
 }
 .time-tag {
-  font-size: 10px;
+  font-size: 12px;
   color: #94a3b8;
 }
 .order-status-chip {
-  font-size: 10px !important;
-  height: 20px !important;
+  font-size: 12px !important;
+  height: 24px !important;
 }
 
 // ── Loading ──────────────────────────────
@@ -646,7 +646,7 @@ async function onRefresh(done) {
   padding: 60px 0;
 }
 .loading-text {
-  font-size: 13px;
+  font-size: 15px;
   color: #94a3b8;
 }
 
@@ -676,13 +676,13 @@ async function onRefresh(done) {
   justify-content: center;
 }
 .points-summary-value {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #92400e;
   line-height: 1;
 }
 .points-summary-label {
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #b45309;
   text-transform: uppercase;
@@ -729,7 +729,7 @@ async function onRefresh(done) {
   margin-bottom: 8px;
 }
 .off-shift-desc {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #64748b;
   line-height: 1.5;
   max-width: 320px;
@@ -742,7 +742,136 @@ async function onRefresh(done) {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 8px 16px;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: #475569;
+}
+</style>
+
+<style lang="scss">
+/* Unscoped dark-mode overrides for WaiterHomePage */
+body.body--dark {
+  // ── Hero Section ──
+  .waiter-home .hero-section {
+    background: linear-gradient(
+      135deg,
+      rgba(234, 88, 12, 0.08),
+      rgba(251, 191, 36, 0.04),
+      transparent
+    );
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+  }
+
+  // ── KPI Cards ──
+  .waiter-home .kpi-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+  .waiter-home .kpi-card--orange {
+    color: #fb923c;
+    background: rgba(234, 88, 12, 0.1);
+    border-color: rgba(234, 88, 12, 0.25);
+  }
+  .waiter-home .kpi-card--blue {
+    color: #60a5fa;
+    background: rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.25);
+  }
+  .waiter-home .kpi-card--amber {
+    color: #fbbf24;
+    background: rgba(217, 119, 6, 0.1);
+    border-color: rgba(217, 119, 6, 0.25);
+  }
+  .waiter-home .kpi-card--green {
+    color: #34d399;
+    background: rgba(5, 150, 105, 0.1);
+    border-color: rgba(5, 150, 105, 0.25);
+  }
+  .waiter-home .kpi-card--teal {
+    color: #2dd4bf;
+    background: rgba(13, 148, 136, 0.1);
+    border-color: rgba(13, 148, 136, 0.25);
+  }
+  .waiter-home .kpi-card--purple {
+    color: #a78bfa;
+    background: rgba(124, 58, 237, 0.1);
+    border-color: rgba(124, 58, 237, 0.25);
+  }
+  .waiter-home .kpi-card--pos {
+    color: #34d399;
+    background: rgba(5, 150, 105, 0.1);
+    border-color: rgba(5, 150, 105, 0.25);
+  }
+
+  // ── Ready Alert Cards ──
+  .waiter-home .ready-alert-card {
+    background: rgba(217, 119, 6, 0.1);
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+  .waiter-home .ready-alert__icon-wrap {
+    background: rgba(217, 119, 6, 0.15);
+  }
+  .waiter-home .ready-alert__title {
+    color: #fbbf24;
+  }
+  .waiter-home .ready-alert__sub {
+    color: #a8a29e;
+  }
+
+  // ── Order Cards ──
+  .waiter-home .order-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+  }
+  .waiter-home .order-number {
+    color: #e2e8f0;
+  }
+  .waiter-home .table-tag {
+    color: #a78bfa;
+  }
+  .waiter-home .time-tag {
+    color: #64748b;
+  }
+
+  // ── Points Summary Card ──
+  .waiter-home .points-summary-card {
+    background: linear-gradient(135deg, rgba(217, 119, 6, 0.12), rgba(245, 158, 11, 0.08));
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+  .waiter-home .points-summary-value {
+    color: #fbbf24;
+  }
+  .waiter-home .points-summary-label {
+    color: #d97706;
+  }
+  .waiter-home .points-summary-divider {
+    background: rgba(217, 119, 6, 0.3);
+  }
+
+  // ── Off-Shift Card ──
+  .waiter-home .off-shift-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  .waiter-home .off-shift-icon-wrap {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .waiter-home .off-shift-title {
+    color: #e2e8f0;
+  }
+  .waiter-home .off-shift-desc {
+    color: #94a3b8;
+  }
+  .waiter-home .off-shift-next {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+  }
 }
 </style>

@@ -615,3 +615,68 @@ onUnmounted(() => {
   opacity: 0;
 }
 </style>
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (WaiterTablesPage)
+   ══════════════════════════════════════════════════ */
+<style lang="scss">
+body.body--dark {
+  .waiter-tables {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    .tables-header {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .tables-header__title { color: #f8fafc; }
+    
+    .tables-legend {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .tables-filters {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .tables-filter-btn {
+      background: #0f172a;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      &:hover:not(.active) {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      &.active {
+        background: rgba(234, 88, 12, 0.1);
+        border-color: #fb923c;
+        color: #fb923c;
+      }
+    }
+
+    .table-card {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.08);
+      &__number { color: #f8fafc; }
+      
+      &--occupied {
+        background: rgba(37, 99, 235, 0.05);
+        border-color: rgba(37, 99, 235, 0.2);
+        &:hover { border-color: #3b82f6; }
+      }
+      &--billing {
+        background: rgba(217, 119, 6, 0.05);
+        border-color: rgba(217, 119, 6, 0.2);
+        &:hover { border-color: #f59e0b; }
+      }
+      
+      &__actions {
+        border-top-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .info-row { color: #94a3b8; }
+  }
+}
+</style>

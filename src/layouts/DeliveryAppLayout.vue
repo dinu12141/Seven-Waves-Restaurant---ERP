@@ -97,7 +97,7 @@
             @click="navigate"
           >
             <div class="nav-tab__icon-wrap">
-              <q-icon :name="tab.icon" size="22px" />
+              <q-icon :name="tab.icon" size="38px" />
               <q-badge
                 v-if="tab.badge && tab.badge.value > 0"
                 color="red"
@@ -201,8 +201,25 @@ const tabs = computed(() => [
 
 <style lang="scss" scoped>
 // ─── Layout ─────────────────────────────────────
+// ─── Layout ─────────────────────────────────────
 .delivery-app-layout {
   background: #090c14;
+  font-size: 15px;
+  :deep(.q-page) {
+    font-size: 15px;
+  }
+  :deep(.q-btn) {
+    font-size: 13px !important;
+  }
+  :deep(.q-chip) {
+    font-size: 12px !important;
+  }
+  :deep(.text-caption) {
+    font-size: 13px !important;
+  }
+  :deep(.q-item__label) {
+    font-size: 14px !important;
+  }
 }
 
 // ─── Top Bar ────────────────────────────────────
@@ -210,6 +227,7 @@ const tabs = computed(() => [
   background: rgba(10, 14, 22, 0.97) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow: none !important;
+  padding-top: env(safe-area-inset-top) !important;
 }
 
 .delivery-toolbar {
@@ -304,7 +322,7 @@ const tabs = computed(() => [
 
 // ─── Page Container ─────────────────────────────
 .delivery-page-container {
-  padding-bottom: 72px !important; // space for bottom nav
+  padding-bottom: 80px !important; // space for bottom nav
 }
 
 // ─── Bottom Nav ─────────────────────────────────
@@ -316,20 +334,23 @@ const tabs = computed(() => [
 
 .bottom-nav-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-around;
-  height: 64px;
+  height: 72px;
   max-width: 480px;
   margin: 0 auto;
+  padding-top: 4px;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-tab {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 0;
   border: none;
   background: none;
   cursor: pointer;
@@ -353,22 +374,27 @@ const tabs = computed(() => [
 
 .nav-tab__icon-wrap {
   position: relative;
-  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
 }
 
 .nav-tab__label {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1;
 }
 
 .nav-badge {
-  font-size: 9px !important;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 4px;
+  font-size: 10px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 4px !important;
   top: -4px !important;
-  right: -8px !important;
+  right: -6px !important;
 }
 
 // ─── Transitions ────────────────────────────────

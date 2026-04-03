@@ -51,6 +51,7 @@
           flat
           round
           dense
+          color="grey-7"
           :icon="uiStore.themeIcon"
           class="q-ml-sm theme-toggle-btn"
           @click="uiStore.toggleDarkMode($q)"
@@ -242,7 +243,7 @@
         >
           <button class="nav-tab" :class="{ 'nav-tab--active': isActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
-              <q-icon :name="tab.icon" size="22px" />
+              <q-icon :name="tab.icon" size="32px" />
               <q-badge
                 v-if="tab.badge && tab.badge.value > 0"
                 color="red"
@@ -290,24 +291,27 @@ const isPwa = window.matchMedia('(display-mode: standalone)').matches || window.
 // ── Auth guard + push setup ───────────────────────────────────────────────────
 onMounted(async () => {
   // Check session — redirect to login if unauthenticated
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session) {
+  // authStore is already initialized by boot/auth.ts, so use cached data
+  if (!authStore.isAuthenticated) {
     router.replace('/auth/login')
     return
   }
-  // Ensure authStore is FULLY populated (branches, roles) before store.initialize().
-  if (!authStore.initialized || !authStore.branches.length) {
+
+  // Ensure authStore has branches (should already be cached/loaded by boot)
+  if (!authStore.branches.length) {
     await authStore.fetchUserData()
   }
-  await store.initialize()
 
-  // Check existing push subscription
-  await checkExistingSubscription()
+  // Initialize waiter app store (skip if already loaded — prevents re-fetch on hot nav)
+  if (!store.profile) {
+    await store.initialize()
+  }
+
+  // Check existing push subscription (non-blocking)
+  checkExistingSubscription().catch(() => {})
 
   // Auto-prompt for push permission after 6 seconds if not yet subscribed
-  if (!pushSubscribed.value && Notification.permission === 'default') {
+  if (!pushSubscribed.value && typeof Notification !== 'undefined' && Notification.permission === 'default') {
     setTimeout(() => {
       if (!pushSubscribed.value) {
         requestPushPermission()
@@ -447,6 +451,23 @@ const tabs = computed(() => [
 // ─── Layout ──────────────────────────────────────────────────────────────────
 .waiter-app-layout {
   background: var(--erp-bg-page, #f1f5f9);
+  // ── Global font-size boost for the entire Waiter Mobile App ──
+  font-size: 15px;
+  :deep(.q-page) {
+    font-size: 15px;
+  }
+  :deep(.q-btn) {
+    font-size: 13px !important;
+  }
+  :deep(.q-chip) {
+    font-size: 12px !important;
+  }
+  :deep(.text-caption) {
+    font-size: 13px !important;
+  }
+  :deep(.q-item__label) {
+    font-size: 14px !important;
+  }
 }
 
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
@@ -454,6 +475,8 @@ const tabs = computed(() => [
   background: #fff !important;
   border-bottom: 1px solid var(--erp-border, #e2e8f0) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  // Push content below system status bar (signal, battery, time)
+  padding-top: env(safe-area-inset-top) !important;
 }
 
 .waiter-toolbar {
@@ -484,21 +507,21 @@ const tabs = computed(() => [
 }
 
 .brand-tag {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.5px;
   color: #ea580c;
   background: rgba(234, 88, 12, 0.1);
   border: 1px solid rgba(234, 88, 12, 0.25);
   border-radius: 4px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   text-transform: uppercase;
 }
 
 .shift-chip {
-  font-size: 10px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  height: 22px !important;
+  height: 26px !important;
 }
 
 // ─── Top-bar Avatar Button ───────────────────────────────────────────────────
@@ -647,15 +670,15 @@ const tabs = computed(() => [
   background: rgba(239, 68, 68, 0.06);
   border-bottom: 1px solid rgba(239, 68, 68, 0.15);
   color: #dc2626;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   padding: 10px 16px;
   min-height: 40px;
 }
 
 // ─── Page Container ──────────────────────────────────────────────────────────
 .waiter-page-container {
-  padding-bottom: 64px !important; // space for bottom nav
-  min-height: calc(100vh - 52px - 64px);
+  padding-bottom: 80px !important; // space for bottom nav
+  min-height: calc(100vh - 52px - 72px);
 }
 
 // ─── Bottom Navigation ───────────────────────────────────────────────────────
@@ -667,10 +690,11 @@ const tabs = computed(() => [
 .bottom-nav-bar {
   display: flex;
   align-items: stretch;
-  height: 64px;
+  height: 72px;
   background: #fff;
   border-top: 1px solid var(--erp-border, #e2e8f0);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  padding-top: 4px;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -680,7 +704,7 @@ const tabs = computed(() => [
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   background: none;
   border: none;
   outline: none;
@@ -695,13 +719,13 @@ const tabs = computed(() => [
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 28px;
+    width: 44px;
+    height: 36px;
   }
 
   &__label {
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     letter-spacing: 0.2px;
     line-height: 1;
   }
@@ -728,12 +752,12 @@ const tabs = computed(() => [
 }
 
 .nav-badge {
-  font-size: 8px !important;
-  min-width: 14px !important;
-  height: 14px !important;
-  padding: 0 3px !important;
-  top: -2px !important;
-  right: -4px !important;
+  font-size: 10px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 4px !important;
+  top: -4px !important;
+  right: -6px !important;
 }
 
 // ─── Page Transition ─────────────────────────────────────────────────────────
@@ -754,7 +778,7 @@ const tabs = computed(() => [
   background: linear-gradient(90deg, rgba(234,88,12,0.08), rgba(251,191,36,0.06));
   border-bottom: 1px solid rgba(234, 88, 12, 0.2);
   color: #ea580c;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   min-height: 38px;
   gap: 4px;
@@ -762,7 +786,7 @@ const tabs = computed(() => [
 
 .pwa-banner-text {
   flex: 1;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #9a3412;
 }
 
@@ -779,7 +803,7 @@ const tabs = computed(() => [
 
 .push-banner-text {
   flex: 1;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #9a3412;
 }
@@ -806,7 +830,7 @@ const tabs = computed(() => [
 // ─── Mobile Safe Area Support ─────────────────────────────────────────────────
 // Ensure content doesn't go behind notch or home indicator
 .waiter-page-container {
-  padding-bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
   padding-top: env(safe-area-inset-top);
 }
 
@@ -828,4 +852,117 @@ const tabs = computed(() => [
   padding-right: env(safe-area-inset-right);
 }
 
+</style>
+
+<!-- ── GLOBAL (unscoped) text-size boost for ALL waiter-app child pages ──── -->
+<style lang="scss">
+.waiter-app-layout {
+  // Force a mobile-friendly base font-size on all waiter-app pages
+  font-size: 15px !important;
+
+  // Boost all .q-page content
+  .q-page {
+    font-size: 15px !important;
+  }
+
+  // Boost buttons across all waiter pages
+  .q-btn {
+    font-size: 13px !important;
+  }
+
+  // Boost chips
+  .q-chip {
+    font-size: 12px !important;
+    height: 26px !important;
+  }
+
+  // Boost captions (Quasar text-caption class is typically 11px → 13px)
+  .text-caption {
+    font-size: 13px !important;
+  }
+
+  // Boost item labels
+  .q-item__label {
+    font-size: 14px !important;
+  }
+  .q-item__label--caption {
+    font-size: 12px !important;
+  }
+
+  // Boost notification text
+  .q-notification__message {
+    font-size: 14px !important;
+  }
+  .q-notification__caption {
+    font-size: 12px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (Wait Layout)
+   ══════════════════════════════════════════════════ */
+body.body--dark {
+  // ── Top Bar ──
+  .waiter-top-bar {
+    background: #1e293b !important;
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .waiter-app-layout .brand-name {
+    color: #f8fafc;
+  }
+  .waiter-app-layout .theme-toggle-btn {
+    color: #94a3b8 !important;
+  }
+
+  // ── Bottom Nav ──
+  .waiter-app-layout .bottom-nav-bar {
+    background: #1e293b;
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  .waiter-app-layout .nav-tab__label {
+    color: #94a3b8;
+  }
+  .waiter-app-layout .nav-tab {
+    color: #64748b;
+  }
+  .waiter-app-layout .nav-tab--active {
+    color: #fb923c;
+    .nav-tab__label { color: #fb923c; }
+  }
+
+  // ── Selectors & Menus ──
+  .waiter-user-menu,
+  .waiter-selector-list {
+    background: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .waiter-user-menu .wum-name,
+  .waiter-user-menu .wum-item,
+  .waiter-selector-list .q-item__label {
+    color: #e2e8f0 !important;
+  }
+  .waiter-user-menu .wum-code,
+  .waiter-selector-list .q-item__label--caption {
+    color: #94a3b8 !important;
+  }
+  .waiter-selector-list .selector-item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+  .waiter-selector-list .selector-item--reset {
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  // ── Admin Selector Bar ──
+  .waiter-app-layout .waiter-selector-bar {
+    background: rgba(124, 58, 237, 0.1);
+    border-bottom-color: rgba(124, 58, 237, 0.2);
+  }
+
+  // ── Banners ──
+  .waiter-app-layout .off-shift-banner {
+    background: rgba(239, 68, 68, 0.1);
+    border-bottom-color: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+  }
+}
 </style>

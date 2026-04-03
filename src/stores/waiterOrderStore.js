@@ -34,6 +34,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   // Map of orderId → { timerId, acceptedAt, orderNumber, tableNumber }
   const orderReminders = ref(new Map())
   const REMINDER_MS = 5 * 60 * 1000 // 5 minutes
+  let activeReminderDismiss = null // tracks current visible reminder toast's dismiss fn
 
   // Realtime channels
   let ordersChannel = null
@@ -605,8 +606,14 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       )
       if (!stillActive) return
 
-      // Fire urgent reminder notification
-      Notify.create({
+      // Fire urgent reminder notification — only 1 visible at a time
+      // Dismiss the previous reminder if one is still showing
+      if (activeReminderDismiss) {
+        if (typeof activeReminderDismiss === 'function') activeReminderDismiss()
+        activeReminderDismiss = null
+      }
+
+      const dismiss = Notify.create({
         type: 'warning',
         icon: 'alarm',
         color: 'deep-orange-9',
@@ -622,15 +629,25 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
             label: 'View Order',
             color: 'white',
             handler: () => {
-              // Navigate to orders page with highlight query to focus on this specific order
+              activeReminderDismiss = null
+              // Navigate to orders page and highlight this specific order
               import('src/router/index').then(({ default: router }) => {
                 router.push({ path: '/waiter-app/orders', query: { highlight: orderId } }).catch(() => {})
               })
             },
           },
-          { icon: 'close', color: 'white', round: true, dense: true },
+          {
+            icon: 'close',
+            color: 'white',
+            round: true,
+            dense: true,
+            handler: () => {
+              activeReminderDismiss = null
+            },
+          },
         ],
       })
+      activeReminderDismiss = dismiss
 
       // Buzz the device
       if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500])

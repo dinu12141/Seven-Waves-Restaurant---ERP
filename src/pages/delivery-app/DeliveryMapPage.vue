@@ -191,8 +191,13 @@
           label="Mark Picked Up"
           class="status-btn"
           :loading="store.processing"
+          :disable="currentDelivery.orderStatus !== 'ready'"
           @click="handlePickUp"
-        />
+        >
+          <q-tooltip v-if="currentDelivery.orderStatus !== 'ready'">
+            Wait for kitchen to mark order as ready
+          </q-tooltip>
+        </q-btn>
         <q-btn
           v-else-if="currentDelivery && currentDelivery.status === 'picked_up'"
           unelevated

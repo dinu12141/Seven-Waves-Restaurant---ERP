@@ -121,7 +121,7 @@
         >
           <button class="nav-tab" :class="{ 'nav-tab--active': isExactActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
-              <q-icon :name="isExactActive ? tab.iconActive || tab.icon : tab.icon" size="22px" />
+              <q-icon :name="isExactActive ? tab.iconActive || tab.icon : tab.icon" size="38px" />
               <q-badge
                 v-if="tab.badge && tab.badge.value > 0"
                 color="red"
@@ -279,6 +279,22 @@ const tabs = computed(() => [
 .manager-app-layout {
   background: #090c14;
   transition: background 0.25s ease;
+  font-size: 15px;
+  :deep(.q-page) {
+    font-size: 15px;
+  }
+  :deep(.q-btn) {
+    font-size: 13px !important;
+  }
+  :deep(.q-chip) {
+    font-size: 12px !important;
+  }
+  :deep(.text-caption) {
+    font-size: 13px !important;
+  }
+  :deep(.q-item__label) {
+    font-size: 14px !important;
+  }
 
   &--light {
     background: #f1f5f9;
@@ -293,6 +309,7 @@ const tabs = computed(() => [
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: background 0.25s ease !important;
+  padding-top: env(safe-area-inset-top) !important;
 
   &--light {
     background: rgba(255, 255, 255, 0.97) !important;
@@ -504,8 +521,8 @@ const tabs = computed(() => [
 
 // ─── Page Container ──────────────────────────────────────────────────────────
 .manager-page-container {
-  padding-bottom: 64px !important;
-  min-height: calc(100vh - 56px - 64px);
+  padding-bottom: 80px !important;
+  min-height: calc(100vh - 56px - 72px);
 }
 
 // ─── Bottom Navigation ───────────────────────────────────────────────────────
@@ -517,11 +534,12 @@ const tabs = computed(() => [
 .bottom-nav-bar {
   display: flex;
   align-items: stretch;
-  height: 64px;
+  height: 72px;
   background: rgba(10, 14, 22, 0.98);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  padding-top: 4px;
   padding-bottom: env(safe-area-inset-bottom);
   transition: background 0.25s ease, border-color 0.25s ease;
 
@@ -538,7 +556,7 @@ const tabs = computed(() => [
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   background: none;
   border: none;
   outline: none;
@@ -553,15 +571,15 @@ const tabs = computed(() => [
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 28px;
+    width: 48px;
+    height: 48px;
     border-radius: 14px;
     transition: background 0.2s ease;
   }
 
   &__label {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     letter-spacing: 0.2px;
     line-height: 1;
   }
@@ -622,12 +640,12 @@ const tabs = computed(() => [
 }
 
 .nav-badge {
-  font-size: 8px !important;
-  min-width: 14px !important;
-  height: 14px !important;
-  padding: 0 3px !important;
-  top: -2px !important;
-  right: -4px !important;
+  font-size: 10px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 4px !important;
+  top: -4px !important;
+  right: -6px !important;
 }
 
 // ─── Page Transition ─────────────────────────────────────────────────────────

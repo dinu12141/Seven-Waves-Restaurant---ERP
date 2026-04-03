@@ -1,6 +1,6 @@
 {
   "appId": "com.sevenwaves.erp",
-  "appName": "Seven Waves ERP",
+  "appName": "Seven Waves",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
@@ -8,13 +8,14 @@
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": true,
-      "launchShowDuration": 2000,
+      "launchShowDuration": 0,
       "backgroundColor": "#0F172A",
       "showSpinner": false
     },
     "StatusBar": {
-      "style": "DARK",
-      "backgroundColor": "#0F172A"
+      "overlaysWebView": false,
+      "style": "LIGHT",
+      "backgroundColor": "#FFFFFF"
     }
   }
 }

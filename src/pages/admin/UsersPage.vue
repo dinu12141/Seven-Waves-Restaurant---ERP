@@ -39,6 +39,11 @@
         :loading="loading"
         flat
       >
+        <template v-slot:body-cell-designation="props">
+          <q-td :props="props">
+            {{ props.row.employees?.[0]?.designations?.title || '—' }}
+          </q-td>
+        </template>
         <template v-slot:body-cell-status="props">
           <q-td :props="props">
             <q-chip :color="props.row.is_active ? 'positive' : 'negative'" text-color="white" dense>
@@ -383,6 +388,13 @@ const columns = [
   { name: 'full_name', label: 'Name', align: 'left', field: 'full_name', sortable: true },
   { name: 'email', label: 'Email', align: 'left', field: 'email', sortable: true },
   { name: 'user_code', label: 'User Code', align: 'center', field: 'user_code', sortable: true },
+  {
+    name: 'designation',
+    label: 'Designation',
+    align: 'left',
+    field: (row) => row.employees?.[0]?.designations?.title || '',
+    sortable: true,
+  },
   { name: 'phone', label: 'Phone', align: 'left', field: 'phone' },
   { name: 'status', label: 'Status', align: 'center', field: 'is_active', sortable: true },
   { name: 'actions', label: 'Actions', align: 'center', field: 'actions' },
@@ -425,7 +437,7 @@ const fetchUsers = async () => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, employees(designation_id, designations(title))')
       .order('created_at', { ascending: false })
 
     if (error) throw error

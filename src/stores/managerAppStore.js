@@ -29,6 +29,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   // Alerts
   const alerts = ref([])
+  const viewedAlertIds = ref(new Set(JSON.parse(localStorage.getItem('mgr_viewed_alerts') || '[]')))
 
   // Served today counter
   const servedTodayCount = ref(0)
@@ -53,7 +54,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     () =>
       messages.value.filter((m) => !m.is_read && m.receiver_employee_id === _myEmployeeId).length,
   )
-  const unreadAlertCount = computed(() => alerts.value.filter((a) => !a.is_resolved).length)
+  const unreadAlertCount = computed(() => alerts.value.filter((a) => !a.is_resolved && !viewedAlertIds.value.has(a.id)).length)
   const onShiftCount = computed(() => {
     // If shift staff loaded, use that (all roles); fallback to waiters only
     if (todayShiftStaff.value.length > 0) {
@@ -320,6 +321,13 @@ export const useManagerAppStore = defineStore('managerApp', () => {
       .update({ is_resolved: true, resolved_by: user?.id, resolved_at: new Date().toISOString() })
       .eq('id', id)
     alerts.value = alerts.value.map((a) => (a.id === id ? { ...a, is_resolved: true } : a))
+  }
+
+  function markAlertsViewed() {
+    alerts.value.forEach(a => {
+      if (!a.is_resolved) viewedAlertIds.value.add(a.id)
+    })
+    localStorage.setItem('mgr_viewed_alerts', JSON.stringify([...viewedAlertIds.value]))
   }
 
   // ─── Hierarchy ────────────────────────────────────────────────────────────
@@ -630,5 +638,6 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     sendMessage,
     markMessageRead,
     resolveAlert,
+    markAlertsViewed,
   }
 })

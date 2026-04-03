@@ -524,3 +524,57 @@ async function accept(order) {
   }
 }
 </style>
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (ShiftInboxPage)
+   ══════════════════════════════════════════════════ */
+<style lang="scss">
+body.body--dark {
+  .waiter-page-dark {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    .inbox-header {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+      &__title { color: #f8fafc; }
+    }
+
+    .inbox-card {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.08);
+
+      &__header {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+      }
+      &__order-num { color: #f8fafc; }
+      &__details { color: #94a3b8; }
+      
+      .inbox-status-chip {
+        background: rgba(245, 158, 11, 0.1) !important;
+      }
+    }
+
+    .inbox-item {
+      border-bottom-color: rgba(255, 255, 255, 0.04);
+      &__name { color: #e2e8f0; }
+      &__name--strike { color: #64748b; }
+      &__price { color: #94a3b8; }
+
+      &--available {
+        background: rgba(16, 185, 129, 0.05);
+        border-color: rgba(16, 185, 129, 0.15);
+      }
+      &--unavailable {
+        background: rgba(239, 68, 68, 0.05);
+        border-color: rgba(239, 68, 68, 0.15);
+      }
+    }
+
+    .inbox-unavail-banner {
+      background: rgba(217, 119, 6, 0.05);
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+  }
+}
+</style>

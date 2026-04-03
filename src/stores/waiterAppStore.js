@@ -53,19 +53,19 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       // MUST load profile first — shiftInfo + orders depend on profile.employee_id
       await loadProfile()
       await Promise.all([loadShiftInfo(), loadPendingOrders(), loadMyOrders(), loadNotifications()])
-      await loadReadyAlerts()
+      // loadReadyAlerts depends on myOrders — run after above
+      loadReadyAlerts().catch(() => {})
       subscribeRealtime()
 
-      // Initialize the waiterOrderStore — this is the shift-aware RPC store
-      // that handles realtime order subscriptions, alerts, and sounds.
+      // Initialize the waiterOrderStore in background — non-blocking
       const orderStore = useWaiterOrderStore()
-      await orderStore.initialize()
+      orderStore.initialize().catch(() => {})
 
-      // Load all waiters for admin selector
+      // Load all waiters for admin selector — non-blocking
       const roles = authStore.roles || []
       const isAdmin = roles.includes('admin') || roles.includes('manager')
       if (isAdmin) {
-        await loadAllWaiters()
+        loadAllWaiters().catch(() => {})
       }
 
       // ── Final admin/manager override ──

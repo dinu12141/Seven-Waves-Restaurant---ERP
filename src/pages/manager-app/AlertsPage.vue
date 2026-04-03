@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mgr-alerts-page" :class="{ lt: !$q.dark.isActive }" padding>
     <!-- Page Header -->
     <div class="page-header q-mb-md">
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useQuasar } from 'quasar'
 
@@ -95,6 +95,15 @@ const resolvedAlerts = computed(() => store.alerts.filter((a) => a.is_resolved))
 const filtered = computed(() =>
   filter.value === 'active' ? activeAlerts.value : resolvedAlerts.value,
 )
+
+// Mark alerts as viewed whenever this page is open
+onMounted(() => {
+  store.markAlertsViewed()
+})
+
+watch(activeAlerts, () => {
+  store.markAlertsViewed()
+})
 
 async function resolve(id) {
   try {

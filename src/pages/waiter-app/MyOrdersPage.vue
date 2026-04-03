@@ -1493,3 +1493,106 @@ async function markServed(orderId) {
   }
 }
 </style>
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (MyOrdersPage)
+   ══════════════════════════════════════════════════ */
+<style lang="scss">
+body.body--dark {
+  .waiter-orders-light {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    .orders-header {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+      &__title { color: #f8fafc; }
+    }
+
+    .group-label {
+      background: #1e293b;
+      color: #94a3b8;
+    }
+
+    .order-card {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.08);
+
+      &__number { color: #f8fafc; }
+      &__meta { color: #94a3b8; }
+      
+      .table-badge {
+        background: #0f172a;
+        color: #94a3b8;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .time-label { color: #64748b; }
+      
+      &--ready {
+        border-color: rgba(16, 185, 129, 0.4);
+        background: rgba(16, 185, 129, 0.05);
+      }
+      &--preparing {
+        border-color: rgba(59, 130, 246, 0.4);
+        background: rgba(59, 130, 246, 0.05);
+      }
+      &--highlighted {
+        border-color: #fb923c;
+        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.2);
+      }
+
+      .progress-tracker {
+        background: #0f172a;
+      }
+      .progress-connector { background: #334155; }
+      .progress-dot { background: #334155; border-color: #1e293b; }
+      .progress-step--active .progress-dot {
+        background: #f59e0b;
+        color: #fff;
+      }
+      .progress-step--done .progress-dot {
+        background: #10b981;
+      }
+      .progress-step--done .progress-connector {
+        background: #10b981;
+      }
+    }
+  }
+
+  // Bottom Sheet
+  .bottom-sheet {
+    background: #1e293b !important;
+    .sheet-header {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+      &__id { color: #f8fafc; }
+      .sheet-table-badge {
+        background: #0f172a;
+        color: #f8fafc;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+    
+    .sheet-ticket {
+      background: #0f172a;
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    
+    .item-row {
+      border-bottom-color: rgba(255, 255, 255, 0.04);
+      &__name { color: #e2e8f0; }
+      &__price { color: #f8fafc; }
+    }
+    
+    .ticket-total {
+      border-top-color: rgba(255, 255, 255, 0.08);
+      &__amount { color: #f8fafc; }
+    }
+    
+    .unavail-section {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+  }
+}
+</style>

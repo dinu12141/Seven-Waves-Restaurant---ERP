@@ -391,28 +391,74 @@ export const useDeliveryStore = defineStore('delivery', () => {
     if (!newRow) return
 
     // When an order becomes 'ready' and has a delivery assignment, alert the rider
-    if (newRow.status === 'ready' && newRow.order_source === 'website') {
+    if (newRow.status === 'ready') {
+      // Find any assignment belonging to this rider for this order
       const assignment = assignments.value.find(
         (a) => a.order_id === newRow.id && a.rider_id === authStore.user?.id,
       )
 
       if (assignment) {
-        playDeliveryAlert()
-        Notify.create({
-          message: '🔔 Food Ready for Pickup!',
-          caption: `Order #${newRow.order_number} is ready. Go to kitchen.`,
-          color: 'green-8',
-          icon: 'local_fire_department',
-          position: 'top',
-          timeout: 10000,
-          actions: [{ label: 'View', color: 'white' }],
-        })
+        // ── Update local state so UI reacts immediately ──
+        // Update in the assignments array
+        const idx = assignments.value.findIndex((a) => a.id === assignment.id)
+        if (idx !== -1) {
+          assignments.value[idx] = {
+            ...assignments.value[idx],
+            orderStatus: 'ready',
+          }
+        }
 
-        // Update local assignment data
+        // Update active delivery if viewing this order
         if (activeDelivery.value?.order_id === newRow.id) {
           activeDelivery.value = {
             ...activeDelivery.value,
             orderStatus: 'ready',
+          }
+        }
+
+        // ── Play alert sound ──
+        playDeliveryAlert()
+
+        // ── Show prominent persistent notification ──
+        Notify.create({
+          message: '🍳 Order Ready for Pickup!',
+          caption: `Order #${newRow.order_number || assignment.orderNumber} is ready at kitchen. You can pick it up now!`,
+          color: 'green-8',
+          icon: 'local_fire_department',
+          position: 'top',
+          timeout: 0, // persistent — must be dismissed manually
+          actions: [
+            { label: 'View Order', color: 'yellow', handler: () => {} },
+            { label: 'Dismiss', color: 'white' },
+          ],
+        })
+
+        console.log(
+          '[DeliveryStore] 🔔 Order ready notification sent for order:',
+          newRow.id,
+          'assignment:',
+          assignment.id,
+        )
+      }
+    }
+
+    // Also update orderStatus for other status changes (preparing, etc.)
+    if (['preparing', 'served', 'invoiced', 'paid'].includes(newRow.status)) {
+      const assignment = assignments.value.find(
+        (a) => a.order_id === newRow.id,
+      )
+      if (assignment) {
+        const idx = assignments.value.findIndex((a) => a.id === assignment.id)
+        if (idx !== -1) {
+          assignments.value[idx] = {
+            ...assignments.value[idx],
+            orderStatus: newRow.status,
+          }
+        }
+        if (activeDelivery.value?.order_id === newRow.id) {
+          activeDelivery.value = {
+            ...activeDelivery.value,
+            orderStatus: newRow.status,
           }
         }
       }

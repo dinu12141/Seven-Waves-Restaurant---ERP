@@ -1104,3 +1104,139 @@ function fmtCurrency(val) {
   }
 }
 </style>
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (WaiterPOSPage)
+   ══════════════════════════════════════════════════ */
+<style lang="scss">
+body.body--dark {
+  .waiter-pos {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    // ── Top Bar ──
+    .wpos-top-bar {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-brand-title { color: #f8fafc; }
+    .wpos-total-box {
+      background: #0f172a;
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-total-box--active {
+      background: rgba(234, 88, 12, 0.1);
+      border-color: #f97316;
+    }
+
+    // ── Left Panel ──
+    .wpos-left {
+      background: #1e293b;
+      border-right-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-order-info {
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-type-btn {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.12);
+      color: #94a3b8;
+      &.active {
+        background: rgba(234, 88, 12, 0.1);
+        border-color: #ea580c;
+        color: #fb923c;
+      }
+    }
+    .wpos-table-trigger, .wpos-cust-input {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      &:hover, &:focus {
+        border-color: #fb923c;
+        background: rgba(234, 88, 12, 0.05);
+      }
+    }
+
+    // ── Cart & Items ──
+    .wpos-cart-header {
+      background: #0f172a;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-cart-item {
+      border-bottom-color: rgba(255, 255, 255, 0.03);
+      color: #e2e8f0;
+      &:hover { background: rgba(255, 255, 255, 0.03); }
+      &.selected {
+        background: rgba(234, 88, 12, 0.08);
+      }
+    }
+    .wpos-cart-summary {
+      background: #0f172a;
+      border-top-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-actions {
+      border-top-color: rgba(255, 255, 255, 0.08);
+      background: #1e293b;
+    }
+    .wpos-action-btn:not(.wpos-send-btn) {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #e2e8f0 !important;
+    }
+
+    // ── Right Panel (Menu) ──
+    .wpos-search-wrap {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .q-field--outlined .q-field__control:before {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .wpos-cat-tabs {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .wpos-cat-tab {
+      color: #94a3b8;
+      &.active {
+        color: #fb923c;
+      }
+      &.active::after {
+        background: #fb923c;
+      }
+    }
+    .wpos-item-btn {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      &:hover {
+        background: #334155;
+        border-color: #fb923c;
+      }
+      .wpos-item-name { color: #f8fafc; }
+    }
+    .wpos-no-items { color: #64748b; }
+
+    // ── Table Picker Dialog ──
+    .wpos-table-picker-card,
+    .wpos-table-picker-card .q-card__section,
+    .wpos-table-grid-section {
+      background: #1e293b !important;
+      color: #e2e8f0;
+    }
+    .wpos-table-num-btn {
+      background: #0f172a;
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+      &:hover {
+        background: rgba(234, 88, 12, 0.1);
+        border-color: #fb923c;
+        color: #fb923c;
+      }
+      &.active {
+        background: rgba(234, 88, 12, 0.15);
+        border-color: #fb923c;
+        color: #fb923c;
+      }
+    }
+  }
+}
+</style>

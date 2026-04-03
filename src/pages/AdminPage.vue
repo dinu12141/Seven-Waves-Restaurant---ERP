@@ -77,14 +77,6 @@ const modules = ref([
     permission: 'admin:branches',
   },
   {
-    title: 'Kitchen Setup',
-    description: 'Configure kitchen stations and displays.',
-    icon: 'kitchen',
-    color: 'orange',
-    to: '/admin/kitchens',
-    permission: 'admin:kitchens',
-  },
-  {
     title: 'Printer Management',
     description: 'Configure receipt and kitchen printers for each branch.',
     icon: 'print',

@@ -2,6 +2,13 @@
   <q-page class="login-page">
     <!-- Full-screen split layout -->
     <div class="login-wrapper">
+      <!-- Decorative Smart Background Elements for Mobile App Feel -->
+      <div class="smart-bg-elements">
+        <div class="bg-shape shape-1"></div>
+        <div class="bg-shape shape-2"></div>
+        <div class="bg-shape shape-3"></div>
+      </div>
+
       <!-- LEFT: Form Panel -->
       <div class="form-panel">
         <!-- Logo -->
@@ -295,6 +302,60 @@ const handleLogin = async () => {
   height: 100vh;
   min-height: 100vh;
   font-family: 'Inter', 'Roboto', sans-serif;
+  position: relative;
+}
+
+/* ─── SMART BACKGROUND ELEMENTS ──────────────────── */
+.smart-bg-elements {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+  display: none; /* Visible only on mobile where right panel is hidden */
+}
+
+.bg-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.65;
+  animation: floatShape 12s infinite alternate ease-in-out;
+}
+
+.shape-1 {
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, #1565c0, #0ea5e9);
+  top: -100px;
+  right: -100px;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #0d47a1, #1e3a8a);
+  bottom: -150px;
+  left: -150px;
+  animation-delay: -4s;
+}
+
+.shape-3 {
+  width: 250px;
+  height: 250px;
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+  top: 35%;
+  left: 60%;
+  opacity: 0.35;
+  filter: blur(70px);
+  animation-delay: -7s;
+}
+
+@keyframes floatShape {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -40px) scale(1.05); }
+  100% { transform: translate(-20px, 30px) scale(0.95); }
 }
 
 /* ─── LEFT PANEL ─────────────────────────────────── */
@@ -648,7 +709,7 @@ const handleLogin = async () => {
 
 /* ─── MOBILE RESPONSIVE ──────────────────────────── */
 @media (max-width: 768px) {
-  /* Deep rich gradient on the WRAPPER, not q-page */
+  /* Standard gradient fallback for responsive shrunk-desktop view */
   .login-wrapper {
     flex-direction: column;
     height: auto;
@@ -760,5 +821,16 @@ const handleLogin = async () => {
   .welcome-title {
     font-size: 20px;
   }
+}
+
+/* ─── SMART BACKGROUND STRICTLY FOR ACTUAL MOBILE DEVICES ─── */
+body.mobile .login-wrapper,
+body.capacitor .login-wrapper {
+  background: #090e17 !important; /* Very dark rich blue as the base */
+}
+
+body.mobile .smart-bg-elements,
+body.capacitor .smart-bg-elements {
+  display: block; /* Reveal on mobile OS */
 }
 </style>
