@@ -376,7 +376,7 @@ async function logout() {
     await supabase.auth.signOut()
   } finally {
     // Full page reload — clears all pinia state and redirects to login
-    window.location.href = '/#/auth/login'
+    window.location.href = '/auth/login'
   }
 }
 

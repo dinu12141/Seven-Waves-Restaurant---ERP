@@ -39,6 +39,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   // Realtime channels
   let ordersChannel = null
   let kotChannel = null
+  let extraBranchChannels = [] // multi-branch overflow channels — tracked for cleanup
 
   // ── Getters ────────────────────────────────────────────────
   const pendingCount = computed(() => pendingOrders.value.length)
@@ -373,6 +374,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
   function subscribeToOrders() {
     if (ordersChannel) supabase.removeChannel(ordersChannel)
     if (kotChannel) supabase.removeChannel(kotChannel)
+    // Clean up any leftover multi-branch channels from previous subscription
+    extraBranchChannels.forEach((ch) => supabase.removeChannel(ch))
+    extraBranchChannels = []
 
     // Subscribe to orders for ALL shift branches
     const branchIds = shiftBranches.value.map((b) => b.branch_id)
@@ -396,10 +400,10 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       )
       .subscribe()
 
-    // If waiter has multiple shift branches, add listeners for each
+    // If waiter has multiple shift branches, add listeners for each and track them
     if (branchIds.length > 1) {
       branchIds.slice(1).forEach((bId) => {
-        supabase
+        const ch = supabase
           .channel(`waiter-orders-rt-${bId}`)
           .on(
             'postgres_changes',
@@ -414,6 +418,7 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
             },
           )
           .subscribe()
+        extraBranchChannels.push(ch)
       })
     }
 
@@ -686,6 +691,8 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       supabase.removeChannel(kotChannel)
       kotChannel = null
     }
+    extraBranchChannels.forEach((ch) => supabase.removeChannel(ch))
+    extraBranchChannels = []
     clearAllReminders()
     pendingOrders.value = []
     myOrders.value = []

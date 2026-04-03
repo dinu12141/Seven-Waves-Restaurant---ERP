@@ -108,7 +108,7 @@ async function logout() {
     store.cleanup()
     await supabase.auth.signOut()
   } finally {
-    window.location.href = '/#/auth/login'
+    window.location.href = '/auth/login'
   }
 }
 </script>

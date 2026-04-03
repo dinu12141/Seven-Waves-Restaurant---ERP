@@ -17,11 +17,29 @@ export default boot(({ app }) => {
   // Global Promise Rejection Handler
   if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('[Unhandled Rejection]:', event.reason)
+      const reason = event.reason
+      const msg = reason instanceof Error ? reason.message : String(reason)
+
+      // Suppress non-critical infrastructure noise (Supabase reconnects, AbortErrors, etc.)
+      const isSilent =
+        msg.includes('AbortError') ||
+        msg.includes('NetworkError') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('Load failed') ||
+        msg.includes('timeout') ||
+        msg.includes('The object can only be used once') ||
+        (reason?.code && ['PGRST', 'CHANNEL_ERROR'].some((p) => String(reason.code).startsWith(p)))
+
+      if (isSilent) {
+        console.warn('[Unhandled Rejection – suppressed]:', msg)
+        return
+      }
+
+      console.error('[Unhandled Rejection]:', reason)
       Notify.create({
         type: 'negative',
         message: 'Async operation failed.',
-        caption: event.reason instanceof Error ? event.reason.message : String(event.reason),
+        caption: msg,
       })
     })
   }
