@@ -1,0 +1,5 @@
+﻿0fb6fd488e98af0ce4118acad59df124e6b30e75 Delivery app modules with Google Maps integration and Electron build optimizations
+9170fefc86eaf80264d7d6bfcad051cfc6d4d2a0 Report page setup
+d9852d36287e949fa9da4f0caa250e7c70668222 live location tapping and all themes change
+175ac4e15797d97dc0582779952cc3eaecd68ccb website intigration and report page setup
+44566d04f5762fa10337a49a7124c08dbed2735d UI setup and electron setup
