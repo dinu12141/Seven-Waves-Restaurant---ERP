@@ -252,8 +252,7 @@ function truncate(str, len) {
 
 <style lang="scss" scoped>
 .mgr-messages-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-messages-page.lt {
@@ -295,7 +294,7 @@ function truncate(str, len) {
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   margin-top: 1px;
 }
@@ -322,7 +321,7 @@ function truncate(str, len) {
   border: 1px solid #e5e7eb;
 }
 .msg-tabs :deep(.q-tab) {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   min-height: 38px;
 }
@@ -343,7 +342,7 @@ function truncate(str, len) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -374,28 +373,28 @@ function truncate(str, len) {
 
 .msg-subject {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #f3f4f6;
 }
 .lt .msg-subject {
   color: #1e293b;
 }
 .msg-meta {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
 }
 .lt .msg-meta {
   color: #94a3b8;
 }
 .msg-time {
-  font-size: 0.68rem;
+  font-size: 0.83rem;
   color: #4b5563;
 }
 .lt .msg-time {
   color: #94a3b8;
 }
 .msg-body {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   white-space: pre-wrap;
   color: #9ca3af;
 }
@@ -403,7 +402,7 @@ function truncate(str, len) {
   color: #64748b;
 }
 .msg-read-at {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #10b981;
 }
 

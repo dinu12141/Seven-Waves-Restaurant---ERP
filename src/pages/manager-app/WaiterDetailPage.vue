@@ -299,8 +299,7 @@ function ptLabel(type) {
 
 <style lang="scss" scoped>
 .mgr-waiter-detail {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-waiter-detail.lt {
@@ -309,7 +308,7 @@ function ptLabel(type) {
 
 // ─── Back Button ─────────────────────────────────────────────────────────────
 .back-btn {
-  font-size: 0.82rem !important;
+  font-size: 0.92rem !important;
   font-weight: 600 !important;
 }
 .back-btn { color: #9ca3af !important; }
@@ -317,7 +316,7 @@ function ptLabel(type) {
 
 // ─── Section Title ───────────────────────────────────────────────────────────
 .section-title {
-  font-size: 0.65rem;
+  font-size: 0.80rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -339,7 +338,7 @@ function ptLabel(type) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -362,7 +361,7 @@ function ptLabel(type) {
   color: #1e293b;
 }
 .profile-code {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
 }
 .lt .profile-code {
@@ -399,7 +398,7 @@ function ptLabel(type) {
 .mini-val--green { color: #10b981; }
 .mini-val--amber { color: #fbbf24; }
 .mini-lbl {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -449,7 +448,7 @@ function ptLabel(type) {
   color: #ef4444;
 }
 .ledger-type {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #f3f4f6;
 }
@@ -457,14 +456,14 @@ function ptLabel(type) {
   color: #1e293b;
 }
 .ledger-note {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
 }
 .lt .ledger-note {
   color: #94a3b8;
 }
 .ledger-points {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 800;
 }
 .ledger-points--positive {

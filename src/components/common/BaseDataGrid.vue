@@ -167,7 +167,7 @@
               v-for="col in visibleColumns"
               :key="col.name"
               class="bdg-td"
-              :class="`bdg-td--${col.align || colAlign(col)}`"
+              :class="[`bdg-td--${col.align || colAlign(col)}`, col.classes]"
             >
               <!-- Custom slot override -->
               <slot :name="`cell-${col.name}`" :row="row" :value="getCellValue(row, col)">
@@ -178,8 +178,9 @@
                 />
 
                 <!-- Currency -->
-                <span v-else-if="col.type === 'currency'" class="bdg-num">
-                  {{ formatCurrency(getCellValue(row, col), col.currency) }}
+                <span v-else-if="col.type === 'currency'" class="bdg-num bdg-num--currency">
+                  <span class="bdg-num__symbol">{{ col.currency || 'LKR' }}</span>
+                  <span class="bdg-num__value">{{ formatCurrencyValue(getCellValue(row, col)) }}</span>
                 </span>
 
                 <!-- Number -->
@@ -221,11 +222,11 @@
               <div class="bdg-row-actions">
                 <button
                   v-for="action in visibleActions(row)"
-                  :key="action.event"
+                  :key="action.event || action.emit || action.label"
                   class="bdg-action-btn"
                   :class="{ 'bdg-action-btn--danger': action.danger }"
                   :title="action.label"
-                  @click.stop="$emit(action.event, row)"
+                  @click.stop="(action.event || action.emit) && $emit(action.event || action.emit, row)"
                 >
                   <q-icon :name="action.icon" size="18px" />
                 </button>
@@ -641,9 +642,9 @@ function visibleActions(row) {
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
-function formatCurrency(val, currency = 'LKR') {
+function formatCurrencyValue(val) {
   const n = Number(val || 0)
-  return `${currency} ${n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function formatDate(val, type) {
@@ -685,7 +686,7 @@ function exportData(format) {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 /* ─── Wrapper ─────────────────────────────────────────────────────────────── */
 .bdg-wrap {
   display: flex;
@@ -752,14 +753,12 @@ function exportData(format) {
   padding: 0 10px;
   height: 34px;
   width: 260px;
-  transition:
-    border-color 0.2s,
-    width 0.3s;
+  transition: border-color 0.2s, width 0.3s;
+}
 
-  &--focused {
-    border-color: var(--erp-primary);
-    width: 380px;
-  }
+.bdg-search-wrap--focused {
+  border-color: var(--erp-primary);
+  width: 380px;
 }
 
 .bdg-search-icon {
@@ -776,10 +775,9 @@ function exportData(format) {
   font-family: var(--erp-font-family);
   width: 100%;
   min-width: 0;
-
-  &::placeholder {
-    color: var(--erp-text-placeholder);
-  }
+}
+.bdg-search-input::placeholder {
+  color: var(--erp-text-placeholder);
 }
 
 .bdg-search-clear {
@@ -790,10 +788,9 @@ function exportData(format) {
   padding: 0;
   display: flex;
   align-items: center;
-
-  &:hover {
-    color: var(--erp-text-primary);
-  }
+}
+.bdg-search-clear:hover {
+  color: var(--erp-text-primary);
 }
 
 .bdg-kbd {
@@ -820,21 +817,17 @@ function exportData(format) {
   align-items: center;
   justify-content: center;
   color: var(--erp-text-secondary);
-  transition:
-    background-color 0.15s,
-    color 0.15s;
+  transition: background-color 0.15s, color 0.15s;
   position: relative;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: var(--erp-text-primary);
-  }
-
-  &--active {
-    background-color: var(--erp-primary-subtle);
-    color: var(--erp-primary);
-    border-color: rgba(37, 99, 235, 0.3);
-  }
+}
+.bdg-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--erp-text-primary);
+}
+.bdg-icon-btn--active {
+  background-color: var(--erp-primary-subtle);
+  color: var(--erp-primary);
+  border-color: rgba(37, 99, 235, 0.3);
 }
 
 .bdg-active-dot {
@@ -859,30 +852,27 @@ function exportData(format) {
   padding: 4px 0;
   min-width: 180px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-
-  &__header {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 8px 12px 4px;
-    color: var(--erp-text-muted);
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: var(--erp-text-secondary);
-    cursor: pointer;
-
-    &:hover {
-      background-color: var(--erp-bg-card-hover);
-      color: var(--erp-text-primary);
-    }
-  }
+}
+.bdg-col-menu__header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px 4px;
+  color: var(--erp-text-muted);
+}
+.bdg-col-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--erp-text-secondary);
+  cursor: pointer;
+}
+.bdg-col-menu__item:hover {
+  background-color: var(--erp-bg-card-hover);
+  color: var(--erp-text-primary);
 }
 
 .bdg-checkbox {
@@ -922,42 +912,24 @@ function exportData(format) {
   border-bottom: 1px solid var(--erp-border);
   white-space: nowrap;
   user-select: none;
-
-  &--right {
-    text-align: right;
-  }
-  &--center {
-    text-align: center;
-  }
-  &--left {
-    text-align: left;
-  }
-  &--actions {
-    text-align: right;
-    width: 1px;
-  }
-
-  &--sortable {
-    cursor: pointer;
-  }
-  &--sortable:hover {
-    color: var(--erp-text-primary);
-  }
-  &--sorted {
-    color: var(--erp-primary);
-  }
 }
+.bdg-th--right { text-align: right; }
+.bdg-th--center { text-align: center; }
+.bdg-th--left { text-align: left; }
+.bdg-th--actions { text-align: right; width: 1px; }
+.bdg-th--sortable { cursor: pointer; }
+.bdg-th--sortable:hover { color: var(--erp-text-primary); }
+.bdg-th--sorted { color: var(--erp-primary); }
 
 .bdg-sort-icon {
   display: inline-flex;
   align-items: center;
   margin-left: 4px;
   opacity: 0.5;
-
-  .bdg-th--sorted & {
-    opacity: 1;
-    color: var(--erp-primary);
-  }
+}
+.bdg-th--sorted .bdg-sort-icon {
+  opacity: 1;
+  color: var(--erp-primary);
 }
 
 /* ─── Tbody ───────────────────────────────────────────────────────────────── */
@@ -965,51 +937,48 @@ function exportData(format) {
   border-bottom: 1px solid var(--erp-border);
   transition: background-color 0.1s ease;
   cursor: default;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
-  &--even {
-    background-color: rgba(255, 255, 255, 0.01);
-  }
-  &--skeleton {
-    pointer-events: none;
-  }
 }
+.bdg-tr:hover { background-color: rgba(255, 255, 255, 0.03); }
+.bdg-tr--even { background-color: rgba(255, 255, 255, 0.01); }
+.bdg-tr--skeleton { pointer-events: none; }
 
 .bdg-td {
   padding: 0 14px;
-  height: var(--erp-row-height); /* 44px */
-  font-size: var(--erp-font-size-table); /* 13px */
+  height: var(--erp-row-height);
+  font-size: var(--erp-font-size-table);
   color: var(--erp-text-primary);
   vertical-align: middle;
-
-  &--right {
-    text-align: right;
-  }
-  &--center {
-    text-align: center;
-  }
-  &--left {
-    text-align: left;
-  }
-  &--actions {
-    width: 1px;
-    white-space: nowrap;
-    text-align: right;
-  }
-
-  &--empty {
-    padding: 48px 24px;
-    text-align: center;
-  }
 }
+.bdg-td--right { text-align: right; }
+.bdg-td--center { text-align: center; }
+.bdg-td--left { text-align: left; }
+.bdg-td--actions { width: 1px; white-space: nowrap; text-align: right; }
+.bdg-td--empty { padding: 48px 24px; text-align: center; }
 
 .bdg-num {
   font-family: 'SF Mono', 'Roboto Mono', monospace;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.bdg-num--currency {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.bdg-num__symbol {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--erp-text-muted);
+  letter-spacing: 0.5px;
+}
+
+.bdg-num__value {
+  color: var(--erp-text-primary);
 }
 
 .bdg-date {
@@ -1025,10 +994,9 @@ function exportData(format) {
   gap: 2px;
   opacity: 0;
   transition: opacity 0.15s;
-
-  .bdg-tr:hover & {
-    opacity: 1;
-  }
+}
+.bdg-tr:hover .bdg-row-actions {
+  opacity: 1;
 }
 
 .bdg-action-btn {
@@ -1042,21 +1010,17 @@ function exportData(format) {
   align-items: center;
   justify-content: center;
   color: var(--erp-text-secondary);
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: var(--erp-text-primary);
-  }
-
-  &--danger {
-    color: var(--erp-danger);
-    &:hover {
-      background-color: rgba(220, 38, 38, 0.1);
-    }
-  }
+  transition: background-color 0.15s, color 0.15s;
+}
+.bdg-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--erp-text-primary);
+}
+.bdg-action-btn--danger {
+  color: var(--erp-danger);
+}
+.bdg-action-btn--danger:hover {
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
 /* ─── Skeleton ─────────────────────────────────────────────────────────────── */
@@ -1071,10 +1035,9 @@ function exportData(format) {
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
-
-  &--sm {
-    height: 10px;
-  }
+}
+.bdg-skeleton--sm {
+  height: 10px;
 }
 
 @keyframes skeleton-shimmer {
@@ -1092,20 +1055,19 @@ function exportData(format) {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-
-  &__icon {
-    color: var(--erp-text-muted);
-    opacity: 0.5;
-  }
-  &__title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--erp-text-secondary);
-  }
-  &__sub {
-    font-size: 12px;
-    color: var(--erp-text-muted);
-  }
+}
+.bdg-empty-state__icon {
+  color: var(--erp-text-muted);
+  opacity: 0.5;
+}
+.bdg-empty-state__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--erp-text-secondary);
+}
+.bdg-empty-state__sub {
+  font-size: 12px;
+  color: var(--erp-text-muted);
 }
 
 /* ─── Error State ───────────────────────────────────────────────────────────── */
@@ -1117,10 +1079,9 @@ function exportData(format) {
   padding: 48px 24px;
   gap: 8px;
   color: var(--erp-danger);
-
-  &__text {
-    font-size: 14px;
-  }
+}
+.bdg-error-state__text {
+  font-size: 14px;
 }
 
 /* ─── Pagination ──────────────────────────────────────────────────────────── */
@@ -1157,11 +1118,10 @@ function exportData(format) {
   padding: 4px 8px;
   cursor: pointer;
   appearance: none;
-
-  &:focus {
-    outline: none;
-    border-color: var(--erp-primary);
-  }
+}
+.bdg-page-size:focus {
+  outline: none;
+  border-color: var(--erp-primary);
 }
 
 .bdg-page-btn {
@@ -1176,16 +1136,14 @@ function exportData(format) {
   justify-content: center;
   color: var(--erp-text-secondary);
   transition: background-color 0.15s;
-
-  &:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: var(--erp-text-primary);
-  }
-
-  &:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
+}
+.bdg-page-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--erp-text-primary);
+}
+.bdg-page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .bdg-page-label {
@@ -1202,46 +1160,36 @@ function exportData(format) {
   border-left: 1px solid var(--erp-border) !important;
   display: flex;
   flex-direction: column;
-
-  :deep(.q-drawer__content) {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    border-bottom: 1px solid var(--erp-border);
-    flex-shrink: 0;
-  }
-
-  &__title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--erp-text-primary);
-    display: flex;
-    align-items: center;
-  }
-
-  &__body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  &__footer {
-    padding: 16px;
-    border-top: 1px solid var(--erp-border);
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
+}
+.bdg-filter-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--erp-border);
+  flex-shrink: 0;
+}
+.bdg-filter-drawer__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+}
+.bdg-filter-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bdg-filter-drawer__footer {
+  padding: 16px;
+  border-top: 1px solid var(--erp-border);
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .bdg-filter-group {
@@ -1283,13 +1231,12 @@ function exportData(format) {
   color: var(--erp-text-primary);
   outline: none;
   transition: border-color 0.2s;
-
-  &:focus {
-    border-color: var(--erp-primary);
-  }
-  &::placeholder {
-    color: var(--erp-text-placeholder);
-  }
+}
+.bdg-text-input:focus {
+  border-color: var(--erp-primary);
+}
+.bdg-text-input::placeholder {
+  color: var(--erp-text-placeholder);
 }
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
@@ -1303,25 +1250,21 @@ function exportData(format) {
   font-family: var(--erp-font-family);
   cursor: pointer;
   transition: background-color 0.15s;
-
-  &--primary {
-    background-color: var(--erp-primary);
-    color: #fff;
-    border-color: var(--erp-primary);
-
-    &:hover {
-      background-color: var(--erp-primary-hover);
-    }
-  }
-
-  &--secondary {
-    background-color: transparent;
-    color: var(--erp-text-secondary);
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.04);
-    }
-  }
+}
+.bdg-btn--primary {
+  background-color: var(--erp-primary);
+  color: #fff;
+  border-color: var(--erp-primary);
+}
+.bdg-btn--primary:hover {
+  background-color: var(--erp-primary-hover);
+}
+.bdg-btn--secondary {
+  background-color: transparent;
+  color: var(--erp-text-secondary);
+}
+.bdg-btn--secondary:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .bdg-badge-cell {

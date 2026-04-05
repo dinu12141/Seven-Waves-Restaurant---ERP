@@ -608,11 +608,18 @@ async function fetchDashboardData() {
     const occupiedIds = new Set()
     let revenue = 0
 
+    // Filter active orders that actually fall within the selected period
+    const periodActiveOrders = activeOrders.filter((o) => new Date(o.created_at) >= start)
+
     completedOrders.forEach((o) => {
       revenue += o.total_amount || 0
     })
-    activeOrders.forEach((o) => {
+    periodActiveOrders.forEach((o) => {
       if (['served', 'invoiced'].includes(o.status)) revenue += o.total_amount || 0
+    })
+    
+    // Occupancy is based on ALL active orders, regardless of date (e.g. stuck overnight orders)
+    activeOrders.forEach((o) => {
       if (o.table_id) occupiedIds.add(o.table_id)
     })
 
@@ -631,8 +638,8 @@ async function fetchDashboardData() {
       occupied: t.status === 'occupied',
     }))
 
-    // Order type split (active + completed)
-    const allOrders = [...activeOrders, ...completedOrders]
+    // Order type split (periodActiveOrders + completedOrders)
+    const allOrders = [...periodActiveOrders, ...completedOrders]
     dineInCount.value = allOrders.filter((o) => o.order_type === 'dine_in').length
     takeawayCount.value = allOrders.filter((o) => o.order_type !== 'dine_in').length
 

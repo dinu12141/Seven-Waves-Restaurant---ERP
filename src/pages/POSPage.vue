@@ -1,310 +1,243 @@
 <template>
-  <q-page class="pos-terminal">
-    <!-- ══════════════════════════════════════════════════════
-         TOP STATUS BAR
-         ══════════════════════════════════════════════════════ -->
-    <div class="pos-top-bar">
-      <div class="top-bar-left">
-        <span class="top-version">SevenWaves POS v1.0</span>
-        <span class="top-sep">|</span>
-        <span class="top-branch">{{ branchName }}</span>
-      </div>
-      <div class="top-bar-center">
-        <span class="top-user-label">{{ userName }}</span>
-      </div>
-      <div class="top-bar-right">
-        <div class="top-info-grid">
-          <div class="info-row">
-            <span class="info-label">Paid</span>
-            <span class="info-value">{{ fmtCurrency(paidAmount) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Balance</span>
-            <span class="info-value">{{ fmtCurrency(balanceAmount) }}</span>
-          </div>
+  <q-page class="pos-terminal classic-industrial">
+    <!-- TOP STATUS BAR -->
+    <div class="pos-top-bar-thin">
+      <div class="top-title">{{ branchName }} &bull; RestPOS v5.0.437 - R.D.07.27.24</div>
+      <div class="top-cashier">{{ userName }}</div>
+    </div>
+    
+    <div class="pos-top-bar-info">
+      <!-- Left side: Customer/Credit Info -->
+      <div class="info-section customer-info">
+        <div class="info-row">
+          <span class="lbl w-name">NEW</span>
+          <span class="val txt-green">NEW</span>
         </div>
-        <div class="top-total-box">
-          <div class="total-label-top">Total</div>
-          <div class="total-value-top">{{ fmtCurrency(store.total) }}</div>
+        <div class="info-row">
+          <span class="lbl">Select By</span>
+          <input v-model="store.customerName" class="classic-input flex-1" placeholder="Prate" />
         </div>
+        <div class="info-row">
+          <span class="lbl">Fre</span>
+          <span class="lbl mx-2">Cust Bar</span>
+          <span class="lbl ml-auto mr-2">Credit Limit</span>
+          <span class="val txt-white">0</span>
+        </div>
+      </div>
+      
+      <!-- Middle side: Summary -->
+      <div class="info-section summary-info">
+        <div class="summary-line"><span class="slbl">sTotal</span><span class="sval">{{ fmtCurrency(store.subtotal) }}</span></div>
+        <div class="summary-line"><span class="slbl">Discount</span><span class="sval">{{ fmtCurrency(store.discountAmount) }}</span></div>
+        <div class="summary-line"><span class="slbl">sCharge</span><span class="sval">{{ fmtCurrency(store.serviceChargeAmount) }}</span></div>
+        <div class="summary-line"><span class="slbl">DCharge</span><span class="sval">0.00</span></div>
+        <div class="summary-line"><span class="slbl">TAX</span><span class="sval">{{ fmtCurrency(store.taxAmount) }}</span></div>
+      </div>
+      <div class="info-section summary-boxes">
+        <div class="sum-box">
+          <span class="box-lbl">Paid</span>
+          <span class="box-val text-green">{{ fmtCurrency(paidAmount) }}</span>
+        </div>
+        <div class="sum-box">
+          <span class="box-lbl">Balance</span>
+          <span class="box-val text-green">{{ fmtCurrency(balanceAmount) }}</span>
+        </div>
+      </div>
+      
+      <!-- Right side: Total -->
+      <div class="info-section total-info">
+        <div class="total-label-top">Total</div>
+        <div class="total-value-top text-green">{{ fmtCurrency(store.total) }}</div>
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
-         MAIN BODY — 3-column layout
-         ══════════════════════════════════════════════════════ -->
+    <!-- MAIN BODY -->
     <div class="pos-body">
-      <!-- ═══ LEFT: Order Items List ═══ -->
-      <div class="pos-left-panel">
-        <!-- Customer row -->
-        <div class="customer-bar">
-          <div class="cust-field">
-            <span class="cust-label">Customer</span>
-            <input v-model="store.customerName" class="cust-input" placeholder="Walk-in" />
-          </div>
-          <div class="cust-field">
-            <span class="cust-label">Table</span>
-            <span class="cust-value">{{ store.selectedTable || '—' }}</span>
-          </div>
-        </div>
-
-        <!-- Order items table -->
-        <div class="order-items-table-wrap">
-          <table class="order-items-table">
-            <thead>
-              <tr>
-                <th class="th-num">#</th>
-                <th class="th-desc">Description</th>
-                <th class="th-qty">Qty</th>
-                <th class="th-amt">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(item, index) in store.cartItems"
-                :key="item.id"
-                :class="{ selected: selectedItemIndex === index }"
-                @click="selectItem(index)"
-              >
-                <td class="td-num">{{ index + 1 }}</td>
-                <td class="td-desc">
-                  {{ item.name
-                  }}<span v-if="item.variant" class="item-variant"> ({{ item.variant }})</span>
-                </td>
-                <td class="td-qty">{{ item.qty }}</td>
-                <td class="td-amt">{{ fmtCurrency(item.price * item.qty) }}</td>
-              </tr>
-              <!-- Empty rows to fill space -->
-              <tr v-for="n in emptyRows" :key="'empty-' + n" class="empty-row">
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ═══ CENTER: Category Buttons + Function Buttons ═══ -->
-      <div class="pos-center-panel">
-        <!-- Search & Function Menu Row -->
-        <div class="center-top">
-          <!-- Item Search Bar -->
-          <div class="pos-search-bar">
-            <q-input
-              v-model="itemSearchQuery"
-              dense
-              outlined
-              dark
-              placeholder="Search Items..."
-              class="search-input"
-              @update:model-value="onSearchInput"
+      <!-- LEFT: Receipt -->
+      <div class="pos-panel pos-left-panel">
+        <table class="classic-table">
+          <thead>
+            <tr>
+              <th>NEW</th>
+              <th>Amount</th>
+              <th>Description</th>
+              <th class="right">Qty</th>
+              <th class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, index) in store.cartItems"
+              :key="item.id"
+              :class="{ selected: selectedItemIndex === index }"
+              @click="selectItem(index)"
             >
-              <template v-slot:prepend>
-                <q-icon name="search" size="18px" color="primary" />
-              </template>
-              <template v-slot:append v-if="itemSearchQuery">
-                <q-icon
-                  name="close"
-                  size="14px"
-                  class="cursor-pointer"
-                  @click="itemSearchQuery = ''"
-                />
-              </template>
-            </q-input>
-          </div>
-
-          <!-- Scroll up -->
-          <button class="scroll-arrow-btn" @click="scrollCategoriesUp">▲</button>
-
-          <!-- Category Grid -->
-          <div class="category-grid" ref="categoryGridRef">
-            <!-- Search Results Mode -->
-            <template v-if="itemSearchQuery">
-              <button
-                v-for="item in filteredSearchItems"
-                :key="'search-' + item.id"
-                class="cat-btn search-res-btn"
-                @click="handleSearchResultClick(item)"
-              >
-                {{ item.name }}
-              </button>
-              <div
-                v-if="filteredSearchItems.length === 0"
-                class="text-grey-6 text-center q-pa-md col-span-2"
-              >
-                No items found
-              </div>
-            </template>
-
-            <!-- Categories Mode -->
-            <template v-else>
-              <button
-                v-for="cat in categories"
-                :key="cat.id"
-                class="cat-btn"
-                :class="{ active: selectedCategory === cat.name }"
-                @click="selectCategory(cat.name)"
-              >
-                {{ cat.name }}
-              </button>
-            </template>
-          </div>
-
-          <!-- Scroll down -->
-          <button class="scroll-arrow-btn" @click="scrollCategoriesDown">▼</button>
-
-          <!-- Function Menu Button -->
-          <button class="func-menu-btn" @click="toggleFunctionMenu">FUNCTION MENU</button>
-        </div>
-
-        <!-- Function buttons row -->
-        <div class="function-buttons">
-          <button class="fn-btn fn-blue" @click="handleVoid">VOID</button>
-          <button class="fn-btn fn-blue" @click="handleClearOrder">Clear Order</button>
-          <button class="fn-btn fn-blue" @click="handleBack">Back</button>
-
-          <button class="fn-btn fn-blue" @click="handlePrint">PRINT</button>
-          <button class="fn-btn fn-blue" @click="handleOther">Other</button>
-          <button class="fn-btn fn-blue" @click="handleEdit">Edit</button>
-
-          <button class="fn-btn fn-blue fn-wide" @click="handleModifier">Modifier</button>
-          <button class="fn-btn fn-blue fn-wide" @click="handleDivider">Divider</button>
-        </div>
-
-        <!-- Order type buttons -->
-        <div class="order-type-buttons">
-          <button
-            class="ot-btn"
-            :class="{ active: store.orderType === 'dine-in' }"
-            @click="setOrderType('dine-in')"
-          >
-            Table Order
-          </button>
-          <button
-            class="ot-btn"
-            :class="{ active: store.orderType === 'takeaway' }"
-            @click="setOrderType('takeaway')"
-          >
-            Take Away
-          </button>
-          <button
-            class="ot-btn"
-            :class="{ active: store.orderType === 'delivery' }"
-            @click="setOrderType('delivery')"
-          >
-            Delivery
-          </button>
-        </div>
-
-        <!-- Bottom action buttons -->
-        <div class="bottom-actions">
-          <button class="ba-btn ba-blue" @click="handleNewOrder">Order</button>
-          <button class="ba-btn ba-blue" @click="handleOrderLookup">Order<br />Lookup</button>
-          <button class="ba-btn ba-blue" @click="handleClear">Clear</button>
-          <button class="ba-btn ba-save" @click="handleSave">SAVE</button>
-          <button class="ba-btn ba-payment" @click="handlePayment">PAYMENT</button>
+              <td></td>
+              <td>{{ fmtCurrency(item.price) }}</td>
+              <td>{{ item.name }}<span v-if="item.variant"> ({{ item.variant }})</span></td>
+              <td class="right">{{ item.qty }}</td>
+              <td class="right">{{ fmtCurrency(item.price * item.qty) }}</td>
+            </tr>
+            <tr v-for="n in emptyRows" :key="'empty-' + n">
+              <td colspan="5">&nbsp;</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="search-bar-classic">
+          <button class="arrow-btn" @click="scrollCategoriesUp">▲</button>
+          <input v-model="itemSearchQuery" class="classic-input search-input" @keyup="onSearchInput" placeholder="Search..." />
+          <button class="arrow-btn" @click="scrollCategoriesDown">▼</button>
+          <button class="arrow-btn">&lt;&lt;</button>
         </div>
       </div>
 
-      <!-- ═══ RIGHT: Numeric Keypad ═══ -->
-      <div class="pos-right-panel">
-        <div class="numpad-grid">
-          <button class="num-btn" @click="numInput('7')">7</button>
-          <button class="num-btn" @click="numInput('8')">8</button>
-          <button class="num-btn" @click="numInput('9')">9</button>
-          <button class="num-btn" @click="numInput('4')">4</button>
-          <button class="num-btn" @click="numInput('5')">5</button>
-          <button class="num-btn" @click="numInput('6')">6</button>
-          <button class="num-btn" @click="numInput('1')">1</button>
-          <button class="num-btn" @click="numInput('2')">2</button>
-          <button class="num-btn" @click="numInput('3')">3</button>
-          <button class="num-btn" @click="numInput('0')">0</button>
-          <button class="num-btn" @click="numInput('.')">●</button>
-          <button class="num-btn num-x" @click="numClear">X</button>
+      <!-- CENTER: Function Grid -->
+      <div class="pos-panel pos-center-panel">
+        <div class="center-top-grid">
+          <!-- Categories Column -->
+          <div class="categories-area">
+            <button class="cbtn scroll-btn" @click="scrollCategoriesUp">▲</button>
+            <div class="cat-grid">
+              <template v-if="itemSearchQuery">
+                <button
+                  v-for="item in filteredSearchItems"
+                  :key="'search-' + item.id"
+                  class="cbtn c-yellow"
+                  @click="handleSearchResultClick(item)"
+                >
+                  {{ item.name }}
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  v-for="cat in categories"
+                  :key="cat.id"
+                  class="cbtn c-yellow"
+                  :class="{ 'border-active': selectedCategory === cat.name }"
+                  @click="selectCategory(cat.name)"
+                >
+                  {{ cat.name }}
+                </button>
+              </template>
+            </div>
+            <button class="cbtn c-yellow full-w mt-auto" @click="toggleFunctionMenu">FUNCTION MENU</button>
+            <button class="cbtn scroll-btn" @click="scrollCategoriesDown">▼</button>
+          </div>
+          
+          <!-- Actions Grid -->
+          <div class="actions-wrapper">
+             <div class="actions-grid">
+                <button class="abtn a-blue" @click="handleVoid">VOID</button>
+                <button class="abtn a-blue" @click="handleClearOrder">Clear Order</button>
+                <button class="abtn a-blue" @click="handleBack">Back</button>
+
+                <button class="abtn a-blue" @click="handlePrint">PRINT</button>
+                <button class="abtn a-blue" @click="handleOther">Other</button>
+                <button class="abtn a-blue" @click="handleEdit">Edit</button>
+
+                <button class="abtn a-blue" @click="setOrderType('dine-in')">Table Order</button>
+                <button class="abtn a-blue" @click="handleModifier">Modifier</button>
+                <button class="abtn a-blue" @click="handleDivider">Divider</button>
+
+                <button class="abtn a-blue" @click="setOrderType('dine-in')">Table Order</button>
+                <button class="abtn a-blue" @click="setOrderType('takeaway')">Take Away</button>
+                <button class="abtn a-blue" @click="setOrderType('delivery')">Delivery</button>
+
+                <button class="abtn a-blue" @click="handleNewOrder">Order</button>
+                <button class="abtn a-blue" @click="handleOrderLookup">Order Lookup</button>
+                <button class="abtn a-blue" @click="handleClear">Clear</button>
+            </div>
+            <div class="actions-bottom">
+              <button class="abtn a-blue" @click="handleSave" style="flex:1;">SAVE</button>
+              <button class="abtn a-blue" @click="handlePayment" style="flex:1;">PAYMENT</button>
+            </div>
+          </div>
         </div>
-        <button class="enter-btn" @click="numEnter">ENTER</button>
-        <button class="subtotal-btn" @click="handleSubtotal">Subtotal</button>
+      </div>
+
+      <!-- RIGHT: Keypad -->
+      <div class="pos-panel pos-right-panel">
+        <div class="keypad-layout">
+          <div class="keypad-grid">
+            <button class="kbtn" @click="numInput('7')">7</button>
+            <button class="kbtn" @click="numInput('8')">8</button>
+            <button class="kbtn" @click="numInput('9')">9</button>
+            <button class="kbtn" @click="numInput('4')">4</button>
+            <button class="kbtn" @click="numInput('5')">5</button>
+            <button class="kbtn" @click="numInput('6')">6</button>
+            <button class="kbtn" @click="numInput('1')">1</button>
+            <button class="kbtn" @click="numInput('2')">2</button>
+            <button class="kbtn" @click="numInput('3')">3</button>
+            <button class="kbtn" @click="numInput('0')">0</button>
+            <button class="kbtn" @click="numInput('.')">●</button>
+            <button class="kbtn" @click="numClear">x</button>
+          </div>
+          <button class="kbtn-enter mt-1" @click="numEnter">ENTER</button>
+          <button class="kbtn-subtotal mt-1" @click="handleSubtotal">Subtotal</button>
+        </div>
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
-         BOTTOM BAR — Sub-category tabs + Logout
-         ══════════════════════════════════════════════════════ -->
-    <div class="pos-bottom-bar">
-      <div class="subcat-tabs">
+    <!-- BOTTOM SHORTCUTS & SIDEBAR -->
+    <div class="pos-bottom-container">
+      <div class="bottom-shortcuts-grid">
         <button
           v-for="(sub, idx) in subCategories"
           :key="sub.id || idx"
-          class="subcat-btn"
+          class="sbtn"
           :class="{ active: selectedSubCategory === sub.name }"
           @click="selectSubCategory(sub)"
         >
           {{ sub.label }}
         </button>
+        <button v-for="i in Math.max(0, 18 - subCategories.length)" :key="'empty-bottom-' + i" class="sbtn"></button>
       </div>
-      <div class="bottom-right-actions">
-        <button class="logout-btn" @click="handleLogout">Log Out</button>
+
+      <div class="bottom-sidebar">
+        <button class="side-btn arrow-btn">▲</button>
+        <button class="side-btn white-btn" @click="handleLogout">Log Out</button>
+        <button class="side-btn red-btn" @click="handleLogout">Exit</button>
+        <button class="side-btn arrow-btn">▼</button>
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════
-         ITEM PICKER OVERLAY (when sub-category selected)
-         ══════════════════════════════════════════════════════ -->
+    <!-- DIALOGS AND OVERLAYS -->
     <q-dialog v-model="itemPickerOpen" position="bottom" maximized>
-      <q-card class="item-picker-card" dark>
+      <q-card class="item-picker-card" dark style="background: #111; color: #fff; border-radius: 0;">
         <q-card-section class="row items-center q-pb-sm">
-          <q-icon name="restaurant_menu" color="primary" size="20px" class="q-mr-sm" />
-          <span class="text-subtitle1 text-white text-weight-bold">{{
-            selectedSubCategoryLabel
-          }}</span>
+          <q-icon name="restaurant_menu" color="yellow" size="20px" class="q-mr-sm" />
+          <span class="text-subtitle1 text-yellow text-weight-bold" style="text-transform:uppercase;">
+            {{ selectedSubCategoryLabel }}
+          </span>
           <q-space />
-          <q-btn flat round dense icon="close" color="grey-5" v-close-popup />
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-card-section>
-        <q-separator color="grey-8" />
-        <q-card-section class="item-picker-grid-section">
-          <div class="item-picker-grid">
+        <q-separator color="white" />
+        <q-card-section class="item-picker-grid-section" style="background:#222;">
+          <div class="item-picker-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px;">
             <button
               v-for="item in subCategoryItems"
               :key="item.id"
-              class="item-pick-btn"
+              class="cbtn c-yellow"
+              style="height: 80px; display:flex; flex-direction:column; padding:4px;"
               @click="addItemToOrder(item)"
             >
-              <img v-if="item.image" :src="item.image" loading="lazy" class="item-card-img" />
-              <div v-else class="item-card-img-placeholder">
-                <q-icon name="restaurant" size="24px" color="grey-7" />
-              </div>
-              <div class="item-card-text">
-                <div class="ipb-name">{{ item.name }}</div>
-                <div class="ipb-price">LKR {{ item.price.toFixed(0) }}</div>
-              </div>
+              <div style="font-size:11px; font-weight:bold; flex:1;">{{ item.name }}</div>
+              <div style="font-size:10px; color:#000;">LKR {{ item.price.toFixed(0) }}</div>
             </button>
           </div>
-          <div v-if="subCategoryItems.length === 0" class="text-grey-6 text-center q-pa-xl">
+          <div v-if="subCategoryItems.length === 0" class="text-white text-center q-pa-xl">
             No items in this category
           </div>
         </q-card-section>
       </q-card>
     </q-dialog>
 
-    <!-- ══════════════════════════════════════════════════════
-         BILLING QUEUE DRAWER
-         ══════════════════════════════════════════════════════ -->
-    <q-drawer
-      v-model="queueDrawer"
-      side="left"
-      overlay
-      behavior="mobile"
-      :width="380"
-      class="billing-queue-drawer"
-    >
+    <q-drawer v-model="queueDrawer" side="left" overlay behavior="mobile" :width="380">
       <BillingQueue @select="openBilling" @merge-table="openMergedBilling" />
     </q-drawer>
 
-    <!-- Bill Dialog removed — queue orders now use PaymentDialog -->
-
-    <!-- Payment Dialog (handles both POS manual and queue orders) -->
     <PaymentDialog
       ref="paymentDialogRef"
       v-model="paymentDialog"
@@ -326,7 +259,6 @@
       @new-order="handleNewOrderAfterPayment"
       @paid="onOrderPaid"
     />
-    <!-- POS Lock Screen (cashier switch) -->
     <POSLockScreen
       v-model="posLocked"
       :previous-cashier="previousCashierName"
@@ -336,7 +268,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useQuasar, Loading, Notify } from 'quasar'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
@@ -354,6 +286,16 @@ const route = useRoute()
 const store = useOrderStore()
 const cashierStore = useCashierStore()
 const authStore = useAuthStore()
+
+// ── Real-time Clock ─────────────────────────────────────
+const currentTime = ref(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+let clockInterval
+onMounted(() => {
+  clockInterval = setInterval(() => {
+    currentTime.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }, 10000)
+})
+onUnmounted(() => clearInterval(clockInterval))
 
 // ── State ───────────────────────────────────────────────
 const selectedCategory = ref('All')
@@ -379,14 +321,13 @@ const selectedQueueOrder = ref(null)
 const paymentDialogRef = ref(null)
 
 // POS Lock Screen (cashier switch)
-const posLocked = ref(false)
+const posLocked = ref(!authStore.isAuthenticated)
 const previousCashierName = ref('')
 
 // Merged table billing
 const mergedTableOrders = ref([])
 
 // ── Computed ────────────────────────────────────────────
-const branchName = computed(() => authStore.currentBranch?.name || 'SEVEN WAVES')
 const userName = computed(() => authStore.profile?.full_name || 'Cashier')
 
 // Search
@@ -541,8 +482,12 @@ async function fetchMenuItems() {
 }
 
 onMounted(async () => {
-  fetchMenuItems()
-  await cashierStore.initialize()
+  if (authStore.isAuthenticated) {
+    fetchMenuItems()
+    await cashierStore.initialize()
+  } else {
+    posLocked.value = true
+  }
 
   // ── Auto-open billing from notification click ─────────────
   // When navigated via notification with ?order_id=xxx, auto-open the billing dialog
@@ -865,10 +810,6 @@ function handleDivider() {
   })
 }
 
-function toggleFunctionMenu() {
-  Notify.create({ message: 'Function Menu ready', color: 'info', position: 'top', timeout: 800 })
-}
-
 function setOrderType(type) {
   store.orderType = type
   Notify.create({
@@ -1033,18 +974,17 @@ function handleLogout() {
     cancel: { flat: true, color: 'grey-5', noCaps: true, label: 'Cancel' },
     ok: { color: 'orange-8', unelevated: true, noCaps: true, label: 'Lock Terminal' },
   }).onOk(async () => {
-    // Remember who was logged in to show in the lock screen chip
-    previousCashierName.value =
-      authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
+    // Remember who was logged in
+    previousCashierName.value = authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
 
-    // Sign out the current user (clears auth state, session, cache)
+    // LOCK IMMEDIATELY for UI responsiveness
+    posLocked.value = true
+
+    // THEN sign out the current user (clears auth state)
     await authStore.signOut()
 
     // Reinitialize cashier store so it resets for the next user
     cashierStore.cleanup()
-
-    // Show the lock screen overlay — POS stays visible behind it
-    posLocked.value = true
   })
 }
 
@@ -1083,701 +1023,405 @@ function fmtCurrency(val) {
 
 <style scoped>
 /* ══════════════════════════════════════════════════════════
-   POS Terminal — CT Cloud POS Style
+   POS Terminal — Classic Industrial High Contrast Pattern
    ══════════════════════════════════════════════════════════ */
+* {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
 
-.pos-terminal {
-  padding: 0 !important;
+.classic-industrial {
+  padding: 0;
   height: calc(100vh - 52px);
   max-height: calc(100vh - 52px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #0e1a2e;
-  font-family: 'Segoe UI', 'Arial', sans-serif;
+  background: #111;
+  font-family: 'Arial', sans-serif;
   user-select: none;
+  border-top: 1px solid #ccc;
 }
 
-/* ── TOP STATUS BAR ── */
-.pos-top-bar {
+/* TOP BARS */
+.pos-top-bar-thin {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  height: 48px;
-  min-height: 48px;
-  background: linear-gradient(180deg, #1a2e4a 0%, #0e1a2e 100%);
-  border-top: 3px solid #2196f3;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0 8px;
-  gap: 8px;
-}
-
-.top-bar-left {
-  display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
-}
-
-.top-version {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
-}
-
-.top-sep {
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 10px;
-}
-
-.top-branch {
-  font-size: 13px;
-  font-weight: 700;
+  background: #3b5998;
+  padding: 2px 8px;
   color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.top-cashier {
   text-transform: uppercase;
-  white-space: nowrap;
+  color: #fff;
 }
 
-.top-bar-center {
-  flex: 0 0 auto;
-}
-
-.top-user-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 3px 12px;
-  border-radius: 4px;
-}
-
-.top-bar-right {
+.pos-top-bar-info {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
+  background: #000;
+  color: #fff;
+  border-bottom: 2px solid white;
+  padding: 0;
+  height: 90px;
 }
 
-.top-info-grid {
+.info-section {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  border-right: 1px solid #fff;
+  padding: 4px 8px;
 }
-
+.info-section:last-child {
+  border-right: none;
+}
+.customer-info {
+  flex: 1;
+  gap: 4px;
+}
 .info-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.info-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  min-width: 48px;
-  text-align: right;
-}
-
-.info-value {
   font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  min-width: 60px;
-  text-align: right;
 }
-
-.top-total-box {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 4px 14px;
-  text-align: center;
-  min-width: 100px;
+.lbl {
+  color: #ccc;
+  width: 60px;
 }
-
-.total-label-top {
-  font-size: 10px;
-  color: #f44336;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.total-value-top {
+.w-name {
+  width: 100px;
   font-size: 18px;
-  font-weight: 800;
-  color: #4caf50;
-  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.val {
+  color: #fff;
+  font-weight: bold;
+}
+.txt-yellow { color: #ffff00; }
+.txt-green { color: #00ff00; }
+.txt-white { color: #ffffff; }
+.mx-2 { margin-left: 8px; margin-right: 8px; }
+.ml-auto { margin-left: auto; }
+.mr-2 { margin-right: 8px; }
+
+.classic-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #fff;
+  color: #fff;
+  outline: none;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.flex-1 { flex: 1; }
+
+.summary-info {
+  width: 300px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.summary-grid {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  font-size: 11px;
+}
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  width: 120px;
+}
+.slbl { color: #aaa; text-transform: uppercase;}
+.sval { color: #ff9900; font-weight: bold; text-align: right; width: 60px; }
+
+.summary-boxes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  width: 150px;
+}
+.sum-box {
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #fff;
+  padding: 4px 8px;
+  align-items: center;
+}
+.box-lbl { font-size: 14px; font-weight: bold; color: #ff99cc; }
+.box-val { font-size: 18px; font-weight: bold; }
+.text-green { color: #00ff00; }
+
+.total-info {
+  align-items: flex-end;
+  justify-content: flex-start;
+  width: 180px;
+  padding: 4px 20px;
+}
+.total-label-top {
+  color: #ff3333;
+  font-size: 24px;
+  font-weight: bold;
+}
+.total-value-top {
+  font-size: 32px;
+  font-weight: bold;
+  margin-top: -4px;
 }
 
-/* ── MAIN BODY ── */
+/* MAIN BODY */
 .pos-body {
   flex: 1;
   display: flex;
   overflow: hidden;
-  gap: 2px;
+  background: #333;
 }
 
-/* ═══ LEFT PANEL — Order Items ═══ */
-.pos-left-panel {
-  width: 300px;
-  min-width: 260px;
+.pos-panel {
   display: flex;
   flex-direction: column;
-  background: #0a1628;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px;
 }
 
-.customer-bar {
-  display: flex;
-  gap: 4px;
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+/* LEFT */
+.pos-left-panel {
+  width: 400px;
+  background: #222;
 }
-
-.cust-field {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.cust-label {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.4);
-  white-space: nowrap;
-}
-
-.cust-input {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  color: #fff;
-  font-size: 11px;
-  padding: 2px 6px;
-  outline: none;
-}
-
-.cust-input::placeholder {
-  color: rgba(255, 255, 255, 0.25);
-}
-
-.cust-value {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-}
-
-.order-items-table-wrap {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.order-items-table {
+.classic-table {
   width: 100%;
   border-collapse: collapse;
+  background: #fff;
+  color: #000;
+  flex: 1;
+  overflow-y: auto;
+  display: block;
+}
+.classic-table thead, .classic-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.classic-table th {
+  background: #fff;
+  border: 1px solid #000;
   font-size: 11px;
-}
-
-.order-items-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.order-items-table th {
-  background: #1a2a4a;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-  font-size: 10px;
-  padding: 4px 6px;
+  padding: 4px;
   text-align: left;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
+  font-weight: bold;
+}
+.classic-table td {
+  border: 1px solid #000;
+  font-size: 11px;
+  padding: 4px;
+  background: #fff;
+}
+.classic-table .right { text-align: right; }
+.classic-table tbody {
+  display: block;
+  overflow-y: auto;
+  height: calc(100vh - 260px);
+}
+.classic-table tr.selected td {
+  background: #ffff00;
 }
 
-.th-num {
-  width: 24px;
-  text-align: center;
+.search-bar-classic {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
 }
-.th-qty {
-  width: 36px;
-  text-align: center;
-}
-.th-amt {
-  width: 70px;
-  text-align: right;
-}
-
-.order-items-table td {
-  padding: 4px 6px;
-  color: rgba(255, 255, 255, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.td-num {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.3);
-}
-.td-qty {
-  text-align: center;
-  font-weight: 600;
-}
-.td-amt {
-  text-align: right;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.order-items-table tr.selected {
-  background: rgba(33, 150, 243, 0.2);
-  outline: 1px solid rgba(33, 150, 243, 0.4);
-}
-
-.order-items-table tr:not(.empty-row):hover {
-  background: rgba(255, 255, 255, 0.04);
+.arrow-btn {
+  background: #adc2e6;
+  border: 1px solid #000;
+  color: #000;
+  font-weight: bold;
+  padding: 4px 12px;
   cursor: pointer;
 }
-
-.empty-row td {
-  height: 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+.search-input {
+  background: #adc2e6;
+  border: 1px solid #000;
+  flex: 1;
+  color: #000;
+  font-weight: bold;
 }
+.search-input::placeholder { color: #444; }
 
-.item-variant {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-/* ═══ CENTER PANEL — Categories + Functions ═══ */
+/* CENTER */
 .pos-center-panel {
   flex: 1;
+  background: #333;
+}
+.center-top-grid {
+  display: flex;
+  height: 100%;
+  gap: 4px;
+}
+.categories-area {
   display: flex;
   flex-direction: column;
+  width: 180px;
   gap: 4px;
-  padding: 4px;
-  min-width: 0;
 }
-
-.pos-search-bar {
-  margin-bottom: 4px;
-}
-
-.search-input :deep(.q-field__control) {
-  height: 34px !important;
-  min-height: 34px !important;
-  background: rgba(0, 0, 0, 0.2) !important;
-  border-radius: 6px !important;
-}
-
-.search-input :deep(.q-field__native) {
-  font-size: 11px !important;
-}
-.search-res-btn {
-  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%) !important;
-}
-
-.scroll-arrow-btn {
-  width: 100%;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.scroll-arrow-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.category-grid {
+.cat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 40px;
   gap: 4px;
-  overflow-y: auto;
   flex: 1;
-  scrollbar-width: none;
+  overflow-y: auto;
 }
-
-.category-grid::-webkit-scrollbar {
-  display: none;
+.scroll-btn {
+  height: 40px;
+  background: #adc2e6;
+  font-size: 16px;
 }
-
-.cat-btn {
-  padding: 8px 6px;
-  background: linear-gradient(180deg, #7a9e2e 0%, #5a7e1e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #fff;
+.cbtn {
+  border: 2px solid #000;
+  font-weight: bold;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
   cursor: pointer;
   text-align: center;
-  transition: all 0.1s;
-  min-height: 34px;
+  padding: 4px;
+  min-height: 40px;
 }
-
-.cat-btn:hover {
-  filter: brightness(1.15);
+.cbtn:active { filter: brightness(0.8); }
+.border-active { border: 2px solid #fff; }
+.c-yellow {
+  background: #ffff00;
+  color: #000;
 }
+.full-w { width: 100%; }
 
-.cat-btn.active {
-  background: linear-gradient(180deg, #96be3e 0%, #7a9e2e 100%);
-  border-color: #b8d555;
-  box-shadow: 0 0 8px rgba(150, 190, 62, 0.3);
-}
-
-.func-menu-btn {
-  width: 100%;
-  padding: 6px;
-  background: linear-gradient(180deg, #3a5a8e 0%, #2a4a7e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
-}
-
-/* ── Function Buttons ── */
-.function-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.fn-btn {
-  padding: 6px 4px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.1s;
-}
-
-.fn-blue {
-  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
-}
-
-.fn-blue:hover {
-  filter: brightness(1.2);
-}
-
-.fn-wide {
-  grid-column: span 1;
-}
-
-/* ── Order Type Buttons ── */
-.order-type-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.ot-btn {
-  padding: 10px 4px;
-  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.1s;
-}
-
-.ot-btn.active {
-  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
-  border-color: #66bb6a;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
-}
-
-.ot-btn:hover {
-  filter: brightness(1.2);
-}
-
-/* ── Bottom Action Buttons ── */
-.bottom-actions {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.ba-btn {
-  padding: 8px 4px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.1s;
-  line-height: 1.2;
-}
-
-.ba-blue {
-  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
-}
-
-.ba-save {
-  background: linear-gradient(180deg, #3a7ab4 0%, #2a62a4 100%);
-}
-
-.ba-payment {
-  background: linear-gradient(180deg, #7e8ea4 0%, #5e6e84 100%);
-  font-size: 10px;
-}
-
-.ba-btn:hover {
-  filter: brightness(1.2);
-}
-
-/* ═══ RIGHT PANEL — Numeric Keypad ═══ */
-.pos-right-panel {
-  width: 160px;
-  min-width: 140px;
+.actions-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.15);
+}
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 4px;
+  flex: 1;
+}
+.actions-bottom {
+  display: flex;
+  gap: 4px;
+  height: 70px;
+}
+.abtn {
+  border: 2px solid #000;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+}
+.abtn:active { filter: brightness(0.8); }
+.a-blue {
+  background: #3a62ae;
+  color: #fff;
 }
 
-.numpad-grid {
+/* RIGHT */
+.pos-right-panel {
+  width: 240px;
+  background: #2a2a2a;
+  border-left: 1px solid #000;
+}
+.keypad-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.keypad-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
 }
-
-.num-btn {
-  padding: 8px 4px;
-  background: linear-gradient(180deg, #c8d84e 0%, #a8b83e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  color: #1a1a1a;
+.kbtn {
+  background: #fffa86;
+  border: 2px solid #000;
+  color: #000;
+  font-weight: bold;
+  font-size: 20px;
+  height: 60px;
+  cursor: pointer;
+}
+.kbtn:active { background: #e0db76; }
+.kbtn-enter {
+  background: #ffff00;
+  border: 2px solid #000;
+  color: #000;
+  font-weight: bold;
   font-size: 18px;
-  font-weight: 800;
+  height: 65px;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.1s;
+  margin-top: 4px;
 }
-
-.num-btn:hover {
-  filter: brightness(1.1);
-  transform: scale(1.02);
-}
-
-.num-btn:active {
-  transform: scale(0.95);
-}
-
-.num-x {
-  background: linear-gradient(180deg, #e8a84e 0%, #c8883e 100%);
-  color: #fff;
-}
-
-.enter-btn {
-  padding: 12px 4px;
-  background: linear-gradient(180deg, #8e9ec8 0%, #6e7ea8 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.enter-btn:hover {
-  filter: brightness(1.15);
-}
-
-.subtotal-btn {
-  padding: 10px 4px;
-  background: linear-gradient(180deg, #9ea8c8 0%, #7e88a8 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+.kbtn-enter:active { background: #e6e600; }
+.kbtn-subtotal {
+  background: #adc2e6;
+  border: 2px solid #000;
+  color: #000;
+  font-weight: bold;
+  font-size: 16px;
+  height: 50px;
   cursor: pointer;
   margin-top: auto;
 }
 
-.subtotal-btn:hover {
-  filter: brightness(1.15);
-}
-
-/* ── BOTTOM BAR ── */
-.pos-bottom-bar {
+/* BOTTOM AREA */
+.pos-bottom-container {
   display: flex;
-  align-items: stretch;
-  height: 60px;
-  min-height: 60px;
-  background: #0a1220;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.subcat-tabs {
-  flex: 1;
-  display: flex;
-  gap: 3px;
-  padding: 4px;
-  overflow-x: auto;
-  align-items: stretch;
-  scrollbar-width: none;
-}
-
-.subcat-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.subcat-btn {
-  padding: 4px 10px;
-  background: linear-gradient(180deg, #1a2e4a 0%, #0e1a2e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  white-space: nowrap;
-  min-width: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.1s;
-}
-
-.subcat-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.subcat-btn.active {
-  background: linear-gradient(180deg, #2a62a4 0%, #1a4a8a 100%);
-  color: #fff;
-  border-color: rgba(33, 150, 243, 0.3);
-}
-
-.bottom-right-actions {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  background: #000;
   padding: 4px;
   gap: 4px;
+  height: 140px;
+  border-top: 2px solid #fff;
 }
 
-.logout-btn {
-  padding: 8px 16px;
-  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  filter: brightness(1.15);
-}
-
-/* ── Item Picker Dialog ── */
-.item-picker-card {
-  background: #0e1a2e;
-  max-height: 60vh;
-}
-
-.item-picker-grid-section {
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.item-picker-grid {
+.bottom-shortcuts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 6px;
-}
-
-.item-pick-btn {
-  padding: 0;
-  background: linear-gradient(180deg, #7a9e2e 0%, #5a7e1e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.1s;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.item-pick-btn:hover {
-  filter: brightness(1.15);
-  transform: scale(1.02);
-}
-
-.item-pick-btn:active {
-  transform: scale(0.95);
-}
-
-.item-card-img,
-.item-card-img-placeholder {
-  width: 100%;
-  height: 70px;
-  object-fit: cover;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.item-card-img-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.item-card-text {
-  padding: 6px;
-  width: 100%;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
   flex: 1;
+}
+
+.sbtn {
+  background: #ffff00;
+  border: 1px solid #000;
+  color: #000;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.sbtn.active {
+  border: 2px solid #fff;
+}
+
+.bottom-sidebar {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  width: 80px;
+  gap: 4px;
 }
+.side-btn {
+  flex: 1;
+  border: 1px solid #000;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+}
+.white-btn { background: #fff; color: #000; }
+.red-btn { background: #cc0000; color: #fff; }
 
-.ipb-name {
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 2px;
-  line-height: 1.1;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ipb-price {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 700;
-}
+.mt-1 { margin-top: 4px; }
+.mt-auto { margin-top: auto; }
 </style>

@@ -87,41 +87,27 @@
 
       <!-- ── Quick Actions ─────────────────────────── -->
       <div class="q-px-md q-mt-md">
-        <div class="section-title">Quick Actions</div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-4">
-            <q-btn
-              unelevated
-              class="quick-btn full-width"
-              color="deep-purple"
-              icon="list_alt"
-              label="Queue"
-              to="/delivery-app"
-              no-caps
-            />
-          </div>
-          <div class="col-4">
-            <q-btn
-              unelevated
-              class="quick-btn full-width"
-              color="blue-8"
-              icon="map"
-              label="Map"
-              to="/delivery-app/map"
-              no-caps
-            />
-          </div>
-          <div class="col-4">
-            <q-btn
-              unelevated
-              class="quick-btn full-width"
-              color="grey-8"
-              icon="history"
-              label="History"
-              to="/delivery-app/history"
-              no-caps
-            />
-          </div>
+        <div class="section-title">QUICK ACTIONS</div>
+        <div class="quick-actions-row">
+
+          <!-- Queue -->
+          <router-link to="/delivery-app" class="quick-action-card quick-action-card--purple">
+            <q-icon name="list_alt" size="22px" class="quick-action-icon" />
+            <span class="quick-action-label">Queue</span>
+          </router-link>
+
+          <!-- Map -->
+          <router-link to="/delivery-app/map" class="quick-action-card quick-action-card--blue">
+            <q-icon name="map" size="22px" class="quick-action-icon" />
+            <span class="quick-action-label">Map</span>
+          </router-link>
+
+          <!-- History -->
+          <router-link to="/delivery-app/history" class="quick-action-card quick-action-card--slate">
+            <q-icon name="history" size="22px" class="quick-action-icon" />
+            <span class="quick-action-label">History</span>
+          </router-link>
+
         </div>
       </div>
 
@@ -655,7 +641,7 @@ async function onRefresh(done) {
 .hero-role-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
   color: #ede9fe;
@@ -669,7 +655,7 @@ async function onRefresh(done) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.3px;
   padding: 3px 9px;
@@ -697,7 +683,7 @@ async function onRefresh(done) {
   align-items: center;
   gap: 4px;
   margin-top: 6px;
-  font-size: 10px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.3px;
 }
@@ -782,13 +768,13 @@ async function onRefresh(done) {
   height: 28px;
 }
 .kpi-value {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1;
 }
 .kpi-label {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.93rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   opacity: 0.85;
@@ -798,18 +784,71 @@ async function onRefresh(done) {
 .section-title {
   display: flex;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.95rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #4b5563;
   margin-bottom: 10px;
 }
-.quick-btn {
-  height: 44px;
-  border-radius: 10px !important;
-  font-weight: 600;
-  font-size: 12px;
+// ── Quick Actions ────────────────────────
+.quick-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.quick-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 70px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+
+  &:active {
+    transform: scale(0.95);
+    opacity: 0.85;
+  }
+
+  // ─ Color variants ─
+  &--purple {
+    background: rgba(109, 40, 217, 0.15);
+    border-color: rgba(109, 40, 217, 0.35);
+    color: #a78bfa;
+  }
+  &--blue {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(37, 99, 235, 0.35);
+    color: #60a5fa;
+  }
+  &--slate {
+    background: rgba(100, 116, 139, 0.12);
+    border-color: rgba(100, 116, 139, 0.3);
+    color: #94a3b8;
+  }
+}
+
+.quick-action-icon {
+  // icon size set inline via size prop
+  opacity: 0.95;
+}
+
+.quick-action-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  opacity: 0.9;
 }
 
 // ── Loading / Empty ──────────────────────
@@ -821,7 +860,7 @@ async function onRefresh(done) {
   padding: 60px 0;
 }
 .loading-text {
-  font-size: 13px;
+  font-size: 15px;
   color: #9e9e9e;
 }
 .empty-state {
@@ -838,7 +877,7 @@ async function onRefresh(done) {
   color: #bdbdbd;
 }
 .empty-sub {
-  font-size: 12px;
+  font-size: 14px;
   color: #757575;
   max-width: 260px;
 }
@@ -869,7 +908,7 @@ async function onRefresh(done) {
   margin-bottom: 10px;
 }
 .order-badge {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 800;
   color: #e8eaf0;
   &--active {
@@ -877,7 +916,7 @@ async function onRefresh(done) {
   }
 }
 .source-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #ce93d8;
   background: rgba(206, 147, 216, 0.12);
@@ -886,8 +925,8 @@ async function onRefresh(done) {
   letter-spacing: 0.4px;
 }
 .status-chip {
-  font-size: 10px !important;
-  height: 20px !important;
+  font-size: 14px !important;
+  height: 24px !important;
 }
 .card-details {
   display: flex;
@@ -898,7 +937,7 @@ async function onRefresh(done) {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
+  font-size: 16px;
   color: #bdbdbd;
 }
 .address-text {
@@ -914,8 +953,8 @@ async function onRefresh(done) {
 }
 .accept-btn {
   width: 100%;
-  height: 42px;
-  font-size: 13px;
+  height: 48px;
+  font-size: 17px;
   font-weight: 700;
   border-radius: 10px;
   letter-spacing: 0.3px;
@@ -929,7 +968,7 @@ async function onRefresh(done) {
   padding-top: 10px;
 }
 .card-action-btn {
-  font-size: 11px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
 }
@@ -938,11 +977,11 @@ async function onRefresh(done) {
   align-items: center;
   justify-content: space-between;
   margin-top: 10px;
-  font-size: 10px;
+  font-size: 12px;
   color: #757575;
 }
 .time-ago {
-  font-size: 10px;
+  font-size: 15px;
   color: #757575;
   margin-left: auto;
 }
@@ -968,7 +1007,7 @@ async function onRefresh(done) {
 }
 
 .items-label {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #6b7280;
   letter-spacing: 1px;
@@ -976,7 +1015,7 @@ async function onRefresh(done) {
 }
 
 .tap-hint {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: #4b5563;
 }
 
@@ -985,7 +1024,7 @@ async function onRefresh(done) {
   align-items: center;
   gap: 6px;
   padding: 4px 0;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   transition: all 0.2s ease;
   border-radius: 6px;
 
@@ -1011,13 +1050,13 @@ async function onRefresh(done) {
   font-weight: 700;
   color: #ce93d8;
   min-width: 26px;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
 }
 
 .item-name {
   color: #d1d5db;
   flex: 1;
-  font-size: 0.8rem;
+  font-size: 0.90rem;
   transition: all 0.2s;
 
   &--strike {
@@ -1070,7 +1109,7 @@ async function onRefresh(done) {
 .unavail-summary {
   display: flex;
   align-items: center;
-  font-size: 0.68rem;
+  font-size: 0.83rem;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.08);
   border: 1px dashed rgba(245, 158, 11, 0.3);

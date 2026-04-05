@@ -1,6 +1,6 @@
 {
   "appId": "com.sevenwaves.erp",
-  "appName": "Seven Waves",
+  "appName": "Seven Waves ERP",
   "webDir": "www",
   "server": {
     "androidScheme": "https"

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mgr-orders-page" :class="{ lt: !$q.dark.isActive }" padding>
     <!-- Page Header -->
     <div class="page-header q-mb-md">
@@ -92,8 +92,7 @@ const tab = ref('pending')
 
 <style lang="scss" scoped>
 .mgr-orders-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-orders-page.lt {
@@ -135,7 +134,7 @@ const tab = ref('pending')
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   margin-top: 1px;
 }
@@ -160,7 +159,7 @@ const tab = ref('pending')
   border: 1px solid #e5e7eb;
 }
 .order-tabs :deep(.q-tab) {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   min-height: 38px;
 }

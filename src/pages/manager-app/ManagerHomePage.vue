@@ -23,47 +23,47 @@
     <!-- KPI Cards -->
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6">
-      <div class="kpi-card kpi--cyan" style="cursor:pointer" @click="openShiftStaffDialog">
+        <div class="kpi-card kpi--cyan" style="cursor:pointer" @click="openShiftStaffDialog">
           <div class="kpi-icon-wrap kpi-icon--cyan">
-            <q-icon name="groups" size="18px" />
+            <q-icon name="groups" size="20px" />
           </div>
           <div class="kpi-content">
-            <div class="kpi-val">{{ store.onShiftCount }}</div>
-            <div class="kpi-lbl">On-Shift</div>
+            <span class="kpi-val">{{ store.onShiftCount }}</span>
+            <span class="kpi-lbl">On-Shift</span>
           </div>
-          <q-icon name="chevron_right" size="18px" style="opacity:0.3" />
+          <q-icon name="chevron_right" size="16px" class="kpi-arrow" />
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--orange">
           <div class="kpi-icon-wrap kpi-icon--orange">
-            <q-icon name="pending_actions" size="18px" />
+            <q-icon name="pending_actions" size="20px" />
           </div>
           <div class="kpi-content">
-            <div class="kpi-val">{{ store.pendingOrderCount }}</div>
-            <div class="kpi-lbl">Pending</div>
+            <span class="kpi-val">{{ store.pendingOrderCount }}</span>
+            <span class="kpi-lbl">Pending</span>
           </div>
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--green">
           <div class="kpi-icon-wrap kpi-icon--green">
-            <q-icon name="restaurant" size="18px" />
+            <q-icon name="restaurant" size="20px" />
           </div>
           <div class="kpi-content">
-            <div class="kpi-val">{{ store.totalActiveOrders }}</div>
-            <div class="kpi-lbl">Active</div>
+            <span class="kpi-val">{{ store.totalActiveOrders }}</span>
+            <span class="kpi-lbl">Active</span>
           </div>
         </div>
       </div>
       <div class="col-6">
         <div class="kpi-card kpi--purple">
           <div class="kpi-icon-wrap kpi-icon--purple">
-            <q-icon name="check_circle" size="18px" />
+            <q-icon name="check_circle" size="20px" />
           </div>
           <div class="kpi-content">
-            <div class="kpi-val">{{ store.servedTodayCount }}</div>
-            <div class="kpi-lbl">Served</div>
+            <span class="kpi-val">{{ store.servedTodayCount }}</span>
+            <span class="kpi-lbl">Served</span>
           </div>
         </div>
       </div>
@@ -97,17 +97,18 @@
     <div class="section-title q-mb-sm">QUICK ACTIONS</div>
     <div class="row q-col-gutter-sm q-mb-lg">
       <div class="col-6" v-for="action in quickActions" :key="action.to">
-        <q-btn
-          class="quick-action-btn full-width"
-          unelevated
-          no-caps
-          :to="action.to"
+        <div 
+          class="qa-card" 
+          v-ripple 
+          @click="$router.push(action.to)"
         >
           <div class="qa-icon-wrap" :style="{ background: action.bg }">
-            <q-icon :name="action.icon" size="18px" color="white" />
+            <q-icon :name="action.icon" size="20px" color="white" />
           </div>
-          <span class="qa-label">{{ action.label }}</span>
-        </q-btn>
+          <div class="qa-content">
+            <span class="qa-label">{{ action.label }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -385,8 +386,6 @@ function statusLabel(status) {
 @import '../waiter-app/waiter-shared.scss';
 
 .mgr-home-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
   background: #090c14;
   transition: background 0.25s ease;
 
@@ -401,7 +400,7 @@ function statusLabel(status) {
   padding: 4px 0;
 }
 .welcome-greeting {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 400;
   color: #9ca3af;
   transition: color 0.25s ease;
@@ -414,7 +413,7 @@ function statusLabel(status) {
 }
 .lt .welcome-name { color: #1e293b; }
 .welcome-sub {
-  font-size: 0.72rem;
+  font-size: 0.90rem;
   color: #6b7280;
   margin-top: 4px;
   display: flex;
@@ -431,7 +430,7 @@ function statusLabel(status) {
 
 // ─── Section Title ─────────────────────────────────────────────────────────────────
 .section-title {
-  font-size: 0.65rem;
+  font-size: 0.95rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -442,81 +441,94 @@ function statusLabel(status) {
 
 // ─── KPI Cards ───────────────────────────────────────────────────────────────
 .kpi-card {
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 16px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  transition: all 0.2s ease;
-}
-.kpi-card {
+  position: relative;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.25s ease, border-color 0.25s ease;
+  min-height: 82px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
+
 .lt .kpi-card {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .kpi-icon-wrap {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-right: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
-.kpi-icon--cyan {
-  background: rgba(6, 182, 212, 0.12);
-  color: #06b6d4;
-}
-.kpi-icon--orange {
-  background: rgba(249, 115, 22, 0.12);
-  color: #f97316;
-}
-.kpi-icon--green {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-}
-.kpi-icon--purple {
-  background: rgba(139, 92, 246, 0.12);
-  color: #8b5cf6;
-}
+
+.kpi-icon--cyan   { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
+.kpi-icon--orange { background: rgba(249, 115, 22, 0.15); color: #fb923c; }
+.kpi-icon--green  { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.kpi-icon--purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
 
 .kpi-content {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
 }
+
 .kpi-val {
-  font-size: 1.5rem;
-  font-weight: 800;
-  line-height: 1;
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
 }
+
 .kpi-lbl {
-  font-size: 0.62rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #6b7280;
-  margin-top: 3px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  margin-top: 1px;
+  white-space: nowrap;
 }
 
-.kpi--cyan .kpi-val { color: #0ea5e9; }
-.kpi--orange .kpi-val { color: #f97316; }
-.kpi--green .kpi-val { color: #10b981; }
-.kpi--purple .kpi-val { color: #8b5cf6; }
+.kpi--cyan .kpi-val { color: #38bdf8; }
+.kpi--orange .kpi-val { color: #fb923c; }
+.kpi--green .kpi-val { color: #34d399; }
+.kpi--purple .kpi-val { color: #a78bfa; }
 
-.kpi--cyan { border-color: rgba(34, 211, 238, 0.15); }
-.kpi--orange { border-color: rgba(249, 115, 22, 0.15); }
-.kpi--green { border-color: rgba(34, 197, 94, 0.15); }
-.kpi--purple { border-color: rgba(167, 139, 250, 0.15); }
+.kpi-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4b5563;
+  opacity: 0.4;
+}
 
-.lt .kpi--cyan { border-color: rgba(14, 165, 233, 0.2); }
-.lt .kpi--orange { border-color: rgba(249, 115, 22, 0.2); }
-.lt .kpi--green { border-color: rgba(16, 185, 129, 0.2); }
-.lt .kpi--purple { border-color: rgba(139, 92, 246, 0.2); }
+.kpi--cyan { border-left: 4px solid #38bdf8; }
+.kpi--orange { border-left: 4px solid #fb923c; }
+.kpi--green { border-left: 4px solid #34d399; }
+.kpi--purple { border-left: 4px solid #a78bfa; }
+
+.lt .kpi-lbl { color: #64748b; }
+.lt .kpi--cyan { border-left: 4px solid #0ea5e9; }
+.lt .kpi--orange { border-left: 4px solid #f97316; }
+.lt .kpi--green { border-left: 4px solid #10b981; }
+.lt .kpi--purple { border-left: 4px solid #8b5cf6; }
 
 // ─── Alert Banners ───────────────────────────────────────────────────────────
 .alert-banner {
@@ -550,12 +562,12 @@ function statusLabel(status) {
   gap: 1px;
 }
 .alert-banner__title {
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 .alert-banner__sub {
-  font-size: 0.68rem;
-  opacity: 0.7;
+  font-size: 0.90rem;
+  opacity: 0.85;
 }
 
 .alert-banner--warning {
@@ -583,7 +595,7 @@ function statusLabel(status) {
 }
 
 .alert-banner__action {
-  font-size: 0.75rem !important;
+  font-size: 0.90rem !important;
   font-weight: 700 !important;
   color: #fbbf24 !important;
   border-radius: 6px !important;
@@ -595,55 +607,64 @@ function statusLabel(status) {
 .lt .alert-banner__action--info { color: #0d9488 !important; }
 
 // ─── Quick Actions ───────────────────────────────────────────────────────────
-.quick-action-btn {
-  font-weight: 600 !important;
-  font-size: 0.78rem !important;
-  height: 56px !important;
-  border-radius: 12px !important;
-  display: flex !important;
-  gap: 10px !important;
-  justify-content: flex-start !important;
-  padding: 0 14px !important;
+.qa-card {
+  height: 68px;
+  border-radius: 14px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 
-  :deep(.q-btn__content) {
-    flex-direction: row !important;
-    gap: 10px;
-    justify-content: flex-start;
+  &:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.05);
   }
 }
-.quick-action-btn {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  color: #d1d5db !important;
-  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease !important;
-}
-.quick-action-btn:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-.lt .quick-action-btn {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
-  color: #374151 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-.lt .quick-action-btn:hover {
-  background: #f9fafb !important;
+
+.lt .qa-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .qa-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-right: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
+
+.qa-content {
+  flex: 1;
+  min-width: 0;
+}
+
 .qa-label {
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #e5e7eb;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+
+.lt .qa-label {
+  color: #1e293b;
+}
+
 
 // ─── Shift Staff Dialog ─────────────────────────────────────────────────────
 // Note: q-dialog teleports to body; these styles are scoped but use :deep
@@ -689,13 +710,13 @@ function statusLabel(status) {
   color: #06b6d4;
 }
 .ss-header__title {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: #f3f4f6;
 }
 .body--light .ss-header__title { color: #0f172a; }
 .ss-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.95rem;
   color: #6b7280;
   margin-top: 2px;
 }
@@ -716,7 +737,7 @@ function statusLabel(status) {
   gap: 5px;
   padding: 5px 10px;
   border-radius: 8px;
-  font-size: 0.68rem;
+  font-size: 0.90rem;
   font-weight: 700;
 }
 .ss-chip--present {
@@ -762,7 +783,7 @@ function statusLabel(status) {
   border-color: #e2e8f0;
 }
 .ss-tabs .q-tab {
-  font-size: 0.72rem;
+  font-size: 0.95rem;
   font-weight: 600;
   min-height: 36px;
   color: #6b7280;
@@ -779,7 +800,7 @@ function statusLabel(status) {
   padding: 10px 16px 6px;
 }
 .ss-dept-chip {
-  font-size: 0.68rem !important;
+  font-size: 0.90rem !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
 }
@@ -793,15 +814,15 @@ function statusLabel(status) {
   padding: 40px 16px;
   gap: 10px;
   color: #6b7280;
-  font-size: 0.8rem;
+  font-size: 0.95rem;
 }
 .ss-empty__text {
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: #9ca3af;
 }
 .ss-empty__sub {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
 }
 
@@ -829,7 +850,7 @@ function statusLabel(status) {
 .ss-staff-row:last-child { border-bottom: none; }
 
 .ss-avatar {
-  font-size: 0.65rem;
+  font-size: 0.80rem;
   font-weight: 800;
   color: #fff;
   flex-shrink: 0;
@@ -840,7 +861,7 @@ function statusLabel(status) {
   min-width: 0;
 }
 .ss-staff-name {
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #f3f4f6;
   white-space: nowrap;
@@ -849,7 +870,7 @@ function statusLabel(status) {
 }
 .body--light .ss-staff-name { color: #1e293b; }
 .ss-staff-meta {
-  font-size: 0.66rem;
+  font-size: 0.81rem;
   color: #6b7280;
   margin-top: 1px;
   display: flex;
@@ -859,7 +880,7 @@ function statusLabel(status) {
 .body--light .ss-staff-meta { color: #94a3b8; }
 .ss-dot { opacity: 0.5; }
 .ss-staff-shift {
-  font-size: 0.62rem;
+  font-size: 0.77rem;
   color: #4b5563;
   margin-top: 2px;
   display: flex;
@@ -879,12 +900,12 @@ function statusLabel(status) {
   flex-shrink: 0;
 }
 .ss-status-chip {
-  font-size: 0.6rem !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
 }
 .ss-staff-code {
-  font-size: 0.58rem;
+  font-size: 0.73rem;
   color: #4b5563;
   font-family: monospace;
   letter-spacing: 0.5px;

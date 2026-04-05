@@ -20,7 +20,7 @@ export const useOrderStore = defineStore('posOrder', () => {
   const tableNumber = ref(null) // simple integer table number (1-80)
   const customerName = ref('')
   const discount = ref(0) // percentage
-  const taxRate = ref(10) // percentage
+  const taxRate = ref(0) // percentage (Disabled: the restaurant exclusively uses Service Charge)
   const orderNumber = ref(_generateOrderNumber())
   const isSending = ref(false) // loading state for send-to-kitchen
 

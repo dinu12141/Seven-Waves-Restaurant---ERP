@@ -115,6 +115,9 @@
             >
               {{ props.row.discount > 0 ? `(${fmtLKR(props.row.discount)})` : '-' }}
             </q-td>
+            <q-td key="service_charge" :props="props" class="report-table__td report-table__td--num">
+              {{ fmtLKR(props.row.service_charge) }}
+            </q-td>
             <q-td key="tax" :props="props" class="report-table__td report-table__td--num">
               {{ fmtLKR(props.row.tax) }}
             </q-td>
@@ -156,6 +159,9 @@
             >
               ({{ fmtLKR(totals.discount) }})
             </q-td>
+            <q-td class="report-table__td report-table__td--num report-table__td--bold">{{
+              fmtLKR(totals.service_charge)
+            }}</q-td>
             <q-td class="report-table__td report-table__td--num report-table__td--bold">{{
               fmtLKR(totals.tax)
             }}</q-td>
@@ -278,6 +284,7 @@ const columns = [
   { name: 'branch', label: 'Branch', field: 'branch', align: 'left', sortable: true },
   { name: 'subtotal', label: 'Subtotal', field: 'subtotal', align: 'right', sortable: true },
   { name: 'discount', label: 'Discount', field: 'discount', align: 'right', sortable: false },
+  { name: 'service_charge', label: 'Service Charge', field: 'service_charge', align: 'right', sortable: false },
   { name: 'tax', label: 'Tax', field: 'tax', align: 'right', sortable: false },
   { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true },
   {
@@ -306,6 +313,7 @@ const filteredRows = computed(() => {
 const totals = computed(() => ({
   subtotal: filteredRows.value.reduce((s, r) => s + (r.subtotal || 0), 0),
   discount: filteredRows.value.reduce((s, r) => s + (r.discount || 0), 0),
+  service_charge: filteredRows.value.reduce((s, r) => s + (r.service_charge || 0), 0),
   tax: filteredRows.value.reduce((s, r) => s + (r.tax || 0), 0),
   total: filteredRows.value.reduce((s, r) => s + (r.total || 0), 0),
 }))
@@ -356,9 +364,11 @@ async function loadData() {
         subtotal,
         discount_amount,
         tax_amount,
+        service_charge,
         total_amount,
         status,
         payment_status,
+        payment_method,
         order_type,
         branch_id,
         branches (name),
@@ -415,6 +425,11 @@ async function loadData() {
           }
           if (paymentMode !== '—') break
         }
+        
+        // Fallback to order's direct payment method
+        if (paymentMode === '—' && r.payment_method) {
+          paymentMode = String(r.payment_method).charAt(0).toUpperCase() + String(r.payment_method).slice(1)
+        }
 
         // Filter by payment mode if set
         if (
@@ -428,7 +443,7 @@ async function loadData() {
         const firstInv = invoices[0] || null
         // Support both invoice_no (text) and invoice_number (int) columns
         const invoiceLabel = firstInv?.invoice_no || 
-          (firstInv?.invoice_number ? `INV-${firstInv.invoice_number}` : '')
+          (firstInv?.invoice_number ? `INV-${firstInv.invoice_number}` : (r.order_number ? `#${r.order_number}` : `INV-${r.id?.slice(0, 8)}`))
 
         return {
           id: r.id,
@@ -439,6 +454,7 @@ async function loadData() {
           branch: r.branches?.name || '—',
           subtotal: Number(r.subtotal || 0),
           discount: Number(r.discount_amount || 0),
+          service_charge: Number(r.service_charge || 0),
           tax: Number(r.tax_amount || 0),
           total: Number(r.total_amount || 0),
           payment_mode: paymentMode,
@@ -479,6 +495,7 @@ function exportCSV() {
         r.branch,
         r.subtotal,
         r.discount,
+        r.service_charge,
         r.tax,
         r.total,
         r.payment_mode,
@@ -502,6 +519,7 @@ function exportExcel() {
         r.branch,
         r.subtotal,
         r.discount,
+        r.service_charge,
         r.tax,
         r.total,
         r.payment_mode,

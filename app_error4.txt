@@ -1,0 +1,93 @@
+﻿
+
+TimeGenerated : 4/4/2026 
+                12:19:03 
+                AM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                0.0.1.0, 
+                time 
+                stamp: 0x
+                6618551d
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                0.0.1.0, 
+                time 
+                stamp: 0x
+                6618551d
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                020223ab
+                Faulting 
+                process 
+                id: 
+                0x8fd4
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc39a8a8
+                468b5
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 01a08
+                2b0-47b2-
+                43cd-a470
+                -d4af62ef
+                1207
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+
+

@@ -1,7 +1,7 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="manager-app-layout" :class="{ 'manager-app-layout--light': !$q.dark.isActive }">
+  <q-layout view="hHh lpR fFf" class="manager-app-layout mobile-app-shell" :class="{ 'manager-app-layout--light': !$q.dark.isActive }">
     <!-- ── Top Bar ───────────────────────────────────────────────────────── -->
-    <q-header class="manager-top-bar" :class="{ 'manager-top-bar--light': !$q.dark.isActive }">
+    <q-header class="manager-top-bar mobile-top-bar" :class="{ 'manager-top-bar--light': !$q.dark.isActive }">
       <q-toolbar class="manager-toolbar">
         <!-- Brand Logo -->
         <div class="manager-brand">
@@ -101,7 +101,7 @@
     </q-header>
 
     <!-- ── Page Content ──────────────────────────────────────────────────── -->
-    <q-page-container class="manager-page-container">
+    <q-page-container>
       <router-view v-slot="{ Component }">
         <transition name="tab-fade" mode="out-in">
           <component :is="Component" />
@@ -110,18 +110,18 @@
     </q-page-container>
 
     <!-- ── Bottom Navigation ─────────────────────────────────────────────── -->
-    <q-footer class="manager-bottom-nav">
-      <div class="bottom-nav-bar" :class="{ 'bottom-nav-bar--light': !$q.dark.isActive }">
+    <q-footer class="manager-bottom-nav mobile-bottom-nav">
+      <div class="bottom-nav-bar mobile-nav-bar" :class="{ 'bottom-nav-bar--light': !$q.dark.isActive }">
         <router-link
           v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
           custom
-          v-slot="{ isExactActive, navigate }"
+          v-slot="{ isActive, isExactActive, navigate }"
         >
-          <button class="nav-tab" :class="{ 'nav-tab--active': isExactActive }" @click="navigate">
+          <button class="nav-tab" :class="{ 'nav-tab--active': tab.exact ? isExactActive : isActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
-              <q-icon :name="isExactActive ? tab.iconActive || tab.icon : tab.icon" size="38px" />
+              <q-icon :name="(tab.exact ? isExactActive : isActive) ? (tab.iconActive || tab.icon) : tab.icon" size="32px" />
               <q-badge
                 v-if="tab.badge && tab.badge.value > 0"
                 color="red"
@@ -133,7 +133,7 @@
               </q-badge>
             </div>
             <span class="nav-tab__label">{{ tab.label }}</span>
-            <div v-if="isExactActive" class="nav-tab__indicator" />
+            <div v-if="tab.exact ? isExactActive : isActive" class="nav-tab__indicator" />
           </button>
         </router-link>
       </div>
@@ -204,6 +204,9 @@ function playAlertSound(severity) {
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  // Mark body for mobile app scroll prevention
+  document.body.classList.add('mobile-app-active')
+
   // Listen for manager alert events
   window.addEventListener('mgr-alert', handleMgrAlert)
 
@@ -230,6 +233,7 @@ onMounted(async () => {
   await store.initialize()
 })
 onUnmounted(() => {
+  document.body.classList.remove('mobile-app-active')
   store.cleanup()
   window.removeEventListener('mgr-alert', handleMgrAlert)
 })
@@ -254,7 +258,7 @@ async function logout() {
 
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
 const tabs = computed(() => [
-  { label: 'Home', icon: 'space_dashboard', iconActive: 'space_dashboard', to: '/manager-app' },
+  { label: 'Home', icon: 'space_dashboard', iconActive: 'space_dashboard', to: '/manager-app', exact: true },
   { label: 'Floor', icon: 'supervisor_account', iconActive: 'supervisor_account', to: '/manager-app/floor' },
   {
     label: 'Orders',
@@ -309,7 +313,7 @@ const tabs = computed(() => [
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: background 0.25s ease !important;
-  padding-top: env(safe-area-inset-top) !important;
+  // safe-area-inset-top handled by .mobile-top-bar
 
   &--light {
     background: rgba(255, 255, 255, 0.97) !important;
@@ -318,11 +322,7 @@ const tabs = computed(() => [
   }
 }
 
-.manager-toolbar {
-  height: 56px;
-  min-height: 56px;
-  padding: 0 12px;
-}
+// .manager-toolbar — height/padding handled by .mobile-top-bar .q-toolbar
 
 .manager-brand {
   display: flex;
@@ -444,7 +444,7 @@ const tabs = computed(() => [
   min-width: 0;
 }
 .mum-name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #f3f4f6;
   white-space: nowrap;
@@ -455,7 +455,7 @@ const tabs = computed(() => [
   color: #1e293b;
 }
 .mum-role {
-  font-size: 11px;
+  font-size: 12px;
   color: #22d3ee;
   margin-top: 2px;
   font-weight: 600;
@@ -471,7 +471,7 @@ const tabs = computed(() => [
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: #9ca3af;
 }
@@ -491,7 +491,7 @@ const tabs = computed(() => [
 
 .mum-item {
   min-height: 44px !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
   color: #e5e7eb !important;
   padding: 0 16px !important;
   gap: 10px;
@@ -520,27 +520,17 @@ const tabs = computed(() => [
 }
 
 // ─── Page Container ──────────────────────────────────────────────────────────
-.manager-page-container {
-  padding-bottom: 80px !important;
-  min-height: calc(100vh - 56px - 72px);
-}
+// padding-bottom auto-calculated by Quasar; min-height handled by mobile-app-shell
 
 // ─── Bottom Navigation ───────────────────────────────────────────────────────
-.manager-bottom-nav {
-  background: transparent !important;
-  border-top: none !important;
-}
+// .manager-bottom-nav background/border handled by .mobile-bottom-nav
 
 .bottom-nav-bar {
-  display: flex;
-  align-items: stretch;
-  height: 72px;
+  // display/height/safe-area handled by .mobile-nav-bar
   background: rgba(10, 14, 22, 0.98);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  padding-top: 4px;
-  padding-bottom: env(safe-area-inset-bottom);
   transition: background 0.25s ease, border-color 0.25s ease;
 
   &--light {
@@ -571,15 +561,15 @@ const tabs = computed(() => [
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 36px;
     border-radius: 14px;
     transition: background 0.2s ease;
   }
 
   &__label {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     letter-spacing: 0.2px;
     line-height: 1;
   }

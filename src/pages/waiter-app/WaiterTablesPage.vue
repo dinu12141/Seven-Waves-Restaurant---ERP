@@ -341,14 +341,14 @@ onUnmounted(() => {
   flex-direction: column;
 }
 .tables-header__title {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .tables-header__sub {
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #94a3b8;
   margin-top: 1px;
@@ -367,7 +367,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #64748b;
   text-transform: uppercase;
@@ -401,7 +401,7 @@ onUnmounted(() => {
   border: 1.5px solid #e2e8f0;
   background: #fff;
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -447,12 +447,12 @@ onUnmounted(() => {
   margin-bottom: 8px;
 }
 .tables-empty__title {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 700;
   color: #94a3b8;
 }
 .tables-empty__sub {
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   color: #cbd5e1;
 }
 
@@ -522,7 +522,7 @@ onUnmounted(() => {
     margin-bottom: 6px;
   }
   &__number {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.3px;
@@ -531,13 +531,13 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 2px;
-    font-size: 0.65rem;
+    font-size: 0.82rem;
     color: #94a3b8;
     font-weight: 600;
   }
   &__status-badge {
     display: inline-block;
-    font-size: 0.58rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -580,7 +580,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   color: #64748b;
   font-weight: 500;
 }
@@ -590,7 +590,7 @@ onUnmounted(() => {
 }
 
 .action-mini {
-  font-size: 0.65rem !important;
+  font-size: 0.82rem !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
   height: 30px !important;

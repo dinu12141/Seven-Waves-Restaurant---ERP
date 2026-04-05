@@ -521,14 +521,14 @@ function fmtCurrency(val) {
   flex-direction: column;
 }
 .wpos-brand-title {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .wpos-brand-sub {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #94a3b8;
   display: flex;
@@ -558,7 +558,7 @@ function fmtCurrency(val) {
 }
 
 .wpos-total-label {
-  font-size: 0.55rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #94a3b8;
   text-transform: uppercase;
@@ -572,7 +572,7 @@ function fmtCurrency(val) {
   line-height: 1.1;
 }
 .wpos-total-curr {
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #94a3b8;
   margin-right: 2px;
@@ -612,7 +612,7 @@ function fmtCurrency(val) {
 }
 
 .wpos-info-label {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #94a3b8;
   text-transform: uppercase;
@@ -634,7 +634,7 @@ function fmtCurrency(val) {
   border: 1.5px solid #e2e8f0;
   background: #fff;
   color: #64748b;
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -659,7 +659,7 @@ function fmtCurrency(val) {
   border: 1.5px solid #e2e8f0;
   background: #fff;
   color: #1e293b;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -706,7 +706,7 @@ function fmtCurrency(val) {
   border: 1.5px solid #e2e8f0;
   background: #f8fafc;
   color: #1e293b;
-  font-size: 0.82rem;
+  font-size: 0.97rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -733,7 +733,7 @@ function fmtCurrency(val) {
   border-radius: 8px;
   color: #1e293b;
   padding: 0 10px;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   font-weight: 500;
   outline: none;
   transition: border-color 0.15s;
@@ -756,7 +756,7 @@ function fmtCurrency(val) {
   padding: 8px 14px;
   background: #f1f5f9;
   border-bottom: 1px solid #e2e8f0;
-  font-size: 0.6rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #94a3b8;
   text-transform: uppercase;
@@ -782,7 +782,7 @@ function fmtCurrency(val) {
   border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: background 0.12s;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   color: #1e293b;
 
   &:hover { background: #fafbfc; }
@@ -794,14 +794,14 @@ function fmtCurrency(val) {
 }
 
 .wpos-variant {
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   color: #94a3b8;
   margin-left: 4px;
 }
 
 .wpos-notes {
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   color: #d97706;
   font-style: italic;
   margin-top: 2px;
@@ -828,7 +828,7 @@ function fmtCurrency(val) {
 
 .qty-val {
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.97rem;
   min-width: 24px;
   text-align: center;
   color: #0f172a;
@@ -854,12 +854,12 @@ function fmtCurrency(val) {
 }
 
 .wpos-empty-title {
-  font-size: 0.88rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #94a3b8;
 }
 .wpos-empty-sub {
-  font-size: 0.7rem;
+  font-size: 0.87rem;
   color: #cbd5e1;
 }
 
@@ -873,12 +873,12 @@ function fmtCurrency(val) {
 .wpos-summary-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   color: #64748b;
   padding: 2px 0;
 
   &.wpos-summary-total {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #ea580c;
     margin-top: 4px;
@@ -900,7 +900,7 @@ function fmtCurrency(val) {
   flex: 1;
   height: 44px;
   border-radius: 10px !important;
-  font-size: 0.72rem !important;
+  font-size: 0.88rem !important;
   font-weight: 700 !important;
 }
 
@@ -908,7 +908,7 @@ function fmtCurrency(val) {
   flex: 2;
   background: linear-gradient(135deg, #059669, #10b981) !important;
   color: white !important;
-  font-size: 0.75rem !important;
+  font-size: 0.92rem !important;
   letter-spacing: 0.3px;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
   transition: box-shadow 0.3s ease;
@@ -939,7 +939,7 @@ function fmtCurrency(val) {
     height: 36px;
   }
   :deep(.q-field__native) {
-    font-size: 0.82rem;
+    font-size: 0.97rem;
     color: #1e293b;
   }
 }
@@ -964,7 +964,7 @@ function fmtCurrency(val) {
   border: 1.5px solid #e2e8f0;
   background: #fff;
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -1039,7 +1039,7 @@ function fmtCurrency(val) {
 }
 
 .wpos-item-name {
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-weight: 600;
   line-height: 1.3;
   overflow: hidden;
@@ -1049,7 +1049,7 @@ function fmtCurrency(val) {
 }
 
 .wpos-item-price {
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #059669;
   margin-top: 3px;
@@ -1064,7 +1064,7 @@ function fmtCurrency(val) {
   gap: 8px;
   padding: 56px 20px;
   color: #94a3b8;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
 }
 
 // ─── Mobile: stack panels vertically ─────────────────────────────────────────
@@ -1076,9 +1076,15 @@ function fmtCurrency(val) {
   .wpos-left {
     width: 100%;
     min-width: 100%;
-    max-height: 42vh;
+    max-height: 36vh;
     border-right: none;
     border-top: 2px solid #e2e8f0;
+    display: block;
+    overflow-y: auto;
+  }
+
+  .wpos-cart-wrap {
+    overflow: visible;
   }
 
   .wpos-right {
@@ -1086,17 +1092,41 @@ function fmtCurrency(val) {
     min-height: 0;
   }
 
+  .wpos-cat-tabs {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  .wpos-cat-tab {
+    padding: 5px 12px;
+    font-size: 0.82rem;
+  }
+
   .wpos-items-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-    padding: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .wpos-item-btn {
+    padding: 8px 4px 6px;
+    border-radius: 10px;
+  }
+
+  .wpos-item-name {
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  .wpos-item-price {
+    font-size: 0.72rem;
   }
 
   .wpos-item-thumb {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    margin-bottom: 6px;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    margin-bottom: 4px;
   }
 
   .wpos-table-grid {

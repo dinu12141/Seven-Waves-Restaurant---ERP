@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mgr-waiters-page" :class="{ lt: !$q.dark.isActive }" padding>
     <!-- Page Header -->
     <div class="page-header q-mb-md">
@@ -105,8 +105,7 @@ function initials(name) {
 
 <style lang="scss" scoped>
 .mgr-waiters-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-waiters-page.lt {
@@ -148,7 +147,7 @@ function initials(name) {
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   margin-top: 1px;
 }
@@ -188,7 +187,7 @@ function initials(name) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -219,10 +218,10 @@ function initials(name) {
 }
 .waiter-avatar {
   background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
 }
 .waiter-name {
-  font-size: 0.9rem;
+  font-size: 0.90rem;
   font-weight: 700;
   color: #f3f4f6;
 }
@@ -230,7 +229,7 @@ function initials(name) {
   color: #1e293b;
 }
 .waiter-meta {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
 }
 .lt .waiter-meta {

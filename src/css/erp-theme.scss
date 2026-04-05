@@ -496,21 +496,27 @@ body.body--light {
   .q-field--outlined .q-field__control {
     border-radius: var(--erp-radius-md);
     background: var(--erp-bg-input);
+    min-height: 40px !important;
+  }
+  .q-field--dense .q-field__control {
+    min-height: 40px !important;
+  }
+  /* Table inputs — keep compact */
+  .q-table td .q-field--outlined .q-field__control,
+  .q-table td .q-field--dense .q-field__control {
     min-height: var(--erp-input-height) !important;
     height: var(--erp-input-height) !important;
   }
-  .q-field--dense .q-field__control {
-    min-height: var(--erp-input-height) !important;
-  }
   .q-field__native,
   .q-field__input {
-    font-size: var(--erp-font-size-base);
+    font-size: var(--erp-font-size-base) !important;
     color: var(--erp-text-primary);
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
   .q-field__label {
     font-size: var(--erp-font-size-small) !important;
+    line-height: 1.2 !important;
   }
   .q-field--focused .q-field__control:after {
     border-color: var(--erp-border-focus);

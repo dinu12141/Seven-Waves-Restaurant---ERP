@@ -3,6 +3,8 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join as pathJoin } from 'node:path'
 
 export default defineConfig((ctx) => {
   return {
@@ -30,7 +32,7 @@ export default defineConfig((ctx) => {
         node: 'node20',
       },
 
-      vueRouterMode: ctx.mode.capacitor ? 'hash' : 'history', // hash for Capacitor (no server-side routing); history for web/PWA/Electron
+      vueRouterMode: (ctx.mode.capacitor || ctx.mode.electron) ? 'hash' : 'history', // hash for Capacitor & Electron (file:// can't do history routing); history for web/PWA
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
@@ -190,25 +192,54 @@ export default defineConfig((ctx) => {
         appCopyright: 'Copyright © 2026 Cosmo Solutions',
       },
 
-      // ── Force CJS output for the electron main process ──────────
-      // Electron crashes (0xC0000005 Access Violation) when loading
-      // an ESM main process from inside an ASAR package. Compiling
-      // to CJS (.cjs) avoids this bug.
+      // ── Always CJS ─────────────────────────────────────────────────
+      // Electron's built-in 'electron' module is CJS-only and does not
+      // expose ESM named exports (Node 22+).  `import { app } from 'electron'`
+      // fails at runtime.  Using CJS for both dev and prod avoids this.
+      //
+      // Dev:  Quasar hardcodes the launch path as "electron-main.js".
+      //       The root package.json has "type":"module", so a .js file
+      //       would be treated as ESM.  We drop a local package.json
+      //       with "type":"commonjs" into the dev output dir to override.
+      // Prod: CJS output + .cjs extension bypasses "type":"module".
       extendElectronMainConf(esbuildConf) {
-        esbuildConf.format = 'cjs'
-        // 'node' platform tells esbuild not to mangle __dirname / __filename
-        // and to treat Node built-ins as external — required for CJS output.
         esbuildConf.platform = 'node'
-        esbuildConf.outfile = esbuildConf.outfile.replace(/\.js$/, '.cjs')
+        esbuildConf.format = 'cjs'
+
+        if (ctx.dev) {
+          // Write a local package.json so Node treats .js as CJS in dev output
+          const outDir = esbuildConf.outfile
+            ? esbuildConf.outfile.replace(/[/\\][^/\\]+$/, '')
+            : '.quasar/dev-electron'
+          mkdirSync(outDir, { recursive: true })
+          writeFileSync(
+            pathJoin(outDir, 'package.json'),
+            '{"type":"commonjs"}\n',
+          )
+        } else {
+          esbuildConf.outfile = esbuildConf.outfile.replace(/\.js$/, '.cjs')
+        }
       },
 
       // ── Fix package.json main entry & strip "type":"module" ─────
       // Quasar hardcodes main: './electron-main.js'. We override it
       // to the .cjs file compiled above and remove "type":"module"
       // so Node does not treat CJS files as ESM.
+      //
+      // We also strip `dependencies` — Vite already bundled every
+      // runtime import into electron-main.cjs / assets/.  Leaving
+      // them would cause Quasar to copy a full node_modules tree
+      // (100+ packages) into UnPackaged, bloating the installer and
+      // potentially including native addons compiled for the wrong
+      // Node ABI (→ 0xc000007b crash on end-user machines).
       extendPackageJson(pkg) {
-        pkg.main = './electron-main.cjs'
-        delete pkg.type
+        if (!ctx.dev) {
+          pkg.main = './electron-main.cjs'
+          delete pkg.type
+          // Everything is bundled — no runtime deps needed
+          delete pkg.dependencies
+          delete pkg.devDependencies
+        }
       },
 
       builder: {
@@ -219,20 +250,25 @@ export default defineConfig((ctx) => {
 
         // Only include the files the production app actually needs.
         // node_modules are NOT needed — Vite already bundled
-        // everything into assets/.
-        files: ['**/*', '!node_modules/**'],
+        // everything into assets/.  The explicit "!node_modules"
+        // is a safety net in case extendPackageJson didn't fully
+        // prevent Quasar from copying them.
+        files: [
+          '**/*',
+          '!node_modules/**',
+          '!package-lock.json',
+        ],
 
-        // ASAR disabled — Electron 41 crashes (0xC0000005 Access Violation)
-        // when loading a CJS main process from inside an ASAR archive on Windows.
-        // The UnPackaged app works perfectly; packaging without ASAR fixes it.
-        asar: false,
+        asar: true,
 
         win: {
-          target: [{ target: 'nsis', arch: ['x64'] }],
+          target: [
+            { target: 'nsis', arch: ['x64'] },
+            { target: 'portable', arch: ['x64'] },
+          ],
           icon: 'src-electron/icons/icon.ico',
-          // Prevent pe-library from modifying the .exe binary.
-          // On some Windows builds the modification corrupts the
-          // PE headers causing 0xC0000005 Access Violation.
+          // Do not sign (no EV cert) — also suppresses SmartScreen re-signing
+          // that can corrupt the exe on machines without signtool.
           signAndEditExecutable: false,
         },
 
@@ -242,6 +278,8 @@ export default defineConfig((ctx) => {
           createDesktopShortcut: true,
           createStartMenuShortcut: true,
           artifactName: 'Seven_Waves_ERP_Setup.exe',
+          // Include VC++ Redistributable check — the #1 cause of 0xc000007b
+          include: 'src-electron/nsis-include.nsh',
         },
       },
     },

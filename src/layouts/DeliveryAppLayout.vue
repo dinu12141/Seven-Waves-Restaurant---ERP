@@ -1,7 +1,7 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="delivery-app-layout">
+  <q-layout view="hHh lpR fFf" class="delivery-app-layout mobile-app-shell">
     <!-- ── Top Bar ───────────────────────────────────────────── -->
-    <q-header class="delivery-top-bar">
+    <q-header class="delivery-top-bar mobile-top-bar">
       <q-toolbar class="delivery-toolbar">
         <!-- Brand -->
         <q-icon name="delivery_dining" size="22px" color="purple-4" />
@@ -73,7 +73,7 @@
     </q-header>
 
     <!-- ── Page Content ──────────────────────────────────────── -->
-    <q-page-container class="delivery-page-container">
+    <q-page-container>
       <router-view v-slot="{ Component }">
         <transition name="tab-fade" mode="out-in">
           <component :is="Component" />
@@ -82,8 +82,8 @@
     </q-page-container>
 
     <!-- ── Bottom Navigation ─────────────────────────────────── -->
-    <q-footer class="delivery-bottom-nav">
-      <div class="bottom-nav-bar">
+    <q-footer class="delivery-bottom-nav mobile-bottom-nav">
+      <div class="bottom-nav-bar mobile-nav-bar">
         <router-link
           v-for="tab in tabs"
           :key="tab.to"
@@ -97,7 +97,7 @@
             @click="navigate"
           >
             <div class="nav-tab__icon-wrap">
-              <q-icon :name="tab.icon" size="38px" />
+              <q-icon :name="tab.icon" size="32px" />
               <q-badge
                 v-if="tab.badge && tab.badge.value > 0"
                 color="red"
@@ -133,6 +133,9 @@ const router = useRouter()
 
 // ── Auth guard ─────────────────────────
 onMounted(async () => {
+  // Mark body for mobile app scroll prevention
+  document.body.classList.add('mobile-app-active')
+
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -146,7 +149,10 @@ onMounted(async () => {
   await store.initialize()
 })
 
-onUnmounted(() => store.cleanup())
+onUnmounted(() => {
+  document.body.classList.remove('mobile-app-active')
+  store.cleanup()
+})
 
 function initials(name) {
   if (!name) return '?'
@@ -227,14 +233,10 @@ const tabs = computed(() => [
   background: rgba(10, 14, 22, 0.97) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow: none !important;
-  padding-top: env(safe-area-inset-top) !important;
+  // safe-area-inset-top handled by .mobile-top-bar
 }
 
-.delivery-toolbar {
-  height: 52px;
-  min-height: 52px;
-  padding: 0 14px;
-}
+// .delivery-toolbar — dimensions handled by .mobile-top-bar .q-toolbar
 
 .delivery-brand {
   display: flex;
@@ -242,13 +244,13 @@ const tabs = computed(() => [
   gap: 8px;
 }
 .brand-name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #e8eaf0;
   letter-spacing: 0.4px;
 }
 .brand-tag {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.5px;
   color: #ce93d8;
@@ -302,17 +304,17 @@ const tabs = computed(() => [
   flex: 1;
 }
 .dum-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #e8eaf0;
 }
 .dum-role {
-  font-size: 10px;
+  font-size: 12px;
   color: #9e9e9e;
   margin-top: 2px;
 }
 .dum-item {
-  font-size: 12px;
+  font-size: 14px;
   color: #bdbdbd;
   min-height: 36px;
   &--danger {
@@ -321,26 +323,19 @@ const tabs = computed(() => [
 }
 
 // ─── Page Container ─────────────────────────────
-.delivery-page-container {
-  padding-bottom: 80px !important; // space for bottom nav
-}
+// padding-bottom auto-calculated by Quasar; layout handled by mobile-app-shell
 
 // ─── Bottom Nav ─────────────────────────────────
-.delivery-bottom-nav {
-  background: rgba(10, 14, 22, 0.98) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-}
+// .delivery-bottom-nav background/border handled by .mobile-bottom-nav
 
 .bottom-nav-bar {
-  display: flex;
-  align-items: stretch;
+  // display/height/safe-area handled by .mobile-nav-bar
+  background: rgba(10, 14, 22, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
   justify-content: space-around;
-  height: 72px;
   max-width: 480px;
   margin: 0 auto;
-  padding-top: 4px;
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-tab {
@@ -377,13 +372,13 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 36px;
 }
 
 .nav-tab__label {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   letter-spacing: 0.2px;
   line-height: 1;
 }
@@ -455,8 +450,8 @@ body.body--light {
     color: #475569;
   }
 
-  // Bottom nav — use high-specificity
-  .delivery-bottom-nav.q-footer {
+  // Bottom nav — target the inner bar, not the footer wrapper
+  .bottom-nav-bar {
     background: #ffffff !important;
     border-top: 1px solid #e2e8f0 !important;
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06) !important;

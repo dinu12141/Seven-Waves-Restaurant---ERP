@@ -56,7 +56,11 @@
             class="bg-grey-9 text-white cursor-pointer hover-card text-center q-pa-lg"
             flat
             bordered
-            @click="header.doc_type = type.value"
+            @click="
+              ['GRN', 'PO'].includes(type.value)
+                ? goToProcurement(type.value)
+                : (header.doc_type = type.value)
+            "
           >
             <q-icon :name="type.icon" size="48px" :color="type.color" />
             <div class="text-h6 q-mt-md">{{ type.label }}</div>
@@ -195,6 +199,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { useRouter } from 'vue-router'
 import DocumentHeader from 'components/inventory/DocumentHeader.vue'
 import DocumentLinesTable from 'components/inventory/DocumentLinesTable.vue'
 import PostButton from 'components/inventory/PostButton.vue'
@@ -243,6 +248,12 @@ const props = defineProps({
 
 const emit = defineEmits(['back', 'saved'])
 const $q = useQuasar()
+const router = useRouter()
+
+function goToProcurement(docType) {
+  const path = docType === 'PO' ? '/procurement/purchase-orders' : '/procurement/grn'
+  router.push({ path, query: { action: 'new' } })
+}
 
 const { warehouses, listWarehouses } = useWarehouseList()
 const { suppliers, listSuppliers } = useSupplierList()

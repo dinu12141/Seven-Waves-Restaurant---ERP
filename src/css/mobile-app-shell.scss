@@ -1,0 +1,187 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOBILE APP SHELL — Shared Foundation for Waiter / Manager / Delivery Apps
+// ═══════════════════════════════════════════════════════════════════════════════
+// Ensures on Capacitor Android (and PWA):
+//   • WebView fills the full physical screen (edge-to-edge)
+//   • Bottom nav is flush to the true device bottom edge
+//   • No blank/grey strip below the bottom tab bar
+//   • Safe-area insets (notch, gesture bar) are honoured
+//   • Only page content scrolls — the shell chrome is fixed
+//
+// This file is imported by app.scss and applies globally.
+// Per-app colours/styles live in the individual layout files.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── CSS Custom Properties ──────────────────────────────────────────────────
+:root {
+  // Shell dimensions
+  --mobile-header-h: 52px;
+  --mobile-nav-h: 64px;
+
+  // Safe-area insets (set by the OS via viewport-fit=cover in index.html)
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+
+  // Full nav bar height = button area + gesture-bar safe zone
+  // Used by callers that need the total occupied height at the bottom.
+  --mobile-nav-h-with-safe: calc(var(--mobile-nav-h) + var(--safe-bottom));
+}
+
+// ─── Viewport Height Chain ───────────────────────────────────────────────────
+// Quasar's #q-app uses position:absolute + inset:0 on its parent.
+// Ensuring html → body → #q-app are all 100 % tall closes the gap that causes
+// a grey strip when the body doesn't reach the physical screen bottom.
+
+html {
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body {
+  height: 100%;
+  min-height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+// When a mobile app layout is active, lock the root to full viewport height
+// and prevent the body itself from scrolling (only the inner .q-page scrolls).
+body.mobile-app-active {
+  overflow: hidden !important;
+
+  #q-app {
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+  }
+}
+
+// ─── Mobile App Shell — Layout Container ────────────────────────────────────
+// Applied to every <q-layout> in the three mobile app layouts.
+//
+// Strategy: make the layout a flex COLUMN that fills its container.
+// • QHeader  → position:fixed (out of flex flow), Quasar JS adds padding-top
+//              to QPageContainer to compensate.
+// • QPageContainer → flex:1 — fills ALL remaining space between banners and
+//              footer, no matter how short the page content is.
+// • QFooter  → position:fixed bottom:0 (out of flex flow) — always flush to
+//              the viewport bottom; Quasar JS adds padding-bottom to
+//              QPageContainer.
+//
+// Important: QHeader/QFooter carry Quasar's built-in "fixed-top"/"fixed-bottom"
+// utility classes which override position:relative with position:fixed.
+
+.mobile-app-shell {
+  display: flex !important;
+  flex-direction: column !important;
+
+  // Fill the full parent height (#q-app = 100 % of body = 100 % of viewport).
+  // We use 100 % (not 100dvh) so the value matches the edge-to-edge WebView
+  // height on Capacitor Android — 100dvh can disagree with the WebView's
+  // actual coordinate space on some Android WebView builds.
+  height: 100% !important;
+  min-height: 100% !important;
+  overflow: hidden !important;
+
+  // ── QPageContainer: the only flex child that grows ───────────────────────
+  // QHeader + QFooter are position:fixed → out of flex flow.
+  // Any extra banners (off-shift, PWA prompt, etc.) in the Waiter layout are
+  // also flex children and take their natural height; QPageContainer fills
+  // whatever remains.
+  > .q-page-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;   // allow it to shrink below content height
+    overflow: hidden !important;
+
+    // ── QPage: the scrollable content region ─────────────────────────────
+    > .q-page {
+      height: 100% !important;
+      min-height: 0 !important;  // override Quasar's own 100vh min-height calc
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: touch; // smooth momentum scroll on WebKit
+    }
+  }
+}
+
+// Extra safety: kill any rogue min-height:100vh on pages inside the shell
+.mobile-app-shell .q-page {
+  min-height: 0 !important;
+}
+
+// ─── Mobile Top Bar ─────────────────────────────────────────────────────────
+// Pushes toolbar content below the status-bar safe zone (notch / Dynamic Island).
+
+.mobile-top-bar {
+  padding-top: var(--safe-top) !important;
+
+  .q-toolbar {
+    height: var(--mobile-header-h);
+    min-height: var(--mobile-header-h);
+    padding-left:  max(14px, var(--safe-left));
+    padding-right: max(14px, var(--safe-right));
+  }
+}
+
+// ─── Mobile Bottom Nav ──────────────────────────────────────────────────────
+// The QFooter wrapper is transparent; each layout colours its .bottom-nav-bar.
+
+.mobile-bottom-nav {
+  // Strip Quasar's default footer styling — we control everything below.
+  background: transparent !important;
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+// The actual nav bar div (carries both .bottom-nav-bar and .mobile-nav-bar).
+//
+// Critical height rule:
+//   height = --mobile-nav-h (64 px tap area) + safe-area-inset-bottom (gesture
+//   bar height, e.g. 28 px on gesture-nav Android, 48 px on 3-button nav).
+//
+// Quasar's ResizeObserver measures QFooter.offsetHeight and sets the matching
+// padding-bottom on QPageContainer, so content never scrolls behind the bar.
+//
+// align-items: flex-start pins nav buttons to the TOP of the taller container,
+// leaving the safe-area zone as a background-colour buffer at the bottom
+// (matching the nav bar colour — no transparency gap).
+
+.mobile-nav-bar {
+  display: flex;
+  align-items: flex-start; // buttons sit in the 64 px zone; safe area below
+
+  // Total height grows with the gesture-bar safe zone
+  height: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px));
+
+  // Reserve the safe zone at the bottom as padding (no tappable content there)
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left:   var(--safe-left);
+  padding-right:  var(--safe-right);
+  padding-top: 0;
+}
+
+// Every direct child of the nav bar (the nav-tab buttons) must be exactly
+// --mobile-nav-h tall so their content is vertically centred within the
+// tappable region, not stretched into the safe-area padding zone.
+.mobile-nav-bar > .nav-tab {
+  height: var(--mobile-nav-h) !important;
+  flex-shrink: 0;
+}
+
+// ─── Utility Classes ────────────────────────────────────────────────────────
+
+.safe-area-pad-top {
+  padding-top: var(--safe-top);
+}
+
+.safe-area-pad-bottom {
+  padding-bottom: var(--safe-bottom);
+}
+
+.safe-area-pad-horizontal {
+  padding-left:  var(--safe-left);
+  padding-right: var(--safe-right);
+}

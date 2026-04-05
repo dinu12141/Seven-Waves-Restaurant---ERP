@@ -28,12 +28,12 @@ const routes = [
       {
         path: 'pos',
         component: () => import('pages/POSPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'] },
+        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'], requiresAuth: false },
       },
       {
         path: 'kitchen',
         component: () => import('pages/KitchenPage.vue'),
-        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'], requiresAuth: false },
       },
       {
         path: 'orders',
@@ -153,6 +153,7 @@ const routes = [
           { path: 'grn', component: () => import('pages/procurement/GRNPage.vue') },
           { path: 'ap-invoices', component: () => import('pages/procurement/APInvoicesPage.vue') },
           { path: 'payments', component: () => import('pages/procurement/PaymentsPage.vue') },
+          { path: 'payments-report', component: () => import('pages/procurement/SupplierPaymentReport.vue') },
           { path: 'returns', component: () => import('pages/procurement/PurchaseReturnsPage.vue') },
           {
             path: 'reports',
@@ -183,11 +184,6 @@ const routes = [
       {
         path: 'admin/branches',
         component: () => import('pages/admin/BranchesPage.vue'),
-        meta: { roles: ['admin'] },
-      },
-      {
-        path: 'admin/kitchens',
-        component: () => import('pages/admin/KitchensPage.vue'),
         meta: { roles: ['admin'] },
       },
       {

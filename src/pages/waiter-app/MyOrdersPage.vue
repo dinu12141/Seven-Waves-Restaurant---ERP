@@ -152,7 +152,7 @@
             <div
               class="status-pill q-ml-sm"
               :class="'status-pill--' + detailOrder.status"
-              style="font-size: 0.6rem"
+              style="font-size: 0.76rem"
             >
               {{ statusLabel(detailOrder.status) }}
             </div>
@@ -328,7 +328,7 @@
             :loading="serving[detailOrder.id]"
             @click="markServed(detailOrder.id)"
             no-caps
-            style="height: 50px; border-radius: 12px; font-weight: 700; font-size: 15px"
+            style="height: 50px; border-radius: 12px; font-weight: 700; font-size: 17px"
           />
         </q-card-section>
       </q-card>
@@ -704,14 +704,14 @@ async function markServed(orderId) {
   flex-direction: column;
 }
 .orders-header__title {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .orders-header__sub {
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: #94a3b8;
   margin-top: 1px;
@@ -743,12 +743,12 @@ async function markServed(orderId) {
   margin-bottom: 8px;
 }
 .orders-empty__title {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 700;
   color: #94a3b8;
 }
 .orders-empty__sub {
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   color: #cbd5e1;
 }
 
@@ -758,7 +758,7 @@ async function markServed(orderId) {
 }
 
 .group-label {
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -811,13 +811,13 @@ async function markServed(orderId) {
     min-width: 0;
   }
   &__number {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.3px;
   }
   &__meta {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     color: #64748b;
     font-weight: 500;
     margin-top: 1px;
@@ -863,7 +863,7 @@ async function markServed(orderId) {
 // ─── Status Pill ─────────────────────────────────────────────
 .status-pill {
   display: inline-block;
-  font-size: 0.6rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -900,13 +900,13 @@ async function markServed(orderId) {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 4px 8px;
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #475569;
   flex-shrink: 0;
 }
 .time-label {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #94a3b8;
 }
@@ -983,7 +983,7 @@ async function markServed(orderId) {
 }
 
 .progress-label {
-  font-size: 0.55rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1001,7 +1001,7 @@ async function markServed(orderId) {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.65rem;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: 6px;
   padding: 3px 7px;
@@ -1067,7 +1067,7 @@ async function markServed(orderId) {
   height: 40px;
   border-radius: 8px !important;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1117,7 +1117,7 @@ async function markServed(orderId) {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 5px 10px;
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   color: #475569;
 
   &--elapsed {
@@ -1137,7 +1137,7 @@ async function markServed(orderId) {
   padding: 14px 16px;
 }
 .detail-progress-title {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -1206,7 +1206,7 @@ async function markServed(orderId) {
     min-width: 0;
   }
   &__label {
-    font-size: 0.85rem;
+    font-size: 1.02rem;
     font-weight: 600;
     transition: color 0.3s ease;
   }
@@ -1215,7 +1215,7 @@ async function markServed(orderId) {
   &--pending .detail-step__label { color: #94a3b8; }
 
   &__desc {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     margin-top: 2px;
   }
   &--done .detail-step__desc { color: #93c5fd; }
@@ -1227,7 +1227,7 @@ async function markServed(orderId) {
     align-items: center;
     gap: 5px;
     margin-top: 4px;
-    font-size: 0.6rem;
+    font-size: 0.76rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -1258,7 +1258,7 @@ async function markServed(orderId) {
 }
 
 .section-label {
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -1292,12 +1292,12 @@ async function markServed(orderId) {
   }
   &__info { flex: 1; }
   &__name {
-    font-size: 0.85rem;
+    font-size: 1.02rem;
     font-weight: 600;
     color: #0f172a;
   }
   &__kitchen {
-    font-size: 0.68rem;
+    font-size: 0.85rem;
     color: #94a3b8;
   }
   &__status { flex-shrink: 0; }
@@ -1318,7 +1318,7 @@ async function markServed(orderId) {
 }
 
 .kot-status-pill {
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -1363,7 +1363,7 @@ async function markServed(orderId) {
   &:last-child { border-bottom: none; }
 
   &__qty {
-    font-size: 0.85rem;
+    font-size: 1.02rem;
     color: #ea580c;
     font-weight: 700;
     min-width: 26px;
@@ -1371,16 +1371,16 @@ async function markServed(orderId) {
   }
   &__name {
     flex: 1;
-    font-size: 0.9rem;
+    font-size: 1.05rem;
     color: #0f172a;
   }
   &__notes {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     color: #d97706;
     margin-top: 3px;
   }
   &__price {
-    font-size: 0.85rem;
+    font-size: 1.02rem;
     color: #475569;
     font-weight: 600;
     white-space: nowrap;
@@ -1393,7 +1393,7 @@ async function markServed(orderId) {
 }
 
 .item-status-pill {
-  font-size: 0.55rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -1431,11 +1431,11 @@ async function markServed(orderId) {
 
   &__label {
     color: #64748b;
-    font-size: 0.85rem;
+    font-size: 1.02rem;
     font-weight: 500;
   }
   &__excl {
-    font-size: 0.68rem;
+    font-size: 0.85rem;
     color: #94a3b8;
     margin-left: 4px;
   }
@@ -1458,7 +1458,7 @@ async function markServed(orderId) {
   &__header {
     display: flex;
     align-items: center;
-    font-size: 0.68rem;
+    font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1476,18 +1476,18 @@ async function markServed(orderId) {
   text-decoration: line-through;
 
   &__qty {
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     color: #dc2626;
     font-weight: 700;
     min-width: 22px;
   }
   &__name {
     flex: 1;
-    font-size: 0.8rem;
+    font-size: 0.97rem;
     color: #64748b;
   }
   &__price {
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     color: #94a3b8;
     white-space: nowrap;
   }

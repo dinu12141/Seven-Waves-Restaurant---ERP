@@ -11,7 +11,7 @@
     <div class="q-mt-lg">
       <div class="row items-center q-mb-md">
         <q-icon name="extension" size="28px" color="primary" class="q-mr-sm" />
-        <div class="text-h6 text-white">Module Configuration</div>
+        <div class="text-h6 text-dark">Module Configuration</div>
         <q-space />
         <q-badge v-if="hasUnsavedChanges" color="warning" label="Unsaved changes" class="q-mr-md" />
         <q-btn
@@ -46,7 +46,7 @@
                 class="q-mr-md"
               />
               <div class="col">
-                <div class="text-subtitle1 text-weight-bold text-white">{{ mod.name }}</div>
+                <div class="text-subtitle1 text-weight-bold text-dark">{{ mod.name }}</div>
                 <div class="text-caption text-grey-5 q-mt-xs">{{ mod.description }}</div>
               </div>
             </q-card-section>
@@ -77,21 +77,20 @@
     <div class="q-mt-xl">
       <div class="row items-center q-mb-md">
         <q-icon name="tune" size="28px" color="orange" class="q-mr-sm" />
-        <div class="text-h6 text-white">General Settings</div>
+        <div class="text-h6">General Settings</div>
       </div>
 
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-6">
-          <q-card flat bordered class="bg-grey-10">
-            <q-card-section class="q-gutter-md">
-              <q-input v-model="settings.appName" label="Application Name" outlined dense dark />
+          <q-card flat bordered>
+            <q-card-section class="q-gutter-sm">
+              <q-input v-model="settings.appName" label="Application Name" outlined dense />
               <q-select
                 v-model="settings.timezone"
                 label="Timezone"
                 :options="['UTC', 'EST', 'PST', 'IST', 'Asia/Colombo']"
                 outlined
                 dense
-                dark
               />
               <q-select
                 v-model="settings.currency"
@@ -99,21 +98,19 @@
                 :options="['USD', 'EUR', 'INR', 'GBP', 'LKR']"
                 outlined
                 dense
-                dark
               />
             </q-card-section>
           </q-card>
         </div>
 
         <div class="col-12 col-md-6">
-          <q-card flat bordered class="bg-grey-10">
-            <q-card-section class="q-gutter-md">
-              <q-input v-model="settings.logoUrl" label="Logo URL" outlined dense dark />
+          <q-card flat bordered>
+            <q-card-section class="q-gutter-sm">
+              <q-input v-model="settings.logoUrl" label="Logo URL" outlined dense />
               <q-toggle
                 v-model="settings.maintenanceMode"
                 label="Maintenance Mode"
                 color="red"
-                dark
               />
             </q-card-section>
 

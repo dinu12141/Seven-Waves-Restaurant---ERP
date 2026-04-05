@@ -275,7 +275,7 @@ async function accept(order) {
   gap: 8px;
 }
 .inbox-header__title {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
@@ -286,7 +286,7 @@ async function accept(order) {
   gap: 6px;
 }
 .inbox-count-chip {
-  font-size: 0.68rem !important;
+  font-size: 0.85rem !important;
   font-weight: 700 !important;
   height: 22px !important;
 }
@@ -320,12 +320,12 @@ async function accept(order) {
   margin-bottom: 12px;
 }
 .inbox-empty__title {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   font-weight: 700;
   color: #94a3b8;
 }
 .inbox-empty__sub {
-  font-size: 0.75rem;
+  font-size: 0.92rem;
   color: #cbd5e1;
   margin-top: 4px;
 }
@@ -375,13 +375,13 @@ async function accept(order) {
   gap: 2px;
 }
 .inbox-card__order-num {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
 }
 .inbox-card__details {
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   color: #94a3b8;
   display: flex;
   align-items: center;
@@ -393,7 +393,7 @@ async function accept(order) {
   margin: 0 2px;
 }
 .inbox-status-chip {
-  font-size: 0.65rem !important;
+  font-size: 0.82rem !important;
   font-weight: 700 !important;
   height: 22px !important;
 }
@@ -402,7 +402,7 @@ async function accept(order) {
 .inbox-avail-hint {
   display: flex;
   align-items: center;
-  font-size: 0.6rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: #cbd5e1;
   letter-spacing: 0.5px;
@@ -439,7 +439,7 @@ async function accept(order) {
 }
 
 .inbox-item__qty {
-  font-size: 0.62rem !important;
+  font-size: 0.78rem !important;
   font-weight: 700 !important;
   min-width: 26px;
   height: 20px !important;
@@ -447,7 +447,7 @@ async function accept(order) {
 
 .inbox-item__name {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: 1.02rem;
   font-weight: 600;
   color: #1e293b;
   transition: all 0.2s;
@@ -459,7 +459,7 @@ async function accept(order) {
 }
 
 .inbox-item__price {
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #64748b;
   margin-right: 4px;
@@ -499,7 +499,7 @@ async function accept(order) {
 .inbox-unavail-banner {
   display: flex;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.87rem;
   font-weight: 600;
   color: #d97706;
   background: #fffbeb;
@@ -514,7 +514,7 @@ async function accept(order) {
   height: 46px;
   border-radius: 12px !important;
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 1.05rem;
   letter-spacing: 0.2px;
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

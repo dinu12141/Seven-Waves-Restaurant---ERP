@@ -438,10 +438,9 @@ function openEdit(row) {
  */
 function goToGRN(row) {
   router.push({
-    path: '/inventory',
+    path: '/procurement/grn',
     query: {
-      tab: 'documents',
-      newDoc: 'GRN',
+      action: 'new',
       item_id: row.id,
     },
   })

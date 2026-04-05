@@ -160,8 +160,7 @@ function htColor(t) {
 <style lang="scss" scoped>
 // ─── Page Root ───────────────────────────────────────────────────────────────
 .mgr-floor-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
   transition: background 0.25s ease;
 
@@ -206,7 +205,7 @@ function htColor(t) {
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #9ca3af;
   margin-top: 1px;
   transition: color 0.25s ease;
@@ -220,7 +219,7 @@ function htColor(t) {
 
 // ─── Section Title ───────────────────────────────────────────────────────────
 .section-title {
-  font-size: 0.65rem;
+  font-size: 0.80rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -257,7 +256,7 @@ function htColor(t) {
 .mini-val--orange { color: #f97316; }
 .mini-val--green { color: #10b981; }
 .mini-lbl {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -282,7 +281,7 @@ function htColor(t) {
 }
 .alert-action {
   font-weight: 700 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.85rem !important;
   color: #fbbf24 !important;
 }
 .lt .alert-action {
@@ -302,7 +301,7 @@ function htColor(t) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -329,12 +328,12 @@ function htColor(t) {
 
 .waiter-avatar {
   background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 .waiter-name {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.90rem;
   color: #f3f4f6;
   transition: color 0.25s ease;
 }
@@ -342,7 +341,7 @@ function htColor(t) {
   color: #1e293b;
 }
 .waiter-code {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #9ca3af;
   transition: color 0.25s ease;
 }
@@ -364,7 +363,7 @@ function htColor(t) {
 .stat-pill {
   display: inline-flex;
   align-items: center;
-  font-size: 0.68rem;
+  font-size: 0.83rem;
   font-weight: 600;
   border-radius: 6px;
   padding: 3px 8px;
@@ -392,7 +391,7 @@ function htColor(t) {
 .hierarchy-row {
   border-radius: 10px;
   padding: 10px 14px;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: background 0.25s ease, border-color 0.25s ease;

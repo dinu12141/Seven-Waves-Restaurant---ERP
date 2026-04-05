@@ -1,0 +1,3 @@
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\dist\capacitor\android\apk\release\app-release-unsigned.apk
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-capacitor\android\app\build\outputs\apk\release\app-release-unsigned.apk
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-capacitor\android\app\release\app-release.apk

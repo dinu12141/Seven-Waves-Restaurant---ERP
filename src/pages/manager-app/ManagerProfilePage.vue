@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <q-page class="mgr-profile-page" :class="{ lt: !$q.dark.isActive }" padding>
     <!-- Page Header -->
     <div class="page-header q-mb-lg">
@@ -115,8 +115,7 @@ async function logout() {
 
 <style lang="scss" scoped>
 .mgr-profile-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-profile-page.lt {
@@ -158,7 +157,7 @@ async function logout() {
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   margin-top: 1px;
 }
@@ -168,7 +167,7 @@ async function logout() {
 
 // ─── Section Title ───────────────────────────────────────────────────────────
 .section-title {
-  font-size: 0.65rem;
+  font-size: 0.80rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -221,7 +220,7 @@ async function logout() {
   color: #1e293b;
 }
 .profile-role {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -232,7 +231,7 @@ async function logout() {
   color: #0891b2;
 }
 .profile-email {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #6b7280;
   margin-top: 2px;
 }
@@ -273,7 +272,7 @@ async function logout() {
 }
 .info-text {
   color: #d1d5db;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 .lt .info-text {
@@ -282,7 +281,7 @@ async function logout() {
 
 // ─── Role Chips ──────────────────────────────────────────────────────────────
 .role-chip {
-  font-size: 0.72rem !important;
+  font-size: 0.82rem !important;
   font-weight: 600 !important;
   text-transform: capitalize !important;
 }
@@ -323,7 +322,7 @@ async function logout() {
 .mini-val--cyan { color: #0ea5e9; }
 .mini-val--green { color: #10b981; }
 .mini-lbl {
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -335,7 +334,7 @@ async function logout() {
   border-radius: 12px !important;
   height: 48px !important;
   font-weight: 700 !important;
-  font-size: 0.85rem !important;
+  font-size: 0.95rem !important;
   transition: all 0.2s ease;
 }
 .signout-btn {

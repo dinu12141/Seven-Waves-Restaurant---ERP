@@ -28,8 +28,11 @@
     </q-table>
 
     <!-- Return Dialog -->
-    <q-dialog v-model="dialogVisible" full-width persistent>
-      <q-card style="height: 90vh; display: flex; flex-direction: column">
+    <q-dialog v-model="dialogVisible" persistent>
+      <q-card
+        style="width: 900px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column"
+        class="erp-dialog-card erp-border-radius shadow-5"
+      >
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="text-h6">
             {{ isEditing ? 'Edit Purchase Return' : 'New Purchase Return' }}

@@ -1,6 +1,9 @@
 /**
  * generate-icons.mjs
- * Converts public/logo.jpeg → src-electron/icons/icon.png + icon.ico
+ * Converts public/icons/favicon-512x512.png → src-electron/icons/icon.png + icon.ico
+ *
+ * Source must be a square PNG ≥ 512×512 for best quality.
+ * favicon-512x512.png is already the correct square app icon.
  *
  * Run once before building:
  *   node scripts/generate-icons.mjs
@@ -13,15 +16,15 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
-const src = path.join(root, 'public', 'logo.jpeg')
+const src = path.join(root, 'public', 'icons', 'favicon-512x512.png')
 const outDir = path.join(root, 'src-electron', 'icons')
 
 if (!fs.existsSync(src)) {
-  console.error('ERROR: public/logo.jpeg not found')
+  console.error('ERROR: public/icons/favicon-512x512.png not found')
   process.exit(1)
 }
 
-console.log('Generating icons from public/logo.jpeg ...')
+console.log('Generating icons from public/icons/favicon-512x512.png ...')
 
 // ── icon.png (512×512) — used by Linux & BrowserWindow ────────
 await sharp(src)
@@ -81,9 +84,5 @@ function buildIco(pngBufferList, sizes) {
 const icoBuf = buildIco(pngBuffers, icoSizes)
 fs.writeFileSync(path.join(outDir, 'icon.ico'), icoBuf)
 console.log('  ✓ icon.ico (16/32/48/64/128/256)')
-
-// ── Also copy logo.jpeg into src-electron/icons for reference ──
-fs.copyFileSync(src, path.join(outDir, 'logo.jpeg'))
-console.log('  ✓ logo.jpeg copied')
 
 console.log('\nDone! Now run:  quasar build -m electron')

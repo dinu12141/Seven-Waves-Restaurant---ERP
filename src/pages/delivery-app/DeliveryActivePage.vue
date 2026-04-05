@@ -432,7 +432,7 @@ function callCustomer() {
   color: #bdbdbd;
 }
 .empty-sub {
-  font-size: 12px;
+  font-size: 14px;
   color: #757575;
   max-width: 260px;
 }
@@ -455,7 +455,7 @@ function callCustomer() {
   color: #e8eaf0;
 }
 .source-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #ce93d8;
   background: rgba(206, 147, 216, 0.12);
@@ -463,7 +463,7 @@ function callCustomer() {
   border-radius: 6px;
 }
 .status-chip {
-  font-size: 11px !important;
+  font-size: 13px !important;
 }
 
 // ── Progress Stepper ────────────────────
@@ -495,7 +495,7 @@ function callCustomer() {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     color: #757575;
     transition: all 0.3s ease;
@@ -504,7 +504,7 @@ function callCustomer() {
   }
 
   &__label {
-    font-size: 9px;
+    font-size: 11px;
     color: #757575;
     text-align: center;
     text-transform: uppercase;
@@ -574,12 +574,12 @@ function callCustomer() {
   animation: alertPulse 1.5s ease-in-out infinite;
 }
 .kitchen-alert__title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: #a5d6a7;
 }
 .kitchen-alert__sub {
-  font-size: 11px;
+  font-size: 13px;
   color: #81c784;
   margin-top: 2px;
 }
@@ -605,7 +605,7 @@ function callCustomer() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #bdbdbd;
   text-transform: uppercase;
@@ -624,7 +624,7 @@ function callCustomer() {
 }
 .info-label {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #757575;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -632,7 +632,7 @@ function callCustomer() {
 }
 .info-value {
   display: block;
-  font-size: 13px;
+  font-size: 15px;
   color: #e0e0e0;
   &--link {
     color: #64b5f6;
@@ -642,7 +642,7 @@ function callCustomer() {
     }
   }
   &--note {
-    font-size: 12px;
+    font-size: 14px;
     font-style: italic;
     color: #9e9e9e;
   }
@@ -665,18 +665,18 @@ function callCustomer() {
   }
 }
 .item-qty {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #ce93d8;
   min-width: 24px;
 }
 .item-name {
   flex: 1;
-  font-size: 13px;
+  font-size: 15px;
   color: #e0e0e0;
 }
 .item-price {
-  font-size: 12px;
+  font-size: 14px;
   color: #a5d6a7;
   font-weight: 600;
 }
@@ -686,7 +686,7 @@ function callCustomer() {
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   color: #e8eaf0;
 }
@@ -702,7 +702,7 @@ function callCustomer() {
 .quick-action-btn {
   flex: 1;
   height: 42px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   border-radius: 10px;
   letter-spacing: 0.2px;
@@ -715,7 +715,7 @@ function callCustomer() {
 .action-btn {
   width: 100%;
   height: 48px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   border-radius: 12px;
   letter-spacing: 0.3px;
@@ -736,13 +736,13 @@ function callCustomer() {
   gap: 2px;
 }
 .timing-label {
-  font-size: 9px;
+  font-size: 11px;
   color: #616161;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 .timing-value {
-  font-size: 12px;
+  font-size: 14px;
   color: #bdbdbd;
   font-weight: 600;
 }
@@ -782,19 +782,19 @@ function callCustomer() {
   }
 }
 .tracking-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #b2ebf2;
   flex: 1;
 }
 .tracking-count {
-  font-size: 10px !important;
+  font-size: 12px !important;
 }
 .tracking-coords {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   color: #80cbc4;
   margin-top: 6px;
   font-family: 'Roboto Mono', monospace;
@@ -803,7 +803,7 @@ function callCustomer() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   color: #ffb74d;
   margin-top: 6px;
 }
@@ -832,7 +832,7 @@ function callCustomer() {
   margin-top: 12px;
 }
 .confirm-sub {
-  font-size: 13px;
+  font-size: 15px;
   color: #9e9e9e;
   margin-top: 8px;
   line-height: 1.5;
@@ -847,7 +847,7 @@ function callCustomer() {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: #bdbdbd;
   padding: 4px 0;
 }

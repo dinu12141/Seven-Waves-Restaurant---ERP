@@ -531,7 +531,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_post_inventory ON inventory_documents;
 CREATE TRIGGER trg_post_inventory
@@ -667,6 +666,9 @@ END $$;
 -- 12. HELPER VIEWS
 -- =====================================================
 
+DROP VIEW IF EXISTS v_low_stock_alerts CASCADE;
+DROP VIEW IF EXISTS v_stock_on_hand CASCADE;
+
 CREATE OR REPLACE VIEW v_stock_on_hand AS
 SELECT
     soh.company_id,
@@ -708,6 +710,8 @@ LEFT JOIN item_warehouse_settings iws
 CREATE OR REPLACE VIEW v_low_stock_alerts AS
 SELECT * FROM v_stock_on_hand
 WHERE stock_status IN ('low_stock', 'out_of_stock');
+
+DROP VIEW IF EXISTS v_inventory_ledger CASCADE;
 
 CREATE OR REPLACE VIEW v_inventory_ledger AS
 SELECT

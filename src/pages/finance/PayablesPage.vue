@@ -65,6 +65,7 @@
         dark
         dense
         :rows-per-page-options="[20, 50]"
+        :pagination="{ sortBy: 'doc_date', descending: true, rowsPerPage: 20 }"
         class="fin-table"
         :loading="loading"
         no-data-label="No payable entries"
@@ -106,13 +107,21 @@ const selectedBank = ref('All Banks')
 const bankOptions = ['All Banks', 'BOC', 'HNB', 'Commercial Bank', 'Sampath Bank']
 
 const filteredPayables = computed(() => {
-  if (selectedBank.value === 'All Banks') return payables.value
-  return payables.value.filter((p) => {
-    const bName = p.bank_name || ''
-    return (
-      bName.toLowerCase().includes(selectedBank.value.toLowerCase()) ||
-      selectedBank.value.toLowerCase().includes(bName.toLowerCase())
-    )
+  let list = payables.value
+  if (selectedBank.value !== 'All Banks') {
+    list = list.filter((p) => {
+      const bName = p.bank_name || ''
+      return (
+        bName.toLowerCase().includes(selectedBank.value.toLowerCase()) ||
+        selectedBank.value.toLowerCase().includes(bName.toLowerCase())
+      )
+    })
+  }
+  // Sort newest first
+  return [...list].sort((a, b) => {
+    const da = a.doc_date || ''
+    const db = b.doc_date || ''
+    return db.localeCompare(da)
   })
 })
 
@@ -134,7 +143,7 @@ const columns = [
   { name: 'supplier', label: 'Supplier & Bank', field: 'supplier_name', align: 'left' },
   { name: 'entry_type', label: 'Entry Type', field: 'entry_type', align: 'left' },
   { name: 'doc_number', label: 'Doc #', field: 'doc_number', align: 'left' },
-  { name: 'doc_date', label: 'Date', field: 'doc_date', align: 'left' },
+  { name: 'doc_date', label: 'Date', field: 'doc_date', align: 'left', sortable: true },
   { name: 'debit', label: 'Debit', field: 'debit', align: 'right', format: (v) => fmt(v) },
   { name: 'credit', label: 'Credit', field: 'credit', align: 'right', format: (v) => fmt(v) },
   { name: 'due_date', label: 'Due Date', field: 'due_date', align: 'left' },

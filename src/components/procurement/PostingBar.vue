@@ -1,6 +1,7 @@
 <template>
-  <q-footer
-    class="bg-white text-dark bordered row justify-between items-center q-px-md q-py-sm shadow-2"
+  <div
+    class="bg-grey-1 text-dark row justify-between items-center q-px-md q-py-sm"
+    style="border-top: 1px solid var(--erp-border);"
   >
     <!-- Audit Info -->
     <div class="text-caption text-grey">
@@ -35,7 +36,7 @@
         @click="$emit('post')"
       />
     </div>
-  </q-footer>
+  </div>
 </template>
 
 <script setup>

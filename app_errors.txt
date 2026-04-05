@@ -1,0 +1,854 @@
+﻿
+
+TimeGenerated : 4/3/2026 
+                11:58:31 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xc834
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc397ac4
+                fd782
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 2af28
+                919-2116-
+                4912-bd68
+                -4a38f1ef
+                a4da
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:50:26 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xba9c
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc3968b5
+                58822
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 02ca5
+                ff9-887a-
+                483b-8f33
+                -7fea5f7c
+                547a
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:36:52 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0x9794
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc394a62
+                8d2f9
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 09ba0
+                c78-9085-
+                41a1-a625
+                -5b89f2c8
+                28bc
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:34:32 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0x3a2c
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc394528
+                64089
+                Faulting 
+                applicati
+                on path: 
+                C:\Progra
+                m Files\S
+                even 
+                Waves ERP
+                \Seven 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Program F
+                iles\Seve
+                n Waves E
+                RP\Seven 
+                Waves 
+                ERP.exe
+                Report 
+                Id: e2b96
+                d1e-d412-
+                4720-8a39
+                -ed538084
+                4b4a
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:34:20 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0x9798
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc3944b9
+                26572
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 0ed10
+                895-9f44-
+                416e-af71
+                -9f6bd9b7
+                b0f9
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:33:08 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xb32c
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc394207
+                dadf9
+                Faulting 
+                applicati
+                on path: 
+                C:\Progra
+                m Files\S
+                even 
+                Waves ERP
+                \Seven 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Program F
+                iles\Seve
+                n Waves E
+                RP\Seven 
+                Waves 
+                ERP.exe
+                Report 
+                Id: 1cc78
+                c7e-068e-
+                409b-8b56
+                -8720d69f
+                887a
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:33:00 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xc1d0
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc3941bf
+                df853
+                Faulting 
+                applicati
+                on path: 
+                C:\Progra
+                m Files\S
+                even 
+                Waves ERP
+                \Seven 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Program F
+                iles\Seve
+                n Waves E
+                RP\Seven 
+                Waves 
+                ERP.exe
+                Report 
+                Id: ded62
+                bcf-d4f7-
+                4320-924a
+                -64f43ef0
+                2974
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:15:47 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xc0c0
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc391b3c
+                c45c0
+                Faulting 
+                applicati
+                on path: 
+                C:\Progra
+                m Files\S
+                even 
+                Waves ERP
+                \Seven 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Program F
+                iles\Seve
+                n Waves E
+                RP\Seven 
+                Waves 
+                ERP.exe
+                Report 
+                Id: c2f3e
+                464-0ece-
+                4243-a161
+                -bbd8c1b2
+                d9a2
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:04:32 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0xb804
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc39021f
+                0b6e0
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: 49e5e
+                c1b-03be-
+                454c-b529
+                -b8310645
+                7982
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+TimeGenerated : 4/3/2026 
+                11:02:54 
+                PM
+Source        : Applicati
+                on Error
+Message       : Faulting 
+                applicati
+                on name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Faulting 
+                module 
+                name: 
+                Seven 
+                Waves 
+                ERP.exe, 
+                version: 
+                41.0.3.0,
+                 time 
+                stamp: 0x
+                69b4417b
+                Exception
+                 code: 0x
+                c0000005
+                Fault 
+                offset: 0
+                x00000000
+                03d958bb
+                Faulting 
+                process 
+                id: 
+                0x6fd8
+                Faulting 
+                applicati
+                on start 
+                time: 0x1
+                dcc38fe74
+                f7455
+                Faulting 
+                applicati
+                on path: 
+                C:\Users\
+                ROG STRIX
+                \Desktop\
+                Restauran
+                t ERP new
+                \dist\ele
+                ctron\Out
+                put\win-u
+                npacked\S
+                even 
+                Waves 
+                ERP.exe
+                Faulting 
+                module 
+                path: C:\
+                Users\ROG
+                 STRIX\De
+                sktop\Res
+                taurant 
+                ERP new\d
+                ist\elect
+                ron\Outpu
+                t\win-unp
+                acked\Sev
+                en Waves 
+                ERP.exe
+                Report 
+                Id: b772b
+                810-4fb2-
+                4604-a879
+                -cb4e130d
+                12c6
+                Faulting 
+                package 
+                full 
+                name: 
+                Faulting 
+                package-r
+                elative a
+                pplicatio
+                n ID: 
+
+
+

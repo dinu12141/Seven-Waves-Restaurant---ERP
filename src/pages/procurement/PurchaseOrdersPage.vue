@@ -2,17 +2,14 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div>
-        <div
-          class="text-h2 text-white"
-          style="font-size: var(--erp-font-size-h2); font-weight: 600"
-        >
+        <div class="text-h5 text-weight-bold">
           Purchase Orders
         </div>
-        <div class="text-caption" style="color: var(--erp-text-secondary)">
+        <div class="text-caption text-grey">
           Manage stock procurement
         </div>
       </div>
-      <q-btn unelevated icon="add" label="New PO" class="erp-btn-primary" @click="createNewPO" />
+      <q-btn unelevated icon="add" label="New PO" color="primary" @click="createNewPO" />
     </div>
 
     <!-- Status filter tabs (ERP standard) -->
@@ -45,12 +42,17 @@
       @view="editPO"
     />
 
-    <!-- PO Dialog (unchanged — business logic preserved) -->
-    <q-dialog v-model="dialogVisible" full-width persistent>
+    <!-- PO Dialog (Professionalized & Balanced) -->
+    <q-dialog v-model="dialogVisible" persistent>
       <q-card
-        style="height: 90vh; display: flex; flex-direction: column"
-        class="bg-dark text-white"
+        style="width: 900px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column"
+        class="erp-dialog-card erp-border-radius shadow-5"
       >
+        <!-- Detail Loading Overlay -->
+        <q-inner-loading :showing="detailLoading" dark>
+          <q-spinner-tail color="primary" size="40px" />
+          <div class="q-mt-sm text-subtitle2">Fetching PO Details...</div>
+        </q-inner-loading>
         <q-card-section class="row items-center justify-between q-pb-none">
           <div class="text-h6">
             {{ isEditing ? 'Edit Purchase Order' : 'New Purchase Order' }}
@@ -58,7 +60,7 @@
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-separator color="grey-9" />
+        <q-separator />
 
         <q-card-section class="col scroll q-pa-md">
           <DocHeader
@@ -74,7 +76,7 @@
             show-expected-date
           />
 
-          <q-separator class="q-my-md" color="grey-9" />
+          <q-separator class="q-my-md" />
 
           <DocLinesEditor
             :lines="form.lines"
@@ -117,26 +119,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
-import {
-  listPO,
-  createPO,
-  listSuppliers,
-  listItems,
-  approvePO,
-} from 'src/services/procurementService'
+import { listPO, createPO, listSuppliers, listItems, approvePO, listInventoryPOs, getAnyPODetails } from 'src/services/procurementService'
+import { supabase } from 'src/boot/supabase'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 
 const $q = useQuasar()
+const route = useRoute()
+const router = useRouter()
 const tab = ref('all')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
+const detailLoading = ref(false)
 
 const purchaseOrders = ref([])
 const supplierOptions = ref([])
@@ -145,17 +146,18 @@ const itemOptions = ref([])
 // Form
 const defaultForm = {
   id: undefined,
-  doc_number: 'NEW',
+  doc_number: '',
+  doc_date: date.formatDate(new Date(), 'YYYY-MM-DD'),
+  expected_date: date.formatDate(date.addToDate(new Date(), { days: 7 }), 'YYYY-MM-DD'),
   supplier_id: undefined,
-  _supplier: undefined, // transient UI object for q-select
-  doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
-  expected_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
-  status: 'draft',
-  lines: [],
-  total_amount: 0,
+  _supplier: null,
   warehouse_id: undefined,
-  currency: 'LKR',
+  _warehouse: null,
+  lines: [],
   remarks: '',
+  status: 'draft',
+  total_amount: 0,
+  currency: 'LKR',
 }
 const form = ref({ ...defaultForm })
 
@@ -165,8 +167,9 @@ const columns = [
     label: 'PO #',
     field: 'doc_number',
     type: 'text',
+    classes: 'text-no-wrap text-weight-medium',
     sortable: true,
-    minWidth: 100,
+    minWidth: 200,
   },
   {
     name: 'doc_date',
@@ -198,6 +201,7 @@ const columns = [
     type: 'currency',
     sortable: true,
     align: 'right',
+    minWidth: 120,
   },
   { name: 'status', label: 'Status', field: 'status', type: 'status', align: 'center', width: 110 },
 ]
@@ -248,14 +252,57 @@ function tabCount(tabVal) {
   return purchaseOrders.value.filter((po) => po.status === tabVal).length
 }
 
+let poChannel = null
+
 onMounted(async () => {
   loading.value = true
   await Promise.all([fetchPOs(), fetchSuppliers(), fetchItems()])
   loading.value = false
+
+  // Handle ?action=new (redirect from inventory module)
+  if (route.query.action === 'new') {
+    createNewPO()
+    router.replace({ path: '/procurement/purchase-orders' })
+  }
+
+  // Real-time subscription for auto-refresh (both tables)
+  poChannel = supabase
+    .channel('realtime:po_combined')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_orders' }, () => {
+      fetchPOs()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_documents' }, () => {
+      fetchPOs()
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (poChannel) {
+    supabase.removeChannel(poChannel)
+  }
 })
 
 async function fetchPOs() {
-  purchaseOrders.value = await listPO()
+  try {
+    const [procPOs, invPOs] = await Promise.all([listPO(), listInventoryPOs()])
+    // Merge: avoid duplicates by doc_number
+    const procNumbers = new Set(procPOs.map((p) => p.doc_number))
+    const uniqueInvPOs = invPOs.filter((p) => !procNumbers.has(p.doc_number))
+    const merged = [...procPOs, ...uniqueInvPOs]
+    // Manual sort by newest first (doc_date then created_at)
+    purchaseOrders.value = merged.sort((a, b) => {
+      const d1 = new Date(a.doc_date).getTime()
+      const d2 = new Date(b.doc_date).getTime()
+      if (d1 !== d2) return d2 - d1
+      const c1 = new Date(a.created_at || 0).getTime()
+      const c2 = new Date(b.created_at || 0).getTime()
+      return c2 - c1
+    })
+  } catch (e) {
+    console.error('Failed to fetch POs:', e)
+    purchaseOrders.value = []
+  }
 }
 
 async function fetchSuppliers() {
@@ -287,14 +334,39 @@ function createNewPO() {
   addLine()
 }
 
-function editPO(row) {
+async function editPO(row) {
   isEditing.value = true
-  form.value = JSON.parse(JSON.stringify(row)) // Deep copy
-  // Ensure lines is always an array — DB row may not carry line items
-  if (!Array.isArray(form.value.lines)) {
-    form.value.lines = []
-  }
+  // Reset form to avoid showing previous PO details while loading
+  form.value = { ...defaultForm, id: row.id, doc_number: row.doc_number, status: row.status }
+  
+  detailLoading.value = true
   dialogVisible.value = true
+  
+  try {
+    const fullPO = await getAnyPODetails(row.id, row._source || 'procurement')
+    
+    // Map supplier and other attributes correctly for components
+    const mappedPO = {
+      ...fullPO,
+      _supplier: fullPO.suppliers || (fullPO.supplier_id ? { id: fullPO.supplier_id, name: fullPO.supplier_name } : null),
+      _warehouse: fullPO.warehouse || (fullPO.warehouse_id ? { id: fullPO.warehouse_id, name: fullPO.warehouse_name } : null),
+      expected_date: fullPO.delivery_date || fullPO.expected_date || fullPO.delivery_date,
+      doc_date: fullPO.doc_date || fullPO.date
+    }
+    
+    form.value = mappedPO
+    
+    // Ensure lines is always an array
+    if (!Array.isArray(form.value.lines)) {
+      form.value.lines = []
+    }
+  } catch (e) {
+    console.error('Failed to fetch PO details:', e)
+    $q.notify({ color: 'negative', message: 'Could not load PO details' })
+    dialogVisible.value = false
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 function addLine() {

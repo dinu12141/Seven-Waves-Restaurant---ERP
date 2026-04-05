@@ -197,17 +197,18 @@ async function loadData() {
     dateTo: dateTo.value || undefined,
     search: filtersSearch.value || undefined,
   })
-  // Calculate running balance
+  // Calculate running balance by sorting ascending first (oldest to newest)
   let balance = 0
-  const sorted = (data || []).sort(
-    (a, b) =>
-      new Date(a.journal_entries?.doc_date || 0) - new Date(b.journal_entries?.doc_date || 0),
+  const sortedAsc = (data || []).sort(
+    (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)
   )
-  sorted.forEach((row) => {
+  sortedAsc.forEach((row) => {
     balance += Number(row.dr_amount || 0) - Number(row.cr_amount || 0)
     row._runningBalance = balance
   })
-  rows.value = sorted
+  
+  // Reverse the array to display newest entries first
+  rows.value = sortedAsc.reverse()
   loading.value = false
 }
 

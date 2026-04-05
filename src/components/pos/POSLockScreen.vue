@@ -21,19 +21,19 @@
 
           <!-- Login Form -->
           <form class="lock-form" @submit.prevent="handleSignIn">
-            <!-- Email -->
+            <!-- Email / User Code -->
             <div class="lock-field">
-              <label class="lock-label">Email / Username</label>
+              <label class="lock-label">User Code / Email</label>
               <div class="lock-input-wrap" :class="{ 'has-error': !!loginError }">
-                <q-icon name="mail_outline" size="18px" class="field-icon" />
+                <q-icon name="pin" size="18px" class="field-icon" />
                 <input
                   v-model="email"
-                  type="email"
+                  type="text"
                   class="lock-input"
-                  placeholder="cashier@sevenwaves.lk"
-                  autocomplete="email"
+                  placeholder="Enter User Code or Email"
                   :disabled="loading"
                   @input="loginError = ''"
+                  ref="codeInputRef"
                 />
               </div>
             </div>
@@ -80,7 +80,7 @@
               <q-spinner-dots v-if="loading" color="white" size="20px" />
               <template v-else>
                 <q-icon name="login" size="18px" class="q-mr-sm" />
-                Sign In to POS
+                Unlock Terminal
               </template>
             </button>
           </form>
@@ -88,7 +88,7 @@
           <!-- Footer note -->
           <div class="lock-footer-note">
             <q-icon name="security" size="12px" class="q-mr-xs" />
-            Only cashier-role accounts can access this terminal
+            Enter your cashier code to continue
           </div>
         </div>
       </div>
@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { Notify } from 'quasar'
 
@@ -117,13 +117,14 @@ const emit = defineEmits(['update:modelValue', 'signed-in'])
 
 const authStore = useAuthStore()
 
-const email = ref('')
+const email = ref('') // Used for both email and user code
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const loginError = ref('')
+const codeInputRef = ref(null)
 
-// Cleared fields whenever the lock screen opens
+// Focus first field when locked
 watch(
   () => props.modelValue,
   (visible) => {
@@ -132,9 +133,20 @@ watch(
       password.value = ''
       showPassword.value = false
       loginError.value = ''
+      setTimeout(() => {
+        codeInputRef.value?.focus()
+      }, 300)
     }
   },
 )
+
+onMounted(() => {
+  if (props.modelValue) {
+    setTimeout(() => {
+      codeInputRef.value?.focus()
+    }, 500)
+  }
+})
 
 async function handleSignIn() {
   if (!email.value || !password.value) return
@@ -143,10 +155,16 @@ async function handleSignIn() {
   loginError.value = ''
 
   try {
-    const { error } = await authStore.signIn(email.value, password.value)
+    let result
+    // If input is purely numeric, assume it's a User Code
+    if (/^\d+$/.test(email.value)) {
+      result = await authStore.signInWithCode(email.value, password.value)
+    } else {
+      result = await authStore.signIn(email.value, password.value)
+    }
 
-    if (error) {
-      loginError.value = error.message || 'Invalid credentials'
+    if (result.error) {
+      loginError.value = result.error.message || 'Invalid credentials'
       return
     }
 
@@ -164,7 +182,7 @@ async function handleSignIn() {
 
     // ── Success ────────────────────────────────────────────────────
     Notify.create({
-      message: `Welcome, ${authStore.profile?.full_name || authStore.user?.email}!`,
+      message: `Welcome, ${authStore.profile?.full_name || authStore.user?.email || 'Cashier'}!`,
       caption: 'POS terminal unlocked',
       color: 'positive',
       icon: 'verified',
@@ -188,8 +206,8 @@ async function handleSignIn() {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(7, 12, 22, 0.88);
-  backdrop-filter: blur(14px) saturate(0.8);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -207,13 +225,13 @@ async function handleSignIn() {
 
 /* ── Lock Card ─────────────────────────────────────────── */
 .lock-card {
-  width: 420px;
+  width: 380px;
   background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
   box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(37, 99, 235, 0.15),
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(37, 99, 235, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
   animation: card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -222,7 +240,7 @@ async function handleSignIn() {
 @keyframes card-in {
   from {
     opacity: 0;
-    transform: scale(0.9) translateY(20px);
+    transform: scale(0.95) translateY(10px);
   }
   to {
     opacity: 1;
@@ -232,35 +250,34 @@ async function handleSignIn() {
 
 /* ── Header ────────────────────────────────────────────── */
 .lock-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
-  padding: 28px 28px 22px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  padding: 22px 24px 18px;
   text-align: center;
 }
 
 .lock-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  margin: 0 auto 12px;
 }
 
 .lock-title {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.5px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .lock-subtitle {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.73rem;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 400;
 }
 
@@ -269,31 +286,31 @@ async function handleSignIn() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.73rem;
-  color: rgba(255, 165, 0, 0.85);
-  background: rgba(245, 158, 11, 0.08);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.15);
-  padding: 8px 16px;
+  font-size: 0.7rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.15);
+  padding: 6px 16px;
 }
 
 /* ── Form ──────────────────────────────────────────────── */
 .lock-form {
-  padding: 26px 28px 22px;
+  padding: 22px 24px 18px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .lock-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .lock-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -301,31 +318,21 @@ async function handleSignIn() {
 .lock-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 0 12px;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-  height: 46px;
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 42px;
 
   &:focus-within {
     border-color: rgba(37, 99, 235, 0.6);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     background: rgba(37, 99, 235, 0.05);
-  }
-
-  &.has-error {
-    border-color: rgba(220, 38, 38, 0.5);
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
   }
 }
 
 .field-icon {
   color: rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
-  margin-right: 10px;
+  margin-right: 8px;
 }
 
 .lock-input {
@@ -333,32 +340,15 @@ async function handleSignIn() {
   background: none;
   border: none;
   outline: none;
-  color: #f8fafc;
-  font-size: 0.9rem;
-  font-family: inherit;
-
-  &::placeholder {
-    color: rgba(255, 255, 255, 0.2);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-  }
+  color: #fff;
+  font-size: 0.85rem;
 }
 
 .show-pw-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-
-  &:hover {
-    color: rgba(255, 255, 255, 0.7);
-  }
 }
 
 /* ── Error ─────────────────────────────────────────────── */
@@ -366,44 +356,29 @@ async function handleSignIn() {
   display: flex;
   align-items: center;
   background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.78rem;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.73rem;
   color: #fca5a5;
-}
-
-.err-slide-enter-active,
-.err-slide-leave-active {
-  transition: all 0.2s ease;
-}
-.err-slide-enter-from,
-.err-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
 }
 
 /* ── Sign In Button ────────────────────────────────────── */
 .lock-signin-btn {
-  height: 48px;
-  border-radius: 10px;
+  height: 44px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #1d4ed8, #2563eb);
   border: none;
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  font-family: inherit;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
-  margin-top: 4px;
-
+  margin-top: 2px;
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, #1e40af, #1d4ed8);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     transform: translateY(-1px);
   }
 
@@ -414,9 +389,9 @@ async function handleSignIn() {
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
-    box-shadow: none;
   }
 }
+
 
 /* ── Footer note ───────────────────────────────────────── */
 .lock-footer-note {

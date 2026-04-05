@@ -193,7 +193,7 @@ function deliveryDuration(item) {
   }
 }
 .summary-label {
-  font-size: 10px;
+  font-size: 12px;
   color: #757575;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -225,7 +225,7 @@ function deliveryDuration(item) {
   color: #bdbdbd;
 }
 .empty-sub {
-  font-size: 12px;
+  font-size: 14px;
   color: #757575;
 }
 
@@ -245,12 +245,12 @@ function deliveryDuration(item) {
   margin-bottom: 8px;
 }
 .order-number {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
   color: #e0e0e0;
 }
 .done-chip {
-  font-size: 10px !important;
+  font-size: 12px !important;
   height: 20px !important;
 }
 
@@ -263,7 +263,7 @@ function deliveryDuration(item) {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: #9e9e9e;
 }
 .address-text {
@@ -285,7 +285,7 @@ function deliveryDuration(item) {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 12px;
   color: #757575;
 }
 </style>

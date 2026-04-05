@@ -57,12 +57,10 @@
         v-model="search"
         dense
         outlined
-        dark
         placeholder="Search printers..."
-        bg-color="grey-9"
         style="min-width: 230px"
       >
-        <template v-slot:prepend><q-icon name="search" color="grey-5" /></template>
+        <template v-slot:prepend><q-icon name="search" /></template>
       </q-input>
 
       <q-select
@@ -70,9 +68,7 @@
         :options="typeOptions"
         dense
         outlined
-        dark
         options-dense
-        bg-color="grey-9"
         style="min-width: 160px"
         emit-value
         map-options
@@ -88,9 +84,7 @@
         ]"
         dense
         outlined
-        dark
         options-dense
-        bg-color="grey-9"
         style="min-width: 130px"
         emit-value
         map-options
@@ -105,7 +99,6 @@
         :columns="columns"
         row-key="id"
         flat
-        dark
         :loading="loading"
         :rows-per-page-options="[10, 20, 50]"
         class="printers-table"
@@ -120,7 +113,7 @@
                 :color="printerColor(props.row.type)"
               />
               <div>
-                <div class="text-weight-bold text-white text-body2">{{ props.row.name }}</div>
+                <div class="text-weight-bold text-body2">{{ props.row.name }}</div>
                 <div v-if="props.row.notes" class="text-caption text-grey-6">
                   {{ props.row.notes }}
                 </div>
@@ -150,17 +143,17 @@
         <!-- Connection col -->
         <template v-slot:body-cell-connection="props">
           <q-td :props="props">
-            <div v-if="props.row.ip_address" class="font-mono text-grey-4 text-caption">
+            <div v-if="props.row.ip_address" class="font-mono text-caption">
               {{ props.row.ip_address }}:{{ props.row.port }}
             </div>
-            <div v-else class="text-grey-7 text-caption">—</div>
+            <div v-else class="text-grey-5 text-caption">—</div>
           </q-td>
         </template>
 
         <!-- Paper col -->
         <template v-slot:body-cell-paper_width="props">
           <q-td :props="props">
-            <span class="text-grey-4">{{ props.row.paper_width }}mm</span>
+            <span>{{ props.row.paper_width }}mm</span>
           </q-td>
         </template>
 
@@ -240,30 +233,29 @@
     <q-dialog v-model="dialogOpen" persistent>
       <q-card class="printer-dialog">
         <q-card-section class="dialog-header row items-center justify-between">
-          <div class="text-h6 text-white">
+          <div class="text-h6">
             {{ isEditing ? 'Edit Printer' : 'Add New Printer' }}
           </div>
-          <q-btn flat round dense icon="close" color="grey-5" v-close-popup />
+          <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
 
-        <q-separator dark />
+        <q-separator />
 
-        <q-card-section class="q-gutter-y-md q-pt-lg">
-          <q-form @submit.prevent="savePrinter" class="q-gutter-y-md">
+        <q-card-section class="q-gutter-y-sm q-pt-md">
+          <q-form @submit.prevent="savePrinter" class="q-gutter-y-sm">
             <!-- Name -->
             <q-input
               v-model="form.name"
               label="Printer Name *"
               outlined
-              dark
-              bg-color="grey-9"
+              dense
               :rules="[(v) => !!v || 'Name is required']"
             >
-              <template v-slot:prepend><q-icon name="label" color="grey-6" /></template>
+              <template v-slot:prepend><q-icon name="label" /></template>
             </q-input>
 
             <!-- Type + Branch row -->
-            <div class="row q-gutter-md">
+            <div class="row q-gutter-sm">
               <q-select
                 v-model="form.type"
                 :options="typeOptionsRaw"
@@ -271,14 +263,13 @@
                 map-options
                 label="Printer Type *"
                 outlined
-                dark
-                bg-color="grey-9"
+                dense
                 options-dense
                 class="col"
                 :rules="[(v) => !!v || 'Type required']"
               >
                 <template v-slot:prepend>
-                  <q-icon :name="printerIcon(form.type)" color="grey-6" />
+                  <q-icon :name="printerIcon(form.type)" />
                 </template>
               </q-select>
 
@@ -289,14 +280,13 @@
                 map-options
                 label="Branch *"
                 outlined
-                dark
-                bg-color="grey-9"
+                dense
                 options-dense
                 class="col"
                 :loading="loadingBranches"
                 :rules="[(v) => !!v || 'Branch required']"
               >
-                <template v-slot:prepend><q-icon name="store" color="grey-6" /></template>
+                <template v-slot:prepend><q-icon name="store" /></template>
               </q-select>
             </div>
 
@@ -309,42 +299,39 @@
               map-options
               label="Kitchen Station"
               outlined
-              dark
-              bg-color="grey-9"
+              dense
               options-dense
               clearable
               :loading="loadingKitchens"
             >
-              <template v-slot:prepend><q-icon name="soup_kitchen" color="grey-6" /></template>
+              <template v-slot:prepend><q-icon name="soup_kitchen" /></template>
             </q-select>
 
             <!-- Network section -->
-            <div class="text-caption text-grey-5 q-mt-sm">NETWORK CONNECTION (optional)</div>
-            <div class="row q-gutter-md">
+            <div class="text-caption text-grey-6 q-mt-sm">NETWORK CONNECTION (optional)</div>
+            <div class="row q-gutter-sm">
               <q-input
                 v-model="form.ip_address"
                 label="IP Address"
                 outlined
-                dark
-                bg-color="grey-9"
+                dense
                 class="col"
                 placeholder="192.168.1.100"
               >
-                <template v-slot:prepend><q-icon name="wifi" color="grey-6" /></template>
+                <template v-slot:prepend><q-icon name="wifi" /></template>
               </q-input>
               <q-input
                 v-model.number="form.port"
                 label="Port"
                 outlined
-                dark
-                bg-color="grey-9"
+                dense
                 type="number"
                 style="max-width: 120px"
               />
             </div>
 
             <!-- Paper width + default row -->
-            <div class="row q-gutter-md items-center">
+            <div class="row q-gutter-sm items-center">
               <q-select
                 v-model.number="form.paper_width"
                 :options="[
@@ -355,8 +342,7 @@
                 map-options
                 label="Paper Width"
                 outlined
-                dark
-                bg-color="grey-9"
+                dense
                 options-dense
                 class="col"
               />
@@ -373,8 +359,7 @@
               v-model="form.notes"
               label="Notes (optional)"
               outlined
-              dark
-              bg-color="grey-9"
+              dense
               autogrow
               placeholder="e.g. Near fry station, USB connected"
             />
@@ -384,10 +369,10 @@
           </q-form>
         </q-card-section>
 
-        <q-separator dark />
+        <q-separator />
 
         <q-card-actions align="right" class="q-pa-md q-gutter-sm">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn flat label="Cancel" color="grey" v-close-popup />
           <q-btn
             unelevated
             :label="isEditing ? 'Save Changes' : 'Add Printer'"
@@ -676,15 +661,7 @@ onMounted(async () => {
 
 <style scoped>
 .printers-page {
-  background: #0d0d14;
   min-height: 100vh;
-  font-family: 'Inter', 'Roboto', sans-serif;
-}
-
-.letter-sp {
-  letter-spacing: 3px;
-  font-size: 0.65rem;
-  font-weight: 700;
 }
 
 .add-btn {
@@ -695,8 +672,8 @@ onMounted(async () => {
 
 /* ── Stats ── */
 .stat-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
   border-radius: 12px;
   padding: 18px 20px;
   display: flex;
@@ -705,12 +682,12 @@ onMounted(async () => {
 .stat-number {
   font-size: 2rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--erp-text-primary);
   line-height: 1.1;
 }
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-top: 2px;
@@ -718,8 +695,8 @@ onMounted(async () => {
 
 /* ── Table ── */
 .printers-table-wrap {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -731,29 +708,21 @@ onMounted(async () => {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #6b7280;
+  color: var(--erp-text-secondary);
   font-weight: 700;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--erp-border);
 }
 :deep(.q-table tbody tr) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--erp-border);
 }
 :deep(.q-table tbody tr:hover td) {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--erp-bg-hover);
 }
 
 /* ── Dialog ── */
 .printer-dialog {
-  background: #17171f;
   min-width: 560px;
   max-width: 640px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-}
-
-.dialog-header {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px 16px 0 0;
 }
 
 .font-mono {

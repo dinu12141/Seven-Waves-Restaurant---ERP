@@ -21,7 +21,7 @@ export async function fetchChartOfAccounts() {
   return { data, error }
 }
 
-export async function createAccount(account) {
+export async function createAccount(account: any) {
   const { data, error } = await supabase
     .from('chart_of_accounts')
     .insert(account)
@@ -30,7 +30,7 @@ export async function createAccount(account) {
   return { data, error }
 }
 
-export async function updateAccount(id, updates) {
+export async function updateAccount(id: any, updates: any) {
   const { data, error } = await supabase
     .from('chart_of_accounts')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -59,7 +59,7 @@ export async function fetchJournalEntries(filters: FinanceFilters = {}) {
   return { data, error }
 }
 
-export async function createJournalEntry(entry, lines) {
+export async function createJournalEntry(entry: any, lines: any) {
   // Insert journal header
   const { data: je, error: jeErr } = await supabase
     .from('journal_entries')
@@ -70,7 +70,7 @@ export async function createJournalEntry(entry, lines) {
   if (jeErr) return { data: null, error: jeErr }
 
   // Insert lines linking to journal
-  const mappedLines = lines.map((l, idx) => ({
+  const mappedLines = lines.map((l: any, idx: any) => ({
     journal_id: je.id,
     account_code: l.account_code,
     account_name: l.account_name,
@@ -90,7 +90,7 @@ export async function createJournalEntry(entry, lines) {
   return { data: je, error: null }
 }
 
-export async function reverseJournalEntry(id) {
+export async function reverseJournalEntry(id: any) {
   const { data, error } = await supabase
     .from('journal_entries')
     .update({ is_reversed: true })
@@ -165,7 +165,7 @@ export async function fetchCashFlowStatement(dateFrom: string, dateTo: string, b
   return { data, error }
 }
 
-export async function createBankAccount(account) {
+export async function createBankAccount(account: any) {
   const { data, error } = await supabase
     .from('bank_accounts')
     .insert(account)
@@ -291,7 +291,7 @@ export async function fetchExpenses(filters: FinanceFilters = {}) {
   return { data, error }
 }
 
-export async function createExpense(expense) {
+export async function createExpense(expense: any) {
   const { data, error } = await supabase
     .from('expense_entries')
     .insert(expense)
@@ -300,7 +300,7 @@ export async function createExpense(expense) {
   return { data, error }
 }
 
-export async function approveExpense(id, approvedBy) {
+export async function approveExpense(id: any, approvedBy: any) {
   const { data, error } = await supabase
     .from('expense_entries')
     .update({ status: 'approved', approved_by: approvedBy, approved_at: new Date().toISOString() })
@@ -358,7 +358,7 @@ export async function fetchPayrollCycles(filters: FinanceFilters = {}) {
 
   // map field names to match what Finance UI expects
   const { data, error } = await query
-  const mapped = (data || []).map(r => ({
+  const mapped = (data || []).map((r: any) => ({
     ...r,
     cycle_name: `Payroll ${r.period_start?.substring(0, 7) || ''}`,
     total_employees: r.employee_count,
@@ -389,7 +389,7 @@ export async function fetchEmployeeSalaryStructures() {
   return { data, error }
 }
 
-export async function createPayrollCycle(cycle) {
+export async function createPayrollCycle(cycle: any) {
   const { data, error } = await supabase
     .from('payroll_cycles')
     .insert(cycle)
@@ -398,7 +398,7 @@ export async function createPayrollCycle(cycle) {
   return { data, error }
 }
 
-export async function createPayrollRecords(records) {
+export async function createPayrollRecords(records: any) {
   const { data, error } = await supabase
     .from('payroll_records')
     .insert(records)
@@ -406,7 +406,7 @@ export async function createPayrollRecords(records) {
   return { data, error }
 }
 
-export async function createPayrollLineItems(items) {
+export async function createPayrollLineItems(items: any) {
   const { data, error } = await supabase
     .from('payroll_line_items')
     .insert(items)
@@ -414,7 +414,7 @@ export async function createPayrollLineItems(items) {
   return { data, error }
 }
 
-export async function updatePayrollCycleStatus(id, status, extra = {}) {
+export async function updatePayrollCycleStatus(id: any, status: any, extra = {}) {
   const { data, error } = await supabase
     .from('payroll_cycles')
     .update({ status, ...extra, updated_at: new Date().toISOString() })
@@ -649,31 +649,41 @@ export async function logFinanceAction(action: FinanceFilters) {
 // ═══════════════════════════════════════════════════════════════════
 // DASHBOARD KPIs
 // ═══════════════════════════════════════════════════════════════════
-export async function fetchDashboardKPIs(branchId) {
+export async function fetchDashboardKPIs(branchId?: any) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString()
+  const todayDateStr = today.toISOString().split('T')[0]
 
   const [revenueRes, expenseRes, bankRes, receivableRes, payableRes, payrollRes] = await Promise.all([
-    // Today's revenue from payments
-    supabase.from('payments').select('amount').gte('created_at', todayStr),
+    // Today's revenue from Journal Lines (Accounts starting with 4)
+    supabase.from('journal_lines').select('cr_amount, dr_amount, account_code, journal_entries!inner(doc_date, is_reversed)')
+      .gte('journal_entries.doc_date', todayDateStr)
+      .eq('journal_entries.is_reversed', false)
+      .like('account_code', '4%'),
     // Today's expenses
-    supabase.from('expense_entries').select('amount').gte('expense_date', today.toISOString().split('T')[0]),
-    // Bank balances
-    supabase.from('bank_accounts').select('current_balance, account_type').eq('is_active', true),
+    supabase.from('expense_entries').select('amount').gte('expense_date', todayDateStr),
+    // Bank balances (using v_account_balances for accurate ledger view of ALL cash/bank assets)
+    supabase.from('v_account_balances').select('balance, code').like('code', '10%'),
     // Outstanding receivables
     supabase.from('customer_receivables').select('balance').in('status', ['outstanding', 'partial', 'overdue']),
-    // Outstanding payables
-    supabase.from('ap_invoices').select('total_amount, paid_amount').in('status', ['approved', 'partial']),
+    // Outstanding payables (posted or partially paid invoices)
+    supabase.from('ap_invoices').select('total_amount, paid_amount').in('status', ['posted', 'partial_paid']),
     // Latest payroll
     supabase.from('payroll_cycles').select('total_net, status').order('period_end', { ascending: false }).limit(1),
   ])
 
-  const todayRevenue = (revenueRes.data || []).reduce((s, p) => s + Number(p.amount || 0), 0)
-  const todayExpenses = (expenseRes.data || []).reduce((s, e) => s + Number(e.amount || 0), 0)
-  const bankBalance = (bankRes.data || []).reduce((s, b) => s + Number(b.current_balance || 0), 0)
-  const outstandingAR = (receivableRes.data || []).reduce((s, r) => s + Number(r.balance || 0), 0)
-  const outstandingAP = (payableRes.data || []).reduce((s, p) => s + Number((p.total_amount || 0) - (p.paid_amount || 0)), 0)
+  let todayRevenue = 0
+  if (revenueRes.data) {
+    todayRevenue = revenueRes.data.reduce((s: any, row: any) => s + (Number(row.cr_amount || 0) - Number(row.dr_amount || 0)), 0)
+  }
+
+  const todayExpenses = (expenseRes.data || []).reduce((s: any, e: any) => s + Number(e.amount || 0), 0)
+  
+  // Bank balance from chart of accounts 1000 (Cash) + 1010 (Bank)
+  const bankBalance = (bankRes.data || []).reduce((s: any, b: any) => s + Number(b.balance || 0), 0)
+  
+  const outstandingAR = (receivableRes.data || []).reduce((s: any, r: any) => s + Number(r.balance || 0), 0)
+  const outstandingAP = (payableRes.data || []).reduce((s: any, p: any) => s + Number((p.total_amount || 0) - (p.paid_amount || 0)), 0)
   const payrollDue = payrollRes.data?.[0]?.status !== 'posted' ? Number(payrollRes.data?.[0]?.total_net || 0) : 0
 
   return {
@@ -690,7 +700,7 @@ export async function fetchDashboardKPIs(branchId) {
 // ═══════════════════════════════════════════════════════════════════
 // FINANCIAL REPORTS
 // ═══════════════════════════════════════════════════════════════════
-export async function fetchProfitAndLoss(dateFrom, dateTo) {
+export async function fetchProfitAndLoss(dateFrom: any, dateTo: any) {
   // Revenue accounts (4xxx) - Expense accounts (5xxx)
   const { data, error } = await supabase
     .from('journal_lines')
@@ -726,18 +736,38 @@ export async function fetchBalanceSheet() {
   const { data, error } = await supabase.from('v_account_balances').select('*').order('code')
   if (error) return { data: null, error }
 
-  const assets = (data || []).filter(a => a.account_type === 'Asset')
-  const liabilities = (data || []).filter(a => a.account_type === 'Liability')
-  const equity = (data || []).filter(a => a.account_type === 'Equity')
+  const assets = (data || []).filter((a: any) => a.account_type === 'Asset')
+  const liabilities = (data || []).filter((a: any) => a.account_type === 'Liability')
+  const equityAccounts = (data || []).filter((a: any) => a.account_type === 'Equity')
+
+  // Calculate Retained Earnings = Revenue - Expenses
+  // Revenue (4xxx) has credit balance, Expenses (5xxx) has debit balance
+  const totalRevenue = (data || [])
+    .filter((a: any) => a.account_type === 'Revenue')
+    .reduce((s: number, a: any) => s + Number(a.balance || 0), 0)
+  const totalExpenses = (data || [])
+    .filter((a: any) => a.account_type === 'Expense')
+    .reduce((s: number, a: any) => s + Number(a.balance || 0), 0)
+  const retainedEarnings = totalRevenue - totalExpenses
+
+  // Add Retained Earnings as a virtual equity line item
+  const equity = [
+    ...equityAccounts,
+    { code: '3900', name: 'Retained Earnings (Current Period)', account_type: 'Equity', balance: retainedEarnings },
+  ]
+
+  const totalAssets = assets.reduce((s: number, a: any) => s + Number(a.balance || 0), 0)
+  const totalLiabilities = liabilities.reduce((s: number, a: any) => s + Number(a.balance || 0), 0)
+  const totalEquity = equity.reduce((s: number, a: any) => s + Number(a.balance || 0), 0)
 
   return {
     data: {
       assets,
       liabilities,
       equity,
-      totalAssets: assets.reduce((s, a) => s + Number(a.balance || 0), 0),
-      totalLiabilities: liabilities.reduce((s, a) => s + Number(a.balance || 0), 0),
-      totalEquity: equity.reduce((s, a) => s + Number(a.balance || 0), 0),
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
     },
     error: null,
   }

@@ -1,7 +1,7 @@
 <template>
-  <q-layout view="hHh lpR fFf" class="waiter-app-layout">
+  <q-layout view="hHh lpR fFf" class="waiter-app-layout mobile-app-shell">
     <!-- ── Top Bar ───────────────────────────────────────────────────────── -->
-    <q-header class="waiter-top-bar">
+    <q-header class="waiter-top-bar mobile-top-bar">
       <q-toolbar class="waiter-toolbar">
         <!-- Brand Logo -->
         <img
@@ -223,7 +223,7 @@
     </transition>
 
     <!-- ── Page Content ──────────────────────────────────────────────────── -->
-    <q-page-container class="waiter-page-container">
+    <q-page-container>
       <router-view v-slot="{ Component }">
         <transition name="tab-fade" mode="out-in">
           <component :is="Component" />
@@ -232,16 +232,16 @@
     </q-page-container>
 
     <!-- ── Bottom Navigation ─────────────────────────────────────────────── -->
-    <q-footer class="waiter-bottom-nav">
-      <div class="bottom-nav-bar">
+    <q-footer class="waiter-bottom-nav mobile-bottom-nav">
+      <div class="bottom-nav-bar mobile-nav-bar">
         <router-link
           v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
           custom
-          v-slot="{ isActive, navigate }"
+          v-slot="{ isActive, isExactActive, navigate }"
         >
-          <button class="nav-tab" :class="{ 'nav-tab--active': isActive }" @click="navigate">
+          <button class="nav-tab" :class="{ 'nav-tab--active': tab.exact ? isExactActive : isActive }" @click="navigate">
             <div class="nav-tab__icon-wrap">
               <q-icon :name="tab.icon" size="32px" />
               <q-badge
@@ -290,6 +290,9 @@ const isPwa = window.matchMedia('(display-mode: standalone)').matches || window.
 
 // ── Auth guard + push setup ───────────────────────────────────────────────────
 onMounted(async () => {
+  // Mark body for mobile app scroll prevention
+  document.body.classList.add('mobile-app-active')
+
   // Check session — redirect to login if unauthenticated
   // authStore is already initialized by boot/auth.ts, so use cached data
   if (!authStore.isAuthenticated) {
@@ -323,6 +326,7 @@ onMounted(async () => {
   window.addEventListener('beforeinstallprompt', handleInstallPrompt)
 })
 onUnmounted(() => {
+  document.body.classList.remove('mobile-app-active')
   store.cleanup()
   if (removeShiftGuard) removeShiftGuard()
   window.removeEventListener('beforeinstallprompt', handleInstallPrompt)
@@ -429,7 +433,7 @@ const removeShiftGuard = router.beforeEach((to, from, next) => {
 
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
 const tabs = computed(() => [
-  { label: 'Home', icon: 'home', to: '/waiter-app' },
+  { label: 'Home', icon: 'home', to: '/waiter-app', exact: true },
   { label: 'POS', icon: 'point_of_sale', to: '/waiter-app/pos' },
   { label: 'Tables', icon: 'table_restaurant', to: '/waiter-app/tables' },
   {
@@ -475,15 +479,11 @@ const tabs = computed(() => [
   background: #fff !important;
   border-bottom: 1px solid var(--erp-border, #e2e8f0) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-  // Push content below system status bar (signal, battery, time)
-  padding-top: env(safe-area-inset-top) !important;
+  // safe-area-inset-top is handled by .mobile-top-bar class
 }
 
-.waiter-toolbar {
-  height: 52px;
-  min-height: 52px;
-  padding: 0 14px;
-}
+// .waiter-toolbar — height/min-height/padding handled by .mobile-top-bar .q-toolbar
+
 
 // ─── Logo ───────────────────────────────────────────────────────────────────
 .waiter-logo {
@@ -676,26 +676,17 @@ const tabs = computed(() => [
 }
 
 // ─── Page Container ──────────────────────────────────────────────────────────
-.waiter-page-container {
-  padding-bottom: 80px !important; // space for bottom nav
-  min-height: calc(100vh - 52px - 72px);
-}
+// padding-bottom is auto-calculated by Quasar's QPageContainer
+// min-height is handled by the mobile-app-shell flex layout
 
 // ─── Bottom Navigation ───────────────────────────────────────────────────────
-.waiter-bottom-nav {
-  background: transparent !important;
-  border-top: none !important;
-}
+// .waiter-bottom-nav background/border handled by .mobile-bottom-nav
 
 .bottom-nav-bar {
-  display: flex;
-  align-items: stretch;
-  height: 72px;
+  // display/height/safe-area handled by .mobile-nav-bar
   background: #fff;
   border-top: 1px solid var(--erp-border, #e2e8f0);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
-  padding-top: 4px;
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nav-tab {
@@ -828,29 +819,8 @@ const tabs = computed(() => [
 }
 
 // ─── Mobile Safe Area Support ─────────────────────────────────────────────────
-// Ensure content doesn't go behind notch or home indicator
-.waiter-page-container {
-  padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
-  padding-top: env(safe-area-inset-top);
-}
-
-.waiter-top-bar {
-  padding-top: env(safe-area-inset-top) !important;
-}
-
-.waiter-toolbar {
-  height: calc(52px + env(safe-area-inset-top));
-  min-height: calc(52px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
-  padding-left: max(14px, env(safe-area-inset-left));
-  padding-right: max(14px, env(safe-area-inset-right));
-}
-
-.bottom-nav-bar {
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-}
+// Safe area handling is now centralized in mobile-app-shell.scss
+// DO NOT add duplicate safe-area padding here
 
 </style>
 

@@ -14,10 +14,31 @@
           <q-icon name="grid_view" size="22px" color="primary" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">Access Control Overview</div>
           <q-space />
-          <q-badge color="blue-1" text-color="blue-9" class="q-pa-xs">
+          <q-badge v-if="!matrixDirty" color="blue-1" text-color="blue-9" class="q-pa-xs q-mr-sm">
             <q-icon name="info" size="12px" class="q-mr-xs" />
-            Matrix shows default role access per module
+            Click any cell to toggle access
           </q-badge>
+          <template v-if="matrixDirty">
+            <q-btn
+              flat
+              dense
+              color="grey"
+              label="Discard"
+              icon="undo"
+              size="sm"
+              class="q-mr-sm"
+              @click="discardMatrixChanges"
+            />
+            <q-btn
+              unelevated
+              color="primary"
+              label="Save Matrix"
+              icon="save"
+              size="sm"
+              :loading="matrixSaving"
+              @click="saveRoleModuleAccess"
+            />
+          </template>
         </div>
       </q-card-section>
 
@@ -43,7 +64,12 @@
                   <div class="acm-role-name">{{ role.label }}</div>
                   <div v-if="role.caption" class="acm-role-caption">{{ role.caption }}</div>
                 </td>
-                <td v-for="mod in matrixModules" :key="mod.key" class="acm-td-access">
+                <td
+                  v-for="mod in matrixModules"
+                  :key="mod.key"
+                  class="acm-td-access acm-td-clickable"
+                  @click="toggleMatrixCell(role.key, mod.key)"
+                >
                   <q-icon
                     v-if="hasModuleAccess(role.key, mod.key)"
                     name="check_circle"
@@ -323,12 +349,16 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 const search = ref('')
 const dialogVisible = ref(false)
 const loading = ref(false)
 const saving = ref(false)
+const matrixSaving = ref(false)
+const matrixDirty = ref(false)
 const users = ref([])
 const allRoles = ref([])
 const allPermissions = ref([])
@@ -380,42 +410,98 @@ const matrixRoles = [
   { key: 'admin', label: 'Console Admin', caption: 'full system control' },
 ]
 
-const roleModuleMap = {
+const defaultRoleModuleMap = {
   waiter: ['dashboard', 'orders'],
   cashier: ['dashboard', 'pos', 'orders'],
   kitchen: ['dashboard', 'kitchen'],
   inventory: ['dashboard', 'inventory', 'procurement'],
   finance: ['dashboard', 'finance', 'reports'],
   hr: ['dashboard', 'hr'],
-  manager: [
-    'dashboard',
-    'pos',
-    'orders',
-    'kitchen',
-    'inventory',
-    'procurement',
-    'finance',
-    'hr',
-    'reports',
-    'crm',
-  ],
-  admin: [
-    'dashboard',
-    'pos',
-    'orders',
-    'kitchen',
-    'inventory',
-    'procurement',
-    'finance',
-    'hr',
-    'reports',
-    'crm',
-    'system',
-  ],
+  manager: ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm'],
+  admin: ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm', 'system'],
 }
 
+// Reactive matrix — loaded from DB, falls back to defaults
+const roleModuleMap = ref(JSON.parse(JSON.stringify(defaultRoleModuleMap)))
+// Snapshot for discard
+let roleModuleMapSnapshot = JSON.parse(JSON.stringify(defaultRoleModuleMap))
+
 function hasModuleAccess(roleKey, moduleKey) {
-  return (roleModuleMap[roleKey] || []).includes(moduleKey)
+  return (roleModuleMap.value[roleKey] || []).includes(moduleKey)
+}
+
+function toggleMatrixCell(roleKey, moduleKey) {
+  const current = roleModuleMap.value[roleKey] || []
+  if (current.includes(moduleKey)) {
+    roleModuleMap.value[roleKey] = current.filter((m) => m !== moduleKey)
+  } else {
+    roleModuleMap.value[roleKey] = [...current, moduleKey]
+  }
+  matrixDirty.value = true
+}
+
+function discardMatrixChanges() {
+  roleModuleMap.value = JSON.parse(JSON.stringify(roleModuleMapSnapshot))
+  matrixDirty.value = false
+}
+
+function getCompanyId() {
+  return authStore.branches?.[0]?.branches?.company_id || null
+}
+
+async function loadRoleModuleAccess() {
+  try {
+    const companyId = getCompanyId()
+    let query = supabase
+      .from('module_settings')
+      .select('setting_value')
+      .eq('module_code', 'ADMIN')
+      .eq('setting_key', 'role_module_access')
+
+    if (companyId) query = query.eq('company_id', companyId)
+
+    const { data, error } = await query.maybeSingle()
+
+    if (!error && data?.setting_value) {
+      const parsed = JSON.parse(data.setting_value)
+      roleModuleMap.value = parsed
+      roleModuleMapSnapshot = JSON.parse(JSON.stringify(parsed))
+    } else {
+      roleModuleMap.value = JSON.parse(JSON.stringify(defaultRoleModuleMap))
+      roleModuleMapSnapshot = JSON.parse(JSON.stringify(defaultRoleModuleMap))
+    }
+  } catch {
+    roleModuleMap.value = JSON.parse(JSON.stringify(defaultRoleModuleMap))
+    roleModuleMapSnapshot = JSON.parse(JSON.stringify(defaultRoleModuleMap))
+  }
+}
+
+async function saveRoleModuleAccess() {
+  matrixSaving.value = true
+  try {
+    const companyId = getCompanyId()
+    const payload = {
+      module_code: 'ADMIN',
+      setting_key: 'role_module_access',
+      setting_value: JSON.stringify(roleModuleMap.value),
+    }
+    if (companyId) payload.company_id = companyId
+
+    const { error } = await supabase
+      .from('module_settings')
+      .upsert(payload, { onConflict: 'company_id,module_code,setting_key' })
+
+    if (error) throw error
+
+    roleModuleMapSnapshot = JSON.parse(JSON.stringify(roleModuleMap.value))
+    matrixDirty.value = false
+    $q.notify({ type: 'positive', message: 'Access matrix saved successfully', position: 'top' })
+  } catch (err) {
+    console.error('Error saving role module access:', err)
+    $q.notify({ type: 'negative', message: 'Failed to save matrix: ' + (err?.message || err), position: 'top' })
+  } finally {
+    matrixSaving.value = false
+  }
 }
 
 // ─── Dialog Section Config ─────────────────────────────────
@@ -526,7 +612,7 @@ const onRoleToggled = (newRoleIds, role) => {
 }
 
 onMounted(async () => {
-  await fetchData()
+  await Promise.all([fetchData(), loadRoleModuleAccess()])
 })
 
 const fetchData = async () => {
@@ -752,13 +838,35 @@ const saveUserAccess = async () => {
   vertical-align: middle;
 }
 
+.acm-td-clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.acm-td-clickable:hover {
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+.acm-td-clickable:hover .acm-icon-allow {
+  transform: scale(1.15);
+  transition: transform 0.1s;
+}
+
+.acm-td-clickable:hover .acm-icon-deny {
+  transform: scale(1.15);
+  opacity: 1;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
 .acm-icon-allow {
   color: #16a34a;
+  transition: transform 0.1s;
 }
 
 .acm-icon-deny {
   color: #dc2626;
   opacity: 0.65;
+  transition: transform 0.1s, opacity 0.1s;
 }
 
 /* ── Edit Access Dialog ── */

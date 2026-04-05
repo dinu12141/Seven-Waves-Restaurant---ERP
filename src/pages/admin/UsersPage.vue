@@ -73,13 +73,13 @@
 
     <!-- Add/Edit User Dialog -->
     <q-dialog v-model="dialogVisible" persistent>
-      <q-card style="min-width: 450px">
+      <q-card style="min-width: 450px; max-height: 90vh; overflow-y: auto;">
         <q-card-section>
           <div class="text-h6">{{ isEditing ? 'Edit User Profile' : 'Add New System User' }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-form @submit="saveUser" class="q-gutter-md">
+          <q-form @submit="saveUser" class="q-gutter-sm">
             <!-- Employee Selection -->
             <q-select
               v-model="selectedEmployee"
@@ -94,12 +94,11 @@
               option-label="full_name"
               option-value="id"
               :rules="[(val) => !!val || 'Employee selection is required']"
-              dark
               v-if="!isEditing"
             >
               <template v-slot:no-option>
                 <q-item>
-                  <q-item-section class="text-grey-5">
+                  <q-item-section class="text-grey-6">
                     No employees found without profiles
                   </q-item-section>
                 </q-item>
@@ -107,10 +106,10 @@
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
-                    <q-item-label class="text-white text-weight-bold">{{
+                    <q-item-label class="text-weight-bold">{{
                       scope.opt.full_name
                     }}</q-item-label>
-                    <q-item-label caption class="text-grey-5">
+                    <q-item-label caption>
                       {{ scope.opt.employee_code }} |
                       {{ scope.opt.designations?.title || 'No Title' }}
                     </q-item-label>
@@ -126,7 +125,6 @@
               dense
               readonly
               disable
-              dark
             />
             <q-input
               v-model="form.email"
@@ -138,7 +136,6 @@
               :rules="[(val) => !!val || 'Email is required']"
               :readonly="isEditing"
               :disable="isEditing"
-              dark
             />
 
             <q-input
@@ -150,7 +147,6 @@
               dense
               autocomplete="off"
               :rules="[(val) => !!val || 'Initial password is required']"
-              dark
             >
               <template v-slot:append>
                 <q-icon
@@ -168,7 +164,6 @@
               outlined
               dense
               autocomplete="off"
-              dark
               hint="Unique numeric code for quick login (e.g. 1001)"
               :rules="[val => !val || /^\d+$/.test(val) || 'Must be numbers only']"
               maxlength="10"
@@ -198,7 +193,6 @@
               outlined
               dense
               autocomplete="off"
-              dark
             />
 
             <!-- Role Selection (New) -->
@@ -213,13 +207,12 @@
               label="Assign Primary Role"
               outlined
               dense
-              dark
               :rules="[(val) => !!val || 'Primary role is required']"
             >
               <template v-slot:option="scope">
                 <q-item v-bind="scope.itemProps">
                   <q-item-section>
-                    <q-item-label class="text-white">{{
+                    <q-item-label>{{
                       scope.opt.name.toUpperCase()
                     }}</q-item-label>
                   </q-item-section>

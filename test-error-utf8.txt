@@ -1,0 +1,113 @@
+﻿node : C:\Users\ROG 
+STRIX\Desktop\Restaurant 
+ERP new\dist\electron\UnP
+ackaged\electron-main.cjs
+:1
+At line:1 char:1
++ node .\dist\electron\Un
+Packaged\electron-main.cj
+s > test-error.txt 2> ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (C:\Users\ROG ST...t   
+ ron-main.cjs:1:Strin    
+g) [], RemoteExcepti    
+on
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+var m=Object.create;var l
+=Object.defineProperty;va
+r h=Object.getOwnProperty
+Descriptor;var u=Object.g
+etOwnPropertyNames;var E=
+Object.getPrototypeOf,f=O
+bject.prototype.hasOwnPro
+perty;var v=(e,r,t,s)=>{i
+f(r&&typeof 
+r=="object"||typeof 
+r=="function")for(let i 
+of u(r))!f.call(e,i)&&i!=
+=t&&l(e,i,{get:()=>r[i],e
+numerable:!(s=h(r,i))||s.
+enumerable});return 
+e};var p=(e,r,t)=>(t=e!=n
+ull?m(E(e)):{},v(r||!e||!
+e.__esModule?l(t,"default
+",{value:e,enumerable:!0}
+):t,e));var n=require("el
+ectron"),a=p(require("nod
+e:path"),1),d=p(require("
+node:os"),1),g=process.pl
+atform||d.default.platfor
+m(),c=n.app.getAppPath();
+n.app.disableHardwareAcce
+leration();process.on("un
+caughtException",e=>{cons
+ole.error("[Main] 
+Uncaught Exception:",e),n
+.dialog.showErrorBox("Sev
+en Waves ERP \u2014 
+Error",`${e.message}
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+                         
+             ^
+
+TypeError: Cannot read 
+properties of undefined 
+(reading 'getAppPath')
+    at 
+Object.<anonymous> 
+(C:\Users\ROG 
+STRIX\Desktop\Restaurant 
+ERP new\dist\electron\UnP
+ackaged\electron-main.cjs
+:1:589)
+    at Module._compile (n
+ode:internal/modules/cjs/
+loader:1812:14)
+    at Object..js (node:i
+nternal/modules/cjs/loade
+r:1943:10)
+    at Module.load (node:
+internal/modules/cjs/load
+er:1533:32)
+    at Module._load (node
+:internal/modules/cjs/loa
+der:1335:12)
+    at wrapModuleLoad (no
+de:internal/modules/cjs/l
+oader:255:19)
+    at Module.executeUser
+EntryPoint [as runMain] (
+node:internal/modules/run
+_main:154:5)
+    at node:internal/main
+/run_main_module:33:47
+
+Node.js v24.14.0

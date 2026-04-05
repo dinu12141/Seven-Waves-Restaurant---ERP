@@ -131,8 +131,7 @@ function fmtDate(dt) {
 
 <style lang="scss" scoped>
 .mgr-alerts-page {
-  min-height: 100vh;
-  padding-bottom: 80px !important;
+  // min-height and padding handled by mobile-app-shell
   background: #090c14;
 }
 .mgr-alerts-page.lt {
@@ -174,7 +173,7 @@ function fmtDate(dt) {
   color: #1e293b;
 }
 .page-header__sub {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   margin-top: 1px;
 }
@@ -199,7 +198,7 @@ function fmtDate(dt) {
   border: 1px solid #e5e7eb;
 }
 .alert-tabs :deep(.q-tab) {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 600;
   min-height: 38px;
 }
@@ -220,7 +219,7 @@ function fmtDate(dt) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -271,7 +270,7 @@ function fmtDate(dt) {
 }
 
 .alert-title {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #f3f4f6;
 }
@@ -279,7 +278,7 @@ function fmtDate(dt) {
   color: #1e293b;
 }
 .alert-meta {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #6b7280;
   text-transform: capitalize;
 }
@@ -287,7 +286,7 @@ function fmtDate(dt) {
   color: #94a3b8;
 }
 .alert-body {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #9ca3af;
 }
 .lt .alert-body {

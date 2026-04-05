@@ -9,7 +9,7 @@
           <span class="text-grey-6 text-subtitle1">{{ docNumber || '(New)' }}</span>
         </div>
         <q-chip :color="statusColor" text-color="white" class="text-uppercase text-weight-bold">
-          {{ status }}
+          {{ statusLabel }}
         </q-chip>
       </div>
 
@@ -111,19 +111,31 @@ const statusColor = computed(() => {
     case 'approved':
       return 'blue'
     case 'posted':
-      return 'green'
+      return 'blue-7'
     case 'closed':
-      return 'green-10' // Closed PO
+      return 'green-10'
     case 'cancelled':
       return 'red'
     case 'partial':
+    case 'partial_paid':
       return 'orange'
     case 'paid':
       return 'green'
-    case 'partial_paid':
-      return 'teal'
     default:
       return 'grey'
+  }
+})
+
+const statusLabel = computed(() => {
+  switch (props.status) {
+    case 'partial_paid': return 'PARTIAL PAID'
+    case 'draft':        return 'DRAFT'
+    case 'posted':       return 'POSTED'
+    case 'paid':         return 'PAID ✓'
+    case 'cancelled':    return 'CANCELLED'
+    case 'closed':       return 'CLOSED'
+    case 'approved':     return 'APPROVED'
+    default:             return (props.status || '').toUpperCase()
   }
 })
 </script>

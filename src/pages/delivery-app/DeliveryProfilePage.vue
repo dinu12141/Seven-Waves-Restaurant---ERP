@@ -284,7 +284,7 @@ async function logout() {
 .profile-role-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.4px;
   color: #ede9fe;
@@ -297,7 +297,7 @@ async function logout() {
 }
 
 .profile-email {
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.2px;
 }
@@ -306,7 +306,7 @@ async function logout() {
 .section-heading {
   display: flex;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -343,7 +343,7 @@ async function logout() {
   line-height: 1;
 }
 .stat-label {
-  font-size: 9px;
+  font-size: 11px;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -369,7 +369,7 @@ async function logout() {
   &__label {
     display: flex;
     align-items: center;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     color: #94a3b8;
   }
@@ -379,7 +379,7 @@ async function logout() {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 20px;
@@ -403,7 +403,7 @@ async function logout() {
   animation: live-ping 1.8s ease-in-out infinite;
 }
 .status-branch {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: #c4b5fd;
 }
@@ -412,7 +412,7 @@ async function logout() {
 .signout-btn {
   height: 50px;
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   background: linear-gradient(135deg, #1e1b4b, #312e81) !important;
   color: #fff !important;

@@ -25,8 +25,8 @@
                 <tr>
                   <th class="sap-native-table__th">Description</th>
                   <th class="sap-native-table__th sap-native-table__th--num">Amount</th>
-                  <th class="sap-native-table__th sap-native-table__th--num">TAX</th>
-                  <th class="sap-native-table__th sap-native-table__th--num">Amt. with TAX</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">S. CHARGE</th>
+                  <th class="sap-native-table__th sap-native-table__th--num">Amt. with S. CHARGE</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,7 +205,8 @@ const grossSales = computed(() =>
 const totalDiscount = computed(() =>
   rawOrders.value.reduce((s, o) => s + Number(o.discount_amount || 0), 0),
 )
-const totalTax = computed(() => rawOrders.value.reduce((s, o) => s + Number(o.tax_amount || 0), 0))
+const totalServiceCharge = computed(() => rawOrders.value.reduce((s, o) => s + Number(o.service_charge || 0), 0))
+
 const totalDelivery = computed(() =>
   rawOrders.value.reduce((s, o) => s + Number(o.delivery_charge || 0), 0),
 )
@@ -219,17 +220,7 @@ const voidRefundAmount = computed(() =>
     .reduce((s, o) => s + Number(o.total_amount || 0), 0),
 )
 
-const serviceCharge = computed(() => {
-  return rawOrders.value.reduce((s, o) => {
-    const sc =
-      Number(o.total_amount || 0) -
-      Number(o.subtotal || 0) -
-      Number(o.tax_amount || 0) +
-      Number(o.discount_amount || 0) -
-      Number(o.delivery_charge || 0)
-    return s + Math.max(0, sc)
-  }, 0)
-})
+const serviceCharge = computed(() => totalServiceCharge.value)
 
 // LEFT side: Credit items
 const creditItems = computed(() => [
@@ -246,7 +237,7 @@ const creditItems = computed(() => [
   },
   { label: 'Other Amount', amount: 0, tax: 0, amtWithTax: 0 },
   { label: 'Manual Plus', amount: 0, tax: 0, amtWithTax: 0 },
-  { label: 'Service Charge', amount: serviceCharge.value, tax: 0, amtWithTax: serviceCharge.value },
+  { label: 'Service Charge', amount: serviceCharge.value, tax: totalServiceCharge.value, amtWithTax: serviceCharge.value },
   { label: 'Tips', amount: 0, tax: 0, amtWithTax: 0 },
   { label: 'Customer Pay', amount: 0, tax: 0, amtWithTax: 0 },
   { label: 'Customer Advance', amount: 0, tax: 0, amtWithTax: 0 },
@@ -260,7 +251,7 @@ const creditItems = computed(() => [
 ])
 
 const totalCredit = computed(() => totalAmount.value)
-const totalCreditTax = computed(() => totalTax.value)
+const totalCreditTax = computed(() => totalServiceCharge.value)
 const totalCreditWithTax = computed(() => totalAmount.value)
 
 // RIGHT side: Debit / Collection items
@@ -360,7 +351,7 @@ async function loadData(filters = {}) {
       .select(
         `
         id, order_number, order_type, status, payment_status,
-        subtotal, tax_amount, discount_amount, total_amount, delivery_charge,
+        subtotal, tax_amount, service_charge, discount_amount, total_amount, delivery_charge,
         created_at, branch_id, table_id,
         invoices (
           id, total, payment_status,

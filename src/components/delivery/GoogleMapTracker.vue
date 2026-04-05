@@ -65,6 +65,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { loadGoogleMaps } from 'src/utils/mapLoader'
 
 // ═══════════════════════════════════════════════
 //  Props
@@ -127,28 +128,17 @@ const gpsLabel = computed(() => {
 })
 
 // ═══════════════════════════════════════════════
-//  1.  Load Google Maps API dynamically
+//  1.  Load Google Maps API (shared loader)
 // ═══════════════════════════════════════════════
-function loadGoogleMaps() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve(window.google.maps)
 
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${props.apiKey}&libraries=geometry`
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve(window.google.maps)
-    script.onerror = () => reject(new Error('Failed to load Google Maps'))
-    document.head.appendChild(script)
-  })
-}
 
 // ═══════════════════════════════════════════════
 //  2.  Initialise the google.maps.Map
 // ═══════════════════════════════════════════════
 async function initMap() {
-  const maps = await loadGoogleMaps()
+  const maps = await loadGoogleMaps(props.apiKey)
   if (!mapEl.value) return
+
 
   const startPos = driverPos.value || { lat: 6.9271, lng: 79.8612 } // Colombo fallback
 
@@ -162,18 +152,47 @@ async function initMap() {
     gestureHandling: 'greedy',
   })
 
-  // ── Driver marker (custom blue dot + pulse) ───────
+function vehicleIcon(heading = 0, navigating = false, vType = 'motorcycle') {
+  const color = navigating ? '#1a73e8' : '#22c55e'
+  const glow = navigating ? 'rgba(26,115,232,0.35)' : 'rgba(34,197,94,0.30)'
+  
+  let path = ''
+  if (vType === 'car') {
+    path = `<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>`
+  } else if (vType === 'tuk-tuk') {
+    path = `<path d="M21 11.18V9.72c0-.46-.35-.86-.8-.92L13.2 7.82V2h-2.4v5.82L3.8 8.8C3.35 8.86 3 9.26 3 9.72v1.46c0 .4-.24.76-.6.92C1.56 12.42 1 13.36 1 14.5c0 1.93 1.57 3.5 3.5 3.5.54 0 1.05-.12 1.5-.34V19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-1.34c.45.22.96.34 1.5.34 1.93 0 3.5-1.57 3.5-3.5 0-1.14-.56-2.08-1.4-2.4-.36-.16-.6-.52-.6-.92zM12 9.07l6 1V13H6v-2.93l6-1zM4.5 16c-.83 0-1.5-.67-1.5-1.5S3.67 13 4.5 13s1.5.67 1.5 1.5S5.33 16 4.5 16zm15 0c-.83 0-1.5-.67-1.5-1.5S18.67 13 19.5 13s1.5.67 1.5 1.5S20.33 16 19.5 16z"/>`
+  } else {
+    // motorcycle
+    path = `<path d="M19,10c-1.63,0-3.06,0.92-3.71,2.27L12.59,10.2L16,6.31L15.34,5L11,9.88l-1.92-2.18L10.37,6.3L9.62,5L7.2,7.74 C6.55,7.27,5.74,7,4.86,7C2.17,7,0,9.17,0,11.86s2.17,4.86,4.86,4.86c2.5,0,4.55-1.89,4.82-4.3l3.65-0.73l2.84,3.23 C15.54,16.57,17.15,18,19,18c2.76,0,5-2.24,5-5S21.76,10,19,10z M4.86,14.71c-1.57,0-2.86-1.28-2.86-2.86S3.29,9,4.86,9 s2.86,1.28,2.86,2.86S6.43,14.71,4.86,14.71z M14.18,13L11.5,9.97l0.87-0.98l2.67,3.03L14.18,13z M19,16c-1.65,0-3-1.35-3-3 s1.35-3,3-3s3,1.35,3,3S20.65,16,19,16z"/>`
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+    <defs>
+      <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <g transform="rotate(${heading},32,32)" filter="url(#glow)">
+      <polygon points="32,4 44,24 32,18 20,24" fill="${glow}" stroke="none"/>
+      <circle cx="32" cy="32" r="18" fill="${color}" stroke="white" stroke-width="3"/>
+      <g transform="translate(32,32) scale(1) translate(-12,-12)" fill="white">
+        ${path}
+      </g>
+    </g>
+  </svg>`
+  
+  return {
+    url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+    scaledSize: new window.google.maps.Size(56, 56),
+    anchor: new window.google.maps.Point(28, 28),
+  }
+}
+
+  // ── Driver marker (custom icon) ───────
   driverMarker = new maps.Marker({
     position: startPos,
     map,
-    icon: {
-      path: maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: '#4285f4',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 3,
-    },
+    icon: vehicleIcon(0, true, 'motorcycle'),
     zIndex: 999,
     title: 'Driver',
   })
@@ -262,8 +281,11 @@ let animFrame = null
  * Smoothly animate the driver marker from its current position to `target`.
  * Uses requestAnimationFrame for 60 fps interpolation.
  */
-function smoothMoveMarker(target) {
+function smoothMoveMarker(target, heading = 0, vType = 'motorcycle') {
   if (!driverMarker) return
+
+  // Update icon based on current data
+  driverMarker.setIcon(vehicleIcon(heading || 0, true, vType))
 
   const start = driverMarker.getPosition()
   if (!start) {
@@ -324,7 +346,7 @@ function startGeoWatch() {
       geoError.value = null
 
       // Smooth-move the marker
-      smoothMoveMarker(newPos)
+      smoothMoveMarker(newPos, pos.coords.heading || 0, 'motorcycle')
 
       emit('driver-moved', newPos)
     },
@@ -356,7 +378,7 @@ function setupBroadcast() {
     driverPos.value = newPos
 
     // Smooth animation
-    smoothMoveMarker(newPos)
+    smoothMoveMarker(newPos, payload.heading || 0, payload.vType || 'motorcycle')
 
     // Recompute route
     computeRoute()

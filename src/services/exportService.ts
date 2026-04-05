@@ -272,3 +272,186 @@ export async function printTableAsPDF(columns: any[], rows: any[], title: string
     })
   }
 }
+
+/**
+ * Export a single Supplier Payment as a professional receipt/invoice PDF.
+ * Includes logo, company name, supplier details, payment info, and allocation table.
+ */
+export async function exportPaymentReceiptToPDF(payment: {
+  doc_number: string
+  doc_date: string
+  status: string
+  total_amount: number
+  payment_method: string
+  reference_no?: string
+  cheque_no?: string
+  remarks?: string
+  suppliers?: { name: string; code?: string }
+  supplier_payment_allocations?: Array<{
+    amount: number
+    ap_invoices?: { doc_number: string; total_amount: number; balance_due: number }
+  }>
+}, download = true) {
+  const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  // ── Header (Logo + Company) ─────────────────────────────────────────────
+  try {
+    const logoObj = await getLogoData()
+    const logoHeight = 16
+    const logoWidth = (logoObj.width / logoObj.height) * logoHeight
+    doc.addImage(logoObj.data, 'PNG', pageWidth - logoWidth - 14, 10, logoWidth, logoHeight)
+  } catch (e) { /* logo optional */ }
+
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(27, 58, 107)
+  doc.text('SEVEN WAVES RESTAURANT (PVT) LTD', 14, 16)
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(110, 110, 110)
+  doc.text('Mirissa, Southern Province, Sri Lanka', 14, 21)
+
+  // ── Document Title ─────────────────────────────────────────────────────
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(27, 58, 107)
+  doc.text('PAYMENT VOUCHER', 14, 30)
+  const titleW = doc.getTextWidth('PAYMENT VOUCHER')
+  doc.setDrawColor(27, 58, 107)
+  doc.setLineWidth(0.5)
+  doc.line(14, 31.5, 14 + titleW, 31.5)
+
+  // ── Info Block ─────────────────────────────────────────────────────────
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v)
+  const fmtDate = (d: string) => {
+    const dt = new Date(d)
+    return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+  const pm = (payment.payment_method || 'cash').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(50, 50, 50)
+
+  // Left column
+  const leftX = 14, rightX = pageWidth / 2 + 5
+  let y = 40
+  const row = (label: string, val: string, x = leftX) => {
+    doc.setFont('helvetica', 'bold'); doc.text(label, x, y)
+    doc.setFont('helvetica', 'normal'); doc.text(val, x + 38, y)
+    y += 6
+  }
+  row('Voucher No :', payment.doc_number)
+  row('Date :', fmtDate(payment.doc_date))
+  row('Status :', payment.status.toUpperCase())
+  y = 40
+  const rightRow = (label: string, val: string) => {
+    doc.setFont('helvetica', 'bold'); doc.text(label, rightX, y)
+    doc.setFont('helvetica', 'normal'); doc.text(val, rightX + 40, y)
+    y += 6
+  }
+  rightRow('Supplier :', payment.suppliers?.name || 'N/A')
+  rightRow('Payment Method :', pm)
+  if (payment.reference_no) rightRow('Reference No :', payment.reference_no)
+  if (payment.cheque_no) rightRow('Cheque No :', payment.cheque_no)
+
+  // Divider
+  const divY = Math.max(y, 64) + 2
+  doc.setDrawColor(200, 200, 200)
+  doc.setLineWidth(0.3)
+  doc.line(14, divY, pageWidth - 14, divY)
+
+  // ── Allocation Table ──────────────────────────────────────────────────
+  const allocs = payment.supplier_payment_allocations || []
+  const tableBody = allocs.map((a, i) => [
+    i + 1,
+    a.ap_invoices?.doc_number || '-',
+    fmt(a.ap_invoices?.total_amount || 0),
+    fmt(a.amount),
+  ])
+
+  autoTable(doc, {
+    startY: divY + 4,
+    head: [['#', 'Invoice #', 'Invoice Amount', 'Amount Paid']],
+    body: tableBody.length ? tableBody : [['—', 'No allocations', '', '']],
+    foot: [['', 'TOTAL PAID', '', fmt(payment.total_amount)]],
+    theme: 'grid',
+    headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    footStyles: { fillColor: [240, 240, 240], textColor: [27, 58, 107], fontStyle: 'bold', fontSize: 9 },
+    styles: { fontSize: 9 },
+    columnStyles: { 0: { halign: 'center', cellWidth: 12 }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+  })
+
+  const finalY = (doc as any).lastAutoTable.finalY + 10
+
+  // Remarks
+  if (payment.remarks) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(100)
+    doc.text(`Remarks: ${payment.remarks}`, 14, finalY)
+  }
+
+  // ── Footer ─────────────────────────────────────────────────────────────
+  const footY = doc.internal.pageSize.getHeight() - 18
+  doc.setDrawColor(200, 200, 200)
+  doc.line(14, footY, pageWidth - 14, footY)
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(150)
+  doc.text('This is a computer-generated document. No signature required.', pageWidth / 2, footY + 5, { align: 'center' })
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, footY + 10, { align: 'center' })
+
+  if (download) {
+    doc.save(`Payment_${payment.doc_number}.pdf`)
+  } else {
+    const blob = doc.output('blob')
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    if (win) win.addEventListener('load', () => win.print())
+  }
+}
+
+/**
+ * Export the full Supplier Payment Report as a PDF with summary totals.
+ */
+export async function exportSupplierPaymentReportToPDF(rows: any[], filters: { startDate: string; endDate: string; supplierName?: string }) {
+  const doc = new jsPDF({ orientation: 'landscape' })
+  const subtitle = `Period: ${filters.startDate} to ${filters.endDate}${filters.supplierName ? ' | Supplier: ' + filters.supplierName : ''}`
+
+  await drawSAPHeader(doc, 'SUPPLIER PAYMENT REPORT', subtitle)
+
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v || 0)
+
+  const body = rows.map((r, i) => [
+    i + 1,
+    r.doc_date,
+    r.suppliers?.name || '-',
+    r.doc_number,
+    r.cheque_no || r.reference_no || '-',
+    (r.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+    fmt(r.total_amount),
+    (r.status || '').toUpperCase(),
+  ])
+
+  const total = rows.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0)
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['#', 'Date', 'Supplier', 'Document #', 'Ref/Cheque', 'Method', 'Amount', 'Status']],
+    body,
+    foot: [['', '', '', '', '', 'TOTAL', fmt(total), '']],
+    theme: 'grid',
+    headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: [240, 240, 240], textColor: [27, 58, 107], fontStyle: 'bold', fontSize: 8 },
+    styles: { fontSize: 8 },
+    columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 6: { halign: 'right' }, 7: { halign: 'center' } },
+  })
+
+  doc.save(`Supplier_Payment_Report_${filters.startDate}_${filters.endDate}.pdf`)
+}
+

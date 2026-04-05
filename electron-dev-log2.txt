@@ -1,0 +1,138 @@
+﻿
+ .d88888b.
+d88P" "Y88b
+888     888
+888     888 888  888  8888b.  .d8888b   8888b.  888d888
+888     888 888  888     "88b 88K          "88b 888P"
+888 Y8b 888 888  888 .d888888 "Y8888b. .d888888 888
+Y88b.Y8b88P Y88b 888 888  888      X88 888  888 888
+ "Y888888"   "Y88888 "Y888888  88888P' "Y888888 888
+       Y8b
+
+ App ΓÇó Using quasar.config.js in "esm" format
+ App ΓÇó  TIP  ΓÇó ≡ƒÜÇ  You (or an AE) specified an explicit quasar.config file > devServer > port. It is recommended to use a different devServer > port for each Quasar mode to avoid browser cache issues. Example: ctx.mode.ssr ? 9100 : ...
+ App ΓÇó Using .env files: .env
+ App ΓÇó  WAIT  ΓÇó Compiling of Electron Main with Esbuild in progress...
+node.exe : Γû▓ [WARNING] 
+"import.meta" is not 
+available with the "cjs" 
+output format and will 
+be empty 
+[empty-import-meta]
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (Γû▓ [WARNING] "...t   
+ y-import-meta]:Strin    
+g) [], RemoteExcepti    
+on
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+
+    src-electron/electron
+-main.js:25:31:
+      25 Γöé   : path.dir
+name(fileURLToPath(import
+.meta.url))
+         Γò╡             
+                   
+~~~~~~~~~~~
+
+  You need to set the 
+output format to "esm" 
+for "import.meta" to 
+work correctly.
+
+ App ΓÇó  WAIT  ΓÇó Compiling of Electron Preload (electron-preload) with Esbuild in progress...
+ App ΓÇó  DONE  ΓÇó Electron Main compiled with success by Esbuild ΓÇó 168ms
+
+ App ΓÇó  DONE  ΓÇó Electron Preload (electron-preload) compiled with success by Esbuild ΓÇó 80ms
+
+ App ΓÇó Running "C:\Users\ROG STRIX\Desktop\Restaurant ERP new\node_modules\electron\cli.js --inspect=5858 C:\Users\ROG STRIX\Desktop\Restaurant ERP new\.quasar\dev-electron\electron-main.js" in C:\Users\ROG STRIX\Desktop\Restaurant ERP new
+
+
+Debugger listening on ws:
+//127.0.0.1:5858/6c5291dd
+-a37c-47d9-9dfe-b86b9b745
+88b
+For help, see: https://no
+dejs.org/en/docs/inspecto
+r
+App threw an error 
+during load
+ReferenceError: require 
+is not defined in ES 
+module scope, you can 
+use import instead
+This file is being 
+treated as an ES module 
+because it has a '.js' 
+file extension and 
+'C:\Users\ROG 
+STRIX\Desktop\Restaurant 
+ERP new\package.json' 
+contains "type": 
+"module". To treat it as 
+a CommonJS script, 
+rename it to use the 
+'.cjs' file extension.
+    at file:///C:/Users/R
+OG%20STRIX/Desktop/Restau
+rant%20ERP%20new/.quasar/
+dev-electron/electron-mai
+n.js:25:23
+    at ModuleJob.run (nod
+e:internal/modules/esm/mo
+dule_job:218:25)
+    at async 
+ModuleLoader.import (node
+:internal/modules/esm/loa
+der:329:24)
+    at async 
+loadApplicationPackage (f
+ile:///C:/Users/ROG%20STR
+IX/Desktop/Restaurant%20E
+RP%20new/node_modules/ele
+ctron/dist/resources/defa
+ult_app.asar/main.js:129:
+9)
+    at async file:///C:/U
+sers/ROG%20STRIX/Desktop/
+Restaurant%20ERP%20new/no
+de_modules/electron/dist/
+resources/default_app.asa
+r/main.js:241:9
+(node:4804) 
+ESLintEnvWarning: /* 
+eslint-env */ comments 
+are no longer recognized 
+when linting with flat 
+config and will be 
+reported as errors as of 
+v10.0.0. Replace them 
+with /* global */ 
+comments or define 
+globals in your config 
+file. See https://eslint.
+org/docs/latest/use/confi
+gure/migration-guide#esli
+nt-env-configuration-comm
+ents for details. Found 
+in C:\Users\ROG 
+STRIX\Desktop\Restaurant 
+ERP new\src-pwa\custom-se
+rvice-worker.js at line 
+1.
+(Use `node 
+--trace-warnings ...` to 
+show where the warning 
+was created)

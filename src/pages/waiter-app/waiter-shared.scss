@@ -2,7 +2,7 @@
 
 .waiter-page-dark {
   background: var(--erp-bg-page, #f1f5f9);
-  min-height: 100vh;
+  // min-height handled by mobile-app-shell flex layout
   font-family: 'Inter', 'Roboto', sans-serif;
 }
 

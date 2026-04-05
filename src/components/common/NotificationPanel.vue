@@ -1,5 +1,5 @@
 <template>
-  <q-btn flat round dense icon="notifications" class="q-mr-sm notif-btn" id="notification-bell">
+  <q-btn flat dense icon="notifications" class="notif-btn" id="notification-bell">
     <!-- Animated unread badge -->
     <q-badge v-if="unreadCount > 0" color="red" floating rounded class="notif-badge">
       {{ unreadCount > 99 ? '99+' : unreadCount }}

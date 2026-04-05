@@ -1,0 +1,47 @@
+# ──────────────────────────────────────────────────────────────────
+#  electron-builder config — Seven Waves ERP
+#
+#  This file is read by `npx electron-builder` in build-electron.bat.
+#  The quasar.config.js electron.builder block is ONLY used when
+#  Quasar itself invokes electron-builder (i.e. without --skip-pkg).
+#  Since we use --skip-pkg + standalone electron-builder, this file
+#  is the authoritative config.
+# ──────────────────────────────────────────────────────────────────
+
+appId: com.sevenwaves.erp
+productName: Seven Waves ERP
+copyright: "Copyright \xA9 2026 Cosmo Solutions"
+forceCodeSigning: false
+
+# ASAR enabled — the initial working build used ASAR successfully.
+# The previous 0xC0000005 crashes were caused by GPU flags, not ASAR.
+asar: true
+
+# ── Files ─────────────────────────────────────────────────────────
+# Vite already bundled everything — node_modules is dead weight
+# and may contain native addons for the wrong Node ABI.
+files:
+  - "**/*"
+  - "!node_modules/**"
+  - "!package-lock.json"
+
+# ── Windows ───────────────────────────────────────────────────────
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: src-electron/icons/icon.ico
+  signAndEditExecutable: false
+
+# ── NSIS Installer ────────────────────────────────────────────────
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  artifactName: Seven_Waves_ERP_Setup.exe
+  include: src-electron/nsis-include.nsh

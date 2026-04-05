@@ -13,6 +13,18 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!--
+            Edge-to-edge: The WebView draws behind the status bar AND the
+            navigation bar (gesture bar / 3-button bar).
+            CSS env(safe-area-inset-*) variables handle the safe zones.
+            Without these items the OS renders a grey/white navigation bar
+            *below* the WebView, creating the visible gap beneath the bottom tab bar.
+        -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <!-- Respect display cutouts (notches) on all edges -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
 

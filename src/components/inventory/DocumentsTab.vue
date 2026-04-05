@@ -203,8 +203,9 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useDocumentList } from 'src/services/inventoryService'
+import { supabase } from 'src/boot/supabase'
 
 defineEmits(['create-document', 'view-document', 'edit-document'])
 
@@ -247,9 +248,27 @@ async function reload() {
   await listDocuments(buildFilters())
 }
 
-onMounted(() => reload())
+let docChannel = null
 
-// Re-fetch when filters change (debounced via watchers)
+onMounted(() => {
+  reload()
+
+  // Real-time subscription — auto-refresh on any insert/update/delete
+  docChannel = supabase
+    .channel('realtime:inventory_documents')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_documents' }, () => {
+      reload()
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (docChannel) {
+    supabase.removeChannel(docChannel)
+  }
+})
+
+// Re-fetch when filters change
 watch([docTypeFilter, statusFilter, dateFrom, dateTo], () => reload())
 
 const columns = [

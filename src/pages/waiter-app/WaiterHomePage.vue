@@ -508,7 +508,7 @@ async function onRefresh(done) {
   line-height: 1;
 }
 .kpi-label {
-  font-size: 0.78rem;
+  font-size: 0.93rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -519,7 +519,7 @@ async function onRefresh(done) {
 .section-title {
   display: flex;
   align-items: center;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -532,7 +532,7 @@ async function onRefresh(done) {
   height: 48px;
   border-radius: 10px !important;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   position: relative;
 }
 
@@ -564,17 +564,17 @@ async function onRefresh(done) {
   min-width: 0;
 }
 .ready-alert__title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: #b45309;
 }
 .ready-alert__sub {
-  font-size: 13px;
+  font-size: 15px;
   color: #78716c;
   margin-top: 1px;
 }
 .serve-mini-btn {
-  font-size: 11px !important;
+  font-size: 14px !important;
   font-weight: 700 !important;
   border-radius: 8px !important;
 }
@@ -611,7 +611,7 @@ async function onRefresh(done) {
   min-width: 0;
 }
 .order-number {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   color: var(--erp-text-primary, #1e293b);
 }
@@ -624,16 +624,16 @@ async function onRefresh(done) {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: 14px;
   color: #7c3aed;
   font-weight: 600;
 }
 .time-tag {
-  font-size: 12px;
+  font-size: 14px;
   color: #94a3b8;
 }
 .order-status-chip {
-  font-size: 12px !important;
+  font-size: 14px !important;
   height: 24px !important;
 }
 
@@ -682,7 +682,7 @@ async function onRefresh(done) {
   line-height: 1;
 }
 .points-summary-label {
-  font-size: 0.78rem;
+  font-size: 0.93rem;
   font-weight: 600;
   color: #b45309;
   text-transform: uppercase;
@@ -729,7 +729,7 @@ async function onRefresh(done) {
   margin-bottom: 8px;
 }
 .off-shift-desc {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: #64748b;
   line-height: 1.5;
   max-width: 320px;

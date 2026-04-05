@@ -13,8 +13,9 @@
  *  - Loading state is managed in the composable / page layer.
  */
 
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/stores/auth'
+import { supabase } from '../boot/supabase'
+import { useAuthStore } from '../stores/auth'
+import { fetchDocumentById } from './inventoryService'
 
 // ─────────────────────────────────────────────
 // Types (mirrors DB schema)
@@ -363,8 +364,8 @@ export async function getSupplierBalance(supplierId: string) {
   if (supplierRes.error) throw new Error(supplierRes.error.message)
 
   const ledger = ledgerRes.data ?? []
-  const totalDebit = ledger.reduce((s, r) => s + (r.debit || 0), 0)
-  const totalCredit = ledger.reduce((s, r) => s + (r.credit || 0), 0)
+  const totalDebit = ledger.reduce((s: number, r: any) => s + (r.debit || 0), 0)
+  const totalCredit = ledger.reduce((s: number, r: any) => s + (r.credit || 0), 0)
 
   return {
     supplier: supplierRes.data,
@@ -384,7 +385,7 @@ export async function getSupplierBalance(supplierId: string) {
  * List purchase orders with optional filters.
  */
 export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrder[]> {
-  const { company_id } = getContext()
+  const { company_id, branch_id } = getContext()
 
   let query = supabase
     .from('purchase_orders')
@@ -396,6 +397,7 @@ export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrd
        remarks, created_at, approved_at, closed_at`,
     )
     .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
     .order('doc_date', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -406,6 +408,50 @@ export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrd
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return (data ?? []) as unknown as PurchaseOrder[]
+}
+
+/**
+ * Fetch POs that were created via the Inventory module (inventory_documents table).
+ * Maps them to the PurchaseOrder shape so they can be shown alongside procurement POs.
+ */
+export async function listInventoryPOs(filters: POFilterOptions = {}): Promise<PurchaseOrder[]> {
+  const { company_id, branch_id } = getContext()
+
+  let query = supabase
+    .from('inventory_documents')
+    .select(
+      `id, doc_number, doc_date, status,
+       supplier_id, suppliers(id, name, code),
+       warehouse_id, grand_total, total_cost, sub_total,
+       remarks, created_at`
+    )
+    .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
+    .eq('doc_type', 'PO')
+    .order('doc_date', { ascending: false })
+
+  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+
+  const { data, error } = await query
+
+  if (error) throw new Error(error.message)
+
+  // Map to PurchaseOrder shape
+  return (data ?? []).map((d: any) => ({
+    id: d.id,
+    doc_number: d.doc_number,
+    doc_date: d.doc_date,
+    expected_date: null,
+    status: d.status === 'posted' ? 'approved' : d.status,
+    supplier_id: d.supplier_id,
+    suppliers: d.suppliers,
+    warehouse_id: d.warehouse_id,
+    subtotal: d.sub_total || d.total_cost || 0,
+    total_amount: d.grand_total || d.total_cost || 0,
+    remarks: d.remarks,
+    created_at: d.created_at,
+    _source: 'inventory',
+  })) as unknown as PurchaseOrder[]
 }
 
 /**
@@ -434,6 +480,8 @@ export async function getPODetails(poId: string) {
     if (po.purchase_order_lines) {
       po.lines = po.purchase_order_lines.map((l: any) => ({
         ...l,
+        item_name: l.items?.name || l.description,
+        uom_name: l.uom?.name || l.uom?.code,
         default_uom_id: l.items?.purchase_uom_id,
         unit_cost: l.items?.last_purchase_price,
       }))
@@ -441,6 +489,38 @@ export async function getPODetails(poId: string) {
   }
 
   return po
+}
+
+/**
+ * Universal PO detail fetcher that handles both procurement-native 
+ * and inventory-native documents.
+ */
+export async function getAnyPODetails(poId: string, source: 'procurement' | 'inventory' = 'procurement') {
+  if (source === 'inventory') {
+    const doc = await fetchDocumentById(poId)
+    // Map inventory document structure to Procurement PO shape
+    return {
+      ...doc.header,
+      _source: 'inventory',
+      status: doc.header.status === 'posted' ? 'approved' : doc.header.status,
+      suppliers: doc.header.supplier,
+      delivery_date: doc.header.delivery_date,
+      expected_date: doc.header.delivery_date,
+      lines: (doc.lines || []).map((l: any) => ({
+        ...l,
+        item_id: l.item_id,
+        item_name: l.item?.name || l.item_name,
+        uom_id: l.uom_id,
+        uom_name: l.uom?.name || l.uom?.code || l.uom_code,
+        unit_price: l.unit_price || l.unit_cost,
+        line_total: l.line_total || (l.quantity * (l.unit_price || l.unit_cost || 0))
+      }))
+    }
+  }
+  
+  // Native procurement PO
+  const po = await getPODetails(poId)
+  return { ...po, _source: 'procurement' }
 }
 
 /**
@@ -561,17 +641,19 @@ export async function cancelPO(poId: string, reason?: string) {
 export async function listGRNs(
   filters: { status?: string; supplier_id?: string; from_date?: string; to_date?: string } = {},
 ) {
-  const { company_id } = getContext()
+  const { company_id, branch_id } = getContext()
   let query = supabase
     .from('goods_receipts')
     .select(
       `id, doc_number, doc_date, status, total_amount, remarks,
        supplier_id, suppliers(id, name, code),
        po_id, purchase_orders(id, doc_number),
+       inventory_po_id, inventory_documents(id, doc_number),
        warehouse_id, warehouses(id, name),
        posted_at, created_at`,
     )
     .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
     .order('doc_date', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -593,12 +675,13 @@ export async function getGRNDetails(grnId: string) {
     .select(
       `*, suppliers(id, name, code),
        purchase_orders(id, doc_number),
+       inventory_documents(id, doc_number),
        warehouses(id, name),
        goods_receipt_lines(
          *,
          items!goods_receipt_lines_item_id_fkey(id, name, code, purchase_uom_id),
          uom!goods_receipt_lines_uom_id_fkey(id, code, name)
-       ) mapping_lines`,
+       )`,
     )
     .eq('id', grnId)
     .single()
@@ -606,6 +689,20 @@ export async function getGRNDetails(grnId: string) {
   if (error) throw new Error(error.message)
   return data
 }
+
+/**
+ * Delete a GRN via atomic delete_grn RPC.
+ * - If draft: deletes the record and lines directly.
+ * - If posted: cancels first (reversing all stock/ledger entries), then deletes.
+ */
+export async function deleteGRN(
+  grnId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc('delete_grn', { p_grn_id: grnId })
+  if (error) return { success: false, error: error.message }
+  return data as { success: boolean; error?: string }
+}
+
 
 /**
  * Create a GRN pre-populated from a Purchase Order.
@@ -727,6 +824,7 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
       doc_number: docNum || `GRN-${Date.now()}`,
       doc_date: header.doc_date,
       po_id: header.po_id || null,
+      inventory_po_id: (header as any).inventory_po_id || null,
       supplier_id: header.supplier_id,
       warehouse_id: header.warehouse_id,
       remarks: header.remarks || null,
@@ -742,6 +840,7 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
     grn_id: grn.id,
     line_number: idx + 1,
     po_line_id: l.po_line_id || null,
+    inventory_po_line_id: (l as any).inventory_po_line_id || null,
     item_id: l.item_id,
     description: l.description || null,
     uom_id: l.uom_id,
@@ -793,6 +892,7 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
     grn_id: grnId,
     line_number: idx + 1,
     po_line_id: l.po_line_id || null,
+    inventory_po_line_id: (l as any).inventory_po_line_id || null,
     item_id: l.item_id,
     description: l.description || null,
     uom_id: l.uom_id,
@@ -858,7 +958,7 @@ export function printGRN(grnId: string) {
  * List AP invoices with optional filters.
  */
 export async function listInvoices(filters: InvoiceFilterOptions = {}) {
-  const { company_id } = getContext()
+  const { company_id, branch_id } = getContext()
 
   let query = supabase
     .from('ap_invoices')
@@ -867,9 +967,13 @@ export async function listInvoices(filters: InvoiceFilterOptions = {}) {
        total_amount, paid_amount, balance_due, currency,
        supplier_id, suppliers(id, name, code),
        grn_id, goods_receipts(id, doc_number),
-       po_id, posted_at, created_at`,
+       po_id, purchase_orders(id, doc_number),
+       inventory_po_id,
+       inventory_grn_id,
+       posted_at, created_at`,
     )
     .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
     .order('doc_date', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -891,6 +995,7 @@ export async function getInvoiceDetails(invoiceId: string) {
     .select(
       `*, suppliers(id, name, code),
        goods_receipts(id, doc_number),
+       purchase_orders(id, doc_number),
        ap_invoice_lines(
          *,
          items!ap_invoice_lines_item_id_fkey(id, name, code, purchase_uom_id),
@@ -955,7 +1060,7 @@ export async function createInvoiceFromGRN(
     }
   })
 
-  const subtotal = linePayloads.reduce((s, l) => s + l.quantity * l.unit_price, 0)
+  const subtotal = linePayloads.reduce((s: number, l: any) => s + l.quantity * l.unit_price, 0)
 
   const { data: invoice, error: invErr } = await supabase
     .from('ap_invoices')
@@ -982,7 +1087,7 @@ export async function createInvoiceFromGRN(
   // Insert lines (add invoice_id to each)
   const { error: linesErr } = await supabase
     .from('ap_invoice_lines')
-    .insert(linePayloads.map((l) => ({ ...l, invoice_id: invoice.id })))
+    .insert(linePayloads.map((l: any) => ({ ...l, invoice_id: invoice.id })))
 
   if (linesErr) throw new Error(linesErr.message)
   return invoice
@@ -1022,6 +1127,8 @@ export async function createInvoice(
       supplier_id: header.supplier_id,
       grn_id: header.grn_id || null,
       po_id: header.po_id || null,
+      inventory_po_id: (header as any).inventory_po_id || null,
+      inventory_grn_id: (header as any).inventory_grn_id || null,
       currency: header.currency || 'LKR',
       exchange_rate: header.exchange_rate || 1,
       status: 'draft',
@@ -1042,6 +1149,7 @@ export async function createInvoice(
     line_number: idx + 1,
     grn_line_id: l.grn_line_id || null,
     po_line_id: l.po_line_id || null,
+    inventory_grn_line_id: (l as any).inventory_grn_line_id || null,
     item_id: l.item_id || null,
     description: l.description || null,
     uom_id: l.uom_id || null,
@@ -1092,6 +1200,7 @@ export async function updateInvoice(
     line_number: idx + 1,
     grn_line_id: l.grn_line_id || null,
     po_line_id: l.po_line_id || null,
+    inventory_grn_line_id: (l as any).inventory_grn_line_id || null,
     item_id: l.item_id || null,
     description: l.description || null,
     uom_id: l.uom_id || null,
@@ -1142,7 +1251,7 @@ export async function getOpenInvoicesForSupplier(supplierId: string) {
     .select('id, doc_number, doc_date, due_date, total_amount, paid_amount, balance_due')
     .eq('company_id', company_id)
     .eq('supplier_id', supplierId)
-    .in('status', ['posted', 'partial_paid'])
+    .in('status', ['posted', 'partial_paid'])  // ✅ Only POSTED invoices are payable — no drafts
     .order('due_date', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -1161,16 +1270,21 @@ export async function getOpenInvoicesForSupplier(supplierId: string) {
 export async function listPayments(
   filters: { status?: string; supplier_id?: string; from_date?: string; to_date?: string } = {},
 ) {
-  const { company_id } = getContext()
+  const { company_id, branch_id } = getContext()
 
   let query = supabase
     .from('supplier_payments')
     .select(
-      `id, doc_number, doc_date, status, total_amount, allocated_amount, payment_method,
+      `id, doc_number, doc_date, status, total_amount, payment_method,
        supplier_id, suppliers(id, name, code),
-       cheque_no, reference_no, posted_at, created_at`,
+       cheque_no, reference_no, remarks, posted_at, created_at,
+       supplier_payment_allocations(
+         id, amount,
+         ap_invoices(id, doc_number, total_amount, balance_due)
+       )`,
     )
     .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
     .order('doc_date', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -1182,6 +1296,7 @@ export async function listPayments(
   if (error) throw new Error(error.message)
   return data ?? []
 }
+
 
 /**
  * Create a draft supplier payment (without allocations).
@@ -1222,6 +1337,46 @@ export async function createPayment(header: Omit<SupplierPayment, 'id' | 'doc_nu
   if (error) throw new Error(error.message)
   return payment
 }
+
+/**
+ * Atomic: Create + Allocate + Post a supplier payment in a single
+ * SECURITY DEFINER RPC. This bypasses RLS issues with the client role
+ * not having write access to supplier_payments.
+ */
+export async function createAndPostPayment(
+  header: {
+    supplier_id: string
+    doc_date: string
+    payment_method: string
+    reference_no?: string
+    cheque_no?: string
+    remarks?: string
+    total_amount: number
+    bank_account_code?: string | null
+  },
+  allocations: { invoice_id: string; amount: number }[],
+  post = true,
+): Promise<{ success: boolean; doc_number?: string; payment_id?: string; error?: string }> {
+  const { company_id, branch_id } = getContext()
+
+  const { data, error } = await supabase.rpc('create_and_post_payment', {
+    p_company_id: company_id,
+    p_branch_id: branch_id,
+    p_supplier_id: header.supplier_id,
+    p_doc_date: header.doc_date,
+    p_payment_method: header.payment_method,
+    p_total_amount: header.total_amount,
+    p_reference_no: header.reference_no || null,
+    p_cheque_no: header.cheque_no || null,
+    p_allocations: allocations,
+    p_post_now: post,
+    p_bank_account_code: header.bank_account_code || null,
+  })
+
+  if (error) return { success: false, error: error.message }
+  return data as { success: boolean; doc_number?: string; payment_id?: string; error?: string }
+}
+
 
 /**
  * Upsert allocations for a draft payment.
@@ -1283,7 +1438,7 @@ export async function postPayment(
 export async function listReturns(
   filters: { status?: string; supplier_id?: string; from_date?: string; to_date?: string } = {},
 ) {
-  const { company_id } = getContext()
+  const { company_id, branch_id } = getContext()
 
   let query = supabase
     .from('purchase_returns')
@@ -1295,6 +1450,7 @@ export async function listReturns(
        posted_at, created_at`,
     )
     .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
     .order('doc_date', { ascending: false })
 
   if (filters.status) query = query.eq('status', filters.status)
@@ -1403,7 +1559,7 @@ export async function createReturnFromGRN(
   const { error: linesErr } = await supabase.from('purchase_return_lines').insert(linePayloads)
   if (linesErr) throw new Error(linesErr.message)
 
-  const subtotal = linePayloads.reduce((s, l) => s + l.quantity * (l.unit_cost ?? 0), 0)
+  const subtotal = linePayloads.reduce((s: number, l: any) => s + l.quantity * (l.unit_cost ?? 0), 0)
   await supabase
     .from('purchase_returns')
     .update({ subtotal, total_amount: subtotal })
@@ -1582,7 +1738,7 @@ export async function listItems() {
   if (error) throw new Error(error.message)
 
   return (
-    (data || []).map((item) => ({
+    (data || []).map((item: any) => ({
       ...item,
       default_uom_id: item.purchase_uom_id,
       unit_cost: item.last_purchase_price,
@@ -1626,8 +1782,8 @@ export async function getSupplierStatement(supplierId: string, fromDate: string,
 
   if (error) throw new Error(error.message)
   const rows = data ?? []
-  const totalDebit = rows.reduce((s, r) => s + (r.debit || 0), 0)
-  const totalCredit = rows.reduce((s, r) => s + (r.credit || 0), 0)
+  const totalDebit = rows.reduce((s: number, r: any) => s + (r.debit || 0), 0)
+  const totalCredit = rows.reduce((s: number, r: any) => s + (r.credit || 0), 0)
   return { rows, totalDebit, totalCredit, balance: totalCredit - totalDebit }
 }
 
@@ -1779,4 +1935,35 @@ export async function approveInvoice(
   })
   if (error) return { success: false, error: error.message }
   return data as { success: boolean; doc_number?: string; error?: string }
+}
+
+/**
+ * Get supplier payments report with optional filtering
+ */
+export async function getSupplierPaymentsReport(startDate: string, endDate: string, supplierId?: string) {
+  const { company_id, branch_id } = getContext()
+
+  let query = supabase
+    .from('supplier_payments')
+    .select(
+      `*, suppliers(id, name, code),
+       supplier_payment_allocations(
+         id, amount,
+         ap_invoices(id, doc_number, total_amount, balance_due)
+       )`,
+    )
+    .eq('company_id', company_id)
+    .eq('branch_id', branch_id)
+    .gte('doc_date', startDate)
+    .lte('doc_date', endDate)
+    .order('doc_date', { ascending: false })
+
+  if (supplierId) {
+    query = query.eq('supplier_id', supplierId)
+  }
+
+
+  const { data, error } = await query
+  if (error) throw error
+  return data
 }

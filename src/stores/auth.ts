@@ -346,7 +346,10 @@ export const useAuthStore = defineStore('auth', {
           })
         }
 
-        // Profile, modules, notifications — always background
+        // ── Step 4: Profile, sync fetch ──────────────────────────
+        await this._fetchProfile().catch(() => {})
+
+        // Modules, notifications — background
         this._backgroundFetchNonCritical()
 
         // 🔐 Audit log — fire & forget
@@ -434,13 +437,18 @@ export const useAuthStore = defineStore('auth', {
           })
         }
 
-        // Profile, modules, notifications — background
+        // ── Step 5: Profile, modules, notifications ───────────────────
+        // Fetch profile SYNC (not background) so name appears instantly
+        await this._fetchProfile().catch(() => {})
+
+        // Modules and notifications remain in background to avoid blocking
         this._backgroundFetchNonCritical()
 
         // 🔐 Audit log — fire & forget
         writeLoginAudit({
           user_id: this.user?.id,
           email: this.user?.email,
+          full_name: this.profile?.full_name,
           role: this.roles[0] || 'unknown',
           status: 'success',
         })

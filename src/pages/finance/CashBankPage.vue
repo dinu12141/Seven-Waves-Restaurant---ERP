@@ -13,26 +13,26 @@
     <!-- Bank Account Cards -->
     <div class="row q-col-gutter-md q-mb-md">
       <div v-for="acct in bankAccounts" :key="acct.id" class="col-12 col-sm-6 col-md-3">
-        <div class="fin-kpi-card" style="cursor: pointer" @click="filterByAccount(acct.id)">
-          <div
-            class="fin-kpi-card__icon"
-            :style="{
-              background:
-                acct.account_type === 'bank' ? 'rgba(59,130,246,0.12)' : 'rgba(16,185,129,0.12)',
-            }"
-          >
+        <div 
+          :class="['fin-kpi-card', acct.account_type === 'bank' ? 'fin-kpi-card--teal' : 'fin-kpi-card--green']" 
+          style="cursor: pointer" 
+          @click="filterByAccount(acct.id)"
+        >
+          <div class="fin-kpi-card__icon">
             <q-icon
               :name="acct.account_type === 'bank' ? 'account_balance' : 'payments'"
-              size="20px"
-              :color="acct.account_type === 'bank' ? 'blue' : 'green'"
+              size="24px"
+              color="white"
             />
           </div>
-          <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">
+          <div class="fin-kpi-card__body overflow-hidden">
+            <div class="fin-kpi-card__label text-white" style="opacity: 0.8; font-size: 11px; line-height: 1.2; word-break: break-word; white-space: normal;">
               {{ acct.name }}
               <q-tooltip>{{ acct.name }}</q-tooltip>
             </div>
-            <div class="fin-kpi-card__value">{{ fmt(acct.current_balance) }}</div>
+            <div class="fin-kpi-card__value text-white" style="font-size: 18px; line-height: 1.2;">
+              {{ fmt(acct.current_balance) }}
+            </div>
           </div>
         </div>
       </div>

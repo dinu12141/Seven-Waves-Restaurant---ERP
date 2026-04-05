@@ -1,0 +1,27 @@
+DELIVERY APP - CUSTOMER FEEDBACK PROMPTS
+==========================================
+
+1. Credits & Recognition
+   - Please give credit to our delivery partner
+   - Rate your delivery experience
+   - Tip your driver for excellent service
+
+2. Portion Size Feedback
+   - Is the children's portion size too small?
+   - Would you like a larger portion?
+   - Can we make the portion bigger for you?
+
+3. Follow-up Questions
+   - Are you satisfied with your order?
+   - Would you like to suggest portion size changes?
+   - Can we improve your delivery experience?
+
+4. Standard Messages
+   - Thank you for your order!
+   - Your delivery is on the way
+   - Driver is arriving soon
+   - Please confirm receipt of your order
+
+==========================================
+Created: 2026-04-04
+For: Restaurant ERP Delivery App

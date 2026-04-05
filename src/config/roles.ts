@@ -12,7 +12,7 @@
  *   Admin:   Full access (bypasses all checks)
  */
 
-import type { UserRole } from 'src/stores/auth'
+import type { UserRole } from '../stores/auth'
 
 /** Route paths each role is allowed to visit */
 export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
@@ -59,7 +59,6 @@ export const PERMISSION_ROUTE_ACCESS: Record<string, string[]> = {
   'admin:users': ['/admin/users'],
   'admin:roles': ['/admin/roles'],
   'admin:branches': ['/admin/branches'],
-  'admin:kitchens': ['/admin/kitchens'],
   'admin:printers': ['/admin/printers'],
   'admin:settings': ['/admin/settings'],
   'admin:customers': ['/admin/customers', '/admin/loyalty'],
@@ -528,6 +527,15 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Supplier Payments',
     icon: 'payments',
     to: '/procurement/payments',
+    roles: ['admin', 'manager', 'finance', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+    group: 'Payables',
+  },
+  {
+    label: 'Payment Reports',
+    icon: 'receipt_long',
+    to: '/procurement/payments-report',
     roles: ['admin', 'manager', 'finance', 'procurement'],
     permission: 'procurement:access',
     section: 'PROCUREMENT',
@@ -1065,15 +1073,6 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'admin:branches',
     section: 'SYSTEM',
     group: 'Administration',
-  },
-  {
-    label: 'Kitchens',
-    icon: 'soup_kitchen',
-    to: '/admin/kitchens',
-    roles: ['admin'],
-    permission: 'admin:kitchens',
-    section: 'SYSTEM',
-    group: 'Configuration',
   },
   {
     label: 'Printers',

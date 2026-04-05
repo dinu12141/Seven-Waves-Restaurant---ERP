@@ -1,30 +1,19 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout view="LHh Lpr lFf">
     <!-- ─── Header ────────────────────────────────────────────────────── -->
-    <q-header class="erp-header">
+    <q-header v-if="!isPOSMode" class="erp-header">
       <!-- First Row: Search & Profile -->
       <q-toolbar class="erp-toolbar erp-toolbar--top">
         <!-- Toggle sidebar -->
         <q-btn
-          v-if="!isPOSMode"
           flat
           dense
-          round
           icon="menu"
           aria-label="Toggle Menu"
           class="erp-toolbar-btn q-mr-sm"
+          style="width: 30px; height: 30px; min-width: 30px; min-height: 30px; border-radius: 6px;"
           @click="toggleLeftDrawer"
         />
-
-        <!-- Brand only visible in POS mode where sidebar is hidden entirely -->
-        <div class="erp-brand erp-brand--pos" v-if="isPOSMode">
-          <img
-            src="~assets/seven-waves-logo-transparent.png"
-            alt="Seven Waves"
-            style="width: 18px; height: auto"
-          />
-          <span class="erp-brand__name">Seven Waves</span>
-        </div>
 
         <!-- Global Search -->
         <div class="erp-search-wrap">
@@ -33,14 +22,12 @@
             v-model="searchQuery"
             dense
             borderless
+            hide-bottom-space
             placeholder="Search..."
             class="erp-search"
           >
             <template #prepend>
               <q-icon name="search" size="18px" class="erp-search__icon" />
-            </template>
-            <template #append>
-              <kbd class="erp-search__kbd">⌘K</kbd>
             </template>
           </q-input>
         </div>
@@ -49,7 +36,7 @@
 
         <!-- Branch chip -->
         <div v-if="authStore.currentBranch && $q.screen.gt.sm" class="erp-branch-chip">
-          <q-icon name="store_mall_directory" size="14px" />
+          <q-icon name="store_mall_directory" size="18px" />
           <span>{{ authStore.currentBranch.name }}</span>
         </div>
 
@@ -57,7 +44,6 @@
         <q-btn
           flat
           dense
-          round
           :icon="uiStore.themeIcon"
           :aria-label="uiStore.themeLabel"
           class="erp-theme-toggle"
@@ -70,7 +56,7 @@
         <NotificationPanel />
 
         <!-- User Avatar & Menu -->
-        <q-btn flat round dense class="erp-avatar-btn q-ml-xs">
+        <q-btn flat dense class="erp-avatar-btn q-ml-xs">
           <q-avatar size="32px" class="erp-user-avatar">
             <span>{{ userInitials }}</span>
           </q-avatar>
@@ -131,7 +117,7 @@
       <!-- Second Row: Categories Navigation Menu -->
       <q-toolbar
         class="erp-toolbar erp-toolbar--bottom"
-        v-if="!isPOSMode && topNavSections.length > 0"
+        v-if="topNavSections.length > 0"
       >
         <div class="erp-top-nav">
           <q-tabs
@@ -501,14 +487,18 @@ watch(
 <style scoped lang="scss">
 // ─── Header ────────────────────────────────────────────────────────────────────
 .erp-header {
+  box-sizing: border-box !important;
+  height: 75px !important;
+  min-height: 75px !important;
+  max-height: 75px !important;
   background-color: var(--erp-bg-header) !important;
   border-bottom: 1px solid var(--erp-border) !important;
-  box-shadow: 0 1px 0 var(--erp-border), 0 2px 8px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 .erp-toolbar {
   padding: 0 16px;
-  gap: 8px;
+  gap: 16px;
   align-items: center !important;
 
   &--top {
@@ -541,11 +531,18 @@ watch(
 }
 
 // ─── User Avatar Button ────────────────────────────────────────────────────────
-.erp-avatar-btn {
-  width: 34px !important;
-  height: 34px !important;
-  min-width: 34px !important;
+.erp-avatar-btn,
+:deep(.notif-btn) {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  min-height: 30px !important;
   padding: 0 !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px !important;
 }
 
 .erp-user-avatar {
@@ -558,10 +555,27 @@ watch(
 // ─── Toolbar Buttons ───────────────────────────────────────────────────────────
 .erp-toolbar-btn {
   color: var(--erp-text-secondary) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  
   &:hover {
     color: var(--erp-text-primary) !important;
     background: var(--erp-bg-hover) !important;
   }
+}
+
+.erp-theme-toggle {
+  width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px !important;
+  padding: 0 !important;
+  font-size: 18px;
 }
 
 // ─── Brand ─────────────────────────────────────────────────────────────────────
@@ -603,10 +617,36 @@ watch(
   }
 }
 
+// ─── Branch Chip ─────────────────────────────────────────────────────────────
+.erp-branch-chip {
+  height: 30px !important;
+  min-height: 30px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  color: var(--erp-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--erp-bg-card);
+  transition: all 0.2s ease;
+  user-select: none;
+  &:hover {
+    background: var(--erp-bg-hover);
+    color: var(--erp-text-primary);
+    border-color: var(--erp-border-hover);
+  }
+}
+
 // ─── Global Search ─────────────────────────────────────────────────────────────
 .erp-search-wrap {
   flex: 0 1 320px;
   margin: 0 12px;
+  display: flex;
+  align-items: center;
   transition: flex 0.3s ease;
 
   &:focus-within {
@@ -614,19 +654,31 @@ watch(
   }
 }
 
-.erp-search {
+.erp-search.q-field--dense {
+  width: 100%;
+
+  :deep(.q-field__inner),
+  :deep(.q-field__control),
+  :deep(.q-field__marginal) {
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+  }
+
+  :deep(.q-field__bottom) {
+    display: none !important;
+  }
+
   :deep(.q-field__control) {
     background-color: var(--erp-bg-active) !important;
     border: 1px solid var(--erp-border-hover) !important;
-    border-radius: 8px !important;
-    height: 34px !important;
-    min-height: 34px !important;
+    border-radius: 6px !important;
     padding: 0 10px 0 8px !important;
+    display: flex;
+    align-items: center;
     transition:
       border-color 0.2s,
       background-color 0.2s;
-    display: flex;
-    align-items: center;
 
     &:focus-within {
       border-color: var(--erp-primary) !important;
@@ -635,44 +687,46 @@ watch(
   }
 
   :deep(.q-field__prepend) {
-    height: 34px !important;
-    padding-right: 6px !important;
-    display: flex;
-    align-items: center;
+    padding-right: 8px !important;
   }
 
   :deep(.q-field__append) {
-    height: 34px !important;
     padding-left: 8px !important;
-    display: flex;
-    align-items: center;
+  }
+
+  :deep(.q-field__marginal) {
+    height: 32px !important;
   }
 
   :deep(.q-field__native) {
     font-size: 13px !important;
     color: var(--erp-text-primary) !important;
     padding: 0 !important;
-    line-height: 34px !important;
+    line-height: normal !important;
     &::placeholder {
       color: var(--erp-text-tertiary);
     }
   }
 
   &__icon {
+    display: flex;
     color: var(--erp-text-tertiary);
-    margin-top: 0 !important;
   }
 
   &__kbd {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 10px;
     font-family: var(--erp-font-family);
     color: var(--erp-text-tertiary);
     background: var(--erp-bg-active);
     border: 1px solid var(--erp-border-hover);
     border-radius: 4px;
-    padding: 2px 6px;
+    padding: 0 6px;
+    height: 20px;
     white-space: nowrap;
-    line-height: 1.4;
+    line-height: 1;
   }
 }
 
@@ -753,15 +807,16 @@ watch(
 .erp-branch-chip {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  justify-content: center;
+  height: 32px;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--erp-text-secondary);
   background: var(--erp-bg-card-hover);
   border: 1px solid var(--erp-border);
-  border-radius: 6px;
-  padding: 4px 10px;
-  margin-right: 8px;
+  border-radius: 8px;
+  padding: 0 12px;
 }
 
 // ─── Role Badges ───────────────────────────────────────────────────────────────
@@ -962,12 +1017,14 @@ watch(
   }
 
   &__logo {
+    box-sizing: border-box !important;
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 72px !important;
-    min-height: 72px !important;
+    height: 75px !important;
+    min-height: 75px !important;
+    max-height: 75px !important;
     border-bottom: 1px solid var(--erp-border);
     flex-shrink: 0;
 

@@ -82,7 +82,7 @@ function elapsedMin(dt) {
   color: #cbd5e1;
 }
 .empty-state__text {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 
@@ -110,7 +110,7 @@ function elapsedMin(dt) {
 
 .order-number {
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.98rem;
   color: #f3f4f6;
 }
 .lt .order-number {
@@ -118,7 +118,7 @@ function elapsedMin(dt) {
 }
 
 .order-table {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
 }
 .lt .order-table {
@@ -126,7 +126,7 @@ function elapsedMin(dt) {
 }
 
 .order-time {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #4b5563;
 }
 .lt .order-time {
@@ -134,7 +134,7 @@ function elapsedMin(dt) {
 }
 
 .order-item-row {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #9ca3af;
   padding: 1px 0;
 }
@@ -142,7 +142,7 @@ function elapsedMin(dt) {
   color: #64748b;
 }
 .order-item-more {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #4b5563;
 }
 .lt .order-item-more {
@@ -157,7 +157,7 @@ function elapsedMin(dt) {
 }
 
 .order-elapsed {
-  font-size: 0.7rem;
+  font-size: 0.80rem;
   color: #4b5563;
 }
 .lt .order-elapsed {
