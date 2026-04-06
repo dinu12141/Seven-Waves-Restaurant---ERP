@@ -144,8 +144,15 @@
               <q-icon name="table_restaurant" size="11px" class="q-mr-xs" />
               <span>{{ item.tableNumber || '—' }}</span>
               <span class="q-mx-xs text-grey-8">·</span>
-              <q-icon name="person" size="11px" class="q-mr-xs" />
-              <span>{{ item.waiterName || 'POS' }}</span>
+              <q-icon :name="item.order_type === 'delivery' ? 'delivery_dining' : 'person'" size="11px" class="q-mr-xs" />
+              <span>
+                {{ 
+                  item.delivery_source ? 'Delivery (' + item.delivery_source.toUpperCase() + ')' :
+                  (item.order_source === 'website' ? 'Website Order' :
+                  (item.order_source === 'qr' ? 'QR Order' :
+                  (item.order_type === 'delivery' ? 'Delivery' : (item.waiterName || 'POS'))))
+                }}
+              </span>
               <template v-if="item.customer_name">
                 <span class="q-mx-xs text-grey-8">·</span>
                 <q-icon name="account_circle" size="11px" class="q-mr-xs" />

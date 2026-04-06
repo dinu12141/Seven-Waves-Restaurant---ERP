@@ -14,9 +14,12 @@
         <!-- Logo -->
         <div class="brand">
           <img
-            src="~assets/seven-waves-logo-transparent.png"
+            src="~assets/seven-waves-logo-transparent.webp"
             alt="Seven Waves"
             class="brand-logo"
+            width="64"
+            height="64"
+            fetchpriority="high"
           />
           <div class="brand-text">
             <div class="brand-name">Seven Waves</div>
@@ -295,6 +298,8 @@ const handleLogin = async () => {
   min-height: 100vh;
   padding: 0 !important;
   background: transparent !important;
+  /* Prevent Quasar page min-height from triggering CLS */
+  contain: layout style;
 }
 
 .login-wrapper {
@@ -303,6 +308,8 @@ const handleLogin = async () => {
   min-height: 100vh;
   font-family: 'Inter', 'Roboto', sans-serif;
   position: relative;
+  /* Prevent child reflows from shifting surrounding content */
+  contain: layout;
 }
 
 /* ─── SMART BACKGROUND ELEMENTS ──────────────────── */
@@ -373,6 +380,8 @@ const handleLogin = async () => {
   z-index: 2;
   box-shadow: 10px 0 50px rgba(0, 0, 0, 0.5);
   border-right: 1px solid rgba(0, 0, 0, 0.05);
+  /* Prevent internal reflows from shifting the layout */
+  contain: layout style;
 }
 
 /* Brand */
@@ -384,8 +393,11 @@ const handleLogin = async () => {
   flex-shrink: 0;
 }
 .brand-logo {
+  width: 64px;
   height: 64px;
   object-fit: contain;
+  /* Prevent image load from shifting layout */
+  aspect-ratio: 1 / 1;
 }
 .brand-text {
   display: flex;
@@ -415,6 +427,8 @@ const handleLogin = async () => {
   margin-bottom: 16px;
   gap: 4px;
   flex-shrink: 0;
+  /* Reserve space to prevent CLS when buttons render */
+  min-height: 40px;
 }
 .mode-btn {
   flex: 1;
@@ -429,9 +443,11 @@ const handleLogin = async () => {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   font-family: inherit;
   gap: 4px;
+  /* Reserve fixed height to prevent CLS */
+  min-height: 32px;
 }
 .mode-btn:hover:not(.active) {
   color: #334155;
@@ -487,6 +503,8 @@ const handleLogin = async () => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* Reserve approximate height for the form to avoid shifts */
+  min-height: 280px;
 }
 .field-group {
   display: flex;
@@ -508,7 +526,7 @@ const handleLogin = async () => {
   padding: 0 14px;
   height: 48px;
   background: #ffffff;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
   gap: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -585,7 +603,7 @@ const handleLogin = async () => {
   justify-content: center;
   gap: 6px;
   letter-spacing: 0.3px;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
   box-shadow: 0 4px 18px rgba(21, 101, 192, 0.3);
   width: 100%;
 }
@@ -755,6 +773,7 @@ const handleLogin = async () => {
     border-bottom: 1px solid #f1f5f9;
   }
   .brand-logo {
+    width: 42px;
     height: 42px;
   }
   .brand-name {

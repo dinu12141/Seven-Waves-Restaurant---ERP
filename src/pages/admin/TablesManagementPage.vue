@@ -952,10 +952,17 @@ function getAppBaseUrl() {
   // 1. localStorage override (set by admin via the QR dialog URL box)
   const override = localStorage.getItem('sw_qr_base_url')
   if (override) return override.replace(/\/$/, '')
-  // 2. Build-time env var (set in .env — best for LAN deployments)
+  
+  // 2. If running on a public domain (like Vercel), ALWAYS use the current origin
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.hostname.startsWith('192.168.')) {
+    return window.location.origin
+  }
+
+  // 3. Build-time env var (set in .env — best for LAN deployments)
   if (import.meta.env.VITE_APP_PUBLIC_URL)
     return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
-  // 3. Current browser origin (works on production, but returns 'localhost' on dev)
+    
+  // 4. Current browser origin fallback
   return window.location.origin
 }
 

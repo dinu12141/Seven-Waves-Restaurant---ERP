@@ -255,6 +255,12 @@ async function loadFilterOptions() {
       paymentModeOptions.value = [
         { label: 'All Modes', value: null },
         ...methods.map((m) => ({ label: m.name, value: m.name.toLowerCase() })),
+        { label: 'FOC', value: 'foc' },
+      ]
+    } else {
+      paymentModeOptions.value = [
+        { label: 'All Modes', value: null },
+        { label: 'FOC', value: 'foc' },
       ]
     }
   } catch (e) {

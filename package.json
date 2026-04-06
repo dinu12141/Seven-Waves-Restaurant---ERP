@@ -16,6 +16,7 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@quasar/extras": "^1.16.4",
     "@supabase/supabase-js": "^2.95.3",
     "apexcharts": "^5.7.0",

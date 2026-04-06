@@ -1030,6 +1030,15 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Overview',
   },
   {
+    label: 'AI System Auditor',
+    icon: 'smart_toy',
+    to: '/admin/ai-insights',
+    roles: ['admin'],
+    permission: 'admin:console',
+    section: 'SYSTEM',
+    group: 'Overview',
+  },
+  {
     label: 'Customers',
     icon: 'people_alt',
     to: '/admin/customers',

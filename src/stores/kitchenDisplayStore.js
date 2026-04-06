@@ -144,6 +144,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
         order_number,
         order_type,
         order_source,
+        delivery_source,
         notes,
         status,
         customer_name,
@@ -169,7 +170,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       .in('status', ['created', 'pending', 'accepted', 'preparing'])
       .is('completed_at', null)
       .gte('created_at', todayStart)
-      .not('order.status', 'eq', 'pending_waiter')
       .order('created_at', { ascending: true })
 
     // Query 2: ALL ready tickets that haven't been dismissed (completed_at IS NULL)
@@ -178,7 +178,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       .select(selectFields)
       .eq('status', 'ready')
       .is('completed_at', null)
-      .not('order.status', 'eq', 'pending_waiter')
       .order('created_at', { ascending: false })
 
     if (!isCashierDisplay) {
@@ -363,6 +362,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           order_number,
           order_type,
           order_source,
+          delivery_source,
           notes,
           status,
           customer_name,
@@ -399,8 +399,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
     if (
       data.completed_at ||
-      data.status === 'cancelled' ||
-      data.order?.status === 'pending_waiter'
+      data.status === 'cancelled'
     ) {
       tickets.value = tickets.value.filter((t) => t.id !== kotId)
       return
@@ -677,6 +676,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       orderNumber: ticket.order?.order_number || '?',
       orderType: formatOrderType(ticket.order?.order_type),
       orderSource: ticket.order?.order_source || 'pos',
+      deliverySource: ticket.order?.delivery_source || null,
       orderNotes: ticket.order?.notes || '',
       waiterName: ticket.order?.waiter?.full_name || '',
       customerName: ticket.order?.customer_name || '',

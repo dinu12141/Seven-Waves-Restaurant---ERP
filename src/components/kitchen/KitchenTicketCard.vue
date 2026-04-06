@@ -16,9 +16,20 @@
               v-if="ticket.orderType"
               :color="typeColor"
               text-color="white"
-              class="type-badge shadow-1"
+              class="type-badge shadow-2 text-bold"
+              style="padding: 4px 8px; font-size: 0.75rem;"
             >
-              {{ ticket.orderType }}
+              <q-icon 
+                :name="(ticket.orderType || '').toLowerCase().includes('dine') ? 'restaurant' : 
+                       ((ticket.orderType || '').toLowerCase().includes('take') ? 'shopping_bag' : 'delivery_dining')" 
+                size="12px" 
+                class="q-mr-xs" 
+              />
+              {{ 
+                ticket.deliverySource 
+                  ? 'DELIVERY (' + ticket.deliverySource.toUpperCase() + ')' 
+                  : ticket.orderType?.replace('_', ' ')?.toUpperCase() 
+              }}
             </q-badge>
             <!-- Print indicator -->
             <q-icon
@@ -97,8 +108,8 @@
 
       <!-- Footer: Actions -->
       <div class="q-mt-md action-area">
-        <!-- STATUS: CREATED → Accept + Print -->
-        <template v-if="ticket.status === 'created'">
+        <!-- STATUS: CREATED / PENDING / ACCEPTED → Accept + Print -->
+        <template v-if="['created','pending','accepted'].includes(ticket.status)">
           <div class="row q-gutter-xs">
             <q-btn
               unelevated
@@ -108,7 +119,7 @@
               @click="$emit('accept', ticket.id)"
             >
               <q-icon name="restaurant" size="16px" class="q-mr-xs" />
-              ACCEPT
+              {{ ticket.status === 'accepted' ? 'START COOKING' : 'ACCEPT' }}
             </q-btn>
             <q-btn unelevated rounded class="action-btn btn-view" @click="$emit('view', ticket.id)">
               <q-icon name="visibility" size="16px" />
@@ -262,7 +273,10 @@ const isCritical = computed(() => {
 const stripClass = computed(() => {
   switch (props.ticket.status) {
     case 'created':
+    case 'pending':
       return 'bg-orange-5'
+    case 'accepted':
+      return 'bg-yellow-7'
     case 'preparing':
       return 'bg-blue-5'
     case 'ready':
@@ -274,10 +288,10 @@ const stripClass = computed(() => {
 
 const typeColor = computed(() => {
   const t = (props.ticket.orderType || '').toLowerCase()
-  if (t.includes('dine')) return 'purple-6'
-  if (t.includes('take')) return 'teal-6'
-  if (t.includes('deliver')) return 'deep-orange-6'
-  return 'grey-7'
+  if (t.includes('dine')) return 'purple-7'
+  if (t.includes('take')) return 'teal-7'
+  if (t.includes('deliver')) return 'red-7' // Red for Delivery/Uber/Pickme to grab attention
+  return 'grey-8'
 })
 </script>
 

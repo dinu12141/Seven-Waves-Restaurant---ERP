@@ -1,7 +1,7 @@
 <template>
   <ReportLayout
-    title="Void / Cancelled Bills Report"
-    subtitle="All voided and cancelled transactions with reasons"
+    title="Void / Cancel / FOC Report"
+    subtitle="All voided, cancelled, and FOC transactions with reasons"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"
@@ -69,13 +69,17 @@
               class="report-table__td--num text-red text-weight-bold"
               >{{ fmtLKR(props.row.total) }}</q-td
             >
-            <q-td key="status" :props="props"
-              ><span class="report-badge report-badge--cancelled">{{
-                props.row.status
-              }}</span></q-td
-            >
+            <q-td key="status" :props="props">
+              <span 
+                class="report-badge" 
+                :class="props.row.is_foc ? 'report-badge--served' : 'report-badge--cancelled'"
+              >
+                {{ props.row.is_foc ? 'FOC' : props.row.status }}
+              </span>
+            </q-td>
             <q-td key="cashier" :props="props">{{ props.row.cashier }}</q-td>
             <q-td key="payment_method" :props="props">{{ props.row.payment_method || '—' }}</q-td>
+            <q-td key="reason" :props="props">{{ props.row.reason || '—' }}</q-td>
           </q-tr></template
         >
         <template #bottom-row
@@ -121,7 +125,8 @@ const extraFilters = ref({ status: null })
 const statusOptions = [
   { label: 'All', value: null },
   { label: 'Void', value: 'void' },
-  { label: 'Cancelled', value: 'cancelled' }
+  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'FOC', value: 'foc' }
 ]
 const columns = [
   { name: 'bill_number', label: 'Bill #', field: 'bill_number', align: 'left', sortable: true },
@@ -131,12 +136,13 @@ const columns = [
   { name: 'total', label: 'Amount', field: 'total', align: 'right', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'left', sortable: true },
   { name: 'cashier', label: 'Cashier', field: 'cashier', align: 'left', sortable: true },
-  { name: 'payment_method', label: 'Payment', field: 'payment_method', align: 'left' },
+  { name: 'payment_method', label: 'Order Type', field: 'payment_method', align: 'left' },
+  { name: 'reason', label: 'Reason', field: 'reason', align: 'left' },
 ]
 const totals = computed(() => ({ total: rows.value.reduce((s, r) => s + r.total, 0) }))
 const kpiData = computed(() => [
-  { label: 'Total Void/Cancel', value: rows.value.length, icon: 'cancel', color: 'red' },
-  { label: 'Lost Revenue', value: fmtLKR(totals.value.total), icon: 'money_off', color: 'red' },
+  { label: 'Total Void/Cancel/FOC', value: rows.value.length, icon: 'receipt_long', color: 'blue' },
+  { label: 'Lost/Complimentary', value: fmtLKR(totals.value.total), icon: 'money_off', color: 'red' },
   {
     label: 'Void Bills',
     value: rows.value.filter((r) => r.status === 'void').length,
@@ -144,10 +150,10 @@ const kpiData = computed(() => [
     color: 'amber',
   },
   {
-    label: 'Cancelled Bills',
-    value: rows.value.filter((r) => r.status === 'cancelled').length,
-    icon: 'cancel',
-    color: 'purple',
+    label: 'FOC Bills',
+    value: rows.value.filter((r) => r.is_foc).length,
+    icon: 'card_giftcard',
+    color: 'green',
   },
 ])
 async function loadData(filters = {}) {
@@ -156,13 +162,17 @@ async function loadData(filters = {}) {
     let query = supabase
       .from('orders')
       .select(
-        'id,order_number,created_at,total_amount,status,order_type,branches(name),waiter:profiles!orders_waiter_id_fkey(full_name),invoices(id,invoice_no)',
+        'id,order_number,created_at,total_amount,status,foc_reason,payment_method,order_type,branches(name),waiter:profiles!orders_waiter_id_fkey(full_name),invoices(id,invoice_no)',
       )
       
     if (extraFilters.value.status) {
-      query = query.eq('status', extraFilters.value.status)
+      if (extraFilters.value.status === 'foc') {
+        query = query.not('foc_reason', 'is', null)
+      } else {
+        query = query.eq('status', extraFilters.value.status)
+      }
     } else {
-      query = query.in('status', ['cancelled', 'void'])
+      query = query.or('status.in.(cancelled,void),foc_reason.not.is.null')
     }
     
     if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
@@ -174,6 +184,7 @@ async function loadData(filters = {}) {
     rows.value = (data || []).map((r) => {
       const invs = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []
       const firstInv = invs[0] || null
+      const isFoc = !!r.foc_reason || r.payment_method === 'foc'
       return {
         id: r.id,
         bill_number: r.order_number || `#${r.id?.slice(0, 8)}`,
@@ -183,8 +194,10 @@ async function loadData(filters = {}) {
         branch: r.branches?.name || '—',
         total: Number(r.total_amount || 0),
         status: r.status,
+        is_foc: isFoc,
         cashier: r.waiter?.full_name || '—',
         payment_method: r.order_type || '—',
+        reason: r.foc_reason || (r.status === 'void' ? 'Order Voided' : (r.status === 'cancelled' ? 'Order Cancelled' : '')),
       }
     })
   } catch (e) {

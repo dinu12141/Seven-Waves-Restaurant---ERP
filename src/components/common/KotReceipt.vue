@@ -27,6 +27,9 @@
     </div>
     <div class="text-body2 text-weight-bold q-mb-sm" style="font-family: monospace">
       TYPE: {{ orderType?.replace('_', ' ')?.toUpperCase() || 'DINE IN' }}
+      <span v-if="deliverySource" class="q-ml-sm text-red text-weight-bolder">
+        ({{ deliverySource.toUpperCase() }})
+      </span>
     </div>
 
     <q-separator color="grey-4" class="q-my-sm border-dashed" style="border-top: 2px dashed #ccc" />
@@ -99,6 +102,7 @@ const props = defineProps({
   waiterName: { type: String, default: '' },
   customerName: { type: String, default: '' },
   orderType: { type: String, default: 'Dine-In' },
+  deliverySource: { type: String, default: null },
   orderNotes: { type: String, default: '' },
   kitchenName: { type: String, default: '' },
   // Map of items from the order to enrich KOT items
@@ -201,7 +205,10 @@ function printReceipt() {
             ${props.waiterName ? `<div>WAITER: ${props.waiterName}</div>` : ''}
           </div>
           ${props.customerName ? `<div>CUSTOMER: ${props.customerName}</div>` : ''}
-          <div class="meta">TYPE: ${props.orderType?.replace('_', ' ')?.toUpperCase() || 'DINE IN'}</div>
+          <div class="meta">
+            TYPE: ${props.orderType?.replace('_', ' ')?.toUpperCase() || 'DINE IN'}
+            ${props.deliverySource ? `<span style="color: #d32f2f; margin-left: 8px;">(${props.deliverySource.toUpperCase()})</span>` : ''}
+          </div>
 
           <div class="divider"></div>
 

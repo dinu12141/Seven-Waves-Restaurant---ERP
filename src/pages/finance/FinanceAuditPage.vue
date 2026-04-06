@@ -87,17 +87,27 @@
         </q-card-section>
         <q-card-section>
           <div class="row q-col-gutter-md">
-            <div class="col-6" v-if="selectedLog?.old_values">
+            <div class="col" v-if="selectedLog?.old_values">
               <div class="text-caption text-red-4 q-mb-xs">Old Values</div>
-              <pre class="text-grey-4" style="font-size: 11px; white-space: pre-wrap">{{
-                JSON.stringify(selectedLog.old_values, null, 2)
-              }}</pre>
+              <q-markup-table dense dark flat bordered class="bg-transparent" separator="horizontal">
+                <tbody>
+                  <tr v-for="(val, key) in selectedLog.old_values" :key="key">
+                    <td class="text-grey-5" style="width: 40%; font-size: 11px">{{ formatAuditKey(key) }}</td>
+                    <td class="text-white text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
             </div>
-            <div class="col-6" v-if="selectedLog?.new_values">
+            <div class="col" v-if="selectedLog?.new_values">
               <div class="text-caption text-green-4 q-mb-xs">New Values</div>
-              <pre class="text-grey-4" style="font-size: 11px; white-space: pre-wrap">{{
-                JSON.stringify(selectedLog.new_values, null, 2)
-              }}</pre>
+              <q-markup-table dense dark flat bordered class="bg-transparent" separator="horizontal">
+                <tbody>
+                  <tr v-for="(val, key) in selectedLog.new_values" :key="key">
+                    <td class="text-grey-5" style="width: 40%; font-size: 11px">{{ formatAuditKey(key) }}</td>
+                    <td class="text-white text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
             </div>
           </div>
         </q-card-section>
@@ -181,6 +191,21 @@ function resetFilters() {
 function showDetail(row) {
   selectedLog.value = row
   showDialog.value = true
+}
+
+function formatAuditValue(val) {
+  if (val === null || val === undefined) return '-'
+  if (typeof val === 'boolean') return val ? 'Yes' : 'No'
+  if (typeof val === 'object') return JSON.stringify(val)
+  if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+    return new Date(val).toLocaleString()
+  }
+  return String(val)
+}
+
+function formatAuditKey(key) {
+  if (!key) return ''
+  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 async function loadData() {

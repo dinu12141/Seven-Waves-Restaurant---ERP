@@ -206,10 +206,10 @@ export const REPORT_GROUPS = [
       },
       {
         id: 'void-cancelled',
-        label: 'Void / Cancelled Bills',
+        label: 'Void / Cancelled / FOC Bills',
         icon: 'cancel',
         route: '/reports/void-cancelled',
-        description: 'Cancelled and voided transactions',
+        description: 'Cancelled, voided, and FOC transactions',
       },
       {
         id: 'payment-summary',

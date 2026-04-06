@@ -89,7 +89,7 @@
             <q-td class="sap-table__td--num text-weight-bold">{{
               props.row.qty ? fmtQty(props.row.qty) : ''
             }}</q-td>
-            <q-td colspan="4" />
+            <q-td colspan="5" />
           </q-tr>
 
           <!-- ── Normal / Service-charge / Payment Item Row ───── -->
@@ -148,6 +148,9 @@
             >
               {{ props.row.void_marked }}
             </q-td>
+            <q-td key="foc_reason" :props="props">
+              <span v-if="props.row.foc_reason" class="text-orange text-weight-medium" style="font-size: 11px;">{{ props.row.foc_reason }}</span>
+            </q-td>
           </q-tr>
         </template>
 
@@ -159,6 +162,7 @@
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.disc) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold">{{ fmtN(grandTotals.tax) }}</q-td>
             <q-td class="sap-table__td--num text-weight-bold text-green">{{ fmtN(grandTotals.sales) }}</q-td>
+            <q-td />
             <q-td />
           </q-tr>
         </template>
@@ -253,6 +257,7 @@ const columns = [
   { name: 'tax_amt', label: 'Tax', field: 'tax_amt', align: 'right', style: 'width:70px' },
   { name: 'sales_price', label: 'Total', field: 'sales_price', align: 'right', style: 'width:85px' },
   { name: 'void_marked', label: 'Void', field: 'void_marked', align: 'center', style: 'width:40px' },
+  { name: 'foc_reason', label: 'Reason', field: 'foc_reason', align: 'left', style: 'width:150px' },
 ]
 
 // ── Helpers ────────────────────────────────────────────────
@@ -372,6 +377,7 @@ const flatRows = computed(() => {
         sales_price: itemTotal,
         qty,
         void_marked: isItemVoid ? 'V' : '',
+        foc_reason: isItemVoid && item.void_reason ? item.void_reason : (idx === 0 ? (order.foc_reason || '') : ''),
       })
     })
 
@@ -558,12 +564,15 @@ async function loadData(filters = {}) {
         order_source,
         status,
         payment_status,
+        payment_method,
         customer_name,
         subtotal,
         tax_amount,
         discount_amount,
         total_amount,
         service_charge,
+        foc_reason,
+        foc_authorized_by,
         created_at,
         updated_at,
         accepted_at,
@@ -578,6 +587,7 @@ async function loadData(filters = {}) {
           unit_price,
           total_price,
           status,
+          void_reason,
           notes,
           menu_items ( id, name, categories ( name ) )
         ),
@@ -609,8 +619,10 @@ async function loadData(filters = {}) {
       query = query.in('status', ['cancelled'])
     } else if (bs === 'discounted') {
       query = query.gt('discount_amount', 0)
-    } else if (bs === 'complimentary' || bs === 'foc') {
+    } else if (bs === 'complimentary') {
       query = query.eq('total_amount', 0)
+    } else if (bs === 'foc') {
+      query = query.not('foc_reason', 'is', null)
     }
 
     const { data, error } = await query.limit(2000)

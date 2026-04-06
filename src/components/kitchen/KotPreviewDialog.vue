@@ -111,7 +111,7 @@
             </div>
             <div class="meta-cell">
               <div class="meta-label">Type</div>
-              <div class="meta-value">{{ formatOrderType(ticket.order?.order_type) }}</div>
+              <div class="meta-value">{{ formatOrderType(ticket.order?.order_type, ticket.order?.delivery_source) }}</div>
             </div>
             <div class="meta-cell">
               <div class="meta-label">Table</div>
@@ -225,7 +225,7 @@ async function loadTicket(kotId) {
         `
         id, kot_number, status, printed_at, created_at,
         order:orders (
-          order_number, order_type, notes, customer_name,
+          order_number, order_type, delivery_source, notes, customer_name,
           table:restaurant_tables ( table_number )
         ),
         kitchen:kitchens (
@@ -293,12 +293,17 @@ async function doPrint() {
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
-function formatOrderType(type) {
+function formatOrderType(type, source = null) {
   if (!type) return 'Dine-in'
-  return type
+  let label = type
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join('-')
+    
+  if (source) {
+    label += ` (${source.toUpperCase()})`
+  }
+  return label
 }
 
 function formatTime(dateStr) {

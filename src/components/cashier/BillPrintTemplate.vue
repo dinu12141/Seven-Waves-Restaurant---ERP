@@ -14,6 +14,13 @@
 
     <!-- ── Invoice Meta ── -->
     <div class="bill-meta">
+      <div v-if="invoice.__voidReason" class="meta-row">
+        <span class="meta-label" style="font-weight:700; font-size:12px; text-align:center; display:block; width:100%; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 2px;">** VOID TICKET **</span>
+      </div>
+      <div v-if="invoice.__voidReason" class="meta-row">
+        <span class="meta-label">Reason:</span>
+        <span class="meta-value">{{ invoice.__voidReason }}</span>
+      </div>
       <div class="meta-row">
         <span class="meta-label">Bill # :</span>
         <span class="meta-value">{{ invoiceDisplayNumber }}</span>

@@ -112,21 +112,19 @@ export const useCashierStore = defineStore('cashier', () => {
     }
 
     // Fetch unpaid orders: last 7 days (covers orders from previous sessions)
-    // Fetch paid orders: today only (to keep the paid tab manageable)
+    // Fetch all unpaid statuses (last 7 days) + paid orders (today only)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+    const todayLocalMidnight = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 
     // Fetch all unpaid statuses (last 7 days) + paid orders (today only)
     const unpaidStatuses = [
-      'pending',
-      'pending_waiter',
       'accepted',
       'preparing',
       'ready',
       'served',
       'invoiced',
     ]
-    const paidStatuses = ['paid']
+    const paidStatuses = ['paid', 'completed']
 
     const [unpaidRes, paidRes] = await Promise.all([
       supabase
@@ -179,9 +177,9 @@ export const useCashierStore = defineStore('cashier', () => {
         )
         .eq('branch_id', bid)
         .in('status', paidStatuses)
-        .gte('created_at', todayMidnight)
-        .order('created_at', { ascending: false })
-        .limit(100),
+        .gte('updated_at', todayLocalMidnight)
+        .order('updated_at', { ascending: false })
+        .limit(200),
     ])
 
     if (unpaidRes.error) {
@@ -542,8 +540,6 @@ export const useCashierStore = defineStore('cashier', () => {
       // Always refresh for any new order (including pending_waiter from website)
       // so the cashier sees it immediately in the queue
       const isValidForQueue = [
-        'pending',
-        'pending_waiter',
         'accepted',
         'preparing',
         'ready',
@@ -553,13 +549,10 @@ export const useCashierStore = defineStore('cashier', () => {
       if (isValidForQueue) {
         debouncedRefresh()
         // Notify cashier of new website/delivery orders
-        if (newRow.status === 'pending_waiter' || newRow.status === 'accepted') {
+        if (newRow.status === 'accepted') {
           Notify.create({
             message: `New Order Received! (#${newRow.order_number})`,
-            caption:
-              newRow.status === 'pending_waiter'
-                ? '⚡ Awaiting waiter acceptance — check Billing Queue.'
-                : '✅ Order accepted — check Billing Queue.',
+            caption: '✅ Order accepted — check Billing Queue.',
             color: 'orange-9',
             icon: 'receipt_long',
             position: 'top-right',
@@ -570,8 +563,12 @@ export const useCashierStore = defineStore('cashier', () => {
     } else if (eventType === 'UPDATE') {
       const idx = billingOrders.value.findIndex((o) => o.id === newRow.id)
 
-      // Remove from queue only if cancelled/completed; paid stays for the Paid tab
-      if (['cancelled', 'completed'].includes(newRow.status)) {
+      // Remove from queue only if cancelled, or if completed but NOT paid.
+      // (Paid completed orders stay in the queue for the Paid tab)
+      if (
+        newRow.status === 'cancelled' ||
+        (newRow.status === 'completed' && newRow.payment_status !== 'paid')
+      ) {
         if (idx !== -1) {
           billingOrders.value.splice(idx, 1)
         }
@@ -625,15 +622,13 @@ export const useCashierStore = defineStore('cashier', () => {
       } else {
         // Order not in local list yet — add it via full refresh
         const isValidForQueue = [
-          'pending',
-          'pending_waiter',
           'accepted',
           'preparing',
           'ready',
           'served',
           'invoiced',
           'paid',
-        ].includes(newRow.status)
+        ].includes(newRow.status) || (newRow.status === 'completed' && newRow.payment_status === 'paid')
         if (isValidForQueue) {
           debouncedRefresh()
           if (newRow.status === 'accepted') {

@@ -15,14 +15,17 @@ import { useAuthStore } from 'src/stores/auth'
 export const useOrderStore = defineStore('posOrder', () => {
   // ── State ────────────────────────────────────────────────
   const cartItems = ref([])
-  const orderType = ref('dine-in') // 'dine-in' | 'takeaway'
+  const orderType = ref(null) // 'dine-in' | 'takeaway'
   const selectedTable = ref(null)
   const tableNumber = ref(null) // simple integer table number (1-80)
   const customerName = ref('')
+  const selectedCustomer = ref(null)
   const discount = ref(0) // percentage
   const taxRate = ref(0) // percentage (Disabled: the restaurant exclusively uses Service Charge)
   const orderNumber = ref(_generateOrderNumber())
   const isSending = ref(false) // loading state for send-to-kitchen
+  const _loadedOrderId = ref(null) // tracks order loaded from billing queue
+  const deliverySource = ref(null) // 'uber' | 'pickme' | 'website' | null
 
   // ── Getters ──────────────────────────────────────────────
 
@@ -110,10 +113,14 @@ export const useOrderStore = defineStore('posOrder', () => {
   function clearCart() {
     cartItems.value = []
     customerName.value = ''
+    selectedCustomer.value = null
     selectedTable.value = null
     tableNumber.value = null
     discount.value = 0
     orderNumber.value = _generateOrderNumber()
+    _loadedOrderId.value = null
+    deliverySource.value = null
+    orderType.value = null
   }
 
   /**
@@ -161,6 +168,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
+        delivery_source: deliverySource.value || null,
         accepted_at: new Date().toISOString(),
       }
 
@@ -280,6 +288,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
+        delivery_source: deliverySource.value || null,
       }
       if (companyId) orderPayload.company_id = companyId
 
@@ -378,6 +387,63 @@ export const useOrderStore = defineStore('posOrder', () => {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
   }
 
+  /**
+   * Load an existing order from the billing queue into the POS cart.
+   * This allows the cashier to view/process an order selected from OrderLookupDialog.
+   * @param {Object} queueOrder - normalized order object from cashierStore.billingOrders
+   */
+  function loadOrderFromQueue(queueOrder) {
+    // Clear existing cart first
+    clearCart()
+
+    // Set order metadata
+    orderNumber.value = queueOrder.order_number || _generateOrderNumber()
+    orderType.value = queueOrder.order_type === 'dine_in' ? 'dine-in' 
+                    : queueOrder.order_type === 'takeaway' ? 'takeaway' 
+                    : queueOrder.order_type === 'delivery' ? 'delivery' 
+                    : 'dine-in'
+    
+    // Set table info
+    if (queueOrder.table_id) {
+      selectedTable.value = queueOrder.table_id
+    }
+    tableNumber.value = queueOrder.tableNumber || queueOrder.table_number || null
+
+    // Set customer info
+    customerName.value = queueOrder.customer_name || ''
+    if (queueOrder.customer_name) {
+      selectedCustomer.value = {
+        full_name: queueOrder.customer_name,
+        phone: queueOrder.customer_phone || '',
+      }
+    }
+
+    // Set discount if any
+    if (queueOrder.discount_amount && queueOrder.subtotal) {
+      discount.value = Math.round((queueOrder.discount_amount / queueOrder.subtotal) * 100)
+    }
+
+    // Load order items into cart
+    const items = queueOrder.order_items || []
+    items.forEach(item => {
+      cartItems.value.push({
+        id: item.id || _uid(),
+        productId: item.menu_items?.id || item.productId || item.id,
+        name: item.name || item.menu_items?.name || 'Item',
+        price: item.unit_price || item.price || 0,
+        image: item.image || null,
+        kitchenId: item.kitchen_id || null,
+        variant: item.variant || null,
+        qty: item.quantity || item.qty || 1,
+        notes: item.notes || '',
+      })
+    })
+
+    // Store the source order ID so payment knows which order to update
+    _loadedOrderId.value = queueOrder.id
+    deliverySource.value = queueOrder.delivery_source || null
+  }
+
   return {
     // state
     cartItems,
@@ -385,10 +451,13 @@ export const useOrderStore = defineStore('posOrder', () => {
     selectedTable,
     tableNumber,
     customerName,
+    selectedCustomer,
     discount,
     taxRate,
     orderNumber,
     isSending,
+    _loadedOrderId,
+    deliverySource,
     // getters
     isEmpty,
     itemCount,
@@ -407,5 +476,6 @@ export const useOrderStore = defineStore('posOrder', () => {
     clearCart,
     sendToKitchen,
     processPayment,
+    loadOrderFromQueue,
   }
 })

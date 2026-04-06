@@ -1,5 +1,5 @@
 <template>
-  <q-page class="kds-page">
+  <q-page class="kds-page window-height">
     <div class="kds-container">
       <!-- Header -->
       <div class="row items-center justify-between q-mb-md">
@@ -120,10 +120,7 @@
               <div class="header-bar bg-orange-7"></div>
             </div>
 
-            <q-scroll-area
-              class="column-scroll"
-              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#e65100' }"
-            >
+            <div class="column-scroll">
               <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
                 <KitchenTicketCard
                   v-for="ticket in filteredNew"
@@ -139,7 +136,7 @@
                 <q-icon name="assignment" size="48px" color="grey-8" />
                 <div class="text-grey-7 q-mt-sm text-subtitle2">No new orders</div>
               </div>
-            </q-scroll-area>
+            </div>
           </div>
         </div>
 
@@ -156,10 +153,7 @@
               <div class="header-bar bg-blue-6"></div>
             </div>
 
-            <q-scroll-area
-              class="column-scroll"
-              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#1e88e5' }"
-            >
+            <div class="column-scroll">
               <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
                 <KitchenTicketCard
                   v-for="ticket in filteredPreparing"
@@ -175,7 +169,7 @@
                 <q-icon name="soup_kitchen" size="48px" color="grey-8" />
                 <div class="text-grey-7 q-mt-sm text-subtitle2">Kitchen is clear</div>
               </div>
-            </q-scroll-area>
+            </div>
           </div>
         </div>
 
@@ -207,10 +201,7 @@
               <div class="header-bar bg-green-5"></div>
             </div>
 
-            <q-scroll-area
-              class="column-scroll"
-              :thumb-style="{ width: '6px', borderRadius: '3px', backgroundColor: '#4caf50' }"
-            >
+            <div class="column-scroll">
               <transition-group name="list" tag="div" class="q-pa-sm q-gutter-y-md">
                 <KitchenTicketCard
                   v-for="ticket in filteredReady"
@@ -227,7 +218,7 @@
                 <q-icon name="check_circle" size="48px" color="grey-8" />
                 <div class="text-grey-7 q-mt-sm text-subtitle2">No orders waiting</div>
               </div>
-            </q-scroll-area>
+            </div>
           </div>
         </div>
       </div>
@@ -243,6 +234,7 @@
         :waiter-name="selectedTicket.waiterName"
         :customer-name="selectedTicket.customerName"
         :order-type="selectedTicket.orderType"
+        :delivery-source="selectedTicket.deliverySource"
         :order-notes="selectedTicket.orderNotes"
         :kitchen-name="store.selectedKitchen?.name"
         @printed="viewDialogOpen = false"
@@ -258,6 +250,7 @@
         :waiter-name="selectedTicket.waiterName"
         :customer-name="selectedTicket.customerName"
         :order-type="selectedTicket.orderType"
+        :delivery-source="selectedTicket.deliverySource"
         :order-notes="selectedTicket.orderNotes"
         :kitchen-name="store.selectedKitchen?.name"
         :show-actions="false"
@@ -443,17 +436,17 @@ watch(
 .kds-page {
   background: var(--erp-bg-page);
   color: var(--erp-text-primary);
-  /* Fill exactly the remaining viewport below the navbar — no scroll */
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 .kds-container {
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 12px 16px;
   height: 100%;
   overflow: hidden;
   box-sizing: border-box;
@@ -478,22 +471,21 @@ watch(
   border: 1px solid var(--erp-border);
 }
 
-
 .full-height-board {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  flex-wrap: nowrap !important;
 }
 
 .kitchen-banner {
-
   display: flex;
   align-items: center;
   color: var(--erp-text-secondary);
   font-size: 0.95rem;
   font-weight: 700;
   background: var(--erp-bg-hover);
-  padding: 8px 16px;
+  padding: 6px 16px;
   border-radius: 10px;
   border: 1px solid var(--erp-border);
 }
@@ -502,6 +494,7 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .kanban-column {
@@ -513,22 +506,39 @@ watch(
   border: 1px solid var(--erp-border);
   box-shadow: var(--erp-shadow-card);
   overflow: hidden;
+  min-height: 0;
 }
 
 .column-header {
-  padding: 16px;
+  padding: 12px 16px;
   background: var(--erp-bg-card-hover);
+  flex-shrink: 0;
 }
 
 .header-bar {
   height: 4px;
   width: 100%;
   border-radius: 2px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .column-scroll {
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.column-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.column-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+}
+.column-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .empty-placeholder {
@@ -569,17 +579,24 @@ watch(
   transition: transform 0.4s ease;
 }
 
-/* Responsive */
+/* Responsive — tablet/mobile: stack columns vertically and cap each at 50vh */
 @media (max-width: 1023px) {
   .kds-container {
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .full-height-board {
+    flex-wrap: wrap !important;
+    overflow: visible;
   }
   .kanban-col-wrapper {
     height: auto;
-    min-height: 500px;
+    min-height: 300px;
+    max-height: 50vh;
   }
   .kanban-column {
-    min-height: 500px;
+    min-height: 300px;
   }
 }
+
 </style>

@@ -28,12 +28,12 @@ const routes = [
       {
         path: 'pos',
         component: () => import('pages/POSPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'], requiresAuth: false },
+        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'] },
       },
       {
         path: 'kitchen',
         component: () => import('pages/KitchenPage.vue'),
-        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'], requiresAuth: false },
+        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'] },
       },
       {
         path: 'orders',
@@ -169,6 +169,11 @@ const routes = [
       {
         path: 'admin',
         component: () => import('pages/AdminPage.vue'),
+        meta: { roles: ['admin'] },
+      },
+      {
+        path: 'admin/ai-insights',
+        component: () => import('pages/admin/AIInsightsPage.vue'),
         meta: { roles: ['admin'] },
       },
       {

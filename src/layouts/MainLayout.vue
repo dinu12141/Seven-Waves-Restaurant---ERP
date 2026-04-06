@@ -16,21 +16,7 @@
         />
 
         <!-- Global Search -->
-        <div class="erp-search-wrap">
-          <q-input
-            ref="searchInputRef"
-            v-model="searchQuery"
-            dense
-            borderless
-            hide-bottom-space
-            placeholder="Search..."
-            class="erp-search"
-          >
-            <template #prepend>
-              <q-icon name="search" size="18px" class="erp-search__icon" />
-            </template>
-          </q-input>
-        </div>
+        <GlobalSearch />
 
         <q-space />
 
@@ -267,7 +253,8 @@ import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
-import { onMounted, onUnmounted, watch } from 'vue'
+import GlobalSearch from 'components/common/GlobalSearch.vue'
+import { watch } from 'vue'
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
@@ -319,8 +306,7 @@ const isItemActive = (itemTo, routerIsActive) => {
   return routerIsActive
 }
 
-const searchQuery = ref('')
-const searchInputRef = ref(null)
+// searchQuery and searchInputRef moved to GlobalSearch component
 
 const activeSection = ref(null)
 
@@ -335,20 +321,7 @@ const handleSectionClick = (section) => {
   }
 }
 
-const handleKeyDown = (e) => {
-  if (e.ctrlKey && e.key === 'k') {
-    e.preventDefault()
-    searchInputRef.value?.focus()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
-})
+// Ctrl+K is handled inside GlobalSearch component
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value

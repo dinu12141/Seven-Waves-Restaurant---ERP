@@ -2,7 +2,7 @@
   <q-page class="pos-terminal classic-industrial">
     <!-- TOP STATUS BAR -->
     <div class="pos-top-bar-thin">
-      <div class="top-title">{{ branchName }} &bull; RestPOS v5.0.437 - R.D.07.27.24</div>
+      <div class="top-title">{{ branchName }} &bull; EchoMePOS v5.0.437 - R.D.07.27.24</div>
       <div class="top-cashier">{{ userName }}</div>
     </div>
     
@@ -10,37 +10,57 @@
       <!-- Left side: Customer/Credit Info -->
       <div class="info-section customer-info">
         <div class="info-row">
-          <span class="lbl w-name">NEW</span>
-          <span class="val txt-green">NEW</span>
+          <span class="lbl">ORDER STATUS</span>
+          <span class="val order-status-val" :class="selectedQueueOrder ? 'txt-yellow' : 'txt-green'">
+            {{ selectedQueueOrder ? `#${String(selectedQueueOrder.order_number || '').replace('ORD-', '')} - ${(selectedQueueOrder.status || 'LOADED').toUpperCase()}` : 'NEW ORDER' }}
+          </span>
+        </div>
+        <div class="info-row" style="position: relative;">
+          <span class="lbl">CUSTOMER</span>
+          <input 
+            v-model="customerSearchText" 
+            @input="onCustomerInput" 
+            @focus="showCustomerDropdown = true" 
+            @blur="hideCustomerDropdownDelay"
+            class="classic-input flex-1 customer-input" 
+            placeholder="Search by name or phone..." 
+            autocomplete="off"
+          />
+          <ul v-show="showCustomerDropdown && customerOptions.length > 0" class="autocomplete-list">
+            <li v-for="c in customerOptions" :key="c.id" @mousedown.prevent="selectCustomer(c)">
+              <span style="font-weight: bold">{{ c.full_name }}</span>
+              <span style="margin-left:auto; color:#888; font-size: 11px;">{{ c.phone || c.email }}</span>
+            </li>
+          </ul>
         </div>
         <div class="info-row">
-          <span class="lbl">Select By</span>
-          <input v-model="store.customerName" class="classic-input flex-1" placeholder="Prate" />
-        </div>
-        <div class="info-row">
-          <span class="lbl">Fre</span>
-          <span class="lbl mx-2">Cust Bar</span>
-          <span class="lbl ml-auto mr-2">Credit Limit</span>
-          <span class="val txt-white">0</span>
+          <div class="flex-row-half">
+            <span class="lbl">LOYALTY PTS</span>
+            <span class="val txt-white">{{ store.selectedCustomer ? (store.selectedCustomer.points_balance || store.selectedCustomer.loyalty_points || 0) : 0 }}</span>
+          </div>
+          <div class="flex-row-half text-right">
+            <span class="lbl mr-2">CREDIT LIMIT</span>
+            <span class="val txt-white border-val">LKR {{ store.selectedCustomer?.credit_limit ? store.selectedCustomer.credit_limit.toFixed(2) : '0.00' }}</span>
+          </div>
         </div>
       </div>
       
       <!-- Middle side: Summary -->
       <div class="info-section summary-info">
-        <div class="summary-line"><span class="slbl">sTotal</span><span class="sval">{{ fmtCurrency(store.subtotal) }}</span></div>
-        <div class="summary-line"><span class="slbl">Discount</span><span class="sval">{{ fmtCurrency(store.discountAmount) }}</span></div>
-        <div class="summary-line"><span class="slbl">sCharge</span><span class="sval">{{ fmtCurrency(store.serviceChargeAmount) }}</span></div>
-        <div class="summary-line"><span class="slbl">DCharge</span><span class="sval">0.00</span></div>
-        <div class="summary-line"><span class="slbl">TAX</span><span class="sval">{{ fmtCurrency(store.taxAmount) }}</span></div>
+        <div class="summary-line"><span class="slbl">Sub Total</span><span class="sval">{{ fmtCurrency(store.subtotal) }}</span></div>
+        <div class="summary-line"><span class="slbl">Discount</span><span class="sval txt-red">-{{ fmtCurrency(store.discountAmount) }}</span></div>
+        <div class="summary-line"><span class="slbl">S. Charge</span><span class="sval">{{ fmtCurrency(store.serviceChargeAmount) }}</span></div>
+        <div class="summary-line"><span class="slbl">D. Charge</span><span class="sval">0.00</span></div>
+        <div class="summary-line"><span class="slbl">Tax</span><span class="sval">{{ fmtCurrency(store.taxAmount) }}</span></div>
       </div>
       <div class="info-section summary-boxes">
         <div class="sum-box">
           <span class="box-lbl">Paid</span>
-          <span class="box-val text-green">{{ fmtCurrency(paidAmount) }}</span>
+          <span class="box-val text-green">{{ isPaymentMode ? fmtCurrency(paymentAmount) : '0.00' }}</span>
         </div>
         <div class="sum-box">
-          <span class="box-lbl">Balance</span>
-          <span class="box-val text-green">{{ fmtCurrency(balanceAmount) }}</span>
+          <span class="box-lbl">{{ isPaymentMode && paymentAmount > store.total ? 'Change' : 'Balance' }}</span>
+          <span class="box-val text-green">{{ isPaymentMode ? fmtCurrency(Math.abs(store.total - paymentAmount)) : fmtCurrency(store.total) }}</span>
         </div>
       </div>
       
@@ -52,7 +72,7 @@
     </div>
 
     <!-- MAIN BODY -->
-    <div class="pos-body">
+    <div class="pos-body" style="position: relative;">
       <!-- LEFT: Receipt -->
       <div class="pos-panel pos-left-panel">
         <table class="classic-table">
@@ -65,7 +85,7 @@
               <th class="right">Amount</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref="receiptTableRef">
             <tr
               v-for="(item, index) in store.cartItems"
               :key="item.id"
@@ -75,7 +95,13 @@
               <td></td>
               <td>{{ fmtCurrency(item.price) }}</td>
               <td>{{ item.name }}<span v-if="item.variant"> ({{ item.variant }})</span></td>
-              <td class="right">{{ item.qty }}</td>
+              <td class="right">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+                  <button @click.stop="store.updateQuantity(index, item.qty - 1)" style="width:24px; height:24px; border:1px solid #444; background:#ccc; color:#000; cursor:pointer; font-weight:bold; padding:0; display:flex; align-items:center; justify-content:center; border-radius:3px !important; font-size:16px;">-</button>
+                  <span style="font-size: 14px; font-weight: bold; width: 24px; text-align: center;">{{ item.qty }}</span>
+                  <button @click.stop="store.updateQuantity(index, item.qty + 1)" style="width:24px; height:24px; border:1px solid #444; background:#ff9900; color:#000; cursor:pointer; font-weight:bold; padding:0; display:flex; align-items:center; justify-content:center; border-radius:3px !important; font-size:16px;">+</button>
+                </div>
+              </td>
               <td class="right">{{ fmtCurrency(item.price * item.qty) }}</td>
             </tr>
             <tr v-for="n in emptyRows" :key="'empty-' + n">
@@ -85,10 +111,26 @@
         </table>
         
         <div class="search-bar-classic">
-          <button class="arrow-btn" @click="scrollCategoriesUp">▲</button>
-          <input v-model="itemSearchQuery" class="classic-input search-input" @keyup="onSearchInput" placeholder="Search..." />
-          <button class="arrow-btn" @click="scrollCategoriesDown">▼</button>
-          <button class="arrow-btn">&lt;&lt;</button>
+          <button class="arrow-btn" @click="scrollReceiptUp" :disabled="isPaymentMode">▲</button>
+          
+          <template v-if="!isPaymentMode">
+            <input v-model="itemSearchQuery" class="classic-input search-input" @keyup="onSearchInput" placeholder="Search..." />
+          </template>
+          <template v-else>
+            <div class="classic-input search-input" style="display:flex; justify-content:space-between; align-items:center; background:#111; color:#fff; border: 2px solid #555; padding: 0 10px;">
+              <span style="font-size:10px; color:#aaa; font-weight: bold; text-transform: uppercase;">Amount Recvd</span>
+              <input 
+                type="text" 
+                v-model="numBuffer" 
+                @input="showQuickCash = false"
+                style="background: transparent; border: none; color: #ffeb3b; font-weight: bold; font-size: 16px; text-align: right; width: 100%; outline: none;" 
+                placeholder="0.00" 
+              />
+            </div>
+          </template>
+
+          <button class="arrow-btn" @click="scrollReceiptDown" :disabled="isPaymentMode">▼</button>
+          <button class="arrow-btn" :disabled="isPaymentMode">&lt;&lt;</button>
         </div>
       </div>
 
@@ -97,52 +139,129 @@
         <div class="center-top-grid">
           <!-- Categories Column -->
           <div class="categories-area">
-            <button class="cbtn scroll-btn" @click="scrollCategoriesUp">▲</button>
-            <div class="cat-grid">
-              <template v-if="itemSearchQuery">
-                <button
-                  v-for="item in filteredSearchItems"
-                  :key="'search-' + item.id"
-                  class="cbtn c-yellow"
-                  @click="handleSearchResultClick(item)"
-                >
-                  {{ item.name }}
-                </button>
-              </template>
-              <template v-else>
-                <button
-                  v-for="cat in categories"
-                  :key="cat.id"
-                  class="cbtn c-yellow"
-                  :class="{ 'border-active': selectedCategory === cat.name }"
-                  @click="selectCategory(cat.name)"
-                >
-                  {{ cat.name }}
-                </button>
-              </template>
-            </div>
-            <button class="cbtn c-yellow full-w mt-auto" @click="toggleFunctionMenu">FUNCTION MENU</button>
-            <button class="cbtn scroll-btn" @click="scrollCategoriesDown">▼</button>
+            <template v-if="!isPaymentMode">
+              <button class="cbtn scroll-btn" @click="scrollCategoriesUp">▲</button>
+              <div class="cat-grid" ref="categoryGridRef">
+                <template v-if="itemSearchQuery">
+                  <button
+                    v-for="item in filteredSearchItems"
+                    :key="'search-' + item.id"
+                    class="cbtn c-yellow"
+                    @click="handleSearchResultClick(item)"
+                  >
+                    {{ item.name }}
+                  </button>
+                </template>
+                <template v-else>
+                  <button
+                    v-for="cat in categories"
+                    :key="cat.id"
+                    class="cbtn c-yellow"
+                    :class="{ 'border-active': selectedCategory === cat.name }"
+                    @click="selectCategory(cat.name)"
+                  >
+                    {{ cat.name }}
+                  </button>
+                </template>
+              </div>
+              <button class="cbtn c-yellow full-w mt-auto" @click="toggleFunctionMenu">FUNCTION MENU</button>
+              <button class="cbtn scroll-btn" @click="scrollCategoriesDown">▼</button>
+            </template>
+            <template v-else>
+              <div style="background: var(--yellow); padding: 12px; color: #000; font-weight: 800; text-align: center; font-size: 14px; text-transform: uppercase;">Payment Method</div>
+              <div class="cat-grid" style="grid-template-columns: 1fr; margin-top: 10px; gap: 10px;">
+                <button 
+                  class="cbtn c-yellow" 
+                  :class="{ 'payment-active': selectedPaymentMethod === 'CASH' }"
+                  @click="selectedPaymentMethod = 'CASH'; showQuickCash = true"
+                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
+                >CASH</button>
+                <button 
+                  class="cbtn c-yellow" 
+                  :class="{ 'payment-active': selectedPaymentMethod === 'CARD' }"
+                  @click="selectedPaymentMethod = 'CARD'; showQuickCash = false"
+                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
+                >CARD</button>
+                <button 
+                  class="cbtn c-yellow" 
+                  :class="{ 'payment-active': selectedPaymentMethod === 'ONLINE' }"
+                  @click="selectedPaymentMethod = 'ONLINE'; showQuickCash = false"
+                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
+                >CREDIT CARD</button>
+              </div>
+              
+              <!-- Quick Cash Buttons -->
+              <div v-if="selectedPaymentMethod === 'CASH' && quickCashOptions.length > 0 && showQuickCash" style="margin-top: 15px;">
+                <div style="font-size:10px; color:#aaa; margin-bottom: 8px; text-align: center; text-transform: uppercase;">Quick Cash Options</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button 
+                    v-for="amt in quickCashOptions" 
+                    :key="amt"
+                    class="cbtn c-yellow" 
+                    @click="numBuffer = amt.toString(); showQuickCash = false"
+                    style="font-size: 15px; font-weight: bold; padding: 10px 0; background: #333; color: #ffeb3b;"
+                  >
+                    {{ amt.toFixed(2) }}
+                  </button>
+                </div>
+              </div>
+
+              <button class="cbtn scroll-btn mt-auto" style="background:#d32f2f; color:#fff;" @click="cancelPaymentMode">CANCEL</button>
+            </template>
           </div>
           
           <!-- Actions Grid -->
           <div class="actions-wrapper">
              <div class="actions-grid">
                 <button class="abtn a-blue" @click="handleVoid">VOID</button>
-                <button class="abtn a-blue" @click="handleClearOrder">Clear Order</button>
+                <button class="abtn a-blue" @click="handleFOC">FOC</button>
                 <button class="abtn a-blue" @click="handleBack">Back</button>
 
                 <button class="abtn a-blue" @click="handlePrint">PRINT</button>
                 <button class="abtn a-blue" @click="handleOther">Other</button>
                 <button class="abtn a-blue" @click="handleEdit">Edit</button>
 
-                <button class="abtn a-blue" @click="setOrderType('dine-in')">Table Order</button>
+                <button 
+                  class="abtn a-blue" 
+                  @click="openLiveTable"
+                >Live Table</button>
                 <button class="abtn a-blue" @click="handleModifier">Modifier</button>
                 <button class="abtn a-blue" @click="handleDivider">Divider</button>
 
-                <button class="abtn a-blue" @click="setOrderType('dine-in')">Table Order</button>
-                <button class="abtn a-blue" @click="setOrderType('takeaway')">Take Away</button>
-                <button class="abtn a-blue" @click="setOrderType('delivery')">Delivery</button>
+                <button 
+                  class="abtn a-blue" 
+                  :class="{ 'type-active': store.orderType === 'dine-in' }"
+                  @click="setOrderType('dine-in')"
+                >Table Order</button>
+                <button 
+                  class="abtn a-blue" 
+                  :class="{ 'type-active': store.orderType === 'takeaway' }"
+                  @click="setOrderType('takeaway')"
+                >Take Away</button>
+                <button 
+                  class="abtn a-blue" 
+                  :class="{ 'type-active': store.orderType === 'delivery' }"
+                  @click="setOrderType('delivery')"
+                >Delivery</button>
+
+                <!-- Delivery Source Options -->
+                <template v-if="store.orderType === 'delivery'">
+                  <button 
+                    class="abtn a-green" 
+                    :class="{ 'type-active': store.deliverySource === 'uber' }"
+                    @click="setDeliverySource('uber')"
+                  >UBER</button>
+                  <button 
+                    class="abtn a-green" 
+                    :class="{ 'type-active': store.deliverySource === 'pickme' }"
+                    @click="setDeliverySource('pickme')"
+                  >PICKME</button>
+                  <button 
+                    class="abtn a-green" 
+                    :class="{ 'type-active': store.deliverySource === 'website' }"
+                    @click="setDeliverySource('website')"
+                  >WEBSITE</button>
+                </template>
 
                 <button class="abtn a-blue" @click="handleNewOrder">Order</button>
                 <button class="abtn a-blue" @click="handleOrderLookup">Order Lookup</button>
@@ -150,7 +269,13 @@
             </div>
             <div class="actions-bottom">
               <button class="abtn a-blue" @click="handleSave" style="flex:1;">SAVE</button>
-              <button class="abtn a-blue" @click="handlePayment" style="flex:1;">PAYMENT</button>
+              <button 
+                class="abtn a-blue" 
+                :class="{ 'dimmed-action': isAlreadyPaid }"
+                :disabled="isAlreadyPaid"
+                @click="handlePayment" 
+                style="flex:1;"
+              >PAYMENT</button>
             </div>
           </div>
         </div>
@@ -159,6 +284,10 @@
       <!-- RIGHT: Keypad -->
       <div class="pos-panel pos-right-panel">
         <div class="keypad-layout">
+          <div class="keypad-display">
+             <span class="display-label">INPUT</span>
+             <span class="display-value" :class="{ 'has-val': numBuffer }">{{ numBuffer || '_' }}</span>
+          </div>
           <div class="keypad-grid">
             <button class="kbtn" @click="numInput('7')">7</button>
             <button class="kbtn" @click="numInput('8')">8</button>
@@ -181,31 +310,57 @@
 
     <!-- BOTTOM SHORTCUTS & SIDEBAR -->
     <div class="pos-bottom-container">
-      <div class="bottom-shortcuts-grid">
-        <button
-          v-for="(sub, idx) in subCategories"
-          :key="sub.id || idx"
-          class="sbtn"
-          :class="{ active: selectedSubCategory === sub.name }"
-          @click="selectSubCategory(sub)"
-        >
-          {{ sub.label }}
-        </button>
-        <button v-for="i in Math.max(0, 18 - subCategories.length)" :key="'empty-bottom-' + i" class="sbtn"></button>
+      <div class="bottom-shortcuts-grid" ref="shortcutsGridRef">
+        <template v-if="!store.isEmpty && store.orderType === 'dine-in'">
+          <button
+            v-for="table in restaurantTables"
+            :key="table.id"
+            class="sbtn text-bold"
+            :class="{ 
+              'active-table': store.selectedTable === table.id,
+              'locked-table': lockedTables.has(table.id) && store.selectedTable !== table.id
+            }"
+            :disabled="lockedTables.has(table.id) && store.selectedTable !== table.id"
+            @click="store.selectedTable = table.id; store.tableNumber = table.table_number"
+          >
+            {{ table.table_number }}
+          </button>
+        </template>
+        <template v-else>
+          <button
+            v-for="(sub, idx) in subCategories"
+            :key="sub.id || idx"
+            class="sbtn"
+            :class="{ active: selectedSubCategory === sub.name }"
+            @click="selectSubCategory(sub)"
+          >
+            {{ sub.label }}
+          </button>
+          <button v-for="i in Math.max(0, 18 - subCategories.length)" :key="'empty-bottom-' + i" class="sbtn"></button>
+        </template>
       </div>
 
       <div class="bottom-sidebar">
-        <button class="side-btn arrow-btn">▲</button>
+        <button class="side-btn arrow-btn" @click="scrollShortcutsUp">▲</button>
         <button class="side-btn white-btn" @click="handleLogout">Log Out</button>
-        <button class="side-btn red-btn" @click="handleLogout">Exit</button>
-        <button class="side-btn arrow-btn">▼</button>
+        <button class="side-btn red-btn" @click="handleExit">Exit</button>
+        <button class="side-btn arrow-btn" @click="scrollShortcutsDown">▼</button>
       </div>
     </div>
 
     <!-- DIALOGS AND OVERLAYS -->
-    <q-dialog v-model="itemPickerOpen" position="bottom" maximized>
-      <q-card class="item-picker-card" dark style="background: #111; color: #fff; border-radius: 0;">
-        <q-card-section class="row items-center q-pb-sm">
+    <q-dialog 
+      v-model="itemPickerOpen" 
+      position="right" 
+      transition-show="slide-left" 
+      transition-hide="slide-right"
+    >
+      <q-card 
+        class="item-picker-card" 
+        dark 
+        style="width: calc(100vw - 400px); max-width: 100vw; height: 100vh; background: #111; color: #fff; border-radius: 0; display: flex; flex-direction: column;"
+      >
+        <q-card-section class="row items-center q-pb-xs" style="background: #111;">
           <q-icon name="restaurant_menu" color="yellow" size="20px" class="q-mr-sm" />
           <span class="text-subtitle1 text-yellow text-weight-bold" style="text-transform:uppercase;">
             {{ selectedSubCategoryLabel }}
@@ -213,18 +368,41 @@
           <q-space />
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-card-section>
+        
+        <q-card-section class="q-pt-none q-pb-sm" style="background: #111;">
+          <q-input 
+            v-model="dialogSearchQuery" 
+            dense 
+            outlined 
+            dark 
+            placeholder="Search items..." 
+            class="full-width" 
+            bg-color="grey-9"
+          >
+            <template v-slot:append>
+              <q-icon name="search" color="white" />
+              <q-icon v-if="dialogSearchQuery" name="cancel" @click.stop="dialogSearchQuery = ''" class="cursor-pointer" color="white" />
+            </template>
+          </q-input>
+        </q-card-section>
+        
         <q-separator color="white" />
-        <q-card-section class="item-picker-grid-section" style="background:#222;">
+        <q-card-section class="item-picker-grid-section" style="background:#222; flex: 1; overflow-y: auto;">
           <div class="item-picker-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px;">
             <button
               v-for="item in subCategoryItems"
               :key="item.id"
-              class="cbtn c-yellow"
-              style="height: 80px; display:flex; flex-direction:column; padding:4px;"
+              class="pos-item-btn"
               @click="addItemToOrder(item)"
             >
-              <div style="font-size:11px; font-weight:bold; flex:1;">{{ item.name }}</div>
-              <div style="font-size:10px; color:#000;">LKR {{ item.price.toFixed(0) }}</div>
+              <div class="item-img-wrapper">
+                <img v-if="item.image" :src="item.image" loading="lazy" />
+                <q-icon v-else name="restaurant" class="fallback-icon" />
+              </div>
+              <div class="item-info">
+                <div class="item-name">{{ item.name }}</div>
+                <div class="item-price">LKR {{ item.price.toFixed(0) }}</div>
+              </div>
             </button>
           </div>
           <div v-if="subCategoryItems.length === 0" class="text-white text-center q-pa-xl">
@@ -234,9 +412,10 @@
       </q-card>
     </q-dialog>
 
-    <q-drawer v-model="queueDrawer" side="left" overlay behavior="mobile" :width="380">
-      <BillingQueue @select="openBilling" @merge-table="openMergedBilling" />
-    </q-drawer>
+    <OrderLookupDialog
+      v-model="queueDrawer"
+      @select="openBilling"
+    />
 
     <PaymentDialog
       ref="paymentDialogRef"
@@ -251,7 +430,7 @@
       :order-type="store.orderType"
       :cart-items="store.cartItems"
       :customer-name="store.customerName"
-      :order-number="store.orderNumber"
+      :order-number="String(store.orderNumber)"
       :loading="isProcessingPayment"
       :queue-order="selectedQueueOrder"
       :merged-orders="mergedTableOrders"
@@ -264,6 +443,65 @@
       :previous-cashier="previousCashierName"
       @signed-in="onCashierSignedIn"
     />
+
+    <!-- Hidden print template for direct PRINT button -->
+    <div style="position: absolute; left: -9999px; top: -9999px;">
+      <BillPrintTemplate
+        v-if="directPrintInvoice"
+        ref="directPrintRef"
+        :invoice="directPrintInvoice"
+        :branch-name="authStore.currentBranch?.name || 'Restaurant'"
+        :cashier-name="authStore.profile?.full_name || 'Cashier'"
+      />
+    </div>
+
+    <!-- Live Table Chart Dialog -->
+    <q-dialog v-model="showLiveTable" transition-show="scale" transition-hide="scale">
+      <q-card class="bg-blue-grey-1 text-dark" style="width: 620px; max-width: 95vw; max-height: 85vh; border-radius: 12px;">
+        <!-- Header -->
+        <q-card-section class="row items-center q-py-sm q-px-md bg-white" style="border-bottom: 1px solid #e0e0e0;">
+          <q-icon name="grid_view" size="20px" color="primary" class="q-mr-xs" />
+          <div class="text-subtitle1 text-weight-bolder">Live Table Chart</div>
+          <q-space />
+
+          <div class="row q-gutter-x-md q-mr-sm items-center">
+            <div class="row items-center q-gutter-x-xs">
+              <div class="bg-positive" style="width: 10px; height: 10px; border-radius: 3px"></div>
+              <span style="font-size: 10px; font-weight: 600;">Available</span>
+            </div>
+            <div class="row items-center q-gutter-x-xs">
+              <div class="bg-orange" style="width: 10px; height: 10px; border-radius: 3px"></div>
+              <span style="font-size: 10px; font-weight: 600;">Occupied</span>
+            </div>
+          </div>
+
+          <q-btn flat round dense icon="close" size="sm" v-close-popup />
+        </q-card-section>
+
+        <!-- Body -->
+        <q-card-section class="q-pa-sm" style="overflow-y: auto; max-height: calc(85vh - 50px);">
+          <div style="display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; padding: 4px;">
+            <div v-for="table in liveTablesList" :key="table.id">
+              <div
+                class="pos-floor-plan-box shadow-1 cursor-pointer transition-transform"
+                :class="table.status === 'available' ? 'bg-positive text-white' : 'bg-orange text-white'"
+                @click="selectLiveTable(table)"
+              >
+                <div class="text-center">
+                  <div class="text-weight-bolder" style="font-size: 11px; line-height: 1">
+                    {{ (table.table_number || '').replace('Table', '').trim() }}
+                  </div>
+                  <div class="row items-center justify-center" style="font-size: 7px; opacity: 0.85; margin-top: 2px;">
+                    <q-icon name="people" size="7px" class="q-mr-xs" /> {{ table.capacity }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -275,10 +513,11 @@ import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
-import BillingQueue from 'src/components/pos/BillingQueue.vue'
-// BillDialog removed — queue orders now use PaymentDialog
+import OrderLookupDialog from 'src/components/pos/OrderLookupDialog.vue'
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 import POSLockScreen from 'src/components/pos/POSLockScreen.vue'
+import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
+import { adminGetCustomers } from 'src/services/customerAuthService'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -304,12 +543,22 @@ const selectedSubCategoryLabel = ref('')
 const selectedItemIndex = ref(-1)
 const numBuffer = ref('')
 const itemPickerOpen = ref(false)
+const dialogSearchQuery = ref('')
+const showQuickCash = ref(false)
+
+watch(selectedSubCategory, () => {
+  dialogSearchQuery.value = ''
+})
+
 const categoryGridRef = ref(null)
+const receiptTableRef = ref(null)
+const shortcutsGridRef = ref(null)
 
 // Menu data
 const menuProducts = ref([])
 const categories = ref([])
 const menuLoading = ref(false)
+const restaurantTables = ref([])
 
 // Payment
 const paymentDialog = ref(false)
@@ -327,8 +576,27 @@ const previousCashierName = ref('')
 // Merged table billing
 const mergedTableOrders = ref([])
 
-// ── Computed ────────────────────────────────────────────
-const userName = computed(() => authStore.profile?.full_name || 'Cashier')
+// Direct print
+const directPrintRef = ref(null)
+const directPrintInvoice = ref(null)
+
+// Customer Autocomplete state
+const customerSearchText = ref('')
+const showCustomerDropdown = ref(false)
+const customerOptions = ref([])
+let searchTimeout = null
+
+const userName = computed(() => {
+  return authStore.userDisplayName || cashierStore.cashierName || authStore.profile?.full_name || authStore.user?.email || 'Cashier'
+})
+const branchName = computed(() => authStore.currentBranch?.name || 'Main Branch')
+
+const isAlreadyPaid = computed(() => {
+  if (!selectedQueueOrder.value) return false
+  const s = (selectedQueueOrder.value.status || '').toLowerCase()
+  const ps = (selectedQueueOrder.value.payment_status || '').toLowerCase()
+  return s === 'paid' || s === 'completed' || ps === 'paid'
+})
 
 // Search
 const itemSearchQuery = ref('')
@@ -340,8 +608,97 @@ const filteredSearchItems = computed(() => {
   )
 })
 
-const paidAmount = computed(() => 0)
-const balanceAmount = computed(() => store.total)
+// Payment Mode
+const isPaymentMode = ref(false)
+const selectedPaymentMethod = ref('CASH')
+
+// Live Table
+const showLiveTable = ref(false)
+const liveTablesList = ref([])
+
+async function openLiveTable() {
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+  try {
+    const { data } = await supabase
+      .from('restaurant_tables')
+      .select('id, table_number, capacity, status')
+      .eq('branch_id', branchId)
+      .order('table_number', { ascending: true })
+
+    liveTablesList.value = data || []
+    showLiveTable.value = true
+  } catch (err) {
+    console.error('Failed to load live tables:', err)
+  }
+}
+
+async function selectLiveTable(table) {
+  // Only allow interacting with occupied/locked tables
+  if (table.status === 'available') {
+    return
+  }
+
+  Loading.show({ message: 'Fetching table order...' })
+  try {
+    await cashierStore.fetchBillingQueue()
+    const activeOrder = cashierStore.billingQueue.find(o => o.table_id === table.id)
+    
+    if (activeOrder) {
+      showLiveTable.value = false
+      openBilling(activeOrder)
+    } else {
+      Notify.create({
+        message: 'No active order found for this table in POS queue',
+        color: 'warning',
+        position: 'top'
+      })
+    }
+  } catch (err) {
+    console.error('Error fetching table order:', err)
+  } finally {
+    Loading.hide()
+  }
+}
+
+const paymentAmount = computed(() => {
+  if (selectedPaymentMethod.value !== 'CASH') return store.total
+  return parseFloat(numBuffer.value) || 0
+})
+
+const quickCashOptions = computed(() => {
+  const total = store.total
+  if (total <= 0) return []
+  
+  const options = new Set()
+  
+  // Exact amount
+  options.add(total)
+  
+  // Nearest 100 up
+  const nearest100 = Math.ceil(total / 100) * 100
+  if (nearest100 >= total) options.add(nearest100)
+  
+  // Nearest 500 up
+  const nearest500 = Math.ceil(total / 500) * 500
+  if (nearest500 >= total) options.add(nearest500)
+  
+  // Nearest 1000 up
+  const nearest1000 = Math.ceil(total / 1000) * 1000
+  if (nearest1000 >= total) options.add(nearest1000)
+  
+  // 5000 note
+  if (total < 5000) options.add(5000)
+  
+  return Array.from(options).sort((a,b) => a - b)
+})
+
+function cancelPaymentMode() {
+  isPaymentMode.value = false
+  selectedPaymentMethod.value = 'CASH'
+  numBuffer.value = ''
+  showQuickCash.value = false
+}
 
 const emptyRows = computed(() => {
   const maxRows = 10
@@ -350,38 +707,52 @@ const emptyRows = computed(() => {
 })
 
 const subCategories = computed(() => {
-  if (selectedCategory.value === 'All' || !selectedCategory.value) {
-    // Show all unique categories as sub-tabs
-    const seen = new Set()
-    const tabs = []
-    let idx = 1
-    for (const item of menuProducts.value) {
-      if (!seen.has(item.category)) {
-        seen.add(item.category)
-        tabs.push({
-          id: item.category,
-          name: item.category,
-          label: `${String(idx).padStart(2, '0')}-${item.category.toUpperCase()}`,
-        })
-        idx++
-      }
+  // Always show Categories as the bottom layout to maintain structural consistency
+  // Previously this was switching to raw text items which broke the layout.
+  const seen = new Set()
+  const tabs = []
+  let idx = 1
+  for (const item of menuProducts.value) {
+    if (!seen.has(item.category)) {
+      seen.add(item.category)
+      tabs.push({
+        id: item.category,
+        name: item.category,
+        label: `${String(idx).padStart(2, '0')}-${item.category.toUpperCase()}`,
+      })
+      idx++
     }
-    return tabs
   }
-  // When a specific category is selected, show items as sub-tabs
-  const items = menuProducts.value.filter((p) => p.category === selectedCategory.value)
-  return items.map((item, i) => ({
-    id: item.id,
-    name: item.name,
-    label: `${String(i + 1).padStart(2, '0')}-${item.name.substring(0, 10).toUpperCase()}`,
-    isItem: true,
-    item,
-  }))
+  return tabs
+})
+
+const lockedTables = computed(() => {
+  const locked = new Set()
+  for (const order of cashierStore.billingOrders) {
+    if (order.table_id && 
+       (order.order_type === 'dine-in' || order.order_type === 'dine_in') && 
+       order.payment_status !== 'paid' && 
+       !['cancelled', 'completed'].includes(order.status)) {
+      locked.add(order.table_id)
+    }
+  }
+  return locked
 })
 
 const subCategoryItems = computed(() => {
   if (!selectedSubCategory.value) return []
-  return menuProducts.value.filter((p) => p.category === selectedSubCategory.value)
+  
+  let items = menuProducts.value
+  if (selectedSubCategory.value !== 'All') {
+    items = items.filter((p) => p.category === selectedSubCategory.value)
+  }
+  
+  if (dialogSearchQuery.value) {
+    const q = dialogSearchQuery.value.toLowerCase()
+    items = items.filter((p) => p.name.toLowerCase().includes(q))
+  }
+  
+  return items
 })
 
 // ── Fetch Menu ──────────────────────────────────────────
@@ -481,9 +852,24 @@ async function fetchMenuItems() {
   }
 }
 
+async function fetchRestaurantTables() {
+  try {
+    const { data, error } = await supabase
+      .from('restaurant_tables')
+      .select('id, table_number, section')
+      .order('table_number')
+    if (data && !error) {
+      restaurantTables.value = data
+    }
+  } catch (err) {
+    console.error('Failed to load tables', err)
+  }
+}
+
 onMounted(async () => {
   if (authStore.isAuthenticated) {
     fetchMenuItems()
+    fetchRestaurantTables()
     await cashierStore.initialize()
   } else {
     posLocked.value = true
@@ -623,7 +1009,9 @@ function selectItem(index) {
 
 function selectCategory(catName) {
   selectedCategory.value = catName
-  selectedSubCategory.value = ''
+  selectedSubCategory.value = catName
+  selectedSubCategoryLabel.value = catName === 'All' ? 'ALL ITEMS' : catName.toUpperCase()
+  itemPickerOpen.value = true
 }
 
 function selectSubCategory(sub) {
@@ -653,13 +1041,66 @@ function addItemToOrder(product) {
   })
 }
 
+// ── Customer Search Handlers ────────────────────────────
+watch(() => store.customerName, (val) => {
+  if (!val) {
+    customerSearchText.value = ''
+  } else if (customerSearchText.value !== val) {
+    customerSearchText.value = val
+  }
+})
+
+function onCustomerInput() {
+  store.customerName = customerSearchText.value // keep store in sync for name
+  if (!customerSearchText.value) {
+    store.selectedCustomer = null
+    customerOptions.value = []
+    showCustomerDropdown.value = false
+    return
+  }
+  
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(async () => {
+    try {
+      const res = await adminGetCustomers({ search: customerSearchText.value, limit: 10, active: true })
+      if (res.success) {
+        customerOptions.value = res.data || []
+        showCustomerDropdown.value = true
+      }
+    } catch (e) {
+      console.error('Customer search failed', e)
+    }
+  }, 300)
+}
+
+function selectCustomer(cust) {
+  store.selectedCustomer = cust
+  store.customerName = cust.full_name
+  customerSearchText.value = cust.full_name
+  showCustomerDropdown.value = false
+}
+
+function hideCustomerDropdownDelay() {
+  setTimeout(() => {
+    showCustomerDropdown.value = false
+  }, 200)
+}
+
 // ── Numeric Keypad ──────────────────────────────────────
 function numInput(char) {
-  numBuffer.value += char
+  if (isPaymentMode.value && showQuickCash.value) {
+    numBuffer.value = char
+    showQuickCash.value = false
+  } else {
+    numBuffer.value += char
+  }
 }
 
 function numClear() {
   numBuffer.value = ''
+  if (isPaymentMode.value) {
+    showQuickCash.value = true
+  }
 }
 
 function numEnter() {
@@ -672,44 +1113,514 @@ function numEnter() {
 
 // ── Function Button Handlers ────────────────────────────
 function handleVoid() {
-  if (selectedItemIndex.value >= 0) {
-    store.removeItem(selectedItemIndex.value)
-    selectedItemIndex.value = -1
-    Notify.create({
-      message: 'Item voided',
-      color: 'orange',
-      icon: 'delete',
-      position: 'top',
-      timeout: 800,
-    })
-  } else {
+  if (selectedItemIndex.value < 0) {
     Notify.create({
       message: 'Select an item to void',
       color: 'grey-8',
       position: 'top',
       timeout: 800,
     })
+    return
   }
-}
 
-function handleClearOrder() {
+  const authStore = useAuthStore()
+
   $q.dialog({
-    title: 'Clear Order',
-    message: 'Are you sure you want to clear the current order?',
-    dark: true,
-    cancel: { flat: true, color: 'grey-5', noCaps: true },
-    ok: { color: 'red', unelevated: true, noCaps: true, label: 'Clear' },
-  }).onOk(() => {
-    store.clearCart()
-    selectedItemIndex.value = -1
-    Notify.create({
-      message: 'Order cleared',
-      color: 'grey-8',
-      icon: 'delete_outline',
-      position: 'top',
-      timeout: 800,
+    title: 'Manager Authorization Required',
+    message: 'Enter Manager Email for VOID:',
+    prompt: {
+      model: '',
+      type: 'email',
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk((email) => {
+    $q.dialog({
+      title: 'Manager Password',
+      message: 'Enter Manager Password:',
+      prompt: {
+        model: '',
+        type: 'password',
+      },
+      cancel: true,
+      persistent: true,
+    }).onOk(async (pwd) => {
+      Loading.show({ message: 'Verifying manager...' })
+      const originalSessionRes = await supabase.auth.getSession()
+
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: pwd,
+      })
+
+      if (authError) {
+        Loading.hide()
+        Notify.create({ message: 'Authorization Failed', caption: authError.message, color: 'red', position: 'top' })
+        return
+      }
+
+      const managerUserId = authData.user.id
+      let isManager = false
+
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', managerUserId)
+        .single()
+
+      if (roleData && ['manager', 'admin'].includes(roleData.role)) {
+        isManager = true
+      }
+
+      // Restore original cashier session immediately
+      if (originalSessionRes.data.session) {
+        await supabase.auth.setSession({
+          access_token: originalSessionRes.data.session.access_token,
+          refresh_token: originalSessionRes.data.session.refresh_token,
+        })
+      }
+
+      Loading.hide()
+
+      if (!isManager) {
+        Notify.create({ message: 'Access Denied', caption: 'User is not a manager', color: 'red', position: 'top' })
+        return
+      }
+
+      // Manager verified. Ask for reason.
+      $q.dialog({
+        title: 'VOID Reason',
+        message: 'Enter reason for voiding this item:',
+        prompt: {
+          model: '',
+          type: 'text',
+        },
+        cancel: true,
+        persistent: true,
+      }).onOk(async (reason) => {
+        if (!reason || !reason.trim()) {
+          Notify.create({ message: 'Reason is required', color: 'orange', position: 'top' })
+          return
+        }
+
+        Loading.show({ message: 'Processing VOID...' })
+        try {
+          const item = store.cartItems[selectedItemIndex.value]
+
+          // 1. Check if the item is already in DB (loaded order)
+          const isDbItem = Boolean(store._loadedOrderId && typeof item.id === 'string' && item.id.length > 20)
+          
+          if (isDbItem) {
+            // Update order_items to mark it void
+            const { error: voidError } = await supabase
+              .from('order_items')
+              .update({
+                status: 'void',
+                void_reason: reason.trim(),
+                void_authorized_by: managerUserId,
+              })
+              .eq('id', item.id)
+
+            if (voidError) throw new Error(`Failed to update DB: ${voidError.message}`)
+
+            // Optional: Recalculate order totals if strict syncing is needed. 
+            // In POS, the recalculation usually happens at Checkout, but for safety:
+            const { data: ord } = await supabase.from('orders').select('subtotal, total_amount').eq('id', store._loadedOrderId).single()
+            if (ord) {
+              const newSub = Math.max(0, ord.subtotal - item.total_price)
+              const newTot = Math.max(0, ord.total_amount - item.total_price)
+              await supabase.from('orders').update({ subtotal: newSub, total_amount: newTot }).eq('id', store._loadedOrderId)
+            }
+          }
+
+          // 2. Prepare fake invoice for VOID ticket print
+          const orderTypeMap = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
+          const effectiveOrderType = orderTypeMap[store.orderType] || 'dine_in'
+
+          directPrintInvoice.value = {
+            __voidReason: reason.trim(),
+            invoice_number: selectedQueueOrder.value?.order_number || store.orderNumber || 'VOID',
+            created_at: new Date().toISOString(),
+            subtotal: 0,
+            grand_total: 0,
+            delivery_charge: 0,
+            service_charge: 0,
+            customer_name: store.customerName || '',
+            customer_phone: selectedQueueOrder.value?.customer_phone || '',
+            invoice_items: [
+              {
+                id: item.id || 1,
+                menu_item_name: item.name + (item.variant ? ` (${item.variant})` : ''),
+                quantity: item.qty,
+                unit_price: item.price,
+                total_price: item.price * item.qty,
+              },
+            ],
+            payments: [],
+            orders: {
+              order_type: effectiveOrderType,
+              order_number: selectedQueueOrder.value?.order_number || store.orderNumber,
+              customer_name: store.customerName || '',
+              customer_phone: '',
+              delivery_address: '',
+              pax: 1,
+              waiter: { full_name: authStore.profile?.full_name || 'Cashier' },
+              kot_tickets: [],
+              restaurant_tables: store.tableNumber ? { table_number: store.tableNumber } : null,
+            },
+          }
+
+          // Trigger print
+          await nextTick()
+          await new Promise((r) => setTimeout(r, 300))
+          if (directPrintRef.value?.printReceipt) {
+            directPrintRef.value.printReceipt()
+          }
+
+          // 3. Remove item from POS memory
+          store.removeItem(selectedItemIndex.value)
+          selectedItemIndex.value = -1
+
+          Notify.create({
+            message: 'Item voided successfully',
+            color: 'positive',
+            icon: 'check_circle',
+            position: 'top',
+            timeout: 2000,
+          })
+        } catch (err) {
+          console.error('VOID Error:', err)
+          Notify.create({ message: 'VOID processing error', caption: err.message, color: 'red', position: 'top' })
+        } finally {
+          Loading.hide()
+        }
+      })
     })
   })
+}
+
+function handleClear() {
+  store.clearCart()
+  selectedItemIndex.value = -1
+  numBuffer.value = ''
+  selectedQueueOrder.value = null
+  mergedTableOrders.value = []
+  customerSearchText.value = ''
+  directPrintInvoice.value = null
+  cancelPaymentMode()
+  Notify.create({
+    message: 'All cleared',
+    color: 'info',
+    icon: 'delete_sweep',
+    position: 'top',
+    timeout: 800,
+  })
+}
+
+// ── FOC (Free of Charge) Workflow ───────────────────────
+async function handleFOC() {
+  // 1. Must have items in cart or a loaded queue order
+  if (store.isEmpty && !selectedQueueOrder.value) {
+    Notify.create({ message: 'No order to process as FOC', color: 'orange', icon: 'warning', position: 'top', timeout: 1200 })
+    return
+  }
+
+  // 2. Step 1: Manager Password Verification
+  $q.dialog({
+    title: '🔐 Manager Authorization',
+    message: 'Enter Manager email and password to authorize this FOC transaction:',
+    dark: true,
+    prompt: {
+      model: '',
+      type: 'email',
+      label: 'Manager Email',
+      outlined: true,
+      dense: true,
+    },
+    cancel: { flat: true, color: 'grey-5', noCaps: true },
+    ok: { color: 'orange', unelevated: true, noCaps: true, label: 'Next' },
+    persistent: true,
+  }).onOk((managerEmail) => {
+    if (!managerEmail || !managerEmail.trim()) {
+      Notify.create({ message: 'Manager email is required', color: 'red', position: 'top' })
+      return
+    }
+
+    // Step 2: Manager password
+    $q.dialog({
+      title: '🔐 Manager Password',
+      message: `Enter password for: ${managerEmail}`,
+      dark: true,
+      prompt: {
+        model: '',
+        type: 'password',
+        label: 'Password',
+        outlined: true,
+        dense: true,
+      },
+      cancel: { flat: true, color: 'grey-5', noCaps: true },
+      ok: { color: 'orange', unelevated: true, noCaps: true, label: 'Verify' },
+      persistent: true,
+    }).onOk(async (managerPassword) => {
+      if (!managerPassword) {
+        Notify.create({ message: 'Password is required', color: 'red', position: 'top' })
+        return
+      }
+
+      Loading.show({ message: 'Verifying manager credentials...' })
+
+      try {
+        // Verify manager credentials using Supabase edge function or direct auth
+        const { data: verifyData, error: verifyError } = await supabase.auth.signInWithPassword({
+          email: managerEmail.trim(),
+          password: managerPassword,
+        })
+
+        if (verifyError) {
+          Loading.hide()
+          Notify.create({ message: 'Invalid manager credentials', color: 'red', icon: 'error', position: 'top' })
+          return
+        }
+
+        // Check if the user has manager or admin role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('roles(name)')
+          .eq('user_id', verifyData.user.id)
+
+        const roles = (roleData || []).map(r => r.roles?.name).filter(Boolean)
+        const isManager = roles.includes('manager') || roles.includes('admin')
+
+        // Restore the original cashier session
+        if (authStore.session) {
+          await supabase.auth.setSession({
+            access_token: authStore.session.access_token,
+            refresh_token: authStore.session.refresh_token,
+          })
+        }
+
+        if (!isManager) {
+          Loading.hide()
+          Notify.create({ message: 'User does not have Manager/Admin privileges', color: 'red', icon: 'block', position: 'top' })
+          return
+        }
+
+        Loading.hide()
+
+        const managerUserId = verifyData.user.id
+
+        // Step 3: FOC Reason input
+        $q.dialog({
+          title: '📝 FOC Reason',
+          message: 'Enter the reason for this Free of Charge order:',
+          dark: true,
+          prompt: {
+            model: '',
+            type: 'textarea',
+            label: 'Reason (required)',
+            outlined: true,
+          },
+          cancel: { flat: true, color: 'grey-5', noCaps: true },
+          ok: { color: 'green', unelevated: true, noCaps: true, label: 'Submit FOC' },
+          persistent: true,
+        }).onOk(async (focReason) => {
+          if (!focReason || !focReason.trim()) {
+            Notify.create({ message: 'FOC reason is required', color: 'red', position: 'top' })
+            return
+          }
+
+          await processFOCOrder(managerUserId, focReason.trim())
+        })
+      } catch (err) {
+        Loading.hide()
+        console.error('FOC auth error:', err)
+        Notify.create({ message: 'Authentication error', caption: err.message, color: 'red', position: 'top' })
+
+        // Ensure original session is restored on error
+        if (authStore.session) {
+          await supabase.auth.setSession({
+            access_token: authStore.session.access_token,
+            refresh_token: authStore.session.refresh_token,
+          }).catch(() => {})
+        }
+      }
+    })
+  })
+}
+
+async function processFOCOrder(managerUserId, focReason) {
+  Loading.show({ message: 'Processing FOC order...' })
+  try {
+    let finalOrderId = null
+
+    if (store._loadedOrderId && selectedQueueOrder.value) {
+      // ── QUEUE ORDER: mark existing order as FOC ──
+      finalOrderId = store._loadedOrderId
+
+      // Accept if still pending
+      if (selectedQueueOrder.value.status === 'pending_waiter') {
+        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
+        if (acceptError) throw new Error(acceptError.message)
+      }
+
+      // Create invoice if not invoiced
+      const status = selectedQueueOrder.value.status
+      if (status !== 'invoiced' && status !== 'paid') {
+        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
+        if (invError) throw new Error(invError.message)
+      }
+
+      // Update series: mark order as FOC with reason
+      const { error: focError } = await supabase
+        .from('orders')
+        .update({
+          status: 'paid',
+          payment_status: 'paid',
+          payment_method: 'foc',
+          foc_reason: focReason,
+          foc_authorized_by: managerUserId,
+          total_amount: 0,
+          paid_at: new Date().toISOString(),
+        })
+        .eq('id', finalOrderId)
+      if (focError) throw new Error(focError.message)
+
+      // Also update invoice to reflect FOC
+      await supabase
+        .from('invoices')
+        .update({ payment_status: 'paid', total: 0 })
+        .eq('order_id', finalOrderId)
+
+    } else {
+      // ── MANUAL POS: create new order as FOC ──
+      const companyId = authStore.currentBranch?.company_id
+      const branchId = authStore.currentBranch?.id
+      const userId = authStore.user?.id
+
+      const orderPayload = {
+        branch_id: branchId,
+        waiter_id: userId || null,
+        order_type: store.orderType === 'dine-in' ? 'dine_in' : 'takeaway',
+        order_source: 'pos',
+        status: 'paid',
+        payment_status: 'paid',
+        payment_method: 'foc',
+        table_id: null,
+        table_number: store.tableNumber || null,
+        total_amount: 0,
+        subtotal: parseFloat(store.subtotal.toFixed(2)),
+        tax_amount: 0,
+        service_charge: 0,
+        discount_amount: 0,
+        customer_name: store.customerName || null,
+        foc_reason: focReason,
+        foc_authorized_by: managerUserId,
+        paid_at: new Date().toISOString(),
+      }
+      if (companyId) orderPayload.company_id = companyId
+
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderPayload)
+        .select('id, order_number')
+        .single()
+      if (orderError) throw new Error(`Failed to create FOC order: ${orderError.message}`)
+
+      finalOrderId = order.id
+
+      // Insert order items
+      const itemsPayload = store.cartItems.map((item) => {
+        const qty = parseInt(item.qty) || 1
+        const price = parseFloat(item.price) || 0
+        return {
+          order_id: order.id,
+          menu_item_id: item.productId,
+          kitchen_id: item.kitchenId || null,
+          quantity: qty,
+          unit_price: price,
+          total_price: parseFloat((qty * price).toFixed(2)),
+          notes: item.notes || null,
+          status: 'queued',
+        }
+      })
+
+      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload)
+      if (itemsError) throw new Error(`Failed to save FOC items: ${itemsError.message}`)
+
+      // Create invoice for FOC
+      await supabase.from('invoices').insert({
+        order_id: order.id,
+        branch_id: branchId,
+        cashier_id: userId,
+        total: 0,
+        subtotal: parseFloat(store.subtotal.toFixed(2)),
+        payment_status: 'paid',
+      })
+    }
+
+    // ── Print FOC Receipt ──
+    const items = store.cartItems.map((item, idx) => ({
+      id: idx,
+      menu_item_name: item.name + (item.variant ? ` (${item.variant})` : ''),
+      quantity: item.qty,
+      unit_price: item.price,
+      total_price: item.price * item.qty,
+    }))
+
+    const orderTypeMap = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
+    const effectiveOrderType = orderTypeMap[store.orderType] || 'dine_in'
+
+    directPrintInvoice.value = {
+      invoice_number: selectedQueueOrder.value?.order_number || store.orderNumber || 'FOC',
+      created_at: new Date().toISOString(),
+      subtotal: store.subtotal,
+      grand_total: 0,
+      delivery_charge: 0,
+      service_charge: 0,
+      customer_name: store.customerName || '',
+      customer_phone: selectedQueueOrder.value?.customer_phone || '',
+      invoice_items: items,
+      payments: [{ payment_methods: { name: 'FOC' }, amount: 0 }],
+      orders: {
+        order_type: effectiveOrderType,
+        order_number: selectedQueueOrder.value?.order_number || store.orderNumber,
+        customer_name: store.customerName || '',
+        customer_phone: '',
+        delivery_address: '',
+        pax: 1,
+        waiter: { full_name: authStore.profile?.full_name || 'Cashier' },
+        kot_tickets: [],
+        restaurant_tables: store.tableNumber ? { table_number: store.tableNumber } : null,
+      },
+      __focReason: focReason,
+    }
+
+    await nextTick()
+    await new Promise(r => setTimeout(r, 300))
+
+    if (directPrintRef.value?.printReceipt) {
+      directPrintRef.value.printReceipt()
+    }
+
+    Notify.create({
+      message: 'FOC Order Saved & Printed',
+      caption: `Reason: ${focReason}`,
+      color: 'positive',
+      icon: 'check_circle',
+      position: 'top',
+      timeout: 3000,
+    })
+
+    // Reset UI
+    handleNewOrderAfterPayment()
+    cancelPaymentMode()
+
+  } catch (err) {
+    console.error('FOC Error:', err)
+    Notify.create({ message: 'FOC processing error', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    Loading.hide()
+  }
 }
 
 function handleBack() {
@@ -717,8 +1628,148 @@ function handleBack() {
   numBuffer.value = ''
 }
 
-function handlePrint() {
-  queueDrawer.value = true
+async function handlePrint() {
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order to print', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+
+  // ── IN-SCREEN PAYMENT PRE-REQUISITE ──
+  if (isPaymentMode.value) {
+     if (selectedPaymentMethod.value === 'CASH' && paymentAmount.value < store.total) {
+       Notify.create({ message: 'Insufficient amount received for Cash payment', color: 'red', position: 'top' })
+       return
+     }
+     await processInlinePayment()
+     return
+  }
+
+  // Build a simulated invoice for standard printing (before payment)
+  const items = store.cartItems.map((item, idx) => ({
+    id: idx,
+    menu_item_name: item.name + (item.variant ? ` (${item.variant})` : ''),
+    quantity: item.qty,
+    unit_price: item.price,
+    total_price: item.price * item.qty,
+  }))
+
+  const orderTypeMap = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
+  const effectiveOrderType = orderTypeMap[store.orderType] || 'dine_in'
+
+  directPrintInvoice.value = {
+    invoice_number: selectedQueueOrder.value?.order_number || store.orderNumber || 'PENDING',
+    created_at: selectedQueueOrder.value?.created_at || new Date().toISOString(),
+    subtotal: store.subtotal,
+    grand_total: store.total,
+    delivery_charge: 0,
+    service_charge: store.serviceChargeAmount,
+    customer_name: store.customerName || '',
+    customer_phone: selectedQueueOrder.value?.customer_phone || '',
+    invoice_items: items,
+    payments: [],
+    orders: {
+      order_type: effectiveOrderType,
+      order_number: selectedQueueOrder.value?.order_number || store.orderNumber,
+      customer_name: store.customerName || '',
+      customer_phone: selectedQueueOrder.value?.customer_phone || '',
+      delivery_address: '',
+      pax: 1,
+      waiter: {
+        full_name: selectedQueueOrder.value?.waiterName || authStore.profile?.full_name || 'Cashier',
+      },
+      kot_tickets: selectedQueueOrder.value?.kot_tickets || [],
+      restaurant_tables: store.tableNumber 
+        ? { table_number: store.tableNumber }
+        : selectedQueueOrder.value?.restaurant_tables || null,
+    },
+  }
+
+  // Wait for the template to render, then print
+  await nextTick()
+  await new Promise(r => setTimeout(r, 200))
+  
+  if (directPrintRef.value?.printReceipt) {
+    directPrintRef.value.printReceipt()
+  }
+}
+
+// ── ACTUAL PAYMENT LOGIC FOR IN-SCREEN FLOW ──
+async function processInlinePayment() {
+  if (isProcessingPayment.value) return
+  isProcessingPayment.value = true
+  Loading.show({ message: 'Processing Payment & Printing...' })
+  
+  const methodName = selectedPaymentMethod.value === 'CASH' ? 'Cash' 
+                   : selectedPaymentMethod.value === 'CARD' ? 'Card' 
+                   : 'Credit Card'
+
+  try {
+    let finalOrderId = null
+
+    if (store._loadedOrderId && selectedQueueOrder.value) {
+      // ── QUEUE ORDER FLOW (From Order Lookup) ──
+      finalOrderId = store._loadedOrderId
+      
+      // 1. If still pending_waiter, accept it
+      if (selectedQueueOrder.value.status === 'pending_waiter') {
+        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
+        if (acceptError) throw new Error(acceptError.message)
+      }
+      
+      // 2. Mark as invoiced if not already
+      const status = selectedQueueOrder.value.status
+      if (status !== 'invoiced' && status !== 'paid') {
+        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
+        if (invError) throw new Error(invError.message)
+      }
+
+      // 3. Record payment
+      const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+        p_order_id: finalOrderId,
+        p_payment_method: methodName.toLowerCase(),
+        p_amount_paid: store.total
+      })
+      if (payError) throw new Error(payError.message)
+      if (!payData?.success && payData?.message !== 'Already paid.') throw new Error(payData?.error || 'Payment failed')
+      
+    } else {
+      // ── MANUAL POS FLOW (unsaved items) ──
+      const res = await store.processPayment(methodName.toLowerCase())
+      if (!res.success) throw new Error(res.reason || 'Manual payment failed')
+      finalOrderId = res.orderId
+    }
+
+    // Prepare real invoice for printing
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('order_id', finalOrderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      
+    if (invoices?.length > 0) {
+      const realInvoice = await cashierStore.fetchInvoiceDetails(invoices[0].id)
+      directPrintInvoice.value = realInvoice
+      
+      await nextTick()
+      await new Promise(r => setTimeout(r, 200))
+      
+      if (directPrintRef.value?.printReceipt) {
+        directPrintRef.value.printReceipt()
+      }
+    }
+
+    Notify.create({ message: 'Payment Successful', color: 'positive', position: 'top', icon: 'check_circle' })
+    handleNewOrderAfterPayment()
+    cancelPaymentMode()
+    
+  } catch (err) {
+    console.error('Payment Error:', err)
+    Notify.create({ message: 'Payment error', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    Loading.hide()
+    isProcessingPayment.value = false
+  }
 }
 
 function handleOther() {
@@ -812,9 +1863,26 @@ function handleDivider() {
 
 function setOrderType(type) {
   store.orderType = type
+  if (type !== 'dine-in') {
+    store.selectedTable = null
+    store.tableNumber = null
+  }
+  if (type !== 'delivery') {
+    store.deliverySource = null
+  }
   Notify.create({
     message: `Order type: ${type === 'dine-in' ? 'Table Order' : type === 'takeaway' ? 'Take Away' : 'Delivery'}`,
     color: 'primary',
+    position: 'top',
+    timeout: 600,
+  })
+}
+
+function setDeliverySource(source) {
+  store.deliverySource = source
+  Notify.create({
+    message: `Source: ${source.toUpperCase()}`,
+    color: 'positive',
     position: 'top',
     timeout: 600,
   })
@@ -824,16 +1892,47 @@ function handleNewOrder() {
   store.clearCart()
   selectedItemIndex.value = -1
   numBuffer.value = ''
+  selectedQueueOrder.value = null
+  customerSearchText.value = ''
+  directPrintInvoice.value = null
 }
 
 function handleOrderLookup() {
   queueDrawer.value = true
 }
 
-function handleClear() {
-  numBuffer.value = ''
+/**
+ * Called when user selects an order from OrderLookupDialog and clicks OK.
+ * Loads the order details into the POS cart so the cashier can view items,
+ * process payment, print bill, etc.
+ */
+function openBilling(order) {
+  if (!order) return
+
+  // Load order into POS cart (items, customer, table, etc.)
+  store.loadOrderFromQueue(order)
+
+  // Set the queue order reference for PaymentDialog
+  selectedQueueOrder.value = order
+
+  // Update customer search field to show selected customer
+  customerSearchText.value = order.customer_name || ''
+
+  // Reset selection
   selectedItemIndex.value = -1
+  numBuffer.value = ''
+
+  Notify.create({
+    message: `Order #${String(order.order_number || '').replace('ORD-', '')} loaded`,
+    caption: `${order.order_items?.length || 0} items • ${order.customer_name || 'Walk-in'} • LKR ${order.total_amount?.toFixed(2) || '0.00'}`,
+    color: 'teal',
+    icon: 'receipt',
+    position: 'top',
+    timeout: 2500,
+  })
 }
+
+// Removed duplicate handleClear
 async function handleSave() {
   if (store.isEmpty) {
     Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
@@ -845,8 +1944,18 @@ async function handleSave() {
     const result = await store.sendToKitchen()
     if (result && result.success) {
       Loading.hide()
+      // Update store state with the saved order info so payment knows this order is already in the DB
+      store._loadedOrderId = result.order.id
+      store.orderNumber = result.order.order_number
+      
+      // Also update selectedQueueOrder so processInlinePayment knows its status
+      selectedQueueOrder.value = {
+        id: result.order.id,
+        order_number: result.order.order_number,
+        status: 'accepted'
+      }
       Notify.create({
-        message: `Order #${result.order.order_number ?? result.order.id.slice(0, 8).toUpperCase()} saved!`,
+        message: `Order #${String(result.order.order_number || '').replace('ORD-', '')} saved!`,
         color: 'teal',
         icon: 'check_circle',
         position: 'top',
@@ -871,8 +1980,28 @@ function handlePayment() {
     Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
     return
   }
-  selectedQueueOrder.value = null // ensure manual POS mode
-  paymentDialog.value = true
+  if (isAlreadyPaid.value) {
+    Notify.create({ message: 'This bill is already paid.', color: 'negative', position: 'top' })
+    return
+  }
+  // Keep selectedQueueOrder if loaded from Order Lookup (for queue payment flow)
+  // Only null it out if no order was loaded (manual POS mode)
+  if (!store._loadedOrderId) {
+    selectedQueueOrder.value = null
+  }
+  
+  // Enter IN-SCREEN Payment Mode
+  isPaymentMode.value = true
+  // Default selection: If it's a Delivery from Uber/PickMe/Website, select CREDIT CARD (ONLINE)
+  if (store.deliverySource && ['uber', 'pickme', 'website'].includes(store.deliverySource)) {
+    selectedPaymentMethod.value = 'ONLINE'
+    showQuickCash.value = false
+  } else {
+    selectedPaymentMethod.value = 'CASH'
+    showQuickCash.value = true // Default to true for Cash
+  }
+  
+  numBuffer.value = store.total.toString()
 }
 
 function handleSubtotal() {
@@ -923,41 +2052,11 @@ function handleNewOrderAfterPayment() {
   numBuffer.value = ''
   selectedQueueOrder.value = null
   mergedTableOrders.value = []
+  customerSearchText.value = ''
+  directPrintInvoice.value = null
 }
 
 // ── Billing Queue ───────────────────────────────────────
-function openBilling(order) {
-  selectedQueueOrder.value = order
-  paymentDialog.value = true
-
-  // Auto-print bill when opening an unpaid order from the queue
-  const isPaid = order.status === 'paid' || order.payment_status === 'paid'
-  if (!isPaid) {
-    setTimeout(async () => {
-      if (paymentDialogRef.value?.printBill) {
-        await paymentDialogRef.value.printBill()
-      }
-    }, 350)
-  }
-}
-
-/**
- * Open merged billing for a table group from BillingQueue.
- * The tableGroup has { orders, tableNumber, grandTotal, ... }.
- */
-function openMergedBilling(tableGroup) {
-  // Clear single-order selection, set merged orders
-  selectedQueueOrder.value = null
-  mergedTableOrders.value = tableGroup.orders || []
-  paymentDialog.value = true
-
-  // Auto-print merged bill
-  setTimeout(async () => {
-    if (paymentDialogRef.value?.printBill) {
-      await paymentDialogRef.value.printBill()
-    }
-  }, 350)
-}
 
 function onOrderPaid() {
   // Called when a queue order or merged payment completes inside PaymentDialog
@@ -966,26 +2065,27 @@ function onOrderPaid() {
   cashierStore.fetchBillingOrders()
 }
 
-function handleLogout() {
-  $q.dialog({
-    title: 'Switch Cashier',
-    message: `Sign out ${authStore.profile?.full_name || 'current cashier'} and lock the terminal?`,
-    dark: true,
-    cancel: { flat: true, color: 'grey-5', noCaps: true, label: 'Cancel' },
-    ok: { color: 'orange-8', unelevated: true, noCaps: true, label: 'Lock Terminal' },
-  }).onOk(async () => {
-    // Remember who was logged in
-    previousCashierName.value = authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
+async function handleLogout() {
+  // Lock UI instantly so they can't click anything else
+  posLocked.value = true
 
-    // LOCK IMMEDIATELY for UI responsiveness
-    posLocked.value = true
+  // Remember who was logged in
+  previousCashierName.value = authStore.profile?.full_name || authStore.user?.email || 'Previous Cashier'
 
-    // THEN sign out the current user (clears auth state)
+  // THEN sign out the current user and wait for it fully
+  try {
     await authStore.signOut()
+  } catch (e) {
+    console.error('Sign out error:', e)
+  }
 
-    // Reinitialize cashier store so it resets for the next user
-    cashierStore.cleanup()
-  })
+  // Once fully signed out, clean up local cache
+  cashierStore.cleanup()
+}
+
+function handleExit() {
+  // Exit POS and go back to the main dashboard
+  router.push('/dashboard')
 }
 
 /**
@@ -1005,13 +2105,37 @@ async function onCashierSignedIn() {
 
 function scrollCategoriesUp() {
   if (categoryGridRef.value) {
-    categoryGridRef.value.scrollTop -= 80
+    categoryGridRef.value.scrollTop -= 100
   }
 }
 
 function scrollCategoriesDown() {
   if (categoryGridRef.value) {
-    categoryGridRef.value.scrollTop += 80
+    categoryGridRef.value.scrollTop += 100
+  }
+}
+
+function scrollReceiptUp() {
+  if (receiptTableRef.value) {
+    receiptTableRef.value.scrollTop -= 100
+  }
+}
+
+function scrollReceiptDown() {
+  if (receiptTableRef.value) {
+    receiptTableRef.value.scrollTop += 100
+  }
+}
+
+function scrollShortcutsUp() {
+  if (shortcutsGridRef.value) {
+    shortcutsGridRef.value.scrollTop -= 60
+  }
+}
+
+function scrollShortcutsDown() {
+  if (shortcutsGridRef.value) {
+    shortcutsGridRef.value.scrollTop += 60
   }
 }
 
@@ -1080,21 +2204,52 @@ function fmtCurrency(val) {
 }
 .customer-info {
   flex: 1;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 6px 12px;
 }
 .info-row {
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
+  width: 100%;
 }
 .lbl {
-  color: #ccc;
-  width: 60px;
-}
-.w-name {
+  color: #aaa;
   width: 100px;
-  font-size: 18px;
-  color: #fff;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.customer-input {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  padding: 4px 8px;
+  font-size: 13px;
+  margin-left: 0;
+}
+.customer-input:focus {
+  border-color: #3b5998;
+  background: #222;
+}
+.flex-row-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.text-right {
+  justify-content: flex-end;
+}
+.order-status-val {
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.border-val {
+  background: #333;
+  padding: 2px 6px;
+  border: 1px solid #555;
+  border-radius: 2px !important;
 }
 .val {
   color: #fff;
@@ -1119,23 +2274,36 @@ function fmtCurrency(val) {
 .flex-1 { flex: 1; }
 
 .summary-info {
-  width: 300px;
-  flex-direction: row;
-  justify-content: space-between;
-}
-.summary-grid {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  font-size: 11px;
+  width: 320px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  grid-auto-flow: column;
+  column-gap: 16px;
+  row-gap: 2px;
+  padding: 6px 16px;
 }
 .summary-line {
   display: flex;
   justify-content: space-between;
-  width: 120px;
+  align-items: center;
+  width: 100%;
 }
-.slbl { color: #aaa; text-transform: uppercase;}
-.sval { color: #ff9900; font-weight: bold; text-align: right; width: 60px; }
+.slbl { 
+  color: #aaa; 
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sval { 
+  color: #ff9900; 
+  font-weight: bold; 
+  font-size: 13px;
+  text-align: right; 
+}
+.txt-red {
+  color: #ff4d4d;
+}
 
 .summary-boxes {
   display: flex;
@@ -1292,6 +2460,11 @@ function fmtCurrency(val) {
 }
 .cbtn:active { filter: brightness(0.8); }
 .border-active { border: 2px solid #fff; }
+.payment-active {
+  background: #000 !important;
+  color: #ffff00 !important;
+  border: 3px solid #ffff00 !important;
+}
 .c-yellow {
   background: #ffff00;
   color: #000;
@@ -1325,6 +2498,10 @@ function fmtCurrency(val) {
 .abtn:active { filter: brightness(0.8); }
 .a-blue {
   background: #3a62ae;
+  color: #fff;
+}
+.a-green {
+  background: #2e7d32;
   color: #fff;
 }
 
@@ -1389,21 +2566,41 @@ function fmtCurrency(val) {
 .bottom-shortcuts-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-auto-rows: 40px;
+  align-content: start;
   gap: 4px;
   flex: 1;
+  overflow-y: auto;
+  /* hide scrollbar for sleek touch UI */
+  scrollbar-width: none;
+}
+.bottom-shortcuts-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .sbtn {
   background: #ffff00;
-  border: 1px solid #000;
+  border: 3px solid #000;
   color: #000;
-  font-size: 11px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 900;
   cursor: pointer;
 }
+.sbtn.active-table {
+  background: #ffb300 !important;
+  border: 3px solid #fff !important;
+  color: #000 !important;
+  font-weight: 900;
+}
+.sbtn.locked-table {
+  background: #cc0000 !important;
+  border: 3px solid #666 !important;
+  color: #fff !important;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
 .sbtn.active {
-  border: 2px solid #fff;
+  border: 3px solid #fff;
 }
 
 .bottom-sidebar {
@@ -1424,4 +2621,155 @@ function fmtCurrency(val) {
 
 .mt-1 { margin-top: 4px; }
 .mt-auto { margin-top: auto; }
+
+/* POS ITEM BUTTON WITH IMAGE */
+.pos-item-btn {
+  height: 120px;
+  display: flex !important;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 2px solid #000;
+  background: #fff;
+  transition: transform 0.1s;
+  cursor: pointer;
+  border-radius: 4px !important;
+}
+.pos-item-btn:active {
+  transform: scale(0.96);
+}
+.item-img-wrapper {
+  width: 100%;
+  height: 70px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 2px solid #000;
+}
+.item-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fallback-icon {
+  font-size: 24px;
+  display: block;
+}
+
+/* CUSTOMER AUTOCOMPLETE */
+.autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  z-index: 1000;
+  color: black;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.autocomplete-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+}
+.autocomplete-list li:hover {
+  background: #f0f0f0;
+}
+
+.item-info {
+  flex: 1;
+  width: 100%;
+  background: #ffff00;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  justify-content: space-between;
+}
+.item-name {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-transform: uppercase;
+  color: #000;
+}
+.item-price {
+  font-size: 11px;
+  color: #000;
+  font-weight: 900;
+  align-self: center;
+}
+
+/* KEYPAD DISPLAY */
+.keypad-display-wrapper {
+  background: #333;
+  padding: 4px;
+;
+}
+
+/* LIVE TABLE CHART CSS */
+.pos-floor-plan-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.transition-transform {
+  transition: transform 0.2s;
+}
+.transition-transform:hover {
+  transform: scale(1.05);
+}
+
+.keypad-display {
+  background: #000;
+  border: 2px solid #555;
+  margin-bottom: 6px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+.display-label {
+  color: #888;
+  font-size: 11px;
+  font-weight: bold;
+}
+.display-value {
+  color: #444;
+  font-size: 24px;
+  font-weight: bold;
+}
+.display-value.has-val {
+  color: #00ff00;
+}
+.type-active {
+  background: #ffeb3b !important;
+  color: #000 !important;
+  font-weight: 800 !important;
+  border: 3px solid #fff !important;
+}
+.dimmed-action {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  background: #444 !important;
+  color: #888 !important;
+  border-color: #555 !important;
+}
 </style>
