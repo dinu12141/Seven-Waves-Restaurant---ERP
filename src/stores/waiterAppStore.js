@@ -37,7 +37,10 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Computed ─────────────────────────────────────────────────────────────
   const unreadNotifCount = computed(() => notifications.value.filter((n) => !n.is_read).length)
   const pendingCount = computed(() => pendingOrders.value.length)
-  const myOrderCount = computed(() => myOrders.value.length)
+  // Only count ACTIVE orders (not served/completed) for the badge
+  const myOrderCount = computed(
+    () => myOrders.value.filter((o) => !['served', 'invoiced', 'paid', 'cancelled'].includes(o.status)).length
+  )
   const readyCount = computed(() => readyAlerts.value.length)
   const currentPoints = computed(() => profile.value?.current_points ?? 0)
   const totalOrdersServed = computed(() => profile.value?.total_orders_served ?? 0)
@@ -579,10 +582,10 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Realtime ─────────────────────────────────────────────────────────────
   let kotChannel = null
 
-  function _playAlertSound() {
+  function _playToneSequence(tones) {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-      const playTone = (freq, type, startTime, dur) => {
+      const playTone = (freq, type, startTime, dur, vol = 0.5) => {
         const osc = audioCtx.createOscillator()
         const gain = audioCtx.createGain()
         osc.connect(gain)
@@ -590,16 +593,14 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         osc.type = type
         osc.frequency.setValueAtTime(freq, startTime)
         gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05)
+        gain.gain.linearRampToValueAtTime(vol, startTime + 0.05)
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur)
         osc.start(startTime)
         osc.stop(startTime + dur)
       }
       const doPlay = () => {
         const now = audioCtx.currentTime
-        playTone(1318.51, 'sine', now, 0.3)
-        playTone(1046.5, 'sine', now + 0.2, 0.3)
-        playTone(1318.51, 'sine', now + 0.4, 0.5)
+        tones.forEach(([freq, type, offset, dur, vol]) => playTone(freq, type, now + offset, dur, vol))
       }
       if (audioCtx.state === 'suspended') audioCtx.resume().then(doPlay)
       else doPlay()
@@ -607,6 +608,26 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       /* silent fail */
     }
   }
+
+  // Urgent triple-ding: used for NEW customer orders
+  function _playNewOrderSound() {
+    _playToneSequence([
+      [1318.51, 'sine', 0,   0.25, 0.6],
+      [1046.5,  'sine', 0.2, 0.25, 0.6],
+      [1318.51, 'sine', 0.4, 0.4,  0.7],
+    ])
+  }
+
+  // Calm double-ding: used for KOT READY alerts
+  function _playKotReadySound() {
+    _playToneSequence([
+      [880, 'sine', 0,   0.3, 0.45],
+      [660, 'sine', 0.3, 0.4, 0.45],
+    ])
+  }
+
+  // Keep alias so calling code is backward-compatible
+  function _playAlertSound() { _playNewOrderSound() }
 
   function subscribeRealtime() {
     let branchId = authStore.currentBranch?.id
@@ -651,9 +672,9 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
                 icon: 'room_service',
                 color: 'blue-9',
                 textColor: 'white',
-                message: `🛎 New Order from ${tableName}!`,
+                message: `🛎️ New Order from ${tableName}!`,
                 caption: newRow.order_number
-                  ? `Order #${newRow.order_number}`
+                  ? `Order #${newRow.order_number} — Tap to view`
                   : 'Tap Alerts to view',
                 position: 'top',
                 timeout: 10000,
@@ -661,6 +682,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
                 classes: 'text-weight-bold',
                 actions: [{ icon: 'close', color: 'white', size: 'sm' }],
               })
+              // Vibrate device for physical alert (new order: long urgent pattern)
+              if (navigator.vibrate) navigator.vibrate([400, 100, 400, 100, 400])
             }
 
             if (newRow.table_id) {
@@ -700,9 +723,23 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         (payload) => {
           if (payload.new?.status === 'ready') {
             // Check this KOT belongs to one of MY orders before alerting
-            const myOrderIds = myOrders.value.map((o) => o.id)
-            if (myOrderIds.includes(payload.new.order_id)) {
-              _playAlertSound()
+            const myOrder = myOrders.value.find((o) => o.id === payload.new.order_id)
+            if (myOrder) {
+              _playKotReadySound()
+              Notify.create({
+                type: 'positive',
+                icon: 'task_alt',
+                color: 'green-9',
+                textColor: 'white',
+                message: `🍽️ Order #${myOrder.order_number || ''} is READY!`,
+                caption: `Table ${myOrder.restaurant_tables?.table_number || myOrder.table_number || '—'} — Go collect & serve`,
+                position: 'top',
+                timeout: 8000,
+                classes: 'text-weight-bold',
+                actions: [{ icon: 'close', color: 'white', size: 'sm' }],
+              })
+              // Vibrate the device for physical alert
+              if (navigator.vibrate) navigator.vibrate([200, 100, 200])
             }
             loadReadyAlerts()
           }

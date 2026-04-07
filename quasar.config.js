@@ -14,7 +14,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'directives'],
+    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'directives', 'tauri-auth'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -32,7 +32,7 @@ export default defineConfig((ctx) => {
         node: 'node20',
       },
 
-      vueRouterMode: (ctx.mode.capacitor || ctx.mode.electron) ? 'hash' : 'history', // hash for Capacitor & Electron (file:// can't do history routing); history for web/PWA
+      vueRouterMode: (ctx.mode.capacitor || ctx.mode.electron || process.env.TAURI) ? 'hash' : 'history', // hash for Capacitor, Electron & Tauri (file:// / tauri:// can't do history routing); history for web/PWA
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,

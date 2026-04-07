@@ -9,6 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL or Anon Key not found in environment variables.')
 }
 
+// Detect Tauri desktop environment
+const isTauri = '__TAURI__' in window
+
 // Exponential backoff: 2s, 4s, 8s, 16s, 30s (capped)
 // Prevents the WebSocket reconnection storm / console flood
 function realtimeBackoff(tries: number) {
@@ -16,6 +19,15 @@ function realtimeBackoff(tries: number) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // PKCE flow is required for desktop apps — no implicit tokens in URL
+    flowType: isTauri ? 'pkce' : 'implicit',
+    // Persist session to localStorage — works in Tauri's WebView2
+    persistSession: true,
+    autoRefreshToken: true,
+    // In Tauri, we handle the redirect via deep link, not URL detection
+    detectSessionInUrl: !isTauri,
+  },
   realtime: {
     params: {
       eventsPerSecond: 10,

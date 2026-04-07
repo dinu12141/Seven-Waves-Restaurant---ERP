@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for Seven Waves ERP — Least Privilege",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-set-title",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-set-fullscreen",
+    "shell:allow-open",
+    "deep-link:default"
+  ]
+}
