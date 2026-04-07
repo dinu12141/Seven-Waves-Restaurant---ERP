@@ -9,8 +9,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL or Anon Key not found in environment variables.')
 }
 
-// Detect Tauri desktop environment
-const isTauri = '__TAURI__' in window
+// Detect Tauri desktop environment (safe for SSR where window doesn't exist)
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
 
 // Exponential backoff: 2s, 4s, 8s, 16s, 30s (capped)
 // Prevents the WebSocket reconnection storm / console flood

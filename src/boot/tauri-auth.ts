@@ -13,8 +13,8 @@ import { boot } from 'quasar/wrappers'
 import { supabase } from './supabase'
 
 export default boot(async () => {
-  // Only run in Tauri desktop environment
-  if (!('__TAURI__' in window)) return
+  // Only run in Tauri desktop environment (guard window for SSR safety)
+  if (typeof window === 'undefined' || !('__TAURI__' in window)) return
 
   try {
     const { onOpenUrl } = await import('@tauri-apps/plugin-deep-link')
