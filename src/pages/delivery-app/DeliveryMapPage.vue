@@ -258,8 +258,16 @@
        <div class="bg-white flex flex-center column q-pa-xl text-center full-height">
           <q-icon name="location_off" size="80px" color="red-5" class="q-mb-md" />
           <div class="text-h5 text-weight-bold q-mb-sm text-dark">Location Access Required</div>
-          <div class="text-body1 text-grey-8 q-mb-xl">Please enable your GPS functionality and refresh to continue using the delivery app!</div>
-          <q-btn color="primary" unelevated rounded label="Retry Location" @click="startGPS" size="lg" class="full-width q-mb-md" />
+          <div class="text-body1 text-grey-8 q-mb-sm">{{ geoError || 'Please enable your GPS and allow location access to continue.' }}</div>
+          <div class="text-caption text-grey-6 q-mb-xl">
+            <span v-if="geoError && geoError.includes('denied')">
+              Go to your browser Settings → Site Settings → Location → Allow this site.
+            </span>
+            <span v-else>
+              Make sure your device GPS is turned ON, then tap "Retry Location".
+            </span>
+          </div>
+          <q-btn color="primary" unelevated rounded label="Retry Location" @click="retryLocation" size="lg" class="full-width q-mb-md" />
           <q-btn flat color="grey-7" label="Go Back" @click="$router.back()" class="full-width" />
        </div>
     </q-dialog>
@@ -613,34 +621,77 @@ function animateMarkerTo(marker, newPos, circle) {
 }
 
 // ── GPS ───────────────────────────────────────────
+// Strategy:
+//  1. getCurrentPosition() with a long timeout to get the very first fix
+//     (avoids triggering the error dialog before the OS permission prompt resolves)
+//  2. Only after first fix succeeds, start watchPosition for continuous tracking
+//  3. TIMEOUT errors (code 3) on the first fix are silently retried — NOT shown as errors
+let gpsFirstFixDone = false
+
 function startGPS() {
   if (!navigator.geolocation) { geoError.value = 'GPS not supported'; return }
-  geoWatchId = navigator.geolocation.watchPosition(
+
+  // ── Step 1: One-shot first fix with a generous timeout ──
+  navigator.geolocation.getCurrentPosition(
     (pos) => {
-      const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-      riderPos.value = newPos
-      geoError.value = null
-
-      // Capture heading for icon rotation (only update if valid)
-      if (pos.coords.heading !== null && pos.coords.heading >= 0) {
-        currentHeading.value = pos.coords.heading
-      }
-
-      if (riderMarker) {
-        // Smooth animation to new position (like Google Maps)
-        animateMarkerTo(riderMarker, newPos, riderAccuracyCircle)
-
-        // Update icon with current heading
-        riderMarker.setIcon(vehicleIcon(currentHeading.value, isNavigating.value, selectedVehicle.value))
-      }
-
-      // Update accuracy circle radius if available
-      if (riderAccuracyCircle && pos.coords.accuracy) {
-        riderAccuracyCircle.setRadius(Math.min(pos.coords.accuracy, 100))
+      gpsFirstFixDone = true
+      _onGpsSuccess(pos)
+      // ── Step 2: Once we have the first fix, start continuous watch ──
+      _startWatch()
+    },
+    (err) => {
+      // TIMEOUT on first fix = user hasn't answered permission yet, or GPS is warming up.
+      // Don't show the error dialog — just start the watch directly and let it handle it.
+      if (err.code === 3 /* TIMEOUT */) {
+        _startWatch()
+      } else {
+        // PERMISSION_DENIED (code 1) or POSITION_UNAVAILABLE (code 2) → show dialog
+        geoError.value = err.code === 1
+          ? 'Location permission denied. Please allow location access in your browser settings.'
+          : err.message
       }
     },
-    (err) => { geoError.value = err.message },
-    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
+  )
+}
+
+function _onGpsSuccess(pos) {
+  const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+  riderPos.value = newPos
+  geoError.value = null
+
+  if (pos.coords.heading !== null && pos.coords.heading >= 0) {
+    currentHeading.value = pos.coords.heading
+  }
+
+  if (riderMarker) {
+    animateMarkerTo(riderMarker, newPos, riderAccuracyCircle)
+    riderMarker.setIcon(vehicleIcon(currentHeading.value, isNavigating.value, selectedVehicle.value))
+  }
+
+  if (riderAccuracyCircle && pos.coords.accuracy) {
+    riderAccuracyCircle.setRadius(Math.min(pos.coords.accuracy, 100))
+  }
+}
+
+function _startWatch() {
+  if (geoWatchId !== null) return // already watching
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      gpsFirstFixDone = true
+      _onGpsSuccess(pos)
+    },
+    (err) => {
+      // Only show error dialog for PERMISSION_DENIED (code 1) or if we never got a fix
+      // TIMEOUT errors (code 3) during watch are transient on mobile — ignore them
+      if (err.code === 1) {
+        geoError.value = 'Location permission denied. Please allow location access in your browser settings.'
+      } else if (err.code === 2 && !gpsFirstFixDone) {
+        geoError.value = 'GPS signal unavailable. Please move to an open area.'
+      }
+      // code 3 (TIMEOUT) during watch = temporary signal loss, do NOT show dialog
+    },
+    { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 }
   )
 }
 
@@ -875,6 +926,18 @@ onUnmounted(() => {
   if (supaChannel) supabase.removeChannel(supaChannel)
   if (map) map = null
 })
+
+// ── Retry button handler ───────────────────────────
+// Clears the error state, clears the old watch, and restarts GPS fresh
+function retryLocation() {
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId)
+    geoWatchId = null
+  }
+  geoError.value = null
+  gpsFirstFixDone = false
+  startGPS()
+}
 
 // ── Dark Map Style ────────────────────────────────
 const DARK_STYLE = [

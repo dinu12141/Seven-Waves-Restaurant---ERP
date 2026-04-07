@@ -949,20 +949,16 @@ async function generateQR(table) {
 }
 
 function getAppBaseUrl() {
-  // 1. localStorage override (set by admin via the QR dialog URL box)
+  // 1. localhost override stored by admin in the QR dialog URL box
   const override = localStorage.getItem('sw_qr_base_url')
   if (override) return override.replace(/\/$/, '')
-  
-  // 2. If running on a public domain (like Vercel), ALWAYS use the current origin
-  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.hostname.startsWith('192.168.')) {
-    return window.location.origin
-  }
 
-  // 3. Build-time env var (set in .env — best for LAN deployments)
+  // 2. Build-time env var — HIGHEST priority for production
+  //    Set VITE_APP_PUBLIC_URL = https://erp.sevenwaves.lk in Vercel env vars
   if (import.meta.env.VITE_APP_PUBLIC_URL)
     return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
-    
-  // 4. Current browser origin fallback
+
+  // 3. Current browser origin fallback (works for any deployment)
   return window.location.origin
 }
 
