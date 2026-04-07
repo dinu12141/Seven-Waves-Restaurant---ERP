@@ -13,11 +13,11 @@
       <div class="sys-kpi-label">{{ title }}</div>
       <div class="sys-kpi-value">{{ value }}</div>
       <div v-if="trend || meta" class="sys-kpi-meta">
-        <span v-if="trend" :class="trendClass" class="q-mr-xs">
+        <span v-if="trend" :class="trendClass" class="sys-kpi-trend">
           <q-icon v-if="trendIcon" :name="trendIcon" size="12px" class="q-mr-xs" />
           {{ trend }}
         </span>
-        <span v-if="meta" class="ellipsis">{{ meta }}</span>
+        <span v-if="meta" class="sys-kpi-meta-text">{{ meta }}</span>
       </div>
     </div>
   </div>
@@ -118,40 +118,52 @@ const trendClass = computed(() => {
   z-index: 1;
 }
 
-// Label — 10px, same as main dashboard
+// Label — uppercase title
 .sys-kpi-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.8px;
   margin-bottom: 6px;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-// Value — auto-shrink for long numbers
+// Value — allow wrapping for long currency values
 .sys-kpi-value {
   font-size: 22px;
   font-weight: 900;
   color: #ffffff;
-  line-height: 1;
+  line-height: 1.2;
   margin-bottom: 8px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-// Meta / trend row
+// Meta / trend row — wrap instead of truncate
 .sys-kpi-meta {
   font-size: 11px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.4;
+}
+.sys-kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.sys-kpi-meta-text {
+  white-space: nowrap;
 }
 .sys-kpi-meta--neutral {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 // Watermark icon
@@ -164,3 +176,4 @@ const trendClass = computed(() => {
   color: white !important;
 }
 </style>
+
