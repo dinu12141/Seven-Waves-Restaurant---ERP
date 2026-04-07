@@ -6,15 +6,16 @@ import prettierSkipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 export default [
   {
-    /**
-     * Ignore the following files.
-     * Please note that pluginQuasar.configs.recommended() already ignores
-     * the "node_modules" folder for you (and all other Quasar project
-     * relevant folders and files).
-     *
-     * ESLint requires "ignores" key to be the only one in this object
-     */
-    // ignores: []
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.quasar/**',
+      '**/src-tauri/target/**',
+      '**/src-tauri/icons/**',
+      '**/public/**',
+      '**/*.json',
+      '**/*.md',
+    ],
   },
 
   ...pluginQuasar.configs.recommended(),
