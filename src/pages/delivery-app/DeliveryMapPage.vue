@@ -21,90 +21,146 @@
       <span class="nav-eta-dot">·</span>
       <div class="nav-eta-dist">{{ navRouteInfo?.distanceText || '—' }}</div>
       <span class="nav-eta-dot">·</span>
-      <div class="nav-eta-arrival">ETA {{ etaText }}</div>
+      <div class="nav-eta-arrival">{{ etaText }} arrival</div>
       <div style="flex:1" />
       <button class="nav-exit-btn" @click="exitNavigation">
-        <q-icon name="close" size="20px" />
+        <q-icon name="close" size="18px" />
         <span>Exit</span>
       </button>
     </div>
 
-    <!-- ═══ NAVIGATION MODE: Delivery action button ═══ -->
-    <div v-if="isNavigating && currentDelivery" class="nav-delivery-action">
-      <q-btn
-        v-if="currentDelivery.status === 'accepted'"
-        unelevated no-caps color="cyan-8" icon="local_shipping"
-        label="Mark Picked Up" class="nav-del-btn"
-        :loading="store.processing"
-        :disable="currentDelivery.orderStatus !== 'ready'"
-        @click="handlePickUp"
-      />
-      <q-btn
-        v-else-if="currentDelivery.status === 'picked_up'"
-        unelevated no-caps color="green-8" icon="check_circle"
-        label="Confirm Delivery" class="nav-del-btn"
-        :loading="store.processing"
-        @click="showConfirm = true"
-      />
+    <!-- ═══ NAVIGATION MODE: Destination Card + Actions (Floating) ═══ -->
+    <div v-if="isNavigating && currentDelivery" class="nav-dest-card">
+      <div class="nav-dest-row">
+        <q-icon name="person" color="blue-4" size="18px" />
+        <span class="nav-dest-name">{{ currentDelivery.customer_name || 'Customer' }}</span>
+        <q-space />
+        <span class="nav-dest-amt">Rs. {{ Number(currentDelivery.orderTotal || 0).toLocaleString() }}</span>
+      </div>
+      <div class="nav-dest-addr">
+        <q-icon name="place" color="red-5" size="16px" />
+        <span>{{ currentDelivery.delivery_address }}</span>
+      </div>
+
+      <div v-if="currentDelivery.status === 'accepted' || currentDelivery.status === 'picked_up'" class="q-pt-sm q-mt-md" style="border-top: 1px solid rgba(255,255,255,0.1)">
+        <q-btn
+          v-if="currentDelivery.status === 'accepted'"
+          unelevated no-caps color="cyan-8" icon="local_shipping" text-color="black"
+          label="Mark Picked Up" class="nav-del-btn"
+          :loading="store.processing"
+          :disable="currentDelivery.orderStatus !== 'ready'"
+          @click="handlePickUp"
+        />
+        <q-btn
+          v-else-if="currentDelivery.status === 'picked_up'"
+          unelevated no-caps color="green-8" icon="check_circle" text-color="black"
+          label="Confirm Delivery" class="nav-del-btn"
+          :loading="store.processing"
+          @click="showConfirm = true"
+        />
+      </div>
     </div>
 
-    <!-- ═══ NORMAL MODE: Top Search Bar ═══ -->
-    <div v-if="!isNavigating" class="dmap-topbar">
-      <button class="dmap-back-btn" @click="$router.back()">
-        <q-icon name="arrow_back" size="22px" color="dark" />
-      </button>
-      <div class="dmap-searchbar" @click="openSearch">
-        <q-icon name="search" size="18px" color="grey-6" class="search-ico" />
-        <div v-if="!searchActive" class="dmap-searchbar__text">
-          <span v-if="searchMode === 'dest' && destAddress" class="dmap-searchbar__value">{{ destAddress }}</span>
-          <span v-else-if="searchMode === 'origin' && customOriginAddress" class="dmap-searchbar__value">{{ customOriginAddress }}</span>
-          <span v-else class="dmap-searchbar__placeholder">{{ searchMode === 'dest' ? 'Search destination…' : 'Search starting point…' }}</span>
+    <!-- ═══ NORMAL MODE: Route Planner Top Bar ═══ -->
+    <div v-if="!isNavigating" class="gmap-top-planner">
+      <div class="gmap-planner-fields">
+        <button class="gmap-back-btn" @click="$router.back()">
+          <q-icon name="arrow_back" size="24px" color="dark" />
+        </button>
+        
+        <div class="gmap-route-stack">
+          <!-- Left line & icons -->
+          <div class="gmap-route-icons">
+            <q-icon name="radio_button_unchecked" size="14px" color="grey-6" />
+            <div class="gmap-route-dots"><span></span><span></span><span></span></div>
+            <q-icon name="place" size="18px" color="red-6" />
+          </div>
+          
+          <!-- Inputs -->
+          <div class="gmap-route-inputs">
+            <!-- Start Location -->
+            <div class="gmap-input-wrap" @click="openOriginSearch">
+              <input 
+                v-if="searchActive && searchMode === 'origin'" 
+                ref="searchInputEl" 
+                v-model="searchQuery" 
+                class="gmap-input-real" 
+                placeholder="Choose start location" 
+                autocomplete="off" spellcheck="false" 
+                @input="onInput" @keydown.esc="closeSearch" 
+              />
+              <span v-else class="gmap-input-fake" :class="{'placeholder': !customOriginAddress && !riderPos}">
+                {{ customOriginAddress || (riderPos ? 'Your location' : 'Choose start location') }}
+              </span>
+            </div>
+            
+            <div class="gmap-input-divider"></div>
+            
+            <!-- Destination Location -->
+            <div class="gmap-input-wrap" @click="openSearch">
+               <input 
+                v-if="searchActive && searchMode === 'dest'" 
+                ref="searchInputEl" 
+                v-model="searchQuery" 
+                class="gmap-input-real" 
+                placeholder="Choose destination" 
+                autocomplete="off" spellcheck="false" 
+                @input="onInput" @keydown.esc="closeSearch" 
+              />
+              <span v-else class="gmap-input-fake" :class="{'placeholder': !destAddress}">
+                {{ destAddress || 'Choose destination' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Swap Icon -->
+          <button class="gmap-swap-btn" @click="swapLocations">
+            <q-icon name="swap_vert" size="24px" color="grey-8" />
+          </button>
         </div>
-        <input
-          v-if="searchActive"
-          ref="searchInputEl"
-          v-model="searchQuery"
-          class="dmap-searchbar__input"
-          :placeholder="searchMode === 'dest' ? 'Search destination…' : 'Search starting point…'"
-          autocomplete="off"
-          spellcheck="false"
-          @input="onInput"
-          @keydown.enter.prevent="acceptFirst"
-          @keydown.esc="closeSearch"
-        />
-        <button v-if="searchActive && searchQuery" class="dmap-clear-btn" @click.stop="clearSearch">
-          <q-icon name="close" size="16px" color="grey-7" />
+      </div>
+      
+      <!-- Vehicle Modes -->
+      <div v-if="!searchActive" class="gmap-vehicle-tabs">
+        <button class="gmap-v-tab" :class="{active: selectedVehicle === 'car'}" @click="selectedVehicle = 'car'">
+          <q-icon name="directions_car" size="22px"/>
+        </button>
+        <button class="gmap-v-tab" :class="{active: selectedVehicle === 'motorcycle'}" @click="selectedVehicle = 'motorcycle'">
+          <q-icon name="two_wheeler" size="22px"/>
+        </button>
+        <button class="gmap-v-tab disabled">
+          <q-icon name="directions_transit" size="22px"/>
+        </button>
+        <button class="gmap-v-tab disabled">
+          <q-icon name="directions_walk" size="22px"/>
         </button>
       </div>
     </div>
 
     <!-- ═══ Suggestions Sheet ═══ -->
-    <transition name="fade-slide">
-      <div v-if="searchActive" class="dmap-suggestions">
-        <div class="dmap-sug-item dmap-sug-item--loc" @click="useCurrentLocation">
-          <div class="dmap-sug-ico dmap-sug-ico--blue">
-            <q-icon name="my_location" size="18px" color="white" />
-          </div>
-          <div class="dmap-sug-body"><span class="dmap-sug-main">Your location</span></div>
+    <div v-if="searchActive" class="gmap-suggestions" @mousedown.prevent>
+      <div class="gmap-sug-item" @click="useCurrentLocation">
+         <div class="gmap-sug-ico">
+           <q-icon name="my_location" size="20px" color="blue-7" />
+         </div>
+         <div class="gmap-sug-body">
+           <span class="gmap-sug-main">Your location</span>
+         </div>
+      </div>
+      <div v-if="suggestions.length" class="gmap-sug-sep" />
+      <div v-for="s in suggestions" :key="s.place_id" class="gmap-sug-item" @click="pickSuggestion(s)">
+        <div class="gmap-sug-ico">
+          <q-icon name="schedule" size="20px" color="grey-6" />
         </div>
-        <div v-if="suggestions.length" class="dmap-sug-sep" />
-        <div
-          v-for="s in suggestions" :key="s.place_id"
-          class="dmap-sug-item" @click="pickSuggestion(s)"
-        >
-          <div class="dmap-sug-ico">
-            <q-icon name="schedule" size="18px" color="grey-6" />
-          </div>
-          <div class="dmap-sug-body">
-            <span class="dmap-sug-main">{{ s.structured_formatting?.main_text || s.description }}</span>
-            <span class="dmap-sug-sub">{{ s.structured_formatting?.secondary_text || '' }}</span>
-          </div>
-        </div>
-        <div v-if="searchQuery.length > 1 && !suggestions.length && loadingSuggestions" class="dmap-sug-loading">
-          <q-spinner-dots size="22px" color="blue-6" />
+        <div class="gmap-sug-body">
+          <span class="gmap-sug-main">{{ s.structured_formatting?.main_text || s.description }}</span>
+          <span class="gmap-sug-sub">{{ s.structured_formatting?.secondary_text || '' }}</span>
         </div>
       </div>
-    </transition>
+      <div v-if="searchQuery.length > 1 && !suggestions.length && loadingSuggestions" class="gmap-sug-loading">
+        <q-spinner-dots size="22px" color="blue-6" />
+      </div>
+    </div>
 
     <!-- ═══ GPS Badge ═══ -->
     <div v-if="!isNavigating && !searchActive" class="dmap-gps-badge" :class="gpsBadgeClass">
@@ -128,6 +184,7 @@
         v-if="!isNavigating && !searchActive && (destReady || currentDelivery)"
         class="dmap-panel"
         :class="{ 'dmap-panel--open': panelOpen }"
+        v-touch-swipe.mouse.up.down="handlePanelSwipe"
       >
         <div class="dmap-panel__handle-zone" @click="panelOpen = !panelOpen">
           <div class="dmap-panel__handle-bar" />
@@ -253,23 +310,34 @@
       </q-card>
     </q-dialog>
 
-    <!-- Location Required Dialog -->
-    <q-dialog v-model="locationRequiredDialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
-       <div class="bg-white flex flex-center column q-pa-xl text-center full-height">
-          <q-icon name="location_off" size="80px" color="red-5" class="q-mb-md" />
-          <div class="text-h5 text-weight-bold q-mb-sm text-dark">Location Access Required</div>
-          <div class="text-body1 text-grey-8 q-mb-sm">{{ geoError || 'Please enable your GPS and allow location access to continue.' }}</div>
-          <div class="text-caption text-grey-6 q-mb-xl">
-            <span v-if="geoError && geoError.includes('denied')">
-              Go to your browser Settings → Site Settings → Location → Allow this site.
-            </span>
-            <span v-else>
-              Make sure your device GPS is turned ON, then tap "Retry Location".
-            </span>
+    <!-- Location Required Dialog (Google Maps Style) -->
+    <q-dialog v-model="locationRequiredDialog" persistent>
+      <q-card class="gmap-loc-dialog">
+        <q-card-section class="q-pa-lg">
+          <div class="text-h6 text-weight-bold text-white q-mb-md" style="line-height:1.2">To continue, your device will need to use Location Accuracy</div>
+          <div class="text-body2 text-grey-4 q-mb-md">The following settings should be on:</div>
+          
+          <div class="gmap-loc-item">
+            <q-icon name="location_on" size="24px" color="light-blue-4" />
+            <div class="text-body2 text-white">Device location</div>
           </div>
-          <q-btn color="primary" unelevated rounded label="Retry Location" @click="retryLocation" size="lg" class="full-width q-mb-md" />
-          <q-btn flat color="grey-7" label="Go Back" @click="$router.back()" class="full-width" />
-       </div>
+          <div class="gmap-loc-item q-mt-md">
+            <q-icon name="gps_fixed" size="24px" color="light-blue-4" />
+            <div class="text-caption text-grey-4 text-justify" style="line-height:1.4">
+              Location Accuracy, which provides more accurate location for apps and services. To do this, Google periodically processes information about device sensors and wireless signals from your device to crowdsource wireless signal locations. These are used without identifying you to improve location accuracy and location-based services and to improve, provide and maintain Google's services based on Google's and third parties' legitimate interests to serve users' needs.
+            </div>
+          </div>
+          
+          <div class="text-caption text-grey-5 q-mt-md">
+            You can change this at any time in location settings. <a href="#" class="text-light-blue-4 text-weight-medium" style="text-decoration:none">Manage settings</a> or <a href="#" class="text-light-blue-4 text-weight-medium" style="text-decoration:none">learn more</a>
+          </div>
+        </q-card-section>
+        
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps color="grey-3" label="No, thanks" @click="$router.back()" style="border-radius:24px; border:1px solid #5f6368" />
+          <q-btn unelevated no-caps color="light-blue-4" text-color="black" label="Turn on" @click="retryLocation" style="border-radius:24px; font-weight:600" />
+        </q-card-actions>
+      </q-card>
     </q-dialog>
 
   </div>
@@ -319,6 +387,14 @@ const navSteps = ref([])          // google DirectionsStep[]
 const currentStepIdx = ref(0)
 const navRouteInfo = ref(null)    // live-updated {durationText, distanceText, duration}
 const selectedVehicle = ref('motorcycle')
+
+watch(selectedVehicle, () => {
+  if (destLatLng) {
+    routeInfo.value = null
+    destReady.value = false
+    calcRoute(destLatLng).then(() => { destReady.value = true })
+  }
+})
 
 // ── Non-reactive map handles ──────────────────────
 let map = null, riderMarker = null, destMarker = null
@@ -768,11 +844,34 @@ async function pickSuggestion(place) {
   } catch (e) { console.warn('[Places] error:', e) }
 }
 
-function acceptFirst() { if (suggestions.value.length) pickSuggestion(suggestions.value[0]) }
-function openSearch() { searchMode.value = 'dest'; searchActive.value = true; searchQuery.value = destAddress.value; nextTick(() => searchInputEl.value?.focus()) }
-function openOriginSearch() { searchMode.value = 'origin'; searchActive.value = true; searchQuery.value = customOriginAddress.value; nextTick(() => searchInputEl.value?.focus()) }
+function swapLocations() {
+  const tempAddr = customOriginAddress.value
+  const tempPos = customOriginLatLng.value
+  
+  customOriginAddress.value = destAddress.value
+  customOriginLatLng.value = destLatLng
+  
+  destAddress.value = tempAddr
+  destLatLng = tempPos
+  
+  if (destLatLng) {
+    routeInfo.value = null
+    destReady.value = false
+    calcRoute(destLatLng).then(() => { destReady.value = true })
+  }
+}
+
+function handlePanelSwipe(info) {
+  if (info.direction === 'up' && !panelOpen.value) {
+    panelOpen.value = true
+  } else if (info.direction === 'down' && panelOpen.value) {
+    panelOpen.value = false
+  }
+}
+
+function openSearch() { searchMode.value = 'dest'; searchActive.value = true; searchQuery.value = ''; nextTick(() => searchInputEl.value?.focus()) }
+function openOriginSearch() { searchMode.value = 'origin'; searchActive.value = true; searchQuery.value = ''; nextTick(() => searchInputEl.value?.focus()) }
 function closeSearch() { searchActive.value = false; suggestions.value = [] }
-function clearSearch() { searchQuery.value = ''; suggestions.value = []; searchInputEl.value?.focus() }
 function useCurrentLocation() {
   closeSearch()
   if (searchMode.value === 'dest') {
@@ -809,16 +908,18 @@ function startNavigation() {
     // Center map with rider at bottom-1/3 of screen
     centerMapOnRider(riderPos.value)
   }
-
+  store.isNavigating = isNavigating.value
+ 
   // Periodic reroute every 10s for live navigation behavior
   clearInterval(rerouteTimer)
   rerouteTimer = setInterval(() => {
     if (destLatLng && riderPos.value) calcRoute(destLatLng)
   }, 10000)
 }
-
+ 
 function exitNavigation() {
   isNavigating.value = false
+  store.isNavigating = false
   clearInterval(rerouteTimer)
   // Restore map to normal: north-up, no tilt, vehicle marker (green)
   if (map) {
@@ -1025,56 +1126,123 @@ const DARK_STYLE = [
 // In-nav delivery action (floats above ETA strip)
 .nav-delivery-action {
   position: absolute;
-  bottom: 80px; left: 16px; right: 16px;
+  bottom: 154px; left: 16px; right: 16px;
   z-index: 200;
 }
 .nav-del-btn {
-  width: 100%; height: 46px;
-  border-radius: 12px !important; font-weight: 700 !important;
+  width: 100%; height: 48px;
+  border-radius: 24px !important; font-weight: 800 !important;
+  font-size: 16px !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 // In-nav recenter FAB
 .nav-recenter-fab {
-  position: absolute; right: 16px; bottom: 90px; z-index: 200;
+  position: absolute; right: 16px; bottom: 210px; z-index: 200;
+}
+
+.nav-dest-card {
+  position: absolute;
+  bottom: 80px; left: 12px; right: 12px;
+  background: rgba(26, 30, 46, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 14px 16px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: slideUp 0.4s ease-out;
+}
+.nav-dest-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.nav-dest-name { font-size: 16px; font-weight: 700; color: #fff; }
+.nav-dest-amt { font-size: 16px; font-weight: 800; color: #4ade80; }
+.nav-dest-addr {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 14px; color: #94a3b8; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 // ══════════════════════════════════════════════════
-//  NORMAL MODE UI (Search bar, panel, etc.)
+//  NORMAL MODE UI (Google Maps Style Planner)
 // ══════════════════════════════════════════════════
-.dmap-topbar {
-  position: absolute; top: 12px; left: 12px; right: 12px;
-  z-index: 100; display: flex; align-items: center; gap: 10px;
+.gmap-top-planner {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 200;
+  background: white; border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding-bottom: 8px;
+  padding-top: env(safe-area-inset-top);
 }
-.dmap-back-btn {
-  width: 44px; height: 44px; border-radius: 50%; border: none;
-  background: #fff; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer; flex-shrink: 0;
+.gmap-planner-fields {
+  display: flex; align-items: stretch; padding: 12px 16px;
 }
-.dmap-searchbar {
-  flex: 1; height: 50px; background: #fff; border-radius: 25px;
-  display: flex; align-items: center; padding: 0 14px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.25); cursor: pointer; gap: 8px; min-width: 0;
-  .search-ico { flex-shrink: 0; }
-  &__text { flex: 1; min-width: 0; overflow: hidden; }
-  &__value { font-size: 16px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-  &__placeholder { font-size: 16px; color: #9aa0a6; }
-  &__input { flex: 1; border: none; outline: none; font-size: 16px; color: #202124; background: transparent; min-width: 0; }
+.gmap-back-btn {
+  background: none; border: none; padding: 12px 4px 12px 0; cursor: pointer; display: flex; align-items: flex-start;
 }
-.dmap-clear-btn { border: none; background: transparent; padding: 4px; cursor: pointer; display: flex; align-items: center; border-radius: 50%; &:hover { background: #f1f3f4; } }
+.gmap-route-stack {
+  flex: 1; display: flex; align-items: stretch; gap: 12px; margin-left: 8px;
+}
+.gmap-route-icons {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px; padding-top: 14px; padding-bottom: 14px; gap: 4px;
+}
+.gmap-route-dots {
+  display: flex; flex-direction: column; gap: 4px; flex: 1; align-items: center; justify-content: center;
+  span { width: 4px; height: 4px; background: #bdbdbd; border-radius: 50%; }
+}
+.gmap-route-inputs {
+  flex: 1; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #dadce0; border-radius: 8px;
+}
+.gmap-input-wrap {
+  height: 44px; display: flex; align-items: center; padding: 0 12px; cursor: text;
+}
+.gmap-input-divider {
+  height: 1px; background: #f1f3f4; margin: 0 12px;
+}
+.gmap-input-fake {
+  font-size: 15px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  &.placeholder { color: #5f6368; }
+}
+.gmap-input-real {
+  border: none; outline: none; background: transparent; font-size: 15px; color: #202124; width: 100%;
+}
+.gmap-swap-btn {
+  background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; padding-left: 8px;
+}
 
-.dmap-suggestions {
-  position: absolute; top: 74px; left: 0; right: 0; bottom: 0; z-index: 99; background: #fff; overflow-y: auto;
+// Vehicle Tabs
+.gmap-vehicle-tabs {
+  display: flex; justify-content: space-around; padding: 10px 16px 0;
 }
-.dmap-sug-item {
-  display: flex; align-items: center; gap: 16px; padding: 12px 20px; cursor: pointer;
-  &:active, &:hover { background: #f8f9fa; }
+.gmap-v-tab {
+  background: none; border: none; padding: 6px 20px; cursor: pointer;
+  border-radius: 20px; transition: 0.2s; color: #5f6368; display: flex; align-items: center; justify-content: center;
+  &.active { background: #cce4fc; color: #1a73e8; }
+  &.disabled { opacity: 0.4; pointer-events: none; }
 }
-.dmap-sug-ico { width: 40px; height: 40px; border-radius: 50%; background: #f1f3f4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; &--blue { background: #1a73e8; } }
-.dmap-sug-body { flex: 1; min-width: 0; }
-.dmap-sug-main { font-size: 16px; font-weight: 500; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.dmap-sug-sub  { font-size: 14px; color: #70757a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-top: 2px; }
-.dmap-sug-sep  { height: 1px; background: #e8eaed; margin: 0 20px; }
-.dmap-sug-loading { display: flex; align-items: center; justify-content: center; padding: 32px; }
+
+// Suggestions
+.gmap-suggestions {
+  position: absolute; top: 160px; left: 0; right: 0; bottom: 0; z-index: 199;
+  background: #f8f9fa; overflow-y: auto; padding-top: 8px;
+}
+.gmap-sug-item {
+  display: flex; align-items: center; padding: 14px 20px; cursor: pointer; background: white;
+  &:hover, &:active { background: #f1f3f4; }
+}
+.gmap-sug-ico {
+  width: 36px; height: 36px; border-radius: 50%; background: #f1f3f4;
+  display: flex; align-items: center; justify-content: center; margin-right: 16px;
+}
+.gmap-sug-body {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+.gmap-sug-main { font-size: 16px; color: #202124; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmap-sug-sub { font-size: 13px; color: #5f6368; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmap-sug-sep { height: 1px; background: #e0e0e0; margin: 0 20px; }
+.gmap-sug-loading { padding: 20px; display: flex; justify-content: center; }
 
 .dmap-gps-badge {
   position: absolute; top: 74px; left: 14px; z-index: 50;
@@ -1126,10 +1294,10 @@ const DARK_STYLE = [
   display: flex; gap: 8px; width: 100%; margin-bottom: 6px;
 }
 .dmap-v-opt {
-  flex: 1; height: 40px; border: 1.5px solid #dadce0; border-radius: 10px; background: #fff;
+  flex: 1; height: 44px; border: 1.5px solid #dadce0; border-radius: 12px; background: #fff;
   color: #5f6368; display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: all 0.2s;
-  &.active { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
+  &.active { background: #e8f0fe; border: 2px solid #f9ab00; color: #1a73e8; }
 }
 .dmap-nav-btn {
   flex: 1; height: 46px; border: none; border-radius: 10px; background: #1a73e8; color: #fff;
@@ -1154,4 +1322,12 @@ const DARK_STYLE = [
 .slide-up-enter-active, .slide-up-leave-active { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s; }
 .slide-up-enter-from { transform: translateY(100%); opacity: 0; }
 .slide-up-leave-to  { transform: translateY(100%); opacity: 0; }
+
+// Google Maps style dialog
+.gmap-loc-dialog {
+  background: #202124 !important; border-radius: 16px !important; width: 100%; max-width: 380px;
+}
+.gmap-loc-item {
+  display: flex; align-items: flex-start; gap: 16px;
+}
 </style>

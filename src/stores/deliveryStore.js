@@ -29,6 +29,7 @@ export const useDeliveryStore = defineStore('delivery', () => {
   const loading = ref(false)
   const isConnected = ref(false)
   const processing = ref(false)
+  const isNavigating = ref(false)
 
   // New assignment alert (sound + visual)
   const newAssignmentAlert = ref(null)
@@ -560,6 +561,7 @@ export const useDeliveryStore = defineStore('delivery', () => {
     loading,
     isConnected,
     processing,
+    isNavigating,
     newAssignmentAlert,
     // Computed
     branchId,

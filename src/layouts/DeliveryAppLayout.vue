@@ -1,7 +1,7 @@
 <template>
   <q-layout view="hHh lpR fFf" class="delivery-app-layout mobile-app-shell">
     <!-- ── Top Bar ───────────────────────────────────────────── -->
-    <q-header class="delivery-top-bar mobile-top-bar">
+    <q-header v-if="!store.isNavigating" class="delivery-top-bar mobile-top-bar">
       <q-toolbar class="delivery-toolbar">
         <!-- Brand -->
         <q-icon name="delivery_dining" size="22px" color="purple-4" />
@@ -82,7 +82,7 @@
     </q-page-container>
 
     <!-- ── Bottom Navigation ─────────────────────────────────── -->
-    <q-footer class="delivery-bottom-nav mobile-bottom-nav">
+    <q-footer v-if="!store.isNavigating" class="delivery-bottom-nav mobile-bottom-nav">
       <div class="bottom-nav-bar mobile-nav-bar">
         <router-link
           v-for="tab in tabs"

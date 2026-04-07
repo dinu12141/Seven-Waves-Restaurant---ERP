@@ -25,6 +25,10 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   const notifications = ref([]) // waiter_notifications
   const pointsLedger = ref([]) // last 20 waiter_points_ledger entries
 
+  // Real-time Sound settings
+  const soundEnabled = ref(localStorage.getItem('waiter_sound_enabled') !== 'false')
+  let audioCtx = null
+
   // Admin impersonation
   const impersonateProfileId = ref(null) // waiter_profiles.id to view as
   const allWaiters = ref([]) // all active waiter profiles (admin only)
@@ -582,9 +586,22 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Realtime ─────────────────────────────────────────────────────────────
   let kotChannel = null
 
+  /**
+   * Initialize AudioContext on user gesture to 'unlock' audio on mobile.
+   */
+  function primeAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {})
+    }
+  }
+
   function _playToneSequence(tones) {
+    if (!soundEnabled.value) return
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
       const playTone = (freq, type, startTime, dur, vol = 0.5) => {
         const osc = audioCtx.createOscillator()
         const gain = audioCtx.createGain()
@@ -609,25 +626,34 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     }
   }
 
-  // Urgent triple-ding: used for NEW customer orders
+  // Urgent ringing: used for NEW customer orders
   function _playNewOrderSound() {
     _playToneSequence([
-      [1318.51, 'sine', 0,   0.25, 0.6],
-      [1046.5,  'sine', 0.2, 0.25, 0.6],
-      [1318.51, 'sine', 0.4, 0.4,  0.7],
+      [880, 'square', 0,   0.15, 0.08],
+      [880, 'square', 0.2, 0.15, 0.1],
+      [1320, 'square', 0.4, 0.3,  0.12],
     ])
   }
 
-  // Calm double-ding: used for KOT READY alerts
+  // Bright double-ding: used for KOT READY alerts
   function _playKotReadySound() {
     _playToneSequence([
-      [880, 'sine', 0,   0.3, 0.45],
-      [660, 'sine', 0.3, 0.4, 0.45],
+      [1046.5, 'triangle', 0,   0.2, 0.2],
+      [1318.5, 'triangle', 0.2, 0.4, 0.2],
     ])
   }
 
   // Keep alias so calling code is backward-compatible
   function _playAlertSound() { _playNewOrderSound() }
+
+  function toggleSound() {
+    soundEnabled.value = !soundEnabled.value
+    localStorage.setItem('waiter_sound_enabled', String(soundEnabled.value))
+    if (soundEnabled.value) {
+      primeAudio()
+      _playKotReadySound()
+    }
+  }
 
   function subscribeRealtime() {
     let branchId = authStore.currentBranch?.id
@@ -836,6 +862,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     readyCount,
     currentPoints,
     totalOrdersServed,
+    soundEnabled,
     // actions
     initialize,
     initializeAs,
@@ -850,5 +877,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     loadReadyAlerts,
     loadPointsLedger,
     loadAllWaiters,
+    toggleSound,
+    primeAudio,
   }
 })

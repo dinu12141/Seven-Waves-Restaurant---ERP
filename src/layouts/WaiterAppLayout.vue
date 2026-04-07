@@ -59,15 +59,15 @@
           <q-tooltip>{{ uiStore.themeLabel }}</q-tooltip>
         </q-btn>
 
-        <!-- Notification Bell (unified alerts + notifs hub) -->
+        <!-- Real-time Sound Toggle -->
         <q-btn
           flat
           round
           dense
-          icon="notifications"
-          :color="totalAlertCount > 0 ? 'orange-8' : pushSubscribed ? 'orange-6' : 'grey-7'"
+          :icon="store.soundEnabled ? 'notifications_active' : 'notifications_off'"
+          :color="store.soundEnabled ? 'orange-8' : 'grey-7'"
           class="q-ml-sm"
-          to="/waiter-app/notifs"
+          @click="store.toggleSound"
         >
           <q-badge
             v-if="totalAlertCount > 0"
@@ -77,19 +77,7 @@
           >
             {{ totalAlertCount > 9 ? '9+' : totalAlertCount }}
           </q-badge>
-          <q-tooltip v-if="!pushSubscribed">Enable push notifications</q-tooltip>
-        </q-btn>
-
-        <!-- Push enable button (if not subscribed) -->
-        <q-btn
-          v-if="!pushSubscribed && pushPermission !== 'denied'"
-          flat round dense
-          icon="notifications_off"
-          color="grey-5"
-          class="q-ml-xs"
-          @click="requestPushPermission"
-        >
-          <q-tooltip>Tap to enable push alerts</q-tooltip>
+          <q-tooltip>{{ store.soundEnabled ? 'Alerts ON' : 'Alerts MUTED' }}</q-tooltip>
         </q-btn>
 
         <!-- User avatar + logout menu -->
@@ -204,23 +192,33 @@
       </div>
     </transition>
 
-    <!-- ── Push Permission Banner ─────────────────────────────────────────── -->
-    <transition name="banner-slide">
-      <div
-        v-if="!pushSubscribed && pushPermission === 'default' && store.isOnShift"
-        class="push-prompt-banner"
-      >
-        <q-icon name="notifications_active" size="18px" class="q-mr-sm" color="orange-8" />
-        <span class="push-banner-text">Enable push alerts for new orders!</span>
-        <q-btn
-          flat dense no-caps size="sm"
-          color="orange-8"
-          label="Enable"
-          class="q-ml-auto"
-          @click="requestPushPermission"
-        />
-      </div>
-    </transition>
+    <!-- ── New Order Alert Dialog ── -->
+    <q-dialog v-model="showNewOrderAlert" position="top">
+      <q-card class="order-alert-card">
+        <q-card-section class="row items-center q-pb-none">
+          <q-icon name="room_service" color="orange-9" size="24px" class="q-mr-sm" />
+          <div class="text-h6 text-orange-10">New Order Alert!</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-sm">
+          <div class="alert-msg">You have <span class="text-weight-bolder">{{ orderStore.newOrderAlertCount }}</span> new customer order(s) waiting.</div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pb-sm q-pr-sm">
+          <q-btn
+            unelevated
+            rounded
+            color="orange-9"
+            label="View Orders"
+            to="/waiter-app/inbox"
+            icon-right="arrow_forward"
+            v-close-popup
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- ── Page Content ──────────────────────────────────────────────────── -->
     <q-page-container>
@@ -263,7 +261,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar, Notify } from 'quasar'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
@@ -278,7 +276,15 @@ const authStore = useAuthStore()
 const uiStore = useUIStore()
 const $q = useQuasar()
 const router = useRouter()
-const { pushPermission, pushSubscribed, subscribePush, checkExistingSubscription } = useWaiterPush()
+const { checkExistingSubscription } = useWaiterPush()
+
+// Real-time alerts
+const showNewOrderAlert = ref(false)
+watch(() => orderStore.newOrderAlertCount, (newVal, oldVal) => {
+  if (newVal > oldVal) {
+    showNewOrderAlert.value = true
+  }
+})
 
 // PWA install prompt
 const deferredInstallPrompt = ref(null)
@@ -293,16 +299,24 @@ onMounted(async () => {
   document.body.classList.add('mobile-app-active')
 
   // Check session — redirect to login if unauthenticated
-  // authStore is already initialized by boot/auth.ts, so use cached data
   if (!authStore.isAuthenticated) {
     router.replace('/auth/login')
     return
   }
 
-  // Ensure authStore has branches (should already be cached/loaded by boot)
+  // Ensure authStore has branches
   if (!authStore.branches.length) {
     await authStore.fetchUserData()
   }
+
+  // Prime audio on first user touch (to unlock AudioContext on iOS/Android)
+  const primeAudioOnce = () => {
+    store.primeAudio()
+    document.removeEventListener('click', primeAudioOnce)
+    document.removeEventListener('touchstart', primeAudioOnce)
+  }
+  document.addEventListener('click', primeAudioOnce)
+  document.addEventListener('touchstart', primeAudioOnce)
 
   // Initialize waiter app store (skip if already loaded — prevents re-fetch on hot nav)
   if (!store.profile) {
@@ -311,15 +325,6 @@ onMounted(async () => {
 
   // Check existing push subscription (non-blocking)
   checkExistingSubscription().catch(() => {})
-
-  // Auto-prompt for push permission after 6 seconds if not yet subscribed
-  if (!pushSubscribed.value && typeof Notification !== 'undefined' && Notification.permission === 'default') {
-    setTimeout(() => {
-      if (!pushSubscribed.value) {
-        requestPushPermission()
-      }
-    }, 6000)
-  }
 
   // PWA install prompt listener
   window.addEventListener('beforeinstallprompt', handleInstallPrompt)
@@ -346,22 +351,6 @@ async function installPwa() {
     Notify.create({ type: 'positive', message: '✅ App installed! Open it from your home screen.', position: 'top', timeout: 4000 })
   }
   deferredInstallPrompt.value = null
-}
-
-async function requestPushPermission() {
-  const userId = authStore.user?.id
-  if (!userId) return
-  const result = await subscribePush(userId)
-  if (result.success) {
-    Notify.create({
-      type: 'positive',
-      icon: 'notifications_active',
-      message: '🔔 Push notifications enabled!',
-      caption: 'You will be alerted for new orders and kitchen updates.',
-      position: 'top',
-      timeout: 4000,
-    })
-  }
 }
 
 function initials(name) {
@@ -812,6 +801,29 @@ const tabs = computed(() => [
 .banner-slide-leave-from {
   max-height: 60px;
   opacity: 1;
+}
+
+// ─── New Order Alert Card ──────────────────────────────────────────────────
+.order-alert-card {
+  width: 92%;
+  max-width: 400px;
+  border-radius: 20px !important;
+  background: #fff;
+  border: 1px solid rgba(234, 88, 12, 0.2);
+  box-shadow: 0 12px 40px rgba(234, 88, 12, 0.25) !important;
+  margin-top: 12px;
+}
+.body--dark .order-alert-card {
+  background: #1e293b;
+  border-color: rgba(234, 88, 12, 0.3);
+}
+.alert-msg {
+  font-size: 15px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+.body--dark .alert-msg {
+  color: #94a3b8;
 }
 
 // ─── Mobile Safe Area Support ─────────────────────────────────────────────────
