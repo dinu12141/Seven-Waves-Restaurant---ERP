@@ -1,0 +1,925 @@
+﻿node.exe : npm warn 
+Unknown project config 
+"shamefully-hoist". This 
+will stop working in the 
+next major version of npm.
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (n  
+  pm warn Unknow...vers   
+ ion of npm.:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+npm warn Unknown project 
+config "node-linker". 
+This will stop working in 
+the next major version of 
+npm.
+
+ .d88888b.
+d88P" "Y88b
+888     888
+888     888 888  888  8888b.  .d8888b   8888b.  888d888
+888     888 888  888     "88b 88K          "88b 888P"
+888 Y8b 888 888  888 .d888888 "Y8888b. .d888888 888
+Y88b.Y8b88P Y88b 888 888  888      X88 888  888 888
+ "Y888888"   "Y88888 "Y888888  88888P' "Y888888 888
+       Y8b
+
+
+ Build mode............. spa
+ Pkg quasar............. v2.18.7
+ Pkg @quasar/app-vite... v2.5.2
+ Pkg vite............... v8.0.1
+ Debugging.............. no
+ Publishing............. no
+
+ App ΓÇó Using quasar.config.js in "esm" format
+ App ΓÇó Using .env files: .env
+ App ΓÇó  WAIT  ΓÇó Compiling of SPA UI with Vite in progress...
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0193f3c27e015b0bafc27c3a3415ad59735982a3701d596c2e5b7244f30a7124.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\01f24f374e4bbbd6d9d2199ddc73260a053a4f55fd10fff03e8b369c303c9a55.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\01fc96110f38b98580d2f8e0a4d341dc205a3ae7b35d11c3e93019ed92987c8c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0233cf832e49e286da555b3a64fa361804c55afd72f0397a1f746e9ff45e7e90.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\02a7fe662adc924cc2ffa6c64f95d2fed4bcd6cde0a669f3f0101b242a299207.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\02b4111fc69cff48d6215528cc3c64068761438d5ea0bfc2578a68f114846f2a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\051f714b1df1d025a357efc176d90a86f9e36f6b76bb31a6b60b68e344c80f00.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0569f80f9e4a32c679072c40063dee3aac9623cc66c1bef6d6935e9ce7ecac23.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\07dae82157ef82a260ce0695b1264c9f4a52025771201ed6481f0667bff65995.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\084d9b8763847f59cc8716774f4157a3c3003d69c51d0939eb00e8aa00cc1870.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\08c67e8b900f39f662e9e430499aaac22e4bf133b27757f50c093f0427145667.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\08dfb7e85b3f35edc79311582c6565061a1489c5135a4b843e5395ab293c4b4f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\091c5c46fb6656f3fc8868647803fb71eb29022816e13a6c39a9e6a56fa750e1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0aaba9eb58922ff9d0984a3451609f9d4c6f1bee030aa3590bbf7f398e6165c4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0c00506a3772f63066dc8dc647442cf8fa7fe3c443a63e88334bd322a1834204.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0c31535f3e13082eee03e32542c5717646025cdb378d9218c143aebe9bb02a67.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0cb5e4e9879f56734f5efaf35c25a26d3b4ec287a5f3e99ce227d3ecb66e0f0b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0d96a169a2241c1f7234a61cd8e9f9fdb2fb9a260906071abcabab8c15f1cdc5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0ea7d56ebb0c4eb9ed764e4990f217ec5b334eb17d7f2a56a351f522e48850b2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0f7d92ab735de0ad96f6f87b32c485ddc0e325e0b652ced04ab015f7f3a3c6b9.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\0fb30863442442c2e92d87d35a598536273972fea96152541e8de52f5f3062c6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\102c0f4d0ec2f2eef7327053597b7f612a5891ebb1c00af01de041ce0bad5a01.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\10aa57ce9711b1231944a5c4e9884d32e0ee2c1d20a6cabe0fc1049101091fa1.js
+  1:5  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\10fc22e933845c1b1ab634a761754f0e1fd49150126b1764739254f47e4270bc.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\116f4534f07ffcf780320d1a343a253d887805cb859ba39711a0b7c46271b298.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\11c26ee6cf57d37daada869ff542e884f5ac313d62a27a1228b8da8391db36e7.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\11f36a37edb36226aa7d53eaaece83e7a44eec75cbbed795037c8aae2f83c19a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\13489be439353499aa274ba913f6d2dd6d02a8e67f8fa478676172611fecbef5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\14150571781371869fd4c780d11df16efd8b0d9f0129f370350867bea9027a2b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\14c279386731225e55ecbc47b88064a30159236f9d9b942bc8dcf21c045c61ca.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\14e280226b664441d584753494843fc2a16f3ecd953f11b19046ef452c5ead77.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\15f648186c1a4c2ff6ec81046b6266946443aec6ffc5f174e1ef778582a2c0b0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\169397ae00c1b0047bfc5d4b9c0acf181dfecfc5564f2b9c8fe793d03849bf92.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\16b92fa5b76c9c9970574d761160a6ab68f1266bffdcde2e8d1e9bdbf18fa58b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\180cf577be2d1a62329072e0d0bd977f2dd393984b6f66eed606036b6ca08f5b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\183fb6f84103a2edc34669707659c29151d2e9c61186bb57f11fefd41f0303ac.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\193722aeea280b6b7aa2829289584462f6ff1153eae0f2559c997ed0bffb688b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\194f34275311f40771203066ee2ddb2d7a3e44265f006aa13434e5c220e28690.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1a1212125e9c31116255f82fc72237de7df65c1f884748d62318b53f4c758863.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1a48f82115048b59d2f920ea14934f31932936a27ac5b06117f5049a156532c8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1ae61c8ab5c00eff2160302beaef926bddcfd03e179aacd2e36cbcd8f932d1b2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1bae62b53246c4e4c253fb270f024c940eec5f863dfe2b847bd7872a335b1e36.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1c5241c8e7304984eaafb9cd4139c3c1e6ee68f62b7bec6cfe8cd80489ffc655.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1c8099eefef9bc45eaf75e7e9470fd7867198e001d29fa226f29225105918bfa.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1f352a94a8f0b0523f89e3302e6f348be36820e0c7d429d0be45e1dbe6a3981b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\1faba0fef2173bee8445d9c8a8dea3741cb3dbb8775f332349159e31bb1d028c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\201d4e55269c9c71585339e10c6f741e5eec940c4c9a31d5aeaf9ef6633f3807.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\20ce871113a46b2dbc482f32ba191ae24573e5009f65ceb418e862fa5165887d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2100b13b85dde91a88b5e331f404ef4f7b582f0adfccb92bee45b98c77ab22a2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\21c5de5453b573c7521e4a0f906a75f7bc8c7a15b43d6e03bbc45254b70d2759.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2202c7f1bd1fc29906a92c84efbb4f8b0fa71a178f9f748f2b32c6dd16095c4b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\226360af486cf63c9022fe26336541520df7decd0f3636c0ae7eb63d896db2d9.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\255493c15557f3b839990c10314c895f3d33f10fc324ebccdeb241fe5c99bb9b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\26f1aa6bd31f55bc60e47a1fda45c10e13f943a42ab1161bfedfb97bb7f5d63f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\278ed31ce890a87aaaa7dae9077f56f29f096affabd96e7c16bf0b39d5011ded.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\27b0ee6ffe14330a51f4ab1e5473419150c0016f9f1660c7e98c2f3d95391295.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\29460c3a6c8f5721c15188dadd521aedf1814ae242b26a1e0a9bcd1ac22c1dec.js
+  1:2  error  Parsing error: Unexpected character ' '
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\29aa059a401eb42c531f87fbf8b2a991613111f4f85e6631713419ffd8897f45.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\29f799dbd1e088a59810282db3617b90c6f6d7caf2e57717113e8d75d60bafb0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2a6f4cce715ba619f87eb4463c69baf13c7edf8d8f4676f5b4d68d8589173506.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2ab7bb98da33f56cecb04a2d362c91916cba0ebdf3c7c8b8374105f30b8a32e8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2afc2376867b6af3e24681c44ca0d6a621798cb2b68cff3d39326ff2352e942d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2bbbf750256932f5f32dc221fc8e09b45997fb83228317a24fe19f661bb4bb3f.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2c005860638fa6ddac48b3cd11906256a425cce8d340b4165ea209a69fb94dd1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2d62acb94714d49c0b4d342449a11cf9f58e269c08a4ded65b7821218f750d5c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2e72f25605b467428421f3fa982e39f1dfb17b7624d5106d496ca9632c169eb1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2e936a9cd95e58d9780c143d8d86f06f074995654ef10516daa19181eeb71b4e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2ed611130bfd87a702f1012ecf30bb64da9f927e084847b38f680177b19664ae.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2f2c39ec0911410e173d74a171d6c4582329d9e0a2580f8ad7188afebe79dbf0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\2ffab9045ddb14c50fea55a66bd07894e864fe420f1055bc838bf3673096dca2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\30a90a07614018b32c9599f7aed4503e1c3dda968ddd8c1d2ba2271b86eb675c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\30d630f5848eeadc0448e76342325c638ad4ab66eaa0df1c3123a22c35415df4.js
+  1:4  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\31157e56ec164a9ab89b74a8ab991b695d7921823a3394ade868c46fb0d1ff1a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\31a7e3fc7a5f6eea9667ecaa3c957f6377755c08b981a47273469ebfadec97d0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3214bdbca04ccb716c8703fa385ddf1ed9f06cf223d9ad22f5435a0b90d184be.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\323f1d079ef466932d1d86b4d0992a4cf68c1a6eaf309984e98cdcb31a9a9fff.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3331437e007522d264a6ad3920ebd8cba503c0cfea8f763e0f103500f2705849.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\342a032b2a93a34149b818b1563e4b21fedd7d0d372238a9970fd2828f0c3aae.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\35073ee711fd009bb75f739b88c22807f1fabcdc64136a72401af9fbf5810fdf.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\388d668c325f3d2c2bb1b02fd027adcbb9f650666398cd059b806ea54f167ed8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\38991da94cdc35faa213d3c9f1d96fbc644e0b64ad6f04016c730103343ace46.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\396231765bc618f2c1761832a1e51821f837d41932fa0d116553a509339f3470.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\39c27fae7ae0b31de969466655d8749dcd1f418b2c3c367049f96e8e62293db1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3af7cba221a6ae9585ea64424f3c156ee220c869146a5cc352d90bd74d672408.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3bc66806b0966fdd73faa3536ef0e1bae130b733e5d07b53dbadd1f9b99e5f30.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3bd1844bcce6456f8a86aabacfc4fb030d5c1970dd2eba71ad73c9f12fccf55c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3dd45e03fa6c6296634d0c73872a3111431dabf7b435f226c96b6a15c0cdeecb.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3e4db5e44d54afb725586a4dc017f4ae2d22aed99732ad5165f336419527a19a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3eca5b268facd33d60f36efe94fd755faf5a79765cd893708ca4929f87865323.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3f3ba877032d1e1cbd43dc26cc92b1dd842e62e39be6b729ecf7717245959158.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3f5c8fe481b68b151a996ac6363ee2d7c45b512ec8a1c50228d9a1aea95cd817.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\3f757079b49312ec9a6e4a1bd7aa08a9811d04ac62fa204d4548aa661b6e1c30.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\42cacd20823c48e78a5f8dffdc8967531a2fc36e1bb922595a575ac670f17fee.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\441654fffb359b6f8f7dd56bb55a30592df9c8ea0c2d7e478539b8bc96a6f7d6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\44c868b0db70f324e8d8c515fe45913b8fd29cc5abfff17861fecebd82b8cd2e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4607c3e6592f2c6208f98fca842882554eaa0ebdaa6c00e8d8fd1c1e29b00149.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\47a6599ed8dfe48c064c2834dba7d938f5aa855a3bb64c43bdac8ca80f037fb5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4828e24b6decb334981d4e308c47d6b65ee48d046760618bfc226145df8939ab.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\49ab27f8c985e7e216f43d85920650b28f48ccc896b244a0cb64dbd7ec7aab51.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4a73080c303304a49817572fa7aa3480314215aa807228bfd5ac31713b1124b0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4b13d9dbe9b7aa73e2cc361372b3652bc7579ad73c8cafb1c8c1b9b5dd84fde9.js
+  1:4  error  Parsing error: Unexpected token ~
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4b7c41d728f0fd9f1f83068f81847b9c46328a4f8b70b4d26b597acbda93441a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4bc4b4ad9e3372f68944c857c5089abb47870fbbea692bdbce09622a8df047d3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4bc6c9ff99f5b8b38b6296a4456d7ce882853afd44da26182eb8e28188611a7c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4c0254946b7b480018cd17250a65f0798aea095f4078b505785188ff45a9a5f7.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\4f89d1bc80865872a8274fa4eaba882b5c276ff8dc12b179eeed79e4fdb3c754.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\523fdd77d26a609bada8d3f04e2b519f4208fa6be5dbaef5f33574f172704d3b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5283310795e713122527c58816b079ed94c88bcf462bb3c6ab15e145fab21c60.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\52e85bc7d8e19a3ac44ba1dd52ff7269165e544b0f29f679d768e0cf82899f39.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\54dd0e9af57d790dda9e4ab36a464ec0353952f73f502fa3f18cf5ab406ec5fc.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\57dc087b5ebf51d42521826743adc840df8d6637a61c70b6a7d873831125c166.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\58fbcd1bee1b5035db939c94a7e846f3731c1e9f69637c3df192637e7100c9d5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5ab583dace057c8dae006648b6e56e184b592d195fee4123550e8ef78e4d1834.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5af820369aa30157a60873bbd965c91e0897fc340a7f9385b9f25facbe4dad9f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5bcb3a13da0870c339b3fc28744077ac36effaf38d9e803e2628c2f9de52b9b9.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5c1b91234c2731baceafea84a535012e3bf07c761f6a4531331b79b66d4d2b6e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\5eb0f0e65e2406f6f00ddb00b326745d5efbb81f8ef63b2fb8da7f56539f8938.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\601fab00077552090b736543ba1577b69ff9e89796ffb14f3452b43a7c640810.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\607823e22bb82e5a66bd973b75d0f295c1d50500f179148b4670983269946f99.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\624a2eb715e2e195df9f1e1de7a05e32dec36644a5f6109a67db4e717cb9bf31.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\63212c158860d568dfe75666518636d19e1375b03e07e6ad705e5768782e9823.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\64444b191c568641f571b7fd87ea570a82d5b6c7d75f1966061597760fd08e4d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\650e24a98ec3b05dd21e81aafb4b9e0e2f974097389d92e14b9b2358e44b2f33.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\65f7dc7415729b8b89d22dd1095b7f1219c772eb42c484fab1d81202371fa6c5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\660b37640b5aced1b267a37d05bebec193a9ee95522ab50dc20bd183077ce59f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6666a52a46251777a92df3e0b76de311a5f79ddfcc8cdac4c41ec390914a094b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\668a735cb67d81b83b3ed83ae51d797147f8946fe197f719ee874177cc232a04.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\66c9ddf84d8cc0664d630dce8ec68aa8cdd6a859fbc759e7d86941f01e92eb84.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\682284655b898c4eed727a0076704cfae6542d6827b6f2e0cec4b2d4f0f122da.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\68f8a20b3282eee0a190c430548d5557bb65d8b97d89875a5e8aa7b225c9788e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6a603aa3c9acce9086ed63946d0949512ed91da30f8fc3e5a713e50e76a08eab.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6b0cf09914e526f03a82640d7cc3ea716bf7fe27c49f2626167ca332b0bd48df.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6c03e937f02d0be534442170e00cfcf8d2a309a373b6f4bb1cf55b67e97041d0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6d1652a5b967911e5d6c389949185dd878f5da8f4d5b971daded1b50baaf7f4f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6dc601e29ef3d975bb9971eeac46911c4f9ecd26ec9b0176a733d82221414875.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\6f2b24ecb7e9e370fba83a14682f86ee5b5b89c9fd54e1a2b178bdd60919fda6.js
+  1:3  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\70c36422b1689f27c04dc395d2313b274622b563b9efe96ee397b998e87c8d2d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7175d605c10440bda02f503556a06af4a8d1bb1e44975ed31b9ab3119d9d6296.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\71ce1c326fcb1131038d655d375b0cfa2279792bbb1864685b3efc88a966d4e1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\720e84f2ecbdbfb922245b757340a8a11fba2c988449f7dcd0dd5ecaf1c31b1b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7212a5c8321f8354e7e5582ebf0f4936843ac79a8ae9a38fceb6455fa1cd29b6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\721c8c59f6a27c5d5d02df1718592440458bd31c3fa853d6ef9d8e4bda48e432.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\726d5f65abb349bdcf6d3125a6a96f27df47704c3615d8e803dad81bf4c1153b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\72dd188c87a7cbc50c7808ed3b626aac8b6faa2fac48ebb3c48491dfea430833.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\73bd5016295c97015109ed4362ae96445eb7a10efd7fd5085ede31e1596d17b6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7458afdcee794798101e15cffbb6de60d6d489948e455317810f266dbcbe424b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\74786037412609020540529eab35747c7c79c012ca336500e01095a9fd05834e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\74f104a81a100969bd61ba41e1290c014edee939bb0ee6456c0d23d11846ea30.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7543254407e55c5a0c6d68e82b40701861d1ca540781dd9d92d20004d6ef3cb1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\764eeca8dd814eae9e790855b43a3a53aa32e7981e3a69894adb4ca34f62fb14.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\77c5880e7063b2c189889d3a57253eeb1f3491837c6a952d0b51a3aa316dbd63.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\788d3f8b3a0830eab064c313e80606b8c1b9bea760103e8c1cf699fd8979a6de.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\78bd9d372f60a65b5cca667a728ab21be752e3b8ec4d048926dbfc002835d866.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7b8ac247ee418606145ff7daec25336d475bc0b161cf7c72b239d68ba5f38aed.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7ec6badab57d9a8593110e0078f4ea89bf8abbbcea7aa359807f7f3b4c227c86.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7f6a431dfd7bffbf26daf6e43edcca6526af24ec75463ca47f779da9892e2f36.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\7f96637b1f4ce8840960a6de4b1162bb2b3a21a8534f879af9a88b7c16226fa1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\811da6a87b8cb41ba96099eb44b34f58fe22b2ab824af7c7f094788794867ff7.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\82285511caee60544faa7ac4a022544e7b160485d3ebc14984e7a9c911085190.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\837977c6aca88dc27add533dc49b08e464f38841f4d4e023c875c0c0396d2335.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\83e43bcb665303cee14622e23e00b0f7e130f80f8c4fe6d40ee6810518a7af88.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8436a9f9eefcb57e78251728da0287e260b53bbecf668c192a5cbf3a4e04968f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\859a24dae09a31d273987881302d21df8b0d11a5cb8d225d2b4fe6fb22a1a65f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\869af0d551ba9fa4a5d06d39eaea99bb1fe681b3e715d3ab270b6b2f1e209c9f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\883bad5bc21b28ddf22ef24920097a173d4ae5211c4a2fc20439604de9f304f2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\88f61e334aa793f8e22eb7c4c5629bb69550af51032f78e84daf2914143639c1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\898c9f0edb8f5db3e5fa9226d677b7f05215a65364415cc67a3c646458f0b2ee.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8a665831b622817d5ff8d0cc1ad59f7eb3d03f2b3cd78b98b2120eabd2b8dc0a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8aa720609225580a9a94dd0a1ac9b2a5d42579bd48e0d565aaa23b14ce47eb34.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8abd0056f23632d93a6e43e40520b7e838799c8854a4a305a79e57e90212c53a.js
+  1:337  error  Parsing error: Unexpected character ' '
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8b31e3a2a31ff8665716ab2460f0a84a460ea09e565c71388ef25eab27e06be6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8ceda6db7bb699493def4a100124458e09e6b702bf5017c980047e0aa5a7b120.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8d38a8a16fb62a306efccb54304eafda4b992884188b81b79f1c34428784ee24.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\8ef6a0bf8e2641b8e25fd89dd86c11efebae6c4e09c5ff84754bcc973f7ddd64.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\902874d2d05fe1da7d92f8aefcb3b7f73d41b7e16ca9b1fb405224c02d68d7c8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\916b010da326ac2cc9b128fb75da0938a6c7b44518149c099e643374d7e306e3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\91da25dec07c6def58c1ac10314785e26ca5656c9a7b3d114c13a4a649fe386c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\92647395d6f2bcb6f3f62ab261ff465748e64a1422a9dfe6c86af57ed7630097.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\928d3fe5d597f9a8c9054bed04f301df71c1c12f17f5d0f6bc921c33dcc9bd8e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\94de3f07abb1d4abb5ddf188aaf0820591e20f8739daf3a230ea8ef4ef15b014.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\951297b7d624aaa573f71711900cd89eb3200c3274e79cdc2ae70b5acedf89b5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\975efc398c008df6893486256d00ce8afd39ea5da20fbed98a217fd41ad94c8e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9761881d9588411ef58e0899835f00f0416fbda67a2917a76a2fae9c54feeec5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9847239fd94ce3263255ad4794f5d3df600fd5d9660d80e24b4a020c3c139672.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\993fd4cb8f5b8b9ccfffc2891cc6f012630c3b5d175e6d3468483476b59fd307.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\99afe0981fa803ecfa9cc94f6dbedacace87599ae3a1852e622353db55e0c3e6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9acb76fbd6c942b701207f023c4e16752a36a2b21baa965d03bfd87bb959e7d8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9acf3f6358a1dc801868da31285468173834b840f8fff98a3d917e46a778fb7c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9be3deee3385eafcf76ff223210a396ca83988883bd317c543d51125b1cf2ea1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9e75654da83c6d9fcf7922107cc93e8e3d617c3e21cf9214f061cf8d96c05659.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\9f98ca22c6e8401d757b3a479f6a1204328a177b47ae4a9725075bed152216f5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a23e19c84558cba843562661c936e3d01b259bd311da3d85f25c654cddf8f6f5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a2e010c8388c1b60a82e9ad08c3c211c8f3e98d0bd9869872f728c660c38dc24.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a30a1be8f68ffad10d0e54180c7408cb488579af00cdbcdf35b596597166f6f1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a3d21ed7cdbcab9d01351e16744988a84b3129a08c76a49552d738a24e4347b3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a656395a0cec7c36ea3056bcd934d6db33ceb0c3ad411b95a103b9130d0676f4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a67368166103dbe56e2a7e0ae765647d591431ca2109dfd4dbcc3f1f0b65d882.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a69e2c82a9790d16b2388e2f3b3457d46a6358750af6515ec45a0b309b0c428c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a763975fefb5fb238a827832254f367c6cf992fdb854a043302cf8da6428a88f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a7e222eaf730d1b17e10a4c9f9535e6dda10860c42addb693d9c20cc22c195ea.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a7f5373a10269644f5cb6ee98808652fac70ef63a015f85c784c55249d88a675.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\a8d784f08680f80ca27247e696a453814cd669046f4bb8f761d40ad293279be7.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ac7d3b4ec684965bc7d3689a44c5d62668f31d2045b314a9438f9aae43613a23.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ad486a1b43ac0f1b581e88629fc8da55bbe14aaeaa1712257d727cd24583029d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\adb6a9c759bdaa2967da4b218903a9231d56e959c8f093790210cb2a5c85b105.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b237eded6183c63d7d661cf3c64384ad14ba39e4acf0c2fc10ac262031c330c4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b244aff6076e5b64bea7559b68f126309458969271eae3227170504a911e0fc6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b382d9fb48aa1d08cbc9ab24ffa16c8c51fcf7703b0e35ec7a31f9f94ffc3022.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b395fe875730277b920d09d2a48f2097fff93a47f7b39710e7cf8bc39b56f9f3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b54468dc02edd865b9d0c847fa3a662c167b2f63bfc8ace208d2642a86d34ba1.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\b5689786467d8b4c9084af5953636d92a89d0c4a45bcc4e0054859136a69d05f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\bc54d93b492544ade6600922f042416d4208c204391f87d3ad0eb745a184b30e.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\bc84801e897a897ffd30929c66f025d9193c938a922b6049db5460c01d3bf2c3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\bcb3d768a7fc56bb1f6b8529e531cd2b338906c5bed13fc81b87b69e6331120e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\bd9c31203c46cea216ff1e7474b477b59fa6137237631d4411e03b5323833e5f.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\bedae25d948a82f868e40046a5c142a83d2263a22321d62c7b6093d6e7eb2e64.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c18dbae1aabfc2abbefbe81df827a8da98ac000b03208f2117875038c1d8d49c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c195c67b69306f6c5077984bc6e6b9d58ddbe5c3ec2815eca37af470381f76cf.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c2876135115fd4d76bdc707e9435848dce7ca605085d9bbbc8ab403b9176befc.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c3422974ef223d3fd8ff31cd730258ea3528d324c6be126deae091ffd628692c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c4000acd652b19bf189ca9eb6395303bd8bb1be42040bc363b732962646d79c1.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c4c19ba1c87038bd83edc2bc5e1223fdd05d12a4d95de557d955579ca75c1a44.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c52ee4e7843f35f49dde4521c3ee74c5ecca429f3a4eb1f87a3b7ea8daf84356.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c54655c7c174dcf293064eb6dfc786d5f45791209ef59a184f59b1c2a5d41fed.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c54b9a209470d0c0aaa45214cbfc567e49350bbaf3fd0d53706b6d87dc171402.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c5c4b5a0e8da583f6ff09ad4ed90ef4414d004d52b9ab8437cd4a2fe404f4d28.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c64a00e8e899e01580458d8138611c07f835c6f9625d50bf0cae2be5b6979c36.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c815f04175c8def583c1e0c2b5a64ca2fb042ea08bffd103fd7d3aadb04a08e7.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\c87b558143d4546ff08726d4a46dc5d1b21f3c78c3d03cbd4401213a1f78e7f3.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\cb2a65c67d1a30e35600881fc421eeac33fe4211c01dd850f5a31eb60c0da1fc.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\cc87b4f63cb3b58afbb92c43045df73fba1a5aeddc5b0f7e27a0ac83c270b764.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\cd31ba6951160c16f13aa47515d90ecd1e9a3b51acce59048b5471a88aee85f4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\cda73a197888fdcf002026cf09402075d3ee8ca26e79860a198c933480e8f3b2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ceefef82c0892f56e306ba04e05681f678302b3d585d171e7e9bba65dfe81168.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\cfabb200f4e67e7de9fd63d028e4830cbb105d4bb0ded371486a8c3d48e734f2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d11fbc66292a70307966f04488bb0564e0d16c4645d6b6a0f93027a80f51cfed.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d2f3877722d4f00d70eb1eb5368c636dffc2f281cb4f8a6f6bc8a470e134aff6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d35063018312331fd05f8def3660c6e37a6a576857c792cc229e69649e0f3768.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d3863aeb8e0df09e82f3a18a4c5f7c5e5ccd7dd5869439156b6cd6d7e49ee21e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d388d8d8af68f9ba6a8307046d95be95edcaa34422107cbf75cd7d0286012ae8.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d5c2a2b44b6a5f215896df6b0cafee6cd5bde0c3fc5ee364063f2348df1dce7d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d749bc2735fdfbd570e05f5eae9b925c69b40ecc59c7b843539fcf64593bbc56.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\d9aa563b5d2267e678255110bf3f411a1302789e9c48dbcd6d76f9dbc868283a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dad669f11718424ad6a8ef200b92f3957a5f9c81f09eabf72e2ed9e8c7e541b2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\db304a259ed1294457cbddcb95b2535a8e8ec713582e6c65162e4b5f9f6c6c9e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\db812218ab2f398cc69c66fa03d0a5a6609f7aa85616b90484b32c4441cd5ef5.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dbb320156cafe003973a6db5518174a3366b0f22436a30a08cf110293502fc95.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dbf050cf40ce8f1086b72c2b0b763015f726e31bdbaad4163870ba6e1814ec05.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dcdd490501522c8f81eb5f907759baefe948d7a97cbf016c2d010835d5053884.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dde00ce46f539f98f0d07b25e98f0fbeb467d6be8a3954ef417df1a929fa0c90.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\dec8ff65b09cf8a56203cef1761bc3265d03c1c372c2b2597c6789081b5fe392.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\df636fd128e923ae5b6229e6b6e454029b9086706f071ed000139bddb155ddb0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e102502f7fdeb80c9d5d27086121ec53ae50035758d07bc2ae8f689fd2323494.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e2b0793b54e00bacdd8a1a7f40edfbb8c9db4bb87227e6f07485ed76d9688bfb.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e358f2c2cbdfcbe57b9af51df8cf9ccb1c8e0d9dee3684c12a146cd497440c84.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e39b7ed5b965012d9984f4cec74e384695bb22f075f494c3cc56b4348d412341.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e3f8369f0c1b8c9569a18fc03b70d7991031d162539738c8c8d44d3e1da059b2.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e5aeed960b7fa9017ca8d2e15e80910a530582e9370e3f60a497696f21b02582.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e7cf51cba27965e832ae896c167622e8bf0b420c72a5b40d1a17978d6667562c.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e82446cddf756808756b1ebe729fd3d7ea41fc07173e4f9f07f09fb5e0622095.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\e98878201d7672ce27e88f9d106a5f684b50719dcf62cd77897b32825fa3a381.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ea5fe316a56a83b238bde3b96de601d54126c60fc0d27482359248caacd39bd9.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ea705c99606b4441091055bf41c13d3876e6d6450879231cd7f39bb83b0f4a93.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ec0d52b3fbb5df8fe4489a506b8f3e1ef1dd9490c4278f3fa252a3918409f186.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ed3e24ed7468cbef8ea8e08f5fc14baefe5c0e9b5b78c54f775775fc3a882f9e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ed9f8812b85957fe746bbed9a810299922ab0cd7a5622b60e752803ed378f5f4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ee57290812464cf9de61c7e35bde18bbff68b159efd0c7eb2ff7326aacd55591.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ef2a933e4437fc3d0703ea5f36c47fc07a0afb9b4a22cf0fb220f9dfc8b9a2a0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f09fa3292bf7c196e2f2a7632991e4b017c57550179d21330fabeb0d97ab4269.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f0a82a4b49ce55687885f7f244caa994a836632bc33082b779ed5056875e5aae.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f0af016c9a49217f6965523dce440aa5c85f538f9c7ce40c9deb07eb041067e4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f2505d7f616a984df9c1d2ef5bfd4a5792bcc2d57e43e943e177acc929805e8b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f2e63220f7786b5e836b59da316f8fab7521e888b838fc1c44c39014c192ed6e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f37ef679afb96462af8a838468b88e4988263d47750140c4a84f97102d96736e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f42728404e37b649ffeae272233659c5e629dddc541ba8d5cd8ea1ecb0d08469.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f437495e162065a2839e744288cc62e1284645d16ad931e34fc73cad01fdd030.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f46989cf0fa1646915f8e29343f80e2b293861d744efb6557cc657e87931d35b.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f66a50712e0a733968a9e7e91165bfcd818e8e24cc4d17285a3d8e2226bc3b2e.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f76b5861e5fff7397a6196fffd347b244013e4940c9a7d499c7a390b602ecc6a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\f89e3ac4a062b8d36f2d9fef77b1029608180e6a21aef903fd12ea678c18ce2a.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fb3164ae0bf2a215fd47b9d42348d7838e53380e98457bc6515735a308c2e4ab.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fba84b60ca9dd0adf6a62dcfc0fee091e5ba4b6c25a69b1f6aeef11d33040677.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fc58cb855cd71dfcb393159a4431d88d4a4d34d2d936903fe50c87964dde09c0.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fcfb25b0ccb9a3db61bccf416ff7fe231f97536be189e28fa82d22008193a197.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fd8d964a20cf21af2d7afc4da894748c9167cdaa54463dc7ac37272ed43f2656.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fdf2bc9d3e3bf472d9d2bdfbb488c6cfc93a0efdf3850282322ad44207ffe960.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fe0f1ca24d15f1b050782ea29a9601214bd22d747cf4eeef041231ca7d94d993.js
+  1:2  error  Parsing error: Unexpected character '∩┐╜'
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fe4a0bf6c3fe8ca0ca10d6ce6a25804d940e5396ad65a0ccb7b5c1195baea75d.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fe84fa78ac9a3cd755ee6c1272ff9dcaab6f03e5c9a4633626d86467cbb3f925.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\fe9c9bde60b972b0ab5c89d98ade841c7dea33f89d308fab3c9054e67316ddb4.js
+  1:1  error  Parsing error: Unexpected character ''
+
+C:\Users\ROG STRIX\Desktop\Restaurant ERP new\src-tauri\target\release\build\seven-waves-erp-1cdb3000a6fe7b19\out\tauri-codegen-assets\ff6d5dccb5500a6cc3efd7816ae9b17da41e839dca0e56e45156cf4dee09bdc6.js
+  1:1  error  Parsing error: Unexpected character ''
+
+Γ£û 291 problems (291 errors, 0 warnings)
+

@@ -346,10 +346,8 @@ export const useAuthStore = defineStore('auth', {
           })
         }
 
-        // ── Step 4: Profile, sync fetch ──────────────────────────
-        await this._fetchProfile().catch(() => {})
-
-        // Modules, notifications — background
+        // ── Step 4: Profile, modules, notifications — ALL background ──
+        // Don't block navigation for profile fetch — page renders instantly
         this._backgroundFetchNonCritical()
 
         // 🔐 Audit log — fire & forget
@@ -437,11 +435,8 @@ export const useAuthStore = defineStore('auth', {
           })
         }
 
-        // ── Step 5: Profile, modules, notifications ───────────────────
-        // Fetch profile SYNC (not background) so name appears instantly
-        await this._fetchProfile().catch(() => {})
-
-        // Modules and notifications remain in background to avoid blocking
+        // ── Step 5: Profile, modules, notifications — ALL background ──
+        // Don't block navigation — the profile name will appear within ~200ms
         this._backgroundFetchNonCritical()
 
         // 🔐 Audit log — fire & forget
@@ -522,15 +517,16 @@ export const useAuthStore = defineStore('auth', {
       // Clear auth cache for this user
       if (uid) clearAuthCache(uid)
 
-      // Fire Supabase signOut and wait for it to clear local storage tokens
-      await supabase.auth.signOut().catch((err) => {
-        console.error('Background signOut error:', err)
-      })
-
-      // Forcefully clear all browser storage to ensure no auto-logins happen
+      // Forcefully clear session storage immediately
       if (typeof window !== 'undefined') {
         window.sessionStorage.clear()
       }
+
+      // Fire Supabase signOut in background — DON'T await it
+      // The local state is already cleared, so the UI is already logged out
+      supabase.auth.signOut().catch((err) => {
+        console.error('Background signOut error:', err)
+      })
     },
 
     /**

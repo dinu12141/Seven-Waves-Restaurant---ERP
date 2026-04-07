@@ -85,14 +85,15 @@
 
 <script setup>
 import { useQuasar } from 'quasar'
-
-const $q = useQuasar()
+import { useRouter } from 'vue-router'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useAuthStore } from 'stores/auth'
-import { supabase } from 'src/boot/supabase'
+
+const $q = useQuasar()
 
 const store = useManagerAppStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 function initials(name) {
   if (!name) return '?'
@@ -103,13 +104,10 @@ function initials(name) {
     .join('')
 }
 
-async function logout() {
-  try {
-    store.cleanup()
-    await supabase.auth.signOut()
-  } finally {
-    window.location.href = '/auth/login'
-  }
+function logout() {
+  store.cleanup()
+  authStore.signOut()
+  router.push('/auth/login')
 }
 </script>
 

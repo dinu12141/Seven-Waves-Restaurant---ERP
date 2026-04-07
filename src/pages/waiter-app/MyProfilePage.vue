@@ -242,7 +242,6 @@
 import { computed } from 'vue'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useAuthStore } from 'stores/auth'
-import { supabase } from 'src/boot/supabase'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 
@@ -357,9 +356,9 @@ function logout() {
     cancel: { flat: true, color: 'grey-7', noCaps: true },
     ok: { color: 'red-8', noCaps: true, label: 'Log Out' },
     persistent: false,
-  }).onOk(async () => {
+  }).onOk(() => {
     store.cleanup()
-    await supabase.auth.signOut()
+    authStore.signOut()
     $router.push('/auth/login')
   })
 }

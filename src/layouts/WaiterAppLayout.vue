@@ -270,7 +270,6 @@ import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
-import { supabase } from 'src/boot/supabase'
 import { useWaiterPush } from 'src/composables/useWaiterPush'
 
 const store = useWaiterAppStore()
@@ -374,14 +373,11 @@ function initials(name) {
     .join('')
 }
 
-async function logout() {
-  try {
-    store.cleanup()
-    await supabase.auth.signOut()
-  } finally {
-    // Full page reload — clears all pinia state and redirects to login
-    window.location.href = '/auth/login'
-  }
+function logout() {
+  store.cleanup()
+  authStore.signOut()
+  // Use router.push for instant SPA navigation — no full page reload
+  router.push('/auth/login')
 }
 
 // ── Admin / Manager bypass ───────────────────────────────────────────────────

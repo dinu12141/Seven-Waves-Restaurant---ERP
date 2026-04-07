@@ -109,12 +109,13 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
 import { useAuthStore } from 'stores/auth'
-import { supabase } from 'src/boot/supabase'
 
 const store = useDeliveryStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // ── Rider display name ────────────────────
 // Priority: profile full_name → email prefix → 'Rider'
@@ -160,13 +161,10 @@ const avgTime = computed(() => {
   return `${Math.round(totalMins / completed.length)}m`
 })
 
-async function logout() {
-  try {
-    store.cleanup()
-    await supabase.auth.signOut()
-  } finally {
-    window.location.href = '/auth/login'
-  }
+function logout() {
+  store.cleanup()
+  authStore.signOut()
+  router.push('/auth/login')
 }
 </script>
 

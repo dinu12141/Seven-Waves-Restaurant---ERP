@@ -358,147 +358,96 @@ function getLogoBase64() {
 async function printReceipt() {
   if (!billRoot.value) return
 
-  // Convert logo to base64 for print window
+  // Convert logo to base64 so it renders inside the iframe
   const logoBase64 = await getLogoBase64()
 
-  // Get the HTML content but replace the logo src with base64
   let content = billRoot.value.innerHTML
   if (logoBase64) {
     content = content.replace(/src="[^"]*"/, `src="${logoBase64}"`)
   }
 
-  const printContent = `<!DOCTYPE html>
+  const printStyles = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: 80mm auto; margin: 0mm; }
+    html { width: 80mm; margin: 0; padding: 0; }
+    body {
+      width: 80mm; max-width: 80mm;
+      margin: 0 !important; padding: 0 !important;
+      background: #fff; color: #000;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px; line-height: 1.3;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .bill-print-wrap { width: 80mm; max-width: 80mm; padding: 2mm 3mm 8mm 3mm; overflow: hidden; }
+    .bill-header { text-align: center; margin-bottom: 4px; }
+    .bill-logo { width: 30mm; height: auto; margin: 0 auto 2px; display: block; }
+    .restaurant-name { font-size: 9px; font-weight: bold; text-transform: uppercase; margin-bottom: 1px; }
+    .restaurant-address { font-size: 8px; color: #333; margin-bottom: 1px; }
+    .restaurant-tel { font-size: 8px; color: #333; }
+    .bill-divider { border-top: 1px solid #000; margin: 4px 0; }
+    .bill-divider-dashed { border-top: 1px dashed #888; margin: 3px 0; }
+    .bill-meta { margin: 3px 0; }
+    .meta-row { display: flex; justify-content: space-between; font-size: 10px; padding: 0.5px 0; }
+    .meta-row-split { display: flex; justify-content: space-between; }
+    .meta-label { color: #333; }
+    .meta-value { font-weight: 600; }
+    .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .items-table thead tr th { font-size: 9px; font-weight: bold; padding: 1px 0; text-align: left; }
+    .items-table thead tr th.col-amt { text-align: right; }
+    .items-table thead tr th.col-qty { text-align: center; }
+    .items-table tbody tr td { padding: 2px 0; font-size: 10px; vertical-align: top; word-break: break-word; }
+    .col-desc { text-align: left; width: 55%; }
+    .col-qty { text-align: center; width: 10%; }
+    .col-amt { text-align: right; width: 35%; }
+    .item-name { font-weight: 600; font-size: 10px; }
+    .item-code-line { font-size: 9px; color: #555; }
+    .total-value { text-align: right; font-variant-numeric: tabular-nums; }
+    .totals-section { margin: 4px 0; }
+    .total-row { display: flex; justify-content: space-between; font-size: 10px; padding: 1px 0; }
+    .total-row-bold { font-weight: bold; font-size: 11px; }
+    .customer-info { margin: 4px 0; font-size: 10px; }
+    .bill-footer { text-align: center; font-size: 9px; color: #333; margin-top: 6px; line-height: 1.5; }
+    .footer-thanks { font-weight: bold; font-size: 10px; margin-bottom: 2px; }
+    .footer-web { font-size: 8px; color: #666; }
+  `
+
+  // ── Hidden iframe approach — works in Tauri (no window.open popup needed) ──
+  const iframeId = 'tauri-print-frame'
+
+  // Remove any leftover iframe from a previous print
+  const old = document.getElementById(iframeId)
+  if (old) old.remove()
+
+  const iframe = document.createElement('iframe')
+  iframe.id = iframeId
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:0;border:0;visibility:hidden;'
+  document.body.appendChild(iframe)
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+  if (!iframeDoc) return
+
+  iframeDoc.open()
+  iframeDoc.write(`<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>Invoice #${props.invoice?.invoice_number || 'N/A'}</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      @page {
-        size: 80mm auto;
-        margin: 0mm;
-      }
-
-      html {
-        width: 80mm;
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        width: 80mm;
-        max-width: 80mm;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff;
-        color: #000;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 11px;
-        line-height: 1.3;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      .bill-print-wrap {
-        width: 80mm;
-        max-width: 80mm;
-        padding: 2mm 3mm 8mm 3mm;
-        overflow: hidden;
-      }
-
-      .bill-header { text-align: center; margin-bottom: 4px; }
-      .bill-logo {
-        width: 30mm;
-        height: auto;
-        margin: 0 auto 2px;
-        display: block;
-      }
-      .restaurant-name {
-        font-size: 9px;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: 1px;
-      }
-      .restaurant-address { font-size: 8px; color: #333; margin-bottom: 1px; }
-      .restaurant-tel { font-size: 8px; color: #333; }
-
-      .bill-divider { border-top: 1px solid #000; margin: 4px 0; }
-      .bill-divider-dashed { border-top: 1px dashed #888; margin: 3px 0; }
-
-      .bill-meta { margin: 3px 0; }
-      .meta-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        padding: 0.5px 0;
-      }
-      .meta-row-split { display: flex; justify-content: space-between; }
-      .meta-label { color: #333; }
-      .meta-value { font-weight: 600; }
-
-      .items-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      .items-table thead tr th {
-        font-size: 9px;
-        font-weight: bold;
-        padding: 1px 0;
-        text-align: left;
-      }
-      .items-table thead tr th.col-amt { text-align: right; }
-      .items-table thead tr th.col-qty { text-align: center; }
-      .items-table tbody tr td {
-        padding: 2px 0;
-        font-size: 10px;
-        vertical-align: top;
-        word-break: break-word;
-      }
-      .col-desc { text-align: left; width: 55%; }
-      .col-qty { text-align: center; width: 10%; }
-      .col-amt { text-align: right; width: 35%; }
-      .item-name { font-weight: 600; font-size: 10px; }
-      .item-code-line { font-size: 9px; color: #555; }
-      .total-value { text-align: right; font-variant-numeric: tabular-nums; }
-
-      .totals-section { margin: 4px 0; }
-      .total-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        padding: 1px 0;
-      }
-      .total-row-bold { font-weight: bold; font-size: 11px; }
-
-      .customer-info { margin: 4px 0; font-size: 10px; }
-
-      .bill-footer {
-        text-align: center;
-        font-size: 9px;
-        color: #333;
-        margin-top: 6px;
-        line-height: 1.5;
-      }
-      .footer-thanks { font-weight: bold; font-size: 10px; margin-bottom: 2px; }
-      .footer-web { font-size: 8px; color: #666; }
-    </style>
+    <style>${printStyles}</style>
   </head>
-  <body onload="window.focus(); window.print(); setTimeout(() => window.close(), 500);">
-    ${content}
-  </body>
-</html>`
+  <body>${content}</body>
+</html>`)
+  iframeDoc.close()
 
-  const printWin = window.open(
-    '',
-    '_blank',
-    'width=320,height=700,toolbar=0,menubar=0,scrollbars=0,status=0',
-  )
-  if (!printWin) {
-    alert('Print popup was blocked. Please allow popups for this site.')
-    return
-  }
+  // Wait for iframe content to be ready, then print
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  iframe.contentWindow?.focus()
+  iframe.contentWindow?.print()
 
-  printWin.document.open()
-  printWin.document.write(printContent)
-  printWin.document.close()
+  // Clean up iframe after print dialog completes
+  setTimeout(() => {
+    const el = document.getElementById(iframeId)
+    if (el) el.remove()
+  }, 2000)
 }
 
 defineExpose({ printReceipt })

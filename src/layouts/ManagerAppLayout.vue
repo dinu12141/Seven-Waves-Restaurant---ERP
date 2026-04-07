@@ -148,7 +148,6 @@ import { useQuasar } from 'quasar'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
-import { supabase } from 'src/boot/supabase'
 
 const store = useManagerAppStore()
 const authStore = useAuthStore()
@@ -210,10 +209,8 @@ onMounted(async () => {
   // Listen for manager alert events
   window.addEventListener('mgr-alert', handleMgrAlert)
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session) {
+  // Use cached auth state — no network call needed
+  if (!authStore.isAuthenticated) {
     router.replace('/auth/login')
     return
   }
@@ -247,13 +244,10 @@ function initials(name) {
     .join('')
 }
 
-async function logout() {
-  try {
-    store.cleanup()
-    await supabase.auth.signOut()
-  } finally {
-    window.location.href = '/auth/login'
-  }
+function logout() {
+  store.cleanup()
+  authStore.signOut()
+  router.push('/auth/login')
 }
 
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
