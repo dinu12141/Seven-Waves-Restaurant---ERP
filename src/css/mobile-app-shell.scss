@@ -36,21 +36,36 @@
 
 html {
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 !important;
   padding: 0 !important;
+  overflow: hidden;
 }
 
 body {
   height: 100%;
-  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+// Quasar's root container — must also fill the full viewport so standalone
+// pages (QrEntryPage, TableLoginPage, etc.) without mobile-app-shell
+// still render full-bleed backgrounds.
+#q-app {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 // When a mobile app layout is active, lock the root to full viewport height
 // and prevent the body itself from scrolling (only the inner .q-page scrolls).
 body.mobile-app-active {
   overflow: hidden !important;
+  // Use dvh for mobile browsers where the address bar shrinks
+  height: 100vh;
+  height: 100dvh;
 
   #q-app {
     height: 100%;
@@ -78,12 +93,12 @@ body.mobile-app-active {
   display: flex !important;
   flex-direction: column !important;
 
-  // Fill the full parent height (#q-app = 100 % of body = 100 % of viewport).
-  // We use 100 % (not 100dvh) so the value matches the edge-to-edge WebView
-  // height on Capacitor Android — 100dvh can disagree with the WebView's
-  // actual coordinate space on some Android WebView builds.
+  // Fill the full parent height. Use 100% first (matches Capacitor WebView),
+  // then override with dvh for mobile PWA browsers where the address bar
+  // collapses and 100% doesn't reach the true screen bottom.
   height: 100% !important;
-  min-height: 100% !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
   overflow: hidden !important;
 
   // ── QPageContainer: the only flex child that grows ───────────────────────

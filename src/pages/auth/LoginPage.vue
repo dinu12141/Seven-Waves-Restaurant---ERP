@@ -295,7 +295,7 @@ const handleLogin = async () => {
 <style scoped>
 /* ─── Page Reset ─────────────────────────────────── */
 .login-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 0 !important;
   background: transparent !important;
   /* Prevent Quasar page min-height from triggering CLS */
@@ -304,8 +304,8 @@ const handleLogin = async () => {
 
 .login-wrapper {
   display: flex;
-  height: 100vh;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   font-family: 'Inter', 'Roboto', sans-serif;
   position: relative;
   /* Prevent child reflows from shifting surrounding content */
@@ -369,8 +369,8 @@ const handleLogin = async () => {
 .form-panel {
   width: 420px;
   min-width: 380px;
-  height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   overflow-y: auto;
   background: #ffffff;
   display: flex;
@@ -731,7 +731,7 @@ const handleLogin = async () => {
   .login-wrapper {
     flex-direction: column;
     height: auto;
-    min-height: 100vh;
+    min-height: 100dvh; /* Use dynamic viewport height for mobile */
     align-items: center;
     justify-content: center;
     padding: 24px 20px;
@@ -845,7 +845,7 @@ const handleLogin = async () => {
 /* ─── SMART BACKGROUND STRICTLY FOR ACTUAL MOBILE DEVICES ─── */
 body.mobile .login-wrapper,
 body.capacitor .login-wrapper {
-  background: #090e17 !important; /* Very dark rich blue as the base */
+  background: linear-gradient(160deg, #0d1b3e 0%, #1a2d5a 35%, #0d47a1 75%, #1565c0 100%) !important;
 }
 
 body.mobile .smart-bg-elements,

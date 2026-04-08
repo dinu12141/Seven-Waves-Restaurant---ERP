@@ -266,6 +266,9 @@ body.body--light {
   font-size: var(--erp-font-size-base) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Ensure background fills the full dynamic viewport on mobile */
+  min-height: 100vh;
+  min-height: 100dvh;
   /* NOTE: overflow-x:hidden removed — it breaks position:sticky in child elements */
 }
 

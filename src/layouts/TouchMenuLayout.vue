@@ -449,6 +449,8 @@ onUnmounted(() => {
   --q-primary: #f97316;
   --q-primary-dark: #ea580c;
   font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .touch-menu-header {

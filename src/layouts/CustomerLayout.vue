@@ -139,6 +139,8 @@ const statusIcon = computed(() => {
 .customer-layout {
   font-family: 'Inter', 'Roboto', sans-serif;
   background: #0d0d14;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .layout-header {
