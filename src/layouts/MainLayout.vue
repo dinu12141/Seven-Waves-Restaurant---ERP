@@ -329,8 +329,7 @@ function toggleLeftDrawer() {
 
 async function logout() {
   await authStore.signOut()
-  window.location.href = '/' // Triggers a full page reload which effectively cleans memory
-  window.location.reload()
+  router.push('/auth/login')
 }
 
 /** User initials for avatar */
