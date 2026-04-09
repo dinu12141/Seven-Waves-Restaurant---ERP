@@ -1,6 +1,8 @@
 {
-  "buildCommand": "quasar build",
+  "buildCommand": "npx quasar build",
+  "installCommand": "npm install",
   "outputDirectory": "dist/spa",
+  "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
