@@ -688,8 +688,8 @@ const regeneratingQr = ref(false)
 const QR_OVERRIDE_KEY = 'sw_qr_base_url'
 const qrBaseUrlOverride = ref(localStorage.getItem(QR_OVERRIDE_KEY) || '')
 const isLocalhostUrl = computed(() => {
-  // reactive to qrBaseUrlOverride so banner hides after applying override
-  if (qrBaseUrlOverride.value) return false
+  // Always show banner if an override exists so the user can easily clear it
+  if (qrBaseUrlOverride.value) return true
   const origin = window.location.origin
   return origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.')
 })

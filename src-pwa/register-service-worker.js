@@ -28,7 +28,9 @@ register(process.env.SERVICE_WORKER_FILE, {
   },
 
   updated(/* registration */) {
-    // console.log('New content is available; please refresh.')
+    // Automatically reload the page when an update is deployed to Vercel (PWA)
+    console.log('New content is available; forcefully refreshing...')
+    window.location.reload(true)
   },
 
   offline() {
