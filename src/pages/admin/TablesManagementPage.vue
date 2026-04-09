@@ -690,8 +690,8 @@ const qrBaseUrlOverride = ref(localStorage.getItem(QR_OVERRIDE_KEY) || '')
 const isLocalhostUrl = computed(() => {
   // reactive to qrBaseUrlOverride so banner hides after applying override
   if (qrBaseUrlOverride.value) return false
-  const base = import.meta.env.VITE_APP_PUBLIC_URL || window.location.origin
-  return base.includes('localhost') || base.includes('127.0.0.1')
+  const origin = window.location.origin
+  return origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.')
 })
 
 function applyQrUrlOverride() {
@@ -954,12 +954,12 @@ function getAppBaseUrl() {
   if (override) return override.replace(/\/$/, '')
 
   // 2. Build-time env var — HIGHEST priority for production
-  //    Set VITE_APP_PUBLIC_URL = https://erp.sevenwaves.lk in Vercel env vars
+  //    Set VITE_APP_PUBLIC_URL = https://app.sevenwaves.lk in Vercel env vars
   if (import.meta.env.VITE_APP_PUBLIC_URL)
     return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
 
-  // 3. Current browser origin fallback (works for any deployment)
-  return window.location.origin
+  // 3. Fallback to production domain
+  return 'https://app.sevenwaves.lk'
 }
 
 async function viewQR(table) {
