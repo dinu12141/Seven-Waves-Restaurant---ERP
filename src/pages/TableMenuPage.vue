@@ -725,6 +725,29 @@ async function loadMenu() {
           kitchen_id: i.kitchen_id,
         }
       })
+
+      // ── Preload all menu images so they're in the browser cache
+      //    before the grid is rendered. Uses a hidden Image() per URL
+      //    so the browser fetches & caches them concurrently.
+      const allImageUrls = [
+        // Category pill images
+        ...(subCatData ?? [])
+          .map((sc) => sc.image_url)
+          .filter(Boolean),
+        // Menu item images
+        ...menuItems.value
+          .map((item) => item.image)
+          .filter(Boolean),
+      ]
+
+      // Deduplicate URLs
+      const uniqueUrls = [...new Set(allImageUrls)]
+
+      // Fire-and-forget: preload in background after menu data is ready
+      for (const url of uniqueUrls) {
+        const img = new Image()
+        img.src = url
+      }
     }
   } catch (e) {
     console.error('[TableMenu] loadMenu error:', e)

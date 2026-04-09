@@ -2,7 +2,7 @@
   <q-card class="menu-item-card" v-ripple @click="handleCardClick">
     <!-- Image -->
     <div class="card-image-wrap">
-      <q-img :src="product.image" :ratio="4 / 3" class="card-image" loading="lazy">
+      <q-img :src="product.image" :ratio="4 / 3" class="card-image" loading="eager" fetchpriority="high">
         <template v-slot:loading>
           <div class="image-skeleton full-height"></div>
         </template>
