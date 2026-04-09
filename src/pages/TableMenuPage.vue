@@ -671,19 +671,6 @@ const ttlLabel = computed(() => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 })
 
-// ── Guard ─────────────────────────────────────────────────────────────────────
-function guardSession() {
-  if (!session.isAuthenticated) {
-    router.replace('/table-login')
-    return false
-  }
-  if (session.sessionToken && sessionToken.value !== session.sessionToken) {
-    router.replace('/table-login')
-    return false
-  }
-  return true
-}
-
 // ── Load table meta ───────────────────────────────────────────────────────────
 async function loadTableMeta() {
   if (!session.tableId) return
@@ -938,10 +925,45 @@ function goLogin() {
   router.replace('/table-login')
 }
 
+/**
+ * When coming from /customer/register on a fresh page load, Pinia is empty
+ * but the session token is in the URL. Validate via heartbeat and restore.
+ */
+async function tryRestoreSessionFromUrl() {
+  const urlToken = sessionToken.value
+  if (!urlToken) return false
+  try {
+    const { sendHeartbeat } = await import('src/services/tableAuthService')
+    const hb = await sendHeartbeat(urlToken)
+    if (!hb.success) return false
+    session.setSession({
+      session_token: urlToken,
+      session_id: hb.session_id ?? '',
+      table_id: hb.table_id ?? '',
+      branch_id: session.branchId ?? '',
+      expires_at: hb.expires_at ?? new Date(Date.now() + (hb.remaining_sec ?? 3600) * 1000).toISOString(),
+    })
+    localStorage.setItem('tm_session_token', urlToken)
+    return true
+  } catch (e) {
+    console.error('[TableMenu] tryRestoreSessionFromUrl error:', e)
+    return false
+  }
+}
+
 onMounted(async () => {
-  if (!guardSession()) return
+  if (!session.isAuthenticated) {
+    const restored = await tryRestoreSessionFromUrl()
+    if (!restored) {
+      router.replace('/table-login')
+      return
+    }
+  } else if (session.sessionToken && sessionToken.value !== session.sessionToken) {
+    router.replace('/table-login')
+    return
+  }
+
   await Promise.all([loadTableMeta(), loadMenu()])
-  // Start watching active orders for payment
   subscribeToActiveOrders()
 })
 

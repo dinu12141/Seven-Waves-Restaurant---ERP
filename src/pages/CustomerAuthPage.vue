@@ -563,9 +563,11 @@ async function finishAuth(isNew = false) {
   })
 
   // Redirect to menu
-  const token = session.sessionToken || localStorage.getItem('tm_session_token')
+  const token = session.sessionToken || localStorage.getItem('tm_session_token') || localStorage.getItem('qr_session_token')
   if (token) {
-    router.replace('/touch')
+    // Clean up temporary key
+    localStorage.removeItem('qr_session_token')
+    router.replace('/table/' + encodeURIComponent(token) + '/menu')
   } else {
     router.replace('/menu')
   }
@@ -574,9 +576,10 @@ async function finishAuth(isNew = false) {
 // ── Skip Auth ──────────────────────────────────────────────────────────────────
 
 function skipAuth() {
-  const token = session.sessionToken || localStorage.getItem('tm_session_token')
+  const token = session.sessionToken || localStorage.getItem('tm_session_token') || localStorage.getItem('qr_session_token')
   if (token) {
-    router.replace('/touch')
+    localStorage.removeItem('qr_session_token')
+    router.replace('/table/' + encodeURIComponent(token) + '/menu')
   } else {
     router.replace('/menu')
   }
