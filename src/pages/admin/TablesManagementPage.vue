@@ -1049,11 +1049,90 @@ function printQR() {
 }
 
 function downloadQR() {
-  const canvas = document.getElementById('qr-canvas')
-  if (!canvas) return
-  const link = document.createElement('a')
-  link.download = `QR-Table-${qrTarget.value?.table_number}.png`
-  link.href = canvas.toDataURL('image/png')
+  const qrCanvas = document.getElementById('qr-canvas')
+  if (!qrCanvas) return
+
+  const table      = qrTarget.value
+  const tableLabel = `Table ${table?.table_number ?? ''}`
+  const section    = table?.section ?? ''
+
+  // ── Composite canvas dimensions ──────────────────────────────────────────
+  const PADDING   = 40          // px whitespace on each side
+  const QR_SIZE   = 240         // px — rendered QR block
+  const W         = QR_SIZE + PADDING * 2
+  const BRAND_H   = 52          // "SEVEN WAVES" row
+  const TABLE_H   = 46          // "Table T15" row
+  const SECTION_H = section ? 28 : 0
+  const GAP1      = 12          // gap between brand and table label
+  const GAP2      = 20          // gap between label and QR
+  const GAP3      = 16          // gap between QR and instruction
+  const INSTR_H   = 24          // "📱 Scan to view menu & order"
+  const BOTTOM_P  = 32          // bottom padding
+  const H = BRAND_H + GAP1 + TABLE_H + SECTION_H + GAP2 + QR_SIZE + GAP3 + INSTR_H + BOTTOM_P + PADDING
+
+  const out = document.createElement('canvas')
+  out.width  = W * 2          // ×2 for retina/high-DPI
+  out.height = H * 2
+  const ctx  = out.getContext('2d')
+  ctx.scale(2, 2)             // draw at 1× logical, output 2×
+
+  // ── Background: white rounded card ──────────────────────────────────────
+  ctx.fillStyle = '#ffffff'
+  ctx.beginPath()
+  const R = 20
+  ctx.moveTo(R, 0)
+  ctx.lineTo(W - R, 0); ctx.quadraticCurveTo(W, 0, W, R)
+  ctx.lineTo(W, H - R); ctx.quadraticCurveTo(W, H, W - R, H)
+  ctx.lineTo(R, H);     ctx.quadraticCurveTo(0, H, 0, H - R)
+  ctx.lineTo(0, R);     ctx.quadraticCurveTo(0, 0, R, 0)
+  ctx.closePath()
+  ctx.fill()
+
+  let y = PADDING
+
+  // ── Brand ────────────────────────────────────────────────────────────────
+  ctx.font        = '700 13px Arial'
+  ctx.textAlign   = 'center'
+  ctx.letterSpacing = '4px'
+  ctx.fillStyle   = '#f97316'   // orange
+  ctx.fillText('SEVEN WAVES', W / 2, y + 16)
+  y += BRAND_H + GAP1
+
+  // ── Table number ─────────────────────────────────────────────────────────
+  ctx.font      = '800 28px Arial'
+  ctx.fillStyle = '#111827'
+  ctx.fillText(tableLabel, W / 2, y + 28)
+  y += TABLE_H
+
+  // ── Section (optional) ───────────────────────────────────────────────────
+  if (section) {
+    ctx.font      = '400 14px Arial'
+    ctx.fillStyle = '#6b7280'
+    ctx.fillText(section, W / 2, y + 16)
+    y += SECTION_H
+  }
+
+  y += GAP2
+
+  // ── QR code image ────────────────────────────────────────────────────────
+  const qrX = (W - QR_SIZE) / 2
+  // Light rounded background for the QR
+  ctx.fillStyle   = '#f9fafb'
+  ctx.beginPath()
+  ctx.roundRect(qrX - 6, y - 6, QR_SIZE + 12, QR_SIZE + 12, 12)
+  ctx.fill()
+  ctx.drawImage(qrCanvas, qrX, y, QR_SIZE, QR_SIZE)
+  y += QR_SIZE + GAP3
+
+  // ── Instruction ──────────────────────────────────────────────────────────
+  ctx.font      = '400 12px Arial'
+  ctx.fillStyle = '#374151'
+  ctx.fillText('📱 Scan to view menu & order', W / 2, y + 14)
+
+  // ── Trigger download ─────────────────────────────────────────────────────
+  const link       = document.createElement('a')
+  link.download    = `QR-Table-${table?.table_number ?? 'QR'}.png`
+  link.href        = out.toDataURL('image/png')
   link.click()
 }
 
