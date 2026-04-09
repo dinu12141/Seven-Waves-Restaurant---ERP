@@ -567,7 +567,7 @@ async function finishAuth(isNew = false) {
   if (token) {
     // Clean up temporary key
     localStorage.removeItem('qr_session_token')
-    router.replace('/table/' + encodeURIComponent(token) + '/menu')
+    router.replace('/touch')
   } else {
     router.replace('/menu')
   }
@@ -579,7 +579,7 @@ function skipAuth() {
   const token = session.sessionToken || localStorage.getItem('tm_session_token') || localStorage.getItem('qr_session_token')
   if (token) {
     localStorage.removeItem('qr_session_token')
-    router.replace('/table/' + encodeURIComponent(token) + '/menu')
+    router.replace('/touch')
   } else {
     router.replace('/menu')
   }

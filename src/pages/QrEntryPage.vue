@@ -120,8 +120,8 @@ async function resolveQr() {
     await customerStore.tryRestoreFromLocal()
 
     if (customerStore.isLoggedIn) {
-      // Already signed in, go straight to the table menu
-      router.replace('/table/' + encodeURIComponent(result.session_token) + '/menu')
+      // Already signed in, go straight to the touch menu
+      router.replace('/touch')
     } else {
       // Prompt customer to register/login (can skip)
       // Store the session token in localStorage so CustomerAuthPage can redirect back
@@ -157,7 +157,7 @@ onMounted(async () => {
     await customerStore.tryRestoreFromLocal()
 
     if (customerStore.isLoggedIn) {
-      router.replace('/table/' + encodeURIComponent(session.sessionToken) + '/menu')
+      router.replace('/touch')
     } else {
       localStorage.setItem('qr_session_token', session.sessionToken)
       router.replace('/customer/register')
