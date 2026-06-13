@@ -1,11 +1,12 @@
+/// <reference types="vite/client" />
 import { defineStore } from 'pinia'
-import { supabase } from 'src/boot/supabase'
+import { supabase } from '../boot/supabase'
 import { Session, User } from '@supabase/supabase-js'
-import { ROLE_LANDING, ROLE_PRIORITY, canAccessRoute } from 'src/config/roles'
+import { ROLE_LANDING, ROLE_PRIORITY, canAccessRoute } from '../config/roles'
 
 // ── Login Audit Helper ─────────────────────────────────────────
 function detectDevice(): { device_type: string; browser: string; os: string } {
-  const ua = navigator.userAgent
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
   let device_type = 'Desktop'
   if (/Mobi|Android|iPhone|iPod/.test(ua)) device_type = 'Mobile'
   else if (/iPad|Tablet/.test(ua)) device_type = 'Tablet'
@@ -84,12 +85,14 @@ interface AuthCache {
 }
 
 function saveAuthCache(uid: string, data: Omit<AuthCache, 'cachedAt'>) {
+  if (typeof localStorage === 'undefined') return
   try {
     localStorage.setItem(CACHE_KEY(uid), JSON.stringify({ ...data, cachedAt: Date.now() }))
   } catch {}
 }
 
 function loadAuthCache(uid: string): AuthCache | null {
+  if (typeof localStorage === 'undefined') return null
   try {
     const raw = localStorage.getItem(CACHE_KEY(uid))
     if (!raw) return null
@@ -106,11 +109,13 @@ function loadAuthCache(uid: string): AuthCache | null {
 }
 
 function clearAuthCache(uid: string) {
+  if (typeof localStorage === 'undefined') return
   try { localStorage.removeItem(CACHE_KEY(uid)) } catch {}
 }
 
 /** One-time migration: purge old-format cache keys that lack the v2 prefix */
 function purgeOldCacheKeys() {
+  if (typeof localStorage === 'undefined') return
   try {
     const toDelete: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
@@ -122,7 +127,7 @@ function purgeOldCacheKeys() {
     toDelete.forEach((k) => localStorage.removeItem(k))
   } catch {}
 }
-// Run immediately at module load
+// Run immediately at module load (safe — guarded above)
 purgeOldCacheKeys()
 
 export const useAuthStore = defineStore('auth', {
@@ -145,7 +150,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         // Setup listener — but DON'T await fetchUserData inside it
         // to avoid double-fetching on initial load
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
           console.log('[Auth] State change:', event)
 
           this.session = session
@@ -350,6 +355,9 @@ export const useAuthStore = defineStore('auth', {
         // Don't block navigation for profile fetch — page renders instantly
         this._backgroundFetchNonCritical()
 
+        // ── Step 03D: Subscribe to realtime channels ──────────────────
+        this._subscribeRealtimeChannels()
+
         // 🔐 Audit log — fire & forget
         writeLoginAudit({
           user_id: data.user.id,
@@ -439,6 +447,9 @@ export const useAuthStore = defineStore('auth', {
         // Don't block navigation — the profile name will appear within ~200ms
         this._backgroundFetchNonCritical()
 
+        // ── Step 03D: Subscribe to realtime channels ──────────────────
+        this._subscribeRealtimeChannels()
+
         // 🔐 Audit log — fire & forget
         writeLoginAudit({
           user_id: this.user?.id,
@@ -472,6 +483,8 @@ export const useAuthStore = defineStore('auth', {
             permissions: this.permissions,
             branches: this.branches,
           })
+          // Step 03D: Resubscribe with potentially updated branch/permissions
+          this._subscribeRealtimeChannels()
         })
         .catch((err) => console.error('[Auth] Background refresh error:', err))
     },
@@ -481,14 +494,14 @@ export const useAuthStore = defineStore('auth', {
       // Profile is non-critical — load in background
       this._fetchProfile().catch(() => {})
       // Load system modules in background using already-loaded branch data
-      import('src/stores/modules').then(({ useModulesStore }) => {
+      import('./modules').then(({ useModulesStore }) => {
         const modulesStore = useModulesStore()
         const companyId = this.branches?.[0]?.branches?.company_id
         if (companyId) modulesStore.fetchModules(companyId).catch(() => {})
       })
       // Initialize notification engine in background
       if (this.user?.id) {
-        import('src/stores/notifications').then(({ useNotificationStore }) => {
+        import('./notifications').then(({ useNotificationStore }) => {
           const notifStore = useNotificationStore()
           notifStore.initialize(this.user?.id).catch(() => {})
         })
@@ -503,11 +516,33 @@ export const useAuthStore = defineStore('auth', {
     async signOut() {
       const uid = this.user?.id
 
+      // ── Step 03D: Cleanup realtime channels ──────────────────────
+      import('../boot/realtime')
+        .then(({ cleanupRealtime }) => {
+          cleanupRealtime()
+        })
+        .catch(() => {})
+
       // Cleanup notifications before clearing user data
-      import('src/stores/notifications')
+      import('./notifications')
         .then(({ useNotificationStore }) => {
           const notifStore = useNotificationStore()
           notifStore.cleanup()
+        })
+        .catch(() => {})
+
+      // Cleanup Step 03A infrastructure stores
+      import('./offlineSyncStore')
+        .then(({ useOfflineSyncStore }) => {
+          const syncStore = useOfflineSyncStore()
+          syncStore.cleanup()
+        })
+        .catch(() => {})
+
+      import('./auditStore')
+        .then(({ useAuditStore }) => {
+          const auditStore = useAuditStore()
+          auditStore.cleanup()
         })
         .catch(() => {})
 
@@ -524,7 +559,7 @@ export const useAuthStore = defineStore('auth', {
 
       // Fire Supabase signOut in background — DON'T await it
       // The local state is already cleared, so the UI is already logged out
-      supabase.auth.signOut().catch((err) => {
+      supabase.auth.signOut().catch((err: unknown) => {
         console.error('Background signOut error:', err)
       })
     },
@@ -549,6 +584,24 @@ export const useAuthStore = defineStore('auth', {
       this.permissions = []
       this.profile = null
       this.branches = []
+    },
+
+    /**
+     * Step 03D: Subscribe to all realtime channels the user has permission for.
+     * Called after every successful login and branch switch.
+     */
+    _subscribeRealtimeChannels() {
+      const userId = this.user?.id
+      const branchId = this.currentBranch?.id
+      const role = this.roles[0] || 'waiter'
+
+      if (!userId || !branchId) return
+
+      import('../boot/realtime')
+        .then(({ subscribeUserChannels }) => {
+          subscribeUserChannels(userId, branchId, role, this.permissions)
+        })
+        .catch((err) => console.error('[Auth] Realtime subscribe error:', err))
     },
   },
   getters: {

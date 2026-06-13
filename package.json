@@ -10,9 +10,14 @@
   "scripts": {
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
-    "test": "echo \"No test specified\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "type-check": "vue-tsc --noEmit --skipLibCheck",
     "dev": "quasar dev",
     "build": "quasar build",
+    "build:staging": "VITE_APP_ENV=staging quasar build",
+    "build:production": "VITE_APP_ENV=production quasar build",
+    "health-check": "bash scripts/health-check.sh",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
@@ -62,6 +67,7 @@
     "prettier": "^3.3.3",
     "sharp": "^0.34.5",
     "vite-plugin-checker": "^0.11.0",
+    "vitest": "^4.1.6",
     "vue-eslint-parser": "^10.2.0",
     "workbox-build": "^7.4.0",
     "workbox-cacheable-response": "^7.4.0",

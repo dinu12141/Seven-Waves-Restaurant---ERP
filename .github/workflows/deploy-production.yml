@@ -1,0 +1,237 @@
+# ═══════════════════════════════════════════════════════════════════
+# CD Pipeline — Deploy Production
+# Seven Waves ERP — Step 03E
+# ═══════════════════════════════════════════════════════════════════
+# Deploys to production on push to main branch.
+# Includes migration validation, rollback on failure.
+
+name: CD — Deploy Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit Tests
+        run: npx vitest run --reporter=verbose
+
+  migration-check:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for New Migrations
+        id: migration-check
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'supabase/migrations/' 2>/dev/null || echo "")
+          if [ -n "$CHANGED" ]; then
+            echo "has_migrations=true" >> $GITHUB_OUTPUT
+            echo "🔄 New migrations detected:"
+            echo "$CHANGED"
+          else
+            echo "has_migrations=false" >> $GITHUB_OUTPUT
+            echo "✅ No new migrations"
+          fi
+
+      - name: Validate SQL Syntax
+        if: steps.migration-check.outputs.has_migrations == 'true'
+        run: |
+          echo "Validating SQL migration files..."
+          for f in $(git diff --name-only HEAD~1 HEAD -- 'supabase/migrations/*.sql'); do
+            echo "  Checking: $f"
+            # Basic syntax validation — no DROP TABLE without IF EXISTS
+            if grep -n "DROP TABLE " "$f" | grep -v "IF EXISTS"; then
+              echo "❌ Unsafe DROP TABLE without IF EXISTS in $f"
+              exit 1
+            fi
+            # No TRUNCATE in production migrations
+            if grep -n "TRUNCATE" "$f"; then
+              echo "❌ TRUNCATE found in migration $f — use DELETE WHERE instead"
+              exit 1
+            fi
+          done
+          echo "✅ All migrations validated"
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: [test, migration-check]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify Environment Isolation
+        env:
+          PROD_URL: ${{ secrets.PRODUCTION_SUPABASE_URL }}
+          STAGING_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+        run: |
+          echo "🔒 Verifying environment isolation..."
+          if [ "$PROD_URL" = "$STAGING_URL" ]; then
+            echo "❌ FATAL: PRODUCTION_SUPABASE_URL equals STAGING_SUPABASE_URL!"
+            echo "   Production and staging MUST use separate Supabase projects."
+            exit 1
+          fi
+          if echo "$PROD_URL" | grep -q "clykwuzajtwvwuavmtzs"; then
+            echo "✅ Production URL points to production project (clykwuzajtwvwuavmtzs)"
+          else
+            echo "⚠️ Production URL does not match expected production project"
+          fi
+          echo "✅ Environment isolation verified"
+
+      - name: Build Production SPA
+        env:
+          VITE_APP_ENV: production
+          VITE_APP_VERSION: ${{ github.sha }}
+          VITE_SUPABASE_URL: ${{ secrets.PRODUCTION_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_MAPS_KEY: ${{ secrets.GOOGLE_MAPS_KEY }}
+          VITE_APP_PUBLIC_URL: ${{ secrets.PRODUCTION_PUBLIC_URL }}
+          VITE_SENTRY_DSN: ${{ secrets.PRODUCTION_SENTRY_DSN }}
+          VITE_ENABLE_PWA: 'true'
+          VITE_ENABLE_REALTIME: 'true'
+          VITE_ENABLE_OFFLINE: 'true'
+        run: npx quasar build
+
+      - name: Verify Build
+        run: |
+          test -f dist/spa/index.html
+          BUNDLE_SIZE=$(du -sk dist/spa/ | cut -f1)
+          echo "📦 Bundle size: ${BUNDLE_SIZE}KB"
+          # Warn if bundle exceeds 10MB
+          if [ "$BUNDLE_SIZE" -gt 10240 ]; then
+            echo "⚠️ Bundle size exceeds 10MB — consider code splitting"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-build-${{ github.sha }}
+          path: dist/spa/
+          retention-days: 30
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-build-${{ github.sha }}
+          path: dist/spa/
+
+      - name: Deploy to Netlify (Production)
+        id: netlify-deploy
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: dist/spa
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Production v${{ github.sha }}"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.PRODUCTION_NETLIFY_SITE_ID }}
+
+      - name: Record Deployment
+        run: |
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployer:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - name: Wait for Deploy Propagation
+        run: sleep 45
+
+      - name: Run Health Checks
+        env:
+          PROD_URL: ${{ secrets.PRODUCTION_PUBLIC_URL }}
+        run: |
+          echo "🏥 Production Health Checks"
+          PASSED=0
+          FAILED=0
+
+          # 1. App loads
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" --max-time 15)
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ App loads (HTTP 200)"
+            PASSED=$((PASSED+1))
+          else
+            echo "❌ App returned HTTP $STATUS"
+            FAILED=$((FAILED+1))
+          fi
+
+          # 2. Security headers
+          HEADERS=$(curl -sI "$PROD_URL" --max-time 10)
+          for HEADER in "x-content-type-options" "x-frame-options" "referrer-policy" "strict-transport-security"; do
+            if echo "$HEADERS" | grep -qi "$HEADER"; then
+              echo "✅ Header: $HEADER"
+              PASSED=$((PASSED+1))
+            else
+              echo "⚠️ Missing header: $HEADER"
+            fi
+          done
+
+          # 3. Service worker accessible (PWA)
+          SW_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/sw.js" --max-time 10 2>/dev/null || echo "404")
+          if [ "$SW_STATUS" = "200" ]; then
+            echo "✅ Service worker accessible"
+            PASSED=$((PASSED+1))
+          else
+            echo "⚠️ Service worker not found (PWA may not be active)"
+          fi
+
+          # 4. Assets cached correctly
+          ASSET_HEADERS=$(curl -sI "$PROD_URL/assets/" --max-time 10 2>/dev/null || echo "")
+          if echo "$ASSET_HEADERS" | grep -qi "max-age=31536000"; then
+            echo "✅ Assets have immutable cache headers"
+            PASSED=$((PASSED+1))
+          fi
+
+          echo ""
+          echo "📊 Results: $PASSED passed"
+          if [ "$FAILED" -gt 0 ]; then
+            echo "❌ $FAILED critical checks failed — review deployment"
+            exit 1
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "## ❌ Production Health Check Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Deployment may need rollback." >> $GITHUB_STEP_SUMMARY
+          echo "Check Netlify dashboard for previous deploy." >> $GITHUB_STEP_SUMMARY

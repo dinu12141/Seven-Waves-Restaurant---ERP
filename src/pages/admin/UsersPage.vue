@@ -26,7 +26,9 @@
               to="/admin/roles"
               class="q-mr-sm"
             />
-            <q-btn color="primary" icon="add" label="Add User" @click="openDialog" />
+            <PermissionGate permission="admin.users.create">
+              <q-btn color="primary" icon="add" label="Add User" @click="openDialog" />
+            </PermissionGate>
           </div>
         </div>
       </q-card-section>
@@ -53,19 +55,23 @@
         </template>
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="q-gutter-sm">
-            <q-btn flat round color="primary" icon="edit" size="sm" @click="editUser(props.row)" />
-            <q-btn
-              flat
-              round
-              :color="props.row.is_active ? 'negative' : 'positive'"
-              :icon="props.row.is_active ? 'block' : 'check_circle'"
-              size="sm"
-              @click="toggleUserStatus(props.row)"
-            >
-              <q-tooltip>{{
-                props.row.is_active ? 'Deactivate Account' : 'Activate Account'
-              }}</q-tooltip>
-            </q-btn>
+            <PermissionGate permission="admin.users.edit">
+              <q-btn flat round color="primary" icon="edit" size="sm" @click="editUser(props.row)" />
+            </PermissionGate>
+            <PermissionGate permission="admin.users.manage">
+              <q-btn
+                flat
+                round
+                :color="props.row.is_active ? 'negative' : 'positive'"
+                :icon="props.row.is_active ? 'block' : 'check_circle'"
+                size="sm"
+                @click="toggleUserStatus(props.row)"
+              >
+                <q-tooltip>{{
+                  props.row.is_active ? 'Deactivate Account' : 'Activate Account'
+                }}</q-tooltip>
+              </q-btn>
+            </PermissionGate>
           </q-td>
         </template>
       </q-table>
@@ -348,6 +354,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
+import PermissionGate from 'components/common/PermissionGate.vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 

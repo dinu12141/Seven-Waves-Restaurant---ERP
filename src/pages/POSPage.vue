@@ -3,6 +3,7 @@
     <!-- TOP STATUS BAR -->
     <div class="pos-top-bar-thin">
       <div class="top-title">{{ branchName }} &bull; EchoMePOS v5.0.437 - R.D.07.27.24</div>
+      <ShiftStatusIndicator />
       <div class="top-cashier">{{ userName }}</div>
     </div>
     
@@ -502,6 +503,26 @@
       </q-card>
     </q-dialog>
 
+    <!-- ═══ SHIFT MANAGEMENT DIALOGS ═══ -->
+    <OpenShiftDialog
+      v-model="showOpenShiftDialog"
+      :force-open="forceOpenShift"
+      @opened="onShiftOpened"
+    />
+    <FunctionMenuDialog
+      v-model="showFunctionMenu"
+      @action="handleFunctionMenuAction"
+    />
+    <CashMovementDialog
+      v-model="showCashMovement"
+      :movement-type="cashMovementType"
+    />
+    <ShiftSummaryDialog v-model="showShiftSummary" />
+    <CloseShiftDialog
+      v-model="showCloseShift"
+      @closed="onShiftClosed"
+    />
+
   </q-page>
 </template>
 
@@ -513,11 +534,20 @@ import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
+import { usePermission } from 'src/core/rbac/usePermission'
 import OrderLookupDialog from 'src/components/pos/OrderLookupDialog.vue'
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 import POSLockScreen from 'src/components/pos/POSLockScreen.vue'
 import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
 import { adminGetCustomers } from 'src/services/customerAuthService'
+import { useShiftStore } from 'src/stores/shiftStore'
+import ShiftStatusIndicator from 'src/components/pos/ShiftStatusIndicator.vue'
+import OpenShiftDialog from 'src/components/pos/OpenShiftDialog.vue'
+import FunctionMenuDialog from 'src/components/pos/FunctionMenuDialog.vue'
+import CashMovementDialog from 'src/components/pos/CashMovementDialog.vue'
+import CloseShiftDialog from 'src/components/pos/CloseShiftDialog.vue'
+import ShiftSummaryDialog from 'src/components/pos/ShiftSummaryDialog.vue'
+
 
 const $q = useQuasar()
 const router = useRouter()
@@ -525,6 +555,8 @@ const route = useRoute()
 const store = useOrderStore()
 const cashierStore = useCashierStore()
 const authStore = useAuthStore()
+const { can } = usePermission()
+const shiftStore = useShiftStore()
 
 // ── Real-time Clock ─────────────────────────────────────
 const currentTime = ref(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
@@ -615,6 +647,15 @@ const selectedPaymentMethod = ref('CASH')
 // Live Table
 const showLiveTable = ref(false)
 const liveTablesList = ref([])
+
+// ── Shift Management ────────────────────────────────────
+const showOpenShiftDialog = ref(false)
+const forceOpenShift = ref(false)
+const showFunctionMenu = ref(false)
+const showCashMovement = ref(false)
+const cashMovementType = ref('cash_drop')
+const showShiftSummary = ref(false)
+const showCloseShift = ref(false)
 
 async function openLiveTable() {
   const branchId = authStore.currentBranch?.id
@@ -871,6 +912,14 @@ onMounted(async () => {
     fetchMenuItems()
     fetchRestaurantTables()
     await cashierStore.initialize()
+
+    // ── Shift Check ─────────────────────────────────────────
+    const hasShift = await shiftStore.checkActiveShift()
+    if (!hasShift) {
+      // Force open shift dialog — cannot proceed without an active shift
+      forceOpenShift.value = true
+      showOpenShiftDialog.value = true
+    }
   } else {
     posLocked.value = true
   }
@@ -1113,6 +1162,12 @@ function numEnter() {
 
 // ── Function Button Handlers ────────────────────────────
 function handleVoid() {
+  // RBAC: only roles with pos.order.void permission can void items
+  if (!can('pos.order.void')) {
+    Notify.create({ message: 'Access Denied', caption: 'You do not have permission to void items', color: 'red', icon: 'block', position: 'top' })
+    return
+  }
+
   if (selectedItemIndex.value < 0) {
     Notify.create({
       message: 'Select an item to void',
@@ -1760,6 +1815,12 @@ async function processInlinePayment() {
     }
 
     Notify.create({ message: 'Payment Successful', color: 'positive', position: 'top', icon: 'check_circle' })
+
+    // ── Record payment against active shift ────────────
+    if (shiftStore.hasActiveShift && finalOrderId) {
+      shiftStore.recordPayment(finalOrderId, methodName.toLowerCase(), store.total)
+    }
+
     handleNewOrderAfterPayment()
     cancelPaymentMode()
     
@@ -1860,6 +1921,50 @@ function handleDivider() {
     position: 'top',
   })
 }
+
+// ── Shift Management Handlers ─────────────────────────────
+function toggleFunctionMenu() {
+  showFunctionMenu.value = true
+}
+
+function handleFunctionMenuAction(action) {
+  switch (action) {
+    case 'open_shift':
+      forceOpenShift.value = false
+      showOpenShiftDialog.value = true
+      break
+    case 'cash_drop':
+      cashMovementType.value = 'cash_drop'
+      showCashMovement.value = true
+      break
+    case 'cash_in':
+      cashMovementType.value = 'cash_in'
+      showCashMovement.value = true
+      break
+    case 'cash_out':
+      cashMovementType.value = 'cash_out'
+      showCashMovement.value = true
+      break
+    case 'shift_summary':
+      showShiftSummary.value = true
+      break
+    case 'close_shift':
+      showCloseShift.value = true
+      break
+  }
+}
+
+function onShiftOpened() {
+  forceOpenShift.value = false
+}
+
+async function onShiftClosed() {
+  // After close, auto-open a new shift dialog
+  forceOpenShift.value = true
+  showOpenShiftDialog.value = true
+}
+
+
 
 function setOrderType(type) {
   store.orderType = type
@@ -1984,6 +2089,13 @@ function handlePayment() {
     Notify.create({ message: 'This bill is already paid.', color: 'negative', position: 'top' })
     return
   }
+  // Guard: require active shift
+  if (!shiftStore.hasActiveShift) {
+    Notify.create({ message: 'No active shift. Open a shift before processing payments.', color: 'red', icon: 'lock', position: 'top' })
+    forceOpenShift.value = true
+    showOpenShiftDialog.value = true
+    return
+  }
   // Keep selectedQueueOrder if loaded from Order Lookup (for queue payment flow)
   // Only null it out if no order was loaded (manual POS mode)
   if (!store._loadedOrderId) {
@@ -2025,6 +2137,12 @@ async function handleConfirmPayment(payload) {
       if (paymentDialogRef.value) {
         paymentDialogRef.value.markAsPaid(result.orderId)
       }
+
+      // Record payment against active shift
+      if (shiftStore.hasActiveShift && result.orderId) {
+        shiftStore.recordPayment(result.orderId, methodName.toLowerCase(), result.total || store.total)
+      }
+
       Notify.create({
         message: `Payment Successful!`,
         caption: `Order paid via ${methodName}`,

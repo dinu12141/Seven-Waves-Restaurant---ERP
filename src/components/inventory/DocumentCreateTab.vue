@@ -324,6 +324,13 @@ const docTypeItems = [
     color: 'purple',
     desc: 'Physical inventory count',
   },
+  {
+    label: 'Wastage',
+    value: 'WASTAGE',
+    icon: 'delete_sweep',
+    color: 'deep-orange',
+    desc: 'Record daily wastage from kitchen/warehouse',
+  },
 ]
 
 const isNew = computed(() => !props.document?.id)
@@ -363,7 +370,7 @@ const stockLoading = ref(false)
 
 // Fetch available stock from source warehouse for TRANSFER / GIN docs
 async function loadWarehouseStock(warehouseId) {
-  if (!warehouseId || !['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE'].includes(header.doc_type)) {
+  if (!warehouseId || !['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE', 'WASTAGE'].includes(header.doc_type)) {
     warehouseStock.value = null
     return
   }
@@ -385,7 +392,7 @@ watch(
 watch(
   () => header.doc_type,
   (newType) => {
-    const outbound = ['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE']
+    const outbound = ['TRANSFER', 'GIN', 'BOM_DEDUCT', 'GIN_ISSUE', 'WASTAGE']
     if (outbound.includes(newType) && header.warehouse_id) {
       loadWarehouseStock(header.warehouse_id)
     } else if (!outbound.includes(newType)) {
@@ -566,7 +573,7 @@ function validatePost() {
   }
 
   // Stock availability check for TRANSFER and GIN documents
-  const outboundTypes = ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT']
+  const outboundTypes = ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT', 'WASTAGE']
   if (
     outboundTypes.includes(header.doc_type) &&
     warehouseStock.value &&

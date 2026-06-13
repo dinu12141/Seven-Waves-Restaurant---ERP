@@ -240,6 +240,9 @@
 
     <!-- Global Notification Toasts -->
     <NotificationToast />
+
+    <!-- Global Offline Banner -->
+    <OfflineBanner />
   </q-layout>
 </template>
 
@@ -254,6 +257,7 @@ import { useModulesStore } from 'src/stores/modules'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
 import GlobalSearch from 'components/common/GlobalSearch.vue'
+import OfflineBanner from 'components/common/OfflineBanner.vue'
 import { watch } from 'vue'
 
 const authStore = useAuthStore()

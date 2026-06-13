@@ -162,17 +162,19 @@
             >
               <q-tooltip>View Details</q-tooltip>
             </q-btn>
-            <q-btn
-              flat
-              round
-              icon="delete"
-              color="negative"
-              size="sm"
-              @click="deleteCustomerAction(props.row)"
-              class="q-ml-sm"
-            >
-              <q-tooltip>Delete Customer</q-tooltip>
-            </q-btn>
+            <PermissionGate permission="admin.customers.delete">
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click="deleteCustomerAction(props.row)"
+                class="q-ml-sm"
+              >
+                <q-tooltip>Delete Customer</q-tooltip>
+              </q-btn>
+            </PermissionGate>
           </q-td>
         </template>
 
@@ -212,6 +214,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { date } from 'quasar'
 import PageHeader from 'components/common/PageHeader.vue'
+import PermissionGate from 'components/common/PermissionGate.vue'
 import { adminGetCustomers, adminDeleteCustomer } from 'src/services/customerAuthService'
 
 const router = useRouter()

@@ -14,7 +14,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'directives', 'tauri-auth'],
+    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'core', 'realtime', 'directives', 'tauri-auth'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -50,6 +50,41 @@ export default defineConfig((ctx) => {
 
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
+
+      // ── Vite 8 Module Runner guard ──────────────────────────────────
+      // Vite 8's Module Runner evaluates boot-file dependency chains
+      // server-side (Node) even in SPA mode. Some modules access
+      // browser globals (window, navigator, localStorage) at module
+      // scope. Disable the module runner transform to prevent
+      // "ReferenceError: window is not defined" crashes during dev.
+      extendViteConf(viteConf) {
+        viteConf.server = viteConf.server || {}
+        // Disable Vite's module runner transform (server-side module evaluation)
+        viteConf.server.preTransformRequests = false
+
+        // ── Step 07: Production Bundle Optimization ──────────────────
+        viteConf.build = viteConf.build || {}
+        viteConf.build.chunkSizeWarningLimit = 800 // KB
+        viteConf.build.rollupOptions = {
+          output: {
+            manualChunks(id) {
+              // Vendor splitting — keep framework separate
+              if (id.includes('node_modules')) {
+                if (id.includes('@supabase')) return 'vendor-supabase'
+                if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vendor-vue'
+                if (id.includes('quasar')) return 'vendor-quasar'
+                if (id.includes('chart') || id.includes('apexcharts')) return 'vendor-charts'
+                return 'vendor'
+              }
+              // Module splitting — lazy load heavy modules
+              if (id.includes('/modules/finance/')) return 'mod-finance'
+              if (id.includes('/modules/ai/')) return 'mod-ai'
+              if (id.includes('/modules/devices/')) return 'mod-devices'
+              if (id.includes('/core/monitoring/')) return 'mod-monitoring'
+            },
+          },
+        }
+      },
 
       vitePlugins: [
         [

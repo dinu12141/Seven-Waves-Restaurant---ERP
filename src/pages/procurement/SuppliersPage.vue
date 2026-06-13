@@ -2,7 +2,9 @@
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h5">Suppliers</div>
-      <q-btn class="erp-btn-primary" icon="add" label="Add Supplier" @click="openDialog" />
+      <PermissionGate permission="procurement.suppliers.create">
+        <q-btn class="erp-btn-primary" icon="add" label="Add Supplier" @click="openDialog" />
+      </PermissionGate>
     </div>
 
     <!-- Search & Filter -->
@@ -53,20 +55,24 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" align="right">
-          <q-btn flat round color="primary" icon="edit" size="sm" @click="editSupplier(props.row)">
-            <q-tooltip>Edit</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            round
-            color="negative"
-            icon="delete"
-            size="sm"
-            @click="deleteSupplierAction(props.row)"
-            class="q-ml-sm"
-          >
-            <q-tooltip>Delete</q-tooltip>
-          </q-btn>
+          <PermissionGate permission="procurement.suppliers.edit">
+            <q-btn flat round color="primary" icon="edit" size="sm" @click="editSupplier(props.row)">
+              <q-tooltip>Edit</q-tooltip>
+            </q-btn>
+          </PermissionGate>
+          <PermissionGate permission="procurement.suppliers.delete">
+            <q-btn
+              flat
+              round
+              color="negative"
+              icon="delete"
+              size="sm"
+              @click="deleteSupplierAction(props.row)"
+              class="q-ml-sm"
+            >
+              <q-tooltip>Delete</q-tooltip>
+            </q-btn>
+          </PermissionGate>
         </q-td>
       </template>
 
@@ -211,6 +217,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { listSuppliers, upsertSupplier, deleteSupplier } from 'src/services/procurementService'
+import PermissionGate from 'components/common/PermissionGate.vue'
 import ERPFormCard from 'components/erp/ERPFormCard.vue'
 import ERPFormSection from 'components/erp/ERPFormSection.vue'
 import ERPFormField from 'components/erp/ERPFormField.vue'

@@ -399,7 +399,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const isStockCount = computed(() => props.docType === 'STOCK_COUNT')
 const isOutboundDoc = computed(() =>
-  ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT'].includes(props.docType),
+  ['TRANSFER', 'GIN', 'GIN_ISSUE', 'BOM_DEDUCT', 'WASTAGE'].includes(props.docType),
 )
 
 function getAvailableQty(itemId) {

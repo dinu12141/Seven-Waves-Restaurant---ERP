@@ -1,10 +1,26 @@
 /**
- * Finance Service — Data access layer for the Finance module
+ * @deprecated LEGACY — This service is kept for backward compatibility only.
  *
- * Provides CRUD operations for Chart of Accounts, Journal Entries,
- * Cash/Bank, AR/AP, Expenses, Tax, Payroll, and Audit.
+ * DO NOT add new functions here. Use the new ERP finance services instead:
+ *   - src/modules/finance/services/finance-ledger.service.js
+ *   - src/modules/finance/services/finance-voucher.service.js
+ *   - src/modules/finance/services/finance-cashbook.service.js
+ *   - src/modules/finance/services/finance-cheque.service.js
+ *   - src/modules/finance/services/finance-bank-reconciliation.service.js
+ *   - src/modules/finance/services/finance-statements.service.js
+ *   - src/modules/finance/services/finance-account.service.js
+ *
+ * Still imported by: FinanceDashboard, ReceivablesPage, PayablesPage,
+ * ExpensesPage, TaxPage, PayrollPage, PayrollRunPage, PayslipsPage,
+ * SalaryStructurePage, FinanceReportsPage, FinanceAuditPage.
+ *
+ * Migration plan: Gradually replace imports in the above pages with
+ * the new ERP service modules, then delete this file.
  */
 import { supabase } from 'src/boot/supabase'
+import { api } from 'src/core/api/ApiClient'
+
+const MODULE = 'finance'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface FinanceFilters { [key: string]: any }
@@ -60,18 +76,16 @@ export async function fetchJournalEntries(filters: FinanceFilters = {}) {
 }
 
 export async function createJournalEntry(entry: any, lines: any) {
-  // Insert journal header
-  const { data: je, error: jeErr } = await supabase
-    .from('journal_entries')
-    .insert(entry)
-    .select()
-    .single()
-
+  // Insert journal header via ApiClient (tracks correlation ID + error classification)
+  const { data: je, error: jeErr } = await api.query(
+    (client: any) => client.from('journal_entries').insert(entry).select().single(),
+    { module: MODULE, action: 'createJournalEntry', retries: 0 },
+  )
   if (jeErr) return { data: null, error: jeErr }
 
   // Insert lines linking to journal
   const mappedLines = lines.map((l: any, idx: any) => ({
-    journal_id: je.id,
+    journal_id: (je as any).id,
     account_code: l.account_code,
     account_name: l.account_name,
     dr_amount: l.dr_amount || 0,
@@ -81,22 +95,20 @@ export async function createJournalEntry(entry: any, lines: any) {
     branch_id: entry.branch_id,
   }))
 
-  const { error: linesErr } = await supabase
-    .from('journal_lines')
-    .insert(mappedLines)
-
+  const { error: linesErr } = await api.query(
+    (client: any) => client.from('journal_lines').insert(mappedLines),
+    { module: MODULE, action: 'createJournalLines', retries: 0 },
+  )
   if (linesErr) return { data: je, error: linesErr }
 
   return { data: je, error: null }
 }
 
 export async function reverseJournalEntry(id: any) {
-  const { data, error } = await supabase
-    .from('journal_entries')
-    .update({ is_reversed: true })
-    .eq('id', id)
-    .select()
-    .single()
+  const { data, error } = await api.query(
+    (client: any) => client.from('journal_entries').update({ is_reversed: true }).eq('id', id).select().single(),
+    { module: MODULE, action: 'reverseJournalEntry', retries: 0 },
+  )
   return { data, error }
 }
 

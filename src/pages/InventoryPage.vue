@@ -92,6 +92,11 @@
         <q-tab-panel name="ledger" class="q-pa-none">
           <StockLedgerTab ref="tabRef" />
         </q-tab-panel>
+
+        <!-- Wastage Management -->
+        <q-tab-panel name="wastage" class="q-pa-none">
+          <WastageTab ref="tabRef" />
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
   </q-page>
@@ -100,6 +105,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
+import { usePermission } from 'src/core/rbac/usePermission'
 import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardTab from 'components/inventory/DashboardTab.vue'
@@ -115,9 +122,12 @@ import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
 import MenuBookTab from 'components/inventory/MenuBookTab.vue'
 import KitchenMappingTab from 'components/inventory/KitchenMappingTab.vue'
+import WastageTab from 'components/inventory/WastageTab.vue'
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
+const { can } = usePermission()
 
 const tab = ref('dashboard')
 const tabRef = ref(null)
@@ -201,6 +211,11 @@ function handleExport(format) {
 }
 
 function openCreateDocument() {
+  // RBAC: inventory.stock.adjust required to create GRN/adjustment docs
+  if (!can('inventory.stock.adjust')) {
+    $q.notify({ type: 'negative', message: 'Access Denied', caption: 'You do not have permission to create inventory documents' })
+    return
+  }
   editingDocument.value = null
   router.push({ path: '/inventory', query: { tab: 'doc-create' } })
 }

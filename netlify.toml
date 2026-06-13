@@ -1,21 +1,78 @@
+# ═══════════════════════════════════════════════════════════════════
+# Netlify Configuration — Production-Grade
+# Seven Waves ERP — Step 03E
+# ═══════════════════════════════════════════════════════════════════
+
 [build]
-  command = "npm run build"
+  command = "npx quasar build"
   publish = "dist/spa"
 
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# ── SPA Fallback ─────────────────────────────────────────────────
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# ── Security Headers (All Pages) ────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    # Prevent clickjacking — only allow same-origin framing
+    X-Frame-Options = "DENY"
+    # XSS Protection (legacy browsers)
+    X-XSS-Protection = "1; mode=block"
+    # Control referrer information
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # HSTS — force HTTPS for 1 year, include subdomains
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Permissions Policy — disable unused browser features
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(self), payment=(), usb=()"
+    # Content Security Policy — allow Supabase, Google Maps, Sentry
+    Content-Security-Policy = '''
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://*.sentry.io;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com https://*.googleusercontent.com;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://*.sentry.io https://*.google-analytics.com;
+      media-src 'self' blob:;
+      object-src 'none';
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    '''
+
+# ── Immutable Cache for Hashed Assets ───────────────────────────
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# ── Service Worker — no cache ────────────────────────────────────
 [[headers]]
-  for = "/*"
+  for = "/sw.js"
   [headers.values]
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# ── Manifest — short cache ───────────────────────────────────────
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+# ── Deploy Contexts ──────────────────────────────────────────────
+
+# Staging — different build command if needed
+[context.staging]
+  command = "npx quasar build"
+
+# Branch deploys — preview builds
+[context.deploy-preview]
+  command = "npx quasar build"

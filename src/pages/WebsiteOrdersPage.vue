@@ -163,6 +163,7 @@
             </q-btn>
             <q-btn
               v-if="
+                can('pos.payment.refund') &&
                 props.row.payment_status === 'paid' &&
                 !['cancelled', 'refunded'].includes(props.row.status)
               "
@@ -508,10 +509,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { usePermission } from 'src/core/rbac/usePermission'
 import { processRefund } from 'src/services/paymentService'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const { can } = usePermission()
 
 const loading = ref(false)
 const orders = ref([])
@@ -719,6 +722,12 @@ function cancelOrder(order) {
 }
 
 async function refundOrder(order) {
+  // RBAC guard
+  if (!can('pos.payment.refund')) {
+    $q.notify({ type: 'negative', message: 'Access Denied', caption: 'You do not have permission to process refunds' })
+    return
+  }
+
   // Only paid or partially_refunded can be refunded
   if (!['paid', 'partially_refunded'].includes(order.payment_status)) {
     $q.notify({ type: 'warning', message: 'Only paid orders can be refunded' })

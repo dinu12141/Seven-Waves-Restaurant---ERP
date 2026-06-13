@@ -2,7 +2,7 @@
   "extends": "./.quasar/tsconfig.json",
   "compilerOptions": {
     "skipLibCheck": true,
-    "types": []
+    "types": ["vite/client"]
   },
   "exclude": ["node_modules", "dist", ".quasar", "supabase"]
 }

@@ -642,3 +642,176 @@ body.body--light {
     color 0.3s ease,
     border-color 0.3s ease !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   POS TERMINAL DIALOGS OVERRIDES
+   Force POS shift management dialogs to remain dark even in light mode
+   ═══════════════════════════════════════════════════════════════════════════════ */
+body.body--light {
+  .q-dialog__inner > .open-shift-card,
+  .q-dialog__inner > .function-menu-card,
+  .q-dialog__inner > .cash-movement-card,
+  .q-dialog__inner > .pos-shift-summary-card,
+  .q-dialog__inner > .close-shift-card {
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
+  }
+
+  .open-shift-card,
+  .function-menu-card,
+  .cash-movement-card,
+  .pos-shift-summary-card,
+  .close-shift-card {
+    /* Title text colors */
+    .text-white {
+      color: #ffffff !important;
+    }
+    .text-yellow {
+      color: #ffeb3b !important;
+    }
+    .text-h6 {
+      color: #ffffff !important;
+    }
+    .text-grey-5 {
+      color: #aaaaaa !important;
+    }
+    
+    /* Info labels & values */
+    .info-label, .info-lbl {
+      color: #aaaaaa !important;
+    }
+    .info-value, .info-val {
+      color: #ffffff !important;
+    }
+    
+    /* Inputs inside dark cards */
+    .q-field--dark .q-field__control {
+      background: #2a2a2a !important;
+      color: #ffffff !important;
+    }
+    .q-field--dark .q-field__native {
+      color: #ffffff !important;
+    }
+    .q-field--dark .q-field__label {
+      color: #aaaaaa !important;
+    }
+    .q-field--dark .q-field__marginal {
+      color: #aaaaaa !important;
+    }
+    .q-field--dark .q-field__bottom {
+      color: #aaaaaa !important;
+    }
+    
+    /* Tables & rows */
+    .summary-table td, .totals-table td {
+      color: #dddddd !important;
+      border-bottom: 1px solid #2a2a2a !important;
+    }
+    .total-row td, .expected-row td {
+      color: #ffffff !important;
+      border-top: 2px solid #444444 !important;
+    }
+    
+    /* Text status/accent colors */
+    .text-green {
+      color: #4caf50 !important;
+    }
+    .text-red {
+      color: #ef5350 !important;
+    }
+    .text-cyan {
+      color: #4fc3f7 !important;
+    }
+    .text-yellow {
+      color: #ffeb3b !important;
+    }
+    .text-orange {
+      color: #ff9800 !important;
+    }
+
+    /* Expected formula, movements, and info blocks */
+    .info-block {
+      background: #222222 !important;
+      border: 1px solid #333333 !important;
+    }
+    .info-title {
+      color: #888888 !important;
+      border-bottom: 1px solid #333333 !important;
+    }
+    .expected-amount {
+      color: #4fc3f7 !important;
+    }
+    .expected-formula {
+      color: #666666 !important;
+    }
+    .movement-row {
+      border-bottom: 1px solid #2a2a2a !important;
+    }
+    .movement-type {
+      color: #aaaaaa !important;
+    }
+    .movement-reason {
+      color: #777777 !important;
+    }
+    .movement-time {
+      color: #555555 !important;
+    }
+
+    /* Close Shift variance boxes & approvals */
+    .variance-display {
+      background: rgba(255, 255, 255, 0.03) !important;
+    }
+    .variance-display.variance-balanced {
+      border-color: #4caf50 !important;
+      background: rgba(76, 175, 80, 0.08) !important;
+    }
+    .variance-display.variance-shortage {
+      border-color: #ef5350 !important;
+      background: rgba(239, 83, 80, 0.08) !important;
+    }
+    .variance-display.variance-overage {
+      border-color: #ff9800 !important;
+      background: rgba(255, 152, 0, 0.08) !important;
+    }
+    .variance-balanced .variance-value { color: #4caf50 !important; }
+    .variance-shortage .variance-value { color: #ef5350 !important; }
+    .variance-overage .variance-value { color: #ff9800 !important; }
+    .variance-balanced .variance-status { color: #4caf50 !important; }
+    .variance-shortage .variance-status { color: #ef5350 !important; }
+    .variance-overage .variance-status { color: #ff9800 !important; }
+
+    .variance-breakdown {
+      background: #222222 !important;
+      border: 1px solid #333333 !important;
+    }
+    .vb-row {
+      color: #aaaaaa !important;
+    }
+    .vb-result.variance-balanced { color: #4caf50 !important; }
+    .vb-result.variance-shortage { color: #ef5350 !important; }
+    .vb-result.variance-overage { color: #ff9800 !important; }
+
+    .approval-section {
+      background: #2a1a00 !important;
+      border: 1px solid #ff9800 !important;
+      .step-title {
+        color: #ff9800 !important;
+      }
+      .step-subtitle {
+        color: #aaaaaa !important;
+      }
+    }
+    .confirm-title {
+      color: #4caf50 !important;
+    }
+    .confirm-subtitle {
+      color: #888888 !important;
+    }
+
+    /* Separators */
+    .q-separator {
+      background: #333333 !important;
+    }
+  }
+}

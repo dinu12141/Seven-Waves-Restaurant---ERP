@@ -179,6 +179,7 @@ const docTypeItems = [
   { label: 'Stock Transfer', value: 'TRANSFER' },
   { label: 'Adjustment', value: 'ADJUSTMENT' },
   { label: 'Stock Count', value: 'STOCK_COUNT' },
+  { label: 'Wastage', value: 'WASTAGE' },
 ]
 
 const warehouseOptions = computed(() =>
@@ -211,6 +212,7 @@ const docTypeColor = computed(() => {
     ADJUSTMENT: 'orange',
     STOCK_COUNT: 'purple',
     BOM_DEDUCT: 'cyan',
+    WASTAGE: 'deep-orange',
   }
   return map[form.doc_type] || 'grey'
 })
@@ -224,6 +226,7 @@ const docTypeIcon = computed(() => {
     ADJUSTMENT: 'tune',
     STOCK_COUNT: 'fact_check',
     BOM_DEDUCT: 'restaurant',
+    WASTAGE: 'delete_sweep',
   }
   return map[form.doc_type] || 'description'
 })

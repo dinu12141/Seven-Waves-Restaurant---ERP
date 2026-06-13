@@ -8,118 +8,146 @@ const routes = [
       {
         path: 'dashboard',
         component: () => import('pages/dashboard/DashboardPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'dashboard', permission: 'dashboard.view' },
       },
       {
         path: 'operations/dashboard',
         component: () => import('pages/operations/OperationsDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen'] },
+        meta: { roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen'], module: 'operations', permission: 'operations.view' },
       },
       {
         path: 'system/dashboard',
         component: () => import('pages/admin/SystemDashboard.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.system.view' },
       },
       {
         path: 'manager/floor',
         component: () => import('pages/manager/ManagerFloorPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.floor.view' },
       },
       {
         path: 'pos',
         component: () => import('pages/POSPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'] },
+        meta: { roles: ['admin', 'manager', 'cashier', 'waiter'], module: 'pos', permission: 'pos.order.create' },
       },
       {
         path: 'kitchen',
         component: () => import('pages/KitchenPage.vue'),
-        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'], module: 'kitchen', permission: 'kitchen.view' },
       },
       {
         path: 'orders',
         component: () => import('pages/OrdersPage.vue'),
-        meta: { roles: ['admin', 'manager', 'waiter', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'waiter', 'cashier'], module: 'pos', permission: 'pos.order.view' },
       },
       {
         path: 'website-orders',
         component: () => import('pages/WebsiteOrdersPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'cashier'], module: 'pos', permission: 'pos.order.view' },
       },
       {
         path: 'website/dashboard',
         component: () => import('pages/website/WebsiteDashboard.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
       },
       {
         path: 'website-messages',
         component: () => import('pages/website/WebsiteMessagesPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
       },
       {
         path: 'website-reservations',
         component: () => import('pages/website/WebsiteReservationsPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
       },
       {
         path: 'website-hall-bookings',
         component: () => import('pages/website/WebsiteHallBookingsPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
       },
       {
         path: 'cashier',
         component: () => import('pages/CashierPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'cashier'], module: 'pos', permission: 'pos.payment.collect' },
       },
       {
         path: 'inventory',
         component: () => import('pages/InventoryPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'] },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.view' },
       },
       {
         path: 'inventory/dashboard',
         component: () => import('pages/inventory/InventoryDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'] },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.view' },
       },
       {
         path: 'finance',
         component: () => import('pages/finance/FinanceLayout.vue'),
-        meta: { roles: ['admin', 'manager', 'finance'] },
+        meta: { roles: ['admin', 'manager', 'finance'], module: 'finance', permission: 'finance.view' },
         children: [
           { path: '', redirect: 'dashboard' },
+
+          // ── Overview ──
           { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue') },
-          {
-            path: 'chart-of-accounts',
-            component: () => import('pages/finance/ChartOfAccountsPage.vue'),
-          },
-          {
-            path: 'journal-entries',
-            component: () => import('pages/finance/JournalEntriesPage.vue'),
-          },
-          {
-            path: 'general-ledger',
-            component: () => import('pages/finance/GeneralLedgerPage.vue'),
-          },
-          { path: 'trial-balance', component: () => import('pages/finance/TrialBalancePage.vue') },
-          { path: 'cash-bank', component: () => import('pages/finance/CashBankPage.vue') },
+
+          // ── ERP Accounting (New) ──
+          { path: 'ledgers', component: () => import('src/modules/finance/pages/LedgerRegistrationPage.vue') },
+          { path: 'accounts', component: () => import('src/modules/finance/pages/AccountRegistrationPage.vue') },
+
+          // ── Voucher Management (New) ──
+          { path: 'pay-vouchers', component: () => import('src/modules/finance/pages/PayVoucherPage.vue') },
+          { path: 'received-vouchers', component: () => import('src/modules/finance/pages/ReceivedVoucherPage.vue') },
+          { path: 'voucher-approvals', component: () => import('src/modules/finance/pages/VoucherApprovalPage.vue') },
+
+          // ── Cash & Banking (New ERP) ──
+          { path: 'cashbook', component: () => import('src/modules/finance/pages/CashbookPage.vue') },
+          { path: 'petty-cash', component: () => import('src/modules/finance/pages/PettyCashBookPage.vue') },
+          { path: 'cheque-plan', component: () => import('src/modules/finance/pages/ChequePlanPage.vue') },
+          { path: 'bank-reconciliation', component: () => import('src/modules/finance/pages/BankReconciliationPage.vue') },
+
+          // ── Statutory Reports (New ERP) ──
+          { path: 'financial-statements', component: () => import('src/modules/finance/pages/FinancialStatementsPage.vue') },
+
+          // ── Receivables, Payables, Expenses, Tax (Kept) ──
           { path: 'receivables', component: () => import('pages/finance/ReceivablesPage.vue') },
           { path: 'payables', component: () => import('pages/finance/PayablesPage.vue') },
           { path: 'expenses', component: () => import('pages/finance/ExpensesPage.vue') },
           { path: 'tax', component: () => import('pages/finance/TaxPage.vue') },
+
+          // ── Payroll (Kept) ──
           { path: 'payroll', component: () => import('pages/finance/PayrollPage.vue') },
           { path: 'payroll/run', component: () => import('pages/finance/PayrollRunPage.vue') },
           { path: 'payroll/payslips', component: () => import('pages/finance/PayslipsPage.vue') },
-          {
-            path: 'payroll/salary-structure',
-            component: () => import('pages/finance/SalaryStructurePage.vue'),
-          },
+          { path: 'payroll/salary-structure', component: () => import('pages/finance/SalaryStructurePage.vue') },
+
+          // ── Reports & Audit (Kept) ──
           { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue') },
           { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue') },
+
+          // ── Backward-compatibility redirects (old paths → new ERP) ──
+          { path: 'chart-of-accounts', redirect: 'ledgers' },
+          { path: 'journal-entries', redirect: 'pay-vouchers' },
+          { path: 'general-ledger', redirect: 'ledgers' },
+          { path: 'trial-balance', redirect: 'financial-statements' },
+          { path: 'cash-bank', redirect: 'cashbook' },
+        ],
+      },
+      // ── DEVICE MANAGEMENT ─────────────────────────────────────────────
+      {
+        path: 'devices',
+        meta: { roles: ['admin', 'manager'], module: 'devices', permission: 'devices.view' },
+        children: [
+          { path: '', component: () => import('src/modules/devices/pages/DeviceDashboardPage.vue') },
+          { path: 'printers', component: () => import('src/modules/devices/pages/PrinterManagementPage.vue') },
+          { path: 'scanners', component: () => import('src/modules/devices/pages/ScannerManagementPage.vue') },
+          { path: 'biometrics', component: () => import('src/modules/devices/pages/BiometricDevicesPage.vue') },
+          { path: 'health', component: () => import('src/modules/devices/pages/DeviceHealthPage.vue') },
         ],
       },
       {
         path: 'hr',
         component: () => import('pages/hr/HRLayout.vue'),
-        meta: { roles: ['admin', 'manager', 'hr'] },
+        meta: { roles: ['admin', 'manager', 'hr'], module: 'hr', permission: 'hr.view' },
         children: [
           { path: '', redirect: 'dashboard' },
           { path: 'dashboard', component: () => import('pages/hr/HRDashboard.vue') },
@@ -164,68 +192,89 @@ const routes = [
             component: () => import('pages/procurement/ProcurementSettingsPage.vue'),
           },
         ],
-        meta: { roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'] },
+        meta: { roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'], module: 'procurement', permission: 'procurement.po.view' },
       },
       {
         path: 'admin',
         component: () => import('pages/AdminPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.view' },
+      },
+      // ── AI Intelligence Module ───────────────────────────────────────────
+      {
+        path: 'ai',
+        component: () => import('src/modules/ai/pages/AiDashboardPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
       },
       {
-        path: 'admin/ai-insights',
-        component: () => import('pages/admin/AIInsightsPage.vue'),
-        meta: { roles: ['admin'] },
+        path: 'ai/forecasts',
+        component: () => import('src/modules/ai/pages/AiForecastPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
+      },
+      {
+        path: 'ai/anomalies',
+        component: () => import('src/modules/ai/pages/AiAnomalyCenterPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.security' },
+      },
+      {
+        path: 'ai/assistant',
+        component: () => import('src/modules/ai/pages/AiAssistantPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
       },
       {
         path: 'admin/users',
         component: () => import('pages/admin/UsersPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.users.manage' },
       },
       {
         path: 'admin/roles',
         component: () => import('pages/admin/RolesPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.roles.manage' },
       },
       {
         path: 'admin/branches',
         component: () => import('pages/admin/BranchesPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.branches.manage' },
       },
       {
         path: 'admin/printers',
         component: () => import('pages/admin/PrintersPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.view' },
       },
       {
         path: 'admin/settings',
         component: () => import('pages/admin/SettingsPage.vue'),
-        meta: { roles: ['admin'] },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.view' },
+      },
+      {
+        path: 'audit',
+        component: () => import('pages/audit/AuditCenterPage.vue'),
+        meta: { roles: ['admin', 'super_admin'], module: 'audit', permission: 'audit.view' },
       },
       {
         path: 'admin/customers',
         component: () => import('pages/admin/CustomersPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'crm', permission: 'crm.customers.view' },
       },
       {
         path: 'admin/customers/:id',
         component: () => import('pages/admin/CustomerDetailPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'crm', permission: 'crm.customers.view' },
       },
       {
         // Loyalty Members Admin Module
         path: 'admin/loyalty',
         component: () => import('pages/admin/LoyaltyMembersPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'cashier'], module: 'crm', permission: 'crm.loyalty.view' },
       },
       {
         path: 'admin/loyalty/:id',
         component: () => import('pages/admin/LoyaltyCustomerDetailPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier'] },
+        meta: { roles: ['admin', 'manager', 'cashier'], module: 'crm', permission: 'crm.loyalty.view' },
       },
       {
         path: 'operations/tables',
         component: () => import('pages/admin/TablesManagementPage.vue'),
-        meta: { roles: ['admin', 'manager'] },
+        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.tables.manage' },
       },
       {
         // Legacy redirect — desktop view retired
@@ -243,7 +292,7 @@ const routes = [
       {
         path: 'reports',
         component: () => import('layouts/ReportsLayout.vue'),
-        meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'] },
+        meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'], module: 'reports', permission: 'reports.view' },
         children: [
           { path: '', redirect: 'dashboard' },
           { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue') },
@@ -484,6 +533,11 @@ const routes = [
     component: () => import('layouts/AuthLayout.vue'),
     meta: { requiresAuth: false },
     children: [{ path: 'login', component: () => import('pages/auth/LoginPage.vue') }],
+  },
+  {
+    path: '/unauthorized',
+    component: () => import('pages/UnauthorizedPage.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/:catchAll(.*)*',

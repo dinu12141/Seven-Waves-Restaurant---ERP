@@ -16,8 +16,8 @@
  */
 
 import { ref, type Ref } from 'vue'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/stores/auth'
+import { supabase } from '../boot/supabase'
+import { useAuthStore } from '../stores/auth'
 
 /* -------------------------------------------------------
    Helpers — Lazy calls to useAuthStore() avoid calling
@@ -54,7 +54,7 @@ export interface DocumentFilters {
 
 export interface DocumentLinePayload {
   item_id: string
-  uom_id: string
+  uom_id?: string
   quantity: number
   unit_cost: number
   batch_no?: string
@@ -63,16 +63,26 @@ export interface DocumentLinePayload {
   counted_qty?: number
   variance_qty?: number
   notes?: string
+  // SAP Inspired fields
+  tax_code?: string
+  tax_amount?: number
+  line_total?: number
 }
 
 export interface DocumentHeaderPayload {
   doc_type: string
   doc_date: string
   warehouse_id: string
-  target_warehouse_id?: string
-  supplier_id?: string
-  reference_no?: string
-  remarks?: string
+  target_warehouse_id?: string | null
+  supplier_id?: string | null
+  reference_no?: string | null
+  remarks?: string | null
+  // SAP Inspired fields
+  posting_date?: string
+  delivery_date?: string
+  sub_total?: number
+  tax_total?: number
+  grand_total?: number
 }
 
 /* ====================================================================
@@ -201,9 +211,9 @@ export async function listOpenPOs() {
     if (grnErr) throw grnErr
 
     const usedPONumbers = new Set<string>()
-    grns?.forEach((g) => {
+    grns?.forEach((g: any) => {
       if (g.remarks) {
-        pos.forEach((po) => {
+        pos.forEach((po: any) => {
           if (g.remarks.includes(`Imported from PO: ${po.doc_number}`)) {
             usedPONumbers.add(po.doc_number)
           }
@@ -211,41 +221,14 @@ export async function listOpenPOs() {
       }
     })
 
-    return pos.filter((po) => !usedPONumbers.has(po.doc_number))
+    return pos.filter((po: any) => !usedPONumbers.has(po.doc_number))
   } catch (e) {
     console.error('[inventoryService] listOpenPOs error:', e)
     throw e
   }
 }
 
-export interface DocumentHeaderPayload {
-  doc_type: string
-  doc_date: string
-  warehouse_id: string
-  target_warehouse_id?: string | null
-  supplier_id?: string | null
-  reference_no?: string | null
-  remarks?: string | null
-  // SAP Inspired fields
-  posting_date?: string
-  delivery_date?: string
-  sub_total?: number
-  tax_total?: number
-  grand_total?: number
-}
 
-export interface DocumentLinePayload {
-  item_id: string
-  quantity: number
-  unit_cost: number
-  batch_no?: string
-  expiry_date?: string
-  notes?: string
-  // SAP Inspired fields
-  tax_code?: string
-  tax_amount?: number
-  line_total?: number
-}
 
 /* ====================================================================
    2.  fetchDocument(id)  — single doc + lines
@@ -1474,4 +1457,256 @@ export async function fetchIngredientConsumption(dateFrom: string, dateTo: strin
     agg[id].total_cost += row.total_cost || 0
   }
   return Object.values(agg).sort((a: any, b: any) => b.total_cost - a.total_cost)
+}
+
+/* ====================================================================
+   19.  WASTAGE MANAGEMENT
+==================================================================== */
+
+export interface WastageFilters {
+  dateFrom?: string
+  dateTo?: string
+  warehouseId?: string
+  wastageCategory?: string
+  search?: string
+}
+
+/** Fetch wastage entries from the v_wastage_summary view */
+export async function fetchWastageEntries(filters: WastageFilters = {}) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  let query = supabase
+    .from('v_wastage_summary')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('posted_at', { ascending: false })
+    .limit(500)
+
+  if (filters.dateFrom) query = query.gte('posted_at', filters.dateFrom + 'T00:00:00')
+  if (filters.dateTo) query = query.lte('posted_at', filters.dateTo + 'T23:59:59')
+  if (filters.warehouseId) query = query.eq('warehouse_id', filters.warehouseId)
+  if (filters.wastageCategory) query = query.eq('wastage_category', filters.wastageCategory)
+  if (filters.search) {
+    query = query.or(
+      `item_name.ilike.%${filters.search}%,item_code.ilike.%${filters.search}%,doc_number.ilike.%${filters.search}%`,
+    )
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+/** Fetch wastage KPI stats for dashboard */
+export async function fetchWastageStats(dateFrom?: string, dateTo?: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return { totalEntries: 0, totalQty: 0, totalLoss: 0, todayEntries: 0, todayLoss: 0 }
+
+  const today = new Date().toISOString().split('T')[0]
+
+  // Total wastage in period
+  let periodQuery = supabase
+    .from('inventory_ledger')
+    .select('quantity, total_cost')
+    .eq('company_id', companyId)
+    .eq('doc_type', 'WASTAGE')
+    .eq('direction', 'OUT')
+
+  if (dateFrom) periodQuery = periodQuery.gte('posted_at', dateFrom + 'T00:00:00')
+  if (dateTo) periodQuery = periodQuery.lte('posted_at', dateTo + 'T23:59:59')
+
+  // Today wastage
+  const todayQuery = supabase
+    .from('inventory_ledger')
+    .select('quantity, total_cost')
+    .eq('company_id', companyId)
+    .eq('doc_type', 'WASTAGE')
+    .eq('direction', 'OUT')
+    .gte('posted_at', today + 'T00:00:00')
+
+  const [periodRes, todayRes] = await Promise.all([periodQuery, todayQuery])
+
+  const periodData = periodRes.data || []
+  const todayData = todayRes.data || []
+
+  return {
+    totalEntries: periodData.length,
+    totalQty: periodData.reduce((s: number, r: any) => s + Number(r.quantity || 0), 0),
+    totalLoss: periodData.reduce((s: number, r: any) => s + Number(r.total_cost || 0), 0),
+    todayEntries: todayData.length,
+    todayLoss: todayData.reduce((s: number, r: any) => s + Number(r.total_cost || 0), 0),
+  }
+}
+
+/** Fetch wastage grouped by warehouse (for charts) */
+export async function fetchWastageByWarehouse(dateFrom?: string, dateTo?: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  let query = supabase
+    .from('v_wastage_summary')
+    .select('warehouse_id, warehouse_name, warehouse_type, quantity, total_cost')
+    .eq('company_id', companyId)
+
+  if (dateFrom) query = query.gte('posted_at', dateFrom + 'T00:00:00')
+  if (dateTo) query = query.lte('posted_at', dateTo + 'T23:59:59')
+
+  const { data, error } = await query
+  if (error) throw error
+
+  // Group by warehouse
+  const grouped: Record<string, any> = {}
+  for (const row of data || []) {
+    const id = row.warehouse_id
+    if (!grouped[id]) {
+      grouped[id] = {
+        warehouse_id: id,
+        warehouse_name: row.warehouse_name,
+        warehouse_type: row.warehouse_type,
+        total_qty: 0,
+        total_cost: 0,
+        entries: 0,
+      }
+    }
+    grouped[id].total_qty += Number(row.quantity || 0)
+    grouped[id].total_cost += Number(row.total_cost || 0)
+    grouped[id].entries += 1
+  }
+  return Object.values(grouped).sort((a: any, b: any) => b.total_cost - a.total_cost)
+}
+
+/** Fetch wastage grouped by reason (for pie chart) */
+export async function fetchWastageByReason(dateFrom?: string, dateTo?: string) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  let query = supabase
+    .from('v_wastage_summary')
+    .select('wastage_reason, quantity, total_cost')
+    .eq('company_id', companyId)
+
+  if (dateFrom) query = query.gte('posted_at', dateFrom + 'T00:00:00')
+  if (dateTo) query = query.lte('posted_at', dateTo + 'T23:59:59')
+
+  const { data, error } = await query
+  if (error) throw error
+
+  const grouped: Record<string, any> = {}
+  for (const row of data || []) {
+    const reason = row.wastage_reason || 'unspecified'
+    if (!grouped[reason]) {
+      grouped[reason] = { reason, total_qty: 0, total_cost: 0, entries: 0 }
+    }
+    grouped[reason].total_qty += Number(row.quantity || 0)
+    grouped[reason].total_cost += Number(row.total_cost || 0)
+    grouped[reason].entries += 1
+  }
+  return Object.values(grouped).sort((a: any, b: any) => b.total_cost - a.total_cost)
+}
+
+/** Create a WASTAGE document helper */
+export async function createWastageDocument(
+  warehouseId: string,
+  wastageCategory: string,
+  items: Array<{
+    item_id: string
+    uom_id: string
+    quantity: number
+    unit_cost: number
+    wastage_reason: string
+    notes?: string
+  }>,
+  remarks?: string,
+): Promise<any> {
+  const companyId = getCompanyId()
+  const branchId = getBranchId()
+  const userId = getUserId()
+
+  if (!companyId || !branchId) throw new Error('No company/branch context.')
+
+  // 1. Generate doc number
+  const { data: docNumber, error: seqErr } = await supabase.rpc('generate_inv_doc_number', {
+    p_company_id: companyId,
+    p_doc_type: 'WASTAGE',
+  })
+  if (seqErr) throw seqErr
+
+  // 2. Calculate totals
+  const totalQty = items.reduce((s, l) => s + (l.quantity || 0), 0)
+  const totalCost = items.reduce((s, l) => s + (l.quantity || 0) * (l.unit_cost || 0), 0)
+
+  // 3. Insert header
+  const { data: doc, error: err1 } = await supabase
+    .from('inventory_documents')
+    .insert({
+      company_id: companyId,
+      branch_id: branchId,
+      doc_type: 'WASTAGE',
+      doc_number: docNumber,
+      doc_date: new Date().toISOString().split('T')[0],
+      warehouse_id: warehouseId,
+      wastage_category: wastageCategory,
+      remarks: remarks || null,
+      status: 'draft',
+      total_qty: totalQty,
+      total_cost: totalCost,
+      created_by: userId || null,
+      posting_date: new Date().toISOString().split('T')[0],
+      sub_total: totalCost,
+      tax_total: 0,
+      grand_total: totalCost,
+    })
+    .select()
+    .single()
+  if (err1) throw err1
+
+  // 4. Insert lines with wastage_reason
+  if (items.length > 0) {
+    const rows = items.map((l, idx) => ({
+      document_id: doc.id,
+      line_number: idx + 1,
+      item_id: l.item_id,
+      uom_id: l.uom_id,
+      quantity: l.quantity,
+      unit_cost: l.unit_cost || 0,
+      wastage_reason: l.wastage_reason || 'other',
+      notes: l.notes || null,
+    }))
+    const { error: err2 } = await supabase.from('inventory_document_lines').insert(rows)
+    if (err2) throw err2
+  }
+
+  return doc
+}
+
+/** Fetch daily wastage trend (last N days) */
+export async function fetchDailyWastageTrend(days: number = 30) {
+  const companyId = getCompanyId()
+  if (!companyId) return []
+
+  const fromDate = new Date(Date.now() - days * 86400000).toISOString()
+
+  const { data, error } = await supabase
+    .from('inventory_ledger')
+    .select('quantity, total_cost, posted_at')
+    .eq('company_id', companyId)
+    .eq('doc_type', 'WASTAGE')
+    .eq('direction', 'OUT')
+    .gte('posted_at', fromDate)
+    .order('posted_at')
+
+  if (error) throw error
+
+  // Group by date
+  const grouped: Record<string, { date: string; total_qty: number; total_cost: number }> = {}
+  for (const row of data || []) {
+    const date = (row.posted_at as string).split('T')[0]
+    if (!grouped[date]) {
+      grouped[date] = { date, total_qty: 0, total_cost: 0 }
+    }
+    grouped[date].total_qty += Number(row.quantity || 0)
+    grouped[date].total_cost += Number(row.total_cost || 0)
+  }
+  return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date))
 }

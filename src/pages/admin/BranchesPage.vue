@@ -24,7 +24,9 @@
             </q-input>
           </div>
           <div class="col-12 col-md-8 text-right">
-            <q-btn color="primary" icon="add" label="Add Branch" @click="openDialog" />
+            <PermissionGate permission="admin.branches.create">
+              <q-btn color="primary" icon="add" label="Add Branch" @click="openDialog" />
+            </PermissionGate>
           </div>
         </div>
       </q-card-section>
@@ -43,22 +45,26 @@
         </template>
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="q-gutter-sm">
-            <q-btn
-              flat
-              round
-              color="primary"
-              icon="edit"
-              size="sm"
-              @click="editBranch(props.row)"
-            />
-            <q-btn
-              flat
-              round
-              color="negative"
-              icon="delete"
-              size="sm"
-              @click="deleteBranch(props.row)"
-            />
+            <PermissionGate permission="admin.branches.edit">
+              <q-btn
+                flat
+                round
+                color="primary"
+                icon="edit"
+                size="sm"
+                @click="editBranch(props.row)"
+              />
+            </PermissionGate>
+            <PermissionGate permission="admin.branches.delete">
+              <q-btn
+                flat
+                round
+                color="negative"
+                icon="delete"
+                size="sm"
+                @click="deleteBranch(props.row)"
+              />
+            </PermissionGate>
           </q-td>
         </template>
       </q-table>
@@ -119,6 +125,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
+import PermissionGate from 'components/common/PermissionGate.vue'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()

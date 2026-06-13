@@ -1,0 +1,48 @@
+{
+  "appId": "com.sevenwaves.erp",
+  "appName": "Seven Waves ERP",
+  "webDir": "dist/spa",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*.supabase.co"]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#1a1a2e",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": true,
+      "spinnerColor": "#e94560"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#1a1a2e"
+    },
+    "Camera": {
+      "presentationStyle": "fullscreen"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#e94560"
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#1a1a2e",
+    "buildOptions": {
+      "keystorePath": null,
+      "keystoreAlias": null,
+      "releaseType": "APK"
+    }
+  },
+  "ios": {
+    "scheme": "SevenWavesERP"
+  }
+}

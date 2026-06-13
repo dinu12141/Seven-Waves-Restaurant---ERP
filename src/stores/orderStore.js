@@ -147,12 +147,16 @@ export const useOrderStore = defineStore('posOrder', () => {
     if (!branchId) {
       throw new Error('No branch assigned to your account. Please contact your administrator.')
     }
+    if (!companyId) {
+      throw new Error('Company information not loaded. Please refresh the page and try again.')
+    }
 
     isSending.value = true
 
     try {
       // ── Step 1: Insert order ──────────────────────────────
       const orderPayload = {
+        company_id: companyId,
         branch_id: branchId,
         waiter_id: waiterId || null,
         assigned_waiter_id: waiterId || null, // ensures this order appears in waiter's "My Orders"
@@ -170,11 +174,6 @@ export const useOrderStore = defineStore('posOrder', () => {
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
         delivery_source: deliverySource.value || null,
         accepted_at: new Date().toISOString(),
-      }
-
-      // Extended fields
-      if (companyId) {
-        orderPayload.company_id = companyId
       }
 
       const { data: order, error: orderError } = await supabase
@@ -268,12 +267,16 @@ export const useOrderStore = defineStore('posOrder', () => {
     if (!branchId) {
       throw new Error('No branch assigned. Cannot process payment.')
     }
+    if (!companyId) {
+      throw new Error('Company information not loaded. Please refresh the page and try again.')
+    }
 
     isSending.value = true
 
     try {
       // ── Step 1: Create order (status: pending_waiter) ────────────────────
       const orderPayload = {
+        company_id: companyId,
         branch_id: branchId,
         waiter_id: userId || null,
         order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
@@ -290,7 +293,6 @@ export const useOrderStore = defineStore('posOrder', () => {
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
         delivery_source: deliverySource.value || null,
       }
-      if (companyId) orderPayload.company_id = companyId
 
       const { data: order, error: orderError } = await supabase
         .from('orders')

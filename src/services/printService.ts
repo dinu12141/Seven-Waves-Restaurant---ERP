@@ -408,6 +408,281 @@ function openPrintWindow(html: string): void {
   win.document.close()
 }
 
+// ─── Shift Receipt Helpers ───────────────────────────────────────────────────
+
+function buildReceiptBaseHtml(title: string, bodyContent: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    color: #000;
+    background: #fff;
+    width: 80mm;
+    margin: 0 auto;
+    padding: 8px;
+  }
+  .receipt-wrapper {
+    max-width: 290px;
+    margin: 0 auto;
+  }
+  .header { text-align: center; margin-bottom: 8px; }
+  .title { font-size: 15px; font-weight: bold; text-transform: uppercase; margin-top: 4px; }
+  .subtitle { font-size: 11px; margin-bottom: 4px; }
+  .divider { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+  .double-divider { border: none; border-top: 1px double #000; border-bottom: 1px double #000; height: 3px; margin: 6px 0; }
+  .info-row { display: flex; justify-content: space-between; font-size: 12px; margin: 4px 0; }
+  .info-label { font-weight: normal; }
+  .info-val { font-weight: bold; text-align: right; }
+  .total-row { font-weight: bold; font-size: 13px; margin-top: 6px; }
+  .sig-section { margin-top: 35px; display: flex; justify-content: space-between; font-size: 10px; }
+  .sig-line { border-top: 1px solid #000; width: 45%; text-align: center; padding-top: 4px; margin-top: 25px; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  @media print {
+    body { width: 80mm; padding: 0; }
+    .receipt-wrapper { max-width: 80mm; }
+    @page { size: 80mm auto; margin: 4mm; }
+  }
+</style>
+</head>
+<body>
+<div class="receipt-wrapper">
+  <div class="header">
+    <div style="font-size: 16px; font-weight: 900; text-transform: uppercase;">SEVEN WAVES</div>
+    <div class="subtitle">Restaurant & Lounge</div>
+    <div class="title">${title}</div>
+  </div>
+  <hr class="divider" />
+  ${bodyContent}
+  <hr class="divider" />
+  <div class="footer" style="text-align: center; font-size: 9px; color: #555; margin-top: 10px;">
+    Printed: ${new Date().toLocaleString('en-LK', { hour12: true })}
+  </div>
+</div>
+<script>
+  window.onload = function() {
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => window.close(), 500);
+    }, 300);
+  }
+<\/script>
+</body>
+</html>`
+}
+
+function buildShiftOpenBody(shift: any): string {
+  return `
+    <div class="info-row">
+      <span class="info-label">Shift ID:</span>
+      <span class="info-val">${(shift.id || '').slice(0, 8).toUpperCase()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Branch:</span>
+      <span class="info-val">${shift.branch_name || 'Main Branch'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Terminal:</span>
+      <span class="info-val">${shift.terminal_id}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Cashier:</span>
+      <span class="info-val">${shift.cashier_name}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Open Time:</span>
+      <span class="info-val">${new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true })}</span>
+    </div>
+    <hr class="divider" />
+    <div class="info-row total-row">
+      <span class="info-label">OPENING FLOAT:</span>
+      <span class="info-val">LKR ${parseFloat(shift.opening_cash_float || 0).toFixed(2)}</span>
+    </div>
+    ${shift.opening_note ? `
+    <div style="margin-top: 10px; font-size: 11px; font-style: italic; word-break: break-word;">
+      <strong>Note:</strong> ${shift.opening_note}
+    </div>` : ''}
+    <div class="sig-section">
+      <div class="sig-line">Cashier Signature</div>
+      <div class="sig-line">Manager Signature</div>
+    </div>
+  `
+}
+
+function buildCashMovementBody(movement: any): string {
+  const typeLabels: Record<string, string> = {
+    cash_drop: 'CASH DROP SLIP',
+    cash_in: 'CASH IN SLIP',
+    cash_out: 'CASH OUT SLIP'
+  }
+  const label = typeLabels[movement.type] || 'CASH MOVEMENT'
+  
+  return `
+    <div class="info-row">
+      <span class="info-label">Trans ID:</span>
+      <span class="info-val">${(movement.id || '').slice(0, 8).toUpperCase()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Shift ID:</span>
+      <span class="info-val">${(movement.shift_id || '').slice(0, 8).toUpperCase()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Terminal:</span>
+      <span class="info-val">${movement.terminal_id}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Cashier:</span>
+      <span class="info-val">${movement.cashier_name}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Timestamp:</span>
+      <span class="info-val">${new Date(movement.created_at).toLocaleString('en-LK', { hour12: true })}</span>
+    </div>
+    <hr class="divider" />
+    <div class="info-row total-row">
+      <span class="info-label">AMOUNT:</span>
+      <span class="info-val">LKR ${parseFloat(movement.amount || 0).toFixed(2)}</span>
+    </div>
+    ${movement.reason ? `
+    <div style="margin-top: 10px; font-size: 11px; font-style: italic; word-break: break-word;">
+      <strong>Reason:</strong> ${movement.reason}
+    </div>` : ''}
+    <div class="sig-section">
+      <div class="sig-line">Cashier Signature</div>
+      <div class="sig-line">Receiver/Mgr Sig</div>
+    </div>
+  `
+}
+
+function buildShiftSummaryBody(shift: any, isClose: boolean = false): string {
+  const totalSales = (shift.cash_sales_total || 0)
+    + (shift.card_sales_total || 0)
+    + (shift.qr_sales_total || 0)
+    + (shift.bank_sales_total || 0)
+    + (shift.credit_sales_total || 0)
+    
+  const expectedCash = (shift.opening_cash_float || 0)
+    + (shift.cash_sales_total || 0)
+    - (shift.cash_drops_total || 0)
+    + (shift.cash_in_total || 0)
+    - (shift.cash_out_total || 0)
+
+  let varianceContent = ''
+  if (isClose) {
+    const v = shift.variance || 0
+    const varLabel = v === 0 ? 'BALANCED' : v < 0 ? 'SHORTAGE' : 'OVERAGE'
+    const varClass = v === 0 ? 'color: green;' : 'color: red;'
+    varianceContent = `
+      <hr class="divider" />
+      <div class="info-row">
+        <span class="info-label">Counted Cash:</span>
+        <span class="info-val">LKR ${parseFloat(shift.counted_cash || 0).toFixed(2)}</span>
+      </div>
+      <div class="info-row total-row">
+        <span class="info-label">VARIANCE (${varLabel}):</span>
+        <span class="info-val" style="${varClass}">LKR ${v > 0 ? '+' : ''}${parseFloat(v).toFixed(2)}</span>
+      </div>
+    `
+  }
+
+  return `
+    <div class="info-row">
+      <span class="info-label">Shift ID:</span>
+      <span class="info-val">${(shift.id || '').slice(0, 8).toUpperCase()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Terminal:</span>
+      <span class="info-val">${shift.terminal_id}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Cashier:</span>
+      <span class="info-val">${shift.cashier_name}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Opened:</span>
+      <span class="info-val">${new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true })}</span>
+    </div>
+    ${shift.closed_at ? `
+    <div class="info-row">
+      <span class="info-label">Closed:</span>
+      <span class="info-val">${new Date(shift.closed_at).toLocaleString('en-LK', { hour12: true })}</span>
+    </div>` : ''}
+    
+    <div class="double-divider"></div>
+    <div class="text-center" style="font-weight: bold; margin-bottom: 4px;">SALES BREAKDOWN</div>
+    <div class="info-row">
+      <span class="info-label">Cash Sales:</span>
+      <span class="info-val">${parseFloat(shift.cash_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Card Sales:</span>
+      <span class="info-val">${parseFloat(shift.card_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">QR Sales:</span>
+      <span class="info-val">${parseFloat(shift.qr_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Bank Transfer:</span>
+      <span class="info-val">${parseFloat(shift.bank_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Credit Sales:</span>
+      <span class="info-val">${parseFloat(shift.credit_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row total-row">
+      <span class="info-label">TOTAL SALES:</span>
+      <span class="info-val">LKR ${totalSales.toFixed(2)}</span>
+    </div>
+
+    <div class="double-divider"></div>
+    <div class="text-center" style="font-weight: bold; margin-bottom: 4px;">CASH RECONCILIATION</div>
+    <div class="info-row">
+      <span class="info-label">Opening Float:</span>
+      <span class="info-val">${parseFloat(shift.opening_cash_float || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">(+) Cash Sales:</span>
+      <span class="info-val">${parseFloat(shift.cash_sales_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">(-) Cash Drops:</span>
+      <span class="info-val">${parseFloat(shift.cash_drops_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">(+) Cash In:</span>
+      <span class="info-val">${parseFloat(shift.cash_in_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">(-) Cash Out:</span>
+      <span class="info-val">${parseFloat(shift.cash_out_total || 0).toFixed(2)}</span>
+    </div>
+    <div class="info-row total-row">
+      <span class="info-label">EXPECTED CASH:</span>
+      <span class="info-val">LKR ${expectedCash.toFixed(2)}</span>
+    </div>
+    
+    ${varianceContent}
+
+    ${shift.closing_note ? `
+    <div style="margin-top: 10px; font-size: 11px; font-style: italic; word-break: break-word;">
+      <strong>Note:</strong> ${shift.closing_note}
+    </div>` : ''}
+
+    <div class="sig-section">
+      <div class="sig-line">Cashier Signature</div>
+      <div class="sig-line">Manager Signature</div>
+    </div>
+  `
+}
+
 // ─── Preview in a dialog (no auto-print) ─────────────────────────────────────
 
 function buildPreviewUrl(ticket: KotTicket, isReprint: boolean): string {
@@ -487,6 +762,42 @@ export const printService = {
     } catch (e: any) {
       return { success: false, error: e?.message ?? 'Unknown error' }
     }
+  },
+
+  /**
+   * Print Shift Open Slip
+   */
+  printShiftOpen(shift: any): void {
+    const body = buildShiftOpenBody(shift)
+    const html = buildReceiptBaseHtml('Shift Open Ticket', body)
+    openPrintWindow(html)
+  },
+
+  /**
+   * Print Cash Movement Slip (Drop / In / Out)
+   */
+  printCashMovement(movement: any): void {
+    const body = buildCashMovementBody(movement)
+    const html = buildReceiptBaseHtml(movement.type.replace('_', ' ') + ' Slip', body)
+    openPrintWindow(html)
+  },
+
+  /**
+   * Print Shift Summary (Mid-Shift / Live)
+   */
+  printShiftSummary(shift: any): void {
+    const body = buildShiftSummaryBody(shift, false)
+    const html = buildReceiptBaseHtml('Mid-Shift Summary', body)
+    openPrintWindow(html)
+  },
+
+  /**
+   * Print Shift Close Summary (Final)
+   */
+  printShiftClose(shift: any): void {
+    const body = buildShiftSummaryBody(shift, true)
+    const html = buildReceiptBaseHtml('Shift Close Report', body)
+    openPrintWindow(html)
   },
 
   /**
