@@ -81,6 +81,21 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.view' },
       },
       {
+        path: 'inventory/items',
+        component: () => import('pages/inventory/ItemsPage.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.items' },
+      },
+      {
+        path: 'inventory/adjustments',
+        component: () => import('pages/inventory/StockAdjustmentPage.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.adjust' },
+      },
+      {
+        path: 'inventory/stocktake',
+        component: () => import('pages/inventory/StockTakePage.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake' },
+      },
+      {
         path: 'finance',
         component: () => import('pages/finance/FinanceLayout.vue'),
         meta: { roles: ['admin', 'manager', 'finance'], module: 'finance', permission: 'finance.view' },
@@ -104,6 +119,7 @@ const routes = [
           { path: 'petty-cash', component: () => import('src/modules/finance/pages/PettyCashBookPage.vue') },
           { path: 'cheque-plan', component: () => import('src/modules/finance/pages/ChequePlanPage.vue') },
           { path: 'bank-reconciliation', component: () => import('src/modules/finance/pages/BankReconciliationPage.vue') },
+          { path: 'fiscal-periods', component: () => import('src/modules/finance/pages/FiscalPeriodsPage.vue') },
 
           // ── Statutory Reports (New ERP) ──
           { path: 'financial-statements', component: () => import('src/modules/finance/pages/FinancialStatementsPage.vue') },
@@ -270,6 +286,11 @@ const routes = [
         path: 'admin/loyalty/:id',
         component: () => import('pages/admin/LoyaltyCustomerDetailPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier'], module: 'crm', permission: 'crm.loyalty.view' },
+      },
+      {
+        path: 'admin/loyalty/earning-rules',
+        component: () => import('pages/admin/EarningRulesPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'crm', permission: 'crm.loyalty.view' },
       },
       {
         path: 'operations/tables',

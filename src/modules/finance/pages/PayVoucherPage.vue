@@ -62,7 +62,11 @@ function statusColor(s) { return { draft: 'grey', submitted: 'orange', approved:
 function selectVoucher(v) { selected.value = v }
 
 async function handleSave(form) {
-  try { await voucherStore.createPayVoucher(form); $q.notify({ type: 'positive', message: 'Pay voucher created' }); load() } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+  try {
+    const result = await voucherStore.createPayVoucher(form)
+    $q.notify({ type: 'positive', message: `Pay voucher created — Voucher # ${result?.voucher_no ?? ''}` })
+    load()
+  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
 }
 async function submit(id) { actionLoading.value = true; try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }
 async function approve(id) { actionLoading.value = true; try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }

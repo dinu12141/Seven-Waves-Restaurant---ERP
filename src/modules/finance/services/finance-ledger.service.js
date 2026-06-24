@@ -3,10 +3,11 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 
 export const financeLedgerService = {
   async list(filters = {}) {
-    let q = supabase.from('finance_ledgers').select('*').is('deleted_at', null).order('ledger_code')
+    let q = supabase.from('finance_ledgers').select('*').is('deleted_at', null).order('ledger_code').limit(500)
     if (filters.branch_id) q = q.eq('branch_id', filters.branch_id)
     if (filters.ledger_type) q = q.eq('ledger_type', filters.ledger_type)
     if (filters.is_active !== undefined) q = q.eq('is_active', filters.is_active)
@@ -25,15 +26,35 @@ export const financeLedgerService = {
   },
 
   async create(ledger) {
-    const { data, error } = await supabase.from('finance_ledgers').insert(ledger).select().single()
+    const authStore = useAuthStore()
+    const cleaned = { ...ledger }
+    delete cleaned._isEdit
+    delete cleaned._id
+    const payload = {
+      ...cleaned,
+      company_id: cleaned.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
+      branch_id: cleaned.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
+      created_by: authStore.user?.id || null,
+      updated_by: authStore.user?.id || null
+    }
+    const { data, error } = await supabase.from('finance_ledgers').insert(payload).select().single()
     if (error) throw error
     await logFinanceAudit('ledger_created', 'finance_ledger', data.id, null, data)
     return data
   },
 
   async update(id, updates) {
+    const authStore = useAuthStore()
     const old = await this.getById(id)
-    const { data, error } = await supabase.from('finance_ledgers').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    const cleaned = { ...updates }
+    delete cleaned._isEdit
+    delete cleaned._id
+    const payload = {
+      ...cleaned,
+      updated_by: authStore.user?.id || null,
+      updated_at: new Date().toISOString()
+    }
+    const { data, error } = await supabase.from('finance_ledgers').update(payload).eq('id', id).select().single()
     if (error) throw error
     await logFinanceAudit('ledger_updated', 'finance_ledger', id, old, data)
     return data
@@ -50,7 +71,7 @@ export const financeLedgerService = {
   },
 
   async getTransactions(ledgerId, filters = {}) {
-    let q = supabase.from('finance_cashbook_entries').select('*').eq('ledger_id', ledgerId).order('entry_date', { ascending: false })
+    let q = supabase.from('finance_cashbook_entries').select('*').eq('ledger_id', ledgerId).order('entry_date', { ascending: false }).limit(1000)
     if (filters.date_from) q = q.gte('entry_date', filters.date_from)
     if (filters.date_to) q = q.lte('entry_date', filters.date_to)
     const { data, error } = await q

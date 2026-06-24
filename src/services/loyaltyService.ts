@@ -240,6 +240,75 @@ export async function adminAdjustLoyaltyCoins(
   return data as { success: boolean; new_coins: number; tier: string }
 }
 
+// ─── Admin: Loyalty Dashboard Stats (DB aggregates) ──────────────────────────
+
+export interface LoyaltyStats {
+  totalMembers: number
+  totalCoinsIssued: number
+  coinsRedeemed: number
+  goldMembers: number
+  silverMembers: number
+}
+
+export async function adminGetLoyaltyStats(): Promise<{
+  success: boolean
+  stats?: LoyaltyStats
+  error?: string
+}> {
+  const [totalRes, earnedRes, redeemedRes, tierRes] = await Promise.all([
+    // Total members
+    supabase.from('loyalty_accounts').select('id', { count: 'exact', head: true }),
+    // Total coins ever issued (earn transactions)
+    supabase
+      .from('loyalty_transactions')
+      .select('coins')
+      .eq('transaction_type', 'earn'),
+    // Total coins redeemed
+    supabase
+      .from('loyalty_transactions')
+      .select('coins')
+      .eq('transaction_type', 'redeem'),
+    // Gold + Silver counts via loyalty_tiers join
+    supabase
+      .from('loyalty_accounts')
+      .select('current_tier_id, loyalty_tiers!current_tier_id(tier_code)'),
+  ])
+
+  if (totalRes.error || earnedRes.error || redeemedRes.error || tierRes.error) {
+    const err = totalRes.error || earnedRes.error || redeemedRes.error || tierRes.error
+    return { success: false, error: err?.message }
+  }
+
+  const totalCoinsIssued = (earnedRes.data || []).reduce(
+    (sum, r) => sum + (r.coins || 0),
+    0,
+  )
+  const coinsRedeemed = (redeemedRes.data || []).reduce(
+    (sum, r) => sum + Math.abs(r.coins || 0),
+    0,
+  )
+
+  type TierRow = { loyalty_tiers: { tier_code: string } | null }
+  const tierRows = (tierRes.data || []) as TierRow[]
+  const goldMembers = tierRows.filter(
+    (r) => r.loyalty_tiers?.tier_code === 'GOLD',
+  ).length
+  const silverMembers = tierRows.filter(
+    (r) => r.loyalty_tiers?.tier_code === 'SILVER',
+  ).length
+
+  return {
+    success: true,
+    stats: {
+      totalMembers: totalRes.count ?? 0,
+      totalCoinsIssued,
+      coinsRedeemed,
+      goldMembers,
+      silverMembers,
+    },
+  }
+}
+
 // ─── Admin: Get Loyalty Customer List ────────────────────────────────────────
 
 export async function adminGetLoyaltyCustomers(params: {

@@ -72,6 +72,12 @@ interface AuthState {
   _fetchingUserData: boolean
 }
 
+// ── Login Brute-Force Protection ───────────────────────────────
+const MAX_LOGIN_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+let _loginAttempts = 0
+let _lockoutUntil: number | null = null
+
 // ── Auth cache helpers ─────────────────────────────────────────
 // Caches roles, permissions, branches in localStorage so repeat
 // logins are instant — one network call (signInWithPassword) instead of 4.
@@ -311,9 +317,21 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
+        // ── Brute-force lockout check ─────────────────────────────
+        if (_lockoutUntil !== null && Date.now() < _lockoutUntil) {
+          const remainingMin = Math.ceil((_lockoutUntil - Date.now()) / 60000)
+          const msg = `Too many failed attempts. Try again in ${remainingMin} minute(s).`
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
+          _loginAttempts++
+          if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+            _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
+          }
           let msg = error.message
           if (msg.includes('Invalid login credentials')) msg = 'Invalid email or password'
           else if (msg.includes('Email not confirmed')) msg = 'Please verify your email first'
@@ -321,6 +339,10 @@ export const useAuthStore = defineStore('auth', {
           this.error = msg
           return { data: null, error: { message: msg } }
         }
+
+        // Successful login — reset lockout state
+        _loginAttempts = 0
+        _lockoutUntil = null
 
         this.user = data.user
         this.session = data.session
@@ -387,6 +409,14 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
+        // ── Brute-force lockout check ─────────────────────────────
+        if (_lockoutUntil !== null && Date.now() < _lockoutUntil) {
+          const remainingMin = Math.ceil((_lockoutUntil - Date.now()) / 60000)
+          const msg = `Too many failed attempts. Try again in ${remainingMin} minute(s).`
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -402,10 +432,18 @@ export const useAuthStore = defineStore('auth', {
         const result = await response.json()
 
         if (!response.ok || result.error) {
+          _loginAttempts++
+          if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+            _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
+          }
           const msg = result.error || 'Invalid user code or password'
           this.error = msg
           return { data: null, error: { message: msg } }
         }
+
+        // Successful login — reset lockout state
+        _loginAttempts = 0
+        _lockoutUntil = null
 
         // Set the session from the edge function response
         if (result.session) {

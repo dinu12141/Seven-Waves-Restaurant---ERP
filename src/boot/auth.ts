@@ -44,11 +44,38 @@ function checkBranchAccess(
   return true
 }
 
+// ── Inactivity Timeout ─────────────────────────────────────────────────────
+// Shared POS terminals must sign out idle users automatically.
+// 30 minutes of inactivity → sign out and redirect to login.
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000
+let inactivityTimer: ReturnType<typeof setTimeout> | null = null
+
+function resetInactivityTimer(authStore: ReturnType<typeof useAuthStore>) {
+  if (inactivityTimer) clearTimeout(inactivityTimer)
+  if (!authStore.isAuthenticated) return
+  inactivityTimer = setTimeout(() => {
+    authStore.signOut()
+  }, INACTIVITY_TIMEOUT_MS)
+}
+
+function startInactivityWatcher(authStore: ReturnType<typeof useAuthStore>) {
+  const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+  const handler = () => resetInactivityTimer(authStore)
+  events.forEach((e) => window.addEventListener(e, handler, { passive: true }))
+  resetInactivityTimer(authStore)
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default boot(async ({ router }) => {
   const authStore = useAuthStore()
 
   // Initialize auth — fast: just checks session + fetches roles
   await authStore.initialize()
+
+  // Start inactivity watcher after auth is ready (only in browser, not SSR)
+  if (typeof window !== 'undefined') {
+    startInactivityWatcher(authStore)
+  }
 
   router.beforeEach(async (to) => {
     // Make sure we have the latest session

@@ -106,19 +106,26 @@
 </template>
 
 <script setup>
-import { computed, ref, nextTick, watch } from 'vue'
+import { computed, ref, nextTick, watch, onMounted } from 'vue'
 import { date } from 'quasar'
 import { useAiAssistant } from '../composables/useAiAssistant'
+import { useAiStore } from '../stores/ai.store'
 
 const props = defineProps({
   moduleContext: { type: String, default: null },
 })
 
 const assistant = useAiAssistant()
+const aiStore = useAiStore()
 const scrollArea = ref(null)
 
 const messages = computed(() => assistant.messages.value)
 const isTyping = computed(() => assistant.isTyping.value)
+
+onMounted(() => {
+  aiStore.loadChatHistory()
+  nextTick(scrollToBottom)
+})
 
 const quickActions = [
   "Today's sales summary",

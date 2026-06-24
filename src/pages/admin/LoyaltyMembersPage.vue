@@ -35,7 +35,8 @@
           <q-icon name="group" color="blue-8" size="22px" />
         </div>
         <div>
-          <div class="stat-value text-blue-8">{{ totalCount }}</div>
+          <q-skeleton v-if="statsLoading" type="text" width="60px" />
+          <div v-else class="stat-value text-blue-8">{{ totalMembersDB.toLocaleString() }}</div>
           <div class="stat-label">Total Members</div>
         </div>
       </div>
@@ -44,7 +45,8 @@
           <q-icon name="toll" color="amber-8" size="22px" />
         </div>
         <div>
-          <div class="stat-value text-amber-8">{{ totalCoinsIssued.toLocaleString() }}</div>
+          <q-skeleton v-if="statsLoading" type="text" width="80px" />
+          <div v-else class="stat-value text-amber-8">{{ totalCoinsIssuedDB.toLocaleString() }}</div>
           <div class="stat-label">Total Coins Issued</div>
         </div>
       </div>
@@ -53,7 +55,8 @@
           <q-icon name="trending_up" color="green-8" size="22px" />
         </div>
         <div>
-          <div class="stat-value text-green-8">{{ goldCount }}</div>
+          <q-skeleton v-if="statsLoading" type="text" width="40px" />
+          <div v-else class="stat-value text-green-8">{{ goldCountDB.toLocaleString() }}</div>
           <div class="stat-label">Gold Members</div>
         </div>
       </div>
@@ -62,7 +65,8 @@
           <q-icon name="workspace_premium" color="grey-7" size="22px" />
         </div>
         <div>
-          <div class="stat-value text-grey-8">{{ silverCount }}</div>
+          <q-skeleton v-if="statsLoading" type="text" width="40px" />
+          <div v-else class="stat-value text-grey-8">{{ silverCountDB.toLocaleString() }}</div>
           <div class="stat-label">Silver Members</div>
         </div>
       </div>
@@ -315,7 +319,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
 import PageHeader from 'components/common/PageHeader.vue'
-import { adminGetLoyaltyCustomers, adminAdjustLoyaltyCoins } from 'src/services/loyaltyService'
+import {
+  adminGetLoyaltyCustomers,
+  adminAdjustLoyaltyCoins,
+  adminGetLoyaltyStats,
+} from 'src/services/loyaltyService'
 
 const router = useRouter()
 const $q = useQuasar()
@@ -327,6 +335,13 @@ const tierFilter = ref(null)
 const totalCount = ref(0)
 const currentPage = ref(1)
 const pageSize = 20
+
+// ── DB-aggregated stats ───────────────────────────────────────────────────────
+const statsLoading = ref(false)
+const totalMembersDB = ref(0)
+const totalCoinsIssuedDB = ref(0)
+const goldCountDB = ref(0)
+const silverCountDB = ref(0)
 
 // Adjust dialog
 const adjustDialog = ref(false)
@@ -342,12 +357,23 @@ const adjustPreviewBalance = computed(() => {
   return Math.max(0, current + delta)
 })
 
-// ── Stats derived from loaded data ────────────────────────────────────────────
-const totalCoinsIssued = computed(() =>
-  customers.value.reduce((s, c) => s + (c.total_earned_coins || 0), 0),
-)
-const goldCount = computed(() => customers.value.filter((c) => c.tier_code === 'GOLD').length)
-const silverCount = computed(() => customers.value.filter((c) => c.tier_code === 'SILVER').length)
+// ── Fetch DB-aggregated stats ─────────────────────────────────────────────────
+async function fetchStats() {
+  statsLoading.value = true
+  try {
+    const result = await adminGetLoyaltyStats()
+    if (result.success && result.stats) {
+      totalMembersDB.value = result.stats.totalMembers
+      totalCoinsIssuedDB.value = result.stats.totalCoinsIssued
+      goldCountDB.value = result.stats.goldMembers
+      silverCountDB.value = result.stats.silverMembers
+    }
+  } catch {
+    // silently fail — stats are non-critical
+  } finally {
+    statsLoading.value = false
+  }
+}
 
 // ── Table columns ─────────────────────────────────────────────────────────────
 const columns = [
@@ -493,7 +519,10 @@ function getAvatarGradient(name) {
   return colors[idx]
 }
 
-onMounted(fetchCustomers)
+onMounted(() => {
+  fetchCustomers()
+  fetchStats()
+})
 </script>
 
 <style lang="scss" scoped>

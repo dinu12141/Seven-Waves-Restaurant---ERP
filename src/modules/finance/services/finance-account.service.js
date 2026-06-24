@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 import { logFinanceAudit } from './finance-ledger.service'
 
 export const financeAccountService = {
@@ -23,15 +24,35 @@ export const financeAccountService = {
   },
 
   async create(account) {
-    const { data, error } = await supabase.from('finance_accounts').insert(account).select().single()
+    const authStore = useAuthStore()
+    const cleaned = { ...account }
+    delete cleaned._isEdit
+    delete cleaned._id
+    const payload = {
+      ...cleaned,
+      company_id: cleaned.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
+      branch_id: cleaned.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
+      created_by: authStore.user?.id || null,
+      updated_by: authStore.user?.id || null
+    }
+    const { data, error } = await supabase.from('finance_accounts').insert(payload).select().single()
     if (error) throw error
     await logFinanceAudit('account_created', 'finance_account', data.id, null, data)
     return data
   },
 
   async update(id, updates) {
+    const authStore = useAuthStore()
     const old = await this.getById(id)
-    const { data, error } = await supabase.from('finance_accounts').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    const cleaned = { ...updates }
+    delete cleaned._isEdit
+    delete cleaned._id
+    const payload = {
+      ...cleaned,
+      updated_by: authStore.user?.id || null,
+      updated_at: new Date().toISOString()
+    }
+    const { data, error } = await supabase.from('finance_accounts').update(payload).eq('id', id).select().single()
     if (error) throw error
     await logFinanceAudit('account_updated', 'finance_account', id, old, data)
     return data

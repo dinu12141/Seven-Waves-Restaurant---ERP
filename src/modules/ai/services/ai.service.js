@@ -230,7 +230,7 @@ export async function fetchInsights(filters = {}) {
   if (filters.severity) query = query.eq('severity', filters.severity)
   if (filters.status) query = query.eq('status', filters.status)
   if (filters.branch_id) query = query.eq('branch_id', filters.branch_id)
-  if (filters.limit) query = query.limit(filters.limit)
+  query = query.limit(filters.limit || 100)
 
   const { data, error } = await query
   if (error) {
@@ -274,7 +274,7 @@ export async function fetchRecommendations(filters = {}) {
   if (filters.module) query = query.eq('module', filters.module)
   if (filters.status) query = query.eq('status', filters.status)
   if (filters.branch_id) query = query.eq('branch_id', filters.branch_id)
-  if (filters.limit) query = query.limit(filters.limit)
+  query = query.limit(filters.limit || 100)
 
   const { data, error } = await query
   if (error) return []
@@ -313,7 +313,7 @@ export async function fetchAnomalies(filters = {}) {
   if (filters.severity) query = query.eq('severity', filters.severity)
   if (filters.status) query = query.eq('status', filters.status)
   if (filters.branch_id) query = query.eq('branch_id', filters.branch_id)
-  if (filters.limit) query = query.limit(filters.limit)
+  query = query.limit(filters.limit || 100)
 
   const { data, error } = await query
   if (error) return []
@@ -350,7 +350,7 @@ export async function fetchForecasts(filters = {}) {
 
   if (filters.forecast_type) query = query.eq('forecast_type', filters.forecast_type)
   if (filters.branch_id) query = query.eq('branch_id', filters.branch_id)
-  if (filters.limit) query = query.limit(filters.limit)
+  query = query.limit(filters.limit || 100)
 
   const { data, error } = await query
   if (error) return []

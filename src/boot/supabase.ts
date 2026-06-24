@@ -20,8 +20,9 @@ function realtimeBackoff(tries: number) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // PKCE flow is required for desktop apps — no implicit tokens in URL
-    flowType: isTauri ? 'pkce' : 'implicit',
+    // PKCE is the modern secure flow for all environments.
+    // Implicit flow is deprecated — tokens were exposed in URL fragments.
+    flowType: 'pkce',
     // Persist session to localStorage — works in Tauri's WebView2
     persistSession: true,
     autoRefreshToken: true,

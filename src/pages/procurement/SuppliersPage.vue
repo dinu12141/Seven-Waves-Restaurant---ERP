@@ -205,6 +205,53 @@
                   </div>
                 </div>
               </ERPFormSection>
+
+              <ERPFormSection title="Banking Details" collapsible>
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-sm-6">
+                    <ERPFormField label="Bank Name">
+                      <q-input
+                        v-model="form.bank_name"
+                        dense
+                        outlined
+                        placeholder="e.g. Bank of Ceylon"
+                      />
+                    </ERPFormField>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <ERPFormField label="Branch / Routing Code">
+                      <q-input
+                        v-model="form.bank_branch_code"
+                        dense
+                        outlined
+                        placeholder="e.g. 001"
+                      />
+                    </ERPFormField>
+                  </div>
+                </div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-sm-6">
+                    <ERPFormField label="Account Name">
+                      <q-input
+                        v-model="form.bank_account_name"
+                        dense
+                        outlined
+                        placeholder="Account holder name"
+                      />
+                    </ERPFormField>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <ERPFormField label="Account Number">
+                      <q-input
+                        v-model="form.bank_account_number"
+                        dense
+                        outlined
+                        placeholder="e.g. 0123456789"
+                      />
+                    </ERPFormField>
+                  </div>
+                </div>
+              </ERPFormSection>
             </ERPFormCard>
           </div>
         </q-scroll-area>
@@ -245,6 +292,10 @@ const defaultForm = {
   tax_id: '',
   payment_terms_days: 30,
   is_active: true,
+  bank_name: '',
+  bank_account_number: '',
+  bank_account_name: '',
+  bank_branch_code: '',
 }
 
 const form = ref({ ...defaultForm })

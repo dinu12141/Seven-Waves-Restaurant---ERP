@@ -949,17 +949,16 @@ async function generateQR(table) {
 }
 
 function getAppBaseUrl() {
-  // 1. localhost override stored by admin in the QR dialog URL box
+  // 1. Admin override stored in localStorage (set via QR dialog URL box)
   const override = localStorage.getItem('sw_qr_base_url')
   if (override) return override.replace(/\/$/, '')
 
-  // 2. Build-time env var — HIGHEST priority for production
-  //    Set VITE_APP_PUBLIC_URL = https://app.sevenwaves.lk in Vercel env vars
+  // 2. Build-time env var (set VITE_APP_PUBLIC_URL in Netlify env vars or .env)
   if (import.meta.env.VITE_APP_PUBLIC_URL)
     return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
 
-  // 3. Fallback to production domain
-  return 'https://app.sevenwaves.lk'
+  // 3. Runtime fallback — uses whatever domain the app is currently running on
+  return window.location.origin
 }
 
 async function viewQR(table) {

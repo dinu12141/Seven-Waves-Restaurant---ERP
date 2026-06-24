@@ -80,11 +80,48 @@
         <div class="text-h6">General Settings</div>
       </div>
 
-      <div class="row q-col-gutter-md">
+      <div v-if="loadingSettings" class="text-center q-pa-lg">
+        <q-spinner-dots size="32px" color="primary" />
+        <div class="text-grey-5 q-mt-sm">Loading settings...</div>
+      </div>
+
+      <div v-else class="row q-col-gutter-md">
+        <!-- Left column: core settings -->
         <div class="col-12 col-md-6">
           <q-card flat bordered>
             <q-card-section class="q-gutter-sm">
               <q-input v-model="settings.appName" label="Application Name" outlined dense />
+              <q-input v-model="settings.companyName" label="Company Name" outlined dense />
+              <q-input
+                v-model="settings.companyAddress"
+                label="Company Address"
+                type="textarea"
+                outlined
+                dense
+                rows="3"
+              />
+              <q-input
+                v-model="settings.taxRegNumber"
+                label="Tax Registration Number"
+                outlined
+                dense
+              />
+              <q-input
+                v-model="settings.vatRate"
+                label="VAT Rate %"
+                type="number"
+                outlined
+                dense
+                :rules="[(v) => (v >= 0 && v <= 30) || 'Must be between 0 and 30']"
+              />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Right column: display & operational -->
+        <div class="col-12 col-md-6">
+          <q-card flat bordered>
+            <q-card-section class="q-gutter-sm">
               <q-select
                 v-model="settings.timezone"
                 label="Timezone"
@@ -99,19 +136,62 @@
                 outlined
                 dense
               />
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <div class="col-12 col-md-6">
-          <q-card flat bordered>
-            <q-card-section class="q-gutter-sm">
-              <q-input v-model="settings.logoUrl" label="Logo URL" outlined dense />
+              <q-input
+                v-model="settings.receiptFooter"
+                label="Receipt Footer Text"
+                type="textarea"
+                outlined
+                dense
+                rows="3"
+              />
               <q-toggle
                 v-model="settings.maintenanceMode"
                 label="Maintenance Mode"
                 color="red"
               />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Logo upload — full width row -->
+        <div class="col-12">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-subtitle2 q-mb-sm">Company Logo</div>
+              <div class="row items-center q-col-gutter-md">
+                <div class="col-12 col-sm-auto">
+                  <q-img
+                    v-if="settings.logoBase64"
+                    :src="settings.logoBase64"
+                    style="width: 120px; height: 80px; object-fit: contain;"
+                    class="rounded-borders bg-grey-9"
+                  />
+                  <div
+                    v-else
+                    class="flex flex-center bg-grey-9 rounded-borders text-grey-5"
+                    style="width: 120px; height: 80px;"
+                  >
+                    No logo
+                  </div>
+                </div>
+                <div class="col">
+                  <q-file
+                    v-model="logoFile"
+                    label="Upload Logo (PNG / JPG / SVG)"
+                    outlined
+                    dense
+                    accept="image/*"
+                    @update:model-value="onLogoSelected"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="attach_file" />
+                    </template>
+                  </q-file>
+                  <div class="text-caption text-grey-5 q-mt-xs">
+                    Image is stored as base64. Max recommended size: 200 KB.
+                  </div>
+                </div>
+              </div>
             </q-card-section>
 
             <q-separator color="grey-8" />
@@ -120,7 +200,9 @@
               <q-btn
                 color="primary"
                 label="Save General Settings"
+                icon="save"
                 class="full-width"
+                :loading="savingSettings"
                 @click="saveGeneralSettings"
               />
             </q-card-actions>
@@ -137,6 +219,7 @@ import PageHeader from 'components/common/PageHeader.vue'
 import { useQuasar } from 'quasar'
 import { useModulesStore } from 'src/stores/modules'
 import { useAuthStore } from 'src/stores/auth'
+import { supabase } from 'src/boot/supabase'
 
 const $q = useQuasar()
 const modulesStore = useModulesStore()
@@ -146,9 +229,9 @@ const authStore = useAuthStore()
 const localModules = ref([])
 const saving = ref(false)
 
-const companyId = computed(() => {
-  return authStore.currentBranch?.company_id || null
-})
+const companyId = computed(
+  () => authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
+)
 
 // Deep copy modules for local editing
 watch(
@@ -207,33 +290,122 @@ async function saveModules() {
 }
 
 // --- General Settings ---
+const loadingSettings = ref(false)
+const savingSettings = ref(false)
+const logoFile = ref(null)
+
 const settings = reactive({
   appName: 'Restaurant ERP',
+  companyName: '',
+  companyAddress: '',
+  taxRegNumber: '',
+  vatRate: 0,
+  receiptFooter: '',
   timezone: 'Asia/Colombo',
   currency: 'LKR',
   maintenanceMode: false,
-  logoUrl: '',
+  logoBase64: '',
 })
 
-const saveGeneralSettings = () => {
-  $q.loading.show()
-  setTimeout(() => {
-    $q.loading.hide()
-    $q.notify({ type: 'positive', message: 'General settings saved' })
-  }, 800)
+// Map between reactive keys and DB keys
+const SETTING_KEYS = [
+  'appName',
+  'companyName',
+  'companyAddress',
+  'taxRegNumber',
+  'vatRate',
+  'receiptFooter',
+  'timezone',
+  'currency',
+  'maintenanceMode',
+  'logoBase64',
+]
+
+async function loadSettings() {
+  if (!companyId.value) return
+  loadingSettings.value = true
+  try {
+    const { data, error } = await supabase
+      .from('company_settings')
+      .select('key, value')
+      .eq('company_id', companyId.value)
+
+    if (error) throw error
+
+    if (data && data.length > 0) {
+      data.forEach(({ key, value }) => {
+        if (key === 'maintenanceMode') {
+          settings[key] = value === 'true'
+        } else if (key === 'vatRate') {
+          settings[key] = Number(value) || 0
+        } else if (key in settings) {
+          settings[key] = value || ''
+        }
+      })
+    }
+  } catch (err) {
+    $q.notify({ type: 'warning', message: 'Could not load settings: ' + (err.message || err) })
+  } finally {
+    loadingSettings.value = false
+  }
 }
 
-// Load modules on mount
+async function saveGeneralSettings() {
+  if (!companyId.value) {
+    $q.notify({ type: 'negative', message: 'Company not identified. Please refresh and try again.' })
+    return
+  }
+
+  savingSettings.value = true
+  try {
+    const userId = authStore.user?.id
+
+    const rows = SETTING_KEYS.map((key) => ({
+      company_id: companyId.value,
+      key,
+      value: String(settings[key]),
+      updated_at: new Date().toISOString(),
+      updated_by: userId || null,
+    }))
+
+    const { error } = await supabase
+      .from('company_settings')
+      .upsert(rows, { onConflict: 'company_id,key' })
+
+    if (error) throw error
+
+    $q.notify({ type: 'positive', message: 'General settings saved successfully' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save settings: ' + (err.message || err) })
+  } finally {
+    savingSettings.value = false
+  }
+}
+
+function onLogoSelected(file) {
+  if (!file) {
+    settings.logoBase64 = ''
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    settings.logoBase64 = e.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+// Load modules and settings on mount
 onMounted(async () => {
   if (!modulesStore.loaded) {
     await modulesStore.fetchModules(companyId.value)
   }
+  await loadSettings()
 })
 </script>
 
 <style scoped>
 .module-card {
-  background: #1e1e2e;
+  background: var(--erp-bg-card, #1e1e2e);
   border-color: rgba(255, 255, 255, 0.08);
   transition: all 0.25s ease;
 }

@@ -107,7 +107,7 @@ export const CHANNEL_REGISTRY: Record<string, ChannelDefinition> = {
   // ── Tables ───────────────────────────────────────────────────────
   'tables': {
     key: 'tables:{branchId}',
-    table: 'tables',
+    table: 'restaurant_tables',
     event: '*',
     module: 'operations',
     permission: 'operations.view',

@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(quasar build:*)"
+      "Bash(quasar build:*)",
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run test)",
+      "Bash(npm run lint)",
+      "Bash(npm run type-check)",
+      "Bash(npm run format)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)"
     ]
   }
 }

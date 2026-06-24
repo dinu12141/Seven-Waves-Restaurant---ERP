@@ -92,55 +92,52 @@
           <div class="fin-panel__body q-pa-md" v-if="monthlyData">
             <div class="row q-col-gutter-md q-mb-md">
               <div class="col-6 col-sm-3">
-                <div class="fin-kpi-card">
-                  <div class="fin-kpi-card__icon" style="background: rgba(16, 185, 129, 0.12)">
-                    <q-icon name="trending_up" color="green" />
+                <div class="fin-kpi-card fin-kpi-card--green">
+                  <div class="fin-kpi-card__icon" style="background: rgba(255, 255, 255, 0.2)">
+                    <q-icon name="trending_up" color="white" />
                   </div>
-                  <div>
+                  <div class="fin-kpi-card__body">
                     <div class="fin-kpi-card__label">Year Revenue</div>
-                    <div class="fin-kpi-card__value text-green-4">
+                    <div class="fin-kpi-card__value">
                       {{ fmt(monthlyData.yearRevenue) }}
                     </div>
                   </div>
                 </div>
               </div>
               <div class="col-6 col-sm-3">
-                <div class="fin-kpi-card">
-                  <div class="fin-kpi-card__icon" style="background: rgba(239, 68, 68, 0.12)">
-                    <q-icon name="trending_down" color="red" />
+                <div class="fin-kpi-card fin-kpi-card--red">
+                  <div class="fin-kpi-card__icon" style="background: rgba(255, 255, 255, 0.2)">
+                    <q-icon name="trending_down" color="white" />
                   </div>
-                  <div>
+                  <div class="fin-kpi-card__body">
                     <div class="fin-kpi-card__label">Year Expenses</div>
-                    <div class="fin-kpi-card__value text-red-4">
+                    <div class="fin-kpi-card__value">
                       {{ fmt(monthlyData.yearExpenses) }}
                     </div>
                   </div>
                 </div>
               </div>
               <div class="col-6 col-sm-3">
-                <div class="fin-kpi-card">
-                  <div class="fin-kpi-card__icon" style="background: rgba(245, 158, 11, 0.12)">
-                    <q-icon name="groups" color="amber" />
+                <div class="fin-kpi-card fin-kpi-card--amber">
+                  <div class="fin-kpi-card__icon" style="background: rgba(255, 255, 255, 0.2)">
+                    <q-icon name="groups" color="white" />
                   </div>
-                  <div>
+                  <div class="fin-kpi-card__body">
                     <div class="fin-kpi-card__label">Year Wages</div>
-                    <div class="fin-kpi-card__value text-amber-4">
+                    <div class="fin-kpi-card__value">
                       {{ fmt(monthlyData.yearWages) }}
                     </div>
                   </div>
                 </div>
               </div>
               <div class="col-6 col-sm-3">
-                <div class="fin-kpi-card">
-                  <div class="fin-kpi-card__icon" style="background: rgba(59, 130, 246, 0.12)">
-                    <q-icon name="balance" color="blue" />
+                <div class="fin-kpi-card" :class="monthlyData.yearProfit >= 0 ? 'fin-kpi-card--green' : 'fin-kpi-card--red'">
+                  <div class="fin-kpi-card__icon" style="background: rgba(255, 255, 255, 0.2)">
+                    <q-icon name="balance" color="white" />
                   </div>
-                  <div>
+                  <div class="fin-kpi-card__body">
                     <div class="fin-kpi-card__label">Year Net Profit</div>
-                    <div
-                      class="fin-kpi-card__value"
-                      :class="monthlyData.yearProfit >= 0 ? 'text-green-4' : 'text-red-4'"
-                    >
+                    <div class="fin-kpi-card__value">
                       {{ fmt(monthlyData.yearProfit) }}
                     </div>
                   </div>

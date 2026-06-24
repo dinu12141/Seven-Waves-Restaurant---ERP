@@ -26,6 +26,8 @@ export const useOrderStore = defineStore('posOrder', () => {
   const isSending = ref(false) // loading state for send-to-kitchen
   const _loadedOrderId = ref(null) // tracks order loaded from billing queue
   const deliverySource = ref(null) // 'uber' | 'pickme' | 'website' | null
+  const deliveryCharge = ref(0) // delivery charge amount in LKR
+  const parkedOrders = ref([]) // list of parked orders for current branch
 
   // ── Getters ──────────────────────────────────────────────
 
@@ -155,39 +157,38 @@ export const useOrderStore = defineStore('posOrder', () => {
 
     try {
       // ── Step 1: Insert order ──────────────────────────────
+      const isDineIn = orderType.value === 'dine-in'
+      const isDelivery = orderType.value === 'delivery'
       const orderPayload = {
         company_id: companyId,
         branch_id: branchId,
         waiter_id: waiterId || null,
-        assigned_waiter_id: waiterId || null, // ensures this order appears in waiter's "My Orders"
-        order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
+        order_type: isDineIn ? 'dine_in' : (isDelivery ? 'delivery' : 'takeaway'),
         order_source: 'pos',
-        status: 'accepted', // POS manual orders skip waiter step → go directly to accepted
+        status: 'pending_waiter',
         payment_status: 'unpaid',
         table_id: _isUUID(selectedTable.value) ? selectedTable.value : null,
-        table_number: tableNumber.value || null,
+        table_number: tableNumber.value ? (parseInt(String(tableNumber.value).replace(/\D/g, '')) || null) : null,
         total_amount: parseFloat(total.value.toFixed(2)),
         customer_name: customerName.value || null,
+        customer_id: selectedCustomer.value?.id || selectedCustomer.value?.customer_id || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
+        delivery_charge: parseFloat((deliveryCharge.value || 0).toFixed(2)),
         delivery_source: deliverySource.value || null,
-        accepted_at: new Date().toISOString(),
       }
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert(orderPayload)
-        .select('id, order_number')
+        .select('id, order_number, status')
         .single()
 
       if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
 
       // ── Step 2: Insert order_items ────────────────────────
-      // NOTE: kitchen_id may be null for items without a direct pin.
-      // generate_kots_for_order (via resolve_kitchen_for_item_full) will
-      // route those items correctly via the subcategory → kitchen map.
       const itemsPayload = cartItems.value.map((item) => {
         const itemQty = parseInt(item.qty) || 1
         const itemPrice = parseFloat(item.price) || 0
@@ -212,30 +213,8 @@ export const useOrderStore = defineStore('posOrder', () => {
         throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
-      // ── Step 4: Auto-generate KOTs and dispatch to kitchen ─────────
-      // Call the generate_kots_for_order RPC which:
-      //   - Creates KOT tickets per kitchen
-      //   - Creates KOT items linked to order items
-      //   - Dispatches to KITCHEN, CASHIER, INVENTORY, FINANCE
-      //   - Creates cashier_queue, stock_queue, finance_queue entries
-      const { data: kotResult, error: kotError } = await supabase.rpc('generate_kots_for_order', {
-        p_order_id: order.id,
-        p_branch_id: branchId,
-        p_actor_id: waiterId || null,
-      })
-
-      if (kotError) {
-        console.error('[OrderStore] KOT generation warning:', kotError.message)
-        // Don't throw — order is still valid, KOTs can be created manually
-      } else {
-        console.log(
-          '[OrderStore] KOTs created:',
-          kotResult?.kot_count,
-          'dispatches:',
-          kotResult?.dispatch_count,
-        )
-      }
-
+      // Order stays in pending_waiter — a waiter will accept it from ShiftInboxPage,
+      // which triggers KOT generation and kitchen routing via accept_order_as_waiter RPC.
       return { success: true, order }
     } finally {
       isSending.value = false
@@ -275,22 +254,26 @@ export const useOrderStore = defineStore('posOrder', () => {
 
     try {
       // ── Step 1: Create order (status: pending_waiter) ────────────────────
+      const isDineIn = orderType.value === 'dine-in'
+      const isDelivery = orderType.value === 'delivery'
       const orderPayload = {
         company_id: companyId,
         branch_id: branchId,
         waiter_id: userId || null,
-        order_type: orderType.value === 'dine-in' ? 'dine_in' : 'takeaway',
+        order_type: isDineIn ? 'dine_in' : (isDelivery ? 'delivery' : 'takeaway'),
         order_source: 'pos',
         status: 'pending_waiter',
         payment_status: 'unpaid',
         table_id: _isUUID(selectedTable.value) ? selectedTable.value : null,
-        table_number: tableNumber.value || null,
+        table_number: tableNumber.value ? (parseInt(String(tableNumber.value).replace(/\D/g, '')) || null) : null,
         total_amount: parseFloat(total.value.toFixed(2)),
         customer_name: customerName.value || null,
+        customer_id: selectedCustomer.value?.id || selectedCustomer.value?.customer_id || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
         discount_amount: parseFloat(discountAmount.value.toFixed(2)),
+        delivery_charge: parseFloat((deliveryCharge.value || 0).toFixed(2)),
         delivery_source: deliverySource.value || null,
       }
 
@@ -390,6 +373,65 @@ export const useOrderStore = defineStore('posOrder', () => {
   }
 
   /**
+   * Park (hold) the current order — saves cart + metadata to parked_orders table.
+   * Returns the saved parked order row.
+   */
+  async function parkOrder({ label } = {}) {
+    const authStore = useAuthStore()
+    const { data, error } = await supabase
+      .from('parked_orders')
+      .insert({
+        company_id: authStore.currentBranch?.company_id,
+        branch_id: authStore.currentBranch?.id,
+        parked_by: authStore.user?.id,
+        label: label || `Parked ${new Date().toLocaleTimeString()}`,
+        cart_items: cartItems.value,
+        order_type: orderType.value,
+        customer_id: selectedCustomer.value?.id || selectedCustomer.value?.customer_id || null,
+        customer_name: customerName.value || null,
+        table_number: tableNumber.value || null,
+        selected_table: selectedTable.value || null,
+        discount_amount: discountAmount.value || 0,
+        delivery_charge: deliveryCharge.value || 0,
+        notes: null,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  /**
+   * Recall a previously parked order — loads it back into the cart and deletes the parked row.
+   */
+  async function recallParkedOrder(parkedOrderId) {
+    const { data, error } = await supabase
+      .from('parked_orders')
+      .select('*')
+      .eq('id', parkedOrderId)
+      .single()
+    if (error) throw error
+    // Delete after recall so it can't be loaded twice
+    await supabase.from('parked_orders').delete().eq('id', parkedOrderId)
+    return data
+  }
+
+  /**
+   * Fetch all parked orders for the current branch.
+   */
+  async function fetchParkedOrders() {
+    const authStore = useAuthStore()
+    const { data, error } = await supabase
+      .from('parked_orders')
+      .select('*')
+      .eq('branch_id', authStore.currentBranch?.id)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    parkedOrders.value = data || []
+    return parkedOrders.value
+  }
+
+  /**
    * Load an existing order from the billing queue into the POS cart.
    * This allows the cashier to view/process an order selected from OrderLookupDialog.
    * @param {Object} queueOrder - normalized order object from cashierStore.billingOrders
@@ -460,6 +502,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     isSending,
     _loadedOrderId,
     deliverySource,
+    deliveryCharge,
     // getters
     isEmpty,
     itemCount,
@@ -479,5 +522,9 @@ export const useOrderStore = defineStore('posOrder', () => {
     sendToKitchen,
     processPayment,
     loadOrderFromQueue,
+    parkOrder,
+    recallParkedOrder,
+    fetchParkedOrders,
+    parkedOrders,
   }
 })

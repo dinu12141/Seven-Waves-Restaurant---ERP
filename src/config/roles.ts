@@ -32,6 +32,7 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/hr',
     '/admin/customers',
     '/admin/loyalty',
+    '/admin/loyalty/earning-rules',
     '/waiter-app',
     '/manager',
     '/manager-app',
@@ -62,7 +63,7 @@ export const PERMISSION_ROUTE_ACCESS: Record<string, string[]> = {
   'admin:branches': ['/admin/branches'],
   'admin:printers': ['/admin/printers'],
   'admin:settings': ['/admin/settings'],
-  'admin:customers': ['/admin/customers', '/admin/loyalty'],
+  'admin:customers': ['/admin/customers', '/admin/loyalty', '/admin/loyalty/earning-rules'],
   'tables:manage': ['/operations/tables'],
   'devices:view': ['/devices'],
   'devices:manage': ['/devices', '/devices/printers', '/devices/scanners'],
@@ -482,6 +483,37 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Documents',
   },
 
+  {
+    label: 'Item Master',
+    icon: 'inventory_2',
+    to: '/inventory/items',
+    section: 'INVENTORY',
+    group: 'Inventory',
+    roles: ['admin', 'manager', 'inventory'],
+    moduleCode: 'INVENTORY',
+    permission: 'inventory.items',
+  },
+  {
+    label: 'Stock Adjustment',
+    icon: 'tune',
+    to: '/inventory/adjustments',
+    section: 'INVENTORY',
+    group: 'Inventory',
+    roles: ['admin', 'manager', 'inventory'],
+    moduleCode: 'INVENTORY',
+    permission: 'inventory.adjust',
+  },
+  {
+    label: 'Stock Take',
+    icon: 'fact_check',
+    to: '/inventory/stocktake',
+    section: 'INVENTORY',
+    group: 'Inventory',
+    roles: ['admin', 'manager', 'inventory'],
+    moduleCode: 'INVENTORY',
+    permission: 'inventory.stocktake',
+  },
+
   // ─── PROCUREMENT ───────────────────────────────────────────────────────────
   {
     label: 'Procurement Dashboard',
@@ -668,6 +700,17 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'FINANCE',
     moduleCode: 'FINANCE',
     group: 'Cash & Banking',
+  },
+  // ── Configuration ──
+  {
+    label: 'Fiscal Periods',
+    icon: 'calendar_month',
+    to: '/finance/fiscal-periods',
+    section: 'FINANCE',
+    group: 'Configuration',
+    roles: ['admin', 'finance'],
+    permission: 'finance.admin',
+    moduleCode: 'FINANCE',
   },
   // ── Receivables & Payables ──
   {
@@ -1176,6 +1219,15 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'card_giftcard',
     to: '/admin/loyalty',
     roles: ['admin', 'manager', 'cashier'],
+    permission: 'admin:customers',
+    section: 'SYSTEM',
+    group: 'CRM',
+  },
+  {
+    label: 'Earning Rules',
+    icon: 'rule',
+    to: '/admin/loyalty/earning-rules',
+    roles: ['admin', 'manager'],
     permission: 'admin:customers',
     section: 'SYSTEM',
     group: 'CRM',

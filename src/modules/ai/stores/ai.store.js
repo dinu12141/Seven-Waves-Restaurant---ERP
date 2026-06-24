@@ -28,6 +28,7 @@ export const useAiStore = defineStore('ai', () => {
   const anomalies = ref([])
   const forecasts = ref([])
   const chatMessages = ref([])
+  const chatLoaded = ref(false) // prevents double-loading
   const dashboardSummary = ref({
     total_insights: 0,
     critical_count: 0,
@@ -180,6 +181,42 @@ export const useAiStore = defineStore('ai', () => {
 
   // ── Chat ─────────────────────────────────────────────────────────────────
 
+  const CHAT_STORAGE_KEY = 'sw_ai_chat_history'
+  const CHAT_MAX_PERSIST = 50 // max messages stored locally
+
+  /**
+   * Load chat history from localStorage on page mount.
+   * Falls back to empty array if nothing stored or parse fails.
+   */
+  function loadChatHistory() {
+    if (chatLoaded.value) return
+    chatLoaded.value = true
+    try {
+      const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          chatMessages.value = parsed
+        }
+      }
+    } catch {
+      // corrupt storage — start fresh
+      localStorage.removeItem(CHAT_STORAGE_KEY)
+    }
+  }
+
+  /**
+   * Persist current messages to localStorage (last N messages).
+   */
+  function _persistChat() {
+    try {
+      const toSave = chatMessages.value.slice(-CHAT_MAX_PERSIST)
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave))
+    } catch {
+      // ignore storage quota errors
+    }
+  }
+
   async function sendMessage(message, branchId, moduleContext) {
     loading.value.chat = true
 
@@ -210,6 +247,7 @@ export const useAiStore = defineStore('ai', () => {
       }
 
       chatMessages.value.push(aiMessage)
+      _persistChat()
       return result
     } finally {
       loading.value.chat = false
@@ -218,6 +256,8 @@ export const useAiStore = defineStore('ai', () => {
 
   function clearChat() {
     chatMessages.value = []
+    chatLoaded.value = false
+    try { localStorage.removeItem(CHAT_STORAGE_KEY) } catch { /* ignore */ }
   }
 
   return {
@@ -247,6 +287,7 @@ export const useAiStore = defineStore('ai', () => {
     handleInsightAction,
     handleRecommendationReview,
     handleAnomalyReview,
+    loadChatHistory,
     sendMessage,
     clearChat,
   }

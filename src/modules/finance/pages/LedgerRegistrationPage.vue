@@ -60,12 +60,11 @@ const search = ref('')
 const filters = ref({ ledger_type: null })
 
 const filteredLedgers = computed(() => {
-  let list = ledgerStore.ledgers
-  if (search.value) {
-    const s = search.value.toLowerCase()
-    list = list.filter(l => l.ledger_name.toLowerCase().includes(s) || l.ledger_code.toLowerCase().includes(s))
-  }
-  return list
+  return ledgerStore.ledgers.filter(l => {
+    const matchesSearch = !search.value || l.ledger_name.toLowerCase().includes(search.value.toLowerCase()) || l.ledger_code.toLowerCase().includes(search.value.toLowerCase())
+    const matchesType = !filters.value.ledger_type || l.ledger_type === filters.value.ledger_type
+    return matchesSearch && matchesType
+  })
 })
 
 const columns = [

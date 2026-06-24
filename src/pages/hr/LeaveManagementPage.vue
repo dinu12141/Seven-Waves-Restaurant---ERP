@@ -85,6 +85,7 @@
           <q-tab name="requests" label="Leave Requests" />
           <q-tab name="types" label="Leave Types" />
           <q-tab name="balances" label="Balances" />
+          <q-tab name="calendar" label="Calendar" icon="calendar_month" />
         </q-tabs>
         <div class="q-gutter-sm">
           <q-btn
@@ -569,6 +570,131 @@
             </template>
           </q-table>
         </q-tab-panel>
+
+        <!-- ══ CALENDAR TAB ══════════════════════════════════════════════ -->
+        <q-tab-panel name="calendar" class="q-pa-md">
+          <!-- Month navigation -->
+          <div class="row items-center justify-between q-mb-md">
+            <q-btn
+              flat
+              round
+              icon="chevron_left"
+              :dark="$q.dark.isActive"
+              @click="calPrevMonth"
+              :disable="loadingCalendar"
+            />
+            <div class="text-h6 text-weight-bold">
+              {{ calMonthLabel }}
+            </div>
+            <q-btn
+              flat
+              round
+              icon="chevron_right"
+              :dark="$q.dark.isActive"
+              @click="calNextMonth"
+              :disable="loadingCalendar"
+            />
+          </div>
+
+          <!-- Loading -->
+          <div v-if="loadingCalendar" class="row justify-center q-pa-xl">
+            <q-spinner-orbit color="amber" size="48px" />
+          </div>
+
+          <!-- Calendar grid -->
+          <div v-else>
+            <!-- Weekday headers -->
+            <div class="row q-mb-xs">
+              <div
+                v-for="d in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']"
+                :key="d"
+                class="col text-center text-caption text-weight-bold"
+                :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-7'"
+              >
+                {{ d }}
+              </div>
+            </div>
+
+            <!-- Calendar rows -->
+            <div
+              v-for="(week, wi) in calWeeks"
+              :key="wi"
+              class="row q-mb-xs"
+            >
+              <div
+                v-for="(day, di) in week"
+                :key="di"
+                class="col"
+                style="min-height: 72px; padding: 2px"
+              >
+                <div
+                  v-if="day"
+                  class="rounded-borders q-pa-xs"
+                  style="height: 100%; cursor: default"
+                  :style="{
+                    background: day.isToday
+                      ? ($q.dark.isActive ? 'rgba(249,168,37,0.18)' : 'rgba(249,168,37,0.12)')
+                      : ($q.dark.isActive ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                    border: day.isToday ? '1.5px solid #f9a825' : '1px solid rgba(128,128,128,0.15)',
+                  }"
+                >
+                  <div
+                    class="text-right text-caption text-weight-medium q-mb-xs"
+                    :class="day.isToday ? 'text-amber-8' : ($q.dark.isActive ? 'text-grey-4' : 'text-grey-8')"
+                  >
+                    {{ day.date }}
+                  </div>
+                  <!-- Leave chips -->
+                  <div v-for="(leave, li) in day.leaves.slice(0, 3)" :key="li">
+                    <q-chip
+                      dense
+                      size="xs"
+                      :color="leave.color"
+                      text-color="white"
+                      style="font-size: 10px; max-width: 100%; overflow: hidden"
+                      class="q-ma-none q-mb-xs full-width"
+                    >
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+                        {{ leave.emp_name }}
+                      </span>
+                      <q-tooltip>
+                        <div class="text-caption">
+                          <strong>{{ leave.emp_name }}</strong><br />
+                          {{ leave.leave_type }}<br />
+                          {{ leave.start_date }} → {{ leave.end_date }}
+                        </div>
+                      </q-tooltip>
+                    </q-chip>
+                  </div>
+                  <div
+                    v-if="day.leaves.length > 3"
+                    class="text-caption text-amber-7 q-mt-xs"
+                    style="font-size: 10px"
+                  >
+                    +{{ day.leaves.length - 3 }} more
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="row q-mt-md q-gutter-sm items-center">
+              <span :class="['text-caption', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']">Leave Types:</span>
+              <q-chip
+                v-for="lt in calLegend"
+                :key="lt.name"
+                dense
+                size="sm"
+                :color="lt.color"
+                text-color="white"
+              >{{ lt.name }}</q-chip>
+              <span
+                v-if="calLegend.length === 0"
+                :class="['text-caption', $q.dark.isActive ? 'text-grey-6' : 'text-grey-5']"
+              >No approved leaves this month</span>
+            </div>
+          </div>
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
 
@@ -870,7 +996,7 @@
 
 <script setup>
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
@@ -1502,6 +1628,132 @@ function exportBalancesExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Leave Balances')
   XLSX.writeFile(wb, 'leave_balances_report.xlsx')
 }
+
+// ── Leave Calendar ─────────────────────────────────────────────────────────────
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth()) // 0-indexed
+const loadingCalendar = ref(false)
+const calApprovedLeaves = ref([])
+
+const LEAVE_COLORS = [
+  'teal', 'indigo', 'purple', 'deep-orange', 'cyan', 'green', 'blue-grey', 'pink',
+]
+
+const calMonthLabel = computed(() => {
+  return new Date(calYear.value, calMonth.value, 1).toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+})
+
+const calLegend = computed(() => {
+  const seen = new Map()
+  calApprovedLeaves.value.forEach((l) => {
+    const name = l.leave_types?.name || 'Leave'
+    if (!seen.has(name)) {
+      seen.set(name, LEAVE_COLORS[seen.size % LEAVE_COLORS.length])
+    }
+  })
+  return Array.from(seen.entries()).map(([name, color]) => ({ name, color }))
+})
+
+function getLeaveColor(leaveTypeName) {
+  const legend = calLegend.value
+  const found = legend.find((l) => l.name === leaveTypeName)
+  return found ? found.color : 'teal'
+}
+
+const calWeeks = computed(() => {
+  const year = calYear.value
+  const month = calMonth.value
+  const firstDay = new Date(year, month, 1).getDay() // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  const weeks = []
+  let week = Array(firstDay).fill(null)
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    // Find leaves that cover this date
+    const dayLeaves = calApprovedLeaves.value
+      .filter((l) => l.start_date <= dateStr && l.end_date >= dateStr)
+      .map((l) => ({
+        emp_name: l.employees?.first_name
+          ? `${l.employees.first_name} ${l.employees.last_name || ''}`.trim()
+          : 'Employee',
+        leave_type: l.leave_types?.name || 'Leave',
+        start_date: l.start_date,
+        end_date: l.end_date,
+        color: getLeaveColor(l.leave_types?.name || 'Leave'),
+      }))
+
+    week.push({ date: d, dateStr, isToday: dateStr === todayStr, leaves: dayLeaves })
+
+    if (week.length === 7) {
+      weeks.push(week)
+      week = []
+    }
+  }
+
+  if (week.length > 0) {
+    while (week.length < 7) week.push(null)
+    weeks.push(week)
+  }
+
+  return weeks
+})
+
+async function loadCalendarLeaves() {
+  loadingCalendar.value = true
+  try {
+    const year = calYear.value
+    const month = calMonth.value
+    const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
+
+    const { data, error } = await supabase
+      .from('leave_requests')
+      .select('*, employees(first_name, last_name), leave_types(name)')
+      .eq('status', 'approved')
+      .lte('start_date', to)
+      .gte('end_date', from)
+    if (error) throw error
+    calApprovedLeaves.value = data || []
+  } catch (err) {
+    console.error('Calendar load error:', err)
+    calApprovedLeaves.value = []
+  } finally {
+    loadingCalendar.value = false
+  }
+}
+
+function calPrevMonth() {
+  if (calMonth.value === 0) {
+    calMonth.value = 11
+    calYear.value--
+  } else {
+    calMonth.value--
+  }
+  if (activeTab.value === 'calendar') loadCalendarLeaves()
+}
+
+function calNextMonth() {
+  if (calMonth.value === 11) {
+    calMonth.value = 0
+    calYear.value++
+  } else {
+    calMonth.value++
+  }
+  if (activeTab.value === 'calendar') loadCalendarLeaves()
+}
+
+// Watch tab changes to load calendar data on demand
+watch(activeTab, (tab) => {
+  if (tab === 'calendar') loadCalendarLeaves()
+})
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {

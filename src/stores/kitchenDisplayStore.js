@@ -215,6 +215,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (kotChannel) supabase.removeChannel(kotChannel)
     if (!selectedKitchenId.value) return
 
+    const branchId = authStore.currentBranch?.id
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
 
     // Build the realtime config — omit filter entirely for CASHIER display
@@ -252,6 +253,8 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           event: '*',
           schema: 'public',
           table: 'orders',
+          // Scope to this branch so KDS only reacts to its own orders
+          ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {}),
         },
         (payload) => {
           // If an order status changes (e.g. from pending_waiter to accepted), we need to refresh tickets for that order to show up

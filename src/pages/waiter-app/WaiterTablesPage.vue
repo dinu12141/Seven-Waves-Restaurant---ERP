@@ -49,6 +49,28 @@
         </button>
       </div>
 
+      <!-- ── Section Filter (only shown when sections exist) ── -->
+      <div v-if="hasSections" class="tables-sections">
+        <q-chip
+          dense
+          clickable
+          :selected="activeSection === 'all'"
+          :color="activeSection === 'all' ? 'orange-8' : 'grey-3'"
+          :text-color="activeSection === 'all' ? 'white' : 'grey-8'"
+          @click="activeSection = 'all'"
+        >All Sections</q-chip>
+        <q-chip
+          v-for="s in sections"
+          :key="s"
+          dense
+          clickable
+          :selected="activeSection === s"
+          :color="activeSection === s ? 'orange-8' : 'grey-3'"
+          :text-color="activeSection === s ? 'white' : 'grey-8'"
+          @click="activeSection = s"
+        >{{ s }}</q-chip>
+      </div>
+
       <!-- ── Loading ───────────────────────────────── -->
       <div v-if="loading && !tables.length" class="tables-loading">
         <q-spinner-orbit size="40px" color="orange" />
@@ -152,6 +174,7 @@ const loading = ref(false)
 const tables = ref([])
 const expandedTable = ref(null)
 const activeFilter = ref('all')
+const activeSection = ref('all') // Feature 4: section filter
 
 let realtimeChannel = null
 
@@ -162,10 +185,10 @@ async function loadTables() {
 
   loading.value = true
   try {
-    // Fetch tables
+    // Fetch tables (include section for filter feature)
     const { data: tablesData } = await supabase
       .from('restaurant_tables')
-      .select('id, table_number, capacity, status')
+      .select('id, table_number, capacity, status, section')
       .eq('branch_id', branchId)
       .order('table_number', { ascending: true })
 
@@ -206,24 +229,37 @@ async function loadTables() {
 // ── Filter ───────────────────────────────
 const occupiedCount = computed(() => tables.value.filter((t) => t.occupied).length)
 
+// Section filter — only show if tables have non-null sections
+const sections = computed(() => {
+  const raw = [...new Set(tables.value.map((t) => t.section).filter(Boolean))]
+  return raw.sort()
+})
+const hasSections = computed(() => sections.value.length > 0)
+
+// Base set filtered by section first
+const sectionFilteredTables = computed(() => {
+  if (activeSection.value === 'all' || !hasSections.value) return tables.value
+  return tables.value.filter((t) => t.section === activeSection.value)
+})
+
 const filters = computed(() => [
-  { label: 'All', value: 'all', count: tables.value.length },
-  { label: 'Vacant', value: 'vacant', count: tables.value.filter((t) => !t.occupied).length },
+  { label: 'All', value: 'all', count: sectionFilteredTables.value.length },
+  { label: 'Vacant', value: 'vacant', count: sectionFilteredTables.value.filter((t) => !t.occupied).length },
   {
     label: 'Occupied',
     value: 'occupied',
-    count: tables.value.filter((t) => t.occupied && !t.hasBilling).length,
+    count: sectionFilteredTables.value.filter((t) => t.occupied && !t.hasBilling).length,
   },
-  { label: 'Billing', value: 'billing', count: tables.value.filter((t) => t.hasBilling).length },
+  { label: 'Billing', value: 'billing', count: sectionFilteredTables.value.filter((t) => t.hasBilling).length },
 ])
 
 const filteredTables = computed(() => {
-  if (activeFilter.value === 'all') return tables.value
-  if (activeFilter.value === 'vacant') return tables.value.filter((t) => !t.occupied)
-  if (activeFilter.value === 'occupied')
-    return tables.value.filter((t) => t.occupied && !t.hasBilling)
-  if (activeFilter.value === 'billing') return tables.value.filter((t) => t.hasBilling)
-  return tables.value
+  const base = sectionFilteredTables.value
+  if (activeFilter.value === 'all') return base
+  if (activeFilter.value === 'vacant') return base.filter((t) => !t.occupied)
+  if (activeFilter.value === 'occupied') return base.filter((t) => t.occupied && !t.hasBilling)
+  if (activeFilter.value === 'billing') return base.filter((t) => t.hasBilling)
+  return base
 })
 
 // ── Helpers ──────────────────────────────
@@ -384,6 +420,15 @@ onUnmounted(() => {
 }
 
 // ─── Filter Tabs ─────────────────────────────────────────────────
+.tables-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .tables-filters {
   display: flex;
   gap: 6px;
@@ -632,6 +677,11 @@ body.body--dark {
     .tables-header__title { color: #f8fafc; }
     
     .tables-legend {
+      background: #1e293b;
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .tables-sections {
       background: #1e293b;
       border-bottom-color: rgba(255, 255, 255, 0.08);
     }

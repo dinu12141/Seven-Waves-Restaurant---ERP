@@ -1138,6 +1138,57 @@
               </div>
             </div>
 
+            <!-- Section 4b: Emergency Contact -->
+            <div
+              class="q-pa-sm q-mt-lg q-mb-md rounded-borders"
+              style="
+                background: rgba(239, 68, 68, 0.08);
+                border-left: 4px solid #ef4444;
+                color: #fca5a5;
+                font-weight: 600;
+                font-size: 13px;
+              "
+            >
+              <q-icon name="emergency" size="16px" class="q-mr-xs" /> Emergency Contact
+            </div>
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-md-6">
+                <div class="text-caption">Contact Name:</div>
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.emergency_contact_name"
+                  color="amber-8"
+                  placeholder="Full name"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="text-caption">Relationship:</div>
+                <q-select
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.emergency_contact_relationship"
+                  color="amber-8"
+                  :options="['Spouse', 'Parent', 'Sibling', 'Friend', 'Other']"
+                  clearable
+                  placeholder="Select relationship"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="text-caption">Emergency Phone:</div>
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.emergency_contact_phone"
+                  color="amber-8"
+                  placeholder="Contact phone number"
+                />
+              </div>
+            </div>
+
             <!-- Section 5: Employee Documents -->
             <div
               class="q-pa-sm q-mt-lg q-mb-md rounded-borders"
@@ -1593,13 +1644,21 @@
 
               <q-card flat bordered style="" class="q-mb-md">
                 <q-card-section class="q-pa-sm q-px-md">
-                  <div class="row items-center justify-between">
+                  <div class="row items-center justify-between q-mb-sm">
                     <span
                       :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
                       >Officer Areas</span
                     >
                     <div class="q-gutter-sm">
-                      <q-btn color="amber-8" outline size="sm" label="Save Area" no-caps />
+                      <q-btn
+                        color="amber-8"
+                        outline
+                        size="sm"
+                        label="Save Area"
+                        no-caps
+                        :loading="savingArea"
+                        @click="saveOfficerAreas"
+                      />
                       <q-btn
                         color="amber-8"
                         text-color="dark"
@@ -1607,8 +1666,62 @@
                         label="Add Area"
                         unelevated
                         no-caps
+                        @click="addOfficerArea"
                       />
                     </div>
+                  </div>
+                  <!-- Area input row -->
+                  <div class="row q-col-gutter-xs q-mb-sm">
+                    <div class="col-7">
+                      <q-input
+                        :dark="$q.dark.isActive"
+                        outlined
+                        dense
+                        v-model="newAreaName"
+                        placeholder="Area name"
+                        color="amber-8"
+                      />
+                    </div>
+                    <div class="col-5">
+                      <q-input
+                        :dark="$q.dark.isActive"
+                        outlined
+                        dense
+                        v-model="newAreaCode"
+                        placeholder="Code (optional)"
+                        color="amber-8"
+                      />
+                    </div>
+                  </div>
+                  <!-- Areas list -->
+                  <div v-if="loadingAreas" class="text-center q-pa-xs">
+                    <q-spinner-dots color="amber" size="24px" />
+                  </div>
+                  <div
+                    v-for="(area, idx) in empAreas"
+                    :key="idx"
+                    class="row items-center q-mb-xs"
+                  >
+                    <span
+                      :class="['col text-caption', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']"
+                    >
+                      {{ area.area_name }}<span v-if="area.area_code" class="text-grey-5 q-ml-xs">({{ area.area_code }})</span>
+                    </span>
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="close"
+                      size="xs"
+                      color="negative"
+                      @click="removeArea(idx)"
+                    />
+                  </div>
+                  <div
+                    v-if="!loadingAreas && empAreas.length === 0"
+                    :class="['text-caption text-center', $q.dark.isActive ? 'text-grey-6' : 'text-grey-5']"
+                  >
+                    No areas assigned
                   </div>
                 </q-card-section>
               </q-card>
@@ -1745,9 +1858,20 @@
                       :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
                       >HR Deduction</span
                     >
-                    <q-btn color="amber-8" outline size="sm" label="Add Deduction" no-caps />
+                    <q-btn
+                      color="amber-8"
+                      outline
+                      size="sm"
+                      label="Add Deduction"
+                      no-caps
+                      @click="showDeductionDialog = true"
+                    />
+                  </div>
+                  <div v-if="loadingDeductions" class="text-center q-pa-xs">
+                    <q-spinner-dots color="amber" size="24px" />
                   </div>
                   <q-markup-table
+                    v-else
                     :dark="$q.dark.isActive"
                     flat
                     bordered
@@ -1785,12 +1909,37 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
+                      <tr v-if="empDeductions.length === 0">
                         <td
                           colspan="3"
                           :class="['text-center', $q.dark.isActive ? 'text-grey-5' : 'text-grey-7']"
                         >
                           No records
+                        </td>
+                      </tr>
+                      <tr v-for="ded in empDeductions" :key="ded.id">
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          {{ ded.deduction_type }}
+                          <span v-if="ded.effective_date" class="text-grey-5 q-ml-xs">({{ ded.effective_date }})</span>
+                        </td>
+                        <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
+                          {{ Number(ded.amount || 0).toFixed(2) }}
+                        </td>
+                        <td class="text-center">
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            size="xs"
+                            color="negative"
+                            @click="
+                              async () => {
+                                await supabase.from('employee_deductions').delete().eq('id', ded.id)
+                                loadEmpDeductions(viewEmp?.id)
+                              }
+                            "
+                          />
                         </td>
                       </tr>
                     </tbody>
@@ -2366,6 +2515,76 @@
                           outlined
                           dense
                           v-model="viewForm.bank_account_number"
+                        />
+                      </div>
+
+                      <!-- Emergency Contact separator -->
+                      <div class="col-12 q-mt-sm q-mb-xs">
+                        <div
+                          class="q-pa-xs rounded-borders text-caption text-weight-medium"
+                          :style="{
+                            background: 'rgba(239,68,68,0.08)',
+                            borderLeft: '3px solid #ef4444',
+                            color: '#fca5a5',
+                          }"
+                        >
+                          <q-icon name="emergency" size="14px" class="q-mr-xs" />Emergency Contact
+                        </div>
+                      </div>
+
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        Contact Name
+                      </div>
+                      <div class="col-9">
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.emergency_contact_name"
+                          placeholder="Full name"
+                        />
+                      </div>
+
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        Relationship
+                      </div>
+                      <div class="col-9">
+                        <q-select
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.emergency_contact_relationship"
+                          :options="['Spouse', 'Parent', 'Sibling', 'Friend', 'Other']"
+                          clearable
+                          placeholder="Select relationship"
+                        />
+                      </div>
+
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        Emergency Phone
+                      </div>
+                      <div class="col-9">
+                        <q-input
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.emergency_contact_phone"
+                          placeholder="Contact phone number"
                         />
                       </div>
 
@@ -3423,6 +3642,93 @@
       </q-card>
     </q-dialog>
 
+    <!-- ══════════ ADD DEDUCTION DIALOG ══════════ -->
+    <q-dialog v-model="showDeductionDialog" persistent>
+      <q-card
+        class="full-width rounded-borders"
+        style="max-width: 440px"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+      >
+        <q-card-section class="row items-center">
+          <q-icon name="remove_circle_outline" size="24px" color="red-5" class="q-mr-sm" />
+          <div class="text-h6 text-weight-bold">Add Deduction</div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator :dark="$q.dark.isActive" />
+        <q-card-section class="q-gutter-sm">
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              Deduction Type *
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model="deductionForm.deduction_type"
+              :options="deductionTypeOptions"
+              color="amber-8"
+              placeholder="Select type"
+            />
+          </div>
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              Amount (LKR) *
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model.number="deductionForm.amount"
+              type="number"
+              min="0"
+              color="amber-8"
+            />
+          </div>
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              Effective Date
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              type="date"
+              v-model="deductionForm.effective_date"
+              color="amber-8"
+            />
+          </div>
+          <div>
+            <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+              Notes
+            </div>
+            <q-input
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model="deductionForm.notes"
+              type="textarea"
+              rows="2"
+              color="amber-8"
+            />
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
+          <q-btn
+            unelevated
+            color="red-6"
+            text-color="white"
+            icon="save"
+            label="Save Deduction"
+            no-caps
+            :loading="savingDeduction"
+            @click="saveDeduction"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- ══════════ ADD DESIGNATION DIALOG ══════════ -->
     <q-dialog v-model="showDesigDialog" persistent>
       <q-card
@@ -4302,6 +4608,7 @@ const defaultForm = {
   bank_account_name: '',
   bank_account_number: '',
   emergency_contact_name: '',
+  emergency_contact_relationship: '',
   emergency_contact_phone: '',
   // ── Salary Structure fields ───────────────────────────────────────
   salary_method: 'basic_salary',
@@ -4854,6 +5161,153 @@ async function writeOffAdvance(advance) {
   })
 }
 
+// ── Employee Deductions ────────────────────────────────────────────────────────
+const empDeductions = ref([])
+const loadingDeductions = ref(false)
+const showDeductionDialog = ref(false)
+const savingDeduction = ref(false)
+const deductionForm = reactive({
+  deduction_type: '',
+  amount: 0,
+  notes: '',
+  effective_date: new Date().toISOString().split('T')[0],
+})
+
+const deductionTypeOptions = [
+  'Loan Recovery',
+  'Advance Recovery',
+  'Damage',
+  'Absence',
+  'Other',
+]
+
+async function loadEmpDeductions(empId) {
+  if (!empId) return
+  loadingDeductions.value = true
+  try {
+    const { data, error } = await supabase
+      .from('employee_deductions')
+      .select('*')
+      .eq('employee_id', empId)
+      .order('effective_date', { ascending: false })
+    if (error) throw error
+    empDeductions.value = data || []
+  } catch (err) {
+    console.error('Failed to load deductions:', err)
+    empDeductions.value = []
+  } finally {
+    loadingDeductions.value = false
+  }
+}
+
+async function saveDeduction() {
+  if (!deductionForm.deduction_type) {
+    $q.notify({ type: 'warning', message: 'Please select a deduction type' })
+    return
+  }
+  if (!deductionForm.amount || Number(deductionForm.amount) <= 0) {
+    $q.notify({ type: 'warning', message: 'Please enter a valid amount' })
+    return
+  }
+  savingDeduction.value = true
+  try {
+    const { error } = await supabase.from('employee_deductions').insert({
+      employee_id: viewEmp.value?.id,
+      deduction_type: deductionForm.deduction_type,
+      amount: Number(deductionForm.amount),
+      notes: deductionForm.notes || null,
+      effective_date: deductionForm.effective_date,
+      branch_id: authStore.currentBranch?.id,
+      company_id: authStore.currentBranch?.company_id,
+    })
+    if (error) throw error
+    $q.notify({ type: 'positive', message: 'Deduction added successfully' })
+    showDeductionDialog.value = false
+    Object.assign(deductionForm, {
+      deduction_type: '',
+      amount: 0,
+      notes: '',
+      effective_date: new Date().toISOString().split('T')[0],
+    })
+    loadEmpDeductions(viewEmp.value?.id)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to save deduction' })
+  } finally {
+    savingDeduction.value = false
+  }
+}
+
+// ── Employee Officer Areas ─────────────────────────────────────────────────────
+const empAreas = ref([])
+const loadingAreas = ref(false)
+const savingArea = ref(false)
+const newAreaName = ref('')
+const newAreaCode = ref('')
+
+async function loadEmpAreas(empId) {
+  if (!empId) return
+  loadingAreas.value = true
+  try {
+    const { data, error } = await supabase
+      .from('employee_areas')
+      .select('*')
+      .eq('employee_id', empId)
+      .order('created_at')
+    if (error) throw error
+    empAreas.value = data || []
+  } catch (err) {
+    console.error('Failed to load officer areas:', err)
+    empAreas.value = []
+  } finally {
+    loadingAreas.value = false
+  }
+}
+
+async function addOfficerArea() {
+  if (!newAreaName.value.trim()) {
+    $q.notify({ type: 'warning', message: 'Please enter an area name' })
+    return
+  }
+  empAreas.value.push({
+    id: null,
+    area_name: newAreaName.value.trim(),
+    area_code: newAreaCode.value.trim() || null,
+    is_primary: empAreas.value.length === 0,
+  })
+  newAreaName.value = ''
+  newAreaCode.value = ''
+}
+
+async function saveOfficerAreas() {
+  const empId = viewEmp.value?.id
+  if (!empId) return
+  savingArea.value = true
+  try {
+    // Delete existing and re-insert for simplicity
+    await supabase.from('employee_areas').delete().eq('employee_id', empId)
+    const rows = empAreas.value.map((a) => ({
+      employee_id: empId,
+      area_name: a.area_name,
+      area_code: a.area_code || null,
+      is_primary: a.is_primary || false,
+    }))
+    if (rows.length > 0) {
+      const { error } = await supabase.from('employee_areas').insert(rows)
+      if (error) throw error
+    }
+    $q.notify({ type: 'positive', message: 'Officer areas saved successfully' })
+    loadEmpAreas(empId)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to save areas' })
+  } finally {
+    savingArea.value = false
+  }
+}
+
+function removeArea(idx) {
+  empAreas.value.splice(idx, 1)
+}
+
 const viewForm = reactive({
   first_name: '',
   last_name: '',
@@ -4891,6 +5345,9 @@ const viewForm = reactive({
   late_deduct: false,
   no_pay_deduct: false,
   epf_attend: false,
+  emergency_contact_name: '',
+  emergency_contact_relationship: '',
+  emergency_contact_phone: '',
   user_pic: null,
 })
 
@@ -5065,6 +5522,9 @@ async function viewEmployee(emp) {
   viewForm.bank_account_name = emp.bank_account_name || ''
   viewForm.bank_account_number = emp.bank_account_number || ''
   viewForm.hire_date = emp.hire_date || ''
+  viewForm.emergency_contact_name = emp.emergency_contact_name || ''
+  viewForm.emergency_contact_relationship = emp.emergency_contact_relationship || ''
+  viewForm.emergency_contact_phone = emp.emergency_contact_phone || ''
 
   // Load photo URL
   viewEmpPhotoUrl.value = emp.photo_url || ''
@@ -5100,6 +5560,8 @@ async function viewEmployee(emp) {
     loadEmpDocuments(emp.id).catch(console.error),
     loadEmpLeaveBalances(emp.id).catch(console.error),
     loadEmpAdvances(emp.id).catch(console.error),
+    loadEmpDeductions(emp.id).catch(console.error),
+    loadEmpAreas(emp.id).catch(console.error),
   ])
 
   // Start realtime sync for this employee's leave & advances
@@ -5357,6 +5819,9 @@ async function updateProfile() {
       bank_account_number: viewForm.bank_account_number || '',
       hire_date: viewForm.hire_date || null,
       epf_no: viewForm.epf_no || '',
+      emergency_contact_name: viewForm.emergency_contact_name || '',
+      emergency_contact_relationship: viewForm.emergency_contact_relationship || '',
+      emergency_contact_phone: viewForm.emergency_contact_phone || '',
     }
 
     const { error } = await supabase.from('employees').update(payload).eq('id', viewEmp.value.id)

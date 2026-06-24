@@ -133,6 +133,7 @@ export const useOrderStore = defineStore('orders', () => {
         .eq('branch_id', branchId)
         .not('status', 'in', '("completed","cancelled")')
         .order('created_at', { ascending: false })
+        .limit(200)
 
       if (ordersData) {
         orders.value = new Map(ordersData.map((o) => [o.id, o]))

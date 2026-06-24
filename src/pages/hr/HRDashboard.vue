@@ -23,13 +23,14 @@
         />
       </div>
 
-      <!-- Live Staff Activity -->
+      <!-- Pending Leave Alerts -->
       <div class="col-12 col-md-4">
         <q-card class="erp-dashboard-panel bg-dark text-white shadow-1 column full-height">
           <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-subtitle1 text-weight-bold">Leave & Alerts</div>
+            <div class="text-h6 text-subtitle1 text-weight-bold">Leave &amp; Alerts</div>
           </q-card-section>
-          <q-card-section class="col q-pt-sm">
+          <q-card-section class="col q-pt-sm" style="position: relative">
+            <q-inner-loading :showing="loading" color="primary" />
             <q-list class="erp-activity-list" padding>
               <q-item v-for="alert in alerts" :key="alert.id" class="q-pa-sm erp-activity-item">
                 <q-item-section avatar top>
@@ -50,8 +51,8 @@
                   <q-btn flat dense color="primary" label="View" size="sm" />
                 </q-item-section>
               </q-item>
-              <div v-if="alerts.length === 0" class="text-grey-6 text-center q-pa-md">
-                No active alerts.
+              <div v-if="!loading && alerts.length === 0" class="text-grey-6 text-center q-pa-md">
+                No pending leave requests.
               </div>
             </q-list>
           </q-card-section>
@@ -62,21 +63,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
+const $q = useQuasar()
+const authStore = useAuthStore()
 const loading = ref(false)
 let timer = null
 
 const kpis = ref([
-  { title: 'Total Staff', value: '45', icon: 'groups', color: 'blue', isCurrency: false },
-  { title: 'On-Shift Now', value: '0', icon: 'directions_run', color: 'green', isCurrency: false },
-  { title: 'On Leave Today', value: '0', icon: 'event_busy', color: 'purple', isCurrency: false },
-  { title: 'Pending Payroll', value: '0', icon: 'payments', color: 'orange', isCurrency: true },
-  { title: 'Avg Rating', value: '4.8', icon: 'star', color: 'teal', isCurrency: false },
-  { title: 'Open Shifts', value: '0', icon: 'schedule', color: 'indigo', isCurrency: false },
+  { title: 'Total Employees', value: '—', icon: 'groups', color: 'blue', isCurrency: false },
+  { title: 'On-Shift Now', value: '—', icon: 'directions_run', color: 'green', isCurrency: false },
+  { title: 'On Leave Today', value: '—', icon: 'event_busy', color: 'purple', isCurrency: false },
+  { title: 'Pending Payroll', value: '—', icon: 'payments', color: 'orange', isCurrency: true },
+  { title: 'Pending Leaves', value: '—', icon: 'pending_actions', color: 'teal', isCurrency: false },
+  { title: 'Attendance Rate', value: '—', icon: 'schedule', color: 'indigo', isCurrency: false },
 ])
 
 const alerts = ref([])
@@ -85,54 +91,177 @@ const hrSeries = ref([
   { name: 'Present', data: [] },
   { name: 'Absent', data: [] },
 ])
-const hrOptions = ref({})
+
+const hrOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, background: 'transparent', stacked: true },
+  theme: { mode: $q.dark.isActive ? 'dark' : 'light' },
+  xaxis: {
+    categories: last7DayLabels(),
+    labels: { style: { colors: '#9ca3af' } },
+  },
+  yaxis: { labels: { style: { colors: '#9ca3af' } } },
+  colors: ['#3b82f6', '#ef4444'],
+  grid: { borderColor: $q.dark.isActive ? '#374151' : '#e5e7eb', strokeDashArray: 4 },
+  dataLabels: { enabled: false },
+}))
+
+function last7DayLabels() {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const labels = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    labels.push(days[d.getDay()])
+  }
+  return labels
+}
+
+function last7DateStrings() {
+  const dates = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    dates.push(d.toISOString().split('T')[0])
+  }
+  return dates
+}
 
 const fetchData = async () => {
   loading.value = true
-  setTimeout(() => {
-    kpis.value[1].value = '18'
-    kpis.value[2].value = '2'
-    kpis.value[3].value = '450000'
-    kpis.value[5].value = '4'
+  try {
+    const companyId = authStore.currentBranch?.company_id
+    if (!companyId) return
 
-    alerts.value = [
-      {
-        id: 1,
-        title: 'Annual Leave Req',
-        desc: 'John Doe - Next Week',
-        icon: 'beach_access',
-        color: 'blue-8',
-        action: true,
-      },
-      {
-        id: 2,
-        title: 'Overtime Alert',
-        desc: 'Waiters exceeding 40hrs',
-        icon: 'timer',
-        color: 'orange-8',
-        action: true,
-      },
-    ]
+    const today = new Date().toISOString().split('T')[0]
 
+    const [
+      totalEmpRes,
+      onLeaveRes,
+      pendingLeaveRes,
+      pendingPayrollRes,
+      todayAttendanceRes,
+      pendingLeaveAlerts,
+      weekAttendanceRes,
+    ] = await Promise.all([
+      // KPI 1 — Total active employees
+      supabase
+        .from('employees')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('is_active', true),
+
+      // KPI 2 — On leave today (approved leave spanning today)
+      supabase
+        .from('leave_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('status', 'approved')
+        .lte('start_date', today)
+        .gte('end_date', today),
+
+      // KPI 3 — Pending leave approvals
+      supabase
+        .from('leave_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('status', 'pending'),
+
+      // KPI 4 — Pending payroll (approved but not yet paid)
+      supabase
+        .from('payroll_runs')
+        .select('total_net')
+        .eq('company_id', companyId)
+        .eq('status', 'approved'),
+
+      // KPI 5 — Today's attendance (present count)
+      supabase
+        .from('attendance_records')
+        .select('status')
+        .eq('company_id', companyId)
+        .eq('attendance_date', today),
+
+      // Pending leave alerts panel (latest 5)
+      supabase
+        .from('leave_requests')
+        .select('id, employee_id, employees(first_name, last_name), leave_type_id, leave_types(name), start_date, end_date, status')
+        .eq('company_id', companyId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(5),
+
+      // Last 7 days attendance for chart
+      supabase
+        .from('attendance_records')
+        .select('attendance_date, status')
+        .eq('company_id', companyId)
+        .gte('attendance_date', last7DateStrings()[0])
+        .lte('attendance_date', today),
+    ])
+
+    // KPI 1 — Total employees
+    kpis.value[0].value = String(totalEmpRes.count ?? '—')
+
+    // KPI 3 (slot 2) — On leave today
+    kpis.value[2].value = String(onLeaveRes.count ?? '—')
+
+    // KPI 4 (slot 4) — Pending leave approvals
+    kpis.value[4].value = String(pendingLeaveRes.count ?? '—')
+
+    // KPI — Pending payroll sum
+    const payrollTotal = (pendingPayrollRes.data || []).reduce(
+      (sum, r) => sum + Number(r.total_net || 0),
+      0,
+    )
+    kpis.value[3].value = String(payrollTotal)
+
+    // KPI — Today attendance rate
+    const todayRecords = todayAttendanceRes.data || []
+    const presentCount = todayRecords.filter((r) =>
+      ['present', 'late', 'half_day'].includes(r.status),
+    ).length
+    const totalToday = todayRecords.length
+    const rate =
+      totalToday > 0 ? Math.round((presentCount / totalToday) * 100) + '%' : '—'
+    kpis.value[5].value = rate
+
+    // KPI slot 1 — we leave "On-Shift Now" as presentCount for today
+    kpis.value[1].value = String(presentCount)
+
+    // Alerts panel
+    alerts.value = (pendingLeaveAlerts.data || []).map((lr) => ({
+      id: lr.id,
+      title: `${lr.employees?.first_name || ''} ${lr.employees?.last_name || ''}`.trim() || 'Unknown',
+      desc: `${lr.leave_types?.name || 'Leave'}: ${lr.start_date} → ${lr.end_date}`,
+      icon: 'beach_access',
+      color: 'blue-8',
+      action: true,
+    }))
+
+    // Chart — last 7 days present / absent
+    const dates = last7DateStrings()
+    const weekData = weekAttendanceRes.data || []
+    const presentByDay = {}
+    const absentByDay = {}
+    dates.forEach((d) => {
+      presentByDay[d] = 0
+      absentByDay[d] = 0
+    })
+    weekData.forEach((r) => {
+      const d = r.attendance_date
+      if (presentByDay[d] !== undefined) {
+        if (['present', 'late', 'half_day'].includes(r.status)) presentByDay[d]++
+        else if (['absent', 'on_leave', 'unpaid_leave'].includes(r.status)) absentByDay[d]++
+      }
+    })
     hrSeries.value = [
-      { name: 'Present', data: [40, 42, 45, 41, 40, 38, 44] },
-      { name: 'Absent', data: [5, 3, 0, 4, 5, 7, 1] },
+      { name: 'Present', data: dates.map((d) => presentByDay[d]) },
+      { name: 'Absent', data: dates.map((d) => absentByDay[d]) },
     ]
-    hrOptions.value = {
-      chart: { type: 'bar', toolbar: { show: false }, background: 'transparent', stacked: true },
-      theme: { mode: 'dark' },
-      xaxis: {
-        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        labels: { style: { colors: '#9ca3af' } },
-      },
-      yaxis: { labels: { style: { colors: '#9ca3af' } } },
-      colors: ['#3b82f6', '#ef4444'],
-      grid: { borderColor: '#374151', strokeDashArray: 4 },
-      dataLabels: { enabled: false },
-    }
-
+  } catch (err) {
+    console.error('[HRDashboard] fetchData error:', err)
+  } finally {
     loading.value = false
-  }, 600)
+  }
 }
 
 onMounted(() => {

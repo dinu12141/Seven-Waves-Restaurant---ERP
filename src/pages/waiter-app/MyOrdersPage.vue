@@ -330,7 +330,160 @@
             no-caps
             style="height: 50px; border-radius: 12px; font-weight: 700; font-size: 17px"
           />
+
+          <!-- ── Waiter Action Buttons ── -->
+          <div class="waiter-actions q-mt-md">
+            <!-- Move Table -->
+            <q-btn
+              outline
+              no-caps
+              icon="swap_horiz"
+              label="Move Table"
+              color="blue-7"
+              class="waiter-action-btn"
+              @click="openTransferDialog()"
+            />
+            <!-- Add Items -->
+            <q-btn
+              outline
+              no-caps
+              icon="add_shopping_cart"
+              label="Add Items"
+              color="orange-8"
+              class="waiter-action-btn"
+              @click="openAddItemsDialog()"
+            />
+            <!-- Request Bill -->
+            <q-btn
+              unelevated
+              no-caps
+              :icon="detailOrder.bill_requested ? 'task_alt' : 'receipt_long'"
+              :label="detailOrder.bill_requested ? 'Bill Requested' : 'Request Bill'"
+              :color="detailOrder.bill_requested ? 'grey-5' : 'positive'"
+              :disable="detailOrder.bill_requested || billRequesting"
+              :loading="billRequesting"
+              class="waiter-action-btn"
+              @click="requestBill(detailOrder)"
+            />
+          </div>
         </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- ── Table Transfer Dialog ─────────────────────────── -->
+    <q-dialog v-model="showTransferDialog" position="bottom">
+      <q-card class="detail-sheet">
+        <div class="sheet-handle-wrap"><div class="sheet-handle" /></div>
+        <q-bar class="detail-bar">
+          <div class="detail-bar__title text-weight-bold">Move to Another Table</div>
+          <q-space />
+          <q-btn dense flat icon="close" v-close-popup color="grey-5" />
+        </q-bar>
+        <q-card-section>
+          <div v-if="!availableTables.length" class="text-center text-grey-5 q-py-lg">
+            <q-icon name="table_restaurant" size="36px" /><br />
+            No available tables right now
+          </div>
+          <div v-else class="transfer-table-grid">
+            <div
+              v-for="t in availableTables"
+              :key="t.id"
+              class="transfer-table-card"
+              :class="{ 'transfer-table-card--selected': selectedTransferTable === t.id }"
+              @click="selectedTransferTable = t.id"
+            >
+              <div class="transfer-table-card__num">{{ t.table_number }}</div>
+              <div class="transfer-table-card__cap">
+                <q-icon name="person" size="11px" />{{ t.capacity }}
+              </div>
+              <div v-if="t.section" class="transfer-table-card__section">{{ t.section }}</div>
+            </div>
+          </div>
+          <q-btn
+            unelevated
+            no-caps
+            class="full-width q-mt-md"
+            color="blue-7"
+            icon="swap_horiz"
+            label="Confirm Transfer"
+            :disable="!selectedTransferTable"
+            :loading="transferLoading"
+            style="height: 48px; border-radius: 12px; font-weight: 700"
+            @click="confirmTransfer"
+          />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- ── Add Items Dialog ──────────────────────────────── -->
+    <q-dialog v-model="showAddItemsDialog" position="bottom">
+      <q-card class="detail-sheet" style="max-height: 92vh">
+        <div class="sheet-handle-wrap"><div class="sheet-handle" /></div>
+        <q-bar class="detail-bar">
+          <div class="detail-bar__title text-weight-bold">Add Items</div>
+          <q-space />
+          <q-btn dense flat icon="close" v-close-popup color="grey-5" />
+        </q-bar>
+
+        <div v-if="menuLoading" class="column items-center q-py-xl">
+          <q-spinner-orbit size="36px" color="orange" />
+        </div>
+        <template v-else>
+          <!-- Category filter chips -->
+          <div class="add-items-cats">
+            <q-chip
+              v-for="cat in menuSections"
+              :key="cat"
+              :selected="activeMenuSection === cat"
+              clickable
+              dense
+              :color="activeMenuSection === cat ? 'orange-8' : 'grey-2'"
+              :text-color="activeMenuSection === cat ? 'white' : 'grey-8'"
+              @click="activeMenuSection = cat"
+            >
+              {{ cat === 'all' ? 'All' : cat }}
+            </q-chip>
+          </div>
+
+          <!-- Menu items list -->
+          <q-card-section class="q-pt-none add-items-scroll">
+            <div
+              v-for="item in filteredMenuItems"
+              :key="item.id"
+              class="add-item-row"
+            >
+              <div class="add-item-row__info">
+                <div class="add-item-row__name">{{ item.name }}</div>
+                <div class="add-item-row__price">Rs. {{ Number(item.base_price).toFixed(0) }}</div>
+              </div>
+              <div class="add-item-row__controls">
+                <button
+                  v-if="cartQty(item.id) > 0"
+                  class="qty-btn qty-btn--minus"
+                  @click.stop="decrementCart(item.id)"
+                >−</button>
+                <span v-if="cartQty(item.id) > 0" class="qty-display">{{ cartQty(item.id) }}</span>
+                <button class="qty-btn qty-btn--plus" @click.stop="incrementCart(item)">+</button>
+              </div>
+            </div>
+          </q-card-section>
+
+          <!-- Cart summary + confirm -->
+          <div v-if="cartList.length" class="add-items-cart-bar">
+            <div class="cart-bar__summary">
+              {{ cartList.reduce((s, c) => s + c.qty, 0) }} items · Rs. {{ cartTotal.toFixed(0) }}
+            </div>
+            <q-btn
+              unelevated no-caps
+              color="orange-8"
+              icon="add_shopping_cart"
+              label="Add to Order"
+              :loading="addItemsSubmitting"
+              style="border-radius: 10px; font-weight: 700"
+              @click="confirmAddItems"
+            />
+          </div>
+        </template>
       </q-card>
     </q-dialog>
 
@@ -369,17 +522,179 @@ import { useWaiterAppStore } from 'src/stores/waiterAppStore'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from 'stores/auth'
 import KotReceipt from 'src/components/common/KotReceipt.vue'
 
 const route = useRoute()
 const router = useRouter()
 const appStore = useWaiterAppStore()
 const orderStore = useWaiterOrderStore()
+const authStore = useAuthStore()
 const $q = useQuasar()
 
 const showDetailSheet = ref(false)
 const detailOrder = ref(null)
 const serving = reactive({})
+
+// ── Table Transfer state ─────────────────────────────────────────
+const showTransferDialog = ref(false)
+const availableTables = ref([])
+const selectedTransferTable = ref(null)
+const transferLoading = ref(false)
+
+async function openTransferDialog() {
+  selectedTransferTable.value = null
+  availableTables.value = []
+  const branchId = authStore.currentBranch?.id
+  if (!branchId) return
+  const { data } = await supabase
+    .from('restaurant_tables')
+    .select('id, table_number, capacity, section')
+    .eq('branch_id', branchId)
+    .eq('status', 'available')
+    .order('table_number', { ascending: true })
+  availableTables.value = data || []
+  showTransferDialog.value = true
+}
+
+async function confirmTransfer() {
+  if (!selectedTransferTable.value || !detailOrder.value) return
+  transferLoading.value = true
+  try {
+    const { data, error } = await supabase.rpc('waiter_transfer_table', {
+      p_order_id: detailOrder.value.id,
+      p_new_table_id: selectedTransferTable.value,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Transfer failed')
+    $q.notify({ type: 'positive', icon: 'swap_horiz', message: 'Table transferred successfully', position: 'top' })
+    showTransferDialog.value = false
+    showDetailSheet.value = false
+    await Promise.all([appStore.loadMyOrders(), orderStore.fetchMyOrders()])
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'top' })
+  } finally {
+    transferLoading.value = false
+  }
+}
+
+// ── Add Items state ───────────────────────────────────────────────
+const showAddItemsDialog = ref(false)
+const menuItems = ref([])
+const menuLoading = ref(false)
+const addCart = reactive({}) // { [menu_item_id]: { item, qty, notes } }
+const addItemNotes = reactive({}) // { [menu_item_id]: string }
+const activeMenuSection = ref('all')
+const addItemsSubmitting = ref(false)
+
+const menuSections = computed(() => {
+  const cats = [...new Set(menuItems.value.map((m) => m.category_name || 'Other'))]
+  return ['all', ...cats]
+})
+const filteredMenuItems = computed(() => {
+  if (activeMenuSection.value === 'all') return menuItems.value
+  return menuItems.value.filter((m) => (m.category_name || 'Other') === activeMenuSection.value)
+})
+const cartList = computed(() =>
+  Object.values(addCart).filter((c) => c.qty > 0),
+)
+const cartTotal = computed(() =>
+  cartList.value.reduce((s, c) => s + c.item.base_price * c.qty, 0),
+)
+
+async function openAddItemsDialog() {
+  Object.keys(addCart).forEach((k) => delete addCart[k])
+  Object.keys(addItemNotes).forEach((k) => delete addItemNotes[k])
+  activeMenuSection.value = 'all'
+  menuItems.value = []
+  menuLoading.value = true
+  showAddItemsDialog.value = true
+  try {
+    const branchId = authStore.currentBranch?.id
+    if (!branchId) return
+    const { data } = await supabase
+      .from('menu_items')
+      .select('id, name, base_price, kitchen_id, categories ( name )')
+      .eq('branch_id', branchId)
+      .eq('is_available', true)
+      .order('name', { ascending: true })
+    menuItems.value = (data || []).map((m) => ({
+      ...m,
+      category_name: m.categories?.name || 'Other',
+    }))
+  } finally {
+    menuLoading.value = false
+  }
+}
+
+function cartQty(itemId) {
+  return addCart[itemId]?.qty || 0
+}
+function incrementCart(item) {
+  if (!addCart[item.id]) addCart[item.id] = { item, qty: 0, notes: '' }
+  addCart[item.id].qty++
+}
+function decrementCart(itemId) {
+  if (!addCart[itemId]) return
+  addCart[itemId].qty--
+  if (addCart[itemId].qty <= 0) delete addCart[itemId]
+}
+
+async function confirmAddItems() {
+  if (!cartList.value.length || !detailOrder.value) return
+  addItemsSubmitting.value = true
+  try {
+    const items = cartList.value.map((c) => ({
+      menu_item_id: c.item.id,
+      qty: c.qty,
+      notes: addItemNotes[c.item.id] || '',
+    }))
+    const { data, error } = await supabase.rpc('waiter_add_items_to_order', {
+      p_order_id: detailOrder.value.id,
+      p_items: items,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Add items failed')
+    $q.notify({
+      type: 'positive',
+      icon: 'add_shopping_cart',
+      message: `Items added! +Rs. ${Number(data.added_subtotal || 0).toFixed(0)}`,
+      position: 'top',
+    })
+    showAddItemsDialog.value = false
+    showDetailSheet.value = false
+    await Promise.all([appStore.loadMyOrders(), orderStore.fetchMyOrders()])
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'top' })
+  } finally {
+    addItemsSubmitting.value = false
+  }
+}
+
+// ── Bill Request state ────────────────────────────────────────────
+const billRequesting = ref(false)
+
+async function requestBill(order) {
+  if (order.bill_requested) return
+  billRequesting.value = true
+  try {
+    const { data, error } = await supabase.rpc('waiter_request_bill', {
+      p_order_id: order.id,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Bill request failed')
+    $q.notify({ type: 'positive', icon: 'receipt_long', message: 'Bill requested — cashier notified', position: 'top' })
+    // Update local state immediately
+    if (detailOrder.value && detailOrder.value.id === order.id) {
+      detailOrder.value = { ...detailOrder.value, bill_requested: true }
+    }
+    await Promise.all([appStore.loadMyOrders(), orderStore.fetchMyOrders()])
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'top' })
+  } finally {
+    billRequesting.value = false
+  }
+}
 
 // ── Highlight / deep-link state ──────────────────────────────────
 const orderCardRefs = reactive({})
@@ -1448,6 +1763,158 @@ async function markServed(orderId) {
   }
 }
 
+// ── Waiter Action Buttons ────────────────────────────────────
+.waiter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.waiter-action-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+}
+
+// ── Table Transfer Grid ──────────────────────────────────────
+.transfer-table-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.transfer-table-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+
+  &--selected {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+  &:active { transform: scale(0.96); }
+
+  &__num {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  &__cap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  &__section {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+}
+
+// ── Add Items Dialog ─────────────────────────────────────────
+.add-items-cats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 16px 4px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.add-items-scroll {
+  overflow-y: auto;
+  max-height: 44vh;
+}
+.add-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 10px;
+
+  &:last-child { border-bottom: none; }
+
+  &__info { flex: 1; min-width: 0; }
+  &__name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+  &__price {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+}
+.qty-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.1s;
+
+  &--plus {
+    background: #ea580c;
+    color: #fff;
+  }
+  &--minus {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+  &:active { opacity: 0.7; }
+}
+.qty-display {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 18px;
+  text-align: center;
+}
+.add-items-cart-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  gap: 12px;
+}
+.cart-bar__summary {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 // ── Unavailable Items Section ───────────────────────────────
 .unavail-section {
   background: #fef2f2;
@@ -1558,6 +2025,32 @@ body.body--dark {
         background: #10b981;
       }
     }
+  }
+
+  // Waiter action buttons + transfer grid
+  .waiter-action-btn {
+    background: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: inherit !important;
+  }
+  .transfer-table-card {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+    &__num { color: #f8fafc; }
+    &--selected {
+      background: rgba(59, 130, 246, 0.1);
+      border-color: #3b82f6;
+    }
+  }
+  .add-items-cart-bar {
+    background: #1e293b;
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  .cart-bar__summary { color: #f8fafc; }
+  .add-item-row {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+    &__name { color: #f8fafc; }
+    &__price { color: #94a3b8; }
   }
 
   // Bottom Sheet

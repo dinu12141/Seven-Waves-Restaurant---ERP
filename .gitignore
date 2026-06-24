@@ -2,6 +2,9 @@
 .thumbs.db
 node_modules
 
+# MCP config (contains personal access tokens)
+.mcp.json
+
 # Quasar core related directories
 .quasar
 /dist

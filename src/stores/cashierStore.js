@@ -502,7 +502,7 @@ export const useCashierStore = defineStore('cashier', () => {
       ordersChannel = null
     }
 
-    const channelName = `cashier-orders-${bid}-${Date.now()}`
+    const channelName = `cashier-orders-${bid}`
     console.log('[CashierStore] Subscribing realtime:', channelName)
 
     ordersChannel = supabase

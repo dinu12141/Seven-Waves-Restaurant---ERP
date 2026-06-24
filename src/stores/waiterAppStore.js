@@ -453,6 +453,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       )
       .eq('branch_id', branchId)
       .eq('status', 'pending_waiter')
+      .is('assigned_waiter_id', null)
       .order('created_at', { ascending: true })
 
     pendingOrders.value = (data || []).map((o) => ({
@@ -741,8 +742,11 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .subscribe()
 
     // KOT channel — kitchen-ready alerts
+    // Channel name is branch-scoped so cross-branch users share no broadcast state.
+    // kot_tickets has no branch_id column so postgres_changes filter can't be used;
+    // RLS on kot_tickets + the myOrders client-side check below are the guards.
     kotChannel = supabase
-      .channel('waiter-app-kot')
+      .channel(`waiter-app-kot-${branchId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },

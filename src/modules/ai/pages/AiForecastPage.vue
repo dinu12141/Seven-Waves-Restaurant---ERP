@@ -80,7 +80,7 @@ const $q = useQuasar()
 const aiStore = useAiStore()
 const authStore = useAuthStore()
 
-const branchId = computed(() => authStore.activeBranch?.id)
+const branchId = computed(() => authStore.currentBranch?.id)
 const userId = computed(() => authStore.user?.id)
 const selectedPeriod = ref('7d')
 const forecastExplanation = ref('')

@@ -38,6 +38,25 @@
         </q-td>
       </template>
 
+      <template #body-cell-sla="props">
+        <q-td :props="props">
+          <template v-if="props.row.status === 'open' || props.row.status === 'investigating'">
+            <q-badge
+              :color="anomalyStatus(props.row.created_at).color"
+              :label="anomalyStatus(props.row.created_at).label"
+              class="sla-badge"
+            />
+            <q-badge
+              v-if="hoursOpen(props.row.created_at) >= 24"
+              color="negative"
+              label="ESCALATED"
+              class="q-ml-xs sla-badge"
+            />
+          </template>
+          <span v-else class="text-grey-6 text-caption">—</span>
+        </q-td>
+      </template>
+
       <template #body-cell-actions="props">
         <q-td :props="props">
           <q-btn-dropdown v-if="props.row.status === 'open'" flat dense size="sm" color="primary" icon="more_vert">
@@ -86,6 +105,7 @@ const columns = [
   { name: 'explanation', label: 'Explanation', field: 'explanation', align: 'left', style: 'max-width: 300px; white-space: normal' },
   { name: 'suggested_review_action', label: 'Suggested Action', field: 'suggested_review_action', align: 'left' },
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
+  { name: 'sla', label: 'SLA', field: 'created_at', align: 'center', sortable: true },
   { name: 'actions', label: '', field: 'actions', align: 'center' },
 ]
 
@@ -97,6 +117,24 @@ function severityColor(severity) {
 function statusColor(status) {
   const map = { open: 'orange', investigating: 'blue', confirmed: 'red', false_positive: 'grey', resolved: 'positive' }
   return map[status] || 'grey'
+}
+
+/**
+ * Returns hours since the anomaly was created (floor).
+ */
+function hoursOpen(createdAt) {
+  return Math.floor((Date.now() - new Date(createdAt)) / 3_600_000)
+}
+
+/**
+ * Returns SLA status: color + label.
+ * <2h = green, 2-8h = yellow, 8-24h = red, >=24h = escalated (still red)
+ */
+function anomalyStatus(createdAt) {
+  const h = hoursOpen(createdAt)
+  if (h < 2) return { color: 'positive', label: `${h}h open` }
+  if (h < 8) return { color: 'warning', label: `${h}h open` }
+  return { color: 'negative', label: `${h}h open` }
 }
 </script>
 
@@ -119,5 +157,10 @@ function statusColor(status) {
     color: #d1d5db;
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   }
+}
+.sla-badge {
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
 }
 </style>

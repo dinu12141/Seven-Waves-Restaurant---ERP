@@ -24,26 +24,52 @@
             @focus="showCustomerDropdown = true" 
             @blur="hideCustomerDropdownDelay"
             class="classic-input flex-1 customer-input" 
-            placeholder="Search by name or phone..." 
+            placeholder="Search name / phone / ID no..." 
             autocomplete="off"
           />
-          <ul v-show="showCustomerDropdown && customerOptions.length > 0" class="autocomplete-list">
-            <li v-for="c in customerOptions" :key="c.id" @mousedown.prevent="selectCustomer(c)">
-              <span style="font-weight: bold">{{ c.full_name }}</span>
-              <span style="margin-left:auto; color:#888; font-size: 11px;">{{ c.phone || c.email }}</span>
+          <!-- Enhanced Autocomplete Dropdown -->
+          <ul v-show="showCustomerDropdown && (customerOptions.length > 0 || customerSearchText.length >= 2)" class="autocomplete-list">
+            <li v-for="c in customerOptions" :key="c.id" @mousedown.prevent="selectCustomer(c)" class="customer-result-row">
+              <div class="cr-left">
+                <span class="cr-name">{{ c.full_name }}</span>
+                <span class="cr-details">
+                  <span v-if="c.phone">📞 {{ c.phone }}</span>
+                  <span v-if="c.national_id"> · 🆔 {{ c.national_id }}</span>
+                </span>
+              </div>
+              <div class="cr-right">
+                <span class="cr-coins" :style="{ color: c.tier_color || '#9ca3af' }">
+                  🪙 {{ c.loyalty_coins ?? 0 }}
+                </span>
+                <span class="cr-tier" :style="{ background: c.tier_color || '#9ca3af' }">
+                  {{ c.tier_name || 'Standard' }}
+                </span>
+              </div>
+            </li>
+            <!-- Add New Customer option -->
+            <li v-if="customerSearchText.length >= 2" @mousedown.prevent="openNewCustomerDialog" class="customer-add-row">
+              <span class="cr-add-icon">➕</span>
+              <span class="cr-add-text">Add New Customer "{{ customerSearchText }}"</span>
             </li>
           </ul>
         </div>
         <div class="info-row">
-          <div class="flex-row-half">
+          <div class="flex-row-half" style="display: flex; align-items: center; gap: 6px;">
             <span class="lbl">LOYALTY PTS</span>
-            <span class="val txt-white">{{ store.selectedCustomer ? (store.selectedCustomer.points_balance || store.selectedCustomer.loyalty_points || 0) : 0 }}</span>
+            <span class="val txt-white">{{ store.selectedCustomer ? (store.selectedCustomer.loyalty_coins ?? store.selectedCustomer.points_balance ?? 0) : 0 }}</span>
+            <button 
+              v-if="store.selectedCustomer && (store.selectedCustomer.loyalty_coins || store.selectedCustomer.points_balance) > 0"
+              class="btn-redeem"
+              @click="openRedeemDialog"
+              title="Redeem loyalty coins as discount"
+            >REDEEM</button>
           </div>
           <div class="flex-row-half text-right">
             <span class="lbl mr-2">CREDIT LIMIT</span>
             <span class="val txt-white border-val">LKR {{ store.selectedCustomer?.credit_limit ? store.selectedCustomer.credit_limit.toFixed(2) : '0.00' }}</span>
           </div>
         </div>
+
       </div>
       
       <!-- Middle side: Summary -->
@@ -51,7 +77,17 @@
         <div class="summary-line"><span class="slbl">Sub Total</span><span class="sval">{{ fmtCurrency(store.subtotal) }}</span></div>
         <div class="summary-line"><span class="slbl">Discount</span><span class="sval txt-red">-{{ fmtCurrency(store.discountAmount) }}</span></div>
         <div class="summary-line"><span class="slbl">S. Charge</span><span class="sval">{{ fmtCurrency(store.serviceChargeAmount) }}</span></div>
-        <div class="summary-line"><span class="slbl">D. Charge</span><span class="sval">0.00</span></div>
+        <div class="summary-line">
+          <span class="slbl">D. Charge</span>
+          <input
+            v-model.number="store.deliveryCharge"
+            type="number"
+            min="0"
+            step="0.01"
+            class="sval delivery-charge-input"
+            placeholder="0.00"
+          />
+        </div>
         <div class="summary-line"><span class="slbl">Tax</span><span class="sval">{{ fmtCurrency(store.taxAmount) }}</span></div>
       </div>
       <div class="info-section summary-boxes">
@@ -270,13 +306,24 @@
             </div>
             <div class="actions-bottom">
               <button class="abtn a-blue" @click="handleSave" style="flex:1;">SAVE</button>
-              <button 
-                class="abtn a-blue" 
+              <button
+                class="abtn a-blue"
                 :class="{ 'dimmed-action': isAlreadyPaid }"
                 :disabled="isAlreadyPaid"
-                @click="handlePayment" 
+                @click="handlePayment"
                 style="flex:1;"
               >PAYMENT</button>
+              <button
+                class="abtn a-purple"
+                :class="{ 'dimmed-action': isAlreadyPaid }"
+                :disabled="isAlreadyPaid"
+                @click="handleSplitPayment"
+                style="flex:1;"
+              >SPLIT</button>
+            </div>
+            <div class="actions-bottom" style="height: 44px;">
+              <button class="abtn a-orange" @click="handleParkOrder" style="flex:1;">⏸ PARK ORDER</button>
+              <button class="abtn a-teal" @click="handleRecallOrder" style="flex:1;">▶ RECALL</button>
             </div>
           </div>
         </div>
@@ -522,6 +569,218 @@
       v-model="showCloseShift"
       @closed="onShiftClosed"
     />
+    <!-- ═══ NEW CUSTOMER DIALOG ═══ -->
+    <q-dialog v-model="showNewCustomerDialog" persistent>
+      <q-card class="pos-dark-dialog" style="min-width: 420px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6" style="color: #4ade80; font-weight: 700;">➕ Add New Customer</div>
+          <q-space />
+          <q-btn icon="close" flat round dense @click="showNewCustomerDialog = false" style="color: #888;" />
+        </q-card-section>
+        <q-card-section class="q-pt-md">
+          <q-input 
+            v-model="newCustName" 
+            label="Full Name *" 
+            dark filled dense 
+            class="q-mb-md"
+            label-color="green-4"
+            input-class="text-white"
+            :rules="[v => !!v || 'Name is required']"
+          />
+          <q-input 
+            v-model="newCustPhone" 
+            label="Phone Number *" 
+            dark filled dense 
+            class="q-mb-md"
+            label-color="green-4"
+            input-class="text-white"
+            mask="### ### ####"
+            :rules="[v => !!v || 'Phone is required']"
+          />
+          <q-input 
+            v-model="newCustNationalId" 
+            label="National ID (optional)" 
+            dark filled dense 
+            class="q-mb-md"
+            label-color="grey-6"
+            input-class="text-white"
+          />
+          <q-input 
+            v-model="newCustEmail" 
+            label="Email (optional)" 
+            dark filled dense 
+            type="email"
+            label-color="grey-6"
+            input-class="text-white"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" style="color: #888;" @click="showNewCustomerDialog = false" />
+          <q-btn 
+            label="Add Customer" 
+            unelevated
+            style="background: #4ade80; color: #000; font-weight: 700;"
+            :loading="isAddingCustomer" 
+            @click="addNewCustomer" 
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ═══ REDEEM LOYALTY DIALOG ═══ -->
+    <q-dialog v-model="showRedeemDialog">
+      <q-card class="pos-dark-dialog" style="min-width: 400px;">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6" style="color: #f59e0b; font-weight: 700;">🪙 Redeem Loyalty Coins</div>
+          <div class="q-mt-xs" style="font-size: 12px; color: #888;">
+            {{ store.selectedCustomer?.full_name }} — Available: <strong style="color: #4ade80;">{{ availableLoyaltyCoins }}</strong> coins
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-md">
+          <q-input 
+            v-model.number="redeemCoinsInput" 
+            label="Coins to Redeem" 
+            dark filled dense type="number" 
+            label-color="amber-4"
+            input-class="text-white"
+            :max="availableLoyaltyCoins"
+            :min="1"
+            :rules="[v => v > 0 || 'Enter at least 1', v => v <= availableLoyaltyCoins || 'Exceeds available coins']"
+            class="q-mb-md"
+          />
+          <div class="redeem-preview" v-if="redeemCoinsInput > 0">
+            <div class="rp-row"><span>Coins to redeem:</span><span style="color:#f59e0b; font-weight:bold;">{{ redeemCoinsInput }}</span></div>
+            <div class="rp-row"><span>Discount amount:</span><span style="color:#4ade80; font-weight:bold;">LKR {{ (redeemCoinsInput * 500).toLocaleString() }}</span></div>
+            <div class="rp-row" style="font-size:11px; color:#666;"><span>Rate: 1 coin = LKR 500</span></div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" style="color: #888;" @click="showRedeemDialog = false" />
+          <q-btn flat label="Use All" style="color: #f59e0b; font-weight: 600;" @click="redeemCoinsInput = availableLoyaltyCoins" />
+          <q-btn 
+            label="Apply Discount" 
+            unelevated
+            style="background: #4ade80; color: #000; font-weight: 700;"
+            :loading="isRedeeming" 
+            @click="redeemLoyaltyCoins" 
+            :disable="redeemCoinsInput <= 0 || redeemCoinsInput > availableLoyaltyCoins" 
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- RECALL PARKED ORDER DIALOG -->
+    <q-dialog v-model="showRecallDialog" transition-show="scale" transition-hide="scale">
+      <q-card dark style="width: 520px; max-width: 96vw; max-height: 80vh; background: #1a1a1a; border: 2px solid #444; display: flex; flex-direction: column;">
+        <q-card-section class="row items-center q-py-sm q-px-md" style="background: #111; border-bottom: 1px solid #333; flex-shrink: 0;">
+          <q-icon name="play_circle" color="teal" size="22px" class="q-mr-sm" />
+          <div style="font-size: 15px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px;">Recall Parked Order</div>
+          <q-space />
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-card-section>
+        <q-card-section style="flex: 1; overflow-y: auto; padding: 0;">
+          <div v-if="isLoadingParked" class="text-center q-pa-xl" style="color: #aaa;">
+            <q-spinner color="teal" size="32px" />
+            <div style="margin-top: 8px; font-size: 13px;">Loading parked orders...</div>
+          </div>
+          <div v-else-if="store.parkedOrders.length === 0" class="text-center q-pa-xl" style="color: #666; font-size: 14px;">
+            No parked orders found for this branch.
+          </div>
+          <table v-else class="recall-table">
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Time</th>
+                <th>Type</th>
+                <th>Items</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="po in store.parkedOrders" :key="po.id">
+                <td style="font-weight: bold; color: #ffeb3b;">{{ po.label }}</td>
+                <td style="color: #aaa; font-size: 11px;">{{ new Date(po.created_at).toLocaleTimeString() }}</td>
+                <td style="color: #fff; text-transform: uppercase; font-size: 11px;">{{ (po.order_type || '–').replace('_', ' ') }}</td>
+                <td style="color: #4ade80; font-weight: bold; text-align: center;">{{ (po.cart_items || []).length }}</td>
+                <td>
+                  <button class="recall-load-btn" @click="loadParkedOrder(po)">LOAD</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </q-card-section>
+        <q-card-actions align="right" style="border-top: 1px solid #333; padding: 8px 12px; flex-shrink: 0;">
+          <button class="abtn a-blue" @click="showRecallDialog = false" style="padding: 6px 20px;">CLOSE</button>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Split Payment Dialog -->
+    <q-dialog v-model="showSplitPaymentDialog" persistent>
+      <q-card class="split-pay-dialog">
+        <q-toolbar class="bg-deep-purple text-white">
+          <q-icon name="call_split" class="q-mr-sm" />
+          <q-toolbar-title>SPLIT PAYMENT</q-toolbar-title>
+          <q-btn flat round icon="close" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section>
+          <div class="split-order-total">Order Total: <strong>LKR {{ store.total.toFixed(2) }}</strong></div>
+
+          <div v-for="(line, idx) in splitPaymentLines" :key="idx" class="split-line">
+            <q-select
+              v-model="line.method"
+              :options="['cash','card','bank_transfer','cheque']"
+              dense outlined label="Method"
+              class="split-method"
+              dark
+            />
+            <q-input
+              v-model.number="line.amount"
+              type="number"
+              dense outlined label="Amount"
+              class="split-amount"
+              min="0"
+              dark
+            />
+            <q-btn
+              v-if="splitPaymentLines.length > 1"
+              flat round icon="remove_circle"
+              color="negative"
+              @click="splitPaymentLines.splice(idx, 1)"
+            />
+          </div>
+
+          <q-btn
+            flat icon="add" label="Add Payment Line"
+            @click="splitPaymentLines.push({ method: 'cash', amount: 0 })"
+            color="primary"
+            class="q-mt-sm"
+          />
+
+          <div
+            class="split-balance"
+            :class="splitPaymentBalance < 0 ? 'txt-red' : splitPaymentBalance === 0 ? 'txt-green' : 'txt-yellow'"
+          >
+            {{ splitPaymentBalance > 0
+              ? `Remaining: LKR ${splitPaymentBalance.toFixed(2)}`
+              : splitPaymentBalance < 0
+                ? `Overpaid: LKR ${Math.abs(splitPaymentBalance).toFixed(2)}`
+                : 'BALANCED ✓' }}
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup color="grey" />
+          <q-btn
+            unelevated color="deep-purple" label="PROCESS SPLIT PAYMENT"
+            :disable="Math.abs(splitPaymentBalance) > 0.01"
+            :loading="isProcessingPayment"
+            @click="processSplitPayment"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
   </q-page>
 </template>
@@ -539,7 +798,6 @@ import OrderLookupDialog from 'src/components/pos/OrderLookupDialog.vue'
 import PaymentDialog from 'src/components/pos/PaymentDialog.vue'
 import POSLockScreen from 'src/components/pos/POSLockScreen.vue'
 import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
-import { adminGetCustomers } from 'src/services/customerAuthService'
 import { useShiftStore } from 'src/stores/shiftStore'
 import ShiftStatusIndicator from 'src/components/pos/ShiftStatusIndicator.vue'
 import OpenShiftDialog from 'src/components/pos/OpenShiftDialog.vue'
@@ -618,6 +876,23 @@ const showCustomerDropdown = ref(false)
 const customerOptions = ref([])
 let searchTimeout = null
 
+// New Customer Dialog state
+const showNewCustomerDialog = ref(false)
+const newCustName = ref('')
+const newCustPhone = ref('')
+const newCustNationalId = ref('')
+const newCustEmail = ref('')
+const isAddingCustomer = ref(false)
+
+// Loyalty Redeem Dialog state
+const showRedeemDialog = ref(false)
+const redeemCoinsInput = ref(0)
+const isRedeeming = ref(false)
+const availableLoyaltyCoins = computed(() => {
+  if (!store.selectedCustomer) return 0
+  return store.selectedCustomer.loyalty_coins ?? store.selectedCustomer.points_balance ?? 0
+})
+
 const userName = computed(() => {
   return authStore.userDisplayName || cashierStore.cashierName || authStore.profile?.full_name || authStore.user?.email || 'Cashier'
 })
@@ -644,6 +919,12 @@ const filteredSearchItems = computed(() => {
 const isPaymentMode = ref(false)
 const selectedPaymentMethod = ref('CASH')
 
+// Split Payment
+const showSplitPaymentDialog = ref(false)
+const splitPaymentLines = ref([])
+const splitPaymentTotal = computed(() => splitPaymentLines.value.reduce((sum, l) => sum + (l.amount || 0), 0))
+const splitPaymentBalance = computed(() => store.total - splitPaymentTotal.value)
+
 // Live Table
 const showLiveTable = ref(false)
 const liveTablesList = ref([])
@@ -656,6 +937,10 @@ const showCashMovement = ref(false)
 const cashMovementType = ref('cash_drop')
 const showShiftSummary = ref(false)
 const showCloseShift = ref(false)
+
+// Park / Recall state
+const showRecallDialog = ref(false)
+const isLoadingParked = ref(false)
 
 async function openLiveTable() {
   const branchId = authStore.currentBranch?.id
@@ -1110,10 +1395,51 @@ function onCustomerInput() {
   
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(async () => {
+    const searchVal = customerSearchText.value.trim()
+    if (!searchVal) return
+
     try {
-      const res = await adminGetCustomers({ search: customerSearchText.value, limit: 10, active: true })
-      if (res.success) {
-        customerOptions.value = res.data || []
+      // Try pos_search_customers RPC first (returns loyalty data inline)
+      const { data, error } = await supabase.rpc('pos_search_customers', { 
+        p_search: searchVal, 
+        p_limit: 10 
+      })
+      if (!error && data?.success) {
+        customerOptions.value = data.data || []
+        showCustomerDropdown.value = true
+        return
+      }
+    } catch {
+      // RPC not deployed yet — fall through to direct query
+    }
+
+    // Fallback: direct table query with correct column names
+    try {
+      const likeVal = `%${searchVal}%`
+      const { data: rows, error: qErr } = await supabase
+        .from('customers')
+        .select('id, first_name, last_name, phone, email, national_id, credit_limit')
+        .or(`first_name.ilike.${likeVal},last_name.ilike.${likeVal},phone.ilike.${likeVal},email.ilike.${likeVal},national_id.ilike.${likeVal}`)
+        .limit(10)
+
+      if (!qErr && rows) {
+        // Map to expected format with full_name
+        customerOptions.value = rows.map(r => ({
+          id: r.id,
+          customer_id: r.id,
+          full_name: [r.first_name, r.last_name].filter(Boolean).join(' '),
+          first_name: r.first_name,
+          last_name: r.last_name,
+          phone: r.phone,
+          email: r.email,
+          national_id: r.national_id,
+          credit_limit: r.credit_limit || 0,
+          loyalty_coins: 0,
+          points_balance: 0,
+          loyalty_tier: 'STANDARD',
+          tier_name: 'Standard',
+          tier_color: '#9ca3af',
+        }))
         showCustomerDropdown.value = true
       }
     } catch (e) {
@@ -1123,9 +1449,16 @@ function onCustomerInput() {
 }
 
 function selectCustomer(cust) {
-  store.selectedCustomer = cust
-  store.customerName = cust.full_name
-  customerSearchText.value = cust.full_name
+  // Map the result to store format (ensure both id formats & full_name work)
+  const fullName = cust.full_name || [cust.first_name, cust.last_name].filter(Boolean).join(' ') || ''
+  store.selectedCustomer = {
+    ...cust,
+    id: cust.id || cust.customer_id,
+    customer_id: cust.customer_id || cust.id,
+    full_name: fullName,
+  }
+  store.customerName = fullName
+  customerSearchText.value = fullName
   showCustomerDropdown.value = false
 }
 
@@ -1133,6 +1466,161 @@ function hideCustomerDropdownDelay() {
   setTimeout(() => {
     showCustomerDropdown.value = false
   }, 200)
+}
+
+// ── New Customer Dialog ─────────────────────────────────
+function openNewCustomerDialog() {
+  newCustName.value = customerSearchText.value || ''
+  newCustPhone.value = ''
+  newCustNationalId.value = ''
+  newCustEmail.value = ''
+  showCustomerDropdown.value = false
+  showNewCustomerDialog.value = true
+}
+
+async function addNewCustomer() {
+  if (!newCustName.value?.trim() || !newCustPhone.value?.trim()) {
+    Notify.create({ message: 'Name and Phone are required', color: 'red', position: 'top' })
+    return
+  }
+
+  isAddingCustomer.value = true
+  try {
+    // Parse name into first_name + last_name
+    const fullName = newCustName.value.trim()
+    const nameParts = fullName.split(/\s+/)
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ') || ''
+    const phone = newCustPhone.value.replace(/\s/g, '').trim()
+
+    // Check if customer already exists by phone
+    const { data: existing } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, phone, email, national_id')
+      .eq('phone', phone)
+      .maybeSingle()
+
+    let customerId
+    let isNew = false
+
+    if (existing) {
+      customerId = existing.id
+    } else {
+      // Direct insert into customers table with correct columns
+      const branchId = authStore.currentBranch?.id
+      const companyId = authStore.currentBranch?.company_id
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from('customers')
+        .insert({
+          first_name: firstName,
+          last_name: lastName || null,
+          phone: phone,
+          email: newCustEmail.value?.trim() || null,
+          national_id: newCustNationalId.value?.trim() || null,
+          branch_id: branchId || null,
+          company_id: companyId || null,
+          source: 'walk_in',
+        })
+        .select('id, first_name, last_name, phone, email, national_id')
+        .single()
+
+      if (insertErr) throw new Error(insertErr.message)
+      customerId = inserted.id
+      isNew = true
+    }
+
+    // Auto-select the new/found customer
+    const newCust = {
+      id: customerId,
+      customer_id: customerId,
+      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone,
+      national_id: newCustNationalId.value?.trim() || null,
+      email: newCustEmail.value?.trim() || null,
+      loyalty_coins: 0,
+      points_balance: 0,
+      loyalty_tier: 'STANDARD',
+      tier_name: 'Standard',
+      tier_color: '#9ca3af',
+      credit_limit: 0,
+    }
+
+    selectCustomer(newCust)
+    showNewCustomerDialog.value = false
+
+    Notify.create({ 
+      message: isNew ? '✅ New customer created!' : '✅ Existing customer found!', 
+      caption: fullName, 
+      color: 'positive', 
+      position: 'top',
+      icon: 'person_add'
+    })
+  } catch (err) {
+    console.error('Add customer error:', err)
+    Notify.create({ message: 'Failed to add customer', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    isAddingCustomer.value = false
+  }
+}
+
+// ── Loyalty Redemption ──────────────────────────────────
+function openRedeemDialog() {
+  if (!store.selectedCustomer) return
+  redeemCoinsInput.value = 0
+  showRedeemDialog.value = true
+}
+
+async function redeemLoyaltyCoins() {
+  if (!store.selectedCustomer || redeemCoinsInput.value <= 0) return
+
+  isRedeeming.value = true
+  try {
+    const customerId = store.selectedCustomer.id || store.selectedCustomer.customer_id
+    const { data, error } = await supabase.rpc('pos_redeem_loyalty_coins', {
+      p_customer_id: customerId,
+      p_coins_to_redeem: redeemCoinsInput.value,
+      p_order_id: store._loadedOrderId || null,
+    })
+
+    if (error) throw new Error(error.message)
+    if (!data?.success) throw new Error(data?.error || 'Redemption failed')
+
+    // Apply discount to the order (convert LKR discount to percentage of subtotal)
+    const discountLKR = data.discount_amount || (redeemCoinsInput.value * 500)
+    const discountPct = store.subtotal > 0 ? Math.min((discountLKR / store.subtotal) * 100, 100) : 0
+    
+    // Add loyalty discount — set discount percentage
+    store.discount = Math.round(discountPct * 100) / 100
+
+    // Update customer's coin balance in UI
+    if (store.selectedCustomer) {
+      store.selectedCustomer = {
+        ...store.selectedCustomer,
+        loyalty_coins: data.new_coin_balance ?? (availableLoyaltyCoins.value - redeemCoinsInput.value),
+        points_balance: data.new_coin_balance ?? (availableLoyaltyCoins.value - redeemCoinsInput.value),
+      }
+    }
+
+    showRedeemDialog.value = false
+
+    Notify.create({
+      message: `🪙 ${redeemCoinsInput.value} coins redeemed!`,
+      caption: `Discount: LKR ${discountLKR.toLocaleString()} applied`,
+      color: 'amber-8',
+      textColor: 'white',
+      position: 'top',
+      icon: 'redeem',
+      timeout: 3000,
+    })
+  } catch (err) {
+    console.error('Redeem error:', err)
+    Notify.create({ message: 'Redemption failed', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    isRedeeming.value = false
+  }
 }
 
 // ── Numeric Keypad ──────────────────────────────────────
@@ -1374,6 +1862,17 @@ function handleClear() {
 
 // ── FOC (Free of Charge) Workflow ───────────────────────
 async function handleFOC() {
+  if (!store.orderType) {
+    Notify.create({
+      message: 'Please select an Order Type (Table Order, Take Away, or Delivery) first!',
+      color: 'red',
+      icon: 'warning',
+      position: 'top',
+      timeout: 2500,
+    })
+    return
+  }
+
   // 1. Must have items in cart or a loaded queue order
   if (store.isEmpty && !selectedQueueOrder.value) {
     Notify.create({ message: 'No order to process as FOC', color: 'orange', icon: 'warning', position: 'top', timeout: 1200 })
@@ -1561,7 +2060,7 @@ async function processFOCOrder(managerUserId, focReason) {
         payment_status: 'paid',
         payment_method: 'foc',
         table_id: null,
-        table_number: store.tableNumber || null,
+        table_number: store.tableNumber ? (parseInt(String(store.tableNumber).replace(/\D/g, '')) || null) : null,
         total_amount: 0,
         subtotal: parseFloat(store.subtotal.toFixed(2)),
         tax_amount: 0,
@@ -1684,6 +2183,17 @@ function handleBack() {
 }
 
 async function handlePrint() {
+  if (!store.orderType) {
+    Notify.create({
+      message: 'Please select an Order Type (Table Order, Take Away, or Delivery) first!',
+      color: 'red',
+      icon: 'warning',
+      position: 'top',
+      timeout: 2500,
+    })
+    return
+  }
+
   if (store.isEmpty) {
     Notify.create({ message: 'No items in order to print', color: 'orange', position: 'top', timeout: 800 })
     return
@@ -2037,8 +2547,20 @@ function openBilling(order) {
   })
 }
 
+
 // Removed duplicate handleClear
 async function handleSave() {
+  if (!store.orderType) {
+    Notify.create({
+      message: 'Please select an Order Type (Table Order, Take Away, or Delivery) first!',
+      color: 'red',
+      icon: 'warning',
+      position: 'top',
+      timeout: 2500,
+    })
+    return
+  }
+
   if (store.isEmpty) {
     Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
     return
@@ -2057,7 +2579,7 @@ async function handleSave() {
       selectedQueueOrder.value = {
         id: result.order.id,
         order_number: result.order.order_number,
-        status: 'accepted'
+        status: result.order.status // use actual status from DB (auto-accepted via RPC)
       }
       Notify.create({
         message: `Order #${String(result.order.order_number || '').replace('ORD-', '')} saved!`,
@@ -2081,10 +2603,22 @@ async function handleSave() {
 }
 
 function handlePayment() {
+  if (!store.orderType) {
+    Notify.create({
+      message: 'Please select an Order Type (Table Order, Take Away, or Delivery) first!',
+      color: 'red',
+      icon: 'warning',
+      position: 'top',
+      timeout: 2500,
+    })
+    return
+  }
+
   if (store.isEmpty) {
     Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
     return
   }
+
   if (isAlreadyPaid.value) {
     Notify.create({ message: 'This bill is already paid.', color: 'negative', position: 'top' })
     return
@@ -2114,6 +2648,111 @@ function handlePayment() {
   }
   
   numBuffer.value = store.total.toString()
+}
+
+function handleSplitPayment() {
+  if (!store.orderType) {
+    Notify.create({ message: 'Please select an Order Type first!', color: 'red', icon: 'warning', position: 'top', timeout: 2500 })
+    return
+  }
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items in order', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+  if (isAlreadyPaid.value) {
+    Notify.create({ message: 'This bill is already paid.', color: 'negative', position: 'top' })
+    return
+  }
+  if (!shiftStore.hasActiveShift) {
+    Notify.create({ message: 'No active shift. Open a shift before processing payments.', color: 'red', icon: 'lock', position: 'top' })
+    forceOpenShift.value = true
+    showOpenShiftDialog.value = true
+    return
+  }
+  splitPaymentLines.value = [{ method: 'cash', amount: store.total }]
+  showSplitPaymentDialog.value = true
+}
+
+async function processSplitPayment() {
+  if (Math.abs(splitPaymentBalance.value) > 0.01) {
+    Notify.create({ type: 'negative', message: 'Payment lines must equal order total', position: 'top' })
+    return
+  }
+  if (isProcessingPayment.value) return
+
+  isProcessingPayment.value = true
+  Loading.show({ message: 'Processing Split Payment...' })
+
+  // Primary method is the first line; combined label for receipts
+  const primaryMethod = splitPaymentLines.value[0]?.method || 'split'
+
+  try {
+    let finalOrderId = null
+
+    if (store._loadedOrderId && selectedQueueOrder.value) {
+      // Queue order flow
+      finalOrderId = store._loadedOrderId
+
+      if (selectedQueueOrder.value.status === 'pending_waiter') {
+        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
+        if (acceptError) throw new Error(acceptError.message)
+      }
+
+      const status = selectedQueueOrder.value.status
+      if (status !== 'invoiced' && status !== 'paid') {
+        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
+        if (invError) throw new Error(invError.message)
+      }
+
+      const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+        p_order_id: finalOrderId,
+        p_payment_method: 'split',
+        p_amount_paid: store.total
+      })
+      if (payError) throw new Error(payError.message)
+      if (!payData?.success && payData?.message !== 'Already paid.') throw new Error(payData?.error || 'Payment failed')
+
+    } else {
+      // Manual POS flow
+      const res = await store.processPayment(primaryMethod)
+      if (!res.success) throw new Error(res.reason || 'Split payment failed')
+      finalOrderId = res.orderId
+    }
+
+    // Print receipt
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('order_id', finalOrderId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (invoices?.length > 0) {
+      const realInvoice = await cashierStore.fetchInvoiceDetails(invoices[0].id)
+      directPrintInvoice.value = realInvoice
+      await nextTick()
+      await new Promise(r => setTimeout(r, 200))
+      if (directPrintRef.value?.printReceipt) {
+        directPrintRef.value.printReceipt()
+      }
+    }
+
+    Notify.create({ message: 'Split Payment Successful', color: 'positive', position: 'top', icon: 'check_circle' })
+
+    if (shiftStore.hasActiveShift && finalOrderId) {
+      shiftStore.recordPayment(finalOrderId, 'split', store.total)
+    }
+
+    showSplitPaymentDialog.value = false
+    handleNewOrderAfterPayment()
+
+  } catch (err) {
+    console.error('Split Payment Error:', err)
+    Notify.create({ message: 'Split payment error', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    Loading.hide()
+    isProcessingPayment.value = false
+  }
 }
 
 function handleSubtotal() {
@@ -2181,6 +2820,86 @@ function onOrderPaid() {
   selectedQueueOrder.value = null
   mergedTableOrders.value = []
   cashierStore.fetchBillingOrders()
+}
+
+// ── Park / Recall ────────────────────────────────────────
+
+async function handleParkOrder() {
+  if (store.isEmpty) {
+    Notify.create({ message: 'No items to park', color: 'orange', position: 'top', timeout: 800 })
+    return
+  }
+  try {
+    const label = store.customerName
+      ? `${store.customerName} – ${new Date().toLocaleTimeString()}`
+      : `Parked ${new Date().toLocaleTimeString()}`
+    await store.parkOrder({ label })
+    store.clearCart()
+    selectedItemIndex.value = -1
+    selectedQueueOrder.value = null
+    customerSearchText.value = ''
+    Notify.create({
+      message: 'Order parked',
+      caption: label,
+      color: 'warning',
+      icon: 'pause_circle',
+      position: 'top',
+      timeout: 2500,
+    })
+  } catch (err) {
+    Notify.create({
+      message: 'Failed to park order',
+      caption: err.message,
+      color: 'red',
+      position: 'top',
+    })
+  }
+}
+
+async function handleRecallOrder() {
+  showRecallDialog.value = true
+  isLoadingParked.value = true
+  try {
+    await store.fetchParkedOrders()
+  } catch (err) {
+    Notify.create({ message: 'Failed to load parked orders', caption: err.message, color: 'red', position: 'top' })
+  } finally {
+    isLoadingParked.value = false
+  }
+}
+
+async function loadParkedOrder(po) {
+  try {
+    const recalled = await store.recallParkedOrder(po.id)
+    // Restore cart state
+    store.clearCart()
+    store.orderType = recalled.order_type || null
+    store.tableNumber = recalled.table_number || null
+    store.selectedTable = recalled.selected_table || null
+    store.customerName = recalled.customer_name || ''
+    if (recalled.customer_name) {
+      store.selectedCustomer = { full_name: recalled.customer_name }
+    }
+    store.deliveryCharge = recalled.delivery_charge || 0
+    const items = recalled.cart_items || []
+    items.forEach(item => {
+      store.cartItems.push({ ...item })
+    })
+    selectedQueueOrder.value = null
+    customerSearchText.value = recalled.customer_name || ''
+    selectedItemIndex.value = -1
+    showRecallDialog.value = false
+    Notify.create({
+      message: 'Order recalled',
+      caption: `${items.length} items restored`,
+      color: 'teal',
+      icon: 'play_circle',
+      position: 'top',
+      timeout: 2000,
+    })
+  } catch (err) {
+    Notify.create({ message: 'Failed to recall order', caption: err.message, color: 'red', position: 'top' })
+  }
 }
 
 async function handleLogout() {
@@ -2622,6 +3341,76 @@ function fmtCurrency(val) {
   background: #2e7d32;
   color: #fff;
 }
+.a-orange {
+  background: #e65100;
+  color: #fff;
+}
+.a-teal {
+  background: #00695c;
+  color: #fff;
+}
+.a-purple {
+  background: #4a1c6b;
+  color: #e0b3ff;
+}
+
+/* Delivery Charge editable input */
+.delivery-charge-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #666;
+  color: #ff9900;
+  font-weight: bold;
+  font-size: 13px;
+  text-align: right;
+  width: 80px;
+  outline: none;
+  padding: 0 2px;
+}
+.delivery-charge-input:focus {
+  border-bottom-color: #ffeb3b;
+  color: #ffeb3b;
+}
+
+/* Recall parked orders table */
+.recall-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #111;
+  color: #fff;
+  font-size: 13px;
+}
+.recall-table th {
+  background: #222;
+  border-bottom: 1px solid #333;
+  padding: 8px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #aaa;
+  text-align: left;
+}
+.recall-table td {
+  border-bottom: 1px solid #222;
+  padding: 10px 10px;
+}
+.recall-table tr:hover td {
+  background: #1e1e1e;
+}
+.recall-load-btn {
+  background: #00695c;
+  color: #fff;
+  border: 1px solid #00897b;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 4px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.recall-load-btn:hover {
+  background: #00897b;
+}
 
 /* RIGHT */
 .pos-right-panel {
@@ -2775,32 +3564,113 @@ function fmtCurrency(val) {
   display: block;
 }
 
-/* CUSTOMER AUTOCOMPLETE */
+/* CUSTOMER AUTOCOMPLETE — Enhanced with Loyalty */
 .autocomplete-list {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #ccc;
+  background: #1a1a2e;
+  border: 1px solid #333;
   list-style: none;
   padding: 0;
   margin: 0;
   z-index: 1000;
-  color: black;
-  max-height: 200px;
+  color: #fff;
+  max-height: 280px;
   overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  border-radius: 0 0 6px 6px;
 }
 .autocomplete-list li {
   padding: 8px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #2a2a40;
   display: flex;
   align-items: center;
 }
 .autocomplete-list li:hover {
-  background: #f0f0f0;
+  background: #2a2a40;
+}
+
+/* Customer result row layout */
+.customer-result-row {
+  display: flex !important;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cr-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.cr-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cr-details {
+  font-size: 11px;
+  color: #888;
+  margin-top: 1px;
+}
+.cr-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cr-coins {
+  font-weight: 700;
+  font-size: 12px;
+}
+.cr-tier {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+/* Add New Customer row */
+.customer-add-row {
+  background: #0d1b2a !important;
+  border-top: 2px solid #333 !important;
+  color: #4ade80 !important;
+  font-weight: 600;
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+.customer-add-row:hover {
+  background: #1a2e3e !important;
+}
+.cr-add-icon { font-size: 16px; }
+.cr-add-text { font-size: 12px; }
+
+/* Redeem Button */
+.btn-redeem {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  border: none;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+}
+.btn-redeem:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: scale(1.05);
 }
 
 .item-info {
@@ -2890,4 +3760,85 @@ function fmtCurrency(val) {
   color: #888 !important;
   border-color: #555 !important;
 }
+</style>
+
+<!-- Unscoped: Quasar q-dialog content renders in a teleported portal, outside scoped CSS scope -->
+<style>
+/* Dark Dialog Card — overrides Quasar defaults (must be unscoped for teleported dialogs) */
+.pos-dark-dialog {
+  background: #0f1120 !important;
+  color: #e0e0e0 !important;
+  border: 1px solid #2a2a40 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important;
+}
+.pos-dark-dialog .q-card__section {
+  color: #e0e0e0 !important;
+}
+.pos-dark-dialog .q-field--filled .q-field__control {
+  background: rgba(255,255,255,0.08) !important;
+}
+.pos-dark-dialog .q-field--filled .q-field__control:before {
+  border-bottom-color: #444 !important;
+}
+.pos-dark-dialog .q-field__label {
+  color: #999 !important;
+}
+.pos-dark-dialog .q-field__native,
+.pos-dark-dialog .q-field__input {
+  color: #fff !important;
+}
+.pos-dark-dialog .q-card__actions {
+  border-top: 1px solid #2a2a40;
+}
+
+/* Redeem Preview (inside teleported dialog) */
+.redeem-preview {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #2a2a40;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.rp-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+  color: #ccc;
+}
+
+/* Split Payment dialog (teleported outside scoped CSS) */
+.split-pay-dialog {
+  width: 480px;
+  background: #1a1a2e;
+  color: #e0e0f0;
+}
+.split-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.split-method { flex: 1; }
+.split-amount { width: 160px; }
+.split-order-total {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+.split-balance {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 16px;
+  padding: 10px;
+  text-align: center;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+.txt-red   { color: #ff5252; }
+.txt-green { color: #69f0ae; }
+.txt-yellow { color: #ffeb3b; }
 </style>

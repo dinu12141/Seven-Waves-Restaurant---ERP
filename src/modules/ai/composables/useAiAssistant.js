@@ -9,7 +9,7 @@ export function useAiAssistant() {
   const aiStore = useAiStore()
   const authStore = useAuthStore()
 
-  const branchId = computed(() => authStore.activeBranch?.id)
+  const branchId = computed(() => authStore.currentBranch?.id)
   const isTyping = computed(() => aiStore.loading.chat)
   const messages = computed(() => aiStore.chatMessages)
   const currentInput = ref('')

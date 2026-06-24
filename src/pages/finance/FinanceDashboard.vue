@@ -159,6 +159,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
@@ -172,6 +174,7 @@ import {
 const loading = ref(false)
 const chartReady = ref(false)
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const kpis = ref([
   {
@@ -260,6 +263,8 @@ const expenseCols = [
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
 ]
 
+// Chart: last 6 months labels computed from real data
+const chartMonthLabels = ref([])
 const chartSeries = ref([
   { name: 'Revenue', data: [] },
   { name: 'Expenses', data: [] },
@@ -270,10 +275,10 @@ const chartOptions = computed(() => {
     chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
     theme: { mode: isDark ? 'dark' : 'light' },
     xaxis: {
-      categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      categories: chartMonthLabels.value,
       labels: { style: { colors: '#9ca3af' } },
     },
-    yaxis: { labels: { style: { colors: '#9ca3af' } } },
+    yaxis: { labels: { style: { colors: '#9ca3af' }, formatter: (v) => `LKR ${Number(v).toLocaleString()}` } },
     colors: ['#10b981', '#ef4444'],
     grid: { borderColor: isDark ? '#1f2937' : '#e5e7eb', strokeDashArray: 4 },
     dataLabels: { enabled: false },
@@ -300,14 +305,55 @@ function formatDate(d) {
   })
 }
 
+/** Build last-6-months date range */
+function getLast6MonthsRange() {
+  const months = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    months.push({
+      key: d.toISOString().substring(0, 7), // 'YYYY-MM'
+      label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+      start: d.toISOString().split('T')[0],
+      end: new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0],
+    })
+  }
+  return months
+}
+
 async function fetchAll() {
   loading.value = true
   try {
-    const [kpiRes, jeRes, balRes, expRes] = await Promise.all([
+    const companyId = authStore.currentBranch?.company_id
+    const sixMonthsAgo = getLast6MonthsRange()[0].start
+
+    const [kpiRes, jeRes, balRes, expRes, revenueChartRes, expenseChartRes] = await Promise.all([
       fetchDashboardKPIs(),
       fetchJournalEntries({ limit: 5 }),
       fetchAccountBalances(),
       fetchExpenses({ limit: 8 }),
+
+      // Monthly revenue: paid orders grouped by month (last 6 months)
+      companyId
+        ? supabase
+            .from('orders')
+            .select('total_amount, created_at')
+            .eq('company_id', companyId)
+            .eq('payment_status', 'paid')
+            .gte('created_at', sixMonthsAgo + 'T00:00:00')
+            .order('created_at')
+        : Promise.resolve({ data: [] }),
+
+      // Monthly expenses: approved/paid expense entries last 6 months
+      companyId
+        ? supabase
+            .from('expense_entries')
+            .select('amount, expense_date')
+            .in('status', ['approved', 'paid'])
+            .gte('expense_date', sixMonthsAgo)
+            .order('expense_date')
+        : Promise.resolve({ data: [] }),
     ])
 
     if (kpiRes) {
@@ -323,11 +369,38 @@ async function fetchAll() {
     accountBalances.value = (balRes.data || []).slice(0, 10)
     recentExpenses.value = expRes.data || []
 
+    // Build chart from real data
+    const months = getLast6MonthsRange()
+    chartMonthLabels.value = months.map((m) => m.label)
+
+    const revenueByMonth = {}
+    const expenseByMonth = {}
+    months.forEach((m) => {
+      revenueByMonth[m.key] = 0
+      expenseByMonth[m.key] = 0
+    })
+
+    for (const row of revenueChartRes.data || []) {
+      const monthKey = (row.created_at || '').substring(0, 7)
+      if (revenueByMonth[monthKey] !== undefined) {
+        revenueByMonth[monthKey] += Number(row.total_amount || 0)
+      }
+    }
+
+    for (const row of expenseChartRes.data || []) {
+      const monthKey = (row.expense_date || '').substring(0, 7)
+      if (expenseByMonth[monthKey] !== undefined) {
+        expenseByMonth[monthKey] += Number(row.amount || 0)
+      }
+    }
+
     chartSeries.value = [
-      { name: 'Revenue', data: [150, 200, 180, 220, 300, 450, 400] },
-      { name: 'Expenses', data: [50, 60, 40, 80, 100, 120, 90] },
+      { name: 'Revenue', data: months.map((m) => Math.round(revenueByMonth[m.key])) },
+      { name: 'Expenses', data: months.map((m) => Math.round(expenseByMonth[m.key])) },
     ]
     chartReady.value = true
+  } catch (err) {
+    console.error('[FinanceDashboard] fetchAll error:', err)
   } finally {
     loading.value = false
   }
