@@ -44,11 +44,11 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th style="width: 9%;">Table No</th>
+                    <th style="width: 12%;">Table / Type</th>
                     <th style="width: 9%;" class="text-right">Bill No.</th>
-                    <th style="width: 11%;">Attend By</th>
-                    <th style="width: 11%;">Clerk Code</th>
-                    <th style="width: 11%;" class="text-center">Start Time</th>
+                    <th style="width: 10%;">Attend By</th>
+                    <th style="width: 10%;">Clerk Code</th>
+                    <th style="width: 10%;" class="text-center">Start Time</th>
                     <th style="width: 21%;">Customer Name</th>
                     <th style="width: 16%;">Phone No.</th>
                     <th style="width: 12%;" class="text-right">Bill Amt.</th>
@@ -61,11 +61,19 @@
                     :class="{ 
                       'selected-row': selectedOrderId === order.id,
                       'invoiced-row': order.status === 'invoiced',
-                      'kot-sent-row': ['accepted', 'preparing', 'ready'].includes(order.status)
+                      'kot-sent-row': ['accepted', 'preparing', 'ready'].includes(order.status),
+                      'paid-row': order.status === 'paid' || order.payment_status === 'paid'
                     }"
                     @click="selectOrder(order)"
                   >
-                    <td>{{ order.tableNumber || order.table_number || '' }}</td>
+                    <td class="text-bold">
+                      <span v-if="order.order_type === 'dine_in'">
+                        {{ order.tableNumber && order.tableNumber !== '—' ? order.tableNumber : 'Table' }}
+                      </span>
+                      <span v-else-if="order.order_type === 'takeaway'" class="text-teal text-weight-bold">Takeaway</span>
+                      <span v-else-if="order.order_type === 'delivery'" class="text-red text-weight-bold">Delivery</span>
+                      <span v-else class="text-grey-7" style="text-transform: capitalize;">{{ order.order_type?.replace('_', ' ') }}</span>
+                    </td>
                     <td class="text-right text-bold">{{ String(order.order_number || '').replace('ORD-', '') }}</td>
                     <td>{{ getAttendBy(order) }}</td>
                     <td>{{ getWaiterName(order) }}</td>
@@ -103,9 +111,9 @@
               <button class="sidebar-btn" :class="{ active: filterBy === 'dine_in' }" @click="filterBy = 'dine_in'">Table Order</button>
               <button class="sidebar-btn" :class="{ active: filterBy === 'takeaway' }" @click="filterBy = 'takeaway'">Take Away</button>
               <button class="sidebar-btn" :class="{ active: filterBy === 'delivery' }" @click="filterBy = 'delivery'">Delivery</button>
-              <button class="sidebar-btn" >Drive in</button>
-              <button class="sidebar-btn" >Kiosk Order</button>
-              <button class="sidebar-btn" >Hold Order</button>
+              <button class="sidebar-btn" :class="{ active: filterBy === 'drive_in' }" @click="filterBy = 'drive_in'">Drive in</button>
+              <button class="sidebar-btn" :class="{ active: filterBy === 'kiosk' }" @click="filterBy = 'kiosk'">Kiosk Order</button>
+              <button class="sidebar-btn" :class="{ active: filterBy === 'hold' }" @click="filterBy = 'hold'">Hold Order</button>
               <button class="sidebar-btn paid-btn" :class="{ active: filterBy === 'paid' }" @click="filterBy = 'paid'">Paid</button>
             </div>
           </div>
@@ -151,24 +159,37 @@ const search = ref({
 })
 
 const filteredOrders = computed(() => {
-  let orders
+  let orders = cashierStore.billingOrders
 
   if (filterBy.value === 'paid') {
     // Show only paid orders (either status or payment_status is paid/completed)
-    orders = cashierStore.billingOrders.filter(o => 
+    orders = orders.filter(o => 
       ['paid', 'completed', 'refunded', 'partially_refunded'].includes(o.status) || 
       ['paid', 'partial', 'refunded', 'partially_refunded'].includes(o.payment_status)
     )
-  } else {
-    // Show unpaid orders (exclude paid/completed/cancelled)
-    orders = cashierStore.billingOrders.filter(o => 
+  } else if (filterBy.value === 'all') {
+    // Show unpaid active orders (exclude paid/completed/cancelled)
+    orders = orders.filter(o => 
       o.status !== 'completed' && o.status !== 'cancelled' &&
-      o.payment_status !== 'paid'
+      o.payment_status !== 'paid' && o.status !== 'paid'
     )
+  } else {
+    // For type/status filters, exclude cancelled/completed (non-paid completed)
+    orders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'completed')
 
-    // Filter By order type
-    if (filterBy.value !== 'all') {
-      orders = orders.filter(o => o.order_type === filterBy.value)
+    if (filterBy.value === 'dine_in') {
+      orders = orders.filter(o => o.order_type === 'dine_in' && o.order_source !== 'qr' && o.order_source !== 'table_screen')
+    } else if (filterBy.value === 'takeaway') {
+      orders = orders.filter(o => o.order_type === 'takeaway')
+    } else if (filterBy.value === 'delivery') {
+      orders = orders.filter(o => o.order_type === 'delivery')
+    } else if (filterBy.value === 'drive_in') {
+      orders = orders.filter(o => o.order_type === 'drive_in')
+    } else if (filterBy.value === 'kiosk') {
+      orders = orders.filter(o => o.order_source === 'qr' || o.order_source === 'table_screen')
+    } else if (filterBy.value === 'hold') {
+      // Hold Order: pending/pending_waiter orders
+      orders = orders.filter(o => o.status === 'pending_waiter' || o.status === 'pending')
     }
   }
 
@@ -482,6 +503,12 @@ onUnmounted(() => {
   background: rgba(255, 255, 0, 0.4) !important; /* Semi-transparent Yellow overlay */
   outline: 2px solid #3366ff !important;
   outline-offset: -2px;
+}
+.data-table tbody tr.paid-row {
+  background: #d4edda !important; /* Soft Green */
+}
+.data-table tbody tr.paid-row:hover {
+  background: #c3e6cb !important;
 }
 
 .bottom-controls {

@@ -774,3 +774,15 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+
+-- ─────────────────────────────────────────────────────────────────
+-- STEP 13 — REVOKE anon SELECT on operational order/KOT tables
+-- ─────────────────────────────────────────────────────────────────
+-- The anon role must never read live order or kitchen data. Access for
+-- QR/kiosk flows is mediated exclusively via SECURITY DEFINER RPCs.
+
+REVOKE SELECT ON public.orders      FROM anon;
+REVOKE SELECT ON public.order_items FROM anon;
+REVOKE SELECT ON public.kot_tickets FROM anon;
+REVOKE SELECT ON public.kot_items   FROM anon;

@@ -9,7 +9,12 @@
       <div v-if="kitchenName" class="text-subtitle2 text-weight-bold text-uppercase">
         {{ kitchenName }}
       </div>
-      <div class="text-subtitle1 text-weight-bold">KOT #{{ kot?.kot_number || 'N/A' }}</div>
+      <div class="text-subtitle1 text-weight-bold">
+        ORDER #{{ kot?.order?.order_number || kot?.order_number || 'N/A' }}
+      </div>
+      <div class="text-subtitle2 text-weight-medium text-grey-7" style="margin-top: -4px">
+        KOT #{{ kot?.kot_number || 'N/A' }}
+      </div>
       <div class="text-caption text-grey-8">
         {{ new Date(kot?.created_at || Date.now()).toLocaleString() }}
       </div>
@@ -194,7 +199,8 @@ function printReceipt() {
           <div class="text-center">
             <div class="text-h6">*** KOT ***</div>
             ${props.kitchenName ? `<div class="text-subtitle2">${props.kitchenName}</div>` : ''}
-            <div class="text-subtitle1">KOT #${props.kot.kot_number || 'N/A'}</div>
+            <div class="text-subtitle1" style="font-size: 24px; font-weight: 900; margin-bottom: 2px;">ORDER #${props.kot.order?.order_number || props.kot.order_number || 'N/A'}</div>
+            <div class="text-subtitle2" style="font-size: 15px; font-weight: bold; margin-bottom: 5px; color: #555;">KOT #${props.kot.kot_number || 'N/A'}</div>
             <div class="text-caption">${new Date(props.kot.created_at || Date.now()).toLocaleString()}</div>
           </div>
 

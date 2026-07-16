@@ -173,11 +173,21 @@ function badgeColor(badge) {
 }
 
 // ─── Highlight matching text ──────────────────────────────────────────────────
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function highlight(text) {
-  if (!query.value || !text) return text
-  const escaped = query.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const re = new RegExp(`(${escaped})`, 'gi')
-  return text.replace(re, '<mark class="gs-mark">$1</mark>')
+  if (!query.value || !text) return escapeHtml(text)
+  const escapedText = escapeHtml(text)
+  const escapedQuery = escapeHtml(query.value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`(${escapedQuery})`, 'gi')
+  return escapedText.replace(re, '<mark class="gs-mark">$1</mark>')
 }
 
 // ─── Active item ──────────────────────────────────────────────────────────────

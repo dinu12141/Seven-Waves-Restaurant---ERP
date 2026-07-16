@@ -30,24 +30,11 @@ export async function processRefund(orderId, opts = {}) {
 }
 
 // ── Payment Confirmation ──────────────────────────────────────
-
-/**
- * Confirm an online payment (webhook handler or manual).
- */
-export async function confirmPayment(orderId, opts = {}) {
-  const { data, error } = await api.rpc('confirm_online_payment', {
-    p_order_id: orderId,
-    p_gateway: opts.gateway ?? 'payhere',
-    p_gateway_txn_id: opts.gatewayTxnId ?? null,
-    p_amount: opts.amount ?? null,
-    p_gateway_status: opts.status ?? 'success',
-    p_idempotency_key: opts.idempotencyKey ?? null,
-    p_response_payload: opts.responsePayload ?? {},
-  }, { module: MODULE, action: 'confirmPayment', retries: 1 })
-
-  if (error) throw new Error(`Payment confirmation failed: ${error.userMessage}`)
-  return data
-}
+// NOTE: There is intentionally no client-side confirm_online_payment call.
+// Marking an order paid is done ONLY by the payment-handler Edge Function
+// (service_role) after it verifies the gateway webhook HMAC signature.
+// The RPC's anon/authenticated EXECUTE grants have been revoked; a direct
+// client call would be a payment-forgery vector and now fails by design.
 
 // ── Payment Gate Check ────────────────────────────────────────
 

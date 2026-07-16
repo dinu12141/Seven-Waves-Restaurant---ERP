@@ -401,6 +401,7 @@ BEGIN
     );
 
 EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Payment function error: %', SQLERRM;
     RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
@@ -433,6 +434,25 @@ DECLARE
     v_txn_id        UUID;
     v_existing_txn  UUID;
 BEGIN
+    -- 0. Payment authority gate. This RPC marks orders as PAID, so it must only
+    --    ever run from the payment-handler Edge Function (service_role), which
+    --    has already verified the gateway HMAC signature. A direct call from an
+    --    anon/authenticated client cannot be trusted — p_gateway_status is
+    --    attacker-controlled and would let anyone forge a paid order.
+    IF current_setting('request.jwt.claims', true) IS NOT NULL
+       AND COALESCE(
+             (current_setting('request.jwt.claims', true)::jsonb ->> 'role'),
+             ''
+           ) <> 'service_role'
+    THEN
+        RAISE WARNING 'confirm_online_payment blocked non-service_role caller (role=%)',
+            (current_setting('request.jwt.claims', true)::jsonb ->> 'role');
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Payment confirmation is not permitted from this context.'
+        );
+    END IF;
+
     -- 1. Idempotency check — if we already processed this callback, return success
     IF p_idempotency_key IS NOT NULL THEN
         SELECT id INTO v_existing_txn
@@ -547,14 +567,20 @@ BEGIN
     END IF;
 
 EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Payment function error: %', SQLERRM;
     RETURN jsonb_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
 
--- Granted to anon for gateway callbacks (webhooks come unauthenticated)
-GRANT EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon;
-GRANT EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO service_role;
+-- This RPC marks orders as PAID and must NEVER be callable by a client.
+-- The only legitimate caller is the payment-handler Edge Function, which runs
+-- as service_role AFTER verifying the gateway webhook HMAC signature. Any anon
+-- or authenticated grant here is a payment-forgery vector (a client could send
+-- p_gateway_status='success' and mark its own order paid without paying).
+REVOKE EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) FROM authenticated;
+GRANT  EXECUTE ON FUNCTION public.confirm_online_payment(UUID, TEXT, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO service_role;
 
 
 -- ─────────────────────────────────────────────────────────────────

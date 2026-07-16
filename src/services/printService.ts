@@ -171,7 +171,7 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KOT #${ticket.kot_number ?? ticket.id.slice(0, 6)}</title>
+<title>Order #${ticket.order?.order_number ?? ticket.kot_number ?? ticket.id.slice(0, 6)}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -331,17 +331,17 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
 
   ${reprintBadge}
 
-  <!-- KOT Number -->
+  <!-- Order Number (Prominent for Waiters/Cashiers) -->
   <div class="kot-number-block">
-    <div class="kot-label">KOT</div>
-    <div class="kot-number">#${ticket.kot_number ?? '—'}</div>
+    <div class="kot-label">ORDER</div>
+    <div class="kot-number">#${ticket.order?.order_number ?? ticket.kot_number ?? '—'}</div>
   </div>
 
   <!-- Meta Info -->
   <div class="meta-grid">
     <div class="meta-item">
-      <div class="meta-label">Order</div>
-      <div class="meta-value">#${ticket.order?.order_number ?? '—'}</div>
+      <div class="meta-label">KOT</div>
+      <div class="meta-value">#${ticket.kot_number ?? '—'}</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Type</div>

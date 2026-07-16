@@ -66,8 +66,8 @@ BEGIN
 
     -- 2. Safety check: ensure shift tables exist
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_assignments') THEN
-        -- If shifts module not yet deployed, allow all staff for now to prevent breakage
-        RETURN true; 
+        -- Fail closed: if shifts module is not deployed, deny shift-gated access
+        RETURN false;
     END IF;
 
     -- 3. Check if user has a scheduled shift assignment today for this branch
@@ -98,8 +98,9 @@ BEGIN
 
     RETURN v_found;
 EXCEPTION WHEN OTHERS THEN
-    -- Fallback for missing tables or other dynamic SQL issues
-    RETURN true;
+    -- Fail closed on any dynamic SQL / missing-table error
+    RAISE WARNING 'auth_is_on_shift error: %', SQLERRM;
+    RETURN false;
 END;
 $$;
 

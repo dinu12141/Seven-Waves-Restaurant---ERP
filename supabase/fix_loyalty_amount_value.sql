@@ -50,6 +50,18 @@ ALTER TABLE public.loyalty_transactions
 CREATE OR REPLACE FUNCTION fn_sync_loyalty_transaction_columns()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
+    -- Sync loyalty_id <-> loyalty_account_id
+    IF NEW.loyalty_id IS NULL AND NEW.loyalty_account_id IS NOT NULL THEN
+        NEW.loyalty_id := NEW.loyalty_account_id;
+    ELSIF NEW.loyalty_account_id IS NULL AND NEW.loyalty_id IS NOT NULL THEN
+        NEW.loyalty_account_id := NEW.loyalty_id;
+    ELSIF NEW.loyalty_id IS NULL AND NEW.customer_id IS NOT NULL THEN
+        SELECT id INTO NEW.loyalty_id FROM public.loyalty_accounts WHERE customer_id = NEW.customer_id LIMIT 1;
+        IF NEW.loyalty_id IS NOT NULL THEN
+            NEW.loyalty_account_id := NEW.loyalty_id;
+        END IF;
+    END IF;
+
     -- Automatically populate company_id if it is NULL
     IF NEW.company_id IS NULL THEN
         -- 1. Try to get company_id from the order
@@ -58,8 +70,8 @@ BEGIN
         END IF;
 
         -- 2. Try to get company_id from the loyalty account
-        IF NEW.company_id IS NULL AND NEW.loyalty_account_id IS NOT NULL THEN
-            SELECT company_id INTO NEW.company_id FROM public.loyalty_accounts WHERE id = NEW.loyalty_account_id;
+        IF NEW.company_id IS NULL AND NEW.loyalty_id IS NOT NULL THEN
+            SELECT company_id INTO NEW.company_id FROM public.loyalty_accounts WHERE id = NEW.loyalty_id;
         END IF;
 
         -- 3. Try to get company_id from the customer
@@ -67,12 +79,7 @@ BEGIN
             SELECT company_id INTO NEW.company_id FROM public.customers WHERE id = NEW.customer_id;
         END IF;
 
-        -- 4. Try to get company_id from customer's loyalty account
-        IF NEW.company_id IS NULL AND NEW.customer_id IS NOT NULL THEN
-            SELECT company_id INTO NEW.company_id FROM public.loyalty_accounts WHERE customer_id = NEW.customer_id LIMIT 1;
-        END IF;
-
-        -- 5. Fallback to the first company in the database
+        -- 4. Fallback to the first company in the database
         IF NEW.company_id IS NULL THEN
             SELECT id INTO NEW.company_id FROM public.companies LIMIT 1;
         END IF;

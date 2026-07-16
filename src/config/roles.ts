@@ -40,6 +40,7 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
     '/devices',
   ],
   admin: ['*'],
+  super_admin: ['*'],
   inventory: ['/inventory', '/reports/inventory'],
   finance: ['/finance', '/reports'],
   hr: ['/hr'],
@@ -82,6 +83,7 @@ export const ROLE_LANDING: Record<UserRole, string> = {
   procurement: '/procurement/suppliers',
   manager: '/manager-app',
   admin: '/dashboard',
+  super_admin: '/dashboard',
 }
 
 /**
@@ -696,6 +698,16 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'compare_arrows',
     to: '/finance/bank-reconciliation',
     roles: ['admin', 'finance'],
+    permission: 'finance:access',
+    section: 'FINANCE',
+    moduleCode: 'FINANCE',
+    group: 'Cash & Banking',
+  },
+  {
+    label: 'POS Shifts',
+    icon: 'point_of_sale',
+    to: '/finance/pos-shifts',
+    roles: ['admin', 'manager', 'finance'],
     permission: 'finance:access',
     section: 'FINANCE',
     moduleCode: 'FINANCE',

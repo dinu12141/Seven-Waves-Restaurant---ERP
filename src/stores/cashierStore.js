@@ -118,6 +118,8 @@ export const useCashierStore = defineStore('cashier', () => {
 
     // Fetch all unpaid statuses (last 7 days) + paid orders (today only)
     const unpaidStatuses = [
+      'pending',
+      'pending_waiter',
       'accepted',
       'preparing',
       'ready',
@@ -540,6 +542,8 @@ export const useCashierStore = defineStore('cashier', () => {
       // Always refresh for any new order (including pending_waiter from website)
       // so the cashier sees it immediately in the queue
       const isValidForQueue = [
+        'pending',
+        'pending_waiter',
         'accepted',
         'preparing',
         'ready',
@@ -622,6 +626,8 @@ export const useCashierStore = defineStore('cashier', () => {
       } else {
         // Order not in local list yet — add it via full refresh
         const isValidForQueue = [
+          'pending',
+          'pending_waiter',
           'accepted',
           'preparing',
           'ready',

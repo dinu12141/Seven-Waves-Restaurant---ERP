@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { supabase } from '../boot/supabase'
 import { Session, User } from '@supabase/supabase-js'
 import { ROLE_LANDING, ROLE_PRIORITY, canAccessRoute } from '../config/roles'
+import { checkRateLimit, recordFailedAttempt, resetRateLimit } from '../core/security/rateLimiter'
+import { sanitizeValue } from '../core/security/inputSanitizer'
 
 // ── Login Audit Helper ─────────────────────────────────────────
 function detectDevice(): { device_type: string; browser: string; os: string } {
@@ -49,6 +51,7 @@ async function writeLoginAudit(payload: {
 
 export type UserRole =
   | 'admin'
+  | 'super_admin'
   | 'manager'
   | 'waiter'
   | 'cashier'
@@ -69,6 +72,7 @@ interface AuthState {
   loading: boolean
   error: string | null
   initialized: boolean
+  rolesVerified: boolean
   _fetchingUserData: boolean
 }
 
@@ -147,6 +151,7 @@ export const useAuthStore = defineStore('auth', {
     loading: false,
     error: null,
     initialized: false,
+    rolesVerified: false,
     _fetchingUserData: false,
   }),
   actions: {
@@ -188,9 +193,15 @@ export const useAuthStore = defineStore('auth', {
             this.roles = cache.roles
             this.permissions = cache.permissions
             this.branches = cache.branches
-            // Refresh cache silently + always fetch profile (not cached)
+            // Cached roles are NOT server-verified yet — the route guard
+            // will force a server revalidation before privileged navigation.
+            this.rolesVerified = false
+            // Refresh roles/permissions/branches from server in background.
             this._backgroundRefreshUserData()
-            this._fetchProfile().catch(() => {})
+            // Profile (disabled-account) check MUST complete before we allow
+            // navigation — a disabled account restored from cache would
+            // otherwise slip through.
+            await this._fetchProfile()
           } else {
             await this.fetchUserData()
           }
@@ -219,6 +230,7 @@ export const useAuthStore = defineStore('auth', {
           permissions: this.permissions,
           branches: this.branches,
         })
+        this.rolesVerified = true
       } finally {
         this._fetchingUserData = false
       }
@@ -316,7 +328,23 @@ export const useAuthStore = defineStore('auth', {
     async signIn(email: string, password: string): Promise<{ data: any; error: any }> {
       this.loading = true
       this.error = null
+
+      // Sanitize the email only. The password must stay raw — escapeHtml
+      // (inside sanitizeValue/sanitizePayload) would corrupt valid passwords
+      // containing & < > " ' ` / and silently break login.
+      email = sanitizeValue(email)
+      const identifier = (email || '').toLowerCase()
+
       try {
+        // ── Shared rate limiter (brute-force / lockout) ───────────
+        const rl = checkRateLimit('login', identifier)
+        if (!rl.allowed) {
+          const retrySec = Math.ceil((rl.retryAfterMs || 0) / 1000)
+          const msg = `Too many login attempts. Try again in ${retrySec}s.`
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
         // ── Brute-force lockout check ─────────────────────────────
         if (_lockoutUntil !== null && Date.now() < _lockoutUntil) {
           const remainingMin = Math.ceil((_lockoutUntil - Date.now()) / 60000)
@@ -332,6 +360,7 @@ export const useAuthStore = defineStore('auth', {
           if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
             _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
           }
+          recordFailedAttempt('login', identifier)
           let msg = error.message
           if (msg.includes('Invalid login credentials')) msg = 'Invalid email or password'
           else if (msg.includes('Email not confirmed')) msg = 'Please verify your email first'
@@ -343,6 +372,7 @@ export const useAuthStore = defineStore('auth', {
         // Successful login — reset lockout state
         _loginAttempts = 0
         _lockoutUntil = null
+        resetRateLimit('login', identifier)
 
         this.user = data.user
         this.session = data.session
@@ -355,6 +385,7 @@ export const useAuthStore = defineStore('auth', {
           this.roles = cache.roles
           this.permissions = cache.permissions
           this.branches = cache.branches
+          this.rolesVerified = false
 
           // Refresh all data silently in background
           this._backgroundRefreshUserData()
@@ -371,6 +402,7 @@ export const useAuthStore = defineStore('auth', {
             permissions: this.permissions,
             branches: this.branches,
           })
+          this.rolesVerified = true
         }
 
         // ── Step 4: Profile, modules, notifications — ALL background ──
@@ -480,6 +512,7 @@ export const useAuthStore = defineStore('auth', {
             branches: this.branches,
           })
         }
+        this.rolesVerified = true
 
         // ── Step 5: Profile, modules, notifications — ALL background ──
         // Don't block navigation — the profile name will appear within ~200ms
@@ -507,10 +540,10 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /** Refresh roles + permissions + branches in background and update cache */
-    _backgroundRefreshUserData() {
-      if (!this.user) return
+    _backgroundRefreshUserData(): Promise<void> {
+      if (!this.user) return Promise.resolve()
       const uid = this.user.id
-      Promise.all([
+      return Promise.all([
         this._fetchRoles(),
         this._fetchPermissions(),
         this._fetchBranches(),
@@ -521,6 +554,8 @@ export const useAuthStore = defineStore('auth', {
             permissions: this.permissions,
             branches: this.branches,
           })
+          // Roles are now confirmed against the server.
+          this.rolesVerified = true
           // Step 03D: Resubscribe with potentially updated branch/permissions
           this._subscribeRealtimeChannels()
         })
@@ -622,6 +657,7 @@ export const useAuthStore = defineStore('auth', {
       this.permissions = []
       this.profile = null
       this.branches = []
+      this.rolesVerified = false
     },
 
     /**

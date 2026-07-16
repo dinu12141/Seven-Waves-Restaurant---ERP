@@ -146,9 +146,19 @@ export async function generateDeliveryQR(orderId, branchId) {
 }
 
 // ─── Internal: HMAC Signing ─────────────────────────────────────────
-const QR_SECRET = import.meta.env.VITE_QR_SECRET || 'seven-waves-qr-secret-key'
+// NOTE: This client-side HMAC provides tamper *detection* only for UX.
+// The secret lives in the browser bundle regardless, so it is NOT a real
+// security boundary. Authoritative QR verification MUST be done server-side
+// (Supabase RPC / Edge Function) where the secret is never exposed.
+const QR_SECRET = import.meta.env.VITE_QR_SECRET
+if (!QR_SECRET) {
+  console.error('[QRService] VITE_QR_SECRET is not set — QR signing disabled')
+}
 
 async function signPayload(data) {
+  if (!QR_SECRET) {
+    throw new Error('QR signing unavailable: VITE_QR_SECRET not configured')
+  }
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const encoder = new TextEncoder()
     const key = await crypto.subtle.importKey(

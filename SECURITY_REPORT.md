@@ -16,7 +16,7 @@
 **Issue**: The `.env` file containing live production secrets is committed to the repository and has been present across multiple commits in git history (`e55a0c1`, `d70d105`, `d24c943`, and earlier). The file contains:
 - `VITE_SUPABASE_URL` — live Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — live JWT token (expires 2086 per payload decode)
-- `VITE_GOOGLE_MAPS_KEY` — live Google Maps API key (`AIzaSyAEeQwDmMc8Ir983nvm9wNNpQL6OlPZkvs`)
+- `VITE_GOOGLE_MAPS_KEY` — live Google Maps API key (`AIzaSy[REDACTED — see GCP Console]`)
 
 **Risk**: Anyone with read access to the git repository (or any cloned copy) has permanent access to these credentials even if the file is removed in a future commit — git history retains all past states. The Google Maps key can be used to incur billing charges. The Supabase anon key combined with the URL gives access to the database via the public API, constrained only by RLS policies.
 

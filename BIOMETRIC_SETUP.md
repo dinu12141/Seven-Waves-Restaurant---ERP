@@ -13,7 +13,7 @@ The system is configured to automatically sync biometric data every 5 minutes.
 - **Job Name**: `biometric_sync_job`
 - **Schedule**: `*/5 * * * *` (Every 5 minutes)
 - **Target URL**: `https://clykwuzajtwvwuavmtzs.supabase.co/functions/v1/biometric-sync`
-- **Auth Key**: `eyJhbGciOiJIUzI1NiIsInR....` (Configured)
+- **Auth Key**: `YOUR_SUPABASE_ANON_KEY` (Configured)
 
 ## Manual Testing
 
@@ -23,7 +23,7 @@ You can manually trigger the sync process at any time by running this SQL comman
 select
   net.http_post(
       url:='https://clykwuzajtwvwuavmtzs.supabase.co/functions/v1/biometric-sync',
-      headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWt3dXphanR3dnd1YXZtdHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyOTYwODEsImV4cCI6MjA4Njg3MjA4MX0.wROPuoQAQ2GD3PAZAM7cnAef6fhDctRe9izwFC-9JGA"}'::jsonb,
+      headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SUPABASE_ANON_KEY"}'::jsonb,
       body:='{}'::jsonb
   ) as request_id;
 ```

@@ -46,12 +46,12 @@ CREATE POLICY oi_cashier_select ON order_items
 DROP POLICY IF EXISTS kot_cashier_select ON kot_tickets;
 CREATE POLICY kot_cashier_select ON kot_tickets
     FOR SELECT
-    TO public
+    TO authenticated
     USING (
-        auth_has_role('cashier'::text) AND 
+        auth_has_role('cashier'::text) AND
         EXISTS (
             SELECT 1 FROM orders o
-            WHERE o.id = kot_tickets.order_id 
+            WHERE o.id = kot_tickets.order_id
               AND o.branch_id = ANY (auth_branch_ids())
         )
     );

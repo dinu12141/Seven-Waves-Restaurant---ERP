@@ -1,4 +1,5 @@
 import { boot } from 'quasar/wrappers'
+import { watch } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { canAccessRoute } from 'src/config/roles'
 import { hasPermission, hasModuleAccess } from 'src/core/rbac/permissions'
@@ -75,6 +76,16 @@ export default boot(async ({ router }) => {
   // Start inactivity watcher after auth is ready (only in browser, not SSR)
   if (typeof window !== 'undefined') {
     startInactivityWatcher(authStore)
+
+    // Re-arm the inactivity timer whenever the user (re-)authenticates.
+    // Without this, a logout clears the timer and a subsequent re-login on the
+    // same shared terminal would run without an idle-timeout.
+    watch(
+      () => authStore.isAuthenticated,
+      (val) => {
+        if (val) resetInactivityTimer(authStore)
+      },
+    )
   }
 
   router.beforeEach(async (to) => {
@@ -121,18 +132,30 @@ export default boot(async ({ router }) => {
 
     // Role-based guard (for non-manager, non-admin roles)
     if (requiresAuth && authStore.isAuthenticated && !authStore.isAdmin) {
-      // 1. Check route meta roles
-      const requiredRoles = to.matched.reduce<string[]>((roles, record) => {
-        if (record.meta.roles && Array.isArray(record.meta.roles)) {
-          return record.meta.roles
-        }
-        return roles
-      }, [])
+      // 1. Collect ALL role requirement sets across matched records.
+      // A parent's roles AND a child's roles must both be satisfied.
+      const requiredRoleSets = to.matched
+        .filter((r) => Array.isArray(r.meta.roles) && r.meta.roles.length)
+        .map((r) => r.meta.roles as string[])
 
-      if (requiredRoles.length > 0) {
-        // @ts-ignore
-        const hasAccess = requiredRoles.some((role) => authStore.roles.includes(role))
-        if (!hasAccess) {
+      if (requiredRoleSets.length > 0) {
+        // C7 — Never trust cached roles for privileged routes.
+        // If any required set names a privileged role and roles are not yet
+        // server-verified, force a synchronous revalidation before deciding.
+        const PRIVILEGED = ['admin', 'super_admin', 'manager', 'finance', 'hr']
+        const touchesPrivileged = requiredRoleSets.some((set) =>
+          set.some((role) => PRIVILEGED.includes(role)),
+        )
+        if (touchesPrivileged && !authStore.rolesVerified) {
+          await authStore._backgroundRefreshUserData()
+        }
+
+        // User must satisfy every set (at least one role from each).
+        const passesAll = requiredRoleSets.every((set) =>
+          // @ts-ignore
+          set.some((role) => authStore.roles.includes(role)),
+        )
+        if (!passesAll) {
           return '/unauthorized'
         }
       }

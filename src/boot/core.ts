@@ -10,6 +10,7 @@ import { realtimeEngine } from 'src/core/realtime/RealtimeEngine'
 import { offlineSyncEngine } from 'src/core/offline/OfflineSyncEngine'
 import { sessionGuard } from 'src/core/security/sessionGuard'
 import { logger } from 'src/core/logging/logger'
+import { useAuthStore } from 'src/stores/auth'
 
 export default boot(({ app, router }) => {
   // ── 1. Global Vue Error Handler ──────────────────────────────────
@@ -47,6 +48,12 @@ export default boot(({ app, router }) => {
   })
 
   sessionGuard.onExpired(() => {
+    // Tear down the local auth state so a stale/expired session can't linger.
+    try {
+      useAuthStore().signOut()
+    } catch (err) {
+      logger.warn('[Session] signOut on expiry failed', { error: String(err) })
+    }
     Notify.create({
       type: 'negative',
       message: 'Your session has expired. Redirecting to login...',

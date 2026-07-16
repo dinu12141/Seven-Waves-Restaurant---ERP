@@ -13,7 +13,7 @@
           <q-icon name="receipt_long" size="22px" color="primary" />
           <div>
             <div class="text-subtitle1 text-white text-weight-bold">
-              KOT #{{ ticket?.kot_number ?? '—' }}
+              Order #{{ ticket?.order?.order_number ?? ticket?.kot_number ?? '—' }} <span style="font-size: 0.8em; opacity: 0.8;">(KOT #{{ ticket?.kot_number }})</span>
               <q-chip
                 v-if="isReprint"
                 dense
@@ -95,10 +95,10 @@
           <!-- Reprint badge -->
           <div v-if="isReprint" class="reprint-badge">★ REPRINT ★</div>
 
-          <!-- KOT Number -->
+          <!-- Order Number -->
           <div class="kot-number-block">
-            <div class="kot-label-sm">KOT</div>
-            <div class="kot-number">#{{ ticket.kot_number ?? '—' }}</div>
+            <div class="kot-label-sm">ORDER</div>
+            <div class="kot-number">#{{ ticket.order?.order_number ?? ticket.kot_number ?? '—' }}</div>
           </div>
 
           <div class="divider-thick"></div>
@@ -106,8 +106,8 @@
           <!-- Meta Grid -->
           <div class="meta-grid">
             <div class="meta-cell">
-              <div class="meta-label">Order</div>
-              <div class="meta-value">#{{ ticket.order?.order_number ?? '—' }}</div>
+              <div class="meta-label">KOT</div>
+              <div class="meta-value">#{{ ticket.kot_number ?? '—' }}</div>
             </div>
             <div class="meta-cell">
               <div class="meta-label">Type</div>

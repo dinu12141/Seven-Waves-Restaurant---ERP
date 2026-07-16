@@ -120,6 +120,7 @@ const routes = [
           { path: 'cheque-plan', component: () => import('src/modules/finance/pages/ChequePlanPage.vue') },
           { path: 'bank-reconciliation', component: () => import('src/modules/finance/pages/BankReconciliationPage.vue') },
           { path: 'fiscal-periods', component: () => import('src/modules/finance/pages/FiscalPeriodsPage.vue') },
+          { path: 'pos-shifts', component: () => import('pages/finance/PosShiftsPage.vue') },
 
           // ── Statutory Reports (New ERP) ──
           { path: 'financial-statements', component: () => import('src/modules/finance/pages/FinancialStatementsPage.vue') },

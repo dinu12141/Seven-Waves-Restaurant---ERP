@@ -10,7 +10,7 @@
         <div class="row items-center justify-between no-wrap q-mb-xs">
           <div class="row items-center q-gutter-x-sm">
             <span class="text-h6 text-weight-bolder font-mono"
-              >#{{ ticket.kot_number || ticket.orderNumber }}</span
+              >#{{ ticket.orderNumber && ticket.orderNumber !== '?' ? ticket.orderNumber : ticket.kot_number }}</span
             >
             <q-badge
               v-if="ticket.orderType"
@@ -67,7 +67,7 @@
           <div class="q-mx-xs kds-meta-divider">|</div>
           <span>{{ itemCount }} items</span>
           <div class="q-mx-xs kds-meta-divider">|</div>
-          <span>Ord #{{ ticket.orderNumber }}</span>
+          <span>KOT #{{ ticket.kot_number }}</span>
         </div>
 
         <div v-if="ticket.kitchenName" class="row items-center q-mb-sm">

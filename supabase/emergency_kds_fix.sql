@@ -11,10 +11,27 @@ ALTER TABLE kot_tickets DISABLE ROW LEVEL SECURITY;
 ALTER TABLE kot_items   DISABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS kot_permissive ON kot_tickets;
-CREATE POLICY kot_permissive ON kot_tickets FOR ALL TO authenticated USING (true);
+CREATE POLICY kot_branch_scoped ON kot_tickets
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM orders o
+      WHERE o.id = kot_tickets.order_id
+        AND o.branch_id = ANY(auth_branch_ids())
+    )
+  );
 
 DROP POLICY IF EXISTS ki_permissive ON kot_items;
-CREATE POLICY ki_permissive ON kot_items FOR ALL TO authenticated USING (true);
+CREATE POLICY ki_branch_scoped ON kot_items
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM kot_tickets kt
+      JOIN orders o ON o.id = kt.order_id
+      WHERE kt.id = kot_items.kot_id
+        AND o.branch_id = ANY(auth_branch_ids())
+    )
+  );
 
 ALTER TABLE kot_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE kot_items   ENABLE ROW LEVEL SECURITY;
@@ -63,6 +80,3 @@ UPDATE kot_tickets SET status = 'created' WHERE status = 'pending';
 
 -- 4. Force dispatch refresh
 UPDATE kot_dispatches SET status = 'pending' WHERE status != 'completed';
-
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
