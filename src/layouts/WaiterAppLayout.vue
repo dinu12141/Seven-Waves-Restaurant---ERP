@@ -229,6 +229,12 @@
       </router-view>
     </q-page-container>
 
+    <!-- Global Notification Toasts -->
+    <NotificationToast />
+
+    <!-- Global Offline Banner -->
+    <OfflineBanner />
+
     <!-- ── Bottom Navigation ─────────────────────────────────────────────── -->
     <q-footer class="waiter-bottom-nav mobile-bottom-nav">
       <div class="bottom-nav-bar mobile-nav-bar">
@@ -265,6 +271,8 @@ import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar, Notify } from 'quasar'
 import { useWaiterAppStore } from 'src/stores/waiterAppStore'
+import NotificationToast from 'components/common/NotificationToast.vue'
+import OfflineBanner from 'components/common/OfflineBanner.vue'
 import { useWaiterOrderStore } from 'src/stores/waiterOrderStore'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'

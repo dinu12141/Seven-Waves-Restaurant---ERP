@@ -360,19 +360,27 @@
     <div class="pos-bottom-container">
       <div class="bottom-shortcuts-grid" ref="shortcutsGridRef">
         <template v-if="!store.isEmpty && store.orderType === 'dine-in'">
-          <button
-            v-for="table in restaurantTables"
-            :key="table.id"
-            class="sbtn text-bold"
-            :class="{ 
-              'active-table': store.selectedTable === table.id,
-              'locked-table': lockedTables.has(table.id) && store.selectedTable !== table.id
-            }"
-            :disabled="lockedTables.has(table.id) && store.selectedTable !== table.id"
-            @click="store.selectedTable = table.id; store.tableNumber = table.table_number"
-          >
-            {{ table.table_number }}
-          </button>
+          <div v-for="table in restaurantTables" :key="table.id" style="position: relative; display: flex;">
+            <button
+              class="sbtn text-bold"
+              :class="{ 
+                'active-table': store.selectedTable === table.id,
+                'locked-table': lockedTables.has(table.id) && store.selectedTable !== table.id
+              }"
+              @click="handleTableClick(table)"
+              style="width: 100%; margin: 0;"
+            >
+              {{ table.table_number }}
+            </button>
+            <button
+              v-if="lockedTables.has(table.id) && store.selectedTable !== table.id"
+              @click.stop="store.selectedTable = table.id; store.tableNumber = table.table_number"
+              title="Add another order to this table"
+              style="position: absolute; top: -5px; right: -5px; background: #4caf50; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 2;"
+            >
+              +
+            </button>
+          </div>
         </template>
         <template v-else>
           <button
@@ -959,20 +967,40 @@ async function openLiveTable() {
   }
 }
 
+async function handleTableClick(table) {
+  if (lockedTables.value.has(table.id)) {
+    // Open billing for this occupied table
+    await selectLiveTable(table)
+  } else {
+    // Select the table for a new order
+    store.selectedTable = table.id
+    store.tableNumber = table.table_number
+  }
+}
+
 async function selectLiveTable(table) {
   // Only allow interacting with occupied/locked tables
-  if (table.status === 'available') {
+  if (table.status === 'available' && !lockedTables.value.has(table.id)) {
     return
   }
 
   Loading.show({ message: 'Fetching table order...' })
   try {
     await cashierStore.fetchBillingQueue()
-    const activeOrder = cashierStore.billingQueue.find(o => o.table_id === table.id)
+    const activeOrders = cashierStore.billingOrders.filter(o => 
+      o.table_id === table.id && 
+      o.status !== 'completed' && o.status !== 'cancelled' && 
+      o.payment_status !== 'paid' && o.status !== 'paid'
+    )
     
-    if (activeOrder) {
+    if (activeOrders.length > 0) {
       showLiveTable.value = false
-      openBilling(activeOrder)
+      if (activeOrders.length > 1) {
+        mergedTableOrders.value = activeOrders
+      } else {
+        mergedTableOrders.value = []
+      }
+      openBilling(activeOrders[0])
     } else {
       Notify.create({
         message: 'No active order found for this table in POS queue',
@@ -1180,9 +1208,12 @@ async function fetchMenuItems() {
 
 async function fetchRestaurantTables() {
   try {
+    const branchId = authStore.currentBranch?.id
+    if (!branchId) return
     const { data, error } = await supabase
       .from('restaurant_tables')
       .select('id, table_number, section')
+      .eq('branch_id', branchId)
       .order('table_number')
     if (data && !error) {
       restaurantTables.value = data
@@ -1196,6 +1227,7 @@ onMounted(async () => {
   if (authStore.isAuthenticated) {
     fetchMenuItems()
     fetchRestaurantTables()
+    store.loadServiceChargeRate()
     await cashierStore.initialize()
 
     // ── Shift Check ─────────────────────────────────────────
@@ -2270,8 +2302,23 @@ async function processInlinePayment() {
 
   try {
     let finalOrderId = null
+    let createdInvoiceId = null
 
-    if (store._loadedOrderId && selectedQueueOrder.value) {
+    if (mergedTableOrders.value && mergedTableOrders.value.length > 1) {
+      // ── MERGED TABLE ORDERS FLOW (Multiple KOTs) ──
+      const orderIds = mergedTableOrders.value.map(o => o.id)
+      const { data: mergeData, error: mergeError } = await supabase.rpc('merge_table_orders_and_pay', {
+        p_order_ids: orderIds,
+        p_payment_method: methodName.toLowerCase(),
+        p_amount_paid: store.total
+      })
+      if (mergeError) throw new Error(mergeError.message)
+      if (!mergeData?.success) throw new Error(mergeData?.error || 'Merge payment failed')
+      
+      finalOrderId = orderIds[0] // for shift logging
+      createdInvoiceId = mergeData.invoice_id
+
+    } else if (store._loadedOrderId && selectedQueueOrder.value) {
       // ── QUEUE ORDER FLOW (From Order Lookup) ──
       finalOrderId = store._loadedOrderId
       
@@ -2305,15 +2352,32 @@ async function processInlinePayment() {
     }
 
     // Prepare real invoice for printing
-    const { data: invoices } = await supabase
-      .from('invoices')
-      .select('id')
-      .eq('order_id', finalOrderId)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    let targetInvoiceId = createdInvoiceId
+    
+    if (!targetInvoiceId && finalOrderId) {
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('order_id', finalOrderId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (invoices?.length > 0) {
+        targetInvoiceId = invoices[0].id
+      }
+    }
       
-    if (invoices?.length > 0) {
-      const realInvoice = await cashierStore.fetchInvoiceDetails(invoices[0].id)
+    if (targetInvoiceId) {
+      const realInvoice = await cashierStore.fetchInvoiceDetails(targetInvoiceId)
+      
+      // Enrich with ALL KOT tickets if merged
+      if (mergedTableOrders.value && mergedTableOrders.value.length > 1 && realInvoice?.orders) {
+        const allKots = mergedTableOrders.value.flatMap((o) => o.kot_tickets || [])
+        const kotMap = new Map()
+        for (const k of allKots) kotMap.set(k.id, k)
+        for (const k of realInvoice.orders.kot_tickets || []) kotMap.set(k.id, k)
+        realInvoice.orders.kot_tickets = Array.from(kotMap.values())
+      }
+
       directPrintInvoice.value = realInvoice
       
       await nextTick()
@@ -2524,8 +2588,28 @@ function handleOrderLookup() {
 function openBilling(order) {
   if (!order) return
 
+  // Check if this order is part of a multi-order table
+  let mergedOrders = []
+  if (order.table_id && cashierStore.billingOrders) {
+    const tableOrders = cashierStore.billingOrders.filter(o => 
+      o.table_id === order.table_id &&
+      o.status !== 'completed' && o.status !== 'cancelled' &&
+      o.payment_status !== 'paid' && o.status !== 'paid'
+    )
+    if (tableOrders.length > 1) {
+      mergedOrders = tableOrders
+      mergedTableOrders.value = tableOrders
+      // Use the actual selected order as anchor, or the first one if not matched
+      order = tableOrders.find(o => o.id === order.id) || tableOrders[0]
+    } else {
+      mergedTableOrders.value = []
+    }
+  } else {
+    mergedTableOrders.value = []
+  }
+
   // Load order into POS cart (items, customer, table, etc.)
-  store.loadOrderFromQueue(order)
+  store.loadOrderFromQueue(order, mergedOrders)
 
   // Set the queue order reference for PaymentDialog
   selectedQueueOrder.value = order

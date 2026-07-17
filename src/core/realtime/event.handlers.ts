@@ -27,7 +27,10 @@ export function handleOrderEvent(payload: RealtimeEventPayload): void {
   switch (payload.eventType) {
     case 'INSERT':
       logger.info('[RT:POS] New order', { id: record?.id })
-      // Store will be refreshed on next poll or via direct update
+      // Forward to KDS: new order may have existing KOTs if rapidly accepted
+      if (record?.id) {
+        _forwardOrderToKds(record.id as string)
+      }
       break
 
     case 'UPDATE': {
@@ -45,6 +48,13 @@ export function handleOrderEvent(payload: RealtimeEventPayload): void {
             timeout: 5000,
           })
         }
+
+        // Forward to KDS store — replaces the duplicate 'orders' listener in kitchenDisplayStore.
+        // P0-3: This centralises order→KDS routing here so the KDS channel doesn't need its own
+        // orders subscription alongside the RealtimeManager's orders:{branchId} channel.
+        if (record?.id) {
+          _forwardOrderToKds(record.id as string)
+        }
       }
       break
     }
@@ -53,6 +63,24 @@ export function handleOrderEvent(payload: RealtimeEventPayload): void {
       logger.warn('[RT:POS] Order deleted', { id: old?.id })
       break
   }
+}
+
+function _forwardOrderToKds(orderId: string): void {
+  // Lazy import avoids circular dependency. If the KDS store is not mounted (user
+  // is not on a kitchen screen) the import still resolves but selectedKitchenId
+  // will be null and refreshTicketsForOrder will exit immediately.
+  import('../../stores/kitchenDisplayStore')
+    .then(({ useKitchenDisplayStore }) => {
+      try {
+        const kdsStore = useKitchenDisplayStore()
+        if (kdsStore.selectedKitchenId) {
+          kdsStore.refreshTicketsForOrder(orderId)
+        }
+      } catch {
+        /* KDS store not initialised */
+      }
+    })
+    .catch(() => { /* module not loaded */ })
 }
 
 // ─── Payments ───────────────────────────────────────────────────

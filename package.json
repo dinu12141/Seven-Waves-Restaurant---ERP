@@ -12,7 +12,7 @@
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "type-check": "vue-tsc --noEmit --skipLibCheck",
+    "type-check": "node --max-old-space-size=6144 node_modules/vue-tsc/bin/vue-tsc.js --noEmit --skipLibCheck",
     "dev": "quasar dev",
     "build": "quasar build",
     "build:staging": "VITE_APP_ENV=staging quasar build",
@@ -69,13 +69,18 @@
     "vite-plugin-checker": "^0.11.0",
     "vitest": "^4.1.6",
     "vue-eslint-parser": "^10.2.0",
+    "vue-tsc": "^3.3.7",
     "workbox-build": "^7.4.0",
     "workbox-cacheable-response": "^7.4.0",
     "workbox-core": "^7.4.0",
     "workbox-expiration": "^7.4.0",
     "workbox-precaching": "^7.4.0",
     "workbox-routing": "^7.4.0",
-    "workbox-strategies": "^7.4.0"
+    "workbox-strategies": "^7.4.0",
+    "typescript": "5.8.3"
+  },
+  "overrides": {
+    "typescript": "5.8.3"
   },
   "engines": {
     "node": "^28 || ^26 || ^24 || ^22 || ^20",

@@ -289,7 +289,7 @@ export async function adminGetLoyaltyStats(): Promise<{
   )
 
   type TierRow = { loyalty_tiers: { tier_code: string } | null }
-  const tierRows = (tierRes.data || []) as TierRow[]
+  const tierRows = (tierRes.data || []) as unknown as TierRow[]
   const goldMembers = tierRows.filter(
     (r) => r.loyalty_tiers?.tier_code === 'GOLD',
   ).length

@@ -23,7 +23,7 @@
                 dense
                 :color="effectiveOnShift ? 'green-9' : 'grey-8'"
                 text-color="white"
-                :icon="effectiveOnShift ? 'schedule' : 'schedule'"
+                :icon="effectiveOnShift ? 'schedule' : 'event_busy'"
                 class="text-caption"
               >
                 {{ effectiveOnShift ? shiftName : 'Off Shift' }}

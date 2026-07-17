@@ -69,6 +69,7 @@ interface AuthState {
   permissions: string[]
   profile: any | null
   branches: any[]
+  activeBranchId: string | null
   loading: boolean
   error: string | null
   initialized: boolean
@@ -107,8 +108,8 @@ function loadAuthCache(uid: string): AuthCache | null {
     const raw = localStorage.getItem(CACHE_KEY(uid))
     if (!raw) return null
     const cache: AuthCache = JSON.parse(raw)
-    // Expire cache after 24 hours
-    if (Date.now() - cache.cachedAt > 86_400_000) {
+    // Expire cache after 5 minutes — roles must be re-verified frequently
+    if (Date.now() - cache.cachedAt > 300_000) {
       localStorage.removeItem(CACHE_KEY(uid))
       return null
     }
@@ -148,6 +149,7 @@ export const useAuthStore = defineStore('auth', {
     permissions: [],
     profile: null,
     branches: [],
+    activeBranchId: null,
     loading: false,
     error: null,
     initialized: false,
@@ -162,7 +164,7 @@ export const useAuthStore = defineStore('auth', {
         // Setup listener — but DON'T await fetchUserData inside it
         // to avoid double-fetching on initial load
         supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
-          console.log('[Auth] State change:', event)
+          if (import.meta.env.DEV) console.log('[Auth] State change:', event)
 
           this.session = session
           this.user = session?.user || null
@@ -297,9 +299,9 @@ export const useAuthStore = defineStore('auth', {
           .eq('id', this.user?.id)
           .single()
         this.profile = data
-        // If profile is inactive, we should sign out
+        // If profile is inactive, sign out and surface error
         if (data && data.is_active === false) {
-          this.signOut()
+          await this.signOut()
           this.error = 'Account disabled. Please contact admin.'
         }
       } catch {
@@ -314,6 +316,12 @@ export const useAuthStore = defineStore('auth', {
           .select('is_home_branch, branches(id, name, company_id, is_main, is_active)')
           .eq('user_id', this.user?.id)
         this.branches = data || []
+        // Set activeBranchId to home branch on first load if not already set
+        if (!this.activeBranchId && this.branches.length > 0) {
+          const home = this.branches.find((b) => b.is_home_branch)
+          const branch = home?.branches || this.branches[0]?.branches
+          if (branch?.id) this.activeBranchId = branch.id
+        }
       } catch {
         /* non-critical */
       }
@@ -441,6 +449,17 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
+        const identifier = String(userCode || '').trim()
+
+        // ── Shared rate limiter (same as signIn) ──────────────────
+        const rl = checkRateLimit('login', identifier)
+        if (!rl.allowed) {
+          const retrySec = Math.ceil((rl.retryAfterMs || 0) / 1000)
+          const msg = `Too many login attempts. Try again in ${retrySec}s.`
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
         // ── Brute-force lockout check ─────────────────────────────
         if (_lockoutUntil !== null && Date.now() < _lockoutUntil) {
           const remainingMin = Math.ceil((_lockoutUntil - Date.now()) / 60000)
@@ -468,6 +487,7 @@ export const useAuthStore = defineStore('auth', {
           if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
             _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
           }
+          recordFailedAttempt('login', identifier)
           const msg = result.error || 'Invalid user code or password'
           this.error = msg
           return { data: null, error: { message: msg } }
@@ -476,6 +496,7 @@ export const useAuthStore = defineStore('auth', {
         // Successful login — reset lockout state
         _loginAttempts = 0
         _lockoutUntil = null
+        resetRateLimit('login', identifier)
 
         // Set the session from the edge function response
         if (result.session) {
@@ -619,6 +640,11 @@ export const useAuthStore = defineStore('auth', {
         })
         .catch(() => {})
 
+      // Clear AI chat history for this user (security: prevent cross-user leakage on shared devices)
+      if (uid && typeof window !== 'undefined') {
+        try { window.localStorage.removeItem(`sw_ai_chat_${uid}`) } catch { /* ignore */ }
+      }
+
       // Clear local state FIRST — instant logout feel
       this._clearUserData()
 
@@ -650,6 +676,21 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    /**
+     * Switch the active branch for multi-branch users.
+     * Updates activeBranchId and re-subscribes realtime channels for the new branch.
+     */
+    switchBranch(branchId: string) {
+      const targetBranch = this.branches.find((b) => b.branches?.id === branchId)
+      if (!targetBranch) {
+        console.warn('[Auth] switchBranch: branch not found in user branches:', branchId)
+        return
+      }
+      this.activeBranchId = branchId
+      // Re-subscribe realtime channels for the new branch
+      this._subscribeRealtimeChannels()
+    },
+
     _clearUserData() {
       this.user = null
       this.session = null
@@ -657,6 +698,7 @@ export const useAuthStore = defineStore('auth', {
       this.permissions = []
       this.profile = null
       this.branches = []
+      this.activeBranchId = null
       this.rolesVerified = false
     },
 
@@ -683,9 +725,15 @@ export const useAuthStore = defineStore('auth', {
     isAdmin: (state) => Array.isArray(state.roles) && state.roles.includes('admin'),
     userDisplayName: (state) => state.profile?.full_name || state.user?.email || '',
     currentBranch: (state) => {
+      // Respect an explicit branch switch first
+      if (state.activeBranchId) {
+        const active = state.branches.find((b) => b.branches?.id === state.activeBranchId)
+        if (active?.branches) return active.branches
+      }
       const home = state.branches.find((b) => b.is_home_branch)
       return home?.branches || state.branches[0]?.branches || null
     },
+    availableBranches: (state) => state.branches.map((b) => b.branches).filter(Boolean),
     hasRole: (state) => {
       return (role: UserRole) => Array.isArray(state.roles) && state.roles.includes(role)
     },

@@ -4,6 +4,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useAuthStore } from 'src/stores/auth'
 import {
   generateExecutiveInsights,
   generateSalesForecast,
@@ -181,8 +182,13 @@ export const useAiStore = defineStore('ai', () => {
 
   // ── Chat ─────────────────────────────────────────────────────────────────
 
-  const CHAT_STORAGE_KEY = 'sw_ai_chat_history'
-  const CHAT_MAX_PERSIST = 50 // max messages stored locally
+  // Chat storage key namespaced by user ID — prevents cross-user chat leakage on shared devices.
+  // Called inside actions (not at store definition time) so Pinia is fully initialized.
+  function _chatKey() {
+    const uid = useAuthStore().user?.id
+    return uid ? `sw_ai_chat_${uid}` : 'sw_ai_chat_anonymous'
+  }
+  const CHAT_MAX_PERSIST = 20 // max messages stored locally (was 50; trimmed to limit PII exposure)
 
   /**
    * Load chat history from localStorage on page mount.
@@ -192,7 +198,8 @@ export const useAiStore = defineStore('ai', () => {
     if (chatLoaded.value) return
     chatLoaded.value = true
     try {
-      const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+      const key = _chatKey()
+      const raw = localStorage.getItem(key)
       if (raw) {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed)) {
@@ -201,7 +208,7 @@ export const useAiStore = defineStore('ai', () => {
       }
     } catch {
       // corrupt storage — start fresh
-      localStorage.removeItem(CHAT_STORAGE_KEY)
+      try { localStorage.removeItem(_chatKey()) } catch { /* ignore */ }
     }
   }
 
@@ -211,7 +218,7 @@ export const useAiStore = defineStore('ai', () => {
   function _persistChat() {
     try {
       const toSave = chatMessages.value.slice(-CHAT_MAX_PERSIST)
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(toSave))
+      localStorage.setItem(_chatKey(), JSON.stringify(toSave))
     } catch {
       // ignore storage quota errors
     }
@@ -257,7 +264,7 @@ export const useAiStore = defineStore('ai', () => {
   function clearChat() {
     chatMessages.value = []
     chatLoaded.value = false
-    try { localStorage.removeItem(CHAT_STORAGE_KEY) } catch { /* ignore */ }
+    try { localStorage.removeItem(_chatKey()) } catch { /* ignore */ }
   }
 
   return {

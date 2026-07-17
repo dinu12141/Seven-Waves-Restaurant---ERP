@@ -595,15 +595,14 @@ watch(
 
 // ─── Branch Chip ─────────────────────────────────────────────────────────────
 .erp-branch-chip {
-  height: 30px !important;
-  min-height: 30px !important;
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
+  height: 32px;
   gap: 6px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid var(--erp-border);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--erp-text-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -779,21 +778,6 @@ watch(
   }
 }
 
-// ─── Branch ────────────────────────────────────────────────────────────────────
-.erp-branch-chip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--erp-text-secondary);
-  background: var(--erp-bg-card-hover);
-  border: 1px solid var(--erp-border);
-  border-radius: 8px;
-  padding: 0 12px;
-}
 
 // ─── Role Badges ───────────────────────────────────────────────────────────────
 .erp-role-badges {

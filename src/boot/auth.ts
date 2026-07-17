@@ -152,8 +152,7 @@ export default boot(async ({ router }) => {
 
         // User must satisfy every set (at least one role from each).
         const passesAll = requiredRoleSets.every((set) =>
-          // @ts-ignore
-          set.some((role) => authStore.roles.includes(role)),
+          set.some((role) => authStore.roles.includes(role as import('src/stores/auth').UserRole)),
         )
         if (!passesAll) {
           return '/unauthorized'
@@ -167,7 +166,6 @@ export default boot(async ({ router }) => {
         .pop()
 
       if (requiredPermission) {
-        // @ts-ignore
         const permitted = hasPermission(authStore.roles, requiredPermission, authStore.permissions || [])
         if (!permitted) {
           return '/unauthorized'
@@ -181,7 +179,6 @@ export default boot(async ({ router }) => {
         .pop()
 
       if (requiredModule) {
-        // @ts-ignore
         const moduleAllowed = hasModuleAccess(authStore.roles, requiredModule)
         if (!moduleAllowed) {
           return '/unauthorized'

@@ -72,7 +72,7 @@
               </div>
               <div class="mum-info">
                 <div class="mum-name">{{ authStore.userDisplayName }}</div>
-                <div class="mum-role">Manager</div>
+                <div class="mum-role">{{ (authStore.roles?.[0] || 'manager').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }}</div>
               </div>
             </div>
             <q-separator class="mum-sep" />
@@ -108,6 +108,12 @@
         </transition>
       </router-view>
     </q-page-container>
+
+    <!-- Global Notification Toasts -->
+    <NotificationToast />
+
+    <!-- Global Offline Banner -->
+    <OfflineBanner />
 
     <!-- ── Bottom Navigation ─────────────────────────────────────────────── -->
     <q-footer class="manager-bottom-nav mobile-bottom-nav">
@@ -146,6 +152,8 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useManagerAppStore } from 'src/stores/managerAppStore'
+import NotificationToast from 'components/common/NotificationToast.vue'
+import OfflineBanner from 'components/common/OfflineBanner.vue'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
 

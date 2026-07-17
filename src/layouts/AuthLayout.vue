@@ -12,6 +12,6 @@
 
 <style scoped>
 .auth-layout {
-  background: #ffffff;
+  background: var(--q-color-background, var(--erp-bg-base, #ffffff));
 }
 </style>

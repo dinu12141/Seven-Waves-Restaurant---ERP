@@ -75,6 +75,7 @@
                 <q-icon :name="categoryIcon(category)" size="14px" />
               </div>
               <div class="gs-item__body">
+                <!-- v-html safe: highlight() escapes both text and query via escapeHtml() before injecting <mark> -->
                 <span class="gs-item__title" v-html="highlight(item.title)" />
                 <span v-if="item.subtitle" class="gs-item__sub">{{ item.subtitle }}</span>
               </div>

@@ -563,13 +563,15 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   }
 
   // ─── Accept Order ─────────────────────────────────────────────────────────
-  async function acceptOrder(orderId) {
+  async function acceptOrder(orderId, unavailableItemIds = null) {
     if (!isOnShift.value) throw new Error('You cannot accept orders while off shift.')
-    const { data, error } = await supabase.rpc('process_waiter_accept', { p_order_id: orderId })
-    if (error) throw error
-    if (data?.success === false) throw new Error(data.error || 'Accept failed')
+    // Route through waiterOrderStore so unavailableItemIds are forwarded to the
+    // accept_order_as_waiter RPC (marks items unavailable before KOT generation).
+    const orderStore = useWaiterOrderStore()
+    const result = await orderStore.acceptOrder(orderId, unavailableItemIds)
+    if (!result.success) throw new Error(result.error || 'Accept failed')
     await Promise.all([loadPendingOrders(), loadMyOrders()])
-    return data
+    return result.data
   }
 
   // ─── Mark Served ──────────────────────────────────────────────────────────
@@ -665,7 +667,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     // Orders channel — covers pending + assigned order changes
     ordersChannel = supabase
-      .channel('waiter-app-orders')
+      .channel(`waiter-app-orders-${branchId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
@@ -777,17 +779,21 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       )
       .subscribe()
 
-    if (profile.value?.id) {
+    // Subscribe notifications + points only when a real waiter_profiles id exists.
+    // Synthetic/fallback profiles (id=null from employee-only lookup) have no
+    // waiter_notifications rows — subscribing would silently match nothing anyway.
+    const waiterProfileId = profile.value?.id
+    if (waiterProfileId) {
       // Notifications channel — pushed by triggers
       notifsChannel = supabase
-        .channel('waiter-app-notifs')
+        .channel(`waiter-app-notifs-${waiterProfileId}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'waiter_notifications',
-            filter: `waiter_profile_id=eq.${profile.value.id}`,
+            filter: `waiter_profile_id=eq.${waiterProfileId}`,
           },
           (payload) => {
             notifications.value.unshift(payload.new)
@@ -797,14 +803,14 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
       // Points ledger channel — realtime balance updates
       pointsChannel = supabase
-        .channel('waiter-app-points')
+        .channel(`waiter-app-points-${waiterProfileId}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'waiter_points_ledger',
-            filter: `waiter_profile_id=eq.${profile.value.id}`,
+            filter: `waiter_profile_id=eq.${waiterProfileId}`,
           },
           (payload) => {
             // Prepend new entry immediately for instant feedback

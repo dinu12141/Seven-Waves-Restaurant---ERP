@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { logger } from '../logging/logger'
+import { supabase } from 'src/boot/supabase'
 
 /**
  * Security event severity levels.
@@ -88,20 +89,39 @@ export function logSecurityEvent(event) {
  * Escalate a critical security event (persist to DB for admin review).
  */
 async function escalateSecurityEvent(entry) {
+  // Primary: persist to server-side audit log (tamper-resistant)
   try {
-    // Store in localStorage as fallback (will be synced later)
+    await supabase.from('audit_logs').insert({
+      user_id: entry.userId || null,
+      action: `SECURITY:${entry.category}`,
+      table_name: null,
+      record_id: null,
+      new_data: {
+        severity: entry.severity,
+        message: entry.message,
+        metadata: entry.metadata,
+        correlationId: entry.correlationId,
+        userAgent: entry.userAgent,
+      },
+      severity: entry.severity,
+    })
+  } catch {
+    // Silent fail — audit write must never crash the app
+  }
+
+  // Secondary: localStorage as offline fallback display cache only (not a security record)
+  try {
     if (typeof localStorage !== 'undefined') {
       const escalated = JSON.parse(localStorage.getItem('sw_security_escalations') || '[]')
       escalated.unshift({
         ...entry,
         escalatedAt: new Date().toISOString(),
-        synced: false,
+        synced: true,
       })
-      // Keep last 100 escalations
       localStorage.setItem('sw_security_escalations', JSON.stringify(escalated.slice(0, 100)))
     }
   } catch {
-    // Silent fail — never crash for logging
+    // Silent fail
   }
 }
 

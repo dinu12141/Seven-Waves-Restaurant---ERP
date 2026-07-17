@@ -59,7 +59,7 @@
                     v-for="order in filteredOrders" 
                     :key="order.id"
                     :class="{ 
-                      'selected-row': selectedOrderId === order.id,
+                      'selected-row': selectedOrderId === order.id || (selectedTableId && order.table_id === selectedTableId && order.order_type === 'dine_in'),
                       'invoiced-row': order.status === 'invoiced',
                       'kot-sent-row': ['accepted', 'preparing', 'ready'].includes(order.status),
                       'paid-row': order.status === 'paid' || order.payment_status === 'paid'
@@ -148,6 +148,11 @@ const tableContainer = ref(null)
 const sortBy = ref('bill')
 const filterBy = ref('all')
 const selectedOrderId = ref(null)
+
+const selectedTableId = computed(() => {
+  const o = filteredOrders.value.find(x => x.id === selectedOrderId.value)
+  return o?.table_id || null
+})
 
 const search = ref({
   tableNo: '',

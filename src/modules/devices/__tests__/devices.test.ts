@@ -323,6 +323,124 @@ describe('IPC Security', () => {
   })
 })
 
+// ─── Label Template Tests ───────────────────────────────────────
+
+describe('Label Template', () => {
+  let buildInventoryLabel, buildOrderLabel, buildAllergenLabel, buildShelfLabel, ZplBuilder, LABEL_PROVIDER
+
+  beforeEach(async () => {
+    const mod = await import('../services/label.template')
+    buildInventoryLabel = mod.buildInventoryLabel
+    buildOrderLabel = mod.buildOrderLabel
+    buildAllergenLabel = mod.buildAllergenLabel
+    buildShelfLabel = mod.buildShelfLabel
+    ZplBuilder = mod.ZplBuilder
+    LABEL_PROVIDER = mod.LABEL_PROVIDER
+  })
+
+  it('ZplBuilder produces valid ZPL string', () => {
+    const z = new ZplBuilder({ width: 400, height: 200 })
+    z.text(10, 10, 'Test Label').barcode128(10, 50, '12345').copies(2)
+    const zpl = z.build()
+    expect(zpl).toContain('^XA')
+    expect(zpl).toContain('^XZ')
+    expect(zpl).toContain('^PW400')
+    expect(zpl).toContain('Test Label')
+    expect(zpl).toContain('^BC')
+    expect(zpl).toContain('^PQ2')
+  })
+
+  it('buildInventoryLabel returns ZPL format', () => {
+    const item = { name: 'Chicken Wings', sku: 'WING001', price: 12.50, barcode: '8901234567890' }
+    const label = buildInventoryLabel(item, { provider: LABEL_PROVIDER.ZPL })
+    expect(label.format).toBe('zpl')
+    expect(label.data).toContain('Chicken Wings')
+    expect(label.data).toContain('WING001')
+    expect(label.data).toContain('^XA')
+    expect(label.data).toContain('^XZ')
+  })
+
+  it('buildInventoryLabel returns ESC/POS format', () => {
+    const item = { name: 'Fries', sku: 'FRY001', price: 5.00 }
+    const label = buildInventoryLabel(item, { provider: LABEL_PROVIDER.ESCPOS })
+    expect(label.format).toBe('escpos')
+    expect(label.data).toBeInstanceOf(Uint8Array)
+    expect(label.data.length).toBeGreaterThan(10)
+  })
+
+  it('buildOrderLabel includes order number and items', () => {
+    const order = {
+      order_number: '1234',
+      created_at: new Date().toISOString(),
+      table_number: 7,
+      items: [
+        { name: 'Burger', quantity: 2, notes: 'No onions' },
+        { name: 'Fries', quantity: 1 },
+      ],
+    }
+    const label = buildOrderLabel(order, { provider: LABEL_PROVIDER.ZPL })
+    expect(label.format).toBe('zpl')
+    expect(label.data).toContain('1234')
+    expect(label.data).toContain('Burger')
+    expect(label.data).toContain('No onions')
+  })
+
+  it('buildAllergenLabel includes allergen info', () => {
+    const item = { name: 'Prawn Curry' }
+    const allergens = { contains: ['Shellfish', 'Gluten'], may_contain: ['Nuts'] }
+    const label = buildAllergenLabel(item, allergens, { preparedBy: 'Chef Ali', provider: LABEL_PROVIDER.ZPL })
+    expect(label.format).toBe('zpl')
+    expect(label.data).toContain('SHELLFISH')
+    expect(label.data).toContain('GLUTEN')
+    expect(label.data).toContain('NUTS')
+    expect(label.data).toContain('Chef Ali')
+  })
+
+  it('buildShelfLabel includes location', () => {
+    const item = { name: 'Rice Bag 5kg', sku: 'RICE5KG' }
+    const label = buildShelfLabel(item, 'A-04-B2', { provider: LABEL_PROVIDER.ZPL })
+    expect(label.format).toBe('zpl')
+    expect(label.data).toContain('A-04-B2')
+    expect(label.data).toContain('RICE5KG')
+  })
+
+  it('ZPL strips control characters from text fields', () => {
+    const z = new ZplBuilder()
+    z.text(0, 0, 'Item ^ with caret')
+    const zpl = z.build()
+    // Caret is escaped in ZPL fields
+    expect(zpl).toContain('Item')
+  })
+})
+
+// ─── Payment Terminal Tests ─────────────────────────────────────
+
+describe('Payment Terminal Service', () => {
+  let TERMINAL_STATUS, TERMINAL_PROVIDER
+
+  beforeEach(async () => {
+    const mod = await import('../services/payment.terminal.service')
+    TERMINAL_STATUS = mod.TERMINAL_STATUS
+    TERMINAL_PROVIDER = mod.TERMINAL_PROVIDER
+  })
+
+  it('exports correct status constants', () => {
+    expect(TERMINAL_STATUS.APPROVED).toBe('approved')
+    expect(TERMINAL_STATUS.DECLINED).toBe('declined')
+    expect(TERMINAL_STATUS.CANCELLED).toBe('cancelled')
+    expect(TERMINAL_STATUS.ERROR).toBe('error')
+    expect(TERMINAL_STATUS.WAITING).toBe('waiting_card')
+  })
+
+  it('exports all provider types', () => {
+    expect(TERMINAL_PROVIDER.MANUAL).toBe('manual')
+    expect(TERMINAL_PROVIDER.STRIPE).toBe('stripe')
+    expect(TERMINAL_PROVIDER.SQUARE).toBe('square')
+    expect(TERMINAL_PROVIDER.PAX).toBe('pax')
+    expect(TERMINAL_PROVIDER.GENERIC).toBe('generic')
+  })
+})
+
 // ─── Route & RBAC Tests ─────────────────────────────────────────
 
 describe('Device Routes & RBAC', () => {

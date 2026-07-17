@@ -106,7 +106,7 @@
         <span class="total-value">{{ fmtNum(invoiceDeliveryCharge) }}</span>
       </div>
       <div v-if="displayServiceCharge > 0" class="total-row">
-        <span class="total-label">Service Charge (10%) :</span>
+        <span class="total-label">{{ serviceChargeLabel }}</span>
         <span class="total-value">{{ fmtNum(displayServiceCharge) }}</span>
       </div>
       <div class="total-row total-row-bold">
@@ -145,6 +145,9 @@
 <script setup>
 import { computed, ref } from 'vue'
 import logoImage from 'src/assets/seven-waves-logo-transparent.png'
+import { useOrderStore } from 'src/stores/orderStore'
+
+const orderStore = useOrderStore()
 
 const billRoot = ref(null)
 
@@ -309,9 +312,19 @@ const displayServiceCharge = computed(() => {
   // 3. Force calculate for Dine-in if we see the gap in total vs subtotal
   if (orderTypeLabel.value === 'DINE IN') {
     const sub = parseFloat(props.invoice.subtotal || itemsSubtotal.value)
-    return sub * 0.1
+    return sub * orderStore.serviceChargeRate
   }
   return 0
+})
+
+const serviceChargeLabel = computed(() => {
+  const sub = parseFloat(props.invoice.subtotal || itemsSubtotal.value)
+  if (sub > 0 && displayServiceCharge.value > 0) {
+    const pct = Math.round((displayServiceCharge.value / sub) * 1000) / 10
+    const pctStr = Number.isInteger(pct) ? `${pct}` : pct.toFixed(1)
+    return `Service Charge (${pctStr}%) :`
+  }
+  return 'Service Charge :'
 })
 
 function fmtNum(val) {
@@ -357,11 +370,14 @@ function getLogoBase64() {
 
 async function printReceipt() {
   if (!billRoot.value) return
+  
+  // Capture reference before await in case component unmounts (dialog closed)
+  const rootElement = billRoot.value
 
   // Convert logo to base64 so it renders inside the iframe
   const logoBase64 = await getLogoBase64()
 
-  let content = billRoot.value.innerHTML
+  let content = rootElement.innerHTML
   if (logoBase64) {
     content = content.replace(/src="[^"]*"/, `src="${logoBase64}"`)
   }

@@ -1,3 +1,4 @@
 {
-  "extends": "./.quasar/tsconfig.json"
+  "extends": "./.quasar/tsconfig.json",
+  "exclude": ["src-tauri/target", "fix_doc.js", "supabase/functions"]
 }

@@ -28,8 +28,12 @@ import * as os from 'node:os'
 // ===========================================================================
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch('disable-gpu-sandbox')
-app.commandLine.appendSwitch('no-sandbox')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
+// SECURITY: --no-sandbox disables the Chromium renderer process sandbox.
+// It was previously added as a blanket GPU workaround but is NOT required for
+// the actual GPU/Optimus fix (disableHardwareAcceleration + disable-gpu-sandbox handle that).
+// Only re-enable in dev if encountering sandbox-specific crashes:
+//   if (process.env.DEV) app.commandLine.appendSwitch('no-sandbox')
 
 // -- app.getAppPath() is safe before ready() ---------------------------------
 // Dev:        <project root>
@@ -98,6 +102,7 @@ async function createWindow () {
     show: true,
     webPreferences: {
       contextIsolation: true,
+      sandbox: true,           // Renderer process sandbox (Electron 20+ default; explicit for clarity)
       preload: preloadPath,
     },
   })
@@ -147,6 +152,203 @@ ipcMain.handle('open-external', async (_e, url) => {
   }
   return { success: false, error: 'Only https:// URLs allowed.' }
 })
+
+// -- IP validation helper -----------------------------------------------------
+// Accepts dotted-decimal IPv4 and bracketed/plain IPv6; rejects hostnames.
+function isValidIp(ip) {
+  if (typeof ip !== 'string') return false
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/
+  const ipv6 = /^(\[?[0-9a-fA-F:]+\]?)$/
+  return ipv4.test(ip) || ipv6.test(ip)
+}
+
+// -- IPC: Raw ESC/POS Print ---------------------------------------------------
+// Sends raw byte buffer to a thermal printer over TCP (port 9100) or USB.
+// This is what usePrinter.js / useCashDrawer.js call via window.electronAPI.
+ipcMain.handle('printer:print-raw', async (_e, { data, printer, ip, port = 9100 }) => {
+  // data: number[] (Uint8Array serialized), printer: string name, ip: optional
+  if (!data || !Array.isArray(data)) return { success: false, error: 'No print data' }
+  if (ip !== undefined && !isValidIp(ip)) return { success: false, error: 'Invalid printer IP address' }
+
+  const buf = Buffer.from(data)
+
+  // Network TCP path (most common for LAN thermal printers)
+  if (ip) {
+    const net = await import('node:net')
+    return new Promise((resolve) => {
+      const socket = new net.Socket()
+      socket.setTimeout(5000)
+      socket.connect(port, ip, () => {
+        socket.write(buf, () => {
+          socket.destroy()
+          resolve({ success: true, method: 'tcp', ip, port })
+        })
+      })
+      socket.on('timeout', () => {
+        socket.destroy()
+        resolve({ success: false, error: `TCP timeout connecting to ${ip}:${port}` })
+      })
+      socket.on('error', (err) => {
+        resolve({ success: false, error: err.message })
+      })
+    })
+  }
+
+  // Electron print fallback (routes through system print dialog / named printer)
+  if (mainWindow && printer) {
+    return new Promise((resolve) => {
+      mainWindow.webContents.print(
+        { silent: true, printBackground: false, deviceName: printer, copies: 1 },
+        (success, reason) => resolve({ success, error: success ? null : reason }),
+      )
+    })
+  }
+
+  return { success: false, error: 'No printer IP or named printer provided' }
+})
+
+// -- IPC: Cash Drawer ---------------------------------------------------------
+// Drawer open = ESC/POS drawer-kick command sent the same way as raw print.
+ipcMain.handle('drawer:open', async (_e, { data, printer, ip, port = 9100, userId, reason }) => {
+  if (!data || !Array.isArray(data)) return { success: false, error: 'No drawer command data' }
+  if (ip !== undefined && !isValidIp(ip)) return { success: false, error: 'Invalid drawer IP address' }
+  writeLog(`[Drawer] Open by user=${userId} reason=${reason}`)
+  const buf = Buffer.from(data)
+  if (ip) {
+    const net = await import('node:net')
+    return new Promise((resolve) => {
+      const socket = new net.Socket()
+      socket.setTimeout(3000)
+      socket.connect(port, ip, () => { socket.write(buf, () => { socket.destroy(); resolve({ success: true }) }) })
+      socket.on('timeout', () => { socket.destroy(); resolve({ success: false, error: 'Timeout' }) })
+      socket.on('error', (err) => resolve({ success: false, error: err.message }))
+    })
+  }
+  if (mainWindow && printer) {
+    return new Promise((resolve) => {
+      mainWindow.webContents.print({ silent: true, deviceName: printer }, (ok, r) => resolve({ success: ok, error: ok ? null : r }))
+    })
+  }
+  return { success: false, error: 'No printer target for drawer open' }
+})
+
+// -- IPC: Device Heartbeat ----------------------------------------------------
+ipcMain.handle('device:heartbeat', async (_e, { deviceId, status }) => {
+  writeLog(`[Device] Heartbeat: ${deviceId} status=${status}`)
+  return { success: true, timestamp: new Date().toISOString() }
+})
+
+// -- IPC: File Export Dialog --------------------------------------------------
+ipcMain.handle('file:save-dialog', async (_e, { defaultName, filters }) => {
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: defaultName || 'export',
+    filters: filters || [{ name: 'All Files', extensions: ['*'] }],
+  })
+  return { filePath: canceled ? null : filePath, canceled }
+})
+
+ipcMain.handle('file:export', async (_e, { filePath, data }) => {
+  if (!filePath || typeof filePath !== 'string') return { success: false, error: 'No file path' }
+  // Reject writes to OS system directories (path traversal guard)
+  const normalized = path.normalize(filePath)
+  const forbidden = [
+    process.env.SYSTEMROOT || 'C:\\Windows',
+    process.env.PROGRAMFILES || 'C:\\Program Files',
+    process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)',
+    '/etc', '/usr', '/bin', '/sbin', '/lib', '/boot',
+  ]
+  if (forbidden.some(dir => normalized.toLowerCase().startsWith(dir.toLowerCase()))) {
+    writeLog(`[Security] Blocked file export to system path: ${normalized}`)
+    return { success: false, error: 'Export to system directories is not allowed' }
+  }
+  try {
+    fs.writeFileSync(normalized, Buffer.from(data))
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err.message }
+  }
+})
+
+// -- IPC: Biometric / ZKTeco --------------------------------------------------
+// Full implementation requires: npm install node-zklib (optional dep)
+// If node-zklib is not installed, returns a helpful error instead of crashing.
+ipcMain.handle('biometric:sync', async (_e, { action, ip, port = 4370, ...params }) => {
+  if (!ip) return { success: false, error: 'ip required' }
+  if (!isValidIp(ip)) return { success: false, error: 'Invalid biometric device IP address' }
+  writeLog(`[ZKTeco] action=${action} ip=${ip}:${port}`)
+
+  let ZKLib
+  try {
+    ZKLib = require('node-zklib')
+  } catch {
+    return {
+      success: false,
+      error: 'node-zklib not installed. Run: npm install node-zklib --save-optional',
+    }
+  }
+
+  const zk = new ZKLib(ip, port, 4000, 4000)
+  try {
+    await zk.createSocket()
+
+    switch (action) {
+      case 'info': {
+        const info = await zk.getInfo()
+        await zk.disconnect()
+        return { success: true, ...info }
+      }
+
+      case 'pull': {
+        const { data: { attendances } } = await zk.getAttendances()
+        await zk.disconnect()
+        return {
+          success: true,
+          records: attendances.map(a => ({
+            user_id: String(a.deviceUserId),
+            punch_time: a.recordTime instanceof Date ? a.recordTime.toISOString() : a.recordTime,
+            punch_type: a.type,
+            verify_type: a.verifyType,
+          })),
+        }
+      }
+
+      case 'clear_attendance': {
+        await zk.clearAttendanceLog()
+        await zk.disconnect()
+        return { success: true }
+      }
+
+      case 'enroll': {
+        await zk.setUser(parseInt(params.userId), params.userId, (params.userName || '').substring(0, 24), params.privilege || 0, '')
+        await zk.disconnect()
+        return { success: true }
+      }
+
+      case 'delete_user': {
+        await zk.deleteUser(parseInt(params.userId))
+        await zk.disconnect()
+        return { success: true }
+      }
+
+      case 'set_time': {
+        await zk.setTime(new Date(params.time || Date.now()))
+        await zk.disconnect()
+        return { success: true }
+      }
+
+      default:
+        await zk.disconnect()
+        return { success: false, error: `Unknown ZKTeco action: ${action}` }
+    }
+  } catch (err) {
+    writeLog(`[ZKTeco] Error: ${err.message}`)
+    try { await zk.disconnect() } catch { /* ignore disconnect error */ }
+    return { success: false, error: err.message }
+  }
+})
+
+// -- IPC: App Info ------------------------------------------------------------
+ipcMain.handle('app:version', async () => ({ version: app.getVersion() }))
 
 // -- IPC: Silent Printing -----------------------------------------------------
 ipcMain.handle('print-silent', async (_e, options = {}) => {

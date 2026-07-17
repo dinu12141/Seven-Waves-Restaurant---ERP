@@ -17,7 +17,6 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
-import VueApexCharts from 'vue3-apexcharts'
 
 const $q = useQuasar()
 const isMounted = ref(false)
@@ -66,29 +65,34 @@ const computedOptions = computed(() => {
     dataLabels: { enabled: false },
     tooltip: { theme: dark ? 'dark' : 'light' },
     colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'], // Pro palette
+    // Spread caller options first, then re-apply themed keys so they always include theme defaults
+    ...props.options,
     xaxis: {
       axisBorder: { show: false },
       axisTicks: { show: false },
-      labels: { style: { colors: dark ? '#6b7280' : '#6b7280' } },
+      labels: { style: { colors: dark ? '#9ca3af' : '#6b7280' } },
+      ...props.options?.xaxis,
     },
     yaxis: {
-      labels: { style: { colors: dark ? '#6b7280' : '#6b7280' } },
+      labels: { style: { colors: dark ? '#9ca3af' : '#6b7280' } },
+      ...props.options?.yaxis,
     },
     legend: {
       position: 'top',
       horizontalAlign: 'right',
       labels: { colors: dark ? '#9ca3af' : '#4b5563' },
+      ...props.options?.legend,
     },
-    stroke: { curve: 'smooth', width: 2 },
-    ...props.options,
+    stroke: { curve: 'smooth', width: 2, ...props.options?.stroke },
   }
 })
 </script>
 
 <script>
+import { defineAsyncComponent } from 'vue'
 export default {
   components: {
-    apexchart: VueApexCharts,
+    apexchart: defineAsyncComponent(() => import('vue3-apexcharts')),
   },
 }
 </script>

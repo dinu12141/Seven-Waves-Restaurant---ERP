@@ -106,7 +106,18 @@ export const useTableSessionStore = defineStore('tableSession', () => {
     sessionExpired.value = false
     activeOrders.value = []
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('table_active_orders')
+      // Clear all customer QR/kiosk session keys so a new customer starting on
+      // the same shared device doesn't inherit the previous session.
+      const customerKeys = [
+        'table_active_orders',
+        'tm_session_token',
+        'qr_session_token',
+        'tm_table_id',
+        'tm_customer_name',
+        'tm_loyalty_points',
+        'tm_table',
+      ]
+      customerKeys.forEach((k) => localStorage.removeItem(k))
     }
   }
 

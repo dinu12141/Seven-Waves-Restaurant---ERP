@@ -171,7 +171,7 @@ describe('Shift Store', () => {
         data: { ...store.activeShift, status: 'closed', expected_cash: 8000, counted_cash: 8000, variance: 0, closed_at: new Date().toISOString() },
         error: null,
       }),
-    })
+    } as any)
 
     const result = await store.closeShift({ countedCash: 8000 })
     expect(result.success).toBe(true)
@@ -288,7 +288,7 @@ describe('Shift Store', () => {
         data: { ...store.activeShift, cash_drops_total: 2000 },
         error: null,
       }),
-    })
+    } as any)
 
     const result = await store.cashMovement('cash_drop', 2000, 'Safe deposit')
     expect(result.success).toBe(true)
@@ -345,7 +345,7 @@ describe('Shift Store', () => {
         data: { ...store.activeShift, cash_sales_total: 1500 },
         error: null,
       }),
-    })
+    } as any)
 
     const result = await store.recordPayment('order-1', 'cash', 1500)
     expect(result).toBe(true)
@@ -420,7 +420,7 @@ describe('Permission Checks', () => {
   it('cashier cannot approve variance', async () => {
     const { hasPermission } = await import('src/core/rbac/permissions')
 
-    const cashierRoles = ['cashier']
+    const cashierRoles = ['cashier'] as import('src/stores/auth').UserRole[]
     const canApprove = hasPermission(cashierRoles, 'pos.shift.approve_variance')
     expect(canApprove).toBe(false)
   })
@@ -428,7 +428,7 @@ describe('Permission Checks', () => {
   it('manager can approve variance', async () => {
     const { hasPermission } = await import('src/core/rbac/permissions')
 
-    const managerRoles = ['manager']
+    const managerRoles = ['manager'] as import('src/stores/auth').UserRole[]
     const canApprove = hasPermission(managerRoles, 'pos.shift.approve_variance')
     expect(canApprove).toBe(true) // manager has 'pos.*' wildcard
   })
@@ -436,7 +436,7 @@ describe('Permission Checks', () => {
   it('cashier has shift.open permission', async () => {
     const { hasPermission } = await import('src/core/rbac/permissions')
 
-    const cashierRoles = ['cashier']
+    const cashierRoles = ['cashier'] as import('src/stores/auth').UserRole[]
     const canOpen = hasPermission(cashierRoles, 'pos.shift.open')
     expect(canOpen).toBe(true)
   })

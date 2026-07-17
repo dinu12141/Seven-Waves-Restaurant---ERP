@@ -30,7 +30,9 @@ async function sendToPrinter(buffer, printerConfig) {
     case 'electron':
       return window.electronAPI.printRaw({
         data: Array.from(buffer),
-        printer: printerConfig.printer_name,
+        printer: printerConfig.printer_name || '',
+        ip: printerConfig.printer_ip || '',
+        port: printerConfig.printer_port || 9100,
       })
 
     case 'tauri': {
@@ -44,10 +46,64 @@ async function sendToPrinter(buffer, printerConfig) {
       })
     }
 
+    case 'webusb': {
+      // WebUSB — direct USB access from browser (Chrome/Edge only, requires HTTPS)
+      // Printer must expose a USB interface (class 7 = Printer class, or vendor-specific)
+      try {
+        const usbDevice = await navigator.usb.requestDevice({
+          filters: [
+            { classCode: 7 },                  // USB Printer class
+            { vendorId: 0x04B8 },              // Epson
+            { vendorId: 0x0519 },              // Star Micronics
+            { vendorId: 0x067B },              // Prolific (USB-Serial adapters)
+          ],
+        })
+
+        await usbDevice.open()
+
+        // Find the correct interface and endpoint
+        const iface = usbDevice.configuration?.interfaces.find(i =>
+          i.alternate.interfaceClass === 7 ||
+          i.alternate.interfaceClass === 255 // vendor-specific
+        )
+
+        if (!iface) {
+          await usbDevice.close()
+          return { success: false, error: 'No printer USB interface found on device' }
+        }
+
+        await usbDevice.claimInterface(iface.interfaceNumber)
+
+        const endpoint = iface.alternate.endpoints.find(e => e.direction === 'out')
+        if (!endpoint) {
+          await usbDevice.releaseInterface(iface.interfaceNumber)
+          await usbDevice.close()
+          return { success: false, error: 'No OUT endpoint on USB printer interface' }
+        }
+
+        // Send data in 64-byte chunks (USB bulk transfer limit)
+        const CHUNK = 64
+        for (let i = 0; i < buffer.length; i += CHUNK) {
+          await usbDevice.transferOut(endpoint.endpointNumber, buffer.slice(i, i + CHUNK))
+        }
+
+        await usbDevice.releaseInterface(iface.interfaceNumber)
+        await usbDevice.close()
+        logger.info('[Printer] WebUSB print complete')
+        return { success: true, method: 'webusb' }
+      } catch (err) {
+        if (err.name === 'NotFoundError') {
+          return { success: false, error: 'No USB printer selected or found' }
+        }
+        return { success: false, error: err.message }
+      }
+    }
+
     case 'network':
-      // Network printing via fetch to local print server or direct TCP
-      // Fallback: open browser print dialog
-      logger.info('[Printer] Network print — opening browser dialog')
+      // Network printing — browser cannot open raw TCP sockets.
+      // If a local print server (e.g., running on localhost:9100) is available, use it.
+      // Otherwise fall back to browser print dialog.
+      logger.info('[Printer] Network print — no local agent, using browser dialog')
       window.print()
       return { success: true, method: 'browser' }
 

@@ -22,6 +22,7 @@ export const useOrderStore = defineStore('posOrder', () => {
   const selectedCustomer = ref(null)
   const discount = ref(0) // percentage
   const taxRate = ref(0) // percentage (Disabled: the restaurant exclusively uses Service Charge)
+  const serviceChargeRate = ref(0.1) // loaded from company_settings key 'serviceChargeRate'
   const orderNumber = ref(_generateOrderNumber())
   const isSending = ref(false) // loading state for send-to-kitchen
   const _loadedOrderId = ref(null) // tracks order loaded from billing queue
@@ -39,7 +40,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     cartItems.value.reduce((sum, item) => sum + item.price * item.qty, 0),
   )
 
-  const discountAmount = computed(() => subtotal.value * (discount.value / 100))
+  const discountAmount = computed(() => subtotal.value * (Math.min(discount.value, 100) / 100))
 
   const taxableAmount = computed(() => subtotal.value - discountAmount.value)
 
@@ -47,12 +48,14 @@ export const useOrderStore = defineStore('posOrder', () => {
 
   const serviceChargeAmount = computed(() => {
     if (orderType.value === 'dine-in') {
-      return subtotal.value * 0.1
+      return subtotal.value * serviceChargeRate.value
     }
     return 0
   })
 
-  const total = computed(() => taxableAmount.value + taxAmount.value + serviceChargeAmount.value)
+  const total = computed(() =>
+    taxableAmount.value + taxAmount.value + serviceChargeAmount.value + (deliveryCharge.value || 0),
+  )
 
   // ── Actions ──────────────────────────────────────────────
 
@@ -334,7 +337,13 @@ export const useOrderStore = defineStore('posOrder', () => {
       if (payRpcError) throw new Error(`Payment RPC failed: ${payRpcError.message}`)
       if (!payData?.success) throw new Error(payData?.error || 'process_cashier_payment failed')
 
-      // ── Step 6: Success ──────────────────────────────────────────────────
+      // ── Step 6: Loyalty reward (best-effort — do not fail payment) ─────────
+      const customerId = selectedCustomer.value?.id || selectedCustomer.value?.customer_id
+      if (customerId) {
+        await supabase.rpc('rpc_apply_loyalty_reward', { p_order_id: order.id }).catch(() => {})
+      }
+
+      // ── Step 7: Success ──────────────────────────────────────────────────
       const result = {
         success: true,
         orderId: order.id,
@@ -359,7 +368,8 @@ export const useOrderStore = defineStore('posOrder', () => {
   function _generateOrderNumber() {
     const now = new Date()
     const pad = (n) => String(n).padStart(2, '0')
-    return `ORD-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    const rand = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+    return `ORD-${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}-${rand}`
   }
 
   function _uid() {
@@ -436,7 +446,7 @@ export const useOrderStore = defineStore('posOrder', () => {
    * This allows the cashier to view/process an order selected from OrderLookupDialog.
    * @param {Object} queueOrder - normalized order object from cashierStore.billingOrders
    */
-  function loadOrderFromQueue(queueOrder) {
+  function loadOrderFromQueue(queueOrder, mergedOrders = []) {
     // Clear existing cart first
     clearCart()
 
@@ -468,24 +478,46 @@ export const useOrderStore = defineStore('posOrder', () => {
     }
 
     // Load order items into cart
-    const items = queueOrder.order_items || []
-    items.forEach(item => {
-      cartItems.value.push({
-        id: item.id || _uid(),
-        productId: item.menu_items?.id || item.productId || item.id,
-        name: item.name || item.menu_items?.name || 'Item',
-        price: item.unit_price || item.price || 0,
-        image: item.image || null,
-        kitchenId: item.kitchen_id || null,
-        variant: item.variant || null,
-        qty: item.quantity || item.qty || 1,
-        notes: item.notes || '',
+    const ordersToLoad = mergedOrders.length > 0 ? mergedOrders : [queueOrder]
+    
+    ordersToLoad.forEach(order => {
+      const items = order.order_items || []
+      items.forEach(item => {
+        cartItems.value.push({
+          id: item.id || _uid(),
+          productId: item.menu_items?.id || item.productId || item.id,
+          name: item.name || item.menu_items?.name || 'Item',
+          price: item.unit_price || item.price || 0,
+          image: item.image || null,
+          kitchenId: item.kitchen_id || null,
+          variant: item.variant || null,
+          qty: item.quantity || item.qty || 1,
+          notes: item.notes || '',
+        })
       })
     })
 
     // Store the source order ID so payment knows which order to update
     _loadedOrderId.value = queueOrder.id
     deliverySource.value = queueOrder.delivery_source || null
+  }
+
+  async function loadServiceChargeRate() {
+    const authStore = useAuthStore()
+    const companyId = authStore.companyId
+    if (!companyId) return
+    const { data } = await supabase
+      .from('company_settings')
+      .select('value')
+      .eq('company_id', companyId)
+      .eq('key', 'serviceChargeRate')
+      .maybeSingle()
+    if (data?.value !== undefined && data.value !== null) {
+      const pct = parseFloat(data.value)
+      if (!isNaN(pct) && pct >= 0 && pct <= 100) {
+        serviceChargeRate.value = pct / 100
+      }
+    }
   }
 
   return {
@@ -498,6 +530,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     selectedCustomer,
     discount,
     taxRate,
+    serviceChargeRate,
     orderNumber,
     isSending,
     _loadedOrderId,
@@ -526,5 +559,6 @@ export const useOrderStore = defineStore('posOrder', () => {
     recallParkedOrder,
     fetchParkedOrders,
     parkedOrders,
+    loadServiceChargeRate,
   }
 })

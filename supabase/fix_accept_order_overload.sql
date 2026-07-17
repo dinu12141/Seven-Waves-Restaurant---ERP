@@ -1,0 +1,32 @@
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- FIX: accept_order_as_waiter — Drop Duplicate 1-Arg Overload
+-- Seven Waves Restaurant ERP
+-- Bug: BUG-DB-005 (DBauditor 2026-07-17)
+--
+-- PROBLEM:
+--   13 SQL files define a 1-arg version: accept_order_as_waiter(p_order_id UUID)
+--   while rpc_waiter_accept_order.sql defines the canonical 2-arg version:
+--   accept_order_as_waiter(p_order_id UUID, p_unavailable_ids UUID[] DEFAULT NULL)
+--
+--   If BOTH exist in the live DB, PostgREST returns PGRST203:
+--   "Could not find the function public.accept_order_as_waiter..."
+--   This breaks order acceptance entirely for waiters.
+--
+--   CLAUDE.md explicitly documents: "Never add a 1-arg overload — causes PostgREST PGRST203"
+--
+-- APPLY:
+--   Step 1: Run this file first (drops the 1-arg overload)
+--   Step 2: Run supabase/rpc_waiter_accept_order.sql (re-applies canonical 2-arg version)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Drop the 1-arg overload if it exists
+-- CASCADE drops any dependent functions/triggers
+DROP FUNCTION IF EXISTS public.accept_order_as_waiter(UUID) CASCADE;
+
+-- Verify only one overload remains (run this as a separate query after applying):
+-- SELECT proname, pg_get_function_identity_arguments(oid) AS args
+-- FROM pg_proc
+-- WHERE proname = 'accept_order_as_waiter'
+--   AND pronamespace = 'public'::regnamespace;
+-- Expected result: exactly ONE row:
+--   accept_order_as_waiter | p_order_id uuid, p_unavailable_ids uuid[]

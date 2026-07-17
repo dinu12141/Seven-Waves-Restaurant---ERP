@@ -492,7 +492,7 @@ EXCEPTION WHEN OTHERS THEN
     -- Audit should never block stock operations
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_audit_stock_change ON stock_on_hand;
 CREATE TRIGGER trg_audit_stock_change

@@ -411,10 +411,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
+const $q = useQuasar()
 const authStore = useAuthStore()
 const loading = ref(false)
 // ── Time Filter — persisted in localStorage, defaults to 'monthly' ───────────
@@ -706,6 +708,7 @@ async function fetchDashboardData() {
     }
   } catch (err) {
     console.error('[Dashboard] fetch error:', err)
+    $q.notify({ type: 'negative', message: 'Dashboard data failed to load', caption: err?.message, icon: 'cloud_off', timeout: 4000 })
   } finally {
     loading.value = false
   }
@@ -874,12 +877,15 @@ const orderTimeline = computed(() => {
     { key: 'invoiced', label: 'Bill Generated', statuses: ['invoiced', 'paid'] },
     { key: 'paid', label: 'Payment Complete', statuses: ['paid'] },
   ]
-  return steps.map((s) => ({
-    ...s,
-    done: s.statuses.includes(status) && s.key !== status,
-    active: s.key === status || (s.key === 'placed' && status === 'pending_waiter'),
-    time: null,
-  }))
+  return steps.map((s) => {
+    const active = s.key === status || (s.key === 'placed' && status === 'pending_waiter')
+    return {
+      ...s,
+      active,
+      done: !active && s.statuses.includes(status),
+      time: null,
+    }
+  })
 })
 
 async function openTableOrder(table) {
@@ -1256,11 +1262,17 @@ onUnmounted(() => {
   }
 
   &--chart {
-    background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #0c1a2e 100%);
-    border: 1px solid rgba(6, 182, 212, 0.2);
-    box-shadow: 0 4px 24px rgba(6, 182, 212, 0.08), 0 1px 4px rgba(0,0,0,0.4);
+    background: var(--erp-bg-card);
+    border: 1px solid var(--erp-border);
+    box-shadow: var(--erp-shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
     position: relative;
     overflow: hidden;
+
+    .body--dark & {
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #0c1a2e 100%);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+      box-shadow: 0 4px 24px rgba(6, 182, 212, 0.08), 0 1px 4px rgba(0,0,0,0.4);
+    }
 
     &::before {
       content: '';
@@ -1653,7 +1665,7 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    background: #fff;
+    background: var(--erp-bg-card, #ffffff);
   }
 }
 

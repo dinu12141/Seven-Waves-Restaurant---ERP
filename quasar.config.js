@@ -74,11 +74,19 @@ export default defineConfig((ctx) => {
                 if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vendor-vue'
                 if (id.includes('quasar')) return 'vendor-quasar'
                 if (id.includes('chart') || id.includes('apexcharts')) return 'vendor-charts'
+                if (id.includes('jspdf') || id.includes('pdfmake') || id.includes('html2canvas')) return 'vendor-pdf'
+                if (id.includes('xlsx') || id.includes('exceljs')) return 'vendor-excel'
+                // @google/generative-ai intentionally omitted here — let Vite bundle it
+                // into the AI module's natural lazy chunk (loaded only on AI routes)
+                if (id.includes('axios')) return 'vendor-http'
+                if (id.includes('lodash')) return 'vendor-utils'
                 return 'vendor'
               }
               // Module splitting — lazy load heavy modules
               if (id.includes('/modules/finance/')) return 'mod-finance'
-              if (id.includes('/modules/ai/')) return 'mod-ai'
+              // /modules/ai/ intentionally omitted — Vite's natural dynamic-import
+              // splitting already makes AI pages lazy (router uses () => import(...)).
+              // Naming it here forced an eager modulepreload in HTML (173KB gz wasted on init).
               if (id.includes('/modules/devices/')) return 'mod-devices'
               if (id.includes('/core/monitoring/')) return 'mod-monitoring'
             },
@@ -175,6 +183,40 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
       workboxMode: 'GenerateSW',
+      extendGenerateSWOptions(cfg) {
+        cfg.skipWaiting = true
+        cfg.clientsClaim = true
+        cfg.cleanupOutdatedCaches = true
+        // Cache JS/CSS/fonts with stale-while-revalidate (fast loads, background updates)
+        cfg.runtimeCaching = [
+          {
+            urlPattern: /\.(?:js|css|woff2?)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-assets',
+              expiration: { maxEntries: 60, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-assets',
+              expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+          // Supabase REST API: network-first, fall back to cache (offline resilience)
+          {
+            urlPattern: /https:\/\/.*\.supabase\.co\/rest\//i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
+            },
+          },
+        ]
+      },
       extendManifestJson(json) {
         json.name = 'Seven Waves Waiter'
         json.short_name = 'Waiter'

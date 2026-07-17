@@ -21,6 +21,25 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
   const cartDrawerOpen = ref(false)
   const specialRequest = ref('')
 
+  // ── Config ────────────────────────────────────────────────
+  const serviceChargeRate = ref(0.1)
+
+  async function loadServiceChargeRate() {
+    if (!companyId.value) return
+    const { data } = await supabase
+      .from('company_settings')
+      .select('value')
+      .eq('company_id', companyId.value)
+      .eq('key', 'serviceChargeRate')
+      .maybeSingle()
+    if (data?.value !== undefined && data.value !== null) {
+      const pct = parseFloat(data.value)
+      if (!isNaN(pct) && pct >= 0 && pct <= 100) {
+        serviceChargeRate.value = pct / 100
+      }
+    }
+  }
+
   // ── Tracking State ────────────────────────────────────────
   const currentOrder = ref(null)
   const kotTickets = ref([])
@@ -80,6 +99,7 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
       tableName.value = `Table ${device.restaurant_tables.table_number}`
       deviceCode.value = device.device_code
 
+      await loadServiceChargeRate()
       return true
     } catch (e) {
       console.error('Login error:', e)
@@ -124,6 +144,7 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
       tableName.value = `Table ${session.restaurant_tables.table_number}`
       sessionToken.value = token
 
+      await loadServiceChargeRate()
       return true
     } catch (e) {
       console.error('QR Login error:', e)
@@ -219,7 +240,9 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
           order_source: 'qr',
           order_type: 'dine_in',
           status: 'pending_waiter',
-          total_amount: subtotal.value,
+          subtotal: parseFloat(subtotal.value.toFixed(2)),
+          service_charge: parseFloat((subtotal.value * serviceChargeRate.value).toFixed(2)),
+          total_amount: parseFloat((subtotal.value * (1 + serviceChargeRate.value)).toFixed(2)),
           notes: specialRequest.value,
         })
         .select()
@@ -348,5 +371,7 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
     toggleCart,
     getItemQty,
     placeOrder,
+    serviceChargeRate,
+    loadServiceChargeRate,
   }
 })

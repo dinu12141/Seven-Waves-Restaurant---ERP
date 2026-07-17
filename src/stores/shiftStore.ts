@@ -175,7 +175,7 @@ export const useShiftStore = defineStore('posShift', () => {
     amount: number,
     reason?: string,
     approvedBy?: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; movementId?: string; error?: string }> {
     if (!activeShift.value) {
       return { success: false, error: 'No active shift' }
     }

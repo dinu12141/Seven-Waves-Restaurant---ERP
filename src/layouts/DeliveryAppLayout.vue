@@ -51,10 +51,10 @@
               </div>
               <div class="dum-info">
                 <div class="dum-name">{{ authStore.userDisplayName }}</div>
-                <div class="dum-role">Delivery Rider</div>
+                <div class="dum-role">{{ (authStore.roles?.[0] || 'delivery').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }}</div>
               </div>
             </div>
-            <q-separator dark />
+            <q-separator :dark="$q.dark.isActive" />
             <!-- Theme Toggle -->
             <q-item clickable v-close-popup class="dum-item" @click="uiStore.toggleDarkMode($q)">
               <q-item-section avatar
@@ -62,7 +62,7 @@
               /></q-item-section>
               <q-item-section>{{ uiStore.themeLabel }}</q-item-section>
             </q-item>
-            <q-separator dark />
+            <q-separator :dark="$q.dark.isActive" />
             <q-item clickable v-close-popup class="dum-item dum-item--danger" @click="logout">
               <q-item-section avatar><q-icon name="logout" size="16px" /></q-item-section>
               <q-item-section>Sign Out</q-item-section>
@@ -80,6 +80,12 @@
         </transition>
       </router-view>
     </q-page-container>
+
+    <!-- Global Notification Toasts -->
+    <NotificationToast />
+
+    <!-- Global Offline Banner -->
+    <OfflineBanner />
 
     <!-- ── Bottom Navigation ─────────────────────────────────── -->
     <q-footer v-if="!store.isNavigating" class="delivery-bottom-nav mobile-bottom-nav">
@@ -121,6 +127,8 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useDeliveryStore } from 'src/stores/deliveryStore'
+import NotificationToast from 'components/common/NotificationToast.vue'
+import OfflineBanner from 'components/common/OfflineBanner.vue'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
 

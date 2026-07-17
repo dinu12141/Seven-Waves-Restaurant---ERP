@@ -55,7 +55,9 @@ export function useCashDrawer() {
       if (typeof window !== 'undefined' && window.electronAPI) {
         result = await window.electronAPI.openCashDrawer({
           data: Array.from(buffer),
-          printer: printer?.printer_name,
+          printer: printer?.printer_name || '',
+          ip: printer?.printer_ip || '',
+          port: printer?.printer_port || 9100,
           userId,
           reason,
           paymentId,

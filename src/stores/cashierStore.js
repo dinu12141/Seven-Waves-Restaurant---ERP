@@ -385,17 +385,14 @@ export const useCashierStore = defineStore('cashier', () => {
     billingOrders.value[idx].status = 'served'
 
     try {
-      const { error, count } = await supabase
-        .from('orders')
-        .update({ status: 'served', updated_at: new Date().toISOString() })
-        .eq('id', orderId)
-        .eq('status', 'ready')
-        .select('id', { count: 'exact', head: true })
+      const { data: rpcData, error } = await supabase.rpc('process_waiter_mark_served', {
+        p_order_id: orderId,
+      })
 
       if (error) throw new Error(error.message)
 
-      // If no rows were matched, another user already changed the status
-      if (count === 0) {
+      // If the RPC reported failure, another user already changed the status
+      if (!rpcData?.success) {
         billingOrders.value[idx].status = previousStatus
         Notify.create({
           message: 'Order status changed by another user',

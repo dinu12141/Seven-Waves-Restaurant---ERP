@@ -114,6 +114,15 @@
                 dense
                 :rules="[(v) => (v >= 0 && v <= 30) || 'Must be between 0 and 30']"
               />
+              <q-input
+                v-model="settings.serviceChargeRate"
+                label="Service Charge Rate %"
+                type="number"
+                outlined
+                dense
+                hint="Applied to dine-in orders. E.g. enter 10 for 10%."
+                :rules="[(v) => (v >= 0 && v <= 50) || 'Must be between 0 and 50']"
+              />
             </q-card-section>
           </q-card>
         </div>
@@ -300,6 +309,7 @@ const settings = reactive({
   companyAddress: '',
   taxRegNumber: '',
   vatRate: 0,
+  serviceChargeRate: 10,
   receiptFooter: '',
   timezone: 'Asia/Colombo',
   currency: 'LKR',
@@ -314,6 +324,7 @@ const SETTING_KEYS = [
   'companyAddress',
   'taxRegNumber',
   'vatRate',
+  'serviceChargeRate',
   'receiptFooter',
   'timezone',
   'currency',
@@ -336,7 +347,7 @@ async function loadSettings() {
       data.forEach(({ key, value }) => {
         if (key === 'maintenanceMode') {
           settings[key] = value === 'true'
-        } else if (key === 'vatRate') {
+        } else if (key === 'vatRate' || key === 'serviceChargeRate') {
           settings[key] = Number(value) || 0
         } else if (key in settings) {
           settings[key] = value || ''

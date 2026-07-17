@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 describe('Chaos: Supabase Outage', () => {
   it('offline sync engine queues operations during outage', async () => {
-    const { OfflineSyncEngine } = await import('../../src/core/offline/OfflineSyncEngine')
+    await import('../../src/core/offline/OfflineSyncEngine')
 
     // Simulated offline engine behavior
     const engine = {
@@ -132,7 +132,7 @@ describe('Chaos: Mass Offline Reconnect', () => {
     }
 
     // Sort by creation time (FIFO)
-    const sorted = [...queue].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    const sorted = [...queue].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     expect(sorted[0].id).toBe('sync-1')
     expect(sorted[99].id).toBe('sync-100')
   })
@@ -216,7 +216,7 @@ describe('Chaos: Concurrent Voucher Posting', () => {
 
     expect(r1.success).toBe(true)
     expect(r2.success).toBe(false)
-    expect(r2.error).toContain('being posted')
+    expect((r2 as { success: boolean; error: string }).error).toContain('being posted')
   })
 })
 

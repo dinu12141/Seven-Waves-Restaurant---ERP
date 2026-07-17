@@ -31,11 +31,6 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'cashier', 'waiter'], module: 'pos', permission: 'pos.order.create' },
       },
       {
-        path: 'kitchen',
-        component: () => import('pages/KitchenPage.vue'),
-        meta: { roles: ['admin', 'manager', 'kitchen', 'cashier'], module: 'kitchen', permission: 'kitchen.view' },
-      },
-      {
         path: 'orders',
         component: () => import('pages/OrdersPage.vue'),
         meta: { roles: ['admin', 'manager', 'waiter', 'cashier'], module: 'pos', permission: 'pos.order.view' },
@@ -431,6 +426,15 @@ const routes = [
           },
         ],
       },
+    ],
+  },
+  // ── KDS — fullscreen dark layout for kitchen display screens (NO MainLayout) ─
+  {
+    path: '/kitchen',
+    component: () => import('layouts/KDSLayout.vue'),
+    meta: { requiresAuth: true, roles: ['admin', 'manager', 'kitchen', 'cashier'] },
+    children: [
+      { path: '', component: () => import('pages/KitchenPage.vue') },
     ],
   },
   // ── Waiter App — standalone full-screen mobile PWA (NO MainLayout) ──────────

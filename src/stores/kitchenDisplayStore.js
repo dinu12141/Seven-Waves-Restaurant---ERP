@@ -215,7 +215,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (kotChannel) supabase.removeChannel(kotChannel)
     if (!selectedKitchenId.value) return
 
-    const branchId = authStore.currentBranch?.id
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
 
     // Build the realtime config — omit filter entirely for CASHIER display
@@ -247,23 +246,10 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           }
         },
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          // Scope to this branch so KDS only reacts to its own orders
-          ...(branchId ? { filter: `branch_id=eq.${branchId}` } : {}),
-        },
-        (payload) => {
-          // If an order status changes (e.g. from pending_waiter to accepted), we need to refresh tickets for that order to show up
-          if (payload.new) {
-            // Fetch KOTs for this order and refresh them locally
-            refreshTicketsForOrder(payload.new.id)
-          }
-        },
-      )
+      // NOTE (P0-3): The 'orders' listener that used to live here has been removed.
+      // RealtimeManager already subscribes to orders:{branchId} and now forwards
+      // INSERT/UPDATE events to this store via event.handlers.ts _forwardOrderToKds().
+      // Keeping a second orders subscription here caused duplicate DB events per KDS session.
       .on(
         'postgres_changes',
         {
@@ -766,5 +752,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     printKot,
     clearNewTicketAlert,
     cleanup,
+    refreshTicketsForOrder,
   }
 })

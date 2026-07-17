@@ -321,6 +321,9 @@ async function handleLogout() {
   localStorage.removeItem('tm_customer_name')
   localStorage.removeItem('tm_session_token')
   localStorage.removeItem('tm_loyalty_points')
+  localStorage.removeItem('qr_session_token')
+  localStorage.removeItem('tm_table_id')
+  localStorage.removeItem('tm_table')
   $q.notify({ type: 'info', message: 'Signed out successfully', position: 'top', timeout: 2000 })
 }
 

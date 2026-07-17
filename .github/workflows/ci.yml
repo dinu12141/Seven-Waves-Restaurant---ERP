@@ -35,7 +35,7 @@ jobs:
         run: npm run lint
 
       - name: TypeScript Check
-        run: npx vue-tsc --noEmit --skipLibCheck 2>/dev/null || echo "Type check completed with warnings"
+        run: npm run type-check
 
   test:
     name: Unit Tests
@@ -96,6 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -105,14 +107,36 @@ jobs:
       - run: npm ci
 
       - name: Audit Dependencies
-        run: npm audit --omit=dev --audit-level=high || true
+        run: npm audit --omit=dev --audit-level=high
 
-      - name: Check for Exposed Secrets
+      - name: Check .env Not Tracked by Git
+        run: |
+          echo "Verifying .env files are not tracked by git..."
+          TRACKED=$(git ls-files .env .env.local .env.production .env.staging 2>/dev/null || true)
+          if [ -n "$TRACKED" ]; then
+            echo "❌ .env file(s) are tracked by git: $TRACKED"
+            echo "   Run: git rm --cached $TRACKED && git commit"
+            exit 1
+          fi
+          echo "✅ No .env files tracked"
+
+      - name: Check for Exposed Secrets in Source
         run: |
           echo "Scanning for exposed secrets..."
-          # Check no service role key in source
-          if grep -rn "service_role" src/ --include="*.ts" --include="*.js" --include="*.vue" | grep -v "comment\|//\|*\|test"; then
+          # Check no service_role key in source (exclude comment lines starting with //)
+          if grep -rn "service_role" src/ --include="*.ts" --include="*.js" --include="*.vue" | grep -v "^\s*//" | grep -v "^\s*\*"; then
             echo "❌ service_role key reference found in source code!"
             exit 1
           fi
-          echo "✅ No exposed secrets found"
+          # Check no raw Supabase service key patterns (eyJ... JWT tokens)
+          if grep -rn "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\." src/ --include="*.ts" --include="*.js" --include="*.vue" 2>/dev/null; then
+            echo "❌ Hardcoded JWT token found in source code!"
+            exit 1
+          fi
+          echo "✅ No exposed secrets found in source"
+
+      - name: Gitleaks — Scan PR Commits for Secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

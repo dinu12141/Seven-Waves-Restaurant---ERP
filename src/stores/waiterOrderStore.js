@@ -82,13 +82,9 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
           shift_start: branches[0].shift_start,
           shift_end: branches[0].shift_end,
         }
-        // Get company_id from the branch
-        const { data: branchData } = await supabase
-          .from('branches')
-          .select('company_id')
-          .eq('id', branchId.value)
-          .single()
-        companyId.value = branchData?.company_id
+        // Get company_id from authStore cache (already loaded at login — no extra DB call)
+        const activeBranch = authStore.branches.find((b) => b.branches?.id === branchId.value)
+        companyId.value = activeBranch?.branches?.company_id ?? authStore.currentBranch?.company_id
       } else {
         // No shift assignments found - but admins/managers are always "on shift" if they have a branch
         isOnShift.value = authStore.roles.some((r) => ['admin', 'manager'].includes(r))
@@ -294,9 +290,6 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       // Refresh my orders immediately
       await fetchMyOrders()
 
-      // Small delay and refresh again to be 100% sure the DB change is visible
-      setTimeout(() => fetchMyOrders(), 800)
-
       Notify.create({
         type: 'positive',
         icon: 'check_circle',
@@ -465,8 +458,10 @@ export const useWaiterOrderStore = defineStore('waiterOrder', () => {
       }
     }
 
-    // Drive fetchMyOrders from the realtime event directly (S4-3: replaces setTimeout(800))
-    fetchMyOrders()
+    // Only refresh if this KOT belongs to one of our orders — prevents global fire on busy branches
+    if (myOrders.value.find((o) => o.id === newRow.order_id)) {
+      fetchMyOrders()
+    }
   }
 
   function handleOrderChange(payload) {

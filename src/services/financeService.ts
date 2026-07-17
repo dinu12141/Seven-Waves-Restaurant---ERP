@@ -76,6 +76,13 @@ export async function fetchJournalEntries(filters: FinanceFilters = {}) {
 }
 
 export async function createJournalEntry(entry: any, lines: any) {
+  // Enforce double-entry balance before touching the DB
+  const totalDr = lines.reduce((s: number, l: any) => s + (l.dr_amount || 0), 0)
+  const totalCr = lines.reduce((s: number, l: any) => s + (l.cr_amount || 0), 0)
+  if (Math.abs(totalDr - totalCr) > 0.01) {
+    return { data: null, error: new Error(`Journal imbalanced: Dr=${totalDr.toFixed(2)}, Cr=${totalCr.toFixed(2)}`) }
+  }
+
   // Insert journal header via ApiClient (tracks correlation ID + error classification)
   const { data: je, error: jeErr } = await api.query(
     (client: any) => client.from('journal_entries').insert(entry).select().single(),
@@ -104,11 +111,44 @@ export async function createJournalEntry(entry: any, lines: any) {
   return { data: je, error: null }
 }
 
-export async function reverseJournalEntry(id: any) {
-  const { data, error } = await api.query(
-    (client: any) => client.from('journal_entries').update({ is_reversed: true }).eq('id', id).select().single(),
-    { module: MODULE, action: 'reverseJournalEntry', retries: 0 },
+export async function reverseJournalEntry(id: string) {
+  // 1. Load original entry + its lines
+  const { data: original, error: fetchErr } = await supabase
+    .from('journal_entries')
+    .select('*, journal_lines(*)')
+    .eq('id', id)
+    .single()
+  if (fetchErr || !original) return { data: null, error: fetchErr || new Error('Journal entry not found') }
+  if (original.is_reversed) return { data: null, error: new Error('Journal entry is already reversed') }
+
+  // 2. Create counter-entry (swap dr/cr on each line)
+  const reversalLines = (original.journal_lines || []).map((l: any) => ({
+    account_code: l.account_code,
+    account_name: l.account_name,
+    dr_amount: l.cr_amount,
+    cr_amount: l.dr_amount,
+    memo: `Reversal: ${l.memo || ''}`,
+  }))
+  const { data: reversal, error: reversalErr } = await createJournalEntry(
+    {
+      description: `Reversal: ${original.description}`,
+      reference_type: original.reference_type,
+      reference_id: id,
+      doc_date: new Date().toISOString().split('T')[0],
+      branch_id: original.branch_id,
+      total_amount: original.total_amount,
+    },
+    reversalLines,
   )
+  if (reversalErr) return { data: null, error: reversalErr }
+
+  // 3. Mark original as reversed
+  const { data, error } = await supabase
+    .from('journal_entries')
+    .update({ is_reversed: true, reversal_id: reversal?.id })
+    .eq('id', id)
+    .select()
+    .single()
   return { data, error }
 }
 
@@ -572,13 +612,18 @@ export async function postPayrollToJournal(cycleId: string, cycle: Record<string
 
   if (jeErr) return { data: null, error: jeErr }
 
+  // Compute net from gross - deductions to avoid floating-point rounding imbalance
+  const grossAmount = Number(cycle.total_gross || 0)
+  const deductionsAmount = Number(cycle.total_deductions || 0)
+  const netAmount = Number((grossAmount - deductionsAmount).toFixed(2))
+
   // Insert journal lines
   const lines = [
     {
       journal_id: je.id,
       account_code: '5100',
       account_name: 'Salary Expense',
-      dr_amount: Number(cycle.total_gross || 0),
+      dr_amount: grossAmount,
       cr_amount: 0,
       memo: `Payroll: ${cycle.cycle_name} — Gross salary`,
       line_number: 1,
@@ -588,7 +633,7 @@ export async function postPayrollToJournal(cycleId: string, cycle: Record<string
       account_code: '2200',
       account_name: 'Salaries Payable',
       dr_amount: 0,
-      cr_amount: Number(cycle.total_deductions || 0),
+      cr_amount: deductionsAmount,
       memo: `Payroll: ${cycle.cycle_name} — Statutory deductions`,
       line_number: 2,
     },
@@ -597,7 +642,7 @@ export async function postPayrollToJournal(cycleId: string, cycle: Record<string
       account_code: '1010',
       account_name: 'Bank Account - Main',
       dr_amount: 0,
-      cr_amount: Number(cycle.total_net || 0),
+      cr_amount: netAmount,
       memo: `Payroll: ${cycle.cycle_name} — Net salary disbursement`,
       line_number: 3,
     },

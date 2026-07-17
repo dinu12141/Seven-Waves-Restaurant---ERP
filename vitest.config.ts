@@ -12,5 +12,8 @@ export default defineConfig({
     include: ['src/**/__tests__/**/*.test.ts', 'tests/**/*.test.ts'],
     environment: 'node',
     globals: false,
+    env: {
+      VITE_QR_SECRET: 'test-secret-for-vitest',
+    },
   },
 })

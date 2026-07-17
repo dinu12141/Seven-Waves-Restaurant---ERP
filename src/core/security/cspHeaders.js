@@ -10,7 +10,7 @@
  */
 export const CSP_POLICY = {
   'default-src': ["'self'"],
-  'script-src': ["'self'", "'unsafe-inline'"],  // Vue requires inline for SFC
+  'script-src': ["'self'"],  // No inline scripts in Quasar prod build (verified dist/spa/index.html)
   'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
   'font-src': ["'self'", 'https://fonts.gstatic.com'],
   'img-src': ["'self'", 'data:', 'blob:', 'https://*.supabase.co'],

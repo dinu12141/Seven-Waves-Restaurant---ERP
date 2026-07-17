@@ -276,7 +276,7 @@ export const useDeliveryStore = defineStore('delivery', () => {
 
     // Delivery assignments channel
     deliveryChannel = supabase
-      .channel(`delivery-queue-${bid}-${Date.now()}`)
+      .channel(`delivery-queue-${bid}`)
       .on(
         'postgres_changes',
         {
@@ -296,7 +296,7 @@ export const useDeliveryStore = defineStore('delivery', () => {
 
     // Orders channel — listen for 'ready' status to alert rider
     ordersChannel = supabase
-      .channel(`delivery-orders-watch-${bid}-${Date.now()}`)
+      .channel(`delivery-orders-watch-${bid}`)
       .on(
         'postgres_changes',
         {

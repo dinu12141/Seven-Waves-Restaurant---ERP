@@ -10,6 +10,12 @@ name: CD — Deploy Production
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deploy'
+        required: true
+        default: 'Manual production deployment'
 
 concurrency:
   group: deploy-production
@@ -31,6 +37,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: TypeScript Check
+        run: npm run type-check
 
       - name: Unit Tests
         run: npx vitest run --reporter=verbose
@@ -74,6 +83,56 @@ jobs:
             fi
           done
           echo "✅ All migrations validated"
+
+      - name: Check Pending Migrations Ledger
+        run: |
+          LEDGER="supabase/applied_migrations_ledger.sql"
+          if [ ! -f "$LEDGER" ]; then
+            echo "⚠️ No migrations ledger found at $LEDGER"
+            exit 0
+          fi
+
+          # Extract filenames listed in the PENDING section (lines after PENDING MIGRATIONS header)
+          IN_PENDING=0
+          PENDING_FILES=()
+          while IFS= read -r line; do
+            if echo "$line" | grep -q "PENDING MIGRATIONS"; then
+              IN_PENDING=1
+            fi
+            if [ "$IN_PENDING" = "1" ]; then
+              # Match lines like: -- somefile.sql
+              if echo "$line" | grep -qE "^--\s+[a-zA-Z0-9_]+\.sql$"; then
+                FNAME=$(echo "$line" | sed 's/^--\s*//')
+                PENDING_FILES+=("$FNAME")
+              fi
+            fi
+          done < "$LEDGER"
+
+          if [ "${#PENDING_FILES[@]}" -eq 0 ]; then
+            echo "✅ No pending migrations in ledger"
+            exit 0
+          fi
+
+          echo "⚠️ PENDING migrations found in ledger (not yet applied to DB):"
+          CRITICAL=0
+          for f in "${PENDING_FILES[@]}"; do
+            if [ -f "supabase/$f" ] || [ -f "supabase/migrations/$f" ]; then
+              echo "  ⏳ $f (file exists in repo — needs manual apply via Supabase Dashboard)"
+              # Check if it's a security/critical file
+              if echo "$f" | grep -qiE "security|rls|fix|lockdown|hardening"; then
+                echo "     ‼️  SECURITY MIGRATION — apply before this deploy!"
+                CRITICAL=$((CRITICAL+1))
+              fi
+            fi
+          done
+
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo ""
+            echo "❌ $CRITICAL critical security migration(s) not applied to DB."
+            echo "   Apply them via Supabase Dashboard → SQL Editor before deploying."
+            echo "   See supabase/applied_migrations_ledger.sql PENDING section for details."
+            exit 1
+          fi
 
   build:
     name: Production Build
@@ -168,6 +227,7 @@ jobs:
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
           echo "- **Deployer:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}${{ github.event.inputs.reason && format(' — {0}', github.event.inputs.reason) || '' }}" >> $GITHUB_STEP_SUMMARY
 
   health-check:
     name: Production Health Check

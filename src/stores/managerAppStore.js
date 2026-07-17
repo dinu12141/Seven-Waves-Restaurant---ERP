@@ -29,7 +29,9 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
   // Alerts
   const alerts = ref([])
-  const viewedAlertIds = ref(new Set(JSON.parse(localStorage.getItem('mgr_viewed_alerts') || '[]')))
+  let _viewedIds = []
+  try { _viewedIds = JSON.parse(localStorage.getItem('mgr_viewed_alerts') || '[]') } catch (e) { console.warn('Failed to parse viewed alerts', e) }
+  const viewedAlertIds = ref(new Set(_viewedIds))
 
   // Served today counter
   const servedTodayCount = ref(0)
@@ -128,38 +130,51 @@ export const useManagerAppStore = defineStore('managerApp', () => {
       return
     }
 
-    const enriched = await Promise.all(
-      profiles.map(async (wp) => {
-        const { count: activeOrders } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('assigned_waiter_id', wp.employee?.profile_id)
-          .eq('branch_id', branchId)
-          .in('status', ['accepted', 'preparing', 'ready'])
+    // Batch all counts in 2 queries instead of 2N queries (N+1 → O(1))
+    const profileIds = profiles.map((wp) => wp.employee?.profile_id).filter(Boolean)
+    const waiterProfileIds = profiles.map((wp) => wp.id).filter(Boolean)
 
-        const { count: unreadAlerts } = await supabase
-          .from('waiter_notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('waiter_profile_id', wp.id)
-          .eq('is_read', false)
+    const [ordersRes, notifsRes] = await Promise.all([
+      profileIds.length
+        ? supabase
+            .from('orders')
+            .select('assigned_waiter_id')
+            .eq('branch_id', branchId)
+            .in('status', ['accepted', 'preparing', 'ready'])
+            .in('assigned_waiter_id', profileIds)
+        : Promise.resolve({ data: [] }),
+      waiterProfileIds.length
+        ? supabase
+            .from('waiter_notifications')
+            .select('waiter_profile_id')
+            .in('waiter_profile_id', waiterProfileIds)
+            .eq('is_read', false)
+        : Promise.resolve({ data: [] }),
+    ])
 
-        return {
-          id: wp.id,
-          employee_id: wp.employee?.id,
-          waiter_code: wp.waiter_code,
-          display_name: wp.display_name,
-          employee_name: wp.employee?.full_name,
-          employee_code: wp.employee?.employee_code,
-          profile_id: wp.employee?.profile_id,
-          current_points: wp.current_points || 0,
-          served_count: wp.total_orders_served || 0,
-          active_orders: activeOrders || 0,
-          unread_alerts: unreadAlerts || 0,
-        }
-      }),
-    )
+    // Build lookup maps from the batch results
+    const activeOrdersMap = {}
+    for (const row of ordersRes.data || []) {
+      activeOrdersMap[row.assigned_waiter_id] = (activeOrdersMap[row.assigned_waiter_id] || 0) + 1
+    }
+    const unreadAlertsMap = {}
+    for (const row of notifsRes.data || []) {
+      unreadAlertsMap[row.waiter_profile_id] = (unreadAlertsMap[row.waiter_profile_id] || 0) + 1
+    }
 
-    onShiftWaiters.value = enriched
+    onShiftWaiters.value = profiles.map((wp) => ({
+      id: wp.id,
+      employee_id: wp.employee?.id,
+      waiter_code: wp.waiter_code,
+      display_name: wp.display_name,
+      employee_name: wp.employee?.full_name,
+      employee_code: wp.employee?.employee_code,
+      profile_id: wp.employee?.profile_id,
+      current_points: wp.current_points || 0,
+      served_count: wp.total_orders_served || 0,
+      active_orders: activeOrdersMap[wp.employee?.profile_id] || 0,
+      unread_alerts: unreadAlertsMap[wp.id] || 0,
+    }))
   }
 
   // ─── Orders ───────────────────────────────────────────────────────────────
@@ -374,19 +389,30 @@ export const useManagerAppStore = defineStore('managerApp', () => {
       return
     }
 
-    const enriched = await Promise.all(
-      profiles.map(async (wp) => {
-        const { data: ledger } = await supabase
+    // Batch ledger in 1 query instead of N queries (N+1 → O(1))
+    const allProfileIds = profiles.map((wp) => wp.id).filter(Boolean)
+    const { data: allLedger } = allProfileIds.length
+      ? await supabase
           .from('waiter_points_ledger')
-          .select('id, point_type, points, note, created_at')
-          .eq('waiter_profile_id', wp.id)
+          .select('id, waiter_profile_id, point_type, points, note, created_at')
+          .in('waiter_profile_id', allProfileIds)
           .order('created_at', { ascending: false })
-          .limit(10)
-        return { ...wp, employee_name: wp.employee?.full_name, ledger: ledger || [] }
-      }),
-    )
+      : { data: [] }
 
-    leaderboard.value = enriched
+    // Group ledger entries by waiter_profile_id, keep latest 10 each
+    const ledgerMap = {}
+    for (const entry of allLedger || []) {
+      if (!ledgerMap[entry.waiter_profile_id]) ledgerMap[entry.waiter_profile_id] = []
+      if (ledgerMap[entry.waiter_profile_id].length < 10) {
+        ledgerMap[entry.waiter_profile_id].push(entry)
+      }
+    }
+
+    leaderboard.value = profiles.map((wp) => ({
+      ...wp,
+      employee_name: wp.employee?.full_name,
+      ledger: ledgerMap[wp.id] || [],
+    }))
   }
 
   // ─── Served Today ─────────────────────────────────────────────────────────
@@ -459,11 +485,12 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
 
-    const ts = Date.now()
+    // Clean up any existing channels before re-subscribing
+    cleanup()
 
     // Orders channel
     ordersChannel = supabase
-      .channel(`mgr-orders-${branchId}-${ts}`)
+      .channel(`mgr-orders-${branchId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
@@ -476,7 +503,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // KOT channel
     kotChannel = supabase
-      .channel(`mgr-kot-${branchId}-${ts}`)
+      .channel(`mgr-kot-${branchId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'kot_tickets' },
@@ -488,7 +515,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // Waiter profiles channel
     profilesChannel = supabase
-      .channel(`mgr-waiter-profiles-${branchId}-${ts}`)
+      .channel(`mgr-waiter-profiles-${branchId}`)
       .on(
         'postgres_changes',
         {
@@ -507,7 +534,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
     // Messages channel
     if (_myEmployeeId) {
       messagesChannel = supabase
-        .channel(`mgr-messages-${branchId}-${ts}`)
+        .channel(`mgr-messages-${branchId}`)
         .on(
           'postgres_changes',
           {
@@ -525,7 +552,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     // Alerts channel — show toast on new alerts
     alertsChannel = supabase
-      .channel(`mgr-alerts-${branchId}-${ts}`)
+      .channel(`mgr-alerts-${branchId}`)
       .on(
         'postgres_changes',
         {

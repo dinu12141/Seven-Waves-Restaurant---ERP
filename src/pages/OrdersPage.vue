@@ -35,6 +35,7 @@
           class="erp-toolbar__secondary-btn q-ml-sm"
           icon="history"
           label="History"
+          @click="$router.push('/reports/sales')"
         />
       </template>
     </ERPToolbar>
@@ -505,6 +506,12 @@ async function advanceOrder(order) {
     if (['pending', 'pending_waiter'].includes(order.status)) {
       await orderStore.updateOrderStatus(order.id, 'accepted')
       $q.notify({ type: 'positive', message: 'Order accepted' })
+    } else if (order.status === 'accepted') {
+      await orderStore.updateOrderStatus(order.id, 'preparing')
+      $q.notify({ type: 'positive', message: 'Order sent to kitchen' })
+    } else if (order.status === 'preparing') {
+      await orderStore.updateOrderStatus(order.id, 'ready')
+      $q.notify({ type: 'positive', message: 'Order marked ready' })
     } else if (order.status === 'ready') {
       // Waiter (accept-only) cannot mark as served
       if (restrictions.value.ordersAcceptOnly) {
@@ -523,9 +530,22 @@ async function advanceOrder(order) {
   }
 }
 
-async function cancelOrder(order) {
+function cancelOrder(order) {
   if (!order) return
-  await orderStore.updateOrderStatus(order.id, 'cancelled')
+  $q.dialog({
+    title: 'Cancel Order',
+    message: `Cancel order #${order.order_number || order.id?.slice(-6)}? This cannot be undone.`,
+    cancel: { label: 'Keep Order', flat: true },
+    ok: { label: 'Cancel Order', color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await orderStore.updateOrderStatus(order.id, 'cancelled')
+      $q.notify({ type: 'positive', message: 'Order cancelled' })
+    } catch (err) {
+      $q.notify({ type: 'negative', message: `Failed to cancel: ${err.message}` })
+    }
+  })
 }
 </script>
 

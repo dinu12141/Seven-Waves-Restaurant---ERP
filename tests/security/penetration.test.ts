@@ -169,13 +169,13 @@ describe('Payload Sanitization', () => {
   })
 
   it('handles max depth', () => {
-    let nested = { val: 'ok' }
+    let nested: Record<string, unknown> = { val: 'ok' }
     for (let i = 0; i < 15; i++) nested = { child: nested }
-    const clean = sanitizePayload(nested)
+    const clean = sanitizePayload(nested) as Record<string, unknown>
     // Should truncate at depth 10
-    let current = clean
+    let current: Record<string, unknown> | undefined = clean
     let depth = 0
-    while (current?.child && depth < 15) { current = current.child; depth++ }
+    while (current?.['child'] && depth < 15) { current = current['child'] as Record<string, unknown>; depth++ }
     expect(depth).toBeLessThanOrEqual(10)
   })
 
