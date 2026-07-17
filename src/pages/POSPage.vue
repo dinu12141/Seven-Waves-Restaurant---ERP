@@ -2858,7 +2858,9 @@ async function handleConfirmPayment(payload) {
     if (result && result.success) {
       // Mark the dialog as paid (shows success state + real invoice receipt)
       if (paymentDialogRef.value) {
-        paymentDialogRef.value.markAsPaid(result.orderId)
+        paymentDialogRef.value.markAsPaid(result.orderId).then(() => {
+          paymentDialogRef.value.printBill()
+        })
       }
 
       // Record payment against active shift

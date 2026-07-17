@@ -196,6 +196,7 @@ import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { useCashierStore } from 'src/stores/cashierStore'
+import { useShiftStore } from 'src/stores/shiftStore'
 import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
 
 const props = defineProps({
@@ -223,6 +224,7 @@ const emit = defineEmits(['update:modelValue', 'confirm', 'new-order', 'paid'])
 
 const authStore = useAuthStore()
 const cashierStore = useCashierStore()
+const shiftStore = useShiftStore()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -561,6 +563,11 @@ async function processMergedPayment(methodName) {
     if (error) throw new Error(error.message)
     if (!data?.success) throw new Error(data?.error || 'Merge payment failed')
 
+    // Record payment in the active shift
+    if (shiftStore.hasActiveShift) {
+      shiftStore.recordPayment(orderIds[0], methodName.toLowerCase(), effectiveTotalAmount.value)
+    }
+
     isPaid.value = true
 
     // Fetch the consolidated invoice for receipt printing
@@ -600,6 +607,9 @@ async function processMergedPayment(methodName) {
       position: 'top',
       timeout: 3000,
     })
+
+    // Auto-print receipt after payment
+    printBill()
   } catch (err) {
     console.error('[PaymentDialog] Merged payment error:', err)
     Notify.create({
@@ -656,6 +666,11 @@ async function processQueueOrderPayment(methodName) {
       throw new Error(payData?.error || 'Payment failed')
     }
 
+    // Record payment in the active shift
+    if (shiftStore.hasActiveShift) {
+      shiftStore.recordPayment(orderId, methodName.toLowerCase(), effectiveTotalAmount.value)
+    }
+
     // Step 4: Fetch real invoice for receipt
     isPaid.value = true
     await fetchRealInvoice(orderId)
@@ -671,6 +686,9 @@ async function processQueueOrderPayment(methodName) {
       position: 'top',
       timeout: 2000,
     })
+
+    // Auto-print receipt after payment
+    printBill()
   } catch (err) {
     console.error('[PaymentDialog] Queue order payment error:', err)
     Notify.create({

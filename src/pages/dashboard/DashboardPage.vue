@@ -579,7 +579,8 @@ async function fetchDashboardData() {
         .from('orders')
         .select('id,status,total_amount,created_at,table_id,order_type')
         .eq('branch_id', branchId)
-        .in('status', ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced']),
+        .in('status', ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced'])
+        .order('created_at', { ascending: false }),
       supabase
         .from('orders')
         .select('status,total_amount,order_type')
@@ -614,10 +615,10 @@ async function fetchDashboardData() {
     const periodActiveOrders = activeOrders.filter((o) => new Date(o.created_at) >= start)
 
     completedOrders.forEach((o) => {
-      revenue += o.total_amount || 0
+      if (['paid', 'completed'].includes(o.status)) revenue += o.total_amount || 0
     })
     periodActiveOrders.forEach((o) => {
-      if (['served', 'invoiced'].includes(o.status)) revenue += o.total_amount || 0
+      if (['paid', 'completed'].includes(o.status)) revenue += o.total_amount || 0
     })
     
     // Occupancy is based on ALL active orders, regardless of date (e.g. stuck overnight orders)
@@ -626,7 +627,7 @@ async function fetchDashboardData() {
     })
 
     kpi1.value = revenue.toLocaleString()
-    kpi2.value = activeOrders.length.toString()
+    kpi2.value = periodActiveOrders.length.toString()
     kpi4.value = (staffRes.data?.length || 0).toString()
 
     totalTablesCount.value = tablesRes.data?.length || 0
@@ -646,7 +647,7 @@ async function fetchDashboardData() {
     takeawayCount.value = allOrders.filter((o) => o.order_type !== 'dine_in').length
 
     // Process feed
-    activeProcesses.value = activeOrders.slice(0, 8).map((o) => {
+    activeProcesses.value = periodActiveOrders.slice(0, 8).map((o) => {
       const isPreparing = ['preparing', 'accepted'].includes(o.status)
       const isPending = o.status === 'pending_waiter'
       return {

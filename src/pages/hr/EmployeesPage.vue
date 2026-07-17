@@ -76,6 +76,14 @@
         />
         <q-btn color="positive" icon="download" label="Excel" @click="exportExcel" no-caps />
         <q-btn color="red-6" icon="picture_as_pdf" label="PDF" @click="exportPDF" no-caps />
+        <q-btn
+          color="dark"
+          icon="manage_accounts"
+          label="Manage User Logins"
+          to="/admin/users"
+          no-caps
+          class="q-ml-md"
+        />
       </div>
 
       <q-space class="gt-sm" />

@@ -17,8 +17,8 @@
 --   pending        → accepted | cancelled
 --   accepted       → preparing | ready | cancelled
 --   preparing      → ready | cancelled
---   ready          → served | cancelled
---   served         → invoiced | cancelled
+--   ready          → served | invoiced | paid | cancelled
+--   served         → invoiced | paid | cancelled          ← paid allowed (Quick Pay skips invoiced)
 --   invoiced       → paid | cancelled
 --   paid           → refunded
 --   cancelled      → pending_waiter | pending  (admin un-cancel only — checked via is_admin())
@@ -48,8 +48,8 @@ BEGIN
     (OLD.status = 'pending'        AND NEW.status IN ('accepted', 'cancelled'))                OR
     (OLD.status = 'accepted'       AND NEW.status IN ('preparing', 'ready', 'cancelled'))      OR
     (OLD.status = 'preparing'      AND NEW.status IN ('ready', 'cancelled'))                   OR
-    (OLD.status = 'ready'          AND NEW.status IN ('served', 'invoiced', 'cancelled'))      OR
-    (OLD.status = 'served'         AND NEW.status IN ('invoiced', 'cancelled'))                OR
+    (OLD.status = 'ready'          AND NEW.status IN ('served', 'invoiced', 'paid', 'cancelled'))  OR
+    (OLD.status = 'served'         AND NEW.status IN ('invoiced', 'paid', 'cancelled'))         OR
     (OLD.status = 'invoiced'       AND NEW.status IN ('paid', 'cancelled'))                    OR
     (OLD.status = 'paid'           AND NEW.status IN ('refunded'))                             OR
     -- Admin can un-cancel

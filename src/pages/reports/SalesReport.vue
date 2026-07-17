@@ -273,7 +273,8 @@ onMounted(() => {
 })
 
 const statusOptions = [
-  { label: 'All', value: null },
+  { label: 'Sales Only (Paid/Completed)', value: null },
+  { label: 'All Orders', value: 'all' },
   { label: 'Paid', value: 'paid' },
   { label: 'Completed', value: 'completed' },
   { label: 'Served', value: 'served' },
@@ -310,9 +311,16 @@ const filteredRows = computed(() => {
   if (extraFilters.value.paymentMode) {
     r = r.filter((x) => x.payment_mode?.toLowerCase() === extraFilters.value.paymentMode)
   }
-  if (extraFilters.value.status) {
+  
+  if (extraFilters.value.status === 'all') {
+    // Return all rows without filtering by status
+  } else if (extraFilters.value.status) {
     r = r.filter((x) => x.status === extraFilters.value.status)
+  } else {
+    // Default to 'Sales Only'
+    r = r.filter((x) => ['paid', 'completed'].includes(x.status))
   }
+  
   return r
 })
 

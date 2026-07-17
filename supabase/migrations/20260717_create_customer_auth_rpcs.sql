@@ -3,7 +3,7 @@
 -- Description: Adds register_customer_profile and get_customer_profile_by_auth
 -- ==============================================================================
 
-DROP FUNCTION IF EXISTS public.register_customer_profile(UUID, TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.register_customer_profile;
 CREATE OR REPLACE FUNCTION public.register_customer_profile(
     p_auth_user_id UUID,
     p_full_name TEXT,

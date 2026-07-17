@@ -91,16 +91,16 @@ BEGIN
         'issued'
     ) RETURNING id INTO v_invoice_id;
 
-    -- 4b. Create invoice items by combining all order_items from all merged orders
+    -- 4b. Create invoice items — uses live invoice_items column names
     INSERT INTO invoice_items (
         invoice_id,
         order_item_id,
-        menu_item_name,
-        quantity,
+        description,     -- live column (billing.sql called this menu_item_name)
+        qty,             -- live column (billing.sql called this quantity)
         unit_price,
-        total_price,
+        line_total,      -- live column (billing.sql called this total_price)
         tax_amount,
-        discount_amount
+        discount         -- live column (billing.sql called this discount_amount)
     )
     SELECT
         v_invoice_id,
