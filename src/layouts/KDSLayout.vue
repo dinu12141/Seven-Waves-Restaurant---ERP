@@ -6,6 +6,9 @@
 
     <!-- Global Notification Toasts -->
     <NotificationToast />
+
+    <!-- Offline Banner — kitchen staff need to know when connection drops -->
+    <OfflineBanner />
   </q-layout>
 </template>
 
@@ -15,6 +18,7 @@ import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import NotificationToast from 'components/common/NotificationToast.vue'
+import OfflineBanner from 'components/common/OfflineBanner.vue'
 
 const authStore = useAuthStore()
 const $q = useQuasar()

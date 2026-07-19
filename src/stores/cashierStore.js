@@ -353,6 +353,56 @@ export const useCashierStore = defineStore('cashier', () => {
     }
   }
 
+  // ── Refund Order ───────────────────────────────────────────
+  async function refundOrder(orderId, refundAmount, reason, refundTo = 'cash') {
+    if (!orderId) throw new Error('Order ID required')
+    if (!refundAmount || parseFloat(refundAmount) <= 0) throw new Error('Refund amount must be greater than zero')
+    if (!reason?.trim()) throw new Error('Refund reason is required')
+
+    processing.value = true
+    try {
+      const { data: result, error } = await supabase.rpc('process_refund', {
+        p_order_id: orderId,
+        p_refund_amount: parseFloat(parseFloat(refundAmount).toFixed(2)),
+        p_reason: reason.trim(),
+        p_refund_to: refundTo,
+      })
+
+      if (error) throw new Error(`Refund failed: ${error.message}`)
+      if (!result?.success) throw new Error(result?.error || 'Refund failed')
+
+      // Update local state
+      const idx = billingOrders.value.findIndex((o) => o.id === orderId)
+      if (idx !== -1) {
+        billingOrders.value[idx] = {
+          ...billingOrders.value[idx],
+          payment_status: result.payment_status,
+        }
+      }
+
+      Notify.create({
+        message: `Refund of LKR ${parseFloat(refundAmount).toFixed(2)} processed`,
+        caption: `Status: ${result.payment_status}`,
+        color: 'teal',
+        icon: 'undo',
+        timeout: 5000,
+      })
+
+      return result
+    } catch (err) {
+      Notify.create({
+        message: 'Refund Failed',
+        caption: err.message || 'Unknown error',
+        color: 'red',
+        icon: 'error',
+        timeout: 6000,
+      })
+      throw err
+    } finally {
+      processing.value = false
+    }
+  }
+
   // ── Quick Pay ──────────────────────────────────────────────
   async function quickPay(orderId, payments) {
     const { invoice } = await generateInvoice(orderId)
@@ -769,6 +819,7 @@ export const useCashierStore = defineStore('cashier', () => {
     generateInvoice,
     recordPayment,
     quickPay,
+    refundOrder,
     markServed,
     fetchInvoiceDetails,
     openBillDialog,

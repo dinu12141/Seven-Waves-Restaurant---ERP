@@ -526,7 +526,7 @@ const chartOptions = ref({
     stroke: { color: '#06b6d4', width: 1, dashArray: 3 },
   },
   tooltip: {
-    theme: 'dark',
+    theme: $q.dark.isActive ? 'dark' : 'light',
     x: { show: true },
     style: { fontSize: '12px' },
     y: {
@@ -556,8 +556,16 @@ const donutOptions = ref({
       },
     },
   },
-  tooltip: { theme: 'dark' },
+  tooltip: { theme: $q.dark.isActive ? 'dark' : 'light' },
 })
+
+watch(
+  () => $q.dark.isActive,
+  (dark) => {
+    chartOptions.value.tooltip.theme = dark ? 'dark' : 'light'
+    donutOptions.value.tooltip.theme = dark ? 'dark' : 'light'
+  },
+)
 
 // ── Data fetching ────────────────────────────────────────────────
 async function fetchDashboardData() {
@@ -1792,7 +1800,7 @@ onUnmounted(() => {
   gap: 8px;
 }
 .tod-kot-card {
-  background: #fff;
+  background: var(--erp-bg-card, #fff);
   border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 10px;
   padding: 10px 14px;
@@ -1816,7 +1824,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #fff;
+  background: var(--erp-bg-input, #fff);
   border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 8px;
   font-size: 0.85rem;

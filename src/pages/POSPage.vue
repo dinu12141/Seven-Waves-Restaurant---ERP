@@ -207,24 +207,68 @@
             <template v-else>
               <div style="background: var(--yellow); padding: 12px; color: #000; font-weight: 800; text-align: center; font-size: 14px; text-transform: uppercase;">Payment Method</div>
               <div class="cat-grid" style="grid-template-columns: 1fr; margin-top: 10px; gap: 10px;">
-                <button 
-                  class="cbtn c-yellow" 
+                <!-- CASH -->
+                <button
+                  class="cbtn c-yellow"
                   :class="{ 'payment-active': selectedPaymentMethod === 'CASH' }"
-                  @click="selectedPaymentMethod = 'CASH'; showQuickCash = true"
+                  @click="selectPaymentGroup('CASH')"
                   style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
                 >CASH</button>
-                <button 
-                  class="cbtn c-yellow" 
+
+                <!-- CARD + sub-options -->
+                <button
+                  class="cbtn c-yellow"
                   :class="{ 'payment-active': selectedPaymentMethod === 'CARD' }"
-                  @click="selectedPaymentMethod = 'CARD'; showQuickCash = false"
+                  @click="selectPaymentGroup('CARD')"
                   style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
                 >CARD</button>
-                <button 
-                  class="cbtn c-yellow" 
-                  :class="{ 'payment-active': selectedPaymentMethod === 'ONLINE' }"
-                  @click="selectedPaymentMethod = 'ONLINE'; showQuickCash = false"
+                <div v-if="selectedPaymentMethod === 'CARD'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: -4px;">
+                  <button
+                    class="cbtn"
+                    :class="{ 'payment-active': selectedCardType === 'MASTER' }"
+                    @click="selectedCardType = 'MASTER'"
+                    style="font-size: 13px; font-weight: 700; padding: 10px 0; background: #1a237e; color: #fff; border: 2px solid transparent;"
+                    :style="selectedCardType === 'MASTER' ? 'border-color: #ffeb3b;' : ''"
+                  >MASTER</button>
+                  <button
+                    class="cbtn"
+                    :class="{ 'payment-active': selectedCardType === 'VISA' }"
+                    @click="selectedCardType = 'VISA'"
+                    style="font-size: 13px; font-weight: 700; padding: 10px 0; background: #1565c0; color: #fff; border: 2px solid transparent;"
+                    :style="selectedCardType === 'VISA' ? 'border-color: #ffeb3b;' : ''"
+                  >VISA</button>
+                </div>
+
+                <!-- OTHER + sub-options -->
+                <button
+                  class="cbtn c-yellow"
+                  :class="{ 'payment-active': selectedPaymentMethod === 'OTHER' }"
+                  @click="selectPaymentGroup('OTHER')"
                   style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
-                >CREDIT CARD</button>
+                >OTHER</button>
+                <div v-if="selectedPaymentMethod === 'OTHER'" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: -4px;">
+                  <button
+                    class="cbtn"
+                    :class="{ 'payment-active': selectedOtherType === 'UBER' }"
+                    @click="selectedOtherType = 'UBER'"
+                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #1b5e20; color: #fff; border: 2px solid transparent;"
+                    :style="selectedOtherType === 'UBER' ? 'border-color: #ffeb3b;' : ''"
+                  >UBER</button>
+                  <button
+                    class="cbtn"
+                    :class="{ 'payment-active': selectedOtherType === 'PICKME' }"
+                    @click="selectedOtherType = 'PICKME'"
+                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #b71c1c; color: #fff; border: 2px solid transparent;"
+                    :style="selectedOtherType === 'PICKME' ? 'border-color: #ffeb3b;' : ''"
+                  >PICKME</button>
+                  <button
+                    class="cbtn"
+                    :class="{ 'payment-active': selectedOtherType === 'WEBSITE' }"
+                    @click="selectedOtherType = 'WEBSITE'"
+                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #006064; color: #fff; border: 2px solid transparent;"
+                    :style="selectedOtherType === 'WEBSITE' ? 'border-color: #ffeb3b;' : ''"
+                  >WEBSITE</button>
+                </div>
               </div>
               
               <!-- Quick Cash Buttons -->
@@ -813,7 +857,7 @@ import FunctionMenuDialog from 'src/components/pos/FunctionMenuDialog.vue'
 import CashMovementDialog from 'src/components/pos/CashMovementDialog.vue'
 import CloseShiftDialog from 'src/components/pos/CloseShiftDialog.vue'
 import ShiftSummaryDialog from 'src/components/pos/ShiftSummaryDialog.vue'
-
+import ManagerAuthDialog from 'src/components/pos/ManagerAuthDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -926,6 +970,31 @@ const filteredSearchItems = computed(() => {
 // Payment Mode
 const isPaymentMode = ref(false)
 const selectedPaymentMethod = ref('CASH')
+const selectedCardType = ref(null)    // 'MASTER' | 'VISA'
+const selectedOtherType = ref(null)   // 'UBER' | 'PICKME' | 'WEBSITE'
+
+function selectPaymentGroup(group) {
+  selectedPaymentMethod.value = group
+  selectedCardType.value = null
+  selectedOtherType.value = null
+  showQuickCash.value = (group === 'CASH')
+}
+
+function getPaymentMethodName() {
+  if (selectedPaymentMethod.value === 'CASH') return 'cash'
+  if (selectedPaymentMethod.value === 'CARD') {
+    if (selectedCardType.value === 'MASTER') return 'mastercard'
+    if (selectedCardType.value === 'VISA') return 'visa'
+    return 'card'
+  }
+  if (selectedPaymentMethod.value === 'OTHER') {
+    if (selectedOtherType.value === 'UBER') return 'uber_eats'
+    if (selectedOtherType.value === 'PICKME') return 'pickme'
+    if (selectedOtherType.value === 'WEBSITE') return 'website'
+    return 'other'
+  }
+  return 'cash'
+}
 
 // Split Payment
 const showSplitPaymentDialog = ref(false)
@@ -1050,6 +1119,8 @@ const quickCashOptions = computed(() => {
 function cancelPaymentMode() {
   isPaymentMode.value = false
   selectedPaymentMethod.value = 'CASH'
+  selectedCardType.value = null
+  selectedOtherType.value = null
   numBuffer.value = ''
   showQuickCash.value = false
 }
@@ -1701,68 +1772,13 @@ function handleVoid() {
   const authStore = useAuthStore()
 
   $q.dialog({
-    title: 'Manager Authorization Required',
-    message: 'Enter Manager Email for VOID:',
-    prompt: {
-      model: '',
-      type: 'email',
-    },
-    cancel: true,
-    persistent: true,
-  }).onOk((email) => {
-    $q.dialog({
-      title: 'Manager Password',
-      message: 'Enter Manager Password:',
-      prompt: {
-        model: '',
-        type: 'password',
-      },
-      cancel: true,
-      persistent: true,
-    }).onOk(async (pwd) => {
-      Loading.show({ message: 'Verifying manager...' })
-      const originalSessionRes = await supabase.auth.getSession()
+    component: ManagerAuthDialog,
+    componentProps: { actionName: 'VOID' }
+  }).onOk((authResult) => {
+    if (!authResult || !authResult.managerId) return
+    const managerUserId = authResult.managerId
 
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: pwd,
-      })
-
-      if (authError) {
-        Loading.hide()
-        Notify.create({ message: 'Authorization Failed', caption: authError.message, color: 'red', position: 'top' })
-        return
-      }
-
-      const managerUserId = authData.user.id
-      let isManager = false
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', managerUserId)
-        .single()
-
-      if (roleData && ['manager', 'admin'].includes(roleData.role)) {
-        isManager = true
-      }
-
-      // Restore original cashier session immediately
-      if (originalSessionRes.data.session) {
-        await supabase.auth.setSession({
-          access_token: originalSessionRes.data.session.access_token,
-          refresh_token: originalSessionRes.data.session.refresh_token,
-        })
-      }
-
-      Loading.hide()
-
-      if (!isManager) {
-        Notify.create({ message: 'Access Denied', caption: 'User is not a manager', color: 'red', position: 'top' })
-        return
-      }
-
-      // Manager verified. Ask for reason.
+    // Manager verified. Ask for reason.
       $q.dialog({
         title: 'VOID Reason',
         message: 'Enter reason for voiding this item:',
@@ -1802,8 +1818,9 @@ function handleVoid() {
             // In POS, the recalculation usually happens at Checkout, but for safety:
             const { data: ord } = await supabase.from('orders').select('subtotal, total_amount').eq('id', store._loadedOrderId).single()
             if (ord) {
-              const newSub = Math.max(0, ord.subtotal - item.total_price)
-              const newTot = Math.max(0, ord.total_amount - item.total_price)
+              const itemTotal = item.price * item.qty
+              const newSub = Math.max(0, ord.subtotal - itemTotal)
+              const newTot = Math.max(0, ord.total_amount - itemTotal)
               await supabase.from('orders').update({ subtotal: newSub, total_amount: newTot }).eq('id', store._loadedOrderId)
             }
           }
@@ -1870,7 +1887,6 @@ function handleVoid() {
           Loading.hide()
         }
       })
-    })
   })
 }
 
@@ -1911,90 +1927,15 @@ async function handleFOC() {
     return
   }
 
-  // 2. Step 1: Manager Password Verification
+  // 2. Step 1: Manager Authorization
   $q.dialog({
-    title: '🔐 Manager Authorization',
-    message: 'Enter Manager email and password to authorize this FOC transaction:',
-    dark: true,
-    prompt: {
-      model: '',
-      type: 'email',
-      label: 'Manager Email',
-      outlined: true,
-      dense: true,
-    },
-    cancel: { flat: true, color: 'grey-5', noCaps: true },
-    ok: { color: 'orange', unelevated: true, noCaps: true, label: 'Next' },
-    persistent: true,
-  }).onOk((managerEmail) => {
-    if (!managerEmail || !managerEmail.trim()) {
-      Notify.create({ message: 'Manager email is required', color: 'red', position: 'top' })
-      return
-    }
+    component: ManagerAuthDialog,
+    componentProps: { actionName: 'FOC' }
+  }).onOk((authResult) => {
+    if (!authResult || !authResult.managerId) return
+    const managerUserId = authResult.managerId
 
-    // Step 2: Manager password
-    $q.dialog({
-      title: '🔐 Manager Password',
-      message: `Enter password for: ${managerEmail}`,
-      dark: true,
-      prompt: {
-        model: '',
-        type: 'password',
-        label: 'Password',
-        outlined: true,
-        dense: true,
-      },
-      cancel: { flat: true, color: 'grey-5', noCaps: true },
-      ok: { color: 'orange', unelevated: true, noCaps: true, label: 'Verify' },
-      persistent: true,
-    }).onOk(async (managerPassword) => {
-      if (!managerPassword) {
-        Notify.create({ message: 'Password is required', color: 'red', position: 'top' })
-        return
-      }
-
-      Loading.show({ message: 'Verifying manager credentials...' })
-
-      try {
-        // Verify manager credentials using Supabase edge function or direct auth
-        const { data: verifyData, error: verifyError } = await supabase.auth.signInWithPassword({
-          email: managerEmail.trim(),
-          password: managerPassword,
-        })
-
-        if (verifyError) {
-          Loading.hide()
-          Notify.create({ message: 'Invalid manager credentials', color: 'red', icon: 'error', position: 'top' })
-          return
-        }
-
-        // Check if the user has manager or admin role
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('roles(name)')
-          .eq('user_id', verifyData.user.id)
-
-        const roles = (roleData || []).map(r => r.roles?.name).filter(Boolean)
-        const isManager = roles.includes('manager') || roles.includes('admin')
-
-        // Restore the original cashier session
-        if (authStore.session) {
-          await supabase.auth.setSession({
-            access_token: authStore.session.access_token,
-            refresh_token: authStore.session.refresh_token,
-          })
-        }
-
-        if (!isManager) {
-          Loading.hide()
-          Notify.create({ message: 'User does not have Manager/Admin privileges', color: 'red', icon: 'block', position: 'top' })
-          return
-        }
-
-        Loading.hide()
-
-        const managerUserId = verifyData.user.id
-
+    try {
         // Step 3: FOC Reason input
         $q.dialog({
           title: '📝 FOC Reason',
@@ -2019,18 +1960,9 @@ async function handleFOC() {
         })
       } catch (err) {
         Loading.hide()
-        console.error('FOC auth error:', err)
-        Notify.create({ message: 'Authentication error', caption: err.message, color: 'red', position: 'top' })
-
-        // Ensure original session is restored on error
-        if (authStore.session) {
-          await supabase.auth.setSession({
-            access_token: authStore.session.access_token,
-            refresh_token: authStore.session.refresh_token,
-          }).catch(() => {})
-        }
+        console.error('FOC processing error:', err)
+        Notify.create({ message: 'Processing error', caption: err.message, color: 'red', position: 'top' })
       }
-    })
   })
 }
 
@@ -2083,7 +2015,12 @@ async function processFOCOrder(managerUserId, focReason) {
       const branchId = authStore.currentBranch?.id
       const userId = authStore.user?.id
 
+      if (!companyId) {
+        throw new Error('Company information not loaded. Please refresh the page and try again.')
+      }
+
       const orderPayload = {
+        company_id: companyId,
         branch_id: branchId,
         waiter_id: userId || null,
         order_type: store.orderType === 'dine-in' ? 'dine_in' : 'takeaway',
@@ -2103,7 +2040,6 @@ async function processFOCOrder(managerUserId, focReason) {
         foc_authorized_by: managerUserId,
         paid_at: new Date().toISOString(),
       }
-      if (companyId) orderPayload.company_id = companyId
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -2237,6 +2173,14 @@ async function handlePrint() {
        Notify.create({ message: 'Insufficient amount received for Cash payment', color: 'red', position: 'top' })
        return
      }
+     if (selectedPaymentMethod.value === 'CARD' && !selectedCardType.value) {
+       Notify.create({ message: 'Select MASTER or VISA for card payment', color: 'orange', position: 'top' })
+       return
+     }
+     if (selectedPaymentMethod.value === 'OTHER' && !selectedOtherType.value) {
+       Notify.create({ message: 'Select UBER, PICKME or WEBSITE for other payment', color: 'orange', position: 'top' })
+       return
+     }
      await processInlinePayment()
      return
   }
@@ -2296,9 +2240,7 @@ async function processInlinePayment() {
   isProcessingPayment.value = true
   Loading.show({ message: 'Processing Payment & Printing...' })
   
-  const methodName = selectedPaymentMethod.value === 'CASH' ? 'Cash' 
-                   : selectedPaymentMethod.value === 'CARD' ? 'Card' 
-                   : 'Credit Card'
+  const methodName = getPaymentMethodName()
 
   try {
     let finalOrderId = null

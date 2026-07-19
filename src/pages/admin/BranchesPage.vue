@@ -16,7 +16,6 @@
               outlined
               v-model="search"
               placeholder="Search branches..."
-              class="bg-white"
             >
               <template v-slot:append>
                 <q-icon name="search" />
@@ -31,15 +30,21 @@
         </div>
       </q-card-section>
 
-      <q-table :rows="branches" :columns="columns" row-key="id" :filter="search" flat>
+      <q-table :rows="branches" :columns="columns" row-key="id" :filter="search" :loading="loading" flat bordered>
+        <template v-slot:body-cell-is_main="props">
+          <q-td :props="props">
+            <q-badge v-if="props.row.is_main" color="primary" label="Main" />
+            <span v-else class="text-grey-5">—</span>
+          </q-td>
+        </template>
         <template v-slot:body-cell-status="props">
           <q-td :props="props">
             <q-chip
-              :color="props.row.status === 'open' ? 'positive' : 'negative'"
+              :color="props.row.is_active !== false ? 'positive' : 'negative'"
               text-color="white"
               dense
             >
-              {{ props.row.status.toUpperCase() }}
+              {{ props.row.is_active !== false ? 'ACTIVE' : 'INACTIVE' }}
             </q-chip>
           </q-td>
         </template>
@@ -95,16 +100,15 @@
               :rules="[(val) => !!val || 'Address is required']"
             />
             <q-input v-model="form.phone" label="Phone Number" outlined dense />
-            <q-input v-model="form.manager" label="Branch Manager" outlined dense />
 
-            <q-toggle v-model="form.is_main" label="Main Branch" />
-            <q-select
-              v-model="form.status"
-              label="Status"
-              :options="['open', 'closed', 'renovation']"
-              outlined
-              dense
-            />
+            <div class="row q-col-gutter-md">
+              <div class="col-6">
+                <q-toggle v-model="form.is_main" label="Main Branch" />
+              </div>
+              <div class="col-6">
+                <q-toggle v-model="form.is_active" label="Active" color="positive" />
+              </div>
+            </div>
 
             <div class="row justify-end q-mt-lg">
               <q-btn label="Cancel" color="grey" flat v-close-popup />
@@ -113,6 +117,7 @@
                 type="submit"
                 color="primary"
                 class="q-ml-sm"
+                :loading="saving"
               />
             </div>
           </q-form>
@@ -123,97 +128,132 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 
 const $q = useQuasar()
 const search = ref('')
 const dialogVisible = ref(false)
 const isEditing = ref(false)
+const loading = ref(false)
+const saving = ref(false)
 
 const columns = [
   { name: 'name', label: 'Branch Name', align: 'left', field: 'name', sortable: true },
   { name: 'address', label: 'Address', align: 'left', field: 'address' },
   { name: 'phone', label: 'Phone', align: 'left', field: 'phone' },
-  { name: 'manager', label: 'Manager', align: 'left', field: 'manager' },
-  { name: 'status', label: 'Status', align: 'center', field: 'status', sortable: true },
+  { name: 'is_main', label: 'Main Branch', align: 'center', field: 'is_main', sortable: true },
+  { name: 'status', label: 'Status', align: 'center', field: 'is_active', sortable: true },
   { name: 'actions', label: 'Actions', align: 'center', field: 'actions' },
 ]
 
-const branches = ref([
-  {
-    id: 1,
-    name: 'Main Branch',
-    address: '123 Main St, Cityville',
-    phone: '+1 234 567 890',
-    manager: 'John Doe',
-    status: 'open',
-    is_main: true,
-  },
-  {
-    id: 2,
-    name: 'Downtown Outlet',
-    address: '456 Business Ave, Metro',
-    phone: '+1 987 654 321',
-    manager: 'Alice Smith',
-    status: 'open',
-    is_main: false,
-  },
-])
+const branches = ref([])
 
 const form = reactive({
   id: null,
   name: '',
   address: '',
   phone: '',
-  manager: '',
-  status: 'open',
   is_main: false,
+  is_active: true,
 })
+
+const fetchBranches = async () => {
+  loading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('branches')
+      .select('id, name, address, phone, is_main, is_active, created_at')
+      .order('is_main', { ascending: false })
+      .order('name')
+    if (error) throw error
+    branches.value = data || []
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load branches' })
+  } finally {
+    loading.value = false
+  }
+}
 
 const openDialog = () => {
   isEditing.value = false
-  Object.assign(form, {
-    id: null,
-    name: '',
-    address: '',
-    phone: '',
-    manager: '',
-    status: 'open',
-    is_main: false,
-  })
+  Object.assign(form, { id: null, name: '', address: '', phone: '', is_main: false, is_active: true })
   dialogVisible.value = true
 }
 
 const editBranch = (branch) => {
   isEditing.value = true
-  Object.assign(form, branch)
+  Object.assign(form, {
+    id: branch.id,
+    name: branch.name,
+    address: branch.address || '',
+    phone: branch.phone || '',
+    is_main: branch.is_main || false,
+    is_active: branch.is_active !== false,
+  })
   dialogVisible.value = true
 }
 
-const saveBranch = () => {
-  if (isEditing.value) {
-    const index = branches.value.findIndex((b) => b.id === form.id)
-    if (index !== -1) branches.value[index] = { ...form }
-    $q.notify({ type: 'positive', message: 'Branch updated successfully' })
-  } else {
-    branches.value.push({ ...form, id: Date.now() })
-    $q.notify({ type: 'positive', message: 'Branch created successfully' })
+const saveBranch = async () => {
+  saving.value = true
+  try {
+    if (isEditing.value) {
+      const { error } = await supabase
+        .from('branches')
+        .update({
+          name: form.name,
+          address: form.address,
+          phone: form.phone,
+          is_main: form.is_main,
+          is_active: form.is_active,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', form.id)
+      if (error) throw error
+      $q.notify({ type: 'positive', message: 'Branch updated successfully' })
+    } else {
+      const { error } = await supabase
+        .from('branches')
+        .insert({
+          name: form.name,
+          address: form.address,
+          phone: form.phone,
+          is_main: form.is_main,
+          is_active: form.is_active,
+        })
+      if (error) throw error
+      $q.notify({ type: 'positive', message: 'Branch created successfully' })
+    }
+    dialogVisible.value = false
+    await fetchBranches()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to save branch' })
+  } finally {
+    saving.value = false
   }
-  dialogVisible.value = false
 }
 
 const deleteBranch = (branch) => {
   $q.dialog({
-    title: 'Confirm',
-    message: `Are you sure you want to delete ${branch.name}?`,
+    title: 'Confirm Deletion',
+    message: `Are you sure you want to delete "${branch.name}"? This cannot be undone.`,
     cancel: true,
     persistent: true,
-  }).onOk(() => {
-    branches.value = branches.value.filter((b) => b.id !== branch.id)
-    $q.notify({ type: 'info', message: 'Branch deleted' })
+    ok: { label: 'Delete', color: 'negative', unelevated: true },
+  }).onOk(async () => {
+    try {
+      const { error } = await supabase.from('branches').delete().eq('id', branch.id)
+      if (error) throw error
+      $q.notify({ type: 'positive', message: 'Branch deleted' })
+      await fetchBranches()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err.message || 'Failed to delete branch' })
+    }
   })
 }
+
+onMounted(fetchBranches)
 </script>

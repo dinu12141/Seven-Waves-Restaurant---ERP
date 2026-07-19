@@ -11,7 +11,7 @@
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
           <div class="col-12 col-md-4">
-            <q-input dense outlined v-model="search" placeholder="Search users..." class="bg-white">
+            <q-input dense outlined v-model="search" placeholder="Search users...">
               <template v-slot:append>
                 <q-icon name="search" />
               </template>
@@ -40,6 +40,7 @@
         :filter="search"
         :loading="loading"
         flat
+        bordered
       >
         <template v-slot:body-cell-designation="props">
           <q-td :props="props">
@@ -567,7 +568,6 @@ const saveUser = async () => {
 
       // Assign role
       if (form.roleId && newUserId) {
-        console.log('[UsersPage] Assigning role:', form.roleId, 'to user:', newUserId)
         const { error: roleError } = await supabase.from('user_roles').insert({
           user_id: newUserId,
           role_id: form.roleId,

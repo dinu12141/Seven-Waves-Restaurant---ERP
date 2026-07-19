@@ -411,7 +411,12 @@ function sectionForPath(path) {
   if (path.startsWith('/finance')) return 'FINANCE'
   if (path.startsWith('/reports')) return 'REPORTS'
   if (path.startsWith('/hr')) return 'HR'
-  if (path.startsWith('/admin') || path.startsWith('/system') || path === '/profile')
+  if (
+    path.startsWith('/admin') ||
+    path.startsWith('/system') ||
+    path.startsWith('/devices') ||
+    path === '/profile'
+  )
     return 'SYSTEM'
   if (path.startsWith('/website-orders') || path.startsWith('/website')) return 'WEBSITE'
   if (

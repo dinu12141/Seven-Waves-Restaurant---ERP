@@ -122,6 +122,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     selectedTable.value = null
     tableNumber.value = null
     discount.value = 0
+    deliveryCharge.value = 0
     orderNumber.value = _generateOrderNumber()
     _loadedOrderId.value = null
     deliverySource.value = null
@@ -211,8 +212,10 @@ export const useOrderStore = defineStore('posOrder', () => {
 
       // ── Step 3: Rollback if items insert failed ───────────
       if (itemsError) {
-        // Best-effort delete of the orphaned order
-        await supabase.from('orders').delete().eq('id', order.id)
+        const { error: deleteErr } = await supabase.from('orders').delete().eq('id', order.id)
+        if (deleteErr) {
+          console.error(`[OrderStore] Orphaned order ${order.id} — rollback delete failed:`, deleteErr.message)
+        }
         throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
@@ -472,9 +475,9 @@ export const useOrderStore = defineStore('posOrder', () => {
       }
     }
 
-    // Set discount if any
+    // Set discount if any (2dp precision to avoid rounding-induced overcharge/undercharge)
     if (queueOrder.discount_amount && queueOrder.subtotal) {
-      discount.value = Math.round((queueOrder.discount_amount / queueOrder.subtotal) * 100)
+      discount.value = Math.round((queueOrder.discount_amount / queueOrder.subtotal) * 10000) / 100
     }
 
     // Load order items into cart

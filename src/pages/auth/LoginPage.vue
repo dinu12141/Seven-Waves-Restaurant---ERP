@@ -158,6 +158,13 @@
                 Sign In
               </template>
             </button>
+
+            <!-- Forgot Password (email mode only) -->
+            <div v-if="loginMode === 'email'" class="forgot-row">
+              <button type="button" class="forgot-link" @click="handleForgotPassword">
+                Forgot password?
+              </button>
+            </div>
           </q-form>
 
         </div>
@@ -211,9 +218,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'src/stores/auth'
+import { useQuasar } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const $q = useQuasar()
 
 const loginMode = ref('email') // 'email' or 'code'
 const email = ref('')
@@ -288,6 +298,21 @@ const handleLogin = async () => {
   } catch {
     errorMessage.value = 'An unexpected error occurred. Please try again.'
     loading.value = false
+  }
+}
+
+async function handleForgotPassword() {
+  if (!email.value) {
+    $q.notify({ type: 'warning', message: 'Enter your email address first, then click Forgot password.' })
+    return
+  }
+  const { error } = await supabase.auth.resetPasswordForEmail(email.value, {
+    redirectTo: `${window.location.origin}/auth/reset-password`,
+  })
+  if (error) {
+    $q.notify({ type: 'negative', message: error.message || 'Failed to send reset email.' })
+  } else {
+    $q.notify({ type: 'positive', message: 'Password reset link sent — check your email.' })
   }
 }
 </script>
@@ -575,6 +600,27 @@ const handleLogin = async () => {
 }
 .toggle-icon:hover {
   color: #1565c0;
+}
+
+/* Forgot password */
+.forgot-row {
+  text-align: right;
+  margin-top: -8px;
+}
+.forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1565c0;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.forgot-link:hover {
+  color: #0d47a1;
 }
 
 /* Code hint */

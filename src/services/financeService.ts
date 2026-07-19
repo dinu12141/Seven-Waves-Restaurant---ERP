@@ -29,11 +29,13 @@ interface AccountEntry { code: string; name: string; debit: number; credit: numb
 // ═══════════════════════════════════════════════════════════════════
 // CHART OF ACCOUNTS
 // ═══════════════════════════════════════════════════════════════════
-export async function fetchChartOfAccounts() {
-  const { data, error } = await supabase
+export async function fetchChartOfAccounts(companyId?: string) {
+  let query = supabase
     .from('chart_of_accounts')
     .select('*')
     .order('code')
+  if (companyId) query = query.eq('company_id', companyId)
+  const { data, error } = await query
   return { data, error }
 }
 

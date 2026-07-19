@@ -407,8 +407,14 @@ async function loadData() {
     if (currentFilters.value.branch) {
       query = query.eq('branch_id', currentFilters.value.branch)
     }
-    if (extraFilters.value.status) {
+
+    if (extraFilters.value.status === 'all') {
+      // Fetch all statuses
+    } else if (extraFilters.value.status) {
       query = query.eq('status', extraFilters.value.status)
+    } else {
+      // Default to 'Sales Only (Paid/Completed)'
+      query = query.in('status', ['paid', 'completed'])
     }
 
     // Security: non-admin users only see their own branch data

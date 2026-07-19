@@ -27,8 +27,8 @@ BEGIN
     SELECT COUNT(*) INTO v_total
     FROM customers c
     WHERE c.deleted_at IS NULL
+      AND (p_active IS NULL OR c.is_active = p_active)
       AND (p_search IS NULL OR p_search = '' OR c.first_name ILIKE '%' || p_search || '%' OR c.last_name ILIKE '%' || p_search || '%' OR c.email ILIKE '%' || p_search || '%' OR c.phone ILIKE '%' || p_search || '%');
-      -- (p_active filter is skipped because customers don't have an is_active flag in this schema, adjust if needed)
 
     -- Get paginated data
     SELECT COALESCE(jsonb_agg(
@@ -37,6 +37,9 @@ BEGIN
             'full_name', trim(c.first_name || ' ' || COALESCE(c.last_name, '')),
             'email', c.email,
             'phone', c.phone,
+            'is_active', COALESCE(c.is_active, true),
+            'total_orders', COALESCE(c.total_orders, 0),
+            'total_spent', COALESCE(c.total_spent, 0),
             'loyalty_id', l.id,
             'loyalty_card_no', l.loyalty_card_no,
             'loyalty_points', COALESCE(l.points_balance, COALESCE(l.current_coins, 0)),
@@ -47,6 +50,7 @@ BEGIN
     FROM (
         SELECT * FROM customers
         WHERE deleted_at IS NULL
+          AND (p_active IS NULL OR is_active = p_active)
           AND (p_search IS NULL OR p_search = '' OR first_name ILIKE '%' || p_search || '%' OR last_name ILIKE '%' || p_search || '%' OR email ILIKE '%' || p_search || '%' OR phone ILIKE '%' || p_search || '%')
         ORDER BY created_at DESC
         LIMIT p_limit
@@ -81,19 +85,27 @@ AS $$
 DECLARE
     v_customer RECORD;
     v_loyalty RECORD;
-    v_tier_name TEXT;
+    v_tier_name TEXT := 'bronze';
     v_orders JSONB;
+    v_loyalty_id UUID := NULL;
+    v_loyalty_card_no TEXT := NULL;
+    v_loyalty_points INT := 0;
 BEGIN
     SELECT * INTO v_customer FROM customers WHERE id = p_customer_id AND deleted_at IS NULL LIMIT 1;
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Customer not found');
     END IF;
 
-    SELECT * INTO v_loyalty FROM loyalty_accounts WHERE customer_id = v_customer.id;
-    IF v_loyalty.current_tier_id IS NOT NULL THEN
-        SELECT tier_code INTO v_tier_name FROM loyalty_tiers WHERE id = v_loyalty.current_tier_id;
-    ELSE
-        v_tier_name := COALESCE(v_loyalty.tier, 'bronze');
+    SELECT * INTO v_loyalty FROM loyalty_accounts WHERE customer_id = v_customer.id LIMIT 1;
+    IF FOUND THEN
+        v_loyalty_id := v_loyalty.id;
+        v_loyalty_card_no := COALESCE(v_loyalty.card_number, v_loyalty.loyalty_card_no);
+        v_loyalty_points := COALESCE(v_loyalty.points_balance, COALESCE(v_loyalty.current_coins, 0));
+        IF v_loyalty.current_tier_id IS NOT NULL THEN
+            SELECT tier_code INTO v_tier_name FROM loyalty_tiers WHERE id = v_loyalty.current_tier_id;
+        ELSE
+            v_tier_name := COALESCE(v_loyalty.tier, 'bronze');
+        END IF;
     END IF;
 
     -- Get recent orders
@@ -121,10 +133,14 @@ BEGIN
             'full_name', trim(v_customer.first_name || ' ' || COALESCE(v_customer.last_name, '')),
             'email', v_customer.email,
             'phone', v_customer.phone,
+            'national_id', v_customer.national_id,
+            'is_active', COALESCE(v_customer.is_active, true),
+            'total_orders', COALESCE(v_customer.total_orders, 0),
+            'total_spent', COALESCE(v_customer.total_spent, 0),
             'created_at', v_customer.created_at,
-            'loyalty_id', v_loyalty.id,
-            'loyalty_card_no', v_loyalty.loyalty_card_no,
-            'loyalty_points', COALESCE(v_loyalty.points_balance, COALESCE(v_loyalty.current_coins, 0)),
+            'loyalty_id', v_loyalty_id,
+            'loyalty_card_no', v_loyalty_card_no,
+            'loyalty_points', v_loyalty_points,
             'loyalty_tier', COALESCE(v_tier_name, 'bronze')
         ),
         'orders', v_orders,

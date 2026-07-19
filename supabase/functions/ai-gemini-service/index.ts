@@ -36,6 +36,9 @@ const ACTION_PERMISSIONS = {
   anomaly_detection: 'ai.security',
   report_assistant: 'ai.view',
   chat_assistant: 'ai.view',
+  system_audit: 'ai.generate',
+  eod_report: 'ai.generate',
+  department_audit: 'ai.generate',
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -260,6 +263,137 @@ async function fetchContextData(supabase, action, branchId, params) {
         current_module: params.module_context || 'general',
       }
 
+    case 'system_audit': {
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select('id, status, payment_status, total_amount, order_type, created_at, customer_id, customer_name, customer_phone, table_id')
+        .eq('branch_id', branchId)
+        .gte('created_at', params.date_from || todayISO)
+        .lte('created_at', params.date_to ? params.date_to + 'T23:59:59Z' : new Date().toISOString())
+        .limit(200)
+
+      const { data: fqData } = await supabase
+        .from('finance_queue')
+        .select('order_id, status')
+        .eq('branch_id', branchId)
+        .in('status', ['pending', 'reserved', 'failed'])
+        .limit(100)
+
+      const { data: kotData } = await supabase
+        .from('kot_tickets')
+        .select('id, status, created_at, completed_at, order_id')
+        .gte('created_at', params.date_from || todayISO)
+        .limit(100)
+
+      const { data: invoiceData } = await supabase
+        .from('invoices')
+        .select('id, order_id, total, payment_status, paid_amount, balance')
+        .eq('branch_id', branchId)
+        .gte('created_at', params.date_from || todayISO)
+        .limit(100)
+
+      let attendanceData = [], shiftsData = [], leaveData = []
+      try {
+        const { data: att } = await supabase.from('attendance_logs')
+          .select('employee_id, check_in, check_out, status')
+          .eq('branch_id', branchId)
+          .gte('check_in', params.date_from || todayISO)
+          .limit(100)
+        attendanceData = att || []
+      } catch {}
+
+      try {
+        const { data: sh } = await supabase.from('shifts')
+          .select('employee_id, shift_date, start_time, end_time, status')
+          .eq('branch_id', branchId)
+          .eq('shift_date', params.date_from?.split('T')[0] || new Date().toISOString().split('T')[0])
+          .limit(50)
+        shiftsData = sh || []
+      } catch {}
+
+      try {
+        const { data: lv } = await supabase.from('leave_requests')
+          .select('employee_id, leave_date, status, leave_type')
+          .eq('branch_id', branchId)
+          .eq('status', 'approved')
+          .gte('leave_date', params.date_from?.split('T')[0] || new Date().toISOString().split('T')[0])
+          .limit(50)
+        leaveData = lv || []
+      } catch {}
+
+      const orders = ordersData || []
+      const paidOrders = orders.filter(o => o.status === 'paid' || o.status === 'completed')
+      const voidOrders = orders.filter(o => o.status === 'void' || o.status === 'cancelled')
+      const invoices = invoiceData || []
+      const kots = kotData || []
+      const customerOrders = orders
+
+      const unpostedOrders = paidOrders.filter(o =>
+        !(fqData || []).some(fq => fq.order_id === o.id && fq.status === 'posted')
+      )
+      const invoicesMismatch = invoices.filter(i => Math.abs(Number(i.balance || 0)) > 1)
+      const kotCompletionRate = kots.length > 0
+        ? (kots.filter(k => k.completed_at).length / kots.length * 100).toFixed(1)
+        : 100
+
+      return {
+        audit_date: params.date_from?.split('T')[0] || new Date().toISOString().split('T')[0],
+        branch_id: branchId,
+        finance: {
+          total_paid_orders: paidOrders.length,
+          total_void_orders: voidOrders.length,
+          unposted_to_finance: unpostedOrders.length,
+          unposted_value: unpostedOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0),
+          invoice_balance_mismatches: invoicesMismatch.length,
+          total_revenue: paidOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0),
+        },
+        operations: {
+          total_kots: kots.length,
+          kots_completed: kots.filter(k => k.completed_at).length,
+          kot_completion_rate_pct: kotCompletionRate,
+          orders_without_kot: paidOrders.filter(o => !kots.some(k => k.order_id === o.id)).length,
+          order_types: {
+            dine_in: orders.filter(o => o.order_type === 'dine_in').length,
+            takeaway: orders.filter(o => o.order_type === 'takeaway').length,
+            delivery: orders.filter(o => o.order_type === 'delivery').length,
+          },
+        },
+        hr: {
+          scheduled_staff: shiftsData.length,
+          present_staff: attendanceData.filter(a => a.check_in).length,
+          absent_staff: Math.max(0, shiftsData.length - attendanceData.filter(a => a.check_in).length - leaveData.length),
+          on_leave: leaveData.length,
+          no_checkout: attendanceData.filter(a => a.check_in && !a.check_out).length,
+        },
+        crm: {
+          total_customer_orders: customerOrders.length,
+          orders_with_customer: customerOrders.filter(o => o.customer_id || o.customer_name).length,
+          orders_without_customer: customerOrders.filter(o => !o.customer_id && !o.customer_name).length,
+        },
+      }
+    }
+
+    case 'eod_report': {
+      const { data: reportData, error: reportError } = await supabase
+        .rpc('generate_daily_report', {
+          p_branch_id: branchId,
+          p_date: params.report_date || new Date().toISOString().split('T')[0],
+          p_report_type: params.report_type || 'end_of_day',
+          p_user_id: params.user_id || null,
+        })
+
+      if (reportError) {
+        return { branch_id: branchId, error: reportError.message, raw_data: {} }
+      }
+
+      return {
+        report_id: reportData?.report_id,
+        report_date: params.report_date,
+        raw_numbers: reportData?.summary || {},
+        department_checks: reportData?.department_checks || [],
+      }
+    }
+
     default:
       return { branch_name: branchId || 'All' }
   }
@@ -289,6 +423,14 @@ function buildPrompt(action, contextData, params) {
     report_assistant: {
       system: `You are a report assistant. Summarize pre-fetched data. Never fabricate data points. ${SAFETY}`,
       user: `Question: "${contextData.message}"\n\nRespond with: {"summary":"string","key_metrics":[{"label":"string","value":"string","trend":"up|down|stable"}],"confidence_score":0.0-1.0}`,
+    },
+    system_audit: {
+      system: `You are the Seven Waves ERP AI System Auditor. Perform a thorough department-wise audit of restaurant operations. Be specific, factual, and actionable. Flag real issues clearly. Use neutral language for anomalies. ${SAFETY}`,
+      user: `Audit this restaurant system data and generate a comprehensive department-wise report:\n${JSON.stringify(contextData)}\n\nRespond with this exact JSON:\n{"overall_health":"good|warning|critical","overall_score":0,"summary":"2-3 sentence executive summary","departments":[{"name":"Finance|Operations|HR|CRM","status":"pass|warning|fail","score":0,"findings":[{"severity":"critical|high|medium|low|info","title":"Finding title","detail":"Specific detail with numbers","action":"Recommended action"}]}],"top_actions":["Action 1","Action 2","Action 3"],"commendations":["What went well today"]}`,
+    },
+    eod_report: {
+      system: `You are the Seven Waves Restaurant ERP daily report AI. Write a clear, concise End of Day report narrative. Be specific about numbers. Highlight issues. Celebrate wins. ${SAFETY}`,
+      user: `Generate an End of Day narrative report from this data:\n${JSON.stringify(contextData)}\n\nRespond with:\n{"narrative_summary":"3-4 paragraph EOD summary","key_wins":["Win 1","Win 2"],"issues_to_address":["Issue 1 with specific numbers","Issue 2"],"tomorrow_focus":["Priority for tomorrow 1","Priority 2"],"performance_rating":"excellent|good|average|needs_improvement","department_comments":{"finance":"Finance specific comment","operations":"Operations comment","hr":"HR comment"}}`,
     },
   }
 
@@ -336,6 +478,35 @@ async function storeAiResults(supabase, action, data, branchId) {
         })
       }
     }
+
+    if (action === 'system_audit' && Array.isArray(data.departments)) {
+      for (const dept of data.departments) {
+        for (const finding of (dept.findings || [])) {
+          await supabase.from('ai_insights').insert({
+            branch_id: branchId || null,
+            module: dept.name.toLowerCase(),
+            insight_type: 'system_audit',
+            title: finding.title,
+            summary: finding.detail,
+            recommendation: finding.action,
+            severity: finding.severity || 'info',
+            confidence_score: 0.85,
+            model_name: GEMINI_MODEL,
+            prompt_version: 'v2',
+            status: 'new',
+          })
+        }
+      }
+    }
+
+    if (action === 'eod_report' && data.narrative_summary && contextData?.report_id) {
+      await supabase.from('ai_daily_reports').update({
+        ai_summary: data.narrative_summary,
+        ai_recommendations: JSON.stringify(data.issues_to_address || []),
+        ai_flags: JSON.stringify(data.key_wins || []),
+        updated_at: new Date().toISOString(),
+      }).eq('id', contextData.report_id)
+    }
   } catch (err) {
     console.error('[ai-gemini-service] Failed to store results:', err)
   }
@@ -375,6 +546,9 @@ function getModuleForAction(action) {
     anomaly_detection: 'security',
     report_assistant: 'operations',
     chat_assistant: 'operations',
+    system_audit: 'operations',
+    eod_report: 'operations',
+    department_audit: 'operations',
   }
   return map[action] || 'operations'
 }

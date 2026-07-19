@@ -450,13 +450,7 @@ watch(
   () => [props.modelValue, props.orderId],
   ([open, id]) => {
     if (open && id) {
-      // Check for tab hint from parent
-      if (window.__orderDetailTab) {
-        activeTab.value = window.__orderDetailTab
-        window.__orderDetailTab = null
-      } else {
-        activeTab.value = props.defaultTab || 'details'
-      }
+      activeTab.value = props.defaultTab || 'details'
       fetchOrderDetails(id)
     }
   },

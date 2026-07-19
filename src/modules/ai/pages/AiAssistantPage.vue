@@ -32,7 +32,9 @@
 
         <q-card flat bordered class="context-card q-mb-md">
           <q-card-section>
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">💡 Example Questions</div>
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">
+              <q-icon name="lightbulb" size="18px" color="amber" class="q-mr-xs" />Example Questions
+            </div>
             <q-list dense>
               <q-item v-for="q in exampleQuestions" :key="q" clickable v-ripple class="rounded-borders" @click="askQuestion(q)">
                 <q-item-section avatar><q-icon name="chat_bubble_outline" size="xs" color="primary" /></q-item-section>
@@ -44,7 +46,9 @@
 
         <q-card flat bordered class="context-card">
           <q-card-section>
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">⚠️ Limitations</div>
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">
+              <q-icon name="warning" size="18px" color="warning" class="q-mr-xs" />Limitations
+            </div>
             <q-list dense class="text-caption text-grey-5">
               <q-item v-for="l in limitations" :key="l" dense>
                 <q-item-section avatar><q-icon name="block" size="xs" color="negative" /></q-item-section>

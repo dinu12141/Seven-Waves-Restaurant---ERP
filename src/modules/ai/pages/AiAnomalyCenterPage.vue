@@ -14,11 +14,24 @@
             label="Run Anomaly Scan"
             unelevated
             :loading="aiStore.loading.anomalies"
+            :disable="aiStore.isAiUnavailable"
             @click="runScan"
           />
         </PermissionGate>
       </template>
     </PageHeader>
+
+    <!-- AI Unavailable Banner -->
+    <q-banner
+      v-if="aiStore.isAiUnavailable"
+      dense
+      class="q-mb-md bg-warning text-dark"
+      rounded
+    >
+      <template #avatar><q-icon name="warning" /></template>
+      AI features require a Gemini API key configured in the Edge Function secrets.
+      Contact your system administrator to enable AI capabilities.
+    </q-banner>
 
     <!-- Safety notice -->
     <q-banner dense class="ai-disclaimer q-mb-md" rounded>
@@ -71,10 +84,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAiStore } from '../stores/ai.store'
 import { useAuthStore } from 'src/stores/auth'
+import { supabase } from 'src/boot/supabase'
 import PageHeader from 'components/common/PageHeader.vue'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import AiAnomalyTable from '../components/AiAnomalyTable.vue'
@@ -113,9 +127,25 @@ const filteredAnomalies = computed(() => {
   return data
 })
 
-onMounted(loadData)
+let realtimeChannel = null
+
+onMounted(() => {
+  loadData()
+  // Subscribe to new anomaly events in realtime
+  realtimeChannel = supabase
+    .channel('ai-anomaly-events-rt')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ai_anomaly_events' }, () => {
+      loadData()
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
+})
 
 async function loadData() {
+  if (!branchId.value) return
   await aiStore.loadAnomalies(branchId.value, {
     severity: severityFilter.value,
     status: statusFilter.value,
@@ -123,6 +153,7 @@ async function loadData() {
 }
 
 async function runScan() {
+  if (!branchId.value) return
   const result = await aiStore.runAnomalyDetection(branchId.value)
   if (result.success) {
     $q.notify({ type: 'positive', message: 'Anomaly scan completed.' })
@@ -142,7 +173,7 @@ async function handleReview(anomalyId, status) {
 .ai-disclaimer {
   background: rgba(255, 165, 0, 0.06);
   border: 1px solid rgba(255, 165, 0, 0.15);
-  color: #d1d5db;
+  color: var(--erp-text-secondary);
   font-size: 13px;
 }
 </style>

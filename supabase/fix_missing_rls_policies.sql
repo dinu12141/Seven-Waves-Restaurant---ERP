@@ -68,8 +68,9 @@ CREATE POLICY comp_self_read ON public.companies FOR SELECT
 
 ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS br_admin     ON public.branches;
-DROP POLICY IF EXISTS br_staff_read ON public.branches;
+DROP POLICY IF EXISTS br_admin        ON public.branches;
+DROP POLICY IF EXISTS br_staff_read   ON public.branches;
+DROP POLICY IF EXISTS br_manager_read ON public.branches;
 
 -- Admin full control
 CREATE POLICY br_admin ON public.branches FOR ALL
@@ -469,6 +470,7 @@ CREATE POLICY fp_finance ON public.fiscal_periods FOR SELECT
 DROP POLICY IF EXISTS fin_bank_accounts_auth ON public.bank_accounts;
 DROP POLICY IF EXISTS ba_admin   ON public.bank_accounts;
 DROP POLICY IF EXISTS ba_finance ON public.bank_accounts;
+DROP POLICY IF EXISTS ba_manager ON public.bank_accounts;
 
 CREATE POLICY ba_admin ON public.bank_accounts FOR ALL
   USING  (is_admin())
@@ -805,6 +807,8 @@ DO $$ BEGIN
     EXECUTE $dp$ DROP POLICY IF EXISTS "uom_conversions_insert" ON public.uom_conversions $dp$;
     EXECUTE $dp$ DROP POLICY IF EXISTS "uom_conversions_update" ON public.uom_conversions $dp$;
     EXECUTE $dp$ DROP POLICY IF EXISTS "uom_conversions_delete" ON public.uom_conversions $dp$;
+    EXECUTE $dp$ DROP POLICY IF EXISTS uom_admin ON public.uom_conversions $dp$;
+    EXECUTE $dp$ DROP POLICY IF EXISTS uom_read  ON public.uom_conversions $dp$;
 
     EXECUTE $pol$
       CREATE POLICY uom_admin ON public.uom_conversions FOR ALL
@@ -839,6 +843,10 @@ BEGIN
       EXECUTE format($dp$ DROP POLICY IF EXISTS "Service role can insert %s" ON public.%I $dp$, t, t);
       EXECUTE format($dp$ DROP POLICY IF EXISTS "Users can update %s status" ON public.%I $dp$, t, t);
       EXECUTE format($dp$ DROP POLICY IF EXISTS "Users can update %s" ON public.%I $dp$, t, t);
+      -- Drop previously created policies (for idempotency)
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_admin',          t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_staff_read',     t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_service_insert', t);
 
       -- Admin/manager full access
       EXECUTE format(
@@ -870,6 +878,8 @@ DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='ai_prompt_logs') THEN
     EXECUTE $dp$ DROP POLICY IF EXISTS "Users can view ai_prompt_logs" ON public.ai_prompt_logs $dp$;
     EXECUTE $dp$ DROP POLICY IF EXISTS "Service role can insert ai_prompt_logs" ON public.ai_prompt_logs $dp$;
+    EXECUTE $dp$ DROP POLICY IF EXISTS ai_prompt_logs_admin ON public.ai_prompt_logs $dp$;
+    EXECUTE $dp$ DROP POLICY IF EXISTS ai_prompt_logs_service_insert ON public.ai_prompt_logs $dp$;
 
     EXECUTE $pol$
       CREATE POLICY ai_prompt_logs_admin ON public.ai_prompt_logs FOR SELECT

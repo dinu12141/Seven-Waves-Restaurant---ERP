@@ -127,10 +127,21 @@ async function handleAddDevice() {
   saving.value = true
   try {
     const authStore = (await import('src/stores/auth')).useAuthStore()
+    
+    // Robustly fetch company_id
+    let companyId = authStore.user?.company_id || authStore.currentBranch?.company_id
+    if (!companyId) {
+      const { api } = await import('src/core/api/ApiClient')
+      const { data } = await api.query(c => c.from('user_branches').select('company_id').eq('user_id', authStore.user?.id).limit(1).single())
+      companyId = data?.company_id
+    }
+
+    if (!companyId) throw new Error("Could not determine your company ID.")
+
     await deviceStore.addDevice({
       ...newDevice.value,
       branch_id: branchId.value,
-      company_id: authStore.user?.company_id,
+      company_id: companyId,
     })
     showAddDialog.value = false
     $q.notify({ type: 'positive', message: 'Device added successfully' })

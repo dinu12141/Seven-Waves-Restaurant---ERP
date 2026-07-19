@@ -34,7 +34,7 @@
         </div>
 
         <!-- Messages -->
-        <div v-for="(msg, idx) in messages" :key="idx" class="chat-message q-mb-md" :class="msg.role">
+        <div v-for="msg in messages" :key="msg.timestamp + msg.role" class="chat-message q-mb-md" :class="msg.role">
           <div class="message-bubble" :class="msg.role">
             <div class="text-body2" style="white-space: pre-wrap;">{{ msg.content }}</div>
             <div v-if="msg.metadata?.suggestions" class="q-mt-sm">

@@ -11,7 +11,7 @@
     <div class="q-mt-lg">
       <div class="row items-center q-mb-md">
         <q-icon name="extension" size="28px" color="primary" class="q-mr-sm" />
-        <div class="text-h6 text-dark">Module Configuration</div>
+        <div class="text-h6">Module Configuration</div>
         <q-space />
         <q-badge v-if="hasUnsavedChanges" color="warning" label="Unsaved changes" class="q-mr-md" />
         <q-btn
@@ -46,7 +46,7 @@
                 class="q-mr-md"
               />
               <div class="col">
-                <div class="text-subtitle1 text-weight-bold text-dark">{{ mod.name }}</div>
+                <div class="text-subtitle1 text-weight-bold">{{ mod.name }}</div>
                 <div class="text-caption text-grey-5 q-mt-xs">{{ mod.description }}</div>
               </div>
             </q-card-section>

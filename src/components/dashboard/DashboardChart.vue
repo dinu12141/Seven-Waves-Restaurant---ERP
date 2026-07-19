@@ -17,6 +17,7 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
+import apexchart from 'vue3-apexcharts'
 
 const $q = useQuasar()
 const isMounted = ref(false)

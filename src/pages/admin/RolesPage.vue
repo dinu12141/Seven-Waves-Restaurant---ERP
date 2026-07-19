@@ -14,7 +14,7 @@
           <q-icon name="grid_view" size="22px" color="primary" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">Access Control Overview</div>
           <q-space />
-          <q-badge v-if="!matrixDirty" color="blue-1" text-color="blue-9" class="q-pa-xs q-mr-sm">
+          <q-badge v-if="!matrixDirty" color="primary" outline class="q-pa-xs q-mr-sm">
             <q-icon name="info" size="12px" class="q-mr-xs" />
             Click any cell to toggle access
           </q-badge>
@@ -93,7 +93,6 @@
               outlined
               v-model="search"
               placeholder="Search users..."
-              class="bg-white"
               clearable
             >
               <template v-slot:append>
@@ -249,7 +248,7 @@
                 <q-icon name="grid_view" size="20px" color="primary" class="q-mr-sm" />
                 <div class="text-subtitle2 text-weight-bold">Feature Access Matrix</div>
                 <q-space />
-                <q-badge color="blue-1" text-color="blue-9" class="q-pa-xs">
+                <q-badge color="primary" outline class="q-pa-xs">
                   {{ form.permissionCodes.length }} permissions enabled
                 </q-badge>
               </div>
@@ -859,12 +858,12 @@ const saveUserAccess = async () => {
 }
 
 .acm-icon-allow {
-  color: #16a34a;
+  color: var(--erp-success, #16a34a);
   transition: transform 0.1s;
 }
 
 .acm-icon-deny {
-  color: #dc2626;
+  color: var(--erp-danger, #dc2626);
   opacity: 0.65;
   transition: transform 0.1s, opacity 0.1s;
 }

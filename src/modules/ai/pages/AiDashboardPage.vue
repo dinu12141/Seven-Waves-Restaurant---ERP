@@ -14,11 +14,24 @@
             label="Run AI Scan"
             unelevated
             :loading="aiStore.isGenerating"
+            :disable="aiStore.isAiUnavailable"
             @click="handleFullScan"
           />
         </PermissionGate>
       </template>
     </PageHeader>
+
+    <!-- AI Unavailable Banner -->
+    <q-banner
+      v-if="aiStore.isAiUnavailable"
+      dense
+      class="q-mb-md bg-warning text-dark"
+      rounded
+    >
+      <template #avatar><q-icon name="warning" /></template>
+      AI features require a Gemini API key configured in the Edge Function secrets.
+      Contact your system administrator to enable AI capabilities.
+    </q-banner>
 
     <!-- AI Safety Notice -->
     <q-banner dense class="ai-disclaimer q-mb-md" rounded>
@@ -87,7 +100,7 @@
           />
         </div>
 
-        <q-card v-else flat bordered class="text-center q-pa-xl text-grey-6" style="border-radius: 12px; background: rgba(255,255,255,0.03);">
+        <q-card v-else flat bordered class="text-center q-pa-xl text-grey-6 ai-empty-card">
           <q-icon name="auto_awesome" size="48px" class="q-mb-sm" />
           <div>Run an AI scan to generate insights.</div>
         </q-card>
@@ -103,7 +116,7 @@
         />
 
         <!-- Quick Navigation -->
-        <q-card flat bordered class="q-pa-md" style="border-radius: 12px; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08);">
+        <q-card flat bordered class="q-pa-md ai-modules-card">
           <div class="text-subtitle2 text-weight-bold q-mb-sm">AI Modules</div>
           <q-list dense>
             <q-item clickable v-ripple to="/ai/forecasts" class="rounded-borders">
@@ -147,7 +160,7 @@ const branchId = computed(() => authStore.currentBranch?.id)
 const userId = computed(() => authStore.user?.id)
 
 onMounted(() => {
-  aiStore.loadDashboard(branchId.value)
+  if (branchId.value) aiStore.loadDashboard(branchId.value)
 })
 
 async function handleFullScan() {
@@ -196,15 +209,27 @@ function formatDate(val) {
 .ai-disclaimer {
   background: rgba(255, 165, 0, 0.06);
   border: 1px solid rgba(255, 165, 0, 0.15);
-  color: #d1d5db;
+  color: var(--erp-text-secondary);
   font-size: 13px;
 }
 
 .kpi-card {
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--erp-bg-card);
+  border-color: var(--erp-border);
   transition: transform 0.2s;
   &:hover { transform: translateY(-2px); }
+}
+
+.ai-empty-card {
+  border-radius: 12px;
+  background: var(--erp-bg-card);
+  border-color: var(--erp-border);
+}
+
+.ai-modules-card {
+  border-radius: 12px;
+  background: var(--erp-bg-card);
+  border-color: var(--erp-border);
 }
 </style>

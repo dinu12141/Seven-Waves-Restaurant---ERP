@@ -187,7 +187,7 @@
     </div>
 
     <!-- Order Details Dialog -->
-    <OrderDetailDialog v-model="detailsOpen" :order-id="selectedOrderId" />
+    <OrderDetailDialog v-model="detailsOpen" :order-id="selectedOrderId" :default-tab="detailsInitialTab" />
   </q-page>
 </template>
 
@@ -201,6 +201,7 @@ import { getRoleRestrictions } from 'src/config/roles'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import OrderKanbanCard from 'src/components/orders/OrderKanbanCard.vue'
 import OrderDetailDialog from 'src/components/orders/OrderDetailDialog.vue'
+import { supabase } from 'src/boot/supabase'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 
 const $q = useQuasar()
@@ -321,6 +322,7 @@ const kitchenOptions = computed(() => [
 ])
 const detailsOpen = ref(false)
 const selectedOrderId = ref(null)
+const detailsInitialTab = ref('details')
 
 const branchOptions = computed(() => {
   const branches = authStore.branches.map((b) => b.branches?.name).filter(Boolean)
@@ -475,36 +477,30 @@ const displayColumns = computed(() => {
 
 // --- Actions ---
 function viewOrder(order) {
+  detailsInitialTab.value = 'details'
   selectedOrderId.value = order.id
   detailsOpen.value = true
 }
 
 function viewOrderKot(order) {
+  detailsInitialTab.value = 'kot'
   selectedOrderId.value = order.id
   detailsOpen.value = true
-  // The dialog will open on 'details' tab — we pass a nextTick hint
-  // Use a small delay so the dialog opens first, then switch tab
-  setTimeout(() => {
-    const dlg = document.querySelector('.order-detail-fullscreen')
-    if (dlg) {
-      // Dispatch custom event to switch tab
-      window.__orderDetailTab = 'kot'
-    }
-  }, 100)
 }
 
 function viewOrderInvoice(order) {
+  detailsInitialTab.value = 'invoice'
   selectedOrderId.value = order.id
   detailsOpen.value = true
-  setTimeout(() => {
-    window.__orderDetailTab = 'invoice'
-  }, 100)
 }
 
 async function advanceOrder(order) {
   try {
     if (['pending', 'pending_waiter'].includes(order.status)) {
-      await orderStore.updateOrderStatus(order.id, 'accepted')
+      // Must use process_waiter_accept RPC — plain status UPDATE skips KOT generation triggers
+      const { data, error } = await supabase.rpc('process_waiter_accept', { p_order_id: order.id })
+      if (error) throw new Error(error.message)
+      if (!data?.success) throw new Error(data?.error || 'Accept failed')
       $q.notify({ type: 'positive', message: 'Order accepted' })
     } else if (order.status === 'accepted') {
       await orderStore.updateOrderStatus(order.id, 'preparing')

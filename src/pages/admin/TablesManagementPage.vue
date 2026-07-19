@@ -688,10 +688,7 @@ const regeneratingQr = ref(false)
 const QR_OVERRIDE_KEY = 'sw_qr_base_url'
 const qrBaseUrlOverride = ref(localStorage.getItem(QR_OVERRIDE_KEY) || '')
 const isLocalhostUrl = computed(() => {
-  // Always show banner if an override exists so the user can easily clear it
-  if (qrBaseUrlOverride.value) return true
-  const origin = window.location.origin
-  return origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.')
+  return qrUrl.value.includes('localhost') || qrUrl.value.includes('127.0.0.1')
 })
 
 function applyQrUrlOverride() {
@@ -958,7 +955,13 @@ function getAppBaseUrl() {
     return import.meta.env.VITE_APP_PUBLIC_URL.replace(/\/$/, '')
 
   // 3. Runtime fallback — uses whatever domain the app is currently running on
-  return window.location.origin
+  let fallback = window.location.origin
+  if (fallback.includes('localhost') || fallback.includes('127.0.0.1')) {
+    // Injecting the known local IP directly for immediate HMR update
+    const knownLocalIp = import.meta.env.VITE_LOCAL_IP || '192.168.1.31'
+    fallback = `http://${knownLocalIp}:${window.location.port || '9000'}`
+  }
+  return fallback
 }
 
 async function viewQR(table) {

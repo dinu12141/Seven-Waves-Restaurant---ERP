@@ -20,6 +20,11 @@ import {
   reviewRecommendation,
   reviewAnomaly,
   getAiDashboardSummary,
+  runSystemAudit,
+  generateEodReport,
+  fetchDailyReports,
+  fetchDailyReportById,
+  fetchDailyReportByDate,
 } from '../services/ai.service'
 
 export const useAiStore = defineStore('ai', () => {
@@ -28,6 +33,11 @@ export const useAiStore = defineStore('ai', () => {
   const recommendations = ref([])
   const anomalies = ref([])
   const forecasts = ref([])
+  const systemAudits = ref([])
+  const dailyReports = ref([])
+  const currentReport = ref(null)
+  const auditChecks = ref([])
+  const systemAuditResult = ref(null)
   const chatMessages = ref([])
   const chatLoaded = ref(false) // prevents double-loading
   const dashboardSummary = ref({
@@ -44,9 +54,14 @@ export const useAiStore = defineStore('ai', () => {
     chat: false,
     dashboard: false,
     generating: false,
+    audit: false,
+    systemAudit: false,
+    eodReport: false,
+    reports: false,
   })
 
   const lastScanAt = ref(null)
+  const aiServiceError = ref(null) // set when Edge Function is unreachable or unconfigured
 
   // ── Computed ─────────────────────────────────────────────────────────────
   const criticalInsights = computed(() =>
@@ -62,6 +77,27 @@ export const useAiStore = defineStore('ai', () => {
   )
 
   const isGenerating = computed(() => loading.value.generating)
+
+  const isAiUnavailable = computed(() => !!aiServiceError.value)
+
+  function _setServiceError(result) {
+    if (!result?.success && result?.error) {
+      const msg = result.error.toLowerCase()
+      if (
+        msg.includes('unavailable') ||
+        msg.includes('gemini_api_key') ||
+        msg.includes('missing') ||
+        msg.includes('edge function') ||
+        msg.includes('function not found') ||
+        msg.includes('failed to reach') ||
+        msg.includes('500') ||
+        msg.includes('network') ||
+        msg.includes('relay error')
+      ) {
+        aiServiceError.value = result.error
+      }
+    }
+  }
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -88,9 +124,10 @@ export const useAiStore = defineStore('ai', () => {
     loading.value.generating = true
     try {
       const result = await generateExecutiveInsights(branchId, dateRange)
+      _setServiceError(result)
       if (result.success) {
         lastScanAt.value = new Date().toISOString()
-        // Reload data after scan
+        aiServiceError.value = null
         await loadDashboard(branchId)
       }
       return result
@@ -134,7 +171,9 @@ export const useAiStore = defineStore('ai', () => {
     loading.value.anomalies = true
     try {
       const result = await detectAnomalies(branchId, dateRange)
+      _setServiceError(result)
       if (result.success) {
+        aiServiceError.value = null
         await loadAnomalies(branchId)
       }
       return result
@@ -236,7 +275,7 @@ export const useAiStore = defineStore('ai', () => {
     try {
       const result = await sendChatMessage(
         message,
-        chatMessages.value,
+        chatMessages.value.slice(0, -1), // exclude the just-pushed user message to avoid duplication
         branchId,
         moduleContext
       )
@@ -267,21 +306,117 @@ export const useAiStore = defineStore('ai', () => {
     try { localStorage.removeItem(_chatKey()) } catch { /* ignore */ }
   }
 
+  // ── System Audit ─────────────────────────────────────────────────────────
+
+  async function loadSystemAudits(limit = 30) {
+    loading.value.audit = true
+    try {
+      const data = await fetchDailyReports(null, { limit })
+      systemAudits.value = data
+    } finally {
+      loading.value.audit = false
+    }
+  }
+
+  async function generateSystemAudit(branchId, dateFrom, dateTo) {
+    loading.value.generating = true
+    try {
+      const result = await runSystemAudit(branchId, dateFrom, dateTo)
+      _setServiceError(result)
+      if (result.success) {
+        aiServiceError.value = null
+        systemAuditResult.value = result.data
+        await loadDashboard(branchId)
+      }
+      return result
+    } finally {
+      loading.value.generating = false
+    }
+  }
+
+  async function runSystemAuditAction(branchId, dateFrom, dateTo) {
+    loading.value.systemAudit = true
+    try {
+      const result = await runSystemAudit(branchId, dateFrom, dateTo)
+      _setServiceError(result)
+      if (result.success) {
+        aiServiceError.value = null
+        systemAuditResult.value = result.data
+        await loadDashboard(branchId)
+      }
+      return result
+    } finally {
+      loading.value.systemAudit = false
+    }
+  }
+
+  async function generateEodReportAction(branchId, reportDate, userId) {
+    loading.value.eodReport = true
+    try {
+      const result = await generateEodReport(branchId, reportDate, userId)
+      _setServiceError(result)
+      if (result.success) {
+        aiServiceError.value = null
+        await loadDailyReports(branchId)
+      }
+      return result
+    } finally {
+      loading.value.eodReport = false
+    }
+  }
+
+  async function loadDailyReports(branchId, filters = {}) {
+    loading.value.reports = true
+    try {
+      const data = await fetchDailyReports(branchId, filters)
+      dailyReports.value = data
+      return data
+    } finally {
+      loading.value.reports = false
+    }
+  }
+
+  async function loadReportDetail(reportId) {
+    const data = await fetchDailyReportById(reportId)
+    if (data) {
+      currentReport.value = data
+      auditChecks.value = data.ai_audit_checks || []
+    }
+    return data
+  }
+
+  async function loadTodayReport(branchId) {
+    const today = new Date().toISOString().split('T')[0]
+    const data = await fetchDailyReportByDate(branchId, today)
+    if (data) {
+      currentReport.value = data
+      auditChecks.value = data.ai_audit_checks || []
+    }
+    return data
+  }
+
   return {
     // State
     insights,
     recommendations,
     anomalies,
     forecasts,
+    systemAudits,
+    dailyReports,
+    currentReport,
+    auditChecks,
+    systemAuditResult,
     chatMessages,
     dashboardSummary,
     loading,
     lastScanAt,
+    aiServiceError,
     // Computed
     criticalInsights,
     pendingRecommendations,
     openAnomalies,
     isGenerating,
+    isAiUnavailable,
     // Actions
     loadDashboard,
     runFullScan,
@@ -297,5 +432,12 @@ export const useAiStore = defineStore('ai', () => {
     loadChatHistory,
     sendMessage,
     clearChat,
+    loadSystemAudits,
+    generateSystemAudit,
+    runSystemAuditAction,
+    generateEodReportAction,
+    loadDailyReports,
+    loadReportDetail,
+    loadTodayReport,
   }
 })

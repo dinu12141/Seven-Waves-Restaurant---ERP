@@ -311,7 +311,7 @@ const authStore = useAuthStore()
 
 const filtersOpen = ref(false)
 const advancedOpen = ref(false)
-const activePreset = ref('Last 30 Days')
+const activePreset = ref('Today')
 const appliedFilters = ref(null)
 
 const today = new Date()
@@ -320,7 +320,7 @@ const thirtyDaysAgo = new Date(today)
 thirtyDaysAgo.setDate(today.getDate() - 30)
 
 const filters = ref({
-  dateFrom: thirtyDaysAgo.toISOString().slice(0, 10),
+  dateFrom: today.toISOString().slice(0, 10),
   dateTo: today.toISOString().slice(0, 10),
   branch: null,
 })

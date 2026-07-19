@@ -26,6 +26,8 @@
 -- If > 0, clean those up or convert to complimentary before applying.
 
 ALTER TABLE public.payments
+  DROP CONSTRAINT IF EXISTS chk_payment_amount_positive;
+ALTER TABLE public.payments
   ADD CONSTRAINT chk_payment_amount_positive
   CHECK (amount > 0);
 
@@ -44,6 +46,8 @@ ALTER TABLE public.payments
 -- Guard against negative discount (discount_amount is the absolute value, not %)
 -- The frontend computes: discount_amount = subtotal * (discount_pct / 100)
 -- We add 1 cent tolerance for floating-point rounding
+ALTER TABLE public.orders
+  DROP CONSTRAINT IF EXISTS chk_discount_non_negative;
 ALTER TABLE public.orders
   ADD CONSTRAINT chk_discount_non_negative
   CHECK (

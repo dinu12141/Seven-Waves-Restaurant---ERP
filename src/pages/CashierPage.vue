@@ -175,6 +175,19 @@
               @click.stop="markServed(order)"
             />
 
+            <!-- Refund (only for paid orders not yet fully refunded) -->
+            <q-btn
+              v-if="['paid', 'completed'].includes(order.status) && order.payment_status !== 'refunded'"
+              flat
+              no-caps
+              dense
+              icon="undo"
+              label="Refund"
+              size="sm"
+              color="orange-6"
+              @click.stop="openRefund(order)"
+            />
+
             <!-- View Invoice CTA -->
             <q-btn
               unelevated
@@ -196,6 +209,8 @@
     <InvoiceViewDialog v-model="invoiceViewOpen" :order="selectedOrder" />
     <!-- ── Bill Dialog (full payment flow) ── -->
     <BillDialog v-model="billDialogOpen" :order="selectedOrder" @paid="onOrderPaid" />
+    <!-- ── Refund Dialog ── -->
+    <RefundDialog v-model="refundDialogOpen" :order="selectedOrder" @refunded="onRefunded" />
   </q-page>
 </template>
 
@@ -206,6 +221,7 @@ import { useCashierStore } from 'src/stores/cashierStore'
 import { useAuthStore } from 'src/stores/auth'
 import BillDialog from 'src/components/cashier/BillDialog.vue'
 import InvoiceViewDialog from 'src/components/cashier/InvoiceViewDialog.vue'
+import RefundDialog from 'src/components/cashier/RefundDialog.vue'
 
 const $q = useQuasar()
 const store = useCashierStore()
@@ -215,6 +231,7 @@ const authStore = useAuthStore()
 const activeTab = ref('all')
 const invoiceViewOpen = ref(false)
 const billDialogOpen = ref(false)
+const refundDialogOpen = ref(false)
 const selectedOrder = ref(null)
 
 const tabs = [
@@ -276,6 +293,18 @@ async function markServed(order) {
 
 function onOrderPaid() {
   billDialogOpen.value = false
+  selectedOrder.value = null
+  store.selectedOrderId = null
+}
+
+function openRefund(order) {
+  selectedOrder.value = order
+  store.selectedOrderId = order.id
+  refundDialogOpen.value = true
+}
+
+function onRefunded() {
+  refundDialogOpen.value = false
   selectedOrder.value = null
   store.selectedOrderId = null
 }

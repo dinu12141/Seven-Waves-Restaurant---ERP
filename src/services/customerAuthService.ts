@@ -424,15 +424,10 @@ export async function adminDeleteCustomer(customerId: string): Promise<{
 }> {
   const { error } = await supabase
     .from('customers')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', customerId)
 
-  if (error) {
-    if (error.code === '23503') {
-      return { success: false, error: 'Cannot delete customer - they have associated orders or loyalty points.' }
-    }
-    return { success: false, error: error.message }
-  }
-  
+  if (error) return { success: false, error: error.message }
+
   return { success: true }
 }

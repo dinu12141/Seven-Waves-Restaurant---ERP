@@ -233,6 +233,11 @@ const routes = [
         meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
       },
       {
+        path: 'admin/ai-insights',
+        component: () => import('pages/admin/AIInsightsPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
+      },
+      {
         path: 'admin/users',
         component: () => import('pages/admin/UsersPage.vue'),
         meta: { roles: ['admin'], module: 'admin', permission: 'admin.users.manage' },

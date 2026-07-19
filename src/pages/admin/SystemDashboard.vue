@@ -316,6 +316,7 @@ import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import { supabase } from 'src/boot/supabase'
 import { date } from 'quasar'
+import apexchart from 'vue3-apexcharts'
 
 const $q = useQuasar()
 

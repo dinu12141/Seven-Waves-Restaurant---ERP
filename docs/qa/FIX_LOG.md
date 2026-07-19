@@ -98,6 +98,33 @@ After each file, insert into `applied_migrations` (see `supabase/applied_migrati
 
 ---
 
+## FinanceQA Fixes — 2026-07-18
+
+### Finance Module Audit & Fix Pass
+
+| Fix ID | Bug ID | Severity | File | Description | Status |
+|--------|--------|----------|------|-------------|--------|
+| FQ-001 | BUG-DB-018 | LOW | `financeService.ts:32` | `fetchChartOfAccounts()` now accepts optional `companyId` filter | ✅ DONE |
+| FQ-002 | BUG-WF-013 | HIGH | `supabase/process_refund_rpc.sql` | New `process_refund()` RPC with journal reversal + loyalty coin reversal | ✅ DONE — PENDING manual apply |
+| FQ-003 | BUG-WF-013 | HIGH | `cashierStore.js` | `refundOrder(orderId, amount, reason, refundTo)` action added | ✅ DONE |
+| FQ-004 | BUG-WF-013 | HIGH | `src/components/cashier/RefundDialog.vue` | Full/partial refund dialog with refund method picker | ✅ DONE (new file) |
+| FQ-005 | BUG-WF-013 | HIGH | `src/pages/CashierPage.vue` | Refund button wired to paid orders; RefundDialog imported | ✅ DONE |
+| FQ-006 | AutoCheck-001 | MEDIUM | `BillPrintTemplate.vue:315` | Verified already uses `orderStore.serviceChargeRate` — no change needed | ✅ ALREADY FIXED |
+
+### Verification
+- Lint: 0 errors ✅
+- Tests: 440/440 passing ✅
+
+### SQL Pending Apply
+Add to Supabase migration apply order:
+```
+12. process_refund_rpc.sql    ← New process_refund() RPC with journal reversal
+```
+
+*FinanceQA agent — Seven Waves ERP — 2026-07-18*
+
+---
+
 ## BugFixer Additions — 2026-07-17
 
 ### Application-Layer Fixes Applied (all verified: type-check PASS, 440/440 tests)

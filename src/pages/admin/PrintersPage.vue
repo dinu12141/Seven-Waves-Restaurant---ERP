@@ -37,7 +37,7 @@
       </div>
       <div class="col-6 col-md-3">
         <div class="stat-card">
-          <q-icon name="soup_kitchen" size="24px" color="orange-5" class="q-mb-xs" />
+          <q-icon name="restaurant" size="24px" color="orange-5" class="q-mb-xs" />
           <div class="stat-number">{{ kitchenPrinters }}</div>
           <div class="stat-label">Kitchen Printers</div>
         </div>
@@ -304,7 +304,7 @@
               clearable
               :loading="loadingKitchens"
             >
-              <template v-slot:prepend><q-icon name="soup_kitchen" /></template>
+              <template v-slot:prepend><q-icon name="restaurant" /></template>
             </q-select>
 
             <!-- Network section -->
@@ -469,7 +469,7 @@ const columns = [
 function printerIcon(type) {
   switch (type) {
     case 'kitchen':
-      return 'soup_kitchen'
+      return 'restaurant'
     case 'label':
       return 'label'
     case 'pdf':

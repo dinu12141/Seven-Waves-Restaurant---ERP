@@ -48,6 +48,15 @@
           @update:model-value="fetchCustomers"
         />
       </div>
+      <div class="col-12 col-sm-auto">
+        <q-btn
+          outline
+          color="warning"
+          icon="star"
+          label="Loyalty Settings"
+          @click="openLoyaltySettings"
+        />
+      </div>
       <q-space />
       <div class="col-12 col-sm-auto text-grey-6 text-caption">
         {{ totalCount }} customers found
@@ -205,6 +214,35 @@
         />
       </div>
     </q-card>
+
+    <!-- Loyalty Settings Dialog -->
+    <q-dialog v-model="showLoyaltyDialog" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Loyalty Points Configuration</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="text-caption q-mb-md">
+            Set how many LKR a customer needs to spend to earn 1 Loyalty Point.
+          </div>
+          <q-input
+            v-model.number="loyaltyRateLkr"
+            type="number"
+            label="LKR per 1 Point"
+            outlined
+            dense
+            suffix="LKR"
+            :rules="[val => val > 0 || 'Must be greater than 0']"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="text-primary">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn flat label="Save" @click="saveLoyaltySettings" :loading="savingLoyalty" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -213,6 +251,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { date } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 import PageHeader from 'components/common/PageHeader.vue'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import { adminGetCustomers, adminDeleteCustomer } from 'src/services/customerAuthService'
@@ -355,6 +394,108 @@ function deleteCustomerAction(customer) {
       })
     }
   })
+}
+
+// --- Loyalty Settings Logic ---
+const showLoyaltyDialog = ref(false)
+const loyaltyRateLkr = ref(100)
+const savingLoyalty = ref(false)
+const companyId = ref(null)
+
+const getCompanyId = async (userId) => {
+  try {
+    const { data: userBranches } = await supabase
+      .from('user_branches')
+      .select('branches(company_id)')
+      .eq('user_id', userId)
+      .limit(1)
+
+    if (userBranches && userBranches.length > 0 && userBranches[0].branches) {
+      return userBranches[0].branches.company_id
+    }
+  } catch (e) {
+    console.error('Failed to get company from user_branches', e)
+  }
+
+  // Fallback to first company
+  try {
+    const { data: companies } = await supabase
+      .from('companies')
+      .select('id')
+      .limit(1)
+    if (companies && companies.length > 0) {
+      return companies[0].id
+    }
+  } catch (e) {
+    console.error('Failed to get fallback company', e)
+  }
+  return null
+}
+
+const openLoyaltySettings = async () => {
+  try {
+    const { data: profile } = await supabase.auth.getUser()
+    if (!profile.user) throw new Error('Not logged in')
+    
+    companyId.value = await getCompanyId(profile.user.id)
+    if (!companyId.value) throw new Error('Could not determine company ID')
+
+    const { data } = await supabase
+      .from('loyalty_rules')
+      .select('coins_per_lkr')
+      .eq('rule_type', 'base_rate')
+      .eq('company_id', companyId.value)
+      .single()
+
+    if (data && data.coins_per_lkr) {
+      loyaltyRateLkr.value = Math.round(1 / data.coins_per_lkr)
+    }
+    showLoyaltyDialog.value = true
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load loyalty settings' })
+  }
+}
+
+const saveLoyaltySettings = async () => {
+  if (loyaltyRateLkr.value <= 0) return
+  savingLoyalty.value = true
+  try {
+    const rate = 1 / loyaltyRateLkr.value
+    
+    const { data: existing } = await supabase
+      .from('loyalty_rules')
+      .select('id')
+      .eq('rule_type', 'base_rate')
+      .eq('company_id', companyId.value)
+      .single()
+
+    if (existing) {
+      const { error: updateErr } = await supabase
+        .from('loyalty_rules')
+        .update({ coins_per_lkr: rate })
+        .eq('id', existing.id)
+      if (updateErr) throw updateErr
+    } else {
+      const { error: insertErr } = await supabase.from('loyalty_rules').insert({
+        company_id: companyId.value,
+        rule_type: 'base_rate',
+        rule_code: 'DEFAULT_BASE',
+        coins_per_lkr: rate,
+        min_spend: 0,
+        is_active: true,
+      })
+      if (insertErr) throw insertErr
+    }
+
+    $q.notify({ type: 'positive', message: 'Loyalty settings updated successfully' })
+    showLoyaltyDialog.value = false
+  } catch (err) {
+    console.error(err)
+    $q.notify({ type: 'negative', message: err.message || 'Failed to save loyalty settings' })
+  } finally {
+    savingLoyalty.value = false
+  }
 }
 
 onMounted(fetchCustomers)

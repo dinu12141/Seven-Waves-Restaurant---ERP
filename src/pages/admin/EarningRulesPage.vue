@@ -399,11 +399,28 @@ const itemRules = ref([])
 let _itemKeyCounter = 0
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getCompanyId() {
-  return supabase.auth
-    .getUser()
-    .then(({ data }) => data.user?.user_metadata?.company_id || null)
-    .catch(() => null)
+async function getCompanyId() {
+  try {
+    const { data: authData } = await supabase.auth.getUser()
+    if (!authData.user) return null
+
+    // Prefer user_branches join (reliable for all ERP users)
+    const { data: userBranches } = await supabase
+      .from('user_branches')
+      .select('branches(company_id)')
+      .eq('user_id', authData.user.id)
+      .limit(1)
+
+    if (userBranches?.[0]?.branches?.company_id) {
+      return userBranches[0].branches.company_id
+    }
+
+    // Fallback to first company
+    const { data: companies } = await supabase.from('companies').select('id').limit(1)
+    return companies?.[0]?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 // ── Load data ─────────────────────────────────────────────────────────────────
@@ -559,13 +576,18 @@ async function saveCategoryRules() {
         menu_item_id: null,
       }
       if (rule.id) {
-        await supabase.from('loyalty_rules').update(payload).eq('id', rule.id)
+        const { error: uErr } = await supabase
+          .from('loyalty_rules')
+          .update(payload)
+          .eq('id', rule.id)
+        if (uErr) throw uErr
       } else {
-        const { data } = await supabase
+        const { data, error: iErr } = await supabase
           .from('loyalty_rules')
           .insert([payload])
           .select()
           .single()
+        if (iErr) throw iErr
         if (data) rule.id = data.id
       }
     }
@@ -597,13 +619,18 @@ async function saveItemRules() {
         category_id: null,
       }
       if (rule.id) {
-        await supabase.from('loyalty_rules').update(payload).eq('id', rule.id)
+        const { error: uErr } = await supabase
+          .from('loyalty_rules')
+          .update(payload)
+          .eq('id', rule.id)
+        if (uErr) throw uErr
       } else {
-        const { data } = await supabase
+        const { data, error: iErr } = await supabase
           .from('loyalty_rules')
           .insert([payload])
           .select()
           .single()
+        if (iErr) throw iErr
         if (data) rule.id = data.id
       }
     }
