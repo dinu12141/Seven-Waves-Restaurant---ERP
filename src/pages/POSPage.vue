@@ -782,7 +782,7 @@
           <div v-for="(line, idx) in splitPaymentLines" :key="idx" class="split-line">
             <q-select
               v-model="line.method"
-              :options="['cash','card','bank_transfer','cheque']"
+              :options="['cash','mastercard','visa','uber_eats','pickme','website','bank_transfer']"
               dense outlined label="Method"
               class="split-method"
               dark

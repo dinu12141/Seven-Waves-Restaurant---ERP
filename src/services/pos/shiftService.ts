@@ -23,7 +23,7 @@ export interface OpenShiftPayload {
 export interface ShiftPaymentPayload {
   shiftId: string
   orderId: string
-  paymentMethod: 'cash' | 'card' | 'qr' | 'bank' | 'credit'
+  paymentMethod: 'cash' | 'card' | 'qr' | 'bank' | 'credit' | 'visa' | 'master'
   amount: number
 }
 
@@ -55,6 +55,8 @@ export interface ShiftSummary {
   opening_cash_float: number
   cash_sales_total: number
   card_sales_total: number
+  visa_sales_total?: number
+  master_sales_total?: number
   qr_sales_total: number
   bank_sales_total: number
   credit_sales_total: number

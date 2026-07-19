@@ -43,6 +43,24 @@
           </div>
           <div class="col-12 col-sm-6 col-md-3">
             <q-select
+              v-model="adjustmentDirection"
+              :options="directionOptions"
+              label="Direction *"
+              outlined
+              dense
+              emit-value
+              map-options
+            >
+              <template #prepend>
+                <q-icon
+                  :name="adjustmentDirection === 'increase' ? 'add_circle' : 'remove_circle'"
+                  :color="adjustmentDirection === 'increase' ? 'positive' : 'negative'"
+                />
+              </template>
+            </q-select>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
               v-model="selectedWarehouse"
               :options="warehouseOptions"
               label="Warehouse *"
@@ -86,6 +104,8 @@
 
       <q-table
         flat
+        bordered
+        class="erp-table"
         :rows="lines"
         :columns="lineColumns"
         row-key="_key"
@@ -189,7 +209,9 @@
 
       <q-table
         flat
-        :rows="history"
+        bordered
+        class="erp-table"
+        :rows="historyEntries"
         :columns="historyColumns"
         row-key="id"
         :loading="historyLoading"
@@ -200,8 +222,8 @@
         </template>
         <template #body-cell-quantity="props">
           <q-td :props="props" class="text-right">
-            <span :class="props.row.quantity < 0 ? 'text-negative' : 'text-positive'">
-              {{ Number(props.row.quantity).toFixed(3) }}
+            <span :class="props.row.direction === 'OUT' ? 'text-negative' : 'text-positive'">
+              {{ props.row.direction === 'OUT' ? '-' : '+' }}{{ Number(props.row.quantity).toFixed(3) }}
             </span>
           </q-td>
         </template>
@@ -219,88 +241,82 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar, date } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'stores/auth'
+import {
+  useItemsList,
+  useWarehouseList,
+  fetchStockByWarehouse,
+  createDocument,
+  postDocument,
+  useStockLedger,
+} from 'src/services/inventoryService'
 
-const $q         = useQuasar()
-const authStore  = useAuthStore()
+const $q = useQuasar()
+
+// ── Service composables ───────────────────────────────────────────────────────
+const { items: allItemsRaw, listItems } = useItemsList()
+const { warehouses, loading: warehousesLoading, listWarehouses } = useWarehouseList()
+const { entries: historyEntries, loading: historyLoading, fetchLedger } = useStockLedger()
 
 // ── Header state ──────────────────────────────────────────────────────────────
-const adjustmentDate   = ref(date.formatDate(new Date(), 'YYYY-MM-DD'))
-const referenceNo      = ref('')
-const adjustmentReason = ref('Wastage')
+const adjustmentDate    = ref(date.formatDate(new Date(), 'YYYY-MM-DD'))
+const referenceNo       = ref('')
+const adjustmentReason  = ref('Wastage')
 const selectedWarehouse = ref(null)
-const notes            = ref('')
+const notes             = ref('')
 
 const reasonOptions = [
-  { label: 'Damage',                value: 'Damage' },
-  { label: 'Wastage',               value: 'Wastage' },
-  { label: 'Theft',                 value: 'Theft' },
-  { label: 'Stocktake Correction',  value: 'Stocktake Correction' },
-  { label: 'Other',                 value: 'Other' },
+  { label: 'Damage',               value: 'Damage' },
+  { label: 'Wastage',              value: 'Wastage' },
+  { label: 'Theft',                value: 'Theft' },
+  { label: 'Stocktake Correction', value: 'Stocktake Correction' },
+  { label: 'Other',                value: 'Other' },
 ]
 
-// ── Warehouses ────────────────────────────────────────────────────────────────
-const warehousesLoading = ref(false)
-const warehouseOptions  = ref([])
+const adjustmentDirection = ref('decrease')
+const directionOptions = [
+  { label: 'Decrease (remove stock)', value: 'decrease' },
+  { label: 'Increase (add stock)',    value: 'increase' },
+]
 
-async function fetchWarehouses() {
-  warehousesLoading.value = true
-  try {
-    const { data, error } = await supabase
-      .from('warehouses')
-      .select('id, name')
-      .eq('company_id', authStore.companyId)
-      .eq('branch_id',  authStore.branchId)
-      .order('name')
-    if (error) throw error
-    warehouseOptions.value = (data || []).map(w => ({ label: w.name, value: w.id }))
-    if (warehouseOptions.value.length) {
-      selectedWarehouse.value = warehouseOptions.value[0].value
-    }
-  } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed to load warehouses: ' + e.message })
-  } finally {
-    warehousesLoading.value = false
-  }
-}
+// ── Warehouse options ─────────────────────────────────────────────────────────
+const warehouseOptions = computed(() =>
+  warehouses.value.map(w => ({ label: w.name, value: w.id }))
+)
 
 // ── Items for select ──────────────────────────────────────────────────────────
-const allItems    = ref([])
 const itemOptions = ref([])
 
-async function fetchAllItems() {
-  const { data } = await supabase
-    .from('ingredients')
-    .select('id, name, code, uom')
-    .eq('company_id', authStore.companyId)
-    .eq('branch_id',  authStore.branchId)
-    .eq('is_active', true)
-    .order('name')
-  allItems.value = data || []
-  itemOptions.value = allItems.value.map(i => ({
-    label: `${i.code} — ${i.name}`,
-    value: i.id,
-    item:  i,
-  }))
+function buildItemOptions() {
+  itemOptions.value = allItemsRaw.value
+    .filter(i => i.is_active)
+    .map(i => ({ label: `${i.code} — ${i.name}`, value: i.id, item: i }))
 }
 
 function filterItems(val, update) {
   update(() => {
     const q = val.toLowerCase()
-    itemOptions.value = allItems.value
-      .filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q))
+    itemOptions.value = allItemsRaw.value
+      .filter(i => i.is_active && (
+        i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q)
+      ))
       .map(i => ({ label: `${i.code} — ${i.name}`, value: i.id, item: i }))
   })
 }
 
 // ── Lines ─────────────────────────────────────────────────────────────────────
 let _keyCounter = 0
-const lines = ref([])
+const lines   = ref([])
 const posting = ref(false)
 
 function addLine() {
-  lines.value.push({ _key: ++_keyCounter, item_id: null, uom: '', qty: 1, current_stock: null })
+  lines.value.push({
+    _key:          ++_keyCounter,
+    item_id:       null,
+    uom_id:        null,
+    unit_cost:     0,
+    qty:           1,
+    current_stock: null,
+  })
 }
 
 function removeLine(idx) {
@@ -308,17 +324,14 @@ function removeLine(idx) {
 }
 
 async function onItemSelected(row, itemId) {
-  const found = allItems.value.find(i => i.id === itemId)
-  if (found) row.uom = found.uom
-
+  const found = allItemsRaw.value.find(i => i.id === itemId)
+  if (found) {
+    row.uom_id    = found.uom_id || found.inventory_uom_id
+    row.unit_cost = found.avg_cost || 0
+  }
   if (itemId && selectedWarehouse.value) {
-    const { data } = await supabase
-      .from('stock_levels')
-      .select('quantity')
-      .eq('item_id', itemId)
-      .eq('warehouse_id', selectedWarehouse.value)
-      .maybeSingle()
-    row.current_stock = data ? Number(data.quantity) : 0
+    const stockMap = await fetchStockByWarehouse(selectedWarehouse.value)
+    row.current_stock = stockMap[itemId] ?? 0
   }
 }
 
@@ -326,7 +339,6 @@ const totalQty = computed(() => lines.value.reduce((s, l) => s + (Number(l.qty) 
 
 const lineColumns = [
   { name: 'item_id',       label: 'Item',          field: 'item_id',       align: 'left' },
-  { name: 'uom',           label: 'UOM',           field: 'uom',           align: 'center' },
   { name: 'current_stock', label: 'Current Stock', field: 'current_stock', align: 'right' },
   { name: 'qty',           label: 'Adj. Qty',      field: 'qty',           align: 'left' },
   { name: 'remove',        label: '',              field: 'remove',        align: 'center' },
@@ -350,43 +362,32 @@ async function postAdjustment() {
 
   posting.value = true
   try {
-    for (const row of validLines) {
-      // Insert movement
-      const { error: mvErr } = await supabase.from('stock_movements').insert({
-        item_id:       row.item_id,
-        warehouse_id:  selectedWarehouse.value,
-        quantity:      -Math.abs(Number(row.qty)),
-        movement_type: 'adjustment',
-        reason:        adjustmentReason.value,
-        notes:         notes.value || null,
-        created_at:    new Date(adjustmentDate.value).toISOString(),
-        company_id:    authStore.companyId,
-        branch_id:     authStore.branchId,
-      })
-      if (mvErr) throw mvErr
+    const isIncrease = adjustmentDirection.value === 'increase'
+    const docLines = validLines.map(row => ({
+      item_id:   row.item_id,
+      uom_id:    row.uom_id,
+      quantity:  isIncrease ? Math.abs(Number(row.qty)) : -Math.abs(Number(row.qty)),
+      unit_cost: row.unit_cost || 0,
+    }))
 
-      // Update stock level
-      const currentQty = row.current_stock ?? 0
-      const newQty     = Math.max(0, currentQty - Math.abs(Number(row.qty)))
-
-      const { error: slErr } = await supabase.from('stock_levels').upsert(
-        {
-          item_id:      row.item_id,
-          warehouse_id: selectedWarehouse.value,
-          quantity:     newQty,
-        },
-        { onConflict: 'item_id,warehouse_id' }
-      )
-      if (slErr) throw slErr
+    const header = {
+      doc_type:     'ADJUSTMENT',
+      doc_date:     adjustmentDate.value,
+      warehouse_id: selectedWarehouse.value,
+      reference_no: referenceNo.value || null,
+      remarks:      [adjustmentReason.value, notes.value].filter(Boolean).join(' — ') || null,
     }
+
+    const doc = await createDocument(header, docLines)
+    await postDocument(doc.id)
 
     $q.notify({ type: 'positive', message: `Adjustment posted — ${validLines.length} line(s).` })
 
-    // Reset form
-    lines.value      = []
-    referenceNo.value = ''
-    notes.value       = ''
-    adjustmentDate.value = date.formatDate(new Date(), 'YYYY-MM-DD')
+    lines.value               = []
+    referenceNo.value         = ''
+    notes.value               = ''
+    adjustmentDate.value      = date.formatDate(new Date(), 'YYYY-MM-DD')
+    adjustmentDirection.value = 'decrease'
 
     await fetchHistory()
   } catch (e) {
@@ -398,42 +399,26 @@ async function postAdjustment() {
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
-const history        = ref([])
-const historyLoading = ref(false)
-
 const historyColumns = [
-  { name: 'created_at',    label: 'Date',      field: 'created_at',    align: 'left', sortable: true,
+  { name: 'posted_at',      label: 'Date',      field: 'posted_at',      align: 'left', sortable: true,
     format: v => date.formatDate(new Date(v), 'DD MMM YYYY HH:mm') },
-  { name: 'item_name',     label: 'Item',      field: r => r.ingredients?.name ?? '–', align: 'left' },
-  { name: 'warehouse',     label: 'Warehouse', field: r => r.warehouses?.name ?? '–',  align: 'left' },
-  { name: 'quantity',      label: 'Qty',       field: 'quantity',      align: 'right', sortable: true },
-  { name: 'reason',        label: 'Reason',    field: 'reason',        align: 'left' },
-  { name: 'notes',         label: 'Notes',     field: 'notes',         align: 'left' },
+  { name: 'item_name',      label: 'Item',      field: 'item_name',      align: 'left' },
+  { name: 'warehouse_name', label: 'Warehouse', field: 'warehouse_name', align: 'left' },
+  { name: 'quantity',       label: 'Qty',       field: 'quantity',       align: 'right', sortable: true },
+  { name: 'doc_number',     label: 'Doc #',     field: 'doc_number',     align: 'left' },
 ]
 
 async function fetchHistory() {
-  historyLoading.value = true
-  try {
-    const since = new Date(Date.now() - 30 * 86400000).toISOString()
-    const { data, error } = await supabase
-      .from('stock_movements')
-      .select('*, ingredients(name), warehouses(name)')
-      .eq('movement_type', 'adjustment')
-      .eq('company_id', authStore.companyId)
-      .eq('branch_id',  authStore.branchId)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(100)
-    if (error) throw error
-    history.value = data || []
-  } catch (e) {
-    console.error('[StockAdjustmentPage] fetchHistory', e)
-  } finally {
-    historyLoading.value = false
-  }
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  await fetchLedger({ docType: 'ADJUSTMENT', dateFrom: since })
 }
 
 onMounted(async () => {
-  await Promise.all([fetchWarehouses(), fetchAllItems(), fetchHistory()])
+  await Promise.all([listItems(), listWarehouses()])
+  buildItemOptions()
+  if (warehouseOptions.value.length) {
+    selectedWarehouse.value = warehouseOptions.value[0].value
+  }
+  await fetchHistory()
 })
 </script>

@@ -37,7 +37,7 @@
       <div class="col-12 col-sm-6 col-md-3">
         <q-select
           v-model="categoryFilter"
-          :options="categoryOptions"
+          :options="categorySelectOpts"
           dense
           outlined
           clearable
@@ -52,6 +52,7 @@
     <q-table
       flat
       bordered
+      class="erp-table"
       :rows="filteredItems"
       :columns="columns"
       row-key="id"
@@ -123,13 +124,14 @@
             </div>
             <div class="col-6">
               <q-select
-                v-model="form.category"
-                :options="categoryOptions"
+                v-model="form.category_id"
+                :options="categorySelectOpts"
                 label="Category *"
                 outlined
                 dense
                 emit-value
                 map-options
+                :loading="categoriesLoading"
                 :rules="[v => !!v || 'Required']"
               />
             </div>
@@ -143,12 +145,15 @@
               />
             </div>
             <div class="col-6">
-              <q-input
-                v-model="form.uom"
+              <q-select
+                v-model="form.inventory_uom_id"
+                :options="uomSelectOpts"
                 label="Unit of Measure *"
                 outlined
                 dense
-                hint="e.g. kg, litre, pcs"
+                emit-value
+                map-options
+                :loading="uomsLoading"
                 :rules="[v => !!v || 'Required']"
               />
             </div>
@@ -164,8 +169,8 @@
             </div>
             <div class="col-6">
               <q-input
-                v-model.number="form.cost_per_unit"
-                label="Cost / Unit"
+                v-model.number="form.avg_cost"
+                label="Avg Cost / Unit"
                 type="number"
                 outlined
                 dense
@@ -198,60 +203,69 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
-import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'stores/auth'
+import {
+  useItemsList,
+  useCategoryList,
+  useUomList,
+} from 'src/services/inventoryService'
 
 const $q = useQuasar()
-const authStore = useAuthStore()
+
+// ── Service composables ───────────────────────────────────────────────────────
+const { items, loading, listItems, createItem, updateItem, deleteItem } = useItemsList()
+const { categories, loading: categoriesLoading, listCategories } = useCategoryList()
+const { uoms, loading: uomsLoading, listUoms } = useUomList()
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const loading = ref(false)
-const saving  = ref(false)
-const items   = ref([])
-
 const search         = ref('')
 const categoryFilter = ref(null)
 const dialogOpen     = ref(false)
 const isEdit         = ref(false)
+const saving         = ref(false)
 
 const emptyForm = () => ({
-  id:            null,
-  code:          '',
-  name:          '',
-  category:      '',
-  uom:           '',
-  reorder_level: 0,
-  cost_per_unit: 0,
-  is_active:     true,
+  id:               null,
+  code:             '',
+  name:             '',
+  category_id:      null,
+  inventory_uom_id: null,
+  reorder_level:    0,
+  avg_cost:         0,
+  is_active:        true,
 })
 const form = ref(emptyForm())
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const categoryOptions = [
-  { label: 'Raw Material',    value: 'Raw Material' },
-  { label: 'Finished Goods',  value: 'Finished Goods' },
-  { label: 'Consumable',      value: 'Consumable' },
-  { label: 'Asset',           value: 'Asset' },
-]
+// ── Derived options ───────────────────────────────────────────────────────────
+const categorySelectOpts = computed(() =>
+  categories.value.map(c => ({ label: c.name, value: c.id }))
+)
 
+const uomSelectOpts = computed(() =>
+  uoms.value.map(u => ({
+    label: u.name && u.name !== u.code ? `${u.code} — ${u.name}` : u.code,
+    value: u.id,
+  }))
+)
+
+// ── Table columns ─────────────────────────────────────────────────────────────
 const columns = [
-  { name: 'code',          label: 'Code',          field: 'code',          align: 'left',  sortable: true },
-  { name: 'name',          label: 'Name',          field: 'name',          align: 'left',  sortable: true },
-  { name: 'category',      label: 'Category',      field: 'category',      align: 'left',  sortable: true },
-  { name: 'uom',           label: 'UOM',           field: 'uom',           align: 'center', sortable: true },
-  { name: 'reorder_level', label: 'Reorder Level', field: 'reorder_level', align: 'right',  sortable: true,
+  { name: 'code',          label: 'Code',            field: 'code',          align: 'left',   sortable: true },
+  { name: 'name',          label: 'Name',            field: 'name',          align: 'left',   sortable: true },
+  { name: 'category_name', label: 'Category',        field: 'category_name', align: 'left',   sortable: true },
+  { name: 'uom_code',      label: 'UOM',             field: 'uom_code',      align: 'center', sortable: true },
+  { name: 'reorder_level', label: 'Reorder Level',   field: 'reorder_level', align: 'right',  sortable: true,
     format: v => Number(v || 0).toFixed(2) },
-  { name: 'cost_per_unit', label: 'Cost / Unit',   field: 'cost_per_unit', align: 'right',  sortable: true,
+  { name: 'avg_cost',      label: 'Avg Cost / Unit', field: 'avg_cost',      align: 'right',  sortable: true,
     format: v => `LKR ${Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}` },
-  { name: 'is_active',     label: 'Active',        field: 'is_active',     align: 'center' },
-  { name: 'actions',       label: '',              field: 'actions',       align: 'center' },
+  { name: 'is_active',     label: 'Active',          field: 'is_active',     align: 'center' },
+  { name: 'actions',       label: '',                field: 'actions',       align: 'center' },
 ]
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const filteredItems = computed(() => {
   let list = items.value
   if (categoryFilter.value) {
-    list = list.filter(i => i.category === categoryFilter.value)
+    list = list.filter(i => i.category_id === categoryFilter.value)
   }
   if (search.value?.trim()) {
     const q = search.value.toLowerCase()
@@ -263,43 +277,31 @@ const filteredItems = computed(() => {
   return list
 })
 
-// ── Data loading ──────────────────────────────────────────────────────────────
-async function fetchItems() {
-  loading.value = true
-  try {
-    const { data, error } = await supabase
-      .from('ingredients')
-      .select('*')
-      .eq('company_id', authStore.companyId)
-      .eq('branch_id',  authStore.branchId)
-      .order('name')
-
-    if (error) throw error
-    items.value = data || []
-  } catch (e) {
-    console.error('[ItemsPage] fetchItems', e)
-    $q.notify({ type: 'negative', message: 'Failed to load items: ' + e.message })
-  } finally {
-    loading.value = false
-  }
-}
-
 // ── Dialog helpers ────────────────────────────────────────────────────────────
 function openAddDialog() {
-  isEdit.value    = false
-  form.value      = emptyForm()
+  isEdit.value     = false
+  form.value       = emptyForm()
   dialogOpen.value = true
 }
 
 function openEditDialog(row) {
-  isEdit.value   = true
-  form.value     = { ...row }
+  isEdit.value = true
+  form.value = {
+    id:               row.id,
+    code:             row.code,
+    name:             row.name,
+    category_id:      row.category_id,
+    inventory_uom_id: row.inventory_uom_id,
+    reorder_level:    row.reorder_level || 0,
+    avg_cost:         row.avg_cost || 0,
+    is_active:        row.is_active,
+  }
   dialogOpen.value = true
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 async function saveItem() {
-  if (!form.value.code || !form.value.name || !form.value.category || !form.value.uom) {
+  if (!form.value.code || !form.value.name || !form.value.category_id || !form.value.inventory_uom_id) {
     $q.notify({ type: 'warning', message: 'Please fill in all required fields.' })
     return
   }
@@ -307,34 +309,25 @@ async function saveItem() {
   saving.value = true
   try {
     const payload = {
-      code:          form.value.code.trim(),
-      name:          form.value.name.trim(),
-      category:      form.value.category,
-      uom:           form.value.uom.trim(),
-      reorder_level: Number(form.value.reorder_level) || 0,
-      cost_per_unit: Number(form.value.cost_per_unit) || 0,
-      is_active:     form.value.is_active,
-      company_id:    authStore.companyId,
-      branch_id:     authStore.branchId,
+      code:             form.value.code.trim(),
+      name:             form.value.name.trim(),
+      category_id:      form.value.category_id,
+      inventory_uom_id: form.value.inventory_uom_id,
+      reorder_level:    Number(form.value.reorder_level) || 0,
+      avg_cost:         Number(form.value.avg_cost) || 0,
+      is_active:        form.value.is_active,
     }
 
     if (isEdit.value) {
-      const { error } = await supabase
-        .from('ingredients')
-        .update(payload)
-        .eq('id', form.value.id)
-      if (error) throw error
+      await updateItem(form.value.id, payload)
       $q.notify({ type: 'positive', message: 'Item updated successfully.' })
     } else {
-      const { error } = await supabase
-        .from('ingredients')
-        .insert(payload)
-      if (error) throw error
+      await createItem(payload)
       $q.notify({ type: 'positive', message: 'Item added successfully.' })
     }
 
     dialogOpen.value = false
-    await fetchItems()
+    await listItems()
   } catch (e) {
     console.error('[ItemsPage] saveItem', e)
     $q.notify({ type: 'negative', message: 'Save failed: ' + e.message })
@@ -346,11 +339,7 @@ async function saveItem() {
 // ── Toggle active ─────────────────────────────────────────────────────────────
 async function toggleActive(row) {
   try {
-    const { error } = await supabase
-      .from('ingredients')
-      .update({ is_active: !row.is_active })
-      .eq('id', row.id)
-    if (error) throw error
+    await updateItem(row.id, { is_active: !row.is_active })
     row.is_active = !row.is_active
     $q.notify({ type: 'positive', message: `Item ${row.is_active ? 'activated' : 'deactivated'}.` })
   } catch (e) {
@@ -367,18 +356,15 @@ function confirmDelete(row) {
     ok:      { color: 'negative', label: 'Delete', unelevated: true },
   }).onOk(async () => {
     try {
-      const { error } = await supabase
-        .from('ingredients')
-        .delete()
-        .eq('id', row.id)
-      if (error) throw error
+      await deleteItem(row.id)
       $q.notify({ type: 'positive', message: 'Item deleted.' })
-      await fetchItems()
     } catch (e) {
       $q.notify({ type: 'negative', message: 'Delete failed: ' + e.message })
     }
   })
 }
 
-onMounted(fetchItems)
+onMounted(async () => {
+  await Promise.all([listItems(), listCategories(), listUoms()])
+})
 </script>

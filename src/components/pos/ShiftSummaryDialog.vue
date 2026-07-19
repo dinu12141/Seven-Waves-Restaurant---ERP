@@ -55,6 +55,14 @@
                 <td>Card Sales</td>
                 <td class="text-right">{{ fmtNum(shift.card_sales_total) }}</td>
               </tr>
+              <tr v-if="shift.visa_sales_total > 0 || shift.master_sales_total > 0">
+                <td class="q-pl-md text-grey-5" style="font-size: 12px">├ Visa</td>
+                <td class="text-right text-grey-5" style="font-size: 12px">{{ fmtNum(shift.visa_sales_total) }}</td>
+              </tr>
+              <tr v-if="shift.visa_sales_total > 0 || shift.master_sales_total > 0">
+                <td class="q-pl-md text-grey-5" style="font-size: 12px">└ Master</td>
+                <td class="text-right text-grey-5" style="font-size: 12px">{{ fmtNum(shift.master_sales_total) }}</td>
+              </tr>
               <tr>
                 <td>QR Sales</td>
                 <td class="text-right">{{ fmtNum(shift.qr_sales_total) }}</td>

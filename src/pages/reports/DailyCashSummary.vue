@@ -170,8 +170,9 @@ async function loadData(filters = {}) {
         }
         if (pm) break
       }
+      const isCard = pm.includes('card') || pm === 'visa' || pm.includes('visa') || pm.includes('master')
       if (pm.includes('cash')) dMap[d].cash_sales += amt
-      else if (pm.includes('card')) dMap[d].card_sales += amt
+      else if (isCard) dMap[d].card_sales += amt
       else dMap[d].other_sales += amt
       dMap[d].total_sales += amt
       dMap[d].orders++

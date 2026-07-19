@@ -191,6 +191,7 @@ const routes = [
             component: () => import('pages/procurement/PurchaseOrdersPage.vue'),
           },
           { path: 'grn', component: () => import('pages/procurement/GRNPage.vue') },
+          { path: 'gin', component: () => import('pages/procurement/GINPage.vue') },
           { path: 'ap-invoices', component: () => import('pages/procurement/APInvoicesPage.vue') },
           { path: 'payments', component: () => import('pages/procurement/PaymentsPage.vue') },
           { path: 'payments-report', component: () => import('pages/procurement/SupplierPaymentReport.vue') },

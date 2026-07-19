@@ -29,7 +29,7 @@
 
       <!-- Supplier Alerts -->
       <div class="col-12 col-md-4">
-        <q-card class="erp-dashboard-panel bg-dark text-white shadow-1 column full-height">
+        <q-card flat bordered class="erp-dashboard-panel shadow-1 column full-height">
           <q-card-section class="row items-center justify-between q-pb-none">
             <div class="text-h6 text-subtitle1 text-weight-bold truncate">Supplier Alerts</div>
           </q-card-section>

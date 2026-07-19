@@ -16,8 +16,8 @@
     />
 
     <!-- Main content card -->
-    <q-card class="bg-dark text-white q-mt-md">
-      <q-tab-panels v-model="tab" animated class="bg-dark text-white">
+    <q-card flat bordered class="q-mt-md">
+      <q-tab-panels v-model="tab" animated>
         <!-- Dashboard -->
         <q-tab-panel name="dashboard" class="q-pa-none">
           <DashboardTab ref="tabRef" />

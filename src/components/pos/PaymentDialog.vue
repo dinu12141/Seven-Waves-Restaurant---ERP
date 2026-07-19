@@ -84,10 +84,36 @@
                   :key="m.id"
                   class="pay-method-btn"
                   :class="{ active: selectedMethod === m.id }"
-                  @click="selectedMethod = m.id"
+                  @click="selectMethod(m.id)"
                 >
                   <q-icon :name="m.icon" size="28px" />
                   <span>{{ m.label }}</span>
+                </button>
+              </div>
+
+              <!-- Sub-options for Card -->
+              <div class="pay-methods q-mt-xs" v-if="selectedMethod === 'card'">
+                <button
+                  v-for="sub in cardSubMethods"
+                  :key="sub.id"
+                  class="pay-method-btn sub-method-btn"
+                  :class="{ active: selectedSubMethod === sub.id }"
+                  @click="selectedSubMethod = sub.id"
+                >
+                  <span>{{ sub.label }}</span>
+                </button>
+              </div>
+
+              <!-- Sub-options for Other -->
+              <div class="pay-methods q-mt-xs" v-if="selectedMethod === 'other'">
+                <button
+                  v-for="sub in otherSubMethods"
+                  :key="sub.id"
+                  class="pay-method-btn sub-method-btn"
+                  :class="{ active: selectedSubMethod === sub.id }"
+                  @click="selectedSubMethod = sub.id"
+                >
+                  <span>{{ sub.label }}</span>
                 </button>
               </div>
             </div>
@@ -235,6 +261,7 @@ const printTemplateRef = ref(null)
 
 // Payment state
 const selectedMethod = ref('cash')
+const selectedSubMethod = ref('')
 const amountBuffer = ref('')
 const isPaid = ref(false)
 const confirmedMethod = ref('')
@@ -244,8 +271,26 @@ const isProcessing = ref(false)
 const paymentMethods = [
   { id: 'cash', label: 'CASH', icon: 'payments' },
   { id: 'card', label: 'CARD', icon: 'credit_card' },
-  { id: 'online', label: 'ONLINE', icon: 'qr_code_scanner' },
+  { id: 'other', label: 'OTHER', icon: 'more_horiz' },
 ]
+
+const cardSubMethods = [
+  { id: 'visa', label: 'VISA' },
+  { id: 'master', label: 'MASTER' },
+]
+
+const otherSubMethods = [
+  { id: 'qr', label: 'QR PAY' },
+  { id: 'bank', label: 'BANK TX' },
+  { id: 'credit', label: 'CREDIT' },
+]
+
+function selectMethod(id) {
+  selectedMethod.value = id
+  if (id === 'card') selectedSubMethod.value = 'visa'
+  else if (id === 'other') selectedSubMethod.value = 'qr'
+  else selectedSubMethod.value = ''
+}
 
 const cashierName = computed(() => authStore.profile?.full_name || 'Cashier')
 const branchName = computed(() => authStore.currentBranch?.name || 'Restaurant')
@@ -666,11 +711,17 @@ async function processQueueOrderPayment(methodName) {
       throw new Error(payData?.error || 'Payment failed')
     }
 
-    // Record payment in the active shift
-    if (shiftStore.hasActiveShift) {
-      shiftStore.recordPayment(orderId, methodName.toLowerCase(), effectiveTotalAmount.value)
-    }
+    // Confirm with POS terminal integration if needed
+    // For now, record locally
+    const actualMethod = selectedMethod.value === 'cash' ? 'cash' : selectedSubMethod.value
+    const ok = await shiftStore.recordPayment(orderId, actualMethod, effectiveTotalAmount.value)
 
+    if (!ok) {
+      Notify.create({ type: 'negative', message: 'Failed to record payment on shift' })
+      isProcessing.value = false
+      return
+    }
+    
     // Step 4: Fetch real invoice for receipt
     isPaid.value = true
     await fetchRealInvoice(orderId)
@@ -966,6 +1017,12 @@ defineExpose({ markAsPaid, printBill })
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+.sub-method-btn {
+  padding: 8px 12px;
+  min-height: 48px;
+  flex-direction: row;
+  justify-content: center;
 }
 .pay-method-btn:hover {
   border-color: #6b7280;

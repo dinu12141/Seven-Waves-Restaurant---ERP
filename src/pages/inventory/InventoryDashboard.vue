@@ -50,15 +50,15 @@
             <transition-group v-else name="alert-slide" tag="div">
               <div
                 v-for="alert in lowStock"
-                :key="alert.id"
+                :key="alert.item_code + '_' + alert.warehouse_name"
                 class="alert-item"
-                :class="alert.stock_status === 'OUT_OF_STOCK' ? 'alert-item--critical' : 'alert-item--warning'"
+                :class="alert.stock_status === 'out_of_stock' ? 'alert-item--critical' : 'alert-item--warning'"
                 @click="openDetail(alert)"
               >
                 <!-- Status badge -->
                 <div class="alert-item__icon">
                   <q-icon
-                    :name="alert.stock_status === 'OUT_OF_STOCK' ? 'remove_shopping_cart' : 'warning'"
+                    :name="alert.stock_status === 'out_of_stock' ? 'remove_shopping_cart' : 'warning'"
                     size="18px"
                     color="white"
                   />
@@ -68,18 +68,18 @@
                 <div class="alert-item__body">
                   <div class="alert-item__name">{{ alert.item_name }}</div>
                   <div class="alert-item__meta">
-                    <span :class="alert.stock_status === 'OUT_OF_STOCK' ? 'text-red-4' : 'text-orange-4'">
+                    <span :class="alert.stock_status === 'out_of_stock' ? 'text-red-4' : 'text-orange-4'">
                       {{ Number(alert.qty_on_hand).toFixed(2) }} {{ alert.uom_code }}
                     </span>
-                    &nbsp;·&nbsp; Min: {{ Number(alert.min_level).toFixed(0) }}
+                    &nbsp;·&nbsp; Min: {{ Number(alert.reorder_level).toFixed(0) }}
                     &nbsp;·&nbsp; {{ alert.warehouse_name }}
                   </div>
                 </div>
 
                 <!-- Severity chip -->
                 <q-badge
-                  :color="alert.stock_status === 'OUT_OF_STOCK' ? 'red' : 'orange'"
-                  :label="alert.stock_status === 'OUT_OF_STOCK' ? 'OUT' : 'LOW'"
+                  :color="alert.stock_status === 'out_of_stock' ? 'red' : 'orange'"
+                  :label="alert.stock_status === 'out_of_stock' ? 'OUT' : 'LOW'"
                   class="alert-item__badge"
                 />
 
@@ -110,12 +110,12 @@
         <!-- Header -->
         <div
           class="detail-header"
-          :class="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'detail-header--red' : 'detail-header--orange'"
+          :class="selectedAlert?.stock_status === 'out_of_stock' ? 'detail-header--red' : 'detail-header--orange'"
         >
           <div class="detail-header__left">
             <div class="detail-header__icon">
               <q-icon
-                :name="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'remove_shopping_cart' : 'warning_amber'"
+                :name="selectedAlert?.stock_status === 'out_of_stock' ? 'remove_shopping_cart' : 'warning_amber'"
                 size="24px"
                 color="white"
               />
@@ -135,7 +135,7 @@
               <div class="detail-metric__label">Current Stock</div>
               <div
                 class="detail-metric__value"
-                :class="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'text-red' : 'text-orange'"
+                :class="selectedAlert?.stock_status === 'out_of_stock' ? 'text-red' : 'text-orange'"
               >
                 {{ Number(selectedAlert?.qty_on_hand || 0).toFixed(2) }}
                 <span class="detail-metric__unit">{{ selectedAlert?.uom_code }}</span>
@@ -143,14 +143,14 @@
             </div>
             <div class="detail-metric">
               <div class="detail-metric__label">Minimum Level</div>
-              <div class="detail-metric__value text-grey-3">
-                {{ Number(selectedAlert?.min_level || 0).toFixed(0) }}
+              <div class="detail-metric__value text-grey">
+                {{ Number(selectedAlert?.reorder_level || 0).toFixed(0) }}
                 <span class="detail-metric__unit">{{ selectedAlert?.uom_code }}</span>
               </div>
             </div>
             <div class="detail-metric">
               <div class="detail-metric__label">Warehouse</div>
-              <div class="detail-metric__value text-blue-3" style="font-size:16px">
+              <div class="detail-metric__value text-blue" style="font-size:16px">
                 {{ selectedAlert?.warehouse_name }}
               </div>
             </div>
@@ -158,21 +158,21 @@
               <div class="detail-metric__label">Status</div>
               <div class="detail-metric__value">
                 <q-badge
-                  :color="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'red' : 'orange'"
-                  :label="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? '🚨 Out of Stock' : '⚠️ Low Stock'"
+                  :color="selectedAlert?.stock_status === 'out_of_stock' ? 'red' : 'orange'"
+                  :label="selectedAlert?.stock_status === 'out_of_stock' ? '🚨 Out of Stock' : '⚠️ Low Stock'"
                   style="font-size:13px; padding: 6px 12px"
                 />
               </div>
             </div>
             <div class="detail-metric detail-metric--full">
               <div class="detail-metric__label">Stock Value</div>
-              <div class="detail-metric__value text-teal-3">
+              <div class="detail-metric__value text-teal">
                 LKR {{ Number(selectedAlert?.total_value || 0).toLocaleString() }}
               </div>
             </div>
             <div class="detail-metric detail-metric--full">
               <div class="detail-metric__label">Last Movement</div>
-              <div class="detail-metric__value text-grey-4" style="font-size:14px">
+              <div class="detail-metric__value text-grey" style="font-size:14px">
                 {{ formatDate(selectedAlert?.last_movement_at) }}
               </div>
             </div>
@@ -182,13 +182,13 @@
           <div class="shortage-bar q-mt-lg">
             <div class="shortage-bar__label">
               <span>Stock Level</span>
-              <span :class="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'text-red' : 'text-orange'">
+              <span :class="selectedAlert?.stock_status === 'out_of_stock' ? 'text-red' : 'text-orange'">
                 {{ shortagePercent }}% of minimum
               </span>
             </div>
             <q-linear-progress
               :value="shortagePercent / 100"
-              :color="selectedAlert?.stock_status === 'OUT_OF_STOCK' ? 'red' : 'orange'"
+              :color="selectedAlert?.stock_status === 'out_of_stock' ? 'red' : 'orange'"
               track-color="grey-8"
               rounded
               size="10px"
@@ -214,12 +214,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar, date } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 import { supabase } from 'src/boot/supabase'
-import { date } from 'quasar'
 
+const $q = useQuasar()
 const router = useRouter()
 const loading = ref(false)
 let timer = null
@@ -244,7 +245,7 @@ const selectedAlert = ref(null)
 const shortagePercent = computed(() => {
   if (!selectedAlert.value) return 0
   const qty = Number(selectedAlert.value.qty_on_hand)
-  const min = Number(selectedAlert.value.min_level)
+  const min = Number(selectedAlert.value.reorder_level)
   if (min <= 0) return 100
   return Math.min(100, Math.round((qty / min) * 100))
 })
@@ -284,8 +285,8 @@ async function notifyAdmins(items) {
 
   if (!adminIds.length) return
 
-  const outOfStock = items.filter(i => i.stock_status === 'OUT_OF_STOCK')
-  const lowOnly    = items.filter(i => i.stock_status !== 'OUT_OF_STOCK')
+  const outOfStock = items.filter(i => i.stock_status === 'out_of_stock')
+  const lowOnly    = items.filter(i => i.stock_status !== 'out_of_stock')
 
   // ── De-duplicate: check if same notification already exists today ──────────
   const todayStart = new Date()
@@ -370,14 +371,14 @@ async function fetchData() {
     const { count: grnCount } = await supabase
       .from('inventory_documents')
       .select('id', { count: 'exact', head: true })
-      .eq('document_type', 'GRN')
-      .gte('document_date', today)
+      .eq('doc_type', 'GRN')
+      .gte('doc_date', today)
 
     const { count: ginCount } = await supabase
       .from('inventory_documents')
       .select('id', { count: 'exact', head: true })
-      .eq('document_type', 'GIN')
-      .gte('document_date', today)
+      .eq('doc_type', 'GIN')
+      .gte('doc_date', today)
 
     kpis.value[3].value = String(grnCount || 0)
     kpis.value[4].value = String(ginCount || 0)
@@ -391,12 +392,12 @@ async function fetchData() {
     kpis.value[1].value = totalVal.toLocaleString('en-LK', { minimumFractionDigits: 0 })
     kpis.value[5].value = totalVal.toLocaleString('en-LK', { minimumFractionDigits: 0 })
 
-    // Chart: last 7 days movements
+    // Chart: last 7 days movements from inventory_ledger
     const { data: mvts } = await supabase
-      .from('v_stock_movements')
-      .select('movement_type, qty, created_at')
-      .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())
-      .order('created_at')
+      .from('v_inventory_ledger')
+      .select('doc_type, direction, quantity, posted_at')
+      .gte('posted_at', new Date(Date.now() - 7 * 86400000).toISOString())
+      .order('posted_at')
 
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(Date.now() - (6 - i) * 86400000)
@@ -407,11 +408,11 @@ async function fetchData() {
     const outData = Array(7).fill(0)
 
     ;(mvts || []).forEach(m => {
-      const daysAgo = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 86400000)
+      const daysAgo = Math.floor((Date.now() - new Date(m.posted_at).getTime()) / 86400000)
       const idx = 6 - daysAgo
       if (idx >= 0 && idx < 7) {
-        if (['GRN', 'TRANSFER_IN'].includes(m.movement_type)) inData[idx] += Number(m.qty || 0)
-        else outData[idx] += Number(m.qty || 0)
+        if (m.direction === 'IN') inData[idx] += Number(m.quantity || 0)
+        else outData[idx] += Number(m.quantity || 0)
       }
     })
 
@@ -421,7 +422,7 @@ async function fetchData() {
     ]
     stockOptions.value = {
       chart: { type: 'area', toolbar: { show: false }, background: 'transparent' },
-      theme: { mode: 'dark' },
+      theme: { mode: $q.dark.isActive ? 'dark' : 'light' },
       xaxis: {
         categories: days,
         labels: { style: { colors: '#9ca3af' } },
@@ -438,6 +439,7 @@ async function fetchData() {
     }
   } catch (e) {
     console.error('[InventoryDashboard]', e)
+    $q.notify({ type: 'negative', message: 'Failed to load inventory data', caption: e.message })
   } finally {
     loading.value = false
   }
@@ -453,8 +455,8 @@ onUnmounted(() => clearInterval(timer))
 <style scoped lang="scss">
 // ── Alert Panel ────────────────────────────────────────────────────────────────
 .alert-panel {
-  background: var(--erp-bg-panel, #161b22);
-  border: 1px solid var(--erp-border, rgba(255,255,255,0.08));
+  background: var(--erp-bg-panel, var(--erp-bg-card));
+  border: 1px solid var(--erp-border);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
@@ -467,14 +469,14 @@ onUnmounted(() => clearInterval(timer))
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-hover, rgba(255,255,255,0.03));
 }
 
 .alert-panel__title {
   font-size: 13px;
   font-weight: 700;
-  color: #f3f4f6;
+  color: var(--erp-text, #f3f4f6);
   display: flex;
   align-items: center;
 }
@@ -539,7 +541,7 @@ onUnmounted(() => clearInterval(timer))
   &__name {
     font-size: 13px;
     font-weight: 600;
-    color: #f3f4f6;
+    color: var(--erp-text, #f3f4f6);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -547,7 +549,7 @@ onUnmounted(() => clearInterval(timer))
 
   &__meta {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--erp-text-muted, #9ca3af);
     margin-top: 2px;
   }
 
@@ -575,8 +577,8 @@ onUnmounted(() => clearInterval(timer))
 
 // ── Detail Dialog ──────────────────────────────────────────────────────────────
 .detail-card {
-  background: #0d1117 !important;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--erp-bg-card) !important;
+  border: 1px solid var(--erp-border);
   border-radius: 16px !important;
   overflow: hidden;
 }
@@ -616,8 +618,8 @@ onUnmounted(() => clearInterval(timer))
 }
 
 .detail-metric {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--erp-bg-hover, rgba(0,0,0,0.03));
+  border: 1px solid var(--erp-border);
   border-radius: 10px;
   padding: 14px;
 
@@ -635,7 +637,6 @@ onUnmounted(() => clearInterval(timer))
   &__value {
     font-size: 20px;
     font-weight: 800;
-    color: #f3f4f6;
   }
 
   &__unit {

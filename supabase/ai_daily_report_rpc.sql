@@ -30,6 +30,11 @@ DECLARE
   v_avg_order      NUMERIC := 0;
   v_cash           NUMERIC := 0;
   v_card           NUMERIC := 0;
+  v_visa           NUMERIC := 0;
+  v_master         NUMERIC := 0;
+  v_qr             NUMERIC := 0;
+  v_bank           NUMERIC := 0;
+  v_credit         NUMERIC := 0;
   v_online         NUMERIC := 0;
   v_unposted_count INT     := 0;
   v_unposted_value NUMERIC := 0;
@@ -80,8 +85,13 @@ BEGIN
   SELECT
     COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) = 'cash'), 0),
     COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('card','credit card','debit card')), 0),
-    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('online','transfer','bank transfer')), 0)
-  INTO v_cash, v_card, v_online
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('visa')), 0),
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('master','mastercard')), 0),
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('qr','qr code','lankaqr')), 0),
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('bank','bank transfer','direct bank transfer')), 0),
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('credit','credit note')), 0),
+    COALESCE(SUM(amount) FILTER (WHERE LOWER(payment_method) IN ('online','transfer')), 0)
+  INTO v_cash, v_card, v_visa, v_master, v_qr, v_bank, v_credit, v_online
   FROM payments p
   JOIN invoices i ON i.id = p.invoice_id
   WHERE i.branch_id = p_branch_id
@@ -286,7 +296,7 @@ BEGIN
     generated_by, generated_by_user,
     total_revenue, total_expenses, gross_profit, net_profit,
     total_orders, paid_orders, void_cancelled_orders, average_order_value,
-    cash_collected, card_collected, online_collected,
+    cash_collected, card_collected, visa_collected, master_collected, qr_collected, bank_collected, credit_collected, online_collected,
     scheduled_staff, present_staff, absent_staff, late_arrivals, on_leave,
     total_kots, avg_kot_completion_mins, tables_served, delivery_orders, takeaway_orders,
     finance_unposted_count, finance_unposted_value,
@@ -298,7 +308,7 @@ BEGIN
     v_total_revenue - v_total_expenses,
     v_total_revenue - v_total_expenses,
     v_total_orders, v_paid_orders, v_void_orders, v_avg_order,
-    v_cash, v_card, v_online,
+    v_cash, v_card, v_visa, v_master, v_qr, v_bank, v_credit, v_online,
     v_scheduled, v_present, v_absent, v_late, v_on_leave,
     v_total_kots, v_avg_kot_mins, v_tables_served, v_delivery_orders, v_takeaway_orders,
     v_unposted_count, v_unposted_value,
@@ -315,6 +325,11 @@ BEGIN
     average_order_value      = EXCLUDED.average_order_value,
     cash_collected           = EXCLUDED.cash_collected,
     card_collected           = EXCLUDED.card_collected,
+    visa_collected           = EXCLUDED.visa_collected,
+    master_collected         = EXCLUDED.master_collected,
+    qr_collected             = EXCLUDED.qr_collected,
+    bank_collected           = EXCLUDED.bank_collected,
+    credit_collected         = EXCLUDED.credit_collected,
     online_collected         = EXCLUDED.online_collected,
     scheduled_staff          = EXCLUDED.scheduled_staff,
     present_staff            = EXCLUDED.present_staff,

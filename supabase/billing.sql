@@ -28,10 +28,15 @@ CREATE TABLE IF NOT EXISTS payment_methods (
 );
 
 INSERT INTO payment_methods (name, description) VALUES
-    ('Cash',     'Cash payment'),
-    ('Card',     'Credit/Debit Card'),
-    ('Online',   'Online Payment (UberEats, PickMe, etc.)'),
-    ('Transfer', 'Bank Transfer')
+    ('Cash',         'Cash payment'),
+    ('Card',         'Credit/Debit Card'),
+    ('Mastercard',   'Mastercard credit/debit card'),
+    ('Visa',         'Visa credit/debit card'),
+    ('Uber Eats',    'Uber Eats online order'),
+    ('PickMe Food',  'PickMe Food online order'),
+    ('Website',      'Website online order'),
+    ('Online',       'Online Payment (UberEats, PickMe, etc.)'),
+    ('Transfer',     'Bank Transfer')
 ON CONFLICT (name) DO NOTHING;
 
 -- =====================================================

@@ -43,6 +43,8 @@ export const useShiftStore = defineStore('posShift', () => {
       openedAt: activeShift.value.opened_at,
       cashSales: activeShift.value.cash_sales_total,
       cardSales: activeShift.value.card_sales_total,
+      visaSales: activeShift.value.visa_sales_total || 0,
+      masterSales: activeShift.value.master_sales_total || 0,
       qrSales: activeShift.value.qr_sales_total,
       bankSales: activeShift.value.bank_sales_total,
       creditSales: activeShift.value.credit_sales_total,
@@ -140,6 +142,8 @@ export const useShiftStore = defineStore('posShift', () => {
     const methodMap: Record<string, string> = {
       cash: 'cash',
       card: 'card',
+      visa: 'visa',
+      master: 'master',
       'credit card': 'card',
       'credit_card': 'card',
       online: 'qr',
@@ -154,7 +158,7 @@ export const useShiftStore = defineStore('posShift', () => {
       const result = await apiRecordPayment({
         shiftId: activeShift.value.id,
         orderId,
-        paymentMethod: mappedMethod as 'cash' | 'card' | 'qr' | 'bank' | 'credit',
+        paymentMethod: mappedMethod as 'cash' | 'card' | 'qr' | 'bank' | 'credit' | 'visa' | 'master',
         amount,
       })
 

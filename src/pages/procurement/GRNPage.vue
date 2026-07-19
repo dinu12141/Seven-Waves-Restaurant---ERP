@@ -1,12 +1,15 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div>
-        <div class="text-h5 text-weight-bold">Goods Receipts</div>
-        <div class="text-caption text-grey">Manage incoming stock</div>
-      </div>
-      <q-btn unelevated color="primary" icon="add" label="New GRN" @click="createNewGRN" />
-    </div>
+    <ErpPageHeader
+      title="Goods Receipts"
+      subtitle="Manage incoming stock from suppliers"
+      icon="move_to_inbox"
+      :breadcrumbs="[{ label: 'Procurement' }, { label: 'Goods Receipts' }]"
+    >
+      <template #actions>
+        <q-btn unelevated no-caps color="primary" icon="add" label="New GRN" @click="createNewGRN" />
+      </template>
+    </ErpPageHeader>
 
     <!-- GRN List using BaseDataGrid -->
     <BaseDataGrid
@@ -219,6 +222,7 @@ import {
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
+import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 
 const $q = useQuasar()
 const loading = ref(false)

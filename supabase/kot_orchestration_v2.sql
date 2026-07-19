@@ -600,9 +600,13 @@ SET search_path = public
 AS $$
 DECLARE
     v_order        RECORD;
+    v_invoice      RECORD;
+    v_method_id    UUID;
+    v_method_label TEXT;
     v_user_id      UUID := auth.uid();
     v_now          TIMESTAMPTZ := now();
     v_stock_result JSONB;
+    v_amount       NUMERIC;
 BEGIN
     IF v_user_id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'error', 'Not authenticated.');
@@ -622,6 +626,22 @@ BEGIN
         RETURN jsonb_build_object('success', true, 'message', 'Already paid.', 'order_id', p_order_id);
     END IF;
 
+    v_amount := COALESCE(p_amount_paid, v_order.total_amount);
+
+    -- Resolve payment_methods row (case-insensitive; prefers exact match)
+    SELECT id, name INTO v_method_id, v_method_label
+    FROM payment_methods
+    WHERE LOWER(name) = LOWER(p_payment_method)
+       OR LOWER(name) LIKE LOWER(p_payment_method) || '%'
+    ORDER BY CASE WHEN LOWER(name) = LOWER(p_payment_method) THEN 0 ELSE 1 END
+    LIMIT 1;
+
+    IF v_method_id IS NULL THEN
+        SELECT id, name INTO v_method_id, v_method_label
+        FROM payment_methods WHERE LOWER(name) = 'cash' LIMIT 1;
+        v_method_label := COALESCE(v_method_label, p_payment_method);
+    END IF;
+
     -- ── 1. Mark as paid ──────────────────────────────────────────────────────
     UPDATE orders
     SET status = 'paid',
@@ -637,7 +657,33 @@ BEGIN
     UPDATE finance_queue SET status = 'posted', updated_at = v_now
     WHERE order_id = p_order_id AND status = 'pending';
 
-    -- ── 3. Stock deduction (on_paid stage) ───────────────────────────────────
+    -- ── 3. Create payments record (enables reports to join invoice→payments→payment_methods)
+    SELECT * INTO v_invoice FROM invoices
+    WHERE order_id = p_order_id ORDER BY created_at DESC LIMIT 1;
+
+    IF v_invoice.id IS NOT NULL AND v_method_id IS NOT NULL THEN
+        INSERT INTO payments (
+            invoice_id, order_id, amount, payment_method, payment_method_id,
+            received_by, cashier_id, branch_id, company_id, status
+        )
+        SELECT
+            v_invoice.id, p_order_id, v_amount,
+            COALESCE(v_method_label, p_payment_method), v_method_id,
+            v_user_id, v_user_id, v_order.branch_id, v_order.company_id, 'completed'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM payments WHERE invoice_id = v_invoice.id AND status = 'completed'
+        );
+
+        UPDATE invoices
+        SET payment_status    = 'paid',
+            payment_type      = COALESCE(v_method_label, p_payment_method),
+            payment_method_id = v_method_id,
+            cashier_id        = v_user_id,
+            updated_at        = v_now
+        WHERE id = v_invoice.id;
+    END IF;
+
+    -- ── 4. Stock deduction (on_paid stage) ───────────────────────────────────
     BEGIN
         v_stock_result := issue_stock_for_order(p_order_id);
     EXCEPTION WHEN OTHERS THEN
@@ -645,32 +691,32 @@ BEGIN
         PERFORM mark_stock_queue_failed(p_order_id, SQLERRM);
     END;
 
-    -- ── 4. Auto-post journal entry ───────────────────────────────────────────
+    -- ── 5. Auto-post journal entry ───────────────────────────────────────────
     BEGIN
         PERFORM post_accounting_from_order(p_order_id);
     EXCEPTION WHEN OTHERS THEN
         RAISE WARNING 'Journal posting warning for order %: %', p_order_id, SQLERRM;
     END;
 
-    -- ── 5. Event log ─────────────────────────────────────────────────────────
+    -- ── 6. Event log ─────────────────────────────────────────────────────────
     PERFORM log_erp_event(
         'payment_received', 'order', p_order_id, v_user_id, 'cashier', v_order.branch_id,
         jsonb_build_object(
             'cashier_id', v_user_id,
             'payment_method', p_payment_method,
-            'amount_paid', COALESCE(p_amount_paid, v_order.total_amount),
+            'amount_paid', v_amount,
             'stock_result', v_stock_result
         )
     );
 
-    -- ── 6. Notification: waiter + cashier ────────────────────────────────────
+    -- ── 7. Notification: waiter ──────────────────────────────────────────────
     IF v_order.assigned_waiter_id IS NOT NULL THEN
         INSERT INTO notifications (user_id, branch_id, type, title, message, icon, color, action_url, ref_type, ref_id)
         VALUES (
             v_order.assigned_waiter_id, v_order.branch_id,
             'payment_complete', '💰 Payment Complete',
             'Order #' || v_order.order_number || ' — ' || UPPER(p_payment_method) ||
-            ' · LKR ' || TO_CHAR(COALESCE(p_amount_paid, v_order.total_amount), 'FM999,999.00'),
+            ' · LKR ' || TO_CHAR(v_amount, 'FM999,999.00'),
             'payments', 'green', '/orders', 'order', p_order_id
         );
     END IF;
@@ -681,6 +727,7 @@ BEGIN
         'status', 'paid',
         'payment_status', 'paid',
         'payment_method', p_payment_method,
+        'payment_method_label', v_method_label,
         'finance_posted', true,
         'stock_result', v_stock_result
     );

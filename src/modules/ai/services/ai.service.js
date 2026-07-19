@@ -80,6 +80,28 @@ async function invokeAi(action, payload) {
         }
       }
 
+      // Fetch shifts to get accurate payment breakdown for the day
+      const { data: shifts } = await supabase.from('pos_shifts')
+        .select('cash_sales_total, card_sales_total, visa_sales_total, master_sales_total, qr_sales_total, bank_sales_total, credit_sales_total')
+        .eq('branch_id', branchId)
+        .gte('opened_at', startOfDay)
+        .lte('opened_at', endOfDay)
+
+      let cash_collected = 0, card_collected = 0, visa_collected = 0, master_collected = 0
+      let qr_collected = 0, bank_collected = 0, credit_collected = 0, online_collected = 0
+
+      if (shifts && shifts.length > 0) {
+        shifts.forEach(s => {
+          cash_collected += Number(s.cash_sales_total) || 0
+          card_collected += Number(s.card_sales_total) || 0
+          visa_collected += Number(s.visa_sales_total) || 0
+          master_collected += Number(s.master_sales_total) || 0
+          qr_collected += Number(s.qr_sales_total) || 0
+          bank_collected += Number(s.bank_sales_total) || 0
+          credit_collected += Number(s.credit_sales_total) || 0
+        })
+      }
+
       if (action === 'eod_report') {
         const reportRow = {
           company_id: branch?.company_id || null,
@@ -91,7 +113,15 @@ async function invokeAi(action, payload) {
           gross_profit: totalRevenue,
           net_profit: totalRevenue,
           paid_orders: paidOrders.length,
-          total_orders: allOrders.length
+          total_orders: allOrders.length,
+          cash_collected,
+          card_collected,
+          visa_collected,
+          master_collected,
+          qr_collected,
+          bank_collected,
+          credit_collected,
+          online_collected
         }
 
         // Check if report exists

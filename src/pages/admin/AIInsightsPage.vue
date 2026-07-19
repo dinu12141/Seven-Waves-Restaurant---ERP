@@ -240,6 +240,7 @@
             </div>
           </div>
         </template>
+        </div><!-- /auditReportRef -->
       </q-tab-panel>
 
       <!-- ══════════════════════════════════════════════════════════════════
@@ -372,17 +373,43 @@
                 </q-card-section>
                 <q-card-section class="q-pt-xs">
                   <div class="row q-col-gutter-md">
-                    <div class="col-4 text-center">
+                    <div class="col-3 text-center">
                       <div class="text-caption text-grey-5 q-mb-xs">
                         <q-icon name="money" size="14px" class="q-mr-xs" />Cash
                       </div>
                       <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.cash_collected) }}</div>
                     </div>
+                    <div class="col-3 text-center">
+                      <div class="text-caption text-grey-5 q-mb-xs">
+                        <q-icon name="credit_card" size="14px" class="q-mr-xs" />Visa
+                      </div>
+                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.visa_collected) }}</div>
+                    </div>
+                    <div class="col-3 text-center">
+                      <div class="text-caption text-grey-5 q-mb-xs">
+                        <q-icon name="credit_card" size="14px" class="q-mr-xs" />Master
+                      </div>
+                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.master_collected) }}</div>
+                    </div>
+                    <div class="col-3 text-center">
+                      <div class="text-caption text-grey-5 q-mb-xs">
+                        <q-icon name="qr_code_2" size="14px" class="q-mr-xs" />QR
+                      </div>
+                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.qr_collected) }}</div>
+                    </div>
+                  </div>
+                  <div class="row q-col-gutter-md q-mt-sm">
                     <div class="col-4 text-center">
                       <div class="text-caption text-grey-5 q-mb-xs">
-                        <q-icon name="credit_card" size="14px" class="q-mr-xs" />Card
+                        <q-icon name="account_balance" size="14px" class="q-mr-xs" />Bank
                       </div>
-                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.card_collected) }}</div>
+                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.bank_collected) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                      <div class="text-caption text-grey-5 q-mb-xs">
+                        <q-icon name="history_edu" size="14px" class="q-mr-xs" />Credit
+                      </div>
+                      <div class="text-subtitle1 text-weight-bold">{{ formatCurrency(currentReport.credit_collected) }}</div>
                     </div>
                     <div class="col-4 text-center">
                       <div class="text-caption text-grey-5 q-mb-xs">
@@ -746,7 +773,10 @@ const branchId = computed(() => selectedBranchId.value || authStore.currentBranc
 
 const branchOptions = computed(() => {
   const branches = authStore.branches || []
-  return branches.map(b => ({ id: b.id, name: b.name }))
+  return branches.map(b => ({
+    id: b.branches?.id || b.id,
+    name: b.branches?.name || b.name
+  })).filter(b => b.id)
 })
 
 const currentReport = computed(() => aiStore.currentReport)
@@ -967,47 +997,125 @@ function printReport() {
   window.print()
 }
 
-function exportReport() {
+async function exportReport() {
   const report = currentReport.value
   if (!report) return
-  const lines = [
-    ['Seven Waves Restaurant - EOD Report', report.report_date],
-    [''],
-    ['FINANCIAL SUMMARY'],
-    ['Total Revenue', report.total_revenue],
-    ['Total Expenses', report.total_expenses],
-    ['Net Profit', report.net_profit],
-    ['Paid Orders', report.paid_orders],
-    ['Void/Cancelled Orders', report.void_cancelled_orders],
-    ['Average Order Value', report.average_order_value],
-    [''],
-    ['PAYMENT BREAKDOWN'],
-    ['Cash', report.cash_collected],
-    ['Card', report.card_collected],
-    ['Online', report.online_collected],
-    [''],
-    ['HR SUMMARY'],
-    ['Scheduled Staff', report.scheduled_staff],
-    ['Present Staff', report.present_staff],
-    ['Absent Staff', report.absent_staff],
-    ['Late Arrivals', report.late_arrivals],
-    ['On Leave', report.on_leave],
-    [''],
-    ['OPERATIONS SUMMARY'],
-    ['Total KOTs', report.total_kots],
-    ['Avg Kitchen Time (min)', report.avg_kot_completion_mins],
-    ['Tables Served', report.tables_served],
-    ['Delivery Orders', report.delivery_orders],
-    ['Takeaway Orders', report.takeaway_orders],
-  ]
-  const csv = lines.map(r => r.join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'EOD-Report-' + report.report_date + '.csv'
-  a.click()
-  URL.revokeObjectURL(url)
+
+  const branchName = branchOptions.value.find(b => b.id === branchId.value)?.name || 'Branch'
+
+  const htmlContent = `
+    <div style="padding: 40px; font-family: 'Inter', sans-serif; color: #333; max-width: 800px; margin: auto;">
+      <!-- Header -->
+      <div style="display: flex; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px;">
+        <img src="/logo.jpeg" alt="Logo" style="height: 60px; margin-right: 20px; border-radius: 8px; object-fit: contain;">
+        <div>
+          <h1 style="margin: 0; font-size: 24px; color: #1e293b;">Seven Waves Restaurant</h1>
+          <h2 style="margin: 4px 0 0 0; font-size: 16px; color: #64748b;">End of Day Report - ${branchName}</h2>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">Date: ${report.report_date} | Generated by: ${report.generated_by === 'auto' ? 'System (Auto)' : 'Manual'}</p>
+        </div>
+      </div>
+
+      <!-- Financials -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="margin-bottom: 15px; color: #0f172a; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Financial Summary</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Total Revenue</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #16a34a;">${formatCurrency(report.total_revenue)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Total Expenses</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #dc2626;">${formatCurrency(report.total_expenses)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569; font-weight: bold;">Net Profit</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 16px; color: ${report.net_profit >= 0 ? '#16a34a' : '#dc2626'}">${formatCurrency(report.net_profit)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Payment Breakdown -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="margin-bottom: 15px; color: #0f172a; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Payment Breakdown</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Cash</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.cash_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Visa</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.visa_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Master</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.master_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">QR Transfer</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.qr_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Bank Transfer</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.bank_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Credit</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.credit_collected)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #475569;">Online Orders</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: bold;">${formatCurrency(report.online_collected)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Operations & HR -->
+      <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+          <h3 style="margin-bottom: 15px; color: #0f172a; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Operations</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; color: #475569;">Total Orders</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${report.total_orders}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Paid / Void</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${report.paid_orders} / ${report.void_cancelled_orders}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Average Order</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${formatCurrency(report.average_order_value)}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Total KOTs</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${report.total_kots}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Avg Prep Time</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${report.avg_kot_completion_mins} min</td></tr>
+          </table>
+        </div>
+        <div style="flex: 1;">
+          <h3 style="margin-bottom: 15px; color: #0f172a; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Human Resources</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; color: #475569;">Scheduled Staff</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">${report.scheduled_staff}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Present Staff</td><td style="padding: 6px 0; text-align: right; font-weight: bold; color: #16a34a;">${report.present_staff}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Absent Staff</td><td style="padding: 6px 0; text-align: right; font-weight: bold; color: #dc2626;">${report.absent_staff}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">Late Arrivals</td><td style="padding: 6px 0; text-align: right; font-weight: bold; color: #d97706;">${report.late_arrivals}</td></tr>
+            <tr><td style="padding: 6px 0; color: #475569;">On Leave</td><td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0284c7;">${report.on_leave}</td></tr>
+          </table>
+        </div>
+      </div>
+      
+      <div style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+        &copy; ${new Date().getFullYear()} Seven Waves ERP. All rights reserved.
+      </div>
+    </div>
+  `
+
+  const container = document.createElement('div')
+  container.innerHTML = htmlContent
+  document.body.appendChild(container)
+
+  const opt = {
+    margin:       0.5,
+    filename:     `EOD_Report_${branchName.replace(/\\s+/g, '_')}_${report.report_date}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+  }
+
+  try {
+    await html2pdf().set(opt).from(container).save()
+  } finally {
+    document.body.removeChild(container)
+  }
 }
 
 // ── Watchers ─────────────────────────────────────────────────────────────────

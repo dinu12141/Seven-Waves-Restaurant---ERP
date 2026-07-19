@@ -131,8 +131,16 @@ const kpiData = computed(() => {
   ]
 })
 function getMethodColor(m) {
-  const c = { cash: '#16a34a', card: '#2563eb', online: '#7c3aed' }
-  return c[m?.toLowerCase()] || '#64748b'
+  const lm = m?.toLowerCase() || ''
+  if (lm.includes('cash')) return '#16a34a'
+  if (lm === 'mastercard' || lm.includes('master')) return '#1a237e'
+  if (lm === 'visa') return '#1565c0'
+  if (lm.includes('card')) return '#2563eb'
+  if (lm === 'uber_eats' || lm.includes('uber')) return '#06c167'
+  if (lm === 'pickme' || lm.includes('pick')) return '#e31b23'
+  if (lm === 'website' || lm.includes('web')) return '#0ea5e9'
+  if (lm.includes('online') || lm.includes('transfer')) return '#7c3aed'
+  return '#64748b'
 }
 async function loadData(filters = {}) {
   loading.value = true

@@ -554,6 +554,15 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Procurement',
   },
   {
+    label: 'Goods Issue',
+    icon: 'outbox',
+    to: '/procurement/gin',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement:access',
+    section: 'PROCUREMENT',
+    group: 'Procurement',
+  },
+  {
     label: 'Purchase Returns',
     icon: 'assignment_return',
     to: '/procurement/returns',

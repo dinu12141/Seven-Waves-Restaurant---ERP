@@ -92,6 +92,8 @@
       <q-table
         v-else
         flat
+        bordered
+        class="erp-table"
         :rows="countLines"
         :columns="countColumns"
         row-key="item_id"
@@ -154,7 +156,9 @@
 
       <q-table
         flat
-        :rows="history"
+        bordered
+        class="erp-table"
+        :rows="historyEntries"
         :columns="historyColumns"
         row-key="id"
         :loading="historyLoading"
@@ -165,8 +169,8 @@
         </template>
         <template #body-cell-quantity="props">
           <q-td :props="props" class="text-right">
-            <span :class="props.row.quantity >= 0 ? 'text-positive' : 'text-negative'">
-              {{ Number(props.row.quantity) >= 0 ? '+' : '' }}{{ Number(props.row.quantity).toFixed(3) }}
+            <span :class="props.row.direction === 'IN' ? 'text-positive' : 'text-negative'">
+              {{ props.row.direction === 'IN' ? '+' : '-' }}{{ Number(props.row.quantity).toFixed(3) }}
             </span>
           </q-td>
         </template>
@@ -186,55 +190,44 @@ import { useQuasar, date } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import {
+  useWarehouseList,
+  createDocument,
+  postDocument,
+  useStockLedger,
+} from 'src/services/inventoryService'
 
 const $q        = useQuasar()
 const authStore = useAuthStore()
+
+// ── Service composables ───────────────────────────────────────────────────────
+const { warehouses, loading: warehousesLoading, listWarehouses } = useWarehouseList()
+const { entries: historyEntries, loading: historyLoading, fetchLedger } = useStockLedger()
 
 // ── Header state ──────────────────────────────────────────────────────────────
 const countDate         = ref(date.formatDate(new Date(), 'YYYY-MM-DD'))
 const selectedWarehouse = ref(null)
 const notes             = ref('')
 
-// ── Warehouses ────────────────────────────────────────────────────────────────
-const warehousesLoading = ref(false)
-const warehouseOptions  = ref([])
-
-async function fetchWarehouses() {
-  warehousesLoading.value = true
-  try {
-    const { data, error } = await supabase
-      .from('warehouses')
-      .select('id, name')
-      .eq('company_id', authStore.companyId)
-      .eq('branch_id',  authStore.branchId)
-      .order('name')
-    if (error) throw error
-    warehouseOptions.value = (data || []).map(w => ({ label: w.name, value: w.id }))
-    if (warehouseOptions.value.length) {
-      selectedWarehouse.value = warehouseOptions.value[0].value
-    }
-  } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed to load warehouses: ' + e.message })
-  } finally {
-    warehousesLoading.value = false
-  }
-}
+// ── Warehouse options ─────────────────────────────────────────────────────────
+const warehouseOptions = computed(() =>
+  warehouses.value.map(w => ({ label: w.name, value: w.id }))
+)
 
 // ── Count sheet ───────────────────────────────────────────────────────────────
-const countLines  = ref([])
+const countLines   = ref([])
 const sheetLoading = ref(false)
 const posting      = ref(false)
 
 const countColumns = [
-  { name: 'name',         label: 'Item Name',    field: r => r.ingredients?.name ?? '–', align: 'left',   sortable: true },
-  { name: 'code',         label: 'Code',         field: r => r.ingredients?.code ?? '–', align: 'left',   sortable: true },
-  { name: 'uom',          label: 'UOM',          field: r => r.ingredients?.uom ?? '–',  align: 'center' },
-  { name: 'system_qty',   label: 'System Qty',   field: 'system_qty',                    align: 'right',  sortable: true },
-  { name: 'physical_qty', label: 'Physical Qty', field: 'physical_qty',                  align: 'left' },
-  { name: 'variance',     label: 'Variance',     field: 'variance',                      align: 'right',  sortable: true },
+  { name: 'item_name',     label: 'Item Name',    field: 'item_name',    align: 'left',   sortable: true },
+  { name: 'item_code',     label: 'Code',         field: 'item_code',    align: 'left',   sortable: true },
+  { name: 'uom_code',      label: 'UOM',          field: 'uom_code',     align: 'center' },
+  { name: 'system_qty',    label: 'System Qty',   field: 'system_qty',   align: 'right',  sortable: true },
+  { name: 'physical_qty',  label: 'Physical Qty', field: 'physical_qty', align: 'left' },
+  { name: 'variance',      label: 'Variance',     field: 'variance',     align: 'right',  sortable: true },
 ]
 
-// Variance stats
 const negativeCount = computed(() => countLines.value.filter(l => l.variance < 0).length)
 const positiveCount = computed(() => countLines.value.filter(l => l.variance > 0).length)
 const zeroCount     = computed(() => countLines.value.filter(l => l.variance === 0).length)
@@ -256,18 +249,38 @@ async function loadCountSheet() {
   sheetLoading.value = true
   countLines.value   = []
   try {
+    const companyId = authStore.currentBranch?.company_id ?? authStore.profile?.company_id
+    if (!companyId) throw new Error('No company context')
+
+    // Query v_stock_on_hand for the selected warehouse — it has item_name, item_code, uom_code
     const { data, error } = await supabase
-      .from('stock_levels')
-      .select('item_id, quantity, ingredients(id, name, code, uom)')
+      .from('v_stock_on_hand')
+      .select('item_id, item_code, item_name, uom_code, qty_on_hand, warehouse_id')
       .eq('warehouse_id', selectedWarehouse.value)
-      .order('item_id')
+      .eq('company_id', companyId)
+      .order('item_name')
+
     if (error) throw error
+
+    // Also fetch inventory_uom_id from items for document lines
+    const itemIds = (data || []).map(r => r.item_id)
+    let uomMap = {}
+    if (itemIds.length) {
+      const { data: itemRows } = await supabase
+        .from('items')
+        .select('id, inventory_uom_id')
+        .in('id', itemIds)
+      ;(itemRows || []).forEach(i => { uomMap[i.id] = i.inventory_uom_id })
+    }
 
     countLines.value = (data || []).map(row => ({
       item_id:      row.item_id,
-      ingredients:  row.ingredients,
-      system_qty:   Number(row.quantity) || 0,
-      physical_qty: Number(row.quantity) || 0,  // default = system qty (no variance)
+      item_name:    row.item_name,
+      item_code:    row.item_code,
+      uom_code:     row.uom_code,
+      uom_id:       uomMap[row.item_id] || null,
+      system_qty:   Number(row.qty_on_hand) || 0,
+      physical_qty: Number(row.qty_on_hand) || 0,
       variance:     0,
     }))
   } catch (e) {
@@ -288,32 +301,25 @@ async function postCount() {
 
   posting.value = true
   try {
-    for (const row of variantLines) {
-      // Insert movement record for the variance
-      const { error: mvErr } = await supabase.from('stock_movements').insert({
-        item_id:       row.item_id,
-        warehouse_id:  selectedWarehouse.value,
-        quantity:      row.variance,          // positive = found more, negative = short
-        movement_type: 'stocktake',
-        reason:        'Physical stocktake',
-        notes:         notes.value || null,
-        created_at:    new Date(countDate.value).toISOString(),
-        company_id:    authStore.companyId,
-        branch_id:     authStore.branchId,
-      })
-      if (mvErr) throw mvErr
+    const docLines = variantLines.map(row => ({
+      item_id:      row.item_id,
+      uom_id:       row.uom_id,
+      quantity:     Number(row.physical_qty) || 0,
+      unit_cost:    0,
+      system_qty:   row.system_qty,
+      counted_qty:  row.physical_qty,
+      variance_qty: row.variance,
+    }))
 
-      // Update stock_levels to physical count
-      const { error: slErr } = await supabase.from('stock_levels').upsert(
-        {
-          item_id:      row.item_id,
-          warehouse_id: selectedWarehouse.value,
-          quantity:     Number(row.physical_qty) || 0,
-        },
-        { onConflict: 'item_id,warehouse_id' }
-      )
-      if (slErr) throw slErr
+    const header = {
+      doc_type:     'STOCK_COUNT',
+      doc_date:     countDate.value,
+      warehouse_id: selectedWarehouse.value,
+      remarks:      notes.value || null,
     }
+
+    const doc = await createDocument(header, docLines)
+    await postDocument(doc.id)
 
     $q.notify({
       type:    'positive',
@@ -331,47 +337,30 @@ async function postCount() {
 }
 
 // ── History ───────────────────────────────────────────────────────────────────
-const history        = ref([])
-const historyLoading = ref(false)
-
 const historyColumns = [
-  { name: 'created_at', label: 'Date',      field: 'created_at', align: 'left', sortable: true,
+  { name: 'posted_at',      label: 'Date',      field: 'posted_at',      align: 'left', sortable: true,
     format: v => date.formatDate(new Date(v), 'DD MMM YYYY HH:mm') },
-  { name: 'item_name',  label: 'Item',      field: r => r.ingredients?.name ?? '–', align: 'left' },
-  { name: 'warehouse',  label: 'Warehouse', field: r => r.warehouses?.name ?? '–',  align: 'left' },
-  { name: 'quantity',   label: 'Variance',  field: 'quantity',   align: 'right', sortable: true },
-  { name: 'notes',      label: 'Notes',     field: 'notes',      align: 'left' },
+  { name: 'item_name',      label: 'Item',      field: 'item_name',      align: 'left' },
+  { name: 'warehouse_name', label: 'Warehouse', field: 'warehouse_name', align: 'left' },
+  { name: 'quantity',       label: 'Variance',  field: 'quantity',       align: 'right', sortable: true },
+  { name: 'doc_number',     label: 'Doc #',     field: 'doc_number',     align: 'left' },
 ]
 
 async function fetchHistory() {
-  historyLoading.value = true
-  try {
-    const { data, error } = await supabase
-      .from('stock_movements')
-      .select('*, ingredients(name), warehouses(name)')
-      .eq('movement_type', 'stocktake')
-      .eq('company_id', authStore.companyId)
-      .eq('branch_id',  authStore.branchId)
-      .order('created_at', { ascending: false })
-      .limit(10)
-    if (error) throw error
-    history.value = data || []
-  } catch (e) {
-    console.error('[StockTakePage] fetchHistory', e)
-  } finally {
-    historyLoading.value = false
-  }
+  await fetchLedger({ docType: 'STOCK_COUNT' })
 }
 
 onMounted(async () => {
-  await fetchWarehouses()
-  if (selectedWarehouse.value) await loadCountSheet()
+  await listWarehouses()
+  if (warehouseOptions.value.length) {
+    selectedWarehouse.value = warehouseOptions.value[0].value
+    await loadCountSheet()
+  }
   await fetchHistory()
 })
 </script>
 
 <style scoped lang="scss">
-// Ensure virtual-scroll table fills container properly
 .q-table__container {
   border-radius: 0;
 }

@@ -1,16 +1,15 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div>
-        <div class="text-h5 text-weight-bold">
-          Purchase Orders
-        </div>
-        <div class="text-caption text-grey">
-          Manage stock procurement
-        </div>
-      </div>
-      <q-btn unelevated icon="add" label="New PO" color="primary" @click="createNewPO" />
-    </div>
+    <ErpPageHeader
+      title="Purchase Orders"
+      subtitle="Manage stock procurement from suppliers"
+      icon="shopping_cart"
+      :breadcrumbs="[{ label: 'Procurement' }, { label: 'Purchase Orders' }]"
+    >
+      <template #actions>
+        <q-btn unelevated no-caps icon="add" label="New PO" color="primary" @click="createNewPO" />
+      </template>
+    </ErpPageHeader>
 
     <!-- Status filter tabs (ERP standard) -->
     <div class="erp-tab-bar q-mb-md">
@@ -128,6 +127,7 @@ import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
+import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 
 const $q = useQuasar()
 const route = useRoute()
