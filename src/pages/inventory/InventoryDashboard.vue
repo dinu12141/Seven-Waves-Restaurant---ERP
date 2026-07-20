@@ -351,7 +351,7 @@ async function fetchData() {
     // Real low stock from view
     const { data: alerts } = await supabase
       .from('v_low_stock_alerts')
-      .select('*')
+      .select('item_id, item_name, qty_on_hand, reorder_level, stock_status, uom_code, warehouse_name')
       .order('stock_status', { ascending: true })
       .order('qty_on_hand', { ascending: true })
 
@@ -447,7 +447,8 @@ async function fetchData() {
 
 onMounted(() => {
   fetchData()
-  timer = setInterval(fetchData, 30000)
+  // Polling removed — realtime events handle live updates
+  // timer = setInterval(fetchData, 30000)
 })
 onUnmounted(() => clearInterval(timer))
 </script>

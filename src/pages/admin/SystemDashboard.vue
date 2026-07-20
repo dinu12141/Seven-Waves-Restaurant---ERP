@@ -310,7 +310,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
@@ -354,6 +354,7 @@ async function loadDrawerData(key) {
       .from('profiles')
       .select('id, full_name, email, is_active, user_roles(roles(name))')
       .order('full_name')
+      .range(0, 49)
     drawerData.value = (data || []).map(u => ({
       ...u,
       role: u.user_roles?.[0]?.roles?.name || '—',
@@ -413,7 +414,6 @@ async function loadDrawerData(key) {
 // ── Login log (realtime) ───────────────────────────────────────
 const logs    = ref([])
 const loading = ref(false)
-let channel   = null
 
 const deviceBreakdown = computed(() => {
   const map = {}
@@ -518,24 +518,9 @@ async function loadKpis() {
   kpis.value[5].value = '1.4 GB'
 }
 
-function setupRealtime() {
-  channel = supabase
-    .channel('login_audit_realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'login_audit_logs' }, payload => {
-      const n = { ...payload.new, _new: true }
-      logs.value.unshift(n)
-      if (logs.value.length > 100) logs.value.pop()
-      kpis.value[2].value = String(logs.value.filter(l => l.status === 'failed').length)
-      setTimeout(() => { n._new = false }, 2000)
-    })
-    .subscribe()
-}
-
 onMounted(async () => {
   await Promise.all([loadLogs(), loadKpis()])
-  setupRealtime()
 })
-onUnmounted(() => { if (channel) supabase.removeChannel(channel) })
 </script>
 
 <style scoped lang="scss">

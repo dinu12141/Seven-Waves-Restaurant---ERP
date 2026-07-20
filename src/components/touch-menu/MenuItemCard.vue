@@ -2,17 +2,24 @@
   <q-card class="menu-item-card overflow-hidden shadow-touch" flat bordered>
     <div class="card-img-wrapper" @click="$emit('request-add', item)">
       <q-img
-        :src="
-          item.image_url ||
-          'https://via.placeholder.com/300x200?text=' + encodeURIComponent(item.name)
-        "
+        :src="item.image_url || ''"
         class="menu-img"
         spinner-color="primary"
         ratio="1"
         :class="{ grayscale: !item.is_available }"
+        loading="lazy"
+        no-spinner
       >
+        <!-- Placeholder shown while loading or when no image -->
+        <template v-slot:error>
+          <div class="absolute-full flex flex-center bg-grey-9">
+            <q-icon name="restaurant" size="48px" color="grey-6" />
+          </div>
+        </template>
         <template v-slot:loading>
-          <q-spinner-puff size="md" color="primary" class="absolute-center" />
+          <div class="absolute-full flex flex-center bg-grey-10">
+            <q-skeleton type="rect" class="full-width full-height" />
+          </div>
         </template>
 
         <!-- Status overlay -->

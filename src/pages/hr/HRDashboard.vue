@@ -266,7 +266,8 @@ const fetchData = async () => {
 
 onMounted(() => {
   fetchData()
-  timer = setInterval(fetchData, 30000)
+  // Polling removed — realtime events handle live updates
+  // timer = setInterval(fetchData, 30000)
 })
 
 onUnmounted(() => {

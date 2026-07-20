@@ -49,7 +49,7 @@ export async function transferStock(fromBranch: UUID, toBranch: UUID, ingredient
 
 export async function getStockOnHand(branchId: UUID): Promise<Array<StockLevel & { ingredient_name: string; stock_status: string }>> {
   const { data } = await api.query(
-    (client) => client.from('v_stock_on_hand').select('*').eq('branch_id', branchId),
+    (client) => client.from('v_stock_on_hand').select('item_id, ingredient_name, qty_on_hand, reorder_level, stock_status, uom_code, warehouse_id, total_value').eq('branch_id', branchId),
     { module: MODULE, action: 'getStockOnHand', silent: true },
   )
   return (data || []) as Array<StockLevel & { ingredient_name: string; stock_status: string }>
@@ -58,7 +58,7 @@ export async function getStockOnHand(branchId: UUID): Promise<Array<StockLevel &
 export async function getStockLedger(branchId: UUID, ingredientId?: UUID, limit = 100): Promise<StockLedgerEntry[]> {
   const { data } = await api.query(
     (client) => {
-      let q = client.from('v_inventory_ledger').select('*').eq('branch_id', branchId).order('created_at', { ascending: false }).limit(limit)
+      let q = client.from('v_inventory_ledger').select('id, doc_type, direction, quantity, unit_cost, posted_at, ingredient_name, warehouse_name, created_at').eq('branch_id', branchId).order('created_at', { ascending: false }).limit(limit)
       if (ingredientId) q = q.eq('ingredient_id', ingredientId)
       return q
     },
@@ -69,7 +69,7 @@ export async function getStockLedger(branchId: UUID, ingredientId?: UUID, limit 
 
 export async function getLowStockItems(branchId: UUID): Promise<Array<StockLevel & { ingredient_name: string }>> {
   const { data } = await api.query(
-    (client) => client.from('v_stock_on_hand').select('*').eq('branch_id', branchId).in('stock_status', ['low', 'out_of_stock']),
+    (client) => client.from('v_stock_on_hand').select('item_id, ingredient_name, qty_on_hand, reorder_level, stock_status, uom_code, warehouse_id').eq('branch_id', branchId).in('stock_status', ['low', 'out_of_stock']),
     { module: MODULE, action: 'getLowStockItems', silent: true },
   )
   return (data || []) as Array<StockLevel & { ingredient_name: string }>
@@ -77,7 +77,7 @@ export async function getLowStockItems(branchId: UUID): Promise<Array<StockLevel
 
 export async function getWastageReport(branchId: UUID, startDate: string, endDate: string) {
   const { data } = await api.query(
-    (client) => client.from('v_wastage_report').select('*').eq('branch_id', branchId).gte('wastage_date', startDate).lte('wastage_date', endDate),
+    (client) => client.from('v_wastage_report').select('id, wastage_date, item_name, quantity, uom_code, reason, recorded_by, warehouse_name').eq('branch_id', branchId).gte('wastage_date', startDate).lte('wastage_date', endDate),
     { module: MODULE, action: 'getWastageReport', silent: true },
   )
   return data || []

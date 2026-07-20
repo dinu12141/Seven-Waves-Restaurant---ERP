@@ -555,13 +555,6 @@ const formatOccasion = (occasion) => {
 
 onMounted(() => {
   fetchReservations()
-
-  supabase
-    .channel('website_reservations_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'website_reservations' }, () => {
-      fetchReservations()
-    })
-    .subscribe()
 })
 </script>
 

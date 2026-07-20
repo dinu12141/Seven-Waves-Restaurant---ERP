@@ -393,16 +393,34 @@ async function saveGeneralSettings() {
   }
 }
 
-function onLogoSelected(file) {
+async function onLogoSelected(file) {
   if (!file) {
     settings.logoBase64 = ''
     return
   }
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    settings.logoBase64 = e.target.result
+  try {
+    const bitmap = await createImageBitmap(file)
+    const MAX_WIDTH = 400
+    let { width, height } = bitmap
+    if (width > MAX_WIDTH) {
+      height = Math.round((height * MAX_WIDTH) / width)
+      width = MAX_WIDTH
+    }
+    const canvas = new OffscreenCanvas(width, height)
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+
+    const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.80 })
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      settings.logoBase64 = e.target.result
+    }
+    reader.readAsDataURL(blob)
+  } catch (err) {
+    console.error('Logo compression failed', err)
+    $q.notify({ type: 'negative', message: 'Failed to compress logo' })
   }
-  reader.readAsDataURL(file)
 }
 
 // Load modules and settings on mount

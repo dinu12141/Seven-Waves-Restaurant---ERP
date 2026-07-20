@@ -683,11 +683,20 @@ async function uploadImage(event) {
   if (!file) return
   imageUploading.value = true
   try {
-    const ext = file.name.split('.').pop()
-    const fileName = `menu_${Date.now()}.${ext}`
+    // Compress to WebP before uploading to save storage & egress
+    const bitmap = await createImageBitmap(file)
+    const MAX_W = 800
+    let { width, height } = bitmap
+    if (width > MAX_W) { height = Math.round((height * MAX_W) / width); width = MAX_W }
+    const canvas = new OffscreenCanvas(width, height)
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+    const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.82 })
+
+    const fileName = `menu_${Date.now()}.webp`
     const { error: upErr } = await supabase.storage
       .from('menu-images')
-      .upload(fileName, file, { upsert: true })
+      .upload(fileName, blob, { contentType: 'image/webp', upsert: true })
     if (upErr) throw upErr
     const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(fileName)
     form.image_url = urlData.publicUrl
@@ -908,9 +917,16 @@ async function saveNewKitchen() {
   }
 }
 
+function openEditById(id) {
+  const item = menuItems.value.find((i) => i.id === id)
+  if (item) openEdit(item)
+}
+
 defineExpose({
   columns,
   rows: filteredItems,
+  openEdit,
+  openEditById,
 })
 </script>
 

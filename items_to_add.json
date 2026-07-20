@@ -1,0 +1,15 @@
+[
+  { "name": "Americano", "price": 750, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\americano_1784485657612.png" },
+  { "name": "Caffe Latte", "price": 850, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\caffe_latte_1784485675580.png" },
+  { "name": "Caffe Mocha", "price": 750, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\caffe_mocha_1784485684930.png" },
+  { "name": "Cappuccino", "price": 750, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\cappuccino_1784485693704.png" },
+  { "name": "Espresso Double", "price": 630, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\espresso_double_1784485704471.png" },
+  { "name": "Espresso Single", "price": 530, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\espresso_single_1784485721915.png" },
+  { "name": "Flat White", "price": 750, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\flat_white_1784485734210.png" },
+  { "name": "Hot Chocolate", "price": 900, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\hot_chocolate_1784485744035.png" },
+  { "name": "Hot Milo", "price": 700, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\hot_milo_1784485753668.png" },
+  { "name": "Pot of Coffee", "price": 1080, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\pot_of_coffee_1784485772761.png" },
+  { "name": "Pot of Tea", "price": 1080, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\pot_of_tea_1784485783393.png" },
+  { "name": "Masala Tea", "price": 210, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\masala_tea_1784485793027.png" },
+  { "name": "Milk Tea", "price": 250, "image": "C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9\\milk_tea_1784485803630.png" }
+]

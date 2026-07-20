@@ -215,6 +215,17 @@
                     flat
                     dense
                     round
+                    icon="edit"
+                    size="sm"
+                    color="primary"
+                    @click="emit('edit-item', props.row.menu_items?.id)"
+                  >
+                    <q-tooltip>Edit Base Item</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
+                    round
                     icon="attach_money"
                     size="sm"
                     color="amber"
@@ -388,7 +399,7 @@
                 @update:model-value="
                   () => {
                     addFilterSubCategoryId = null
-                    addFilterItemId = null
+                    addFilterItemIds = []
                   }
                 "
               />
@@ -411,7 +422,7 @@
                 clearable
                 :disable="!addFilterCategoryId"
                 label="Filter by Sub Category"
-                @update:model-value="addFilterItemId = null"
+                @update:model-value="addFilterItemIds = []"
               />
             </div>
           </div>
@@ -442,16 +453,37 @@
             v-else
             :dark="$q.dark.isActive"
             outlined
-            v-model="addFilterItemId"
+            multiple
+            use-chips
+            v-model="addFilterItemIds"
             :options="filteredItemOptions"
             emit-value
             map-options
             use-input
             input-debounce="100"
-            label="Search & Select Menu Item *"
+            label="Search & Select Menu Item(s) *"
             class="q-mb-sm"
             @filter="onFilterItems"
           >
+            <template v-slot:before-options>
+              <q-item clickable v-ripple @click="selectAllFilteredItems">
+                <q-item-section avatar>
+                  <q-icon name="done_all" color="primary" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Select All Filtered</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-ripple @click="addFilterItemIds = []" v-if="addFilterItemIds.length > 0">
+                <q-item-section avatar>
+                  <q-icon name="clear_all" color="negative" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>Clear Selection</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator />
+            </template>
             <template v-slot:prepend><q-icon name="search" /></template>
             <template v-slot:no-option>
               <q-item>
@@ -487,10 +519,10 @@
             </template>
           </q-select>
 
-          <!-- Auto-Fill Preview Card -->
+          <!-- Auto-Fill Preview Card for Single Selection -->
           <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
             <q-card
-              v-if="selectedItemToFill"
+              v-if="addFilterItemIds.length === 1 && selectedItemToFill"
               :dark="$q.dark.isActive"
               flat
               class="bg-grey-10 q-mt-xs"
@@ -566,6 +598,44 @@
                 </q-input>
               </q-card-section>
             </q-card>
+            <!-- Summary Card for Multiple Selection -->
+            <q-card
+              v-else-if="addFilterItemIds.length > 1"
+              :dark="$q.dark.isActive"
+              flat
+              class="bg-grey-10 q-mt-xs"
+              style="border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 8px"
+            >
+              <q-card-section class="q-pa-md text-center">
+                <div class="text-h6 text-primary">{{ addFilterItemIds.length }} Items Selected</div>
+                <div class="text-caption text-grey-4">Price override will apply to ALL selected items if provided.</div>
+              </q-card-section>
+              <q-separator dark />
+              <q-card-section class="q-pa-md q-pt-sm">
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model.number="overridePrice"
+                  type="number"
+                  prefix="LKR"
+                  label="Batch Price Override (optional)"
+                  hint="Leave blank to use individual base prices"
+                >
+                  <template v-slot:append>
+                    <q-btn
+                      v-if="overridePrice"
+                      flat
+                      dense
+                      size="sm"
+                      icon="clear"
+                      color="grey"
+                      @click="overridePrice = null"
+                    />
+                  </template>
+                </q-input>
+              </q-card-section>
+            </q-card>
           </transition>
         </q-card-section>
 
@@ -575,7 +645,7 @@
             label="Add to Book"
             icon="playlist_add"
             color="primary"
-            :disable="!addFilterItemId"
+            :disable="addFilterItemIds.length === 0"
             :loading="addingItem"
             @click="saveNewItemToBook"
           />
@@ -621,6 +691,9 @@ import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import DataTable from 'components/common/DataTable.vue'
 
+const emit = defineEmits(['edit-item'])
+
+
 const $q = useQuasar()
 const authStore = useAuthStore()
 
@@ -649,7 +722,7 @@ const bookDialog = reactive({
 
 const addFilterCategoryId = ref(null)
 const addFilterSubCategoryId = ref(null)
-const addFilterItemId = ref(null)
+const addFilterItemIds = ref([])
 const overridePrice = ref(null)
 const addingItem = ref(false)
 const itemSearchText = ref('')
@@ -710,6 +783,13 @@ const itemColumns = [
     align: 'left',
     sortable: true,
   },
+  {
+    name: 'kitchen',
+    label: 'Kitchen',
+    field: (row) => row.menu_items?.kitchens?.name || '',
+    align: 'left',
+    sortable: true,
+  },
   { name: 'price', label: 'Price', field: 'price', align: 'right', sortable: true },
   { name: 'available', label: 'Available', field: 'is_available', align: 'center' },
   { name: 'actions', label: 'Actions', align: 'center' },
@@ -761,8 +841,8 @@ const availableItemsOptions = computed(() => {
 })
 
 const selectedItemToFill = computed(() => {
-  if (!addFilterItemId.value) return null
-  return allMenuItems.value.find((i) => i.id === addFilterItemId.value)
+  if (addFilterItemIds.value.length !== 1) return null
+  return allMenuItems.value.find((i) => i.id === addFilterItemIds.value[0])
 })
 
 // QSelect filter handler — this is the KEY function that populates the dropdown
@@ -777,6 +857,10 @@ function onFilterItems(val, update) {
       )
     }
   })
+}
+
+function selectAllFilteredItems() {
+  addFilterItemIds.value = filteredItemOptions.value.map(opt => opt.value)
 }
 
 onMounted(() => {
@@ -823,7 +907,7 @@ async function fetchBookItems() {
     const { data, error } = await supabase
       .from('menu_book_items')
       .select(
-        '*, menu_items(id, name, base_price, image_url, item_code, sub_category_id, categories(name), menu_sub_categories(name))',
+        '*, menu_items(id, name, base_price, image_url, item_code, sub_category_id, categories(name), menu_sub_categories(name), kitchens(name))',
       )
       .eq('menu_book_id', selectedBookId.value)
       .order('sort_order')
@@ -898,11 +982,20 @@ async function uploadBookAvatar(event) {
   if (!file) return
   bookAvatarUploading.value = true
   try {
-    const ext = file.name.split('.').pop()
-    const fileName = `book_avatar_${Date.now()}.${ext}`
+    // Compress to WebP before uploading
+    const bitmap = await createImageBitmap(file)
+    const MAX_W = 800
+    let { width, height } = bitmap
+    if (width > MAX_W) { height = Math.round((height * MAX_W) / width); width = MAX_W }
+    const canvas = new OffscreenCanvas(width, height)
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+    const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.82 })
+
+    const fileName = `book_avatar_${Date.now()}.webp`
     const { error: upErr } = await supabase.storage
       .from('menu-images')
-      .upload(fileName, file, { upsert: true })
+      .upload(fileName, blob, { contentType: 'image/webp', upsert: true })
     if (upErr) throw upErr
     const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(fileName)
     bookDialog.form.image_url = urlData.publicUrl
@@ -1004,7 +1097,7 @@ async function deleteBook(book) {
 async function openAddItems() {
   addFilterCategoryId.value = null
   addFilterSubCategoryId.value = null
-  addFilterItemId.value = null
+  addFilterItemIds.value = []
   overridePrice.value = null
   itemSearchText.value = ''
 
@@ -1018,35 +1111,34 @@ async function openAddItems() {
 }
 
 async function saveNewItemToBook() {
-  if (!selectedItemToFill.value) return
-  const item = selectedItemToFill.value
+  if (addFilterItemIds.value.length === 0) return
   addingItem.value = true
 
   try {
-    const { error } = await supabase.from('menu_book_items').insert([
-      {
-        menu_book_id: selectedBookId.value,
-        menu_item_id: item.id,
-        override_price: overridePrice.value || null,
-        sort_order: bookItems.value.length + 1,
-      },
-    ])
+    const payloads = addFilterItemIds.value.map((itemId, idx) => ({
+      menu_book_id: selectedBookId.value,
+      menu_item_id: itemId,
+      override_price: overridePrice.value || null,
+      sort_order: bookItems.value.length + idx + 1,
+    }))
+
+    const { error } = await supabase.from('menu_book_items').insert(payloads)
     if (error) throw error
 
-    $q.notify({ type: 'positive', message: `${item.name} added to book`, timeout: 800 })
+    $q.notify({ type: 'positive', message: `${payloads.length} item(s) added to book`, timeout: 800 })
 
     // Reset selection to allow adding another item quickly
-    addFilterItemId.value = null
+    addFilterItemIds.value = []
     overridePrice.value = null
 
     await fetchBookItems()
     fetchBooks() // update count
 
-    // Re-populate filtered options (exclude just-added item)
+    // Re-populate filtered options (exclude just-added items)
     await nextTick()
     filteredItemOptions.value = availableItemsOptions.value
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message || 'Error adding item' })
+    $q.notify({ type: 'negative', message: err.message || 'Error adding items' })
   } finally {
     addingItem.value = false
   }

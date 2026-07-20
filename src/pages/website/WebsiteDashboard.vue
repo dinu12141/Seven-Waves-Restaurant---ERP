@@ -253,7 +253,8 @@ const formatCurrency = (val) => {
  
 onMounted(() => {
   fetchStats()
-  timer = setInterval(fetchStats, 60000)
+  // Polling removed — fetch once on mount to reduce egress
+  // timer = setInterval(fetchStats, 60000)
 })
  
 onUnmounted(() => {

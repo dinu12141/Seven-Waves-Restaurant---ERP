@@ -328,13 +328,13 @@ onMounted(async () => {
       }
     })
 
-    // Polling fallback every 15s in case realtime WS is blocked
+    // Polling fallback every 2 minutes in case realtime WS is blocked
     pollTimer = setInterval(async () => {
       const fresh = await getOrderStatus(orderId.value)
       if (fresh && order.value) {
         Object.assign(order.value, fresh)
       }
-    }, 15_000)
+    }, 120_000)
 
     // UI Clock
     clockTimer = setInterval(() => {

@@ -420,13 +420,6 @@ const formatDate = (dateStr) => {
 
 onMounted(() => {
   fetchMessages()
-
-  supabase
-    .channel('website_messages_changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'website_messages' }, () => {
-      fetchMessages()
-    })
-    .subscribe()
 })
 </script>
 

@@ -119,8 +119,20 @@
                       {{ kitchen.is_cashier_display ? 'Cashier Display' : 'Kitchen Station' }}
                     </q-item-label>
                   </q-item-section>
-                  <q-item-section side v-if="currentKitchenId === kitchen.id">
-                    <q-badge color="green" label="Active" />
+                  <q-item-section side>
+                    <div class="row items-center q-gutter-x-sm">
+                      <q-badge v-if="currentKitchenId === kitchen.id" color="green" label="Active" />
+                      <q-btn
+                        round
+                        dense
+                        flat
+                        icon="delete"
+                        color="negative"
+                        @click.stop="confirmDeleteKitchen(kitchen)"
+                      >
+                        <q-tooltip>Delete Kitchen</q-tooltip>
+                      </q-btn>
+                    </div>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -290,10 +302,8 @@ const categoryOptions = computed(() => [
 // Enriched sub-categories with kitchen info from mappings
 const enrichedSubs = computed(() => {
   return rawSubCategories.value.map((s) => {
-    // Find mapping: prefer subcategory_id match, fallback to category_id match
-    const mapping =
-      mappings.value.find((m) => m.subcategory_id === s.id) ||
-      mappings.value.find((m) => !m.subcategory_id && m.category_id === s.category_id)
+    // Find mapping strictly by subcategory_id
+    const mapping = mappings.value.find((m) => m.subcategory_id === s.id)
     const kitchen = mapping ? kitchens.value.find((k) => k.id === mapping.kitchen_id) : null
     return {
       ...s,
@@ -432,6 +442,37 @@ async function removeMapping() {
     console.error('[KitchenMapping] Error removing mapping:', err)
     $q.notify({ type: 'negative', message: err.message || 'Failed to remove mapping' })
   }
+}
+
+function confirmDeleteKitchen(kitchen) {
+  $q.dialog({
+    title: 'Delete Kitchen',
+    message: `Are you sure you want to delete "${kitchen.name}"?`,
+    cancel: true,
+    persistent: true,
+    color: 'negative',
+  }).onOk(async () => {
+    try {
+      // Try hard delete first
+      let { error } = await supabase.from('kitchens').delete().eq('id', kitchen.id)
+      
+      // If foreign key constraint fails, do a soft delete
+      if (error && error.code === '23503') {
+        const { error: softErr } = await supabase
+          .from('kitchens')
+          .update({ is_active: false })
+          .eq('id', kitchen.id)
+        error = softErr
+      }
+
+      if (error) throw error
+      await fetchKitchens()
+      $q.notify({ type: 'positive', message: 'Kitchen removed successfully' })
+    } catch (err) {
+      console.error('[KitchenMapping] Error deleting kitchen:', err)
+      $q.notify({ type: 'negative', message: 'Failed to remove kitchen: ' + err.message })
+    }
+  })
 }
 
 function openAddKitchen() {

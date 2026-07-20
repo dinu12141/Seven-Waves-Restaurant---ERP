@@ -40,7 +40,7 @@
 
         <!-- Menu Book -->
         <q-tab-panel name="menu_book" class="q-pa-none">
-          <MenuBookTab ref="tabRef" />
+          <MenuBookTab @edit-item="handleEditMenuItem" ref="tabRef" />
         </q-tab-panel>
 
         <!-- Kitchen Mapping -->
@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { usePermission } from 'src/core/rbac/usePermission'
@@ -232,5 +232,13 @@ function editDocument(doc) {
 
 function onDocumentSaved() {
   router.push({ path: '/inventory', query: { tab: 'documents' } })
+}
+
+async function handleEditMenuItem(itemId) {
+  tab.value = 'menu_items'
+  await nextTick()
+  if (tabRef.value && tabRef.value.openEditById) {
+    tabRef.value.openEditById(itemId)
+  }
 }
 </script>

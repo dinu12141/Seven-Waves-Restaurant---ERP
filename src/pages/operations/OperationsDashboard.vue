@@ -526,7 +526,8 @@ const DrawerHeader = defineComponent({
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   fetchData()
-  timer = setInterval(fetchData, 30000)
+  // Polling removed — realtime events handle live updates
+  // timer = setInterval(fetchData, 30000)
 })
 onUnmounted(() => clearInterval(timer))
 </script>

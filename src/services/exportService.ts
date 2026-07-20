@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+// @ts-ignore
 import logoUrl from 'src/assets/seven-waves-logo-transparent.png'
 
 interface LogoData {
@@ -155,12 +156,23 @@ export async function exportToPDF(document: any, lines: any[]) {
  * Generic CSV Export
  */
 export function exportTableToCSV(columns: any[], rows: any[], filename: string) {
-  const headers = columns.map((c) => c.label).join(',')
+  const exportCols = columns.filter(c => 
+    c.name !== 'image' && 
+    c.field !== 'image_url' && 
+    c.name !== 'image_url' &&
+    c.name !== 'actions'
+  )
+  
+  const headers = exportCols.map((c) => c.label).join(',')
   const csvRows = rows
     .map((r) => {
-      return columns
+      return exportCols
         .map((col) => {
-          const val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+          let val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+          // Double-check: if it's still somehow an image link, clear it
+          if (typeof val === 'string' && val.startsWith('http') && val.includes('supabase')) {
+            val = ''
+          }
           // Escape commas and wrap in quotes
           const escaped = ('' + (val || '')).replace(/"/g, '""')
           return `"${escaped}"`
@@ -189,10 +201,22 @@ export function exportTableToCSV(columns: any[], rows: any[], filename: string) 
  * Generic Excel Export
  */
 export function exportTableToExcel(columns: any[], rows: any[], filename: string) {
+  const exportCols = columns.filter(c => 
+    c.name !== 'image' && 
+    c.field !== 'image_url' && 
+    c.name !== 'image_url' &&
+    c.name !== 'actions'
+  )
+
   const data = rows.map((r) => {
     const obj: any = {}
-    columns.forEach((col) => {
-      obj[col.label] = typeof col.field === 'function' ? col.field(r) : r[col.field]
+    exportCols.forEach((col) => {
+      let val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+      // Double-check: if it's still somehow an image link, clear it
+      if (typeof val === 'string' && val.startsWith('http') && val.includes('supabase')) {
+        val = ''
+      }
+      obj[col.label] = val
     })
     return obj
   })
@@ -207,17 +231,66 @@ export function exportTableToExcel(columns: any[], rows: any[], filename: string
   XLSX.writeFile(wb, finalName)
 }
 
-/**
- * Generic PDF Export with jsPDF-AutoTable
- */
-export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
+async function fetchImageAsPNG(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const MAX_DIM = 200
+      let w = img.width
+      let h = img.height
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) {
+          h = Math.round((h * MAX_DIM) / w)
+          w = MAX_DIM
+        } else {
+          w = Math.round((w * MAX_DIM) / h)
+          h = MAX_DIM
+        }
+      }
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/png'))
+      } else {
+        resolve(null)
+      }
+    }
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
+
+async function generatePDFTableDoc(columns: any[], rows: any[], title: string, subtitle: string = ''): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
 
   await drawSAPHeader(doc, title, subtitle)
 
-  const heads = columns.map((c) => c.label)
-  const body = rows.map((r) =>
-    columns.map((c) => {
+  const imageCols = columns.filter((c: any) => c.name === 'image' || c.field === 'image_url')
+  const imageCache: Record<string, string> = {}
+  
+  if (imageCols.length > 0) {
+    const urls = new Set<string>()
+    for (const r of rows) {
+      for (const c of imageCols) {
+        const val = typeof c.field === 'function' ? c.field(r) : r[c.field]
+        if (val && typeof val === 'string' && val.startsWith('http')) {
+          urls.add(val)
+        }
+      }
+    }
+    await Promise.all(Array.from(urls).map(async (url) => {
+      const b64 = await fetchImageAsPNG(url)
+      if (b64) imageCache[url] = b64
+    }))
+  }
+
+  const heads = columns.map((c: any) => c.label)
+  const body = rows.map((r: any) =>
+    columns.map((c: any) => {
       const val = typeof c.field === 'function' ? c.field(r) : r[c.field]
       return c.format ? c.format(val) : (val ?? '-')
     }),
@@ -229,9 +302,43 @@ export async function exportTableToPDF(columns: any[], rows: any[], title: strin
     body,
     theme: 'grid',
     headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
-    styles: { fontSize: 7 },
-    columnStyles: Object.fromEntries(columns.map((c, i) => [i, { halign: c.align || 'left' }])),
+    styles: { fontSize: 7, minCellHeight: imageCols.length > 0 ? 12 : undefined },
+    columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
+    didParseCell: (data) => {
+      if (data.section === 'body') {
+        const colDef = columns[data.column.index]
+        if (imageCols.includes(colDef)) {
+          data.cell.text = [] // clear text
+        }
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body') {
+        const colDef = columns[data.column.index]
+        if (imageCols.includes(colDef)) {
+          const rowData = rows[data.row.index]
+          if (!rowData) return
+          const val = typeof colDef.field === 'function' ? colDef.field(rowData) : rowData[colDef.field]
+          if (val && typeof val === 'string' && imageCache[val]) {
+            const imgData = imageCache[val]
+            const dim = 10 // 10x10 mm
+            const x = data.cell.x + (data.cell.width - dim) / 2
+            const y = data.cell.y + (data.cell.height - dim) / 2
+            doc.addImage(imgData, 'PNG', x, y, dim, dim)
+          }
+        }
+      }
+    }
   })
+  
+  return doc
+}
+
+/**
+ * Generic PDF Export with jsPDF-AutoTable
+ */
+export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
+  const doc = await generatePDFTableDoc(columns, rows, title, subtitle)
   doc.save(`${title}_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
@@ -240,29 +347,7 @@ export async function exportTableToPDF(columns: any[], rows: any[], title: strin
  * but opens it in a new tab for printing instead of downloading.
  */
 export async function printTableAsPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
-  const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
-
-  await drawSAPHeader(doc, title, subtitle)
-
-  const heads = columns.map((c: any) => c.label)
-  const body = rows.map((r: any) =>
-    columns.map((c: any) => {
-      const val = typeof c.field === 'function' ? c.field(r) : r[c.field]
-      return c.format ? c.format(val) : (val ?? '-')
-    }),
-  )
-
-  autoTable(doc, {
-    startY: 38,
-    head: [heads],
-    body,
-    theme: 'grid',
-    headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
-    styles: { fontSize: 7 },
-    columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
-  })
-
-  // Open in new tab for printing instead of downloading
+  const doc = await generatePDFTableDoc(columns, rows, title, subtitle)
   const pdfBlob = doc.output('blob')
   const url = URL.createObjectURL(pdfBlob)
   const printWindow = window.open(url, '_blank')

@@ -187,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { supabase } from 'src/boot/supabase'
 import { fetchPayrollCycles, fetchEmployeeSalaryStructures } from 'src/services/financeService'
@@ -195,7 +195,6 @@ import { fetchPayrollCycles, fetchEmployeeSalaryStructures } from 'src/services/
 const loading = ref(false)
 const cycles = ref([])
 const employeeData = ref([])
-let realtimeChannel = null
 
 // Payslips dialog state
 const showPayslipsDialog = ref(false)
@@ -342,30 +341,8 @@ async function openPayslipsDialog(cycle) {
   payslipLoading.value = false
 }
 
-// Realtime: auto-refresh when HR changes employee/salary data
-function setupRealtime() {
-  realtimeChannel = supabase
-    .channel('payroll-overview-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_runs' }, () =>
-      loadData(),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'payslips' }, () => loadData())
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'salary_structures' }, () =>
-      loadData(),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_allowances' }, () =>
-      loadData(),
-    )
-    .subscribe()
-}
-
 onMounted(() => {
   loadData()
-  setupRealtime()
-})
-onUnmounted(() => {
-  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
 })
 </script>
 

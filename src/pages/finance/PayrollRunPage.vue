@@ -220,10 +220,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Notify } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import { supabase } from 'src/boot/supabase'
 import {
   fetchEmployeeSalaryStructures,
   createPayrollCycle,
@@ -234,7 +233,6 @@ import {
   postPayrollToJournal,
 } from 'src/services/financeService'
 
-let realtimeChannel = null
 const loading = ref(false)
 const calculating = ref(false)
 const posting = ref(false)
@@ -472,28 +470,8 @@ async function postToJournal() {
   }
 }
 
-// Realtime: auto-refresh employee list when HR changes salary data
-function setupRealtime() {
-  realtimeChannel = supabase
-    .channel('payroll-run-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () =>
-      loadEmployees(),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'salary_structures' }, () =>
-      loadEmployees(),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_allowances' }, () =>
-      loadEmployees(),
-    )
-    .subscribe()
-}
-
 onMounted(() => {
   loadEmployees()
-  setupRealtime()
-})
-onUnmounted(() => {
-  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
 })
 </script>
 

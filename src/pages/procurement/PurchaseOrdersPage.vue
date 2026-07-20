@@ -118,11 +118,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
 import { listPO, createPO, listSuppliers, listItems, approvePO, listInventoryPOs, getAnyPODetails } from 'src/services/procurementService'
-import { supabase } from 'src/boot/supabase'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
@@ -252,8 +251,6 @@ function tabCount(tabVal) {
   return purchaseOrders.value.filter((po) => po.status === tabVal).length
 }
 
-let poChannel = null
-
 onMounted(async () => {
   loading.value = true
   await Promise.all([fetchPOs(), fetchSuppliers(), fetchItems()])
@@ -265,22 +262,6 @@ onMounted(async () => {
     router.replace({ path: '/procurement/purchase-orders' })
   }
 
-  // Real-time subscription for auto-refresh (both tables)
-  poChannel = supabase
-    .channel('realtime:po_combined')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_orders' }, () => {
-      fetchPOs()
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_documents' }, () => {
-      fetchPOs()
-    })
-    .subscribe()
-})
-
-onUnmounted(() => {
-  if (poChannel) {
-    supabase.removeChannel(poChannel)
-  }
 })
 
 async function fetchPOs() {

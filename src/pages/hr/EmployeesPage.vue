@@ -3983,13 +3983,28 @@ const viewEmpTotalAllowance = computed(() => {
 
 const stats = ref({ total: 0, active: 0, probation: 0, contract: 0 })
 
+async function compressToWebp(file, maxWidth = 400, quality = 0.80) {
+  const bitmap = await createImageBitmap(file)
+  let { width, height } = bitmap
+  if (width > maxWidth) {
+    height = Math.round((height * maxWidth) / width)
+    width = maxWidth
+  }
+  const canvas = new OffscreenCanvas(width, height)
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+  return canvas.convertToBlob({ type: 'image/webp', quality })
+}
+
 async function uploadEmployeePhoto(empId, file) {
   try {
-    const ext = file.name.split('.').pop()
-    const path = `${empId}/photo.${ext}`
+    // Compress to WebP before uploading to save storage & egress
+    const blob = await compressToWebp(file)
+    const path = `${empId}/photo.webp`
     const { error: uploadErr } = await supabase.storage
       .from('employee-photos')
-      .upload(path, file, { upsert: true })
+      .upload(path, blob, { contentType: 'image/webp', upsert: true })
     if (uploadErr) throw uploadErr
 
     const { data: urlData } = supabase.storage.from('employee-photos').getPublicUrl(path)
@@ -4752,11 +4767,23 @@ async function uploadFormDocuments(empId) {
   const errors = []
   for (const entry of toUpload) {
     try {
-      const ext = entry.file.name.split('.').pop()
-      const path = `${empId}/${entry.doc_type}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const isImage = entry.file.type.startsWith('image/')
+      let fileToUpload = entry.file
+      let pathExt = entry.file.name.split('.').pop()
+      let mimeType = entry.file.type
+      let fileSize = entry.file.size
+
+      if (isImage) {
+        fileToUpload = await compressToWebp(entry.file)
+        pathExt = 'webp'
+        mimeType = 'image/webp'
+        fileSize = fileToUpload.size
+      }
+
+      const path = `${empId}/${entry.doc_type}_${Date.now()}_${Math.random().toString(36).slice(2)}.${pathExt}`
       const { error: uploadErr } = await supabase.storage
         .from('employee-documents')
-        .upload(path, entry.file, { upsert: false })
+        .upload(path, fileToUpload, { contentType: mimeType, upsert: false })
       if (uploadErr) throw uploadErr
       const { error: dbErr } = await supabase.from('employee_documents').insert({
         company_id: authStore.currentBranch?.company_id,
@@ -4764,8 +4791,8 @@ async function uploadFormDocuments(empId) {
         doc_type: entry.doc_type,
         doc_name: entry.doc_name,
         file_path: path,
-        file_size: entry.file.size,
-        mime_type: entry.file.type,
+        file_size: fileSize,
+        mime_type: mimeType,
       })
       if (dbErr) throw dbErr
     } catch (err) {
@@ -5425,9 +5452,10 @@ async function loadEmployees() {
     if (!branchId) return
     const { data, error } = await supabase
       .from('employees')
-      .select('*, departments(name), designations(title)')
+      .select('id, first_name, last_name, employee_code, employment_status, mobile, email, photo_url, departments(name), designations(title)')
       .eq('branch_id', branchId)
       .order('first_name')
+      .range(0, 49) // Paginate initial load to save egress
     if (error) throw error
     employees.value = data || []
     stats.value.total = employees.value.length

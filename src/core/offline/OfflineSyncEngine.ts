@@ -175,7 +175,7 @@ class OfflineSyncEngine {
   /**
    * Start periodic sync (call on app boot).
    */
-  startPeriodicSync(intervalMs = 30000): void {
+  startPeriodicSync(intervalMs = 300000): void {  // 5 min default (was 30s)
     this.stopPeriodicSync()
     this.syncTimer = setInterval(() => {
       if (this.isOnline && this.status !== 'syncing') {

@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { fetchPayableAging } from 'src/services/financeService'
 import { useQuasar } from 'quasar'
@@ -356,24 +356,8 @@ async function loadData() {
   payables.value = data || []
   loading.value = false
 }
-let realtimeChannel = null
-
 onMounted(() => {
   loadData()
-  // Realtime subscription on ap_ledger changes
-  realtimeChannel = supabase
-    .channel('ap-ledger-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'ap_ledger' }, () => {
-      loadData()
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, () => {
-      loadData()
-    })
-    .subscribe()
-})
-
-onUnmounted(() => {
-  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
 })
 </script>
 

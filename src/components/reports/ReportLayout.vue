@@ -292,7 +292,7 @@ const props = defineProps({
   subtitle: { type: String, default: '' },
   kpis: { type: Array, default: () => [] },
   branches: { type: Array, default: () => [] },
-  autoRefreshInterval: { type: Number, default: 60000 },
+  autoRefreshInterval: { type: Number, default: 600000 },  // 10 min default (was 60s)
   hideSapHeader: { type: Boolean, default: false },
   exportColumns: { type: Array, default: null },
   exportRows: { type: Array, default: null },

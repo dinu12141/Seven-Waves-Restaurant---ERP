@@ -425,7 +425,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Notify } from 'quasar'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { supabase } from 'src/boot/supabase'
@@ -448,7 +448,6 @@ const allowances = ref([])
 const deductions = ref([])
 const additions = ref([])
 const allowanceTypeOptions = ref([])
-let realtimeChannel = null
 
 const showAllowanceDialog = ref(false)
 const showDeductionDialog = ref(false)
@@ -634,90 +633,6 @@ async function loadEmployeeDetails() {
   additions.value = addRes.data || []
 }
 
-// ── Realtime: auto-update when HR changes employees or salary data ──
-function setupRealtime() {
-  realtimeChannel = supabase
-    .channel('salary-structure-live')
-    // Employee list changes (add/remove/edit employees)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, async () => {
-      const { data } = await supabase
-        .from('employees')
-        .select(
-          'id, first_name, last_name, employee_code, employment_status, designations(title), departments(name)',
-        )
-        .order('first_name')
-      allEmployees.value = buildEmployeeOptions(data || [])
-      employeeOptions.value = [...allEmployees.value]
-      // Also refresh selected employee details if one is selected
-      if (selectedEmployee.value) await loadEmployeeDetails()
-    })
-    // Salary structure changes (HR updates basic salary, salary method, etc.)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'salary_structures' },
-      async () => {
-        if (selectedEmployee.value) {
-          await loadEmployeeDetails()
-          Notify.create({
-            type: 'info',
-            message: 'Salary structure updated',
-            timeout: 2000,
-            position: 'bottom-right',
-          })
-        }
-      },
-    )
-    // Allowance changes
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'employee_allowances' },
-      async () => {
-        if (selectedEmployee.value) {
-          await loadEmployeeDetails()
-          Notify.create({
-            type: 'info',
-            message: 'Allowances updated',
-            timeout: 2000,
-            position: 'bottom-right',
-          })
-        }
-      },
-    )
-    // Deduction changes
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'salary_deductions' },
-      async () => {
-        if (selectedEmployee.value) {
-          await loadEmployeeDetails()
-          Notify.create({
-            type: 'info',
-            message: 'Deductions updated',
-            timeout: 2000,
-            position: 'bottom-right',
-          })
-        }
-      },
-    )
-    // Addition changes
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'salary_additions' },
-      async () => {
-        if (selectedEmployee.value) {
-          await loadEmployeeDetails()
-          Notify.create({
-            type: 'info',
-            message: 'Additions updated',
-            timeout: 2000,
-            position: 'bottom-right',
-          })
-        }
-      },
-    )
-    .subscribe()
-}
-
 async function saveAllowance() {
   const { error } = await createEmployeeAllowance({
     employee_id: selectedEmployee.value,
@@ -805,11 +720,6 @@ async function removeDeduction(id) {
 
 onMounted(() => {
   loadData()
-  setupRealtime()
-})
-
-onUnmounted(() => {
-  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
 })
 </script>
 
