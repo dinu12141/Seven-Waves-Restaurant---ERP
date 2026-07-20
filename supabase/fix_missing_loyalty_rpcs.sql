@@ -73,7 +73,7 @@ BEGIN
             la.last_activity AS last_rewarded_at,
             COALESCE(lt.tier_code, la.tier, 'bronze') AS tier,
             COALESCE(lt.tier_code, la.tier, 'bronze') AS tier_code,
-            COALESCE(lt.name, la.tier, 'Bronze') AS tier_name
+            COALESCE(lt.tier_name, la.tier, 'Bronze') AS tier_name
           FROM public.customers c
           JOIN public.loyalty_accounts la ON la.customer_id = c.id
           LEFT JOIN public.loyalty_tiers lt ON lt.id = la.current_tier_id
@@ -145,4 +145,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_loyalty_customer_detail(UUID) TO authenticated;
 
 -- Force PostgREST to reload schema and recognize new function signatures
-NOTIFY pgrst, reload_schema;
+NOTIFY pgrst, 'reload schema';

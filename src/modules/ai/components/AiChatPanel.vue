@@ -166,9 +166,14 @@ watch(messages, () => {
 <style lang="scss" scoped>
 .ai-chat-panel {
   border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.body--dark .ai-chat-panel {
   background: rgba(255, 255, 255, 0.02);
   border-color: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
 }
 
 .chat-message {
@@ -183,17 +188,31 @@ watch(messages, () => {
   line-height: 1.5;
 
   &.user {
-    background: rgba(59, 130, 246, 0.15);
+    background: rgba(59, 130, 246, 0.1);
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-bottom-right-radius: 4px;
-    color: #e5e7eb;
+    color: #111827;
   }
 
   &.assistant {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-bottom-left-radius: 4px;
-    color: #d1d5db;
+    color: #374151;
+  }
+}
+
+.body--dark {
+  .message-bubble {
+    &.user {
+      background: rgba(59, 130, 246, 0.15);
+      color: #e5e7eb;
+    }
+    &.assistant {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #d1d5db;
+    }
   }
 }
 </style>

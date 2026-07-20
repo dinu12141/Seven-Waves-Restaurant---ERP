@@ -68,7 +68,7 @@
       <q-table
         :rows="customers"
         :columns="columns"
-        row-key="id"
+        row-key="customer_id"
         :loading="loading"
         flat
         :pagination="{ rowsPerPage: 20 }"
@@ -352,7 +352,8 @@ async function fetchCustomers() {
 }
 
 function viewCustomer(customer) {
-  router.push(`/admin/customers/${customer.id}`)
+  const id = customer.customer_id || customer.id
+  router.push(`/admin/loyalty/${id}`)
 }
 
 function formatDate(val) {
@@ -382,7 +383,8 @@ function deleteCustomerAction(customer) {
     persistent: true,
     color: 'negative',
   }).onOk(async () => {
-    const result = await adminDeleteCustomer(customer.id)
+    const id = customer.customer_id || customer.id
+    const result = await adminDeleteCustomer(id)
     if (result.success) {
       $q.notify({ type: 'positive', message: 'Customer deleted successfully' })
       fetchCustomers()

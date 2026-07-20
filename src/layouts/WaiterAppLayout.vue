@@ -66,7 +66,7 @@
           dense
           :icon="store.soundEnabled ? 'notifications_active' : 'notifications_off'"
           :color="store.soundEnabled ? 'orange-8' : 'grey-7'"
-          class="q-ml-sm"
+          class="q-ml-sm sound-toggle-btn"
           @click="store.toggleSound"
         >
           <q-badge
@@ -195,8 +195,8 @@
     <!-- ── New Order Alert Dialog ── -->
     <q-dialog v-model="showNewOrderAlert" position="top">
       <q-card class="order-alert-card">
-        <q-card-section class="row items-center q-pb-none">
-          <q-icon name="room_service" color="orange-9" size="24px" class="q-mr-sm" />
+        <q-card-section class="row items-center q-pb-none alert-header">
+          <q-icon name="room_service" color="orange-9" size="28px" class="q-mr-sm alert-pulse-icon" />
           <div class="text-h6 text-orange-10">New Order Alert!</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
@@ -448,42 +448,28 @@ const tabs = computed(() => [
 // ─── Layout ──────────────────────────────────────────────────────────────────
 .waiter-app-layout {
   background: var(--erp-bg-page, #f1f5f9);
-  // ── Global font-size boost for the entire Waiter Mobile App ──
   font-size: 15px;
-  :deep(.q-page) {
-    font-size: 15px;
-  }
-  :deep(.q-btn) {
-    font-size: 13px !important;
-  }
-  :deep(.q-chip) {
-    font-size: 12px !important;
-  }
-  :deep(.text-caption) {
-    font-size: 13px !important;
-  }
-  :deep(.q-item__label) {
-    font-size: 14px !important;
-  }
+  :deep(.q-page) { font-size: 15px; }
+  :deep(.q-btn) { font-size: 13px !important; }
+  :deep(.q-chip) { font-size: 12px !important; }
+  :deep(.text-caption) { font-size: 13px !important; }
+  :deep(.q-item__label) { font-size: 14px !important; }
 }
 
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 .waiter-top-bar {
-  background: #fff !important;
-  border-bottom: 1px solid var(--erp-border, #e2e8f0) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-  // safe-area-inset-top is handled by .mobile-top-bar class
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important;
+  border-bottom: none !important;
+  box-shadow: 0 4px 24px rgba(30, 27, 75, 0.45) !important;
 }
 
-// .waiter-toolbar — height/min-height/padding handled by .mobile-top-bar .q-toolbar
-
-
-// ─── Logo ───────────────────────────────────────────────────────────────────
+// ─── Logo ────────────────────────────────────────────────────────────────────
 .waiter-logo {
   height: 34px;
   width: auto;
   object-fit: contain;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 .waiter-brand {
@@ -495,7 +481,7 @@ const tabs = computed(() => [
 .brand-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--erp-text-primary, #1e293b);
+  color: #fff;
   letter-spacing: -0.2px;
 }
 
@@ -503,107 +489,156 @@ const tabs = computed(() => [
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: #ea580c;
-  background: rgba(234, 88, 12, 0.1);
-  border: 1px solid rgba(234, 88, 12, 0.25);
-  border-radius: 4px;
-  padding: 2px 6px;
+  color: #fff;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border: none;
+  border-radius: 20px;
+  padding: 3px 9px;
   text-transform: uppercase;
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.6), 0 2px 6px rgba(249, 115, 22, 0.35);
 }
 
+// ─── Shift Chips ─────────────────────────────────────────────────────────────
 .shift-chip {
   font-size: 12px !important;
   font-weight: 600 !important;
   height: 26px !important;
+  border-radius: 20px !important;
+
+  &.bg-green-9 {
+    background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.5), 0 2px 8px rgba(34, 197, 94, 0.3) !important;
+  }
+  &.bg-red-9 {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.45) !important;
+  }
+  &.bg-purple-9 {
+    background: linear-gradient(135deg, #a855f7, #7c3aed) !important;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.45) !important;
+  }
 }
 
-// ─── Top-bar Avatar Button ───────────────────────────────────────────────────
+// ─── Sound Toggle Button ──────────────────────────────────────────────────────
+.sound-toggle-btn {
+  transition: background 0.2s ease, box-shadow 0.2s ease !important;
+  :deep(.q-icon) {
+    color: rgba(255, 255, 255, 0.75) !important;
+    transition: color 0.2s ease;
+  }
+  &.text-orange-8 {
+    background: linear-gradient(135deg, #f97316, #ea580c) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 16px rgba(249, 115, 22, 0.6), 0 0 6px rgba(249, 115, 22, 0.3) !important;
+    :deep(.q-icon) { color: #fff !important; }
+  }
+  &.text-grey-7 {
+    :deep(.q-icon) { color: rgba(255, 255, 255, 0.5) !important; }
+  }
+}
+
+// ─── Theme Toggle Button ──────────────────────────────────────────────────────
+.theme-toggle-btn {
+  :deep(.q-icon) { color: rgba(255, 255, 255, 0.8) !important; }
+}
+
+// ─── Top-bar Avatar Button ────────────────────────────────────────────────────
 .top-avatar-btn {
   padding: 0 !important;
-  min-width: 34px !important;
-  min-height: 34px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
   border-radius: 50% !important;
 }
 
 .top-avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg, #f97316, #ef4444);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   letter-spacing: 0.3px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
   &--lg {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+    border: 2px solid rgba(249, 115, 22, 0.3);
   }
 }
 
 // ─── User Menu Dropdown ───────────────────────────────────────────────────────
 :deep(.waiter-user-menu) {
-  background: #fff !important;
-  border: 1px solid var(--erp-border, #e2e8f0) !important;
-  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 20px !important;
   overflow: hidden;
-  min-width: 200px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  min-width: 220px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 6px 18px rgba(0, 0, 0, 0.08) !important;
 }
 
 .wum-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px 12px;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.07), rgba(239, 68, 68, 0.04));
 }
 .wum-info {
   flex: 1;
   min-width: 0;
 }
 .wum-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--erp-text-primary, #1e293b);
+  color: #1e293b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .wum-code {
   font-size: 11px;
-  color: var(--erp-text-muted, #94a3b8);
-  margin-top: 2px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: 6px;
+  padding: 1px 6px;
+  display: inline-block;
+  margin-top: 3px;
 }
 .wum-item {
-  min-height: 44px !important;
+  min-height: 46px !important;
   font-size: 13px !important;
-  color: var(--erp-text-primary, #1e293b) !important;
+  color: #1e293b !important;
   padding: 0 16px !important;
   gap: 10px;
+  transition: background 0.15s ease;
+  &:hover {
+    background: rgba(249, 115, 22, 0.06) !important;
+  }
   &--danger {
     color: #dc2626 !important;
-    :deep(.q-icon) {
-      color: #dc2626 !important;
-    }
-    &:hover {
-      background: rgba(239, 68, 68, 0.06) !important;
-    }
+    :deep(.q-icon) { color: #dc2626 !important; }
+    &:hover { background: rgba(239, 68, 68, 0.06) !important; }
   }
 }
 
-// ─── Admin Waiter Selector Bar ───────────────────────────────────────────────
+// ─── Admin Waiter Selector Bar ────────────────────────────────────────────────
 .waiter-selector-bar {
   display: flex;
   align-items: center;
-  padding: 6px 14px;
-  background: rgba(127, 86, 217, 0.05);
-  border-bottom: 1px solid rgba(127, 86, 217, 0.12);
-  min-height: 38px;
+  padding: 7px 14px;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.09), rgba(139, 92, 246, 0.05));
+  border-bottom: 1px solid rgba(124, 58, 237, 0.15);
+  min-height: 40px;
 }
 .selector-label {
   font-size: 11px;
@@ -616,35 +651,29 @@ const tabs = computed(() => [
 .selector-dropdown {
   font-size: 13px !important;
   font-weight: 600 !important;
-  :deep(.q-btn__content) {
-    gap: 6px;
-  }
+  :deep(.q-btn__content) { gap: 6px; }
 }
 :deep(.waiter-selector-list) {
-  background: #fff !important;
-  border: 1px solid var(--erp-border, #e2e8f0);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 14px;
   min-width: 220px;
   max-height: 360px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
 }
 .selector-item {
-  min-height: 48px !important;
+  min-height: 50px !important;
   padding: 6px 14px !important;
-  &--active {
-    background: rgba(127, 86, 217, 0.08) !important;
-  }
-  &--reset {
-    border-bottom: 1px solid var(--erp-border, #e2e8f0);
-  }
-  &:hover {
-    background: rgba(0, 0, 0, 0.03) !important;
-  }
+  transition: background 0.15s ease;
+  &--active { background: rgba(124, 58, 237, 0.08) !important; }
+  &--reset { border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
+  &:hover { background: rgba(249, 115, 22, 0.05) !important; }
 }
 .selector-avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg, #f97316, #ef4444);
   color: #fff;
@@ -653,6 +682,7 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
 }
 
 // ─── Off-Shift Banner ────────────────────────────────────────────────────────
@@ -660,98 +690,13 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  background: rgba(239, 68, 68, 0.06);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  background: linear-gradient(90deg, #7f1d1d, #991b1b);
+  border-bottom: none;
+  color: #fff;
   font-size: 0.88rem;
   padding: 10px 16px;
-  min-height: 40px;
-}
-
-// ─── Page Container ──────────────────────────────────────────────────────────
-// padding-bottom is auto-calculated by Quasar's QPageContainer
-// min-height is handled by the mobile-app-shell flex layout
-
-// ─── Bottom Navigation ───────────────────────────────────────────────────────
-// .waiter-bottom-nav background/border handled by .mobile-bottom-nav
-
-.bottom-nav-bar {
-  // display/height/safe-area handled by .mobile-nav-bar
-  background: #fff;
-  border-top: 1px solid var(--erp-border, #e2e8f0);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
-}
-
-.nav-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  min-height: 42px;
   gap: 4px;
-  background: none;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: #94a3b8;
-  transition: color 0.15s ease;
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-
-  &__icon-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 36px;
-  }
-
-  &__label {
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    line-height: 1;
-  }
-
-  &--active {
-    color: #ea580c;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 32px;
-      height: 2px;
-      background: #ea580c;
-      border-radius: 0 0 3px 3px;
-    }
-  }
-
-  &:active {
-    opacity: 0.7;
-  }
-}
-
-.nav-badge {
-  font-size: 10px !important;
-  min-width: 18px !important;
-  height: 18px !important;
-  padding: 0 4px !important;
-  top: -4px !important;
-  right: -6px !important;
-}
-
-// ─── Page Transition ─────────────────────────────────────────────────────────
-.tab-fade-enter-active,
-.tab-fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.tab-fade-enter-from,
-.tab-fade-leave-to {
-  opacity: 0;
 }
 
 // ─── PWA Install Banner ───────────────────────────────────────────────────────
@@ -759,19 +704,19 @@ const tabs = computed(() => [
   display: flex;
   align-items: center;
   padding: 8px 14px;
-  background: linear-gradient(90deg, rgba(234,88,12,0.08), rgba(251,191,36,0.06));
-  border-bottom: 1px solid rgba(234, 88, 12, 0.2);
-  color: #ea580c;
+  background: linear-gradient(90deg, #c2410c, #ea580c, #f97316);
+  border-bottom: none;
+  color: #fff;
   font-size: 0.85rem;
   font-weight: 600;
-  min-height: 38px;
+  min-height: 40px;
   gap: 4px;
 }
 
 .pwa-banner-text {
   flex: 1;
   font-size: 0.82rem;
-  color: #9a3412;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 // ─── Push Permission Banner ───────────────────────────────────────────────────
@@ -784,12 +729,97 @@ const tabs = computed(() => [
   min-height: 38px;
   gap: 4px;
 }
-
 .push-banner-text {
   flex: 1;
   font-size: 0.82rem;
   font-weight: 600;
   color: #9a3412;
+}
+
+// ─── Bottom Navigation ────────────────────────────────────────────────────────
+.bottom-nav-bar {
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.09);
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: #94a3b8;
+  min-height: 64px;
+  padding: 8px 4px;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+
+  &__icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 34px;
+    border-radius: 25px;
+    transition: background 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s ease,
+                transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  &__label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    line-height: 1;
+    transition: color 0.2s ease;
+  }
+
+  &--active {
+    color: #fff;
+
+    &::before { display: none; }
+
+    .nav-tab__icon-wrap {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      box-shadow: 0 4px 18px rgba(249, 115, 22, 0.45), 0 2px 6px rgba(239, 68, 68, 0.25);
+      transform: translateY(-2px) scale(1.06);
+    }
+
+    .nav-tab__label {
+      color: #ea580c;
+    }
+  }
+
+  &:active {
+    transform: scale(0.93);
+  }
+}
+
+.nav-badge {
+  font-size: 10px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 4px !important;
+  top: -6px !important;
+  right: -6px !important;
+}
+
+// ─── Page Transition ──────────────────────────────────────────────────────────
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.tab-fade-enter-from,
+.tab-fade-leave-to {
+  opacity: 0;
 }
 
 // ─── Banner Slide Animation ───────────────────────────────────────────────────
@@ -811,32 +841,34 @@ const tabs = computed(() => [
   opacity: 1;
 }
 
-// ─── New Order Alert Card ──────────────────────────────────────────────────
+// ─── New Order Alert Card ─────────────────────────────────────────────────────
 .order-alert-card {
   width: 92%;
   max-width: 400px;
-  border-radius: 20px !important;
+  border-radius: 24px !important;
   background: #fff;
-  border: 1px solid rgba(234, 88, 12, 0.2);
-  box-shadow: 0 12px 40px rgba(234, 88, 12, 0.25) !important;
+  border: none;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(234, 88, 12, 0.28), 0 8px 24px rgba(0, 0, 0, 0.1) !important;
   margin-top: 12px;
 }
-.body--dark .order-alert-card {
-  background: #1e293b;
-  border-color: rgba(234, 88, 12, 0.3);
+.alert-header {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(239, 68, 68, 0.05));
+  border-bottom: 1px solid rgba(249, 115, 22, 0.12);
+  padding: 16px 16px 14px !important;
+}
+.alert-pulse-icon {
+  animation: alertPulse 1.6s ease-in-out infinite;
+}
+@keyframes alertPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.18); opacity: 0.85; }
 }
 .alert-msg {
   font-size: 15px;
   color: #4b5563;
-  line-height: 1.4;
+  line-height: 1.5;
 }
-.body--dark .alert-msg {
-  color: #94a3b8;
-}
-
-// ─── Mobile Safe Area Support ─────────────────────────────────────────────────
-// Safe area handling is now centralized in mobile-app-shell.scss
-// DO NOT add duplicate safe-area padding here
 
 </style>
 

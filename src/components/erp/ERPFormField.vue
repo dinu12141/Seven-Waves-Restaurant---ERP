@@ -65,32 +65,16 @@ defineProps({
   }
 
   &__input {
-    // Standardize children (usually QInput/QSelect)
+    // Let Quasar's native outlined border handle all border rendering.
+    // ERPFormField only standardises typography, spacing, and error colours.
     ::v-deep(.q-field) {
       .q-field__control {
-        background-color: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--erp-input-border);
-        border-radius: 6px;
-        transition: all 0.2s ease;
-
-        &:before,
-        &:after {
-          display: none; // removing default Quasar underlines
-        }
-      }
-
-      &.q-field--focused {
-        .q-field__control {
-          border-color: var(--erp-primary);
-          box-shadow: 0 0 0 1px var(--erp-primary);
-          background-color: rgba(255, 255, 255, 0.05);
-        }
+        transition: background-color 0.2s ease;
       }
 
       &.q-field--error {
-        .q-field__control {
-          border-color: var(--erp-error);
-          background-color: rgba(234, 67, 53, 0.05);
+        .q-field__control:before {
+          border-color: var(--erp-error) !important;
         }
       }
 
@@ -123,7 +107,7 @@ defineProps({
       }
 
       .q-field__bottom {
-        display: none; // we handle errors centrally
+        display: none; // errors shown by erp-form-field__error-text
       }
     }
 

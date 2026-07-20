@@ -467,6 +467,8 @@ onMounted(loadDetail)
 // Profile card
 .profile-card {
   border-radius: 12px;
+}
+.body--dark .profile-card {
   background: rgba(255, 255, 255, 0.04) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
@@ -489,14 +491,24 @@ onMounted(loadDetail)
 .profile-stat {
   flex: 1;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 8px;
 }
 .profile-stat-value {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #e5e7eb;
+  color: #111827;
+}
+
+.body--dark {
+  .profile-stat {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .profile-stat-value {
+    color: #e5e7eb;
+  }
 }
 .profile-stat-label {
   font-size: 0.68rem;
@@ -601,8 +613,8 @@ onMounted(loadDetail)
   gap: 10px;
 }
 .stat-box {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -612,13 +624,26 @@ onMounted(loadDetail)
   text-align: center;
   transition: background 0.2s;
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.05);
   }
 }
 .stat-box-value {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #e5e7eb;
+  color: #111827;
+}
+
+.body--dark {
+  .stat-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+  .stat-box-value {
+    color: #e5e7eb;
+  }
 }
 .stat-box-label {
   font-size: 0.65rem;
@@ -631,6 +656,8 @@ onMounted(loadDetail)
 // Tier progress
 .tier-progress-admin {
   border-radius: 12px;
+}
+.body--dark .tier-progress-admin {
   background: rgba(255, 255, 255, 0.04) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
@@ -663,7 +690,7 @@ onMounted(loadDetail)
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   &:last-child {
     border-bottom: none;
   }
@@ -696,7 +723,16 @@ onMounted(loadDetail)
 .tx-type {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #111827;
+}
+
+.body--dark {
+  .tx-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .tx-type {
+    color: #e5e7eb;
+  }
 }
 .tx-note {
   font-size: 0.72rem;
@@ -737,11 +773,13 @@ onMounted(loadDetail)
 }
 
 // Transaction History card
-:deep(.q-card--bordered) {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}
-:deep(.q-card.q-card--flat) {
-  background: rgba(255, 255, 255, 0.04) !important;
+.body--dark {
+  :deep(.q-card--bordered) {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  :deep(.q-card.q-card--flat) {
+    background: rgba(255, 255, 255, 0.04) !important;
+  }
 }
 
 // Dialog

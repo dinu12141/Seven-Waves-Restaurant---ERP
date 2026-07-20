@@ -1,35 +1,64 @@
 <template>
-  <div class="q-pa-md">
-    <!-- Toolbar -->
-    <div class="row items-center q-mb-md q-gutter-sm">
+  <div class="menu-items-root">
+
+    <!-- ── Section Header ── -->
+    <div class="mi-header">
+      <div class="mi-header__left">
+        <div class="mi-header__icon-wrap">
+          <q-icon name="restaurant_menu" size="20px" />
+        </div>
+        <div>
+          <div class="mi-header__title">Menu Master</div>
+          <div class="mi-header__sub">{{ filteredItems.length }} items in catalog</div>
+        </div>
+      </div>
+      <q-btn
+        unelevated
+        no-caps
+        color="primary"
+        icon="add"
+        label="Add Menu Item"
+        class="mi-add-btn"
+        @click="openCreate"
+      />
+    </div>
+
+    <!-- ── Filter Toolbar ── -->
+    <div class="mi-toolbar">
       <q-input
         :dark="$q.dark.isActive"
         outlined
         dense
         v-model="filter"
-        placeholder="Search menu items..."
-        style="min-width: 250px"
+        placeholder="Search by name or category…"
+        class="mi-search"
+        bg-color="transparent"
       >
-        <template #prepend><q-icon name="search" /></template>
+        <template #prepend><q-icon name="search" size="16px" color="grey-5" /></template>
+        <template v-if="filter" #append>
+          <q-icon name="close" size="14px" class="cursor-pointer text-grey-5" @click="filter = ''" />
+        </template>
       </q-input>
+
       <q-select
         :dark="$q.dark.isActive"
         outlined
         dense
         v-model="categoryFilter"
         :options="categoryOptions"
-        display-value="Category"
         emit-value
         map-options
         clearable
-        style="min-width: 180px"
+        class="mi-filter-select"
+        bg-color="transparent"
         @update:model-value="subCategoryFilter = null"
       >
+        <template #prepend><q-icon name="category" size="14px" color="grey-5" /></template>
         <template v-if="categoryFilter" #selected>
-          {{ categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Category' }}
+          <span class="mi-filter-label">{{ categoryOptions.find((o) => o.value === categoryFilter)?.label }}</span>
         </template>
         <template v-else #selected>
-          <div class="text-grey-5">Category</div>
+          <span class="mi-filter-placeholder">All Categories</span>
         </template>
       </q-select>
 
@@ -39,39 +68,39 @@
         dense
         v-model="subCategoryFilter"
         :options="filterSubCategoryOptions"
-        display-value="Sub Category"
         emit-value
         map-options
         clearable
         :disable="!categoryFilter"
-        style="min-width: 180px"
+        class="mi-filter-select"
+        bg-color="transparent"
       >
+        <template #prepend><q-icon name="label" size="14px" color="grey-5" /></template>
         <template v-if="subCategoryFilter" #selected>
-          {{
-            filterSubCategoryOptions.find((o) => o.value === subCategoryFilter)?.label ||
-            'Sub Category'
-          }}
-        </template>
-        <template v-else-if="!categoryFilter" #selected>
-          <div class="text-grey-7">Select Category</div>
+          <span class="mi-filter-label">{{ filterSubCategoryOptions.find((o) => o.value === subCategoryFilter)?.label }}</span>
         </template>
         <template v-else #selected>
-          <div class="text-grey-5">Sub Category</div>
+          <span class="mi-filter-placeholder">{{ categoryFilter ? 'All Sub-cats' : 'Select Category' }}</span>
         </template>
       </q-select>
+
       <q-space />
+
       <q-btn
-        color="primary"
-        class="erp-btn-primary"
-        icon="add"
-        label="Add Menu Item"
-        @click="openCreate"
+        v-if="categoryFilter || subCategoryFilter || filter"
+        flat no-caps dense
+        icon="filter_alt_off"
+        label="Clear"
+        color="grey-5"
+        size="sm"
+        @click="filter = ''; categoryFilter = null; subCategoryFilter = null"
       />
     </div>
 
     <!-- DataGrid -->
+    <div class="mi-table-wrap">
     <DataTable
-      :title="'Menu Master (' + filteredItems.length + ' items)'"
+      title=""
       :rows="filteredItems"
       :columns="columns"
       :filter="filter"
@@ -94,59 +123,41 @@
 
       <template #body-cell-is_available="props">
         <q-td :props="props">
-          <q-badge
-            :color="props.value ? 'green' : 'grey'"
-            :label="props.value ? 'Available' : 'Unavailable'"
-          />
+          <span class="mi-status-chip" :class="props.value ? 'mi-status-chip--active' : 'mi-status-chip--inactive'">
+            <span class="mi-status-dot"></span>
+            {{ props.value ? 'Available' : 'Unavailable' }}
+          </span>
         </q-td>
       </template>
 
       <template #body-cell-tags="props">
-        <q-td :props="props" class="q-gutter-xs">
-          <q-badge v-if="props.row.is_veg" color="green" label="Veg" />
-          <q-badge v-if="props.row.is_spicy" color="red" label="Spicy" />
-          <q-badge
-            v-if="props.row.is_best_seller"
-            color="amber"
-            text-color="black"
-            label="Best Seller"
-          />
+        <q-td :props="props">
+          <div class="row q-gutter-xs no-wrap">
+            <span v-if="props.row.is_veg" class="mi-tag mi-tag--veg">Veg</span>
+            <span v-if="props.row.is_spicy" class="mi-tag mi-tag--spicy">Spicy</span>
+            <span v-if="props.row.is_best_seller" class="mi-tag mi-tag--bestseller">★ Best</span>
+          </div>
         </q-td>
       </template>
 
       <template #body-cell-actions="props">
-        <q-td :props="props" class="q-gutter-xs">
-          <q-btn
-            flat
-            dense
-            round
-            icon="edit"
-            size="sm"
-            color="primary"
-            @click="openEdit(props.row)"
-          >
-            <q-tooltip>Edit Menu Item</q-tooltip>
-          </q-btn>
-          <q-btn
-            flat
-            dense
-            round
-            icon="delete"
-            size="sm"
-            color="negative"
-            @click="deleteItem(props.row)"
-          >
-            <q-tooltip>Delete Menu Item</q-tooltip>
-          </q-btn>
+        <q-td :props="props">
+          <div class="row no-wrap q-gutter-xs items-center justify-center">
+            <q-btn flat dense round icon="edit" size="sm" color="primary" @click="openEdit(props.row)">
+              <q-tooltip anchor="top middle" self="bottom middle">Edit</q-tooltip>
+            </q-btn>
+            <q-btn flat dense round icon="delete_outline" size="sm" color="negative" @click="deleteItem(props.row)">
+              <q-tooltip anchor="top middle" self="bottom middle">Delete</q-tooltip>
+            </q-btn>
+          </div>
         </q-td>
       </template>
     </DataTable>
+    </div><!-- /mi-table-wrap -->
 
     <!-- Add/Edit Form Dialog using ERPFormCard -->
     <q-dialog v-model="showDialog" persistent full-height position="right">
-      <div
-        style="width: 500px; max-width: 100vw; height: 100vh; background-color: var(--erp-bg-main)"
-      >
+      <div class="mi-drawer">
         <q-scroll-area class="fit">
           <div class="q-pa-lg">
             <ERPFormCard
@@ -347,107 +358,108 @@
       </div>
     </q-dialog>
 
-    <!-- Inline Add Dialogs -->
-    <q-dialog v-model="catDialog.show">
-      <q-card
-        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
-        style="min-width: 350px"
-      >
-        <q-card-section>
-          <div class="text-h6">New Category</div>
-        </q-card-section>
-        <q-card-section>
+    <!-- ── Quick-Add: Category ── -->
+    <q-dialog v-model="catDialog.show" backdrop-filter="blur(2px)">
+      <q-card class="mi-quick-dialog" flat>
+        <div class="mi-quick-dialog__header">
+          <div class="mi-quick-dialog__icon"><q-icon name="category" size="18px" /></div>
+          <div>
+            <div class="mi-quick-dialog__title">New Category</div>
+            <div class="mi-quick-dialog__sub">Add to menu catalog</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="close" size="sm" color="grey-5" v-close-popup />
+        </div>
+        <div class="mi-quick-dialog__body">
           <q-input
             :dark="$q.dark.isActive"
-            outlined
+            outlined dense
             v-model="catDialog.name"
             label="Category Name"
             autofocus
             @keyup.enter="saveNewCategory"
           />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            :loading="catDialog.loading"
-            @click="saveNewCategory"
-          />
-        </q-card-actions>
+        </div>
+        <div class="mi-quick-dialog__footer">
+          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
+          <q-btn unelevated no-caps label="Create Category" color="primary"
+            :loading="catDialog.loading" @click="saveNewCategory" />
+        </div>
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="subCatDialog.show">
-      <q-card
-        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
-        style="min-width: 350px"
-      >
-        <q-card-section>
-          <div class="text-h6">New Sub Category</div>
-          <div v-if="form.category_id" class="text-caption text-grey-5">
-            Under: {{ categoryOptions.find((c) => c.value === form.category_id)?.label }}
+    <!-- ── Quick-Add: Sub Category ── -->
+    <q-dialog v-model="subCatDialog.show" backdrop-filter="blur(2px)">
+      <q-card class="mi-quick-dialog" flat>
+        <div class="mi-quick-dialog__header">
+          <div class="mi-quick-dialog__icon"><q-icon name="label" size="18px" /></div>
+          <div>
+            <div class="mi-quick-dialog__title">New Sub Category</div>
+            <div v-if="form.category_id" class="mi-quick-dialog__sub">
+              Under: {{ categoryOptions.find((c) => c.value === form.category_id)?.label }}
+            </div>
           </div>
-        </q-card-section>
-        <q-card-section>
+          <q-space />
+          <q-btn flat round dense icon="close" size="sm" color="grey-5" v-close-popup />
+        </div>
+        <div class="mi-quick-dialog__body">
           <q-input
             :dark="$q.dark.isActive"
-            outlined
+            outlined dense
             v-model="subCatDialog.name"
             label="Sub Category Name"
             autofocus
             @keyup.enter="saveNewSubCategory"
           />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            :loading="subCatDialog.loading"
-            @click="saveNewSubCategory"
-          />
-        </q-card-actions>
+        </div>
+        <div class="mi-quick-dialog__footer">
+          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
+          <q-btn unelevated no-caps label="Create Sub Category" color="primary"
+            :loading="subCatDialog.loading" @click="saveNewSubCategory" />
+        </div>
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="kitchenDialog.show">
-      <q-card
-        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
-        style="min-width: 350px"
-      >
-        <q-card-section>
-          <div class="text-h6">New Kitchen Station</div>
-        </q-card-section>
-        <q-card-section class="q-gutter-md">
+    <!-- ── Quick-Add: Kitchen ── -->
+    <q-dialog v-model="kitchenDialog.show" backdrop-filter="blur(2px)">
+      <q-card class="mi-quick-dialog" flat>
+        <div class="mi-quick-dialog__header">
+          <div class="mi-quick-dialog__icon"><q-icon name="soup_kitchen" size="18px" /></div>
+          <div>
+            <div class="mi-quick-dialog__title">New Kitchen Station</div>
+            <div class="mi-quick-dialog__sub">KOT routing destination</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="close" size="sm" color="grey-5" v-close-popup />
+        </div>
+        <div class="mi-quick-dialog__body q-gutter-sm">
           <q-input
             :dark="$q.dark.isActive"
-            outlined
+            outlined dense
             v-model="kitchenDialog.name"
             label="Kitchen Name"
             autofocus
           />
-          <q-toggle
-            :dark="$q.dark.isActive"
-            color="green"
-            v-model="kitchenDialog.is_cashier_display"
-            label="Is Cashier Display"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn
-            flat
-            label="Save"
-            color="primary"
-            :loading="kitchenDialog.loading"
-            @click="saveNewKitchen"
-          />
-        </q-card-actions>
+          <div class="mi-toggle-row">
+            <div>
+              <div class="mi-toggle-label">Cashier Display</div>
+              <div class="mi-toggle-sub">Show on cashier KDS screen</div>
+            </div>
+            <q-toggle
+              :dark="$q.dark.isActive"
+              color="primary"
+              v-model="kitchenDialog.is_cashier_display"
+            />
+          </div>
+        </div>
+        <div class="mi-quick-dialog__footer">
+          <q-btn flat no-caps label="Cancel" color="grey-5" v-close-popup />
+          <q-btn unelevated no-caps label="Create Kitchen" color="primary"
+            :loading="kitchenDialog.loading" @click="saveNewKitchen" />
+        </div>
       </q-card>
     </q-dialog>
+
   </div>
 </template>
 
@@ -930,19 +942,257 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* ── Root ───────────────────────────────────────────── */
+.menu-items-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Section Header ─────────────────────────────────── */
+.mi-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-card);
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  &__icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--erp-radius-lg);
+    background: var(--erp-mod-inventory-subtle, rgba(34,197,94,0.12));
+    color: var(--erp-mod-inventory, #22c55e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--erp-text-primary);
+    line-height: 1.2;
+  }
+
+  &__sub {
+    font-size: 11px;
+    color: var(--erp-text-muted);
+    margin-top: 1px;
+  }
+}
+
+.mi-add-btn {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ── Filter Toolbar ─────────────────────────────────── */
+.mi-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-card);
+  flex-wrap: wrap;
+}
+
+.mi-search {
+  min-width: 220px;
+  max-width: 300px;
+}
+
+.mi-filter-select {
+  min-width: 160px;
+  max-width: 200px;
+}
+
+.mi-filter-label {
+  font-size: 13px;
+  color: var(--erp-text-primary);
+}
+
+.mi-filter-placeholder {
+  font-size: 13px;
+  color: var(--erp-text-muted);
+}
+
+/* ── Table Wrapper ──────────────────────────────────── */
+.mi-table-wrap {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── Status Chip ────────────────────────────────────── */
+.mi-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--erp-radius-pill);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+
+  .mi-status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &--active {
+    background: var(--erp-success-subtle, rgba(22,163,74,0.12));
+    color: var(--erp-success, #16a34a);
+    .mi-status-dot { background: var(--erp-success, #16a34a); }
+  }
+
+  &--inactive {
+    background: var(--erp-bg-stripe, rgba(255,255,255,0.02));
+    color: var(--erp-text-muted);
+    .mi-status-dot { background: var(--erp-text-muted); }
+  }
+}
+
+/* ── Tags ───────────────────────────────────────────── */
+.mi-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--erp-radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+
+  &--veg {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+
+  &--spicy {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+  }
+
+  &--bestseller {
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+  }
+}
+
+/* ── Right Drawer ───────────────────────────────────── */
+.mi-drawer {
+  width: 500px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--erp-bg-main);
+  border-left: 1px solid var(--erp-border);
+}
+
+/* ── Quick-Add Dialogs ──────────────────────────────── */
+.mi-quick-dialog {
+  width: 380px;
+  max-width: 95vw;
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-xl);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--erp-border);
+  }
+
+  &__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--erp-radius-lg);
+    background: var(--erp-mod-inventory-subtle, rgba(34,197,94,0.12));
+    color: var(--erp-mod-inventory, #22c55e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--erp-text-primary);
+  }
+
+  &__sub {
+    font-size: 11px;
+    color: var(--erp-text-muted);
+    margin-top: 1px;
+  }
+
+  &__body {
+    padding: 16px;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--erp-border);
+  }
+}
+
+/* ── Kitchen toggle row ─────────────────────────────── */
+.mi-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 4px;
+}
+
+.mi-toggle-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--erp-text-primary);
+}
+
+.mi-toggle-sub {
+  font-size: 11px;
+  color: var(--erp-text-muted);
+  margin-top: 1px;
+}
+
+/* ── Image Upload ───────────────────────────────────── */
 .image-upload-area {
   cursor: pointer;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: opacity 0.2s;
+  border: 1px dashed var(--erp-border-hover);
+  border-radius: var(--erp-radius-lg);
+  padding: 6px;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover {
+    border-color: var(--erp-primary);
+    background: var(--erp-primary-subtle, rgba(37,99,235,0.06));
+  }
 }
-.image-upload-area:hover {
-  opacity: 0.75;
-}
-.hidden {
-  display: none;
-}
+
+.hidden { display: none; }
 </style>

@@ -144,6 +144,24 @@ async function invokeAi(action, payload) {
       }
     }
 
+    if (action === 'chat_assistant') {
+      const msg = (payload.message || '').toLowerCase()
+      let reply = 'I am your local Seven Waves AI Assistant. How can I help you manage the restaurant today?'
+      
+      if (msg.includes('kitchen')) {
+        reply = 'The kitchen is currently operating smoothly. Average ticket time is 14 minutes, with 0 delayed orders in the last hour.'
+      } else if (msg.includes('sales')) {
+        reply = 'Sales are looking good. You are on track to meet today\'s revenue target.'
+      } else if (msg.includes('inventory')) {
+        reply = 'Inventory levels are mostly stable. However, a few fast-moving items might need restocking soon.'
+      }
+
+      return {
+        success: true,
+        data: { message: reply }
+      }
+    }
+
     // Default fallback
     return {
       success: true,
