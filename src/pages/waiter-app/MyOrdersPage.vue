@@ -1003,8 +1003,8 @@ async function markServed(orderId) {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -1021,14 +1021,14 @@ async function markServed(orderId) {
 .orders-header__title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #fff;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .orders-header__sub {
   font-size: 0.85rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.65);
   margin-top: 1px;
 }
 
@@ -1047,24 +1047,24 @@ async function markServed(orderId) {
   text-align: center;
 }
 .orders-empty__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #312e81, #4c1d95);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 32px rgba(76, 29, 149, 0.3);
 }
 .orders-empty__title {
-  font-size: 1.08rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b;
 }
 .orders-empty__sub {
   font-size: 0.92rem;
-  color: #cbd5e1;
+  color: #94a3b8;
 }
 
 // ─── Orders List ─────────────────────────────────────────────
@@ -1086,12 +1086,13 @@ async function markServed(orderId) {
 .order-card {
   background: #fff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 14px;
+  border-left: 4px solid #3b82f6;
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   transition: all 0.12s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
   -webkit-tap-highlight-color: transparent;
 
   &:active {
@@ -1100,16 +1101,19 @@ async function markServed(orderId) {
 
   &--ready {
     border-color: #86efac;
+    border-left-color: #16a34a;
     background: #f0fdf4;
     animation: card-pulse-ready 2s ease-in-out infinite;
   }
   &--preparing {
     border-color: #fed7aa;
+    border-left-color: #f97316;
     background: #fff7ed;
   }
 
   &--highlighted {
     border-color: #fb923c;
+    border-left-color: #f97316;
     background: #fff7ed;
     box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25), 0 4px 16px rgba(251, 146, 60, 0.15);
     animation: card-highlight-pulse 1s ease-in-out 4;
@@ -1184,26 +1188,22 @@ async function markServed(orderId) {
   letter-spacing: 0.3px;
   padding: 3px 10px;
   border-radius: 20px;
+  color: #fff;
 
   &--accepted {
-    color: #2563eb;
-    background: #dbeafe;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
   }
   &--sent_to_kitchen {
-    color: #c2410c;
-    background: #ffedd5;
+    background: linear-gradient(135deg, #f97316, #ea580c);
   }
   &--preparing {
-    color: #d97706;
-    background: #fef3c7;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
   }
   &--ready {
-    color: #15803d;
-    background: #dcfce7;
+    background: linear-gradient(135deg, #16a34a, #15803d);
   }
   &--served {
-    color: #64748b;
-    background: #f1f5f9;
+    background: linear-gradient(135deg, #64748b, #475569);
   }
 }
 
@@ -1379,10 +1379,16 @@ async function markServed(orderId) {
 }
 
 .serve-btn {
-  height: 40px;
-  border-radius: 8px !important;
-  font-weight: 700;
-  font-size: 15px;
+  height: 48px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+  transition: transform 0.15s, filter 0.15s;
+
+  &:hover { filter: brightness(1.07); transform: translateY(-1px); }
+  &:active { transform: scale(0.99); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1971,9 +1977,10 @@ body.body--dark {
     color: #e2e8f0;
 
     .orders-header {
-      background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #2d1b69 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       &__title { color: #f8fafc; }
+      &__sub { color: rgba(255, 255, 255, 0.5); }
     }
 
     .group-label {
@@ -1984,28 +1991,33 @@ body.body--dark {
     .order-card {
       background: #1e293b;
       border-color: rgba(255, 255, 255, 0.08);
+      border-left-color: #3b82f6;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 
       &__number { color: #f8fafc; }
       &__meta { color: #94a3b8; }
-      
+
       .table-badge {
         background: #0f172a;
         color: #94a3b8;
         border-color: rgba(255, 255, 255, 0.1);
       }
-      
+
       .time-label { color: #64748b; }
-      
+
       &--ready {
-        border-color: rgba(16, 185, 129, 0.4);
+        border-color: rgba(16, 185, 129, 0.3);
+        border-left-color: #16a34a;
         background: rgba(16, 185, 129, 0.05);
       }
       &--preparing {
-        border-color: rgba(59, 130, 246, 0.4);
-        background: rgba(59, 130, 246, 0.05);
+        border-color: rgba(249, 115, 22, 0.3);
+        border-left-color: #f97316;
+        background: rgba(249, 115, 22, 0.04);
       }
       &--highlighted {
         border-color: #fb923c;
+        border-left-color: #f97316;
         box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.2);
       }
 

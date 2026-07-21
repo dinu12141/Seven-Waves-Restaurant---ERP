@@ -1,9 +1,9 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="wb-dash q-pa-lg">
     <ERPToolbar moduleName="website" title="Website Dashboard" breadcrumbs="Website / Overview" />
 
     <!-- KPI Cards -->
-    <div class="row q-col-gutter-md q-mb-lg">
+    <div class="row q-col-gutter-md q-mb-lg q-mt-sm">
       <div v-for="(stat, i) in kpis" :key="i" class="col-12 col-sm-6 col-md-3">
         <DashboardCard v-bind="stat" />
       </div>
@@ -13,120 +13,97 @@
     <div class="row q-col-gutter-md">
       <!-- Quick Actions -->
       <div class="col-12 col-md-6">
-        <q-card class="erp-dashboard-panel shadow-1 column full-height" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-darker'">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-subtitle1 text-weight-bold">Quick Actions</div>
-          </q-card-section>
- 
-          <q-card-section class="col q-pt-md">
-            <div class="row q-col-gutter-sm">
-              <div class="col-12">
-                <q-btn
-                  push
-                  color="primary"
-                  class="full-width q-py-sm action-btn"
-                  align="left"
-                  icon="language"
-                  label="Manage Website Orders"
-                  @click="$router.push('/website-orders')"
-                >
-                  <div class="text-caption q-ml-md action-desc" style="text-transform: none">
-                    Process incoming website orders
-                  </div>
-                </q-btn>
-              </div>
-              <div class="col-12 q-mt-sm">
-                <q-btn
-                  push
-                  color="orange-9"
-                  class="full-width q-py-sm action-btn"
-                  align="left"
-                  icon="mail"
-                  label="View Contact Messages"
-                  @click="$router.push('/website-messages')"
-                >
-                  <div class="text-caption q-ml-md action-desc" style="text-transform: none">
-                    Reply to online customer inquiries
-                  </div>
-                </q-btn>
-              </div>
-              <div class="col-12 q-mt-sm">
-                <q-btn
-                  push
-                  color="teal-9"
-                  class="full-width q-py-sm action-btn"
-                  align="left"
-                  icon="event_seat"
-                  label="View Reservations"
-                  @click="$router.push('/website-reservations')"
-                >
-                  <div class="text-caption q-ml-md action-desc" style="text-transform: none">
-                    Manage table reservations from website
-                  </div>
-                </q-btn>
-              </div>
+        <div class="wb-panel">
+          <div class="wb-panel__header">
+            <div class="wb-panel__header-icon">
+              <q-icon name="bolt" size="18px" />
             </div>
-          </q-card-section>
-        </q-card>
+            <span class="wb-panel__title">Quick Actions</span>
+          </div>
+          <div class="wb-panel__body">
+            <div class="wb-action-card" @click="$router.push('/website-orders')">
+              <div class="wb-action-card__icon wb-action-card__icon--blue">
+                <q-icon name="language" size="20px" />
+              </div>
+              <div class="wb-action-card__content">
+                <div class="wb-action-card__label">Website Orders</div>
+                <div class="wb-action-card__desc">Process incoming website orders</div>
+              </div>
+              <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
+            </div>
+
+            <div class="wb-action-card" @click="$router.push('/website-messages')">
+              <div class="wb-action-card__icon wb-action-card__icon--orange">
+                <q-icon name="mail" size="20px" />
+              </div>
+              <div class="wb-action-card__content">
+                <div class="wb-action-card__label">Contact Messages</div>
+                <div class="wb-action-card__desc">Reply to online customer inquiries</div>
+              </div>
+              <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
+            </div>
+
+            <div class="wb-action-card" @click="$router.push('/website-reservations')">
+              <div class="wb-action-card__icon wb-action-card__icon--cyan">
+                <q-icon name="event_seat" size="20px" />
+              </div>
+              <div class="wb-action-card__content">
+                <div class="wb-action-card__label">Reservations</div>
+                <div class="wb-action-card__desc">Manage table reservations from website</div>
+              </div>
+              <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
+            </div>
+          </div>
+        </div>
       </div>
- 
+
       <!-- Recent Orders Feed -->
       <div class="col-12 col-md-6">
-        <q-card class="erp-dashboard-panel shadow-1 column full-height" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-darker'">
-          <q-card-section class="row items-center justify-between q-pb-none">
-            <div class="text-h6 text-subtitle1 text-weight-bold">Recent Orders</div>
-            <q-btn
-              flat
-              round
-              dense
-              icon="refresh"
-              :color="$q.dark.isActive ? 'grey-5' : 'grey-7'"
-              @click="fetchStats"
-              :loading="loading"
-            />
-          </q-card-section>
-          <q-card-section class="col q-pt-sm">
-            <q-list class="erp-activity-list" padding>
-              <q-item
-                v-for="order in recentOrders"
-                :key="order.id"
-                class="q-pa-sm erp-activity-item"
-              >
-                <q-item-section avatar top>
-                  <q-avatar size="32px" color="blue-2" text-color="blue-10" icon="shopping_bag" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-body2 text-weight-bold"
-                    >Order #{{ order.order_number }}</q-item-label
-                  >
-                  <q-item-label caption class="desc-text"
-                    >{{ order.customer_name || 'Guest' }} ·
-                    {{ formatCurrency(order.total_amount) }}</q-item-label
-                  >
-                </q-item-section>
-                <q-item-section side>
-                  <q-chip dense :color="getStatusColor(order.status)" text-color="white" size="xs">
-                    {{ order.status.replace(/_/g, ' ').toUpperCase() }}
-                  </q-chip>
-                </q-item-section>
-              </q-item>
-              <div
-                v-if="recentOrders.length === 0 && !loading"
-                class="text-grey-6 text-center q-pa-md"
-              >
-                No recent orders found.
-              </div>
-              <div v-if="loading" class="text-center q-pa-md">
+        <div class="wb-panel">
+          <div class="wb-panel__header">
+            <div class="wb-panel__header-icon">
+              <q-icon name="receipt_long" size="18px" />
+            </div>
+            <span class="wb-panel__title">Recent Orders</span>
+            <q-btn flat round dense icon="refresh" @click="fetchStats" :loading="loading" class="wb-refresh-btn" />
+          </div>
+          <div class="wb-panel__body">
+            <template v-if="loading">
+              <div class="wb-empty">
                 <q-spinner color="primary" size="2em" />
               </div>
-            </q-list>
-          </q-card-section>
-        </q-card>
+            </template>
+            <template v-else-if="recentOrders.length === 0">
+              <div class="wb-empty">
+                <q-icon name="receipt_long" size="36px" />
+                <span>No recent orders found.</span>
+              </div>
+            </template>
+            <template v-else>
+              <div
+                class="wb-order-row"
+                v-for="order in recentOrders"
+                :key="order.id"
+              >
+                <div class="wb-order-row__icon">
+                  <q-icon name="shopping_bag" size="16px" />
+                </div>
+                <div class="wb-order-row__info">
+                  <div class="wb-order-row__number">#{{ order.order_number }}</div>
+                  <div class="wb-order-row__meta">{{ order.customer_name || 'Guest' }} · {{ formatCurrency(order.total_amount) }}</div>
+                </div>
+                <q-chip dense class="wb-status-chip" :class="`wb-status-chip--${statusClass(order.status)}`">
+                  {{ order.status.replace(/_/g, ' ').toUpperCase() }}
+                </q-chip>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
     </div>
   </q-page>
 </template>
- 
+
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
@@ -134,12 +111,12 @@ import { useAuthStore } from 'stores/auth'
 import { useRouter } from 'vue-router'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
- 
+
 const loading = ref(false)
 const $router = useRouter()
 const authStore = useAuthStore()
 let timer = null
- 
+
 const kpis = ref([
   {
     title: 'Total Orders',
@@ -175,53 +152,70 @@ const kpis = ref([
     meta: 'Completed sales',
   },
 ])
- 
+
 const recentOrders = ref([])
- 
+
 const fetchStats = async () => {
   try {
     loading.value = true
     const branchId = authStore.currentBranch?.id
- 
+
     // Fetch unread messages
     const { count: unreadCount, error: msgError } = await supabase
       .from('website_messages')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'unread')
- 
+
     if (msgError) throw msgError
- 
+
     kpis.value[1].value = String(unreadCount || 0)
- 
+
     // Fetch pending reservations
     const { count: pendingResCount, error: resError } = await supabase
       .from('website_reservations')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
- 
+
     if (resError) throw resError
     kpis.value[2].value = String(pendingResCount || 0)
- 
+
     // Fetch orders stats
     if (branchId) {
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('id, order_number, total_amount, status, customer_name, created_at')
-        .eq('branch_id', branchId)
-        .eq('order_source', 'website')
-        .order('created_at', { ascending: false })
- 
-      if (ordersError) throw ordersError
- 
-      kpis.value[0].value = String(orders ? orders.length : 0)
- 
-      const validOrders =
-        orders?.filter((o) => ['completed', 'paid', 'delivered', 'served'].includes(o.status)) || []
+      let allOrders = []
+      let from = 0
+      const limit = 1000
+      let hasMore = true
+
+      while (hasMore) {
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id, total_amount, status, order_number, customer_name, created_at')
+          .eq('branch_id', branchId)
+          .eq('order_source', 'website')
+          .order('created_at', { ascending: false })
+          .range(from, from + limit - 1)
+
+        if (ordersError) throw ordersError
+
+        if (orders && orders.length > 0) {
+          allOrders = [...allOrders, ...orders]
+          from += limit
+          if (orders.length < limit) {
+            hasMore = false
+          }
+        } else {
+          hasMore = false
+        }
+      }
+
+      kpis.value[0].value = String(allOrders.length)
+
+      const validOrders = allOrders.filter((o) => ['completed', 'paid', 'delivered', 'served'].includes(o.status))
       const revenue = validOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0)
- 
+
       kpis.value[3].value = revenue > 0 ? formatCurrency(revenue) : 'Rs. 0.00'
- 
-      recentOrders.value = (orders || []).slice(0, 5) // Top 5 recent orders
+
+      recentOrders.value = allOrders.slice(0, 5) // Top 5 recent orders
     }
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
@@ -229,94 +223,236 @@ const fetchStats = async () => {
     loading.value = false
   }
 }
- 
-const getStatusColor = (status) => {
-  const map = {
-    pending_waiter: 'orange-8',
-    pending_payment: 'deep-orange-7',
-    accepted: 'blue-8',
-    preparing: 'cyan-8',
-    ready: 'green-8',
-    served: 'teal-8',
-    invoiced: 'purple-8',
-    paid: 'green-9',
-    completed: 'green-9',
-    cancelled: 'red-8',
-    refunded: 'orange-8',
-  }
-  return map[status] || 'grey-7'
+
+
+
+const statusClass = (status) => {
+  if (['paid', 'completed', 'served', 'delivered', 'ready'].includes(status)) return 'success'
+  if (['pending_waiter', 'preparing', 'pending_payment'].includes(status)) return 'warning'
+  if (['cancelled', 'refunded'].includes(status)) return 'danger'
+  if (['accepted', 'invoiced'].includes(status)) return 'info'
+  return 'neutral'
 }
- 
+
 const formatCurrency = (val) => {
   return 'LKR ' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
- 
+
 onMounted(() => {
   fetchStats()
   // Polling removed — fetch once on mount to reduce egress
   // timer = setInterval(fetchStats, 60000)
 })
- 
+
 onUnmounted(() => {
   clearInterval(timer)
 })
 </script>
- 
+
 <style scoped lang="scss">
-.erp-dashboard-panel {
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.3s ease;
+.wb-dash {
+  background: var(--erp-bg-page);
+  min-height: 100vh;
+}
+
+
+
+// Panels
+.wb-panel {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
   overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
- 
-.body--light .erp-dashboard-panel {
-  border-color: #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+
+.wb-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--erp-border);
+  flex-shrink: 0;
 }
- 
-.text-darker {
-  color: #1e293b;
+
+.wb-panel__header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--erp-mod-website-subtle);
+  color: var(--erp-mod-website);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
- 
-.action-btn {
+
+.wb-panel__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--erp-text-primary);
+  flex: 1;
+}
+
+.wb-panel__body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.wb-refresh-btn {
+  color: var(--erp-text-muted) !important;
+}
+
+// Action cards
+.wb-action-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid var(--erp-border);
+  background: var(--erp-bg-page);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  &:hover {
+    border-color: var(--erp-mod-website);
+    background: var(--erp-mod-website-subtle);
+    .wb-action-card__arrow {
+      opacity: 1;
+      transform: translateX(2px);
+    }
+  }
+  &:active {
+    transform: scale(0.985);
+  }
 }
- 
-.action-desc {
-  opacity: 0.8;
+
+.wb-action-card__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &--blue {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+  }
+  &--orange {
+    background: rgba(249, 115, 22, 0.12);
+    color: #f97316;
+  }
+  &--cyan {
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+  }
 }
-.body--light .action-desc {
-  color: rgba(255,255,255,0.9);
+
+.wb-action-card__content {
+  flex: 1;
+  min-width: 0;
 }
- 
-.erp-activity-list {
-  max-width: 100%;
+
+.wb-action-card__label {
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: var(--erp-text-primary);
 }
- 
-.erp-activity-item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.2s ease;
+
+.wb-action-card__desc {
+  font-size: 0.8rem;
+  color: var(--erp-text-muted);
+  margin-top: 2px;
+}
+
+.wb-action-card__arrow {
+  color: var(--erp-text-muted);
+  opacity: 0.4;
+  transition: all 0.18s;
+}
+
+// Order rows
+.wb-order-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--erp-border);
   &:last-child {
     border-bottom: none;
   }
-  &:hover {
-    background: rgba(255,255,255,0.02);
+}
+
+.wb-order-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: var(--erp-mod-website-subtle);
+  color: var(--erp-mod-website);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wb-order-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.wb-order-row__number {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--erp-text-primary);
+}
+
+.wb-order-row__meta {
+  font-size: 0.78rem;
+  color: var(--erp-text-muted);
+  margin-top: 1px;
+}
+
+// Status chips
+.wb-status-chip {
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  &--success {
+    background: var(--erp-success-subtle) !important;
+    color: var(--erp-success) !important;
+  }
+  &--warning {
+    background: var(--erp-warning-subtle) !important;
+    color: var(--erp-warning) !important;
+  }
+  &--danger {
+    background: var(--erp-danger-subtle) !important;
+    color: var(--erp-danger) !important;
+  }
+  &--info {
+    background: var(--erp-mod-website-subtle) !important;
+    color: var(--erp-mod-website) !important;
+  }
+  &--neutral {
+    background: var(--erp-bg-page) !important;
+    color: var(--erp-text-muted) !important;
+    border: 1px solid var(--erp-border) !important;
   }
 }
-.body--light .erp-activity-item {
-  border-bottom-color: #f1f5f9;
-  &:hover {
-    background: #f8fafc;
-  }
-}
- 
-.desc-text {
-  color: #94a3b8;
-}
-.body--light .desc-text {
-  color: #64748b;
+
+// Empty / loading states
+.wb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: var(--erp-text-muted);
+  font-size: 0.88rem;
+  gap: 8px;
 }
 </style>
-

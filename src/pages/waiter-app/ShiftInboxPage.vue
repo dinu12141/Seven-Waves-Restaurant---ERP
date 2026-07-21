@@ -263,8 +263,8 @@ async function accept(order) {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -277,7 +277,7 @@ async function accept(order) {
 .inbox-header__title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #fff;
   letter-spacing: -0.3px;
 }
 .inbox-header__right {
@@ -289,6 +289,13 @@ async function accept(order) {
   font-size: 0.85rem !important;
   font-weight: 700 !important;
   height: 22px !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  animation: chip-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes chip-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.85), 0 0 28px rgba(239, 68, 68, 0.3); }
 }
 
 // ─── Loading ────────────────────────────────────────────────────
@@ -309,25 +316,41 @@ async function accept(order) {
   text-align: center;
 }
 .inbox-empty__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #312e81, #4c1d95);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 32px rgba(76, 29, 149, 0.35);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 30px;
+    border: 2px solid rgba(139, 92, 246, 0.35);
+    animation: empty-pulse 2.5s ease-in-out infinite;
+  }
 }
+
+@keyframes empty-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
 .inbox-empty__title {
-  font-size: 1.08rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #475569;
 }
 .inbox-empty__sub {
   font-size: 0.92rem;
-  color: #cbd5e1;
-  margin-top: 4px;
+  color: #94a3b8;
+  margin-top: 6px;
 }
 
 // ─── Order List ─────────────────────────────────────────────────
@@ -342,14 +365,16 @@ async function accept(order) {
 .inbox-card {
   background: #fff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 14px;
+  border-left: 4px solid #f97316;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s, transform 0.15s;
+  animation: card-slide-up 0.3s ease;
 
   &:hover {
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
   }
 
   &__header {
@@ -369,16 +394,21 @@ async function accept(order) {
   }
 }
 
+@keyframes card-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .inbox-card__meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 .inbox-card__order-num {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 1.3rem;
+  font-weight: 900;
   color: #0f172a;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
 }
 .inbox-card__details {
   font-size: 0.88rem;
@@ -396,6 +426,9 @@ async function accept(order) {
   font-size: 0.82rem !important;
   font-weight: 700 !important;
   height: 22px !important;
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #fff !important;
+  border-radius: 20px !important;
 }
 
 // ─── Availability Hint ──────────────────────────────────────────
@@ -443,6 +476,9 @@ async function accept(order) {
   font-weight: 700 !important;
   min-width: 26px;
   height: 20px !important;
+  background: linear-gradient(135deg, #f97316, #ef4444) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
 }
 
 .inbox-item__name {
@@ -476,16 +512,18 @@ async function accept(order) {
 }
 
 .avail-yes--on {
-  color: #16a34a !important;
-  background: rgba(34, 197, 94, 0.12) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
   border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.4);
   animation: pop 0.25s ease;
 }
 
 .avail-no--on {
-  color: #dc2626 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
   border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
   animation: pop 0.25s ease;
 }
 
@@ -501,26 +539,38 @@ async function accept(order) {
   align-items: center;
   font-size: 0.87rem;
   font-weight: 600;
-  color: #d97706;
-  background: #fffbeb;
-  border: 1px dashed #fcd34d;
-  border-radius: 8px;
-  padding: 6px 10px;
+  color: #fff;
+  background: linear-gradient(135deg, #ea580c, #d97706);
+  border-radius: 10px;
+  padding: 8px 12px;
   margin-top: 8px;
+  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.25);
 }
 
 // ─── Accept Button ──────────────────────────────────────────────
 .inbox-accept-btn {
-  height: 46px;
-  border-radius: 12px !important;
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.2px;
+  height: 52px !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.3px;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  &.bg-green-9 {
+    background: linear-gradient(135deg, #16a34a, #15803d) !important;
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35) !important;
+  }
+  &.bg-orange-9 {
+    background: linear-gradient(135deg, #ea580c, #c2410c) !important;
+    box-shadow: 0 4px 16px rgba(234, 88, 12, 0.35) !important;
+  }
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(0) scale(0.99);
   }
 }
 </style>
@@ -535,24 +585,29 @@ body.body--dark {
     color: #e2e8f0;
 
     .inbox-header {
-      background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #2d1b69 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       &__title { color: #f8fafc; }
     }
+
+    .inbox-empty__icon {
+      background: linear-gradient(135deg, #1e1b4b, #2d1b69);
+      box-shadow: 0 8px 32px rgba(45, 27, 105, 0.5);
+    }
+    .inbox-empty__title { color: #94a3b8; }
+    .inbox-empty__sub { color: #64748b; }
 
     .inbox-card {
       background: #1e293b;
       border-color: rgba(255, 255, 255, 0.08);
+      border-left-color: #f97316;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 
       &__header {
         border-bottom-color: rgba(255, 255, 255, 0.08);
       }
       &__order-num { color: #f8fafc; }
       &__details { color: #94a3b8; }
-      
-      .inbox-status-chip {
-        background: rgba(245, 158, 11, 0.1) !important;
-      }
     }
 
     .inbox-item {
@@ -569,11 +624,6 @@ body.body--dark {
         background: rgba(239, 68, 68, 0.05);
         border-color: rgba(239, 68, 68, 0.15);
       }
-    }
-
-    .inbox-unavail-banner {
-      background: rgba(217, 119, 6, 0.05);
-      border-color: rgba(217, 119, 6, 0.2);
     }
   }
 }

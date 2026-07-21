@@ -1,54 +1,42 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="acm-page q-pa-lg">
     <PageHeader
-      title="User Access Control"
-      subtitle="Overview of role-based system access and fine-grained permissions"
+      title="Access Control Matrix"
+      subtitle="Configure role-based module access and fine-grained permissions"
       show-back
       back-route="/admin"
     />
 
-    <!-- ═══ ROLE-PERMISSION MATRIX ═══ -->
-    <q-card flat bordered class="q-mt-md acm-matrix-card">
-      <q-card-section class="q-pb-none">
-        <div class="row items-center q-mb-sm">
-          <q-icon name="grid_view" size="22px" color="primary" class="q-mr-sm" />
-          <div class="text-subtitle1 text-weight-bold">Access Control Overview</div>
-          <q-space />
-          <q-badge v-if="!matrixDirty" color="primary" outline class="q-pa-xs q-mr-sm">
-            <q-icon name="info" size="12px" class="q-mr-xs" />
-            Click any cell to toggle access
-          </q-badge>
-          <template v-if="matrixDirty">
-            <q-btn
-              flat
-              dense
-              color="grey"
-              label="Discard"
-              icon="undo"
-              size="sm"
-              class="q-mr-sm"
-              @click="discardMatrixChanges"
-            />
-            <q-btn
-              unelevated
-              color="primary"
-              label="Save Matrix"
-              icon="save"
-              size="sm"
-              :loading="matrixSaving"
-              @click="saveRoleModuleAccess"
-            />
-          </template>
+    <!-- Role-Module Access Matrix -->
+    <div class="acm-matrix-card q-mt-lg">
+      <!-- Controls Bar -->
+      <div v-if="matrixDirty" class="acm-controls">
+        <div class="acm-controls__label">
+          <q-icon name="warning_amber" size="14px" />
+          Unsaved changes to access matrix
         </div>
-      </q-card-section>
+        <q-btn flat dense no-caps icon="undo" label="Discard" class="acm-btn-ghost q-mr-sm" @click="discardMatrixChanges" />
+        <q-btn unelevated dense no-caps icon="save" label="Save Matrix" class="acm-btn-primary" :loading="matrixSaving" @click="saveRoleModuleAccess" />
+      </div>
+      <div v-else class="acm-controls">
+        <div class="acm-controls__label">
+          <q-icon name="grid_view" size="14px" />
+          Role × Module Access Overview
+        </div>
+        <span class="acm-hint">
+          <q-icon name="touch_app" size="12px" />
+          Click any cell to toggle access
+        </span>
+      </div>
 
-      <q-card-section class="q-pt-sm acm-scroll-container">
+      <!-- Scrollable Matrix -->
+      <div class="acm-scroll-container">
         <div class="acm-table-wrap">
           <table class="acm-table">
             <thead>
               <tr>
                 <th class="acm-th-corner" rowspan="2">
-                  <span class="acm-corner-label">Role</span>
+                  <span class="acm-corner-label">Role / Module</span>
                 </th>
                 <th :colspan="matrixModules.length" class="acm-th-group">Console Section</th>
               </tr>
@@ -60,7 +48,23 @@
             </thead>
             <tbody>
               <tr v-for="role in matrixRoles" :key="role.key" class="acm-row">
-                <td class="acm-td-role">
+                <td
+                  class="acm-td-role"
+                  :style="{
+                    borderLeftColor: ({
+                      admin: '#dc2626', super_admin: '#dc2626',
+                      manager: '#8b5cf6', regional_manager: '#8b5cf6',
+                      waiter: '#f97316',
+                      cashier: '#3b82f6',
+                      kitchen: '#ef4444',
+                      finance: '#3b82f6',
+                      hr: '#8b5cf6',
+                      inventory: '#22c55e',
+                      delivery: '#14b8a6',
+                      procurement: '#f59e0b'
+                    })[role.key] || '#8b5cf6'
+                  }"
+                >
                   <div class="acm-role-name">{{ role.label }}</div>
                   <div v-if="role.caption" class="acm-role-caption">{{ role.caption }}</div>
                 </td>
@@ -82,30 +86,17 @@
             </tbody>
           </table>
         </div>
-      </q-card-section>
-    </q-card>
-    <q-card flat bordered class="q-mt-md">
-      <q-card-section>
-        <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-4">
-            <q-input
-              dense
-              outlined
-              v-model="search"
-              placeholder="Search users..."
-              clearable
-            >
-              <template v-slot:append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </div>
-          <q-space />
-          <div class="text-caption text-grey-7 italic">
-            * Higher roles inherit standard permissions. Use custom ticks for granular access.
-          </div>
-        </div>
-      </q-card-section>
+      </div>
+    </div>
+
+    <!-- Users Access List -->
+    <div class="acm-users-card q-mt-lg">
+      <div class="acm-users-toolbar">
+        <q-input dense outlined v-model="search" placeholder="Search users by name or email..." clearable class="acm-search">
+          <template #prepend><q-icon name="search" size="16px" /></template>
+        </q-input>
+        <span class="acm-users-hint">* Higher roles inherit standard permissions. Use Edit Access for granular control.</span>
+      </div>
 
       <q-table
         :rows="filteredUsers"
@@ -114,65 +105,52 @@
         :loading="loading"
         flat
         :pagination="{ rowsPerPage: 10 }"
+        class="acm-users-table"
       >
-        <template v-slot:body-cell-roles="props">
+        <template #body-cell-roles="props">
           <q-td :props="props">
-            <div class="row q-gutter-xs">
-              <q-chip
+            <div class="acm-roles-cell">
+              <span
                 v-for="role in props.row.user_roles"
                 :key="role.role_id"
-                dense
-                size="sm"
-                color="indigo"
-                text-color="white"
-                outline
+                class="acm-role-chip"
               >
-                {{ role.roles.name.toUpperCase() }}
-              </q-chip>
-              <div v-if="!props.row.user_roles?.length" class="text-caption text-grey-5">
-                No roles
-              </div>
+                {{ role.roles?.name?.toUpperCase() }}
+              </span>
+              <span v-if="!props.row.user_roles?.length" class="acm-no-roles">No roles</span>
             </div>
           </q-td>
         </template>
 
-        <template v-slot:body-cell-permissions="props">
+        <template #body-cell-permissions="props">
           <q-td :props="props">
-            <div class="row q-gutter-xs items-center">
-              <template v-if="isAdmin(props.row)">
-                <q-chip dense size="sm" color="amber-9" text-color="white" icon="star"
-                  >Full Admin Access</q-chip
-                >
-              </template>
-              <template v-else>
-                <span
-                  v-if="props.row.user_permissions?.length"
-                  class="text-caption text-primary text-weight-bold"
-                >
-                  {{ props.row.user_permissions.length }} Custom Access Points
-                </span>
-                <span v-else class="text-caption text-grey-5">Standard role access</span>
-              </template>
-            </div>
+            <template v-if="isAdmin(props.row)">
+              <span class="acm-perm-admin">
+                <q-icon name="verified_user" size="13px" class="q-mr-xs" />Full Admin Access
+              </span>
+            </template>
+            <template v-else>
+              <span v-if="props.row.user_permissions?.length" class="acm-perm-custom">
+                {{ props.row.user_permissions.length }} custom access points
+              </span>
+              <span v-else class="acm-perm-standard">Standard role access</span>
+            </template>
           </q-td>
         </template>
 
-        <template v-slot:body-cell-actions="props">
-          <q-td :props="props" class="q-gutter-sm">
-            <q-btn
-              unelevated
-              color="primary"
-              label="Edit Access"
-              icon="security"
-              size="sm"
-              @click="editUserAccess(props.row)"
-            />
+        <template #body-cell-actions="props">
+          <q-td :props="props">
+            <q-btn unelevated no-caps icon="security" label="Edit Access" size="sm" class="acm-edit-btn" @click="editUserAccess(props.row)" />
           </q-td>
+        </template>
+
+        <template #loading>
+          <q-inner-loading showing color="purple-6" />
         </template>
       </q-table>
-    </q-card>
+    </div>
 
-    <!-- ═══ MANAGE USER ACCESS DIALOG ═══ -->
+    <!-- Manage User Access Dialog -->
     <q-dialog
       v-model="dialogVisible"
       persistent
@@ -181,80 +159,72 @@
       transition-hide="slide-down"
     >
       <q-card class="acm-dialog-card">
-        <q-toolbar class="bg-primary text-white sticky-top">
-          <q-icon name="security" size="24px" class="q-mr-sm" />
-          <q-toolbar-title> Manage Access — {{ selectedUser?.full_name }} </q-toolbar-title>
-          <q-btn flat round dense icon="close" v-close-popup />
-        </q-toolbar>
+        <div class="acm-dialog-header">
+          <div class="acm-dialog-header__icon">
+            <q-icon name="security" size="20px" />
+          </div>
+          <div>
+            <div class="acm-dialog-title">Manage Access — {{ selectedUser?.full_name }}</div>
+            <div class="acm-dialog-sub">Configure roles and fine-grained permissions</div>
+          </div>
+          <q-btn flat round dense icon="close" class="acm-dialog-close" v-close-popup />
+        </div>
 
-        <q-card-section class="q-pa-lg">
-          <!-- Role Selector -->
-          <div class="row q-col-gutter-md items-start q-mb-lg">
-            <div class="col-12 col-md-5">
-              <q-card flat bordered class="q-pa-md">
-                <div class="row items-center q-mb-sm">
-                  <q-icon name="group" size="20px" color="primary" class="q-mr-sm" />
-                  <div class="text-subtitle2 text-weight-bold">Primary Roles</div>
-                </div>
-                <div class="text-caption text-grey-7 q-mb-md">
-                  Select roles to auto-assign default module permissions.
-                </div>
-                <div class="row q-col-gutter-xs">
-                  <div v-for="role in allRoles" :key="role.id" class="col-6">
-                    <q-item tag="label" v-ripple dense class="rounded-borders border-grey-3">
-                      <q-item-section avatar>
-                        <q-checkbox
-                          v-model="form.roleIds"
-                          :val="role.id"
-                          color="primary"
-                          @update:model-value="onRoleToggled($event, role)"
-                        />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="text-weight-bold" style="font-size: 0.78rem">
-                          {{ role.name.toUpperCase() }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </div>
-                </div>
-              </q-card>
-            </div>
-            <div class="col-12 col-md-7">
-              <div
-                v-if="
-                  form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')
-                "
-                class="q-pa-md bg-amber-1 rounded-borders text-amber-9 text-weight-bold"
-                style="border: 1px solid #fbbf24"
-              >
-                <q-icon name="verified_user" class="q-mr-sm" />
-                Admin role grants <strong>full access</strong> to all modules and features.
+        <div class="acm-dialog-body">
+          <!-- Role Selector Row -->
+          <div class="acm-dialog-row q-mb-lg">
+            <div class="acm-roles-panel">
+              <div class="acm-panel-title">
+                <q-icon name="group" size="15px" class="q-mr-xs" />Primary Roles
               </div>
-              <q-card v-else flat bordered class="q-pa-md">
-                <div class="text-caption text-grey-8">
-                  <q-icon name="info" size="14px" class="q-mr-xs" color="blue" />
-                  Select roles on the left to auto-enable default permissions. Then fine-tune
-                  individual features in the matrix below.
+              <div class="acm-panel-sub">Select roles to auto-assign default module permissions</div>
+              <div class="acm-roles-grid">
+                <div v-for="role in allRoles" :key="role.id">
+                  <q-item tag="label" v-ripple dense class="acm-role-label rounded-borders">
+                    <q-item-section avatar>
+                      <q-checkbox
+                        v-model="form.roleIds"
+                        :val="role.id"
+                        color="purple-6"
+                        @update:model-value="onRoleToggled($event, role)"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="acm-role-item-name">{{ role.name.toUpperCase() }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </div>
-              </q-card>
+              </div>
+            </div>
+
+            <div class="acm-info-panel">
+              <div
+                v-if="form.roleIds.some((id) => allRoles.find((r) => r.id === id)?.name === 'admin')"
+                class="acm-admin-banner"
+              >
+                <q-icon name="verified_user" size="22px" class="q-mr-sm" style="flex-shrink:0" />
+                <div>
+                  <div class="acm-admin-banner__title">Admin Role Active</div>
+                  <div class="acm-admin-banner__desc">Grants <strong>full access</strong> to all modules and features</div>
+                </div>
+              </div>
+              <div v-else class="acm-info-hint">
+                <q-icon name="info_outline" size="16px" class="q-mr-sm" style="flex-shrink:0;color:#8b5cf6" />
+                <div>Select roles on the left to auto-enable default permissions, then fine-tune individual features in the matrix below.</div>
+              </div>
             </div>
           </div>
 
-          <!-- Permission Matrix Table -->
-          <q-card flat bordered>
-            <q-card-section class="q-pb-xs">
-              <div class="row items-center">
-                <q-icon name="grid_view" size="20px" color="primary" class="q-mr-sm" />
-                <div class="text-subtitle2 text-weight-bold">Feature Access Matrix</div>
-                <q-space />
-                <q-badge color="primary" outline class="q-pa-xs">
-                  {{ form.permissionCodes.length }} permissions enabled
-                </q-badge>
+          <!-- Permission Matrix -->
+          <div class="acm-perm-matrix-card">
+            <div class="acm-perm-matrix-header">
+              <div class="acm-perm-matrix-title">
+                <q-icon name="grid_view" size="15px" class="q-mr-xs" />Feature Access Matrix
               </div>
-            </q-card-section>
+              <span class="acm-perm-count-badge">{{ form.permissionCodes.length }} permissions enabled</span>
+            </div>
 
-            <q-card-section class="q-pt-xs acm-scroll-container">
+            <div class="acm-scroll-container">
               <table class="acm-edit-table">
                 <thead>
                   <tr>
@@ -265,79 +235,64 @@
                 </thead>
                 <tbody>
                   <template v-for="section in dialogSections" :key="section.key">
-                    <!-- Section Header Row -->
                     <tr class="acm-et-section-row">
                       <td class="acm-et-section-cell" :rowspan="section.perms.length + 1">
-                        <div class="row items-center no-wrap">
+                        <div class="acm-et-section-inner">
                           <q-icon
                             :name="section.icon"
-                            size="18px"
-                            class="q-mr-xs"
-                            :color="sectionHasAnyAccess(section) ? 'primary' : 'grey-5'"
+                            size="16px"
+                            :style="{ color: sectionHasAnyAccess(section) ? '#8b5cf6' : 'var(--erp-text-muted)' }"
                           />
-                          <div>
-                            <div class="acm-et-section-name">{{ section.label }}</div>
-                          </div>
+                          <div class="acm-et-section-name">{{ section.label }}</div>
                         </div>
                       </td>
                       <td class="acm-et-toggle-cell" colspan="2">
-                        <div class="row items-center justify-between">
-                          <span class="text-caption text-grey-7 text-italic"
-                            >Toggle all features in this module</span
-                          >
+                        <div class="acm-et-toggle-row">
+                          <span class="acm-et-toggle-label">Toggle all features in this module</span>
                           <q-toggle
                             :model-value="sectionHasAllAccess(section)"
                             @update:model-value="toggleSection(section, $event)"
-                            color="primary"
+                            color="purple-6"
                             dense
                           />
                         </div>
                       </td>
                     </tr>
-                    <!-- Permission Feature Rows -->
                     <tr v-for="perm in section.perms" :key="perm.code" class="acm-et-feature-row">
                       <td class="acm-et-feature-cell">
                         <div class="acm-et-feature-name">{{ perm.description || perm.code }}</div>
                         <div class="acm-et-feature-code">{{ perm.code }}</div>
                       </td>
                       <td class="acm-et-check-cell">
-                        <q-checkbox
-                          v-model="form.permissionCodes"
-                          :val="perm.code"
-                          color="green"
-                          dense
-                        />
+                        <q-checkbox v-model="form.permissionCodes" :val="perm.code" color="green-7" dense />
                       </td>
                     </tr>
                   </template>
 
-                  <!-- Empty state -->
                   <tr v-if="dialogSections.length === 0">
-                    <td colspan="3" class="text-center q-pa-lg text-grey-5">
-                      <q-icon name="lock" size="32px" class="q-mb-sm" /><br />
-                      No permissions defined in the system yet.
+                    <td colspan="3">
+                      <div class="acm-empty">
+                        <div class="acm-empty__icon"><q-icon name="lock_outline" size="32px" /></div>
+                        <div class="acm-empty__title">No permissions defined</div>
+                        <div class="acm-empty__sub">No permission entries found in the system</div>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
-            </q-card-section>
-          </q-card>
-        </q-card-section>
+            </div>
+          </div>
+        </div>
 
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn label="Cancel" color="grey" flat v-close-popup class="q-px-md" />
+        <div class="acm-dialog-footer">
+          <q-btn flat no-caps label="Cancel" class="acm-btn-ghost" v-close-popup />
           <q-btn
-            label="Save Access Settings"
-            color="primary"
-            @click="saveUserAccess"
+            unelevated no-caps icon="save" label="Save Access Settings"
+            class="acm-btn-primary acm-btn-primary--lg"
             :loading="saving"
-            unelevated
-            class="q-px-xl"
-            icon="save"
+            @click="saveUserAccess"
           />
-        </q-card-actions>
+        </div>
       </q-card>
     </q-dialog>
   </q-page>
@@ -729,150 +684,474 @@ const saveUserAccess = async () => {
 }
 </script>
 
-<style scoped>
-.sticky-top {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.letter-spacing-1 {
-  letter-spacing: 1px;
-}
-.border-grey-3 {
-  border: 1px solid #e0e0e0;
+<style scoped lang="scss">
+.acm-page {
+  background: var(--erp-bg-page);
+  min-height: 100vh;
 }
 
-/* ── Access Control Matrix ── */
+// ── Matrix Card ────────────────────────────────────────────
 .acm-matrix-card {
-  background: var(--erp-bg-card);
+  background: var(--erp-bg-card) !important;
+  border: 1px solid var(--erp-border) !important;
+  border-radius: var(--erp-radius-lg) !important;
+  overflow: hidden;
 }
 
+// Controls bar
+.acm-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(245, 158, 11, 0.04);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.acm-controls__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d97706;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.acm-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--erp-bg-page);
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--erp-text-muted);
+}
+
+// Scroll container
 .acm-scroll-container {
   overflow-x: auto;
+  padding: 0;
 }
 
 .acm-table-wrap {
   min-width: 800px;
 }
 
+// Matrix Table
 .acm-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
-.acm-table th,
-.acm-table td {
-  border: 1px solid var(--erp-border, #e5e7eb);
-  padding: 8px 10px;
-}
-
-/* Corner cell */
 .acm-th-corner {
-  background: var(--erp-bg-card);
+  background: var(--erp-bg-page);
+  border-right: 2px solid var(--erp-border);
+  border-bottom: 2px solid var(--erp-border);
+  min-width: 140px;
+  padding: 12px 16px;
   text-align: left;
-  font-weight: 700;
-  min-width: 180px;
-  vertical-align: middle;
 }
 
 .acm-corner-label {
-  color: var(--erp-text-secondary, #64748b);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
 }
 
-/* Group header (Console Section) */
 .acm-th-group {
-  background: var(--erp-bg-hover, #f1f5f9);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(109, 40, 217, 0.04));
   text-align: center;
+  padding: 10px 16px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #8b5cf6;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.acm-th-module {
+  background: var(--erp-bg-page);
+  text-align: center;
+  padding: 8px 6px;
+  font-size: 0.68rem;
   font-weight: 700;
-  font-size: 0.78rem;
-  color: var(--erp-text-primary, #1e293b);
+  color: var(--erp-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-/* Module headers */
-.acm-th-module {
-  background: var(--erp-bg-hover, #f1f5f9);
-  text-align: center;
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--erp-text-secondary, #475569);
+  border-right: 1px solid var(--erp-border);
+  border-bottom: 2px solid var(--erp-border);
   white-space: nowrap;
-  min-width: 90px;
+  min-width: 72px;
 }
 
-/* Role rows */
-.acm-row:hover {
-  background: rgba(59, 130, 246, 0.04);
+.acm-row:hover .acm-td-access {
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .acm-td-role {
-  font-weight: 600;
-  color: var(--erp-text-primary, #1e293b);
-  background: var(--erp-bg-card);
-  min-width: 180px;
+  background: var(--erp-bg-page);
+  padding: 12px 16px;
+  border-right: 2px solid var(--erp-border);
+  border-bottom: 1px solid var(--erp-border);
+  border-left: 3px solid transparent;
+  position: sticky;
+  left: 0;
+  z-index: 1;
 }
 
 .acm-role-name {
+  font-size: 0.88rem;
   font-weight: 700;
-  font-size: 0.82rem;
-  color: var(--erp-text-primary, #1e293b);
+  color: var(--erp-text-primary);
+  text-transform: capitalize;
 }
 
 .acm-role-caption {
-  font-size: 0.68rem;
-  font-weight: 400;
-  color: var(--erp-text-muted, #94a3b8);
-  margin-top: 1px;
+  font-size: 0.72rem;
+  color: var(--erp-text-muted);
+  margin-top: 2px;
 }
 
-/* Access cells */
 .acm-td-access {
   text-align: center;
+  padding: 10px 6px;
+  border-right: 1px solid var(--erp-border);
+  border-bottom: 1px solid var(--erp-border);
+  transition: background 0.15s;
   vertical-align: middle;
 }
 
 .acm-td-clickable {
   cursor: pointer;
-  transition: background 0.15s;
-}
 
-.acm-td-clickable:hover {
-  background: rgba(59, 130, 246, 0.08) !important;
-}
+  &:hover {
+    background: rgba(139, 92, 246, 0.06) !important;
+  }
 
-.acm-td-clickable:hover .acm-icon-allow {
-  transform: scale(1.15);
-  transition: transform 0.1s;
-}
+  &:active {
+    background: rgba(139, 92, 246, 0.12) !important;
+  }
 
-.acm-td-clickable:hover .acm-icon-deny {
-  transform: scale(1.15);
-  opacity: 1;
-  transition: transform 0.1s, opacity 0.1s;
+  &:hover .acm-icon-allow,
+  &:hover .acm-icon-deny {
+    transform: scale(1.15);
+    transition: transform 0.1s;
+  }
 }
 
 .acm-icon-allow {
-  color: var(--erp-success, #16a34a);
+  color: var(--erp-success) !important;
   transition: transform 0.1s;
 }
 
 .acm-icon-deny {
-  color: var(--erp-danger, #dc2626);
-  opacity: 0.65;
+  color: var(--erp-border) !important;
+  opacity: 0.5;
   transition: transform 0.1s, opacity 0.1s;
 }
 
-/* ── Edit Access Dialog ── */
-.acm-dialog-card {
-  background: var(--erp-bg-page, #f1f5f9);
+// ── Users Card ─────────────────────────────────────────────
+.acm-users-card {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-lg);
+  overflow: hidden;
 }
 
+.acm-users-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.acm-search {
+  max-width: 360px;
+}
+
+.acm-users-hint {
+  font-size: 0.78rem;
+  color: var(--erp-text-muted);
+  font-style: italic;
+  flex: 1;
+  text-align: right;
+}
+
+.acm-users-table {
+  background: transparent !important;
+}
+
+// Role chips in table
+.acm-roles-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.acm-role-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-family: monospace;
+}
+
+.acm-no-roles {
+  font-size: 0.8rem;
+  color: var(--erp-text-muted);
+}
+
+// Permission cells
+.acm-perm-admin {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.acm-perm-custom {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+.acm-perm-standard {
+  font-size: 0.82rem;
+  color: var(--erp-text-muted);
+}
+
+.acm-edit-btn {
+  background: rgba(139, 92, 246, 0.1) !important;
+  color: #8b5cf6 !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.18) !important;
+  }
+}
+
+// ── Dialog ─────────────────────────────────────────────────
+.acm-dialog-card {
+  background: var(--erp-bg-page) !important;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.acm-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-card);
+  border-left: 4px solid #8b5cf6;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.acm-dialog-header__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.acm-dialog-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--erp-text-primary);
+}
+
+.acm-dialog-sub {
+  font-size: 0.8rem;
+  color: var(--erp-text-muted);
+  margin-top: 2px;
+}
+
+.acm-dialog-close {
+  margin-left: auto;
+  color: var(--erp-text-muted) !important;
+}
+
+.acm-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.acm-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--erp-border);
+  background: var(--erp-bg-card);
+  flex-shrink: 0;
+}
+
+// Dialog row layout
+.acm-dialog-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Roles panel
+.acm-roles-panel {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  padding: 16px;
+}
+
+.acm-panel-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.acm-panel-sub {
+  font-size: 0.76rem;
+  color: var(--erp-text-muted);
+  margin-bottom: 14px;
+}
+
+.acm-roles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.acm-role-label {
+  border: 1px solid var(--erp-border);
+  border-radius: 6px;
+  padding: 6px 8px !important;
+  min-height: unset !important;
+
+  &:hover {
+    background: rgba(139, 92, 246, 0.04) !important;
+    border-color: rgba(139, 92, 246, 0.2) !important;
+  }
+}
+
+.acm-role-item-name {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: var(--erp-text-primary) !important;
+  font-family: monospace;
+}
+
+// Info panel
+.acm-info-panel {
+  display: flex;
+  align-items: flex-start;
+}
+
+.acm-admin-banner {
+  display: flex;
+  align-items: flex-start;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--erp-radius-card);
+  padding: 16px;
+  color: #d97706;
+  width: 100%;
+}
+
+.acm-admin-banner__title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.acm-admin-banner__desc {
+  font-size: 0.8rem;
+}
+
+.acm-info-hint {
+  display: flex;
+  align-items: flex-start;
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--erp-radius-card);
+  padding: 16px;
+  font-size: 0.82rem;
+  color: var(--erp-text-secondary);
+  line-height: 1.5;
+  width: 100%;
+}
+
+// Permission matrix in dialog
+.acm-perm-matrix-card {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  overflow: hidden;
+}
+
+.acm-perm-matrix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--erp-border);
+}
+
+.acm-perm-matrix-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--erp-text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.acm-perm-count-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+// Edit table (permission matrix in dialog)
 .acm-edit-table {
   width: 100%;
   border-collapse: collapse;
@@ -881,36 +1160,36 @@ const saveUserAccess = async () => {
 
 .acm-edit-table th,
 .acm-edit-table td {
-  border: 1px solid var(--erp-border, #e5e7eb);
+  border: 1px solid var(--erp-border);
   padding: 6px 10px;
 }
 
 .acm-et-section-th {
-  background: var(--erp-bg-hover, #f1f5f9);
+  background: var(--erp-bg-page);
   font-weight: 700;
-  font-size: 0.78rem;
-  color: var(--erp-text-secondary, #475569);
+  font-size: 0.72rem;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   width: 200px;
 }
 
 .acm-et-feature-th {
-  background: var(--erp-bg-hover, #f1f5f9);
+  background: var(--erp-bg-page);
   font-weight: 700;
-  font-size: 0.78rem;
-  color: var(--erp-text-secondary, #475569);
+  font-size: 0.72rem;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .acm-et-access-th {
-  background: var(--erp-bg-hover, #f1f5f9);
+  background: var(--erp-bg-page);
   font-weight: 700;
-  font-size: 0.78rem;
-  color: var(--erp-text-secondary, #475569);
+  font-size: 0.72rem;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   text-align: center;
   width: 80px;
 }
@@ -921,22 +1200,40 @@ const saveUserAccess = async () => {
 
 .acm-et-section-cell {
   vertical-align: top;
-  padding-top: 10px !important;
-  border-left: 3px solid #3b82f6;
+  padding-top: 12px !important;
+  border-left: 3px solid #8b5cf6;
+}
+
+.acm-et-section-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .acm-et-section-name {
   font-weight: 700;
   font-size: 0.84rem;
-  color: var(--erp-text-primary, #1e293b);
+  color: var(--erp-text-primary);
 }
 
 .acm-et-toggle-cell {
-  background: rgba(59, 130, 246, 0.04);
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.acm-et-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.acm-et-toggle-label {
+  font-size: 0.78rem;
+  color: var(--erp-text-muted);
+  font-style: italic;
 }
 
 .acm-et-feature-row:hover td {
-  background: rgba(59, 130, 246, 0.03);
+  background: rgba(139, 92, 246, 0.03);
 }
 
 .acm-et-feature-cell {
@@ -946,17 +1243,73 @@ const saveUserAccess = async () => {
 .acm-et-feature-name {
   font-weight: 500;
   font-size: 0.8rem;
-  color: var(--erp-text-primary, #1e293b);
+  color: var(--erp-text-primary);
 }
 
 .acm-et-feature-code {
   font-size: 0.68rem;
-  color: var(--erp-text-muted, #94a3b8);
+  color: var(--erp-text-muted);
   font-family: monospace;
 }
 
 .acm-et-check-cell {
   text-align: center;
   vertical-align: middle;
+}
+
+// Empty state
+.acm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  gap: 10px;
+}
+
+.acm-empty__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(139, 92, 246, 0.08);
+  color: #8b5cf6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.acm-empty__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--erp-text-secondary);
+}
+
+.acm-empty__sub {
+  font-size: 0.82rem;
+  color: var(--erp-text-muted);
+}
+
+// Shared buttons
+.acm-btn-primary {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25) !important;
+}
+
+.acm-btn-primary--lg {
+  min-width: 180px;
+}
+
+.acm-btn-ghost {
+  border: 1px solid var(--erp-border) !important;
+  color: var(--erp-text-secondary) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+
+  &:hover {
+    border-color: #8b5cf6 !important;
+    color: #8b5cf6 !important;
+  }
 }
 </style>

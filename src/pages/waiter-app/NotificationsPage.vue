@@ -403,7 +403,7 @@ function relativeTime(dateStr) {
 <style lang="scss" scoped>
 // ─── Page ──────────────────────────────────────────────────────────────────
 .notif-page {
-  background: #f8fafc;
+  background: #f1f5f9;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -412,13 +412,12 @@ function relativeTime(dateStr) {
 
 // ─── Hero / Sticky Header ──────────────────────────────────────────────────
 .notif-hero {
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
   padding: 14px 16px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 20px rgba(49, 46, 129, 0.4);
 
   &__row {
     display: flex;
@@ -429,13 +428,13 @@ function relativeTime(dateStr) {
   &__title {
     font-size: 1.25rem;
     font-weight: 800;
-    color: #0f172a;
+    color: #fff;
     letter-spacing: -0.3px;
     line-height: 1.2;
   }
   &__sub {
     font-size: 0.7rem;
-    color: #94a3b8;
+    color: rgba(255, 255, 255, 0.55);
     margin-top: 2px;
     font-weight: 500;
   }
@@ -444,12 +443,15 @@ function relativeTime(dateStr) {
 .mark-read-btn {
   border-radius: 20px !important;
   font-size: 0.7rem !important;
-  padding: 3px 10px !important;
+  padding: 3px 12px !important;
   font-weight: 600 !important;
+  background: rgba(255,255,255,0.15) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
 }
 
 .total-badge {
-  background: #ef4444;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
   font-size: 0.72rem;
   font-weight: 800;
@@ -460,11 +462,12 @@ function relativeTime(dateStr) {
   align-items: center;
   justify-content: center;
   padding: 0 6px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
   animation: badge-pulse 1.8s ease-in-out infinite;
 }
 @keyframes badge-pulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.35); }
-  50% { box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+  0%,100% { box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
+  50%      { box-shadow: 0 2px 16px rgba(239,68,68,0.7); }
 }
 
 // ─── Pill Tabs ─────────────────────────────────────────────────────────────
@@ -482,19 +485,18 @@ function relativeTime(dateStr) {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s ease;
   white-space: nowrap;
-  margin-bottom: -1px; // overlap border-bottom of hero
+  margin-bottom: -1px;
 
   &:active { opacity: 0.7; }
-
   &--active {
-    color: #ea580c;
-    border-bottom-color: #ea580c;
+    color: #fff;
+    border-bottom-color: #f97316;
   }
 }
 .tab-pill {
@@ -507,8 +509,8 @@ function relativeTime(dateStr) {
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  &--orange { background: #ea580c; color: #fff; }
-  &--red { background: #dc2626; color: #fff; }
+  &--orange { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; }
+  &--red    { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
 }
 
 // ─── Scrollable Content ────────────────────────────────────────────────────
@@ -538,11 +540,11 @@ function relativeTime(dateStr) {
 .section-dot {
   width: 6px; height: 6px; border-radius: 50%;
   margin-right: 7px; flex-shrink: 0;
-  &--blue { background: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.6); }
-  &--green { background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,0.6);
+  &--blue  { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.7); }
+  &--green { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.7);
     animation: dot-pulse 1.5s ease-in-out infinite; }
-  &--red { background: #ef4444; }
-  &--grey { background: #cbd5e1; }
+  &--red   { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.6); }
+  &--grey  { background: #cbd5e1; }
 }
 @keyframes dot-pulse {
   0%,100% { opacity: 1; } 50% { opacity: 0.35; }
@@ -560,47 +562,51 @@ function relativeTime(dateStr) {
   gap: 12px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 12px 14px 12px 12px;
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  transition: box-shadow 0.18s ease, transform 0.1s ease;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 
-  &:active { transform: scale(0.985); }
-  &:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+  &:active { transform: scale(0.982); }
+  &:hover  { box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 
   &--unread {
-    background: #fefce8;
+    background: linear-gradient(135deg, #fefce8, #fef9c3);
     border-color: #fde68a;
+    border-left: 3px solid #f97316;
   }
 
   &--blue {
     border-color: #bfdbfe;
-    background: #eff6ff;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
     animation: card-pulse-blue 3s ease-in-out infinite;
   }
-  &--green { border-color: #bbf7d0; background: #f0fdf4; }
-  &--red { border-color: #fecaca; background: #fef2f2;
+  &--green  { border-color: #bbf7d0; background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+  &--red    { border-color: #fecaca; background: linear-gradient(135deg, #fef2f2, #fee2e2);
     animation: card-pulse-red 2.5s ease-in-out infinite; }
-  &--amber { border-color: #fde68a; background: #fffbeb; }
-  &--grey { opacity: 1; }
+  &--amber  { border-color: #fde68a; background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+  &--grey   { opacity: 1; }
 
   &__icon {
-    width: 42px; min-width: 42px; height: 42px;
+    width: 44px; min-width: 44px; height: 44px;
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
-    &--blue { background: #dbeafe; }
-    &--green { background: #dcfce7; }
-    &--red { background: #fee2e2; }
-    &--amber { background: #fef3c7; }
-    &--grey { background: #f1f5f9; }
+    &--blue  { background: linear-gradient(135deg, #60a5fa, #2563eb); }
+    &--green { background: linear-gradient(135deg, #4ade80, #16a34a); }
+    &--red   { background: linear-gradient(135deg, #f87171, #dc2626); }
+    &--amber { background: linear-gradient(135deg, #fbbf24, #d97706); }
+    &--grey  { background: #f1f5f9; }
+
+    // Override q-icon color to white for gradient icon containers
+    &--blue, &--green, &--red, &--amber {
+      :deep(.q-icon) { color: #fff !important; }
+    }
   }
 
-  &__body {
-    flex: 1;
-    min-width: 0;
-  }
+  &__body { flex: 1; min-width: 0; }
   &__title {
     font-size: 0.84rem;
     font-weight: 700;
@@ -632,7 +638,7 @@ function relativeTime(dateStr) {
   }
   &__dot { color: #cbd5e1; margin: 0 2px; }
   &__btn {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     font-size: 0.72rem !important;
     font-weight: 700 !important;
     white-space: nowrap;
@@ -641,28 +647,29 @@ function relativeTime(dateStr) {
 }
 
 @keyframes card-pulse-blue {
-  0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.12); }
-  50% { box-shadow: 0 0 10px 2px rgba(59,130,246,0.08); }
+  0%,100% { box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+  50%      { box-shadow: 0 4px 16px rgba(59,130,246,0.18); }
 }
 @keyframes card-pulse-red {
-  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.12); }
-  50% { box-shadow: 0 0 10px 2px rgba(239,68,68,0.08); }
+  0%,100% { box-shadow: 0 2px 8px rgba(239,68,68,0.1); }
+  50%      { box-shadow: 0 4px 16px rgba(239,68,68,0.18); }
 }
 
 // ─── Unread dot ────────────────────────────────────────────────────────────
 .unread-dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: #f97316;
+  background: linear-gradient(135deg, #f97316, #ea580c);
   flex-shrink: 0;
   margin-left: 4px;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
 }
 
 // ─── Ready banner ──────────────────────────────────────────────────────────
 .ready-banner {
   display: flex; align-items: center;
   padding: 10px 14px;
-  border-radius: 10px;
-  background: #f0fdf4;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
   border: 1px solid #86efac;
   color: #15803d;
   font-size: 0.8rem;
@@ -670,8 +677,8 @@ function relativeTime(dateStr) {
   animation: banner-glow 2.5s ease-in-out infinite;
 }
 @keyframes banner-glow {
-  0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.14); }
-  50% { box-shadow: 0 0 12px 2px rgba(34,197,94,0.08); }
+  0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.18); }
+  50%      { box-shadow: 0 0 16px 2px rgba(34,197,94,0.12); }
 }
 
 // ─── Empty state ───────────────────────────────────────────────────────────
@@ -683,21 +690,21 @@ function relativeTime(dateStr) {
   text-align: center;
 
   &__icon {
-    width: 72px; height: 72px; border-radius: 20px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    width: 72px; height: 72px; border-radius: 22px;
+    background: linear-gradient(135deg, #4c1d95, #312e81);
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(76, 29, 149, 0.3);
   }
   &__title {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: #475569;
     margin-bottom: 6px;
   }
   &__sub {
     font-size: 0.72rem;
-    color: #cbd5e1;
+    color: #94a3b8;
     line-height: 1.5;
     max-width: 210px;
   }
@@ -713,16 +720,18 @@ function relativeTime(dateStr) {
   &__header {
     display: flex; align-items: center; gap: 12px;
     padding: 18px 18px 14px;
-    background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+    background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
   }
   &__hicon {
     width: 40px; height: 40px; border-radius: 12px;
     background: rgba(255,255,255,0.15);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  &__from { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.55); }
+  &__from   { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.55); }
   &__sender { font-size: 1rem; font-weight: 700; color: #fff; margin-top: 2px; }
-  &__subject { font-size: 1rem; font-weight: 700; color: #1e293b; line-height: 1.3; }
+  &__subject {
+    font-size: 1rem; font-weight: 700; color: #1e293b; line-height: 1.3;
+  }
   &__body {
     font-size: 0.88rem; color: #475569; line-height: 1.65;
     white-space: pre-wrap; word-break: break-word;
@@ -735,6 +744,67 @@ function relativeTime(dateStr) {
     display: flex; align-items: center;
     margin-top: 12px;
     font-size: 0.68rem; color: #94a3b8;
+  }
+}
+</style>
+
+/* ══════════════════════════════════════════════════
+   DARK MODE OVERRIDES (NotificationsPage)
+   ══════════════════════════════════════════════════ */
+<style lang="scss">
+body.body--dark {
+  .notif-page {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    .notif-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1650 100%);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .notif-hero__title { color: #f8fafc; }
+    .notif-hero__sub   { color: rgba(255,255,255,0.4); }
+
+    .notif-tab {
+      color: rgba(255,255,255,0.4);
+      &--active { color: #fff; border-bottom-color: #f97316; }
+    }
+
+    .notif-content { background: #0f172a; }
+
+    .section-sep { background: rgba(255,255,255,0.06); }
+
+    .ncard {
+      background: #1e293b;
+      border-color: rgba(255,255,255,0.08);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      &:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+      &--unread {
+        background: linear-gradient(135deg, rgba(254,252,232,0.06), rgba(254,249,195,0.03));
+        border-color: rgba(253,230,138,0.2);
+      }
+      &--blue  { background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05)); border-color: rgba(59,130,246,0.2); }
+      &--green { background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05)); border-color: rgba(34,197,94,0.2); }
+      &--red   { background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(220,38,38,0.05)); border-color: rgba(239,68,68,0.2); }
+      &--amber { background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(217,119,6,0.05)); border-color: rgba(251,191,36,0.2); }
+      &__title { color: #f8fafc; }
+      &__meta, &__time, &__preview { color: #64748b; }
+    }
+
+    .ready-banner {
+      background: linear-gradient(135deg, rgba(22,163,74,0.12), rgba(16,185,129,0.06));
+      border-color: rgba(134,239,172,0.2);
+      color: #4ade80;
+    }
+
+    .notif-empty__title { color: #64748b; }
+    .notif-empty__sub   { color: #475569; }
+
+    .msg-card {
+      background: #1e293b;
+      &__subject { color: #f8fafc; }
+      &__body { background: #0f172a; border-color: rgba(255,255,255,0.08); color: #94a3b8; }
+      &__time { color: #64748b; }
+    }
   }
 }
 </style>

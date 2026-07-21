@@ -44,7 +44,10 @@
             borderless
             emit-value
             map-options
-            @update:model-value="(val) => $emit('item-change', props.row, val)"
+            @update:model-value="(val) => {
+              const selectedItem = itemOptions.find(opt => opt.id === val)
+              $emit('item-change', props.row, selectedItem)
+            }"
           />
         </q-td>
 

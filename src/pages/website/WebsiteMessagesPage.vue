@@ -198,7 +198,9 @@
         <!-- Empty -->
         <template #no-data>
           <div class="wm-empty">
-            <q-icon name="mail_outline" size="48px" />
+            <div class="wm-empty__icon-wrap">
+              <q-icon name="mail_outline" size="32px" />
+            </div>
             <div class="wm-empty__text">No messages found</div>
             <div class="wm-empty__sub">Messages from the website contact form will appear here</div>
           </div>
@@ -427,7 +429,7 @@ onMounted(() => {
 /* ── Page ─────────────────────────────────────────────────────────── */
 .wm-page {
   padding: var(--erp-spacing-lg);
-  background: var(--erp-bg-main);
+  background: var(--erp-bg-page);
   min-height: 100vh;
 }
 
@@ -498,24 +500,26 @@ onMounted(() => {
   background: var(--erp-bg-card);
   border: 1px solid var(--erp-border);
   border-radius: var(--erp-radius-lg);
-  border-top: 2px solid transparent;
+  border-left: 3px solid transparent;
+  transition: box-shadow 0.2s, transform 0.2s;
+  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
   &--blue {
-    border-top-color: var(--erp-primary);
+    border-left-color: var(--erp-mod-website);
   }
   &--red {
-    border-top-color: var(--erp-danger);
+    border-left-color: var(--erp-danger);
   }
   &--green {
-    border-top-color: var(--erp-success);
+    border-left-color: var(--erp-success);
   }
 
   &__icon {
     width: 36px;
     height: 36px;
     border-radius: var(--erp-radius-md);
-    background: var(--erp-primary-subtle);
-    color: var(--erp-primary-light);
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -635,7 +639,8 @@ onMounted(() => {
   }
 
   &--unread {
-    background: rgba(37, 99, 235, 0.03) !important;
+    background: rgba(6, 182, 212, 0.04) !important;
+    border-left: 3px solid var(--erp-mod-website) !important;
     td,
     .q-td {
       font-weight: var(--erp-font-weight-medium);
@@ -667,8 +672,8 @@ onMounted(() => {
   font-weight: var(--erp-font-weight-bold) !important;
 
   &--unread {
-    background: var(--erp-primary-subtle) !important;
-    color: var(--erp-primary) !important;
+    background: var(--erp-mod-website-subtle) !important;
+    color: var(--erp-mod-website) !important;
   }
 }
 .wm-cell-subject {
@@ -699,14 +704,19 @@ onMounted(() => {
   white-space: nowrap;
 
   &--unread {
-    background: var(--erp-danger-subtle);
-    color: var(--erp-danger);
-    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+    border: 1px solid rgba(6, 182, 212, 0.2);
   }
   &--read {
     background: var(--erp-success-subtle);
     color: var(--erp-success);
     border: 1px solid rgba(22, 163, 74, 0.25);
+  }
+  &--replied {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.2);
   }
   &--archived {
     background: var(--erp-bg-active);
@@ -725,8 +735,8 @@ onMounted(() => {
 .wm-action-btn {
   color: var(--erp-text-secondary) !important;
   &:hover {
-    color: var(--erp-primary) !important;
-    background: var(--erp-primary-subtle) !important;
+    color: var(--erp-mod-website) !important;
+    background: var(--erp-mod-website-subtle) !important;
   }
   &--success:hover {
     color: var(--erp-success) !important;
@@ -745,17 +755,29 @@ onMounted(() => {
   align-items: center;
   padding: 48px 24px;
   color: var(--erp-text-muted);
+  gap: 10px;
 
+  &__icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
   &__text {
     font-size: var(--erp-font-size-h3);
     font-weight: var(--erp-font-weight-semibold);
     color: var(--erp-text-secondary);
-    margin-top: 12px;
+    margin: 0;
   }
   &__sub {
     font-size: var(--erp-font-size-table);
     color: var(--erp-text-muted);
-    margin-top: 4px;
+    margin: 0;
   }
 }
 
@@ -802,7 +824,8 @@ onMounted(() => {
     justify-content: space-between;
     padding: 16px 20px;
     border-bottom: 1px solid var(--erp-border);
-    background: var(--erp-bg-main);
+    border-left: 4px solid var(--erp-mod-website);
+    background: var(--erp-bg-page);
   }
   &__header-left {
     display: flex;
@@ -810,8 +833,8 @@ onMounted(() => {
     gap: 12px;
   }
   &__avatar {
-    background: var(--erp-primary) !important;
-    color: #fff !important;
+    background: var(--erp-mod-website-subtle) !important;
+    color: var(--erp-mod-website) !important;
     font-size: 14px !important;
     font-weight: var(--erp-font-weight-bold) !important;
   }
@@ -873,7 +896,7 @@ onMounted(() => {
     margin-bottom: 16px;
   }
   &__message {
-    background: var(--erp-bg-main);
+    background: var(--erp-bg-page);
     border: 1px solid var(--erp-border);
     border-radius: var(--erp-radius-md);
     padding: 16px;

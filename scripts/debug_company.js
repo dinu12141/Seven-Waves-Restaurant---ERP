@@ -15,7 +15,9 @@ try {
     if (key === 'VITE_SUPABASE_URL') SUPABASE_URL = val
     if (key === 'VITE_SUPABASE_SERVICE_ROLE_KEY') SUPABASE_SERVICE_KEY = val
   }
-} catch (error) {}
+} catch (err) {
+  console.error('Failed to read .env:', err);
+}
 
 const s = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 

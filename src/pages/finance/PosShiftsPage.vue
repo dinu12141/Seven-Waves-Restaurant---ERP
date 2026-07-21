@@ -86,10 +86,17 @@
           </q-td>
         </template>
         
-        <!-- Nested data slots -->
-        <template #body-cell-cashier="props">
+        <template #body-cell-opened_by="props">
           <q-td :props="props">
-            {{ props.row.profiles?.full_name || 'Unknown' }}
+            {{ props.row.opened_by_user?.full_name || props.row.profiles?.full_name || 'Unknown' }}
+          </q-td>
+        </template>
+        
+        <template #body-cell-closed_by="props">
+          <q-td :props="props">
+            <span v-if="props.row.closed_by_user?.full_name">{{ props.row.closed_by_user.full_name }}</span>
+            <span v-else-if="props.row.status === 'open'" class="text-grey">Still Open</span>
+            <span v-else class="text-grey">N/A</span>
           </q-td>
         </template>
         
@@ -130,7 +137,8 @@ const statusOptions = [
 const columns = [
   { name: 'branch', label: 'Branch', field: row => row.branches?.name, align: 'left', sortable: true },
   { name: 'terminal_id', label: 'Terminal', field: 'terminal_id', align: 'left', sortable: true },
-  { name: 'cashier', label: 'Cashier', field: row => row.profiles?.full_name, align: 'left', sortable: true },
+  { name: 'opened_by', label: 'Opened By', field: row => row.opened_by_user?.full_name || row.profiles?.full_name, align: 'left', sortable: true },
+  { name: 'closed_by', label: 'Closed By', field: row => row.closed_by_user?.full_name, align: 'left', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'opened_date', label: 'Opened Date', field: 'opened_at', align: 'left', sortable: true, format: val => formatDateOnly(val) },
   { name: 'opened_time', label: 'Opened Time', field: 'opened_at', align: 'left', sortable: true, format: val => formatTimeOnly(val) },
@@ -175,6 +183,8 @@ async function loadData() {
       .select(`
         *,
         profiles:cashier_id(full_name),
+        opened_by_user:cashier_id(full_name),
+        closed_by_user:closed_by(full_name),
         branches:branch_id(name)
       `)
       .order('opened_at', { ascending: false })

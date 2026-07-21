@@ -1,352 +1,365 @@
 <template>
-  <q-page class="q-pa-md">
-    <PageHeader
-      title="User Management"
-      subtitle="Create and manage system user accounts"
-      show-back
-      back-route="/admin"
-    />
-
-    <q-card flat bordered class="q-mt-md">
-      <q-card-section>
-        <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-4">
-            <q-input dense outlined v-model="search" placeholder="Search users...">
-              <template v-slot:append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-12 col-md-8 text-right">
-            <q-btn
-              color="secondary"
-              outline
-              icon="admin_panel_settings"
-              label="User Access (Roles)"
-              to="/admin/roles"
-              class="q-mr-sm"
-            />
-            <PermissionGate permission="admin.users.create">
-              <q-btn color="primary" icon="add" label="Add User" @click="openDialog" />
-            </PermissionGate>
-          </div>
+  <q-page class="um-page q-pa-lg">
+    <!-- Module Header -->
+    <div class="um-header">
+      <div class="um-header__left">
+        <div class="um-header__icon-wrap">
+          <q-icon name="manage_accounts" size="22px" />
         </div>
-      </q-card-section>
+        <div>
+          <h1 class="um-header__title">User Management</h1>
+          <p class="um-header__sub">Create and manage system login accounts</p>
+        </div>
+      </div>
+      <div class="um-header__actions">
+        <q-btn unelevated no-caps icon="admin_panel_settings" label="Access Control"
+          to="/admin/roles" class="um-btn um-btn--outline" />
+        <PermissionGate permission="admin.users.create">
+          <q-btn unelevated no-caps icon="add" label="Add User"
+            @click="openDialog" class="um-btn um-btn--primary" />
+        </PermissionGate>
+      </div>
+    </div>
 
-      <q-table
-        :rows="users"
-        :columns="columns"
-        row-key="id"
-        :filter="search"
-        :loading="loading"
-        flat
-        bordered
-      >
-        <template v-slot:body-cell-designation="props">
+    <!-- Stats Strip -->
+    <div class="um-stats-row">
+      <div class="um-stat um-stat--total">
+        <q-icon name="people" size="20px" />
+        <div class="um-stat__body">
+          <div class="um-stat__value">{{ users.length }}</div>
+          <div class="um-stat__label">Total Users</div>
+        </div>
+      </div>
+      <div class="um-stat um-stat--active">
+        <q-icon name="check_circle" size="20px" />
+        <div class="um-stat__body">
+          <div class="um-stat__value">{{ users.filter(u => u.is_active).length }}</div>
+          <div class="um-stat__label">Active</div>
+        </div>
+      </div>
+      <div class="um-stat um-stat--inactive">
+        <q-icon name="block" size="20px" />
+        <div class="um-stat__body">
+          <div class="um-stat__value">{{ users.filter(u => !u.is_active).length }}</div>
+          <div class="um-stat__label">Inactive</div>
+        </div>
+      </div>
+      <div class="um-stat um-stat--code">
+        <q-icon name="pin" size="20px" />
+        <div class="um-stat__body">
+          <div class="um-stat__value">{{ users.filter(u => u.user_code).length }}</div>
+          <div class="um-stat__label">Have Code</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search + Filter Bar -->
+    <div class="um-toolbar">
+      <q-input v-model="search" dense outlined clearable placeholder="Search by name, email, code..."
+        class="um-search">
+        <template #prepend><q-icon name="search" size="16px" /></template>
+      </q-input>
+    </div>
+
+    <!-- Users Table -->
+    <div class="um-table-card">
+      <q-table :rows="users" :columns="columns" row-key="id" :filter="search"
+        :loading="loading" flat class="um-table">
+        <!-- Name cell with avatar -->
+        <template #body-cell-full_name="props">
           <q-td :props="props">
-            {{ props.row.employees?.[0]?.designations?.title || '—' }}
+            <div class="um-user-cell">
+              <div class="um-avatar">{{ initials(props.row.full_name) }}</div>
+              <div>
+                <div class="um-user-name">{{ props.row.full_name || '—' }}</div>
+                <div class="um-user-email">{{ props.row.email }}</div>
+              </div>
+            </div>
           </q-td>
         </template>
-        <template v-slot:body-cell-status="props">
+        <!-- User Code cell -->
+        <template #body-cell-user_code="props">
+          <q-td :props="props" class="text-center">
+            <span v-if="props.row.user_code" class="um-code-badge">
+              <q-icon name="pin" size="12px" class="q-mr-xs" />{{ props.row.user_code }}
+            </span>
+            <span v-else class="um-code-empty">—</span>
+          </q-td>
+        </template>
+        <!-- Designation cell -->
+        <template #body-cell-designation="props">
           <q-td :props="props">
-            <q-chip :color="props.row.is_active ? 'positive' : 'negative'" text-color="white" dense>
+            <span class="um-designation">
+              {{ props.row.employees?.[0]?.designations?.title || '—' }}
+            </span>
+          </q-td>
+        </template>
+        <!-- Status cell -->
+        <template #body-cell-status="props">
+          <q-td :props="props" class="text-center">
+            <span class="um-status-badge" :class="props.row.is_active ? 'um-status-badge--active' : 'um-status-badge--inactive'">
+              <span class="um-status-dot"></span>
               {{ props.row.is_active ? 'Active' : 'Inactive' }}
-            </q-chip>
+            </span>
           </q-td>
         </template>
-        <template v-slot:body-cell-actions="props">
-          <q-td :props="props" class="q-gutter-sm">
-            <PermissionGate permission="admin.users.edit">
-              <q-btn flat round color="primary" icon="edit" size="sm" @click="editUser(props.row)" />
-            </PermissionGate>
-            <PermissionGate permission="admin.users.manage">
-              <q-btn
-                flat
-                round
-                :color="props.row.is_active ? 'negative' : 'positive'"
-                :icon="props.row.is_active ? 'block' : 'check_circle'"
-                size="sm"
-                @click="toggleUserStatus(props.row)"
-              >
-                <q-tooltip>{{
-                  props.row.is_active ? 'Deactivate Account' : 'Activate Account'
-                }}</q-tooltip>
-              </q-btn>
-            </PermissionGate>
+        <!-- Actions cell -->
+        <template #body-cell-actions="props">
+          <q-td :props="props">
+            <div class="um-actions">
+              <PermissionGate permission="admin.users.edit">
+                <q-btn flat round size="sm" icon="edit" class="um-action-btn um-action-btn--edit"
+                  @click="editUser(props.row)">
+                  <q-tooltip>Edit User</q-tooltip>
+                </q-btn>
+              </PermissionGate>
+              <PermissionGate permission="admin.users.manage">
+                <q-btn flat round size="sm"
+                  :icon="props.row.is_active ? 'block' : 'check_circle'"
+                  :class="props.row.is_active ? 'um-action-btn um-action-btn--danger' : 'um-action-btn um-action-btn--success'"
+                  @click="toggleUserStatus(props.row)">
+                  <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
+                </q-btn>
+              </PermissionGate>
+            </div>
           </q-td>
+        </template>
+        <!-- Loading -->
+        <template #loading>
+          <q-inner-loading showing color="purple-6" />
+        </template>
+        <!-- Empty -->
+        <template #no-data>
+          <div class="um-empty">
+            <div class="um-empty__icon"><q-icon name="people_outline" size="32px" /></div>
+            <div class="um-empty__title">No users found</div>
+            <div class="um-empty__sub">Create your first system user to get started</div>
+          </div>
         </template>
       </q-table>
-    </q-card>
+    </div>
 
-    <!-- Add/Edit User Dialog -->
+    <!-- ADD/EDIT USER DIALOG -->
     <q-dialog v-model="dialogVisible" persistent>
-      <q-card style="min-width: 450px; max-height: 90vh; overflow-y: auto;">
-        <q-card-section>
-          <div class="text-h6">{{ isEditing ? 'Edit User Profile' : 'Add New System User' }}</div>
-        </q-card-section>
+      <q-card class="um-dialog">
+        <!-- Dialog Header -->
+        <div class="um-dialog__header">
+          <div class="um-dialog__header-icon">
+            <q-icon :name="isEditing ? 'edit' : 'person_add'" size="20px" />
+          </div>
+          <div>
+            <div class="um-dialog__title">{{ isEditing ? 'Edit User Profile' : 'Create System Account' }}</div>
+            <div class="um-dialog__sub">{{ isEditing ? 'Update user information' : 'New login credentials for a staff member' }}</div>
+          </div>
+          <q-btn flat round dense icon="close" class="um-dialog__close" v-close-popup />
+        </div>
 
-        <q-card-section class="q-pt-none">
-          <q-form @submit="saveUser" class="q-gutter-sm">
-            <!-- Employee Selection -->
-            <q-select
-              v-model="selectedEmployee"
-              label="Select Employee (from HR)"
-              outlined
-              dense
-              use-input
-              input-debounce="0"
-              :options="employeeOptions"
-              @filter="filterEmployees"
-              @update:model-value="onEmployeeSelected"
-              option-label="full_name"
-              option-value="id"
-              :rules="[(val) => !!val || 'Employee selection is required']"
-              v-if="!isEditing"
-            >
-              <template v-slot:no-option>
-                <q-item>
-                  <q-item-section class="text-grey-6">
-                    No employees found without profiles
-                  </q-item-section>
-                </q-item>
-              </template>
-              <template v-slot:option="scope">
-                <q-item v-bind="scope.itemProps">
-                  <q-item-section>
-                    <q-item-label class="text-weight-bold">{{
-                      scope.opt.full_name
-                    }}</q-item-label>
-                    <q-item-label caption>
-                      {{ scope.opt.employee_code }} |
-                      {{ scope.opt.designations?.title || 'No Title' }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
+        <div class="um-dialog__body">
+          <q-form @submit="saveUser" class="um-form">
+            <!-- SECTION: Employee Link (create only) -->
+            <div v-if="!isEditing" class="um-form-section">
+              <div class="um-form-section__title">
+                <q-icon name="badge" size="14px" class="q-mr-xs" />LINK TO EMPLOYEE
+              </div>
+              <q-select v-model="selectedEmployee" label="Select Employee (from HR)" outlined dense stack-label
+                use-input input-debounce="0" :options="employeeOptions"
+                @filter="filterEmployees" @update:model-value="onEmployeeSelected"
+                option-label="full_name" option-value="id"
+                :rules="[(val) => !!val || 'Employee selection is required']"
+                class="um-field">
+                <template #prepend><q-icon name="people" size="16px" /></template>
+                <template #no-option>
+                  <q-item><q-item-section class="text-grey-6">No employees found</q-item-section></q-item>
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section avatar>
+                      <div class="um-opt-avatar">{{ initials(scope.opt.full_name) }}</div>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-weight-bold">{{ scope.opt.full_name }}</q-item-label>
+                      <q-item-label caption>{{ scope.opt.employee_code }} · {{ scope.opt.designations?.title || 'No Title' }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
 
-            <q-input
-              v-model="form.full_name"
-              label="Full Name"
-              outlined
-              dense
-              readonly
-              disable
-            />
-            <q-input
-              v-model="form.email"
-              label="Email Address (Login ID)"
-              type="email"
-              outlined
-              dense
-              autocomplete="new-password"
-              :rules="[(val) => !!val || 'Email is required']"
-              :readonly="isEditing"
-              :disable="isEditing"
-            />
+            <!-- SECTION: Personal Info -->
+            <div class="um-form-section">
+              <div class="um-form-section__title">
+                <q-icon name="person" size="14px" class="q-mr-xs" />PERSONAL INFO
+              </div>
+              <q-input v-model="form.full_name" label="Full Name" outlined dense stack-label readonly disable class="um-field">
+                <template #prepend><q-icon name="person_outline" size="16px" /></template>
+              </q-input>
+              <q-input v-model="form.phone" label="Phone Number" outlined dense stack-label class="um-field">
+                <template #prepend><q-icon name="phone" size="16px" /></template>
+              </q-input>
+            </div>
 
-            <q-input
-              v-if="!isEditing"
-              v-model="form.password"
-              label="Initial Password"
-              :type="showPassword ? 'text' : 'password'"
-              outlined
-              dense
-              autocomplete="off"
-              :rules="[(val) => !!val || 'Initial password is required']"
-            >
-              <template v-slot:append>
-                <q-icon
-                  :name="showPassword ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </q-input>
+            <!-- SECTION: Login Credentials -->
+            <div class="um-form-section">
+              <div class="um-form-section__title">
+                <q-icon name="lock" size="14px" class="q-mr-xs" />LOGIN CREDENTIALS
+              </div>
+              <!-- Login method info banner -->
+              <div class="um-login-info">
+                <q-icon name="info_outline" size="16px" class="q-mr-sm" />
+                <div>
+                  <div class="um-login-info__title">Two login methods available</div>
+                  <div class="um-login-info__desc">
+                    <strong>Email + Password</strong> — for managers, admin, finance roles<br>
+                    <strong>User Code + Password</strong> — for waiters, cashiers, kitchen staff
+                  </div>
+                </div>
+              </div>
 
-            <!-- User Code (for waiter/cashier) -->
-            <q-input
-              v-model="form.user_code"
-              label="User Code (Numeric Login)"
-              outlined
-              dense
-              autocomplete="off"
-              hint="Unique numeric code for quick login (e.g. 1001)"
-              :rules="[val => !val || /^\d+$/.test(val) || 'Must be numbers only']"
-              maxlength="10"
-              @input="e => form.user_code = (e.target?.value || '').replace(/\D/g, '')"
-            >
-              <template v-slot:prepend>
-                <q-icon name="pin" />
-              </template>
-              <template v-slot:append>
-                <q-btn
-                  flat
-                  dense
-                  round
-                  icon="auto_awesome"
-                  size="sm"
-                  color="primary"
-                  @click="autoGenerateCode"
-                >
-                  <q-tooltip>Auto-generate next code</q-tooltip>
-                </q-btn>
-              </template>
-            </q-input>
+              <q-input v-model="form.email" label="Email Address" type="email" outlined dense stack-label
+                :readonly="isEditing" :disable="isEditing"
+                :rules="[(val) => !!val || 'Email is required']"
+                autocomplete="new-password" class="um-field">
+                <template #prepend><q-icon name="mail_outline" size="16px" /></template>
+              </q-input>
 
-            <q-input
-              v-model="form.phone"
-              label="Phone Number"
-              outlined
-              dense
-              autocomplete="off"
-            />
+              <q-input v-if="!isEditing" v-model="form.password" label="Initial Password"
+                :type="showPassword ? 'text' : 'password'" outlined dense stack-label
+                autocomplete="off"
+                :rules="[(val) => !!val || 'Password is required', (val) => val.length >= 6 || 'Min 6 characters']"
+                class="um-field">
+                <template #prepend><q-icon name="lock_outline" size="16px" /></template>
+                <template #append>
+                  <q-icon :name="showPassword ? 'visibility_off' : 'visibility'"
+                    class="cursor-pointer" @click="showPassword = !showPassword" />
+                </template>
+              </q-input>
 
-            <!-- Role Selection (New) -->
-            <q-select
-              v-if="!isEditing"
-              v-model="form.roleId"
-              :options="rolesList"
-              option-label="name"
-              option-value="id"
-              emit-value
-              map-options
-              label="Assign Primary Role"
-              outlined
-              dense
-              :rules="[(val) => !!val || 'Primary role is required']"
-            >
-              <template v-slot:option="scope">
-                <q-item v-bind="scope.itemProps">
-                  <q-item-section>
-                    <q-item-label>{{
-                      scope.opt.name.toUpperCase()
-                    }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
+              <!-- User Code -->
+              <q-input v-model="form.user_code" label="User Code (Numeric Quick Login)"
+                outlined dense stack-label autocomplete="off"
+                hint="4-digit numeric code for quick login (waiter/cashier/kitchen)"
+                :rules="[val => !val || /^\d+$/.test(val) || 'Numbers only']"
+                maxlength="10"
+                @input="e => form.user_code = (e.target?.value || '').replace(/\D/g, '')"
+                class="um-field">
+                <template #prepend><q-icon name="pin" size="16px" /></template>
+                <template #append>
+                  <q-btn flat dense round icon="auto_awesome" size="sm" color="purple-6"
+                    @click="autoGenerateCode">
+                    <q-tooltip>Auto-generate</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
 
-            <q-toggle
-              v-model="form.is_active"
-              label="Access Status"
-              :true-value="true"
-              :false-value="false"
-            >
-              <template v-slot:default>
-                <span :class="form.is_active ? 'text-positive' : 'text-negative'">
-                  {{ form.is_active ? 'ENABLED' : 'DISABLED' }}
-                </span>
-              </template>
-            </q-toggle>
+            <!-- SECTION: Role & Access (create only) -->
+            <div v-if="!isEditing" class="um-form-section">
+              <div class="um-form-section__title">
+                <q-icon name="shield" size="14px" class="q-mr-xs" />ROLE & ACCESS
+              </div>
+              <q-select v-model="form.roleId" label="System Role" outlined dense stack-label
+                :options="rolesList" option-label="name" option-value="id" map-options emit-value
+                :rules="[(val) => !!val || 'Role is required']" class="um-field">
+                <template #prepend><q-icon name="admin_panel_settings" size="16px" /></template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label>
+                        <span class="um-role-option">{{ scope.opt.name.toUpperCase() }}</span>
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
 
-            <div class="row justify-end q-mt-lg">
-              <q-btn label="Cancel" color="grey" flat v-close-popup />
-              <q-btn
-                :label="isEditing ? 'Update User' : 'Create Account'"
-                type="submit"
-                color="primary"
-                class="q-ml-sm"
-                :loading="saving"
-                unelevated
-              />
+            </div>
+
+            <!-- SECTION: Access Status -->
+            <div class="um-form-section">
+              <div class="um-form-section__title">
+                <q-icon name="toggle_on" size="14px" class="q-mr-xs" />ACCESS STATUS
+              </div>
+              <div class="um-toggle-row">
+                <div>
+                  <div class="um-toggle-label">Account Access</div>
+                  <div class="um-toggle-desc">{{ form.is_active ? 'User can log in to the system' : 'Login blocked — account disabled' }}</div>
+                </div>
+                <q-toggle v-model="form.is_active" :true-value="true" :false-value="false"
+                  color="green-7" size="lg" />
+              </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="um-dialog__footer">
+              <q-btn flat no-caps label="Cancel" class="um-btn--cancel" v-close-popup />
+              <q-btn unelevated no-caps :label="isEditing ? 'Save Changes' : 'Create Account'"
+                type="submit" class="um-btn--submit" :loading="saving">
+                <template #loading>
+                  <q-spinner-dots size="18px" />
+                </template>
+              </q-btn>
             </div>
           </q-form>
-        </q-card-section>
+        </div>
       </q-card>
     </q-dialog>
 
-    <!-- Credentials Dialog -->
+    <!-- CREDENTIALS DIALOG -->
     <q-dialog v-model="credentialsDialogVisible" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="bg-positive text-white">
-          <div class="text-h6 flex items-center">
-            <q-icon name="check_circle" size="md" class="q-mr-sm" />
-            User Created Successfully
+      <q-card class="um-cred-dialog">
+        <div class="um-cred-dialog__header">
+          <div class="um-cred-dialog__check">
+            <q-icon name="check_circle" size="28px" />
           </div>
-        </q-card-section>
+          <div>
+            <div class="um-cred-dialog__title">Account Created!</div>
+            <div class="um-cred-dialog__sub">Share these credentials securely — they won't be shown again</div>
+          </div>
+        </div>
 
-        <q-card-section class="q-pt-md">
-          <p class="text-subtitle1 q-mb-md text-weight-medium">
-            Please share these credentials securely with the user. They will not be shown again.
-          </p>
-
-          <q-input
-            readonly
-            outlined
-            dark
-            v-model="newlyCreatedUser.email"
-            label="Email / Login ID"
-            class="q-mb-md"
-          >
-            <template v-slot:append>
-              <q-btn
-                round
-                dense
-                flat
-                icon="content_copy"
-                color="primary"
-                @click="copyToClipboard(newlyCreatedUser.email)"
-              >
-                <q-tooltip>Copy Email</q-tooltip>
+        <div class="um-cred-dialog__body">
+          <!-- Email -->
+          <div class="um-cred-field">
+            <div class="um-cred-field__label"><q-icon name="mail" size="14px" class="q-mr-xs" />Email / Login</div>
+            <div class="um-cred-field__value-row">
+              <code class="um-cred-field__value">{{ newlyCreatedUser.email }}</code>
+              <q-btn flat round dense icon="content_copy" size="sm" class="um-copy-btn"
+                @click="copyToClipboard(newlyCreatedUser.email)">
+                <q-tooltip>Copy</q-tooltip>
               </q-btn>
-            </template>
-          </q-input>
-
-          <q-input
-            readonly
-            outlined
-            dark
-            v-model="newlyCreatedUser.password"
-            label="Initial Password"
-            type="text"
-            class="q-mb-md"
-          >
-            <template v-slot:append>
-              <q-btn
-                round
-                dense
-                flat
-                icon="content_copy"
-                color="primary"
-                @click="copyToClipboard(newlyCreatedUser.password)"
-              >
-                <q-tooltip>Copy Password</q-tooltip>
+            </div>
+          </div>
+          <!-- Password -->
+          <div class="um-cred-field">
+            <div class="um-cred-field__label"><q-icon name="lock" size="14px" class="q-mr-xs" />Initial Password</div>
+            <div class="um-cred-field__value-row">
+              <code class="um-cred-field__value">{{ newlyCreatedUser.password }}</code>
+              <q-btn flat round dense icon="content_copy" size="sm" class="um-copy-btn"
+                @click="copyToClipboard(newlyCreatedUser.password)">
+                <q-tooltip>Copy</q-tooltip>
               </q-btn>
-            </template>
-          </q-input>
-
-          <q-input
-            v-if="newlyCreatedUser.user_code"
-            readonly
-            outlined
-            dark
-            v-model="newlyCreatedUser.user_code"
-            label="User Code (Numeric Login)"
-            type="text"
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="pin" color="amber" />
-            </template>
-            <template v-slot:append>
-              <q-btn
-                round
-                dense
-                flat
-                icon="content_copy"
-                color="primary"
-                @click="copyToClipboard(newlyCreatedUser.user_code)"
-              >
-                <q-tooltip>Copy User Code</q-tooltip>
+            </div>
+          </div>
+          <!-- User Code (if set) -->
+          <div v-if="newlyCreatedUser.user_code" class="um-cred-field um-cred-field--code">
+            <div class="um-cred-field__label"><q-icon name="pin" size="14px" class="q-mr-xs" />User Code (Quick Login)</div>
+            <div class="um-cred-field__value-row">
+              <code class="um-cred-field__value um-cred-field__value--code">{{ newlyCreatedUser.user_code }}</code>
+              <q-btn flat round dense icon="content_copy" size="sm" class="um-copy-btn"
+                @click="copyToClipboard(newlyCreatedUser.user_code)">
+                <q-tooltip>Copy</q-tooltip>
               </q-btn>
-            </template>
-          </q-input>
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn label="Done" color="primary" unelevated v-close-popup />
-        </q-card-actions>
+            </div>
+          </div>
+          <!-- Login instructions -->
+          <div class="um-cred-instructions">
+            <q-icon name="info_outline" size="14px" class="q-mr-xs" />
+            User can login at <strong>/auth/login</strong> using email or user code
+          </div>
+        </div>
+        <div class="um-cred-dialog__footer">
+          <q-btn unelevated no-caps label="Done" class="um-btn--submit full-width" v-close-popup />
+        </div>
       </q-card>
     </q-dialog>
   </q-page>
@@ -354,7 +367,6 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import PageHeader from 'components/common/PageHeader.vue'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
@@ -640,4 +652,139 @@ const toggleUserStatus = (user) => {
     }
   })
 }
+
+function initials(name) {
+  if (!name) return '?'
+  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+}
 </script>
+
+<style lang="scss" scoped>
+.um-page { background: var(--erp-bg-page); min-height: 100vh; }
+
+// Header
+.um-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+.um-header__left { display: flex; align-items: center; gap: 14px; }
+.um-header__icon-wrap { width: 48px; height: 48px; border-radius: 12px; background: rgba(139,92,246,0.12); color: #8b5cf6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.um-header__title { font-size: 1.4rem; font-weight: 800; color: var(--erp-text-primary); margin: 0; }
+.um-header__sub { font-size: 0.85rem; color: var(--erp-text-muted); margin: 2px 0 0; }
+.um-header__actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+// Buttons
+.um-btn { border-radius: 8px !important; font-weight: 600 !important; font-size: 0.88rem !important; }
+.um-btn--outline { background: var(--erp-bg-card) !important; border: 1px solid var(--erp-border) !important; color: var(--erp-text-secondary) !important;
+  &:hover { border-color: #8b5cf6 !important; color: #8b5cf6 !important; }
+}
+.um-btn--primary { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; color: #fff !important; box-shadow: 0 4px 14px rgba(139,92,246,0.3) !important; }
+
+// Stats strip
+.um-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px;
+  @media (max-width: 600px) { grid-template-columns: repeat(2, 1fr); }
+}
+.um-stat { background: var(--erp-bg-card); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-card); padding: 16px 18px; display: flex; align-items: center; gap: 12px; border-left: 3px solid transparent; }
+.um-stat--total { border-left-color: #8b5cf6; .q-icon { color: #8b5cf6; } }
+.um-stat--active { border-left-color: var(--erp-success); .q-icon { color: var(--erp-success); } }
+.um-stat--inactive { border-left-color: var(--erp-danger); .q-icon { color: var(--erp-danger); } }
+.um-stat--code { border-left-color: #f59e0b; .q-icon { color: #f59e0b; } }
+.um-stat__body { display: flex; flex-direction: column; }
+.um-stat__value { font-size: 1.5rem; font-weight: 900; color: var(--erp-text-primary); line-height: 1; }
+.um-stat__label { font-size: 0.75rem; color: var(--erp-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+// Toolbar
+.um-toolbar { margin-bottom: 16px; }
+.um-search { max-width: 380px; }
+
+// Table Card
+.um-table-card { background: var(--erp-bg-card); border: 1px solid var(--erp-border); border-radius: var(--erp-radius-lg); overflow: hidden; }
+.um-table { background: transparent !important; }
+
+// User cell
+.um-user-cell { display: flex; align-items: center; gap: 12px; }
+.um-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.um-user-name { font-size: 0.92rem; font-weight: 700; color: var(--erp-text-primary); }
+.um-user-email { font-size: 0.78rem; color: var(--erp-text-muted); margin-top: 1px; }
+
+// User code
+.um-code-badge { display: inline-flex; align-items: center; background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; font-weight: 700; font-family: monospace; letter-spacing: 1px; }
+.um-code-empty { color: var(--erp-text-muted); font-size: 0.85rem; }
+.um-designation { font-size: 0.85rem; color: var(--erp-text-secondary); }
+
+// Status badge
+.um-status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.um-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.um-status-badge--active { background: var(--erp-success-subtle); color: var(--erp-success); .um-status-dot { background: var(--erp-success); } }
+.um-status-badge--inactive { background: var(--erp-danger-subtle); color: var(--erp-danger); .um-status-dot { background: var(--erp-danger); } }
+
+// Actions
+.um-actions { display: flex; gap: 4px; justify-content: center; }
+.um-action-btn { transition: all 0.15s !important; }
+.um-action-btn--edit { color: #8b5cf6 !important; &:hover { background: rgba(139,92,246,0.1) !important; } }
+.um-action-btn--danger { color: var(--erp-danger) !important; &:hover { background: var(--erp-danger-subtle) !important; } }
+.um-action-btn--success { color: var(--erp-success) !important; &:hover { background: var(--erp-success-subtle) !important; } }
+
+// Empty state
+.um-empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 10px; }
+.um-empty__icon { width: 64px; height: 64px; border-radius: 16px; background: rgba(139,92,246,0.08); color: #8b5cf6; display: flex; align-items: center; justify-content: center; }
+.um-empty__title { font-size: 1rem; font-weight: 700; color: var(--erp-text-secondary); }
+.um-empty__sub { font-size: 0.85rem; color: var(--erp-text-muted); }
+
+// Dialog
+.um-dialog { width: 520px; max-width: 95vw; max-height: 92vh; overflow-y: auto; background: var(--erp-bg-card) !important; border-radius: 16px !important; }
+.um-dialog__header { display: flex; align-items: center; gap: 14px; padding: 20px 24px 16px; border-bottom: 1px solid var(--erp-border); position: sticky; top: 0; background: var(--erp-bg-card); z-index: 1; }
+.um-dialog__header-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(139,92,246,0.12); color: #8b5cf6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.um-dialog__title { font-size: 1.1rem; font-weight: 800; color: var(--erp-text-primary); }
+.um-dialog__sub { font-size: 0.8rem; color: var(--erp-text-muted); margin-top: 2px; }
+.um-dialog__close { margin-left: auto; color: var(--erp-text-muted) !important; }
+.um-dialog__body { padding: 20px 24px; }
+.um-dialog__footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--erp-border); margin-top: 20px; }
+
+// Form sections
+.um-form { display: flex; flex-direction: column; gap: 20px; }
+.um-form-section { display: flex; flex-direction: column; gap: 12px; }
+.um-form-section__title { font-size: 0.75rem; font-weight: 700; color: var(--erp-text-secondary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--erp-border); }
+.um-field { padding-bottom: 0px; }
+
+// Login info banner
+.um-login-info { display: flex; align-items: flex-start; gap: 10px; background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.15); border-radius: 10px; padding: 12px 14px;
+  .q-icon { color: #8b5cf6; flex-shrink: 0; margin-top: 1px; }
+}
+.um-login-info__title { font-size: 0.85rem; font-weight: 700; color: var(--erp-text-primary); margin-bottom: 4px; }
+.um-login-info__desc { font-size: 0.8rem; color: var(--erp-text-secondary); line-height: 1.5; }
+
+// Role hints
+.um-role-hints { display: flex; flex-direction: column; gap: 4px; background: var(--erp-bg-page); border: 1px solid var(--erp-border); border-radius: 8px; padding: 10px 12px; }
+.um-role-hint { font-size: 0.78rem; color: var(--erp-text-muted); display: flex; gap: 8px; }
+.um-role-hint__name { font-weight: 700; color: #8b5cf6; min-width: 80px; font-family: monospace; font-size: 0.75rem; }
+
+// Toggle row
+.um-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--erp-bg-page); border: 1px solid var(--erp-border); border-radius: 10px; padding: 14px 16px; }
+.um-toggle-label { font-size: 0.9rem; font-weight: 700; color: var(--erp-text-primary); }
+.um-toggle-desc { font-size: 0.78rem; color: var(--erp-text-muted); margin-top: 2px; }
+
+// Option avatar
+.um-opt-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+// Dialog buttons
+.um-btn--cancel { color: var(--erp-text-secondary) !important; border-radius: 8px !important; }
+.um-btn--submit { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; color: #fff !important; border-radius: 8px !important; font-weight: 600 !important; min-width: 140px; }
+
+// Credentials Dialog
+.um-cred-dialog { width: 460px; max-width: 95vw; background: var(--erp-bg-card) !important; border-radius: 16px !important; }
+.um-cred-dialog__header { display: flex; align-items: center; gap: 14px; padding: 20px 24px 16px; border-bottom: 1px solid var(--erp-border); background: var(--erp-success-subtle); }
+.um-cred-dialog__check { width: 48px; height: 48px; border-radius: 12px; background: var(--erp-success); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.um-cred-dialog__title { font-size: 1.1rem; font-weight: 800; color: var(--erp-success); }
+.um-cred-dialog__sub { font-size: 0.8rem; color: var(--erp-text-secondary); margin-top: 2px; }
+.um-cred-dialog__body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.um-cred-dialog__footer { padding: 0 24px 20px; }
+
+.um-cred-field { background: var(--erp-bg-page); border: 1px solid var(--erp-border); border-radius: 10px; padding: 12px 14px; }
+.um-cred-field--code { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.04); }
+.um-cred-field__label { font-size: 0.72rem; font-weight: 700; color: var(--erp-text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: flex; align-items: center; }
+.um-cred-field__value-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.um-cred-field__value { font-family: 'Courier New', monospace; font-size: 0.95rem; font-weight: 700; color: var(--erp-text-primary); background: transparent; flex: 1; word-break: break-all; }
+.um-cred-field__value--code { font-size: 1.2rem; color: #d97706; letter-spacing: 2px; }
+.um-copy-btn { color: var(--erp-text-muted) !important; &:hover { color: #8b5cf6 !important; } }
+.um-cred-instructions { font-size: 0.8rem; color: var(--erp-text-muted); display: flex; align-items: center; background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.15); border-radius: 8px; padding: 10px 12px;
+  .q-icon { color: #8b5cf6; flex-shrink: 0; }
+}
+</style>

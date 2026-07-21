@@ -296,13 +296,18 @@ async function generatePDFTableDoc(columns: any[], rows: any[], title: string, s
     }),
   )
   
-  autoTable(doc, {
-    startY: 38,
-    head: [heads],
-    body,
-    theme: 'grid',
-    headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
-    styles: { fontSize: 7, minCellHeight: imageCols.length > 0 ? 12 : undefined },
+    const tableStyles: any = { fontSize: 7 }
+    if (imageCols.length > 0) {
+      tableStyles.minCellHeight = 12
+    }
+
+    autoTable(doc, {
+      startY: 38,
+      head: [heads],
+      body,
+      theme: 'grid',
+      headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
+      styles: tableStyles,
     columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
     didParseCell: (data) => {
       if (data.section === 'body') {

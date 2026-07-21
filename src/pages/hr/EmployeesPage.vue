@@ -5452,7 +5452,7 @@ async function loadEmployees() {
     if (!branchId) return
     const { data, error } = await supabase
       .from('employees')
-      .select('id, first_name, last_name, employee_code, employment_status, mobile, email, photo_url, departments(name), designations(title)')
+      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, departments(name), designations(title)')
       .eq('branch_id', branchId)
       .order('first_name')
       .range(0, 49) // Paginate initial load to save egress

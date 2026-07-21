@@ -313,7 +313,7 @@ function truncate(str, len) {
   border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.08);
   transition: background 0.25s ease;
 }
 .lt .msg-tabs {
@@ -324,22 +324,49 @@ function truncate(str, len) {
   font-size: 0.82rem;
   font-weight: 600;
   min-height: 38px;
+  color: #6b7280;
 }
-.msg-tabs :deep(.q-tab) { color: #6b7280; }
 .lt .msg-tabs :deep(.q-tab) { color: #94a3b8; }
-.msg-tabs :deep(.q-tab--active) { color: #22d3ee; }
-.lt .msg-tabs :deep(.q-tab--active) { color: #0891b2; }
+.msg-tabs :deep(.q-tab--active) {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
+}
+.lt .msg-tabs :deep(.q-tab--active) {
+  color: #0891b2;
+  text-shadow: none;
+}
+.msg-tabs :deep(.q-tab-indicator) {
+  background: linear-gradient(90deg, #22d3ee, #6366f1) !important;
+  height: 2px !important;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
+}
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
 .empty-state {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .empty-state__icon {
-  color: #374151;
-  margin-bottom: 8px;
+  width: 72px !important;
+  height: 72px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(6, 182, 212, 0.07));
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  border-radius: 50%;
+  color: #818cf8;
+  margin-bottom: 12px;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.12);
 }
 .lt .empty-state__icon {
-  color: #cbd5e1;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  box-shadow: none;
 }
 .empty-state__text {
   font-size: 0.88rem;
@@ -350,25 +377,36 @@ function truncate(str, len) {
 .msg-card {
   border-radius: 12px;
   cursor: pointer;
-  transition: border-color 0.15s;
-}
-.msg-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.15s, box-shadow 0.2s, transform 0.15s;
+
+  &:hover {
+    border-color: rgba(34, 211, 238, 0.15);
+    box-shadow: 0 4px 14px rgba(34, 211, 238, 0.05);
+  }
+  &:active {
+    transform: scale(0.985);
+    border-color: rgba(34, 211, 238, 0.3);
+  }
 }
 .lt .msg-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    border-color: rgba(8, 145, 178, 0.2);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.06);
+  }
 }
 .msg-card--unread {
   border-left: 3px solid #22d3ee !important;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.06), -2px 0 8px rgba(34, 211, 238, 0.1);
 }
 .lt .msg-card--unread {
   border-left-color: #0891b2 !important;
-}
-.msg-card:active {
-  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .msg-subject {
@@ -410,11 +448,13 @@ function truncate(str, len) {
 .compose-card {
   width: 100%;
   max-width: 480px;
-  background: #111827 !important;
+  background: #0d1220 !important;
   color: #fff !important;
   border-radius: 16px 16px 0 0 !important;
+  border-top: 1px solid rgba(34, 211, 238, 0.12) !important;
 }
 .compose-bar {
-  background: #1f2937;
+  background: linear-gradient(135deg, #060e1e, #0d1a30);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.1);
 }
 </style>

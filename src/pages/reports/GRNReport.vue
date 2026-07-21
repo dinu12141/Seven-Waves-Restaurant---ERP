@@ -9,6 +9,48 @@
     @export-excel="exportExcel"
     @refresh="loadData"
   >
+    <template #extra-filters="{ filters }">
+      <div class="report-filter-group">
+        <label class="report-filter-label">Supplier</label>
+        <q-select
+          v-model="filters.supplier_id"
+          :options="supplierOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          clearable
+          placeholder="All Suppliers"
+          class="report-filter-input"
+        />
+      </div>
+      <div class="report-filter-group">
+        <label class="report-filter-label">Item</label>
+        <q-select
+          v-model="filters.item_id"
+          :options="itemOptions"
+          dense
+          outlined
+          emit-value
+          map-options
+          clearable
+          use-input
+          @filter="filterItems"
+          placeholder="All Items"
+          class="report-filter-input"
+        />
+      </div>
+    </template>
+    
+    <template #filter-chips="{ applied }">
+      <span v-if="applied.supplier_id" class="report-filter-chip">
+        Supplier: {{ getSupplierName(applied.supplier_id) }}
+      </span>
+      <span v-if="applied.item_id" class="report-filter-chip">
+        Item: {{ getItemName(applied.item_id) }}
+      </span>
+    </template>
+
     <template #default>
       <q-table
         :rows="rows"
@@ -109,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
@@ -118,6 +160,43 @@ import { fmtLKR, fmtDate } from 'src/services/reportService'
 const loading = ref(false)
 const rows = ref([])
 const expanded = ref(new Set())
+
+const supplierOptions = ref([])
+const itemOptions = ref([])
+const allItemOptions = ref([])
+
+onMounted(async () => {
+  const { data: s } = await supabase.from('suppliers').select('id, name').order('name')
+  if (s) supplierOptions.value = s.map(x => ({ label: x.name, value: x.id }))
+  
+  const { data: i } = await supabase.from('items').select('id, name, code').order('name')
+  if (i) {
+    allItemOptions.value = i.map(x => ({ label: `${x.name} (${x.code})`, value: x.id }))
+    itemOptions.value = [...allItemOptions.value]
+  }
+})
+
+function filterItems(val, update) {
+  if (val === '') {
+    update(() => {
+      itemOptions.value = allItemOptions.value
+    })
+    return
+  }
+  update(() => {
+    const needle = val.toLowerCase()
+    itemOptions.value = allItemOptions.value.filter(v => v.label.toLowerCase().includes(needle))
+  })
+}
+
+function getSupplierName(id) {
+  const s = supplierOptions.value.find(x => x.value === id)
+  return s ? s.label : ''
+}
+function getItemName(id) {
+  const i = allItemOptions.value.find(x => x.value === id)
+  return i ? i.label : ''
+}
 
 function toggleExpand(id) {
   if (expanded.value.has(id)) {
@@ -176,14 +255,16 @@ async function loadData(filters = {}) {
   loading.value = true
   expanded.value = new Set()
   try {
+    const linesJoin = filters.item_id ? 'inventory_document_lines!inner' : 'inventory_document_lines'
     let query = supabase
       .from('inventory_documents')
       .select(
         `id, doc_number, reference_no, created_at, doc_date,
          grand_total, status, remarks,
+         supplier_id,
          suppliers ( name ),
-         inventory_document_lines (
-           id, quantity, unit_cost, line_total,
+         ${linesJoin} (
+           id, quantity, unit_cost, line_total, item_id,
            items ( name, code ),
            uom ( name, code )
          )`
@@ -193,6 +274,8 @@ async function loadData(filters = {}) {
 
     if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
     if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.item_id) query = query.eq('inventory_document_lines.item_id', filters.item_id)
 
     const { data, error } = await query.limit(1000)
     if (error) throw error

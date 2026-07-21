@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="wo-page q-pa-md">
     <ERPToolbar
       title="Website Orders"
       subtitle="Manage customer orders from the website"
@@ -9,78 +9,65 @@
     <!-- Stats Row -->
     <div class="row q-col-gutter-md q-mt-sm q-mb-md">
       <div class="col-6 col-md-3" v-for="stat in statsCards" :key="stat.label">
-        <q-card flat bordered class="erp-stat-card q-pa-md">
-          <div class="row items-center q-gutter-sm">
-            <q-icon :name="stat.icon" :color="stat.color" size="28px" />
-            <div>
-              <div class="text-h5 text-weight-bold" :class="`text-${stat.color}`">
-                {{ stat.value }}
-              </div>
-              <div class="text-caption text-grey-5">{{ stat.label }}</div>
-            </div>
+        <div class="wo-stat-card">
+          <div class="wo-stat-icon" :class="`wo-stat-icon--${stat.color.split('-')[0]}`">
+            <q-icon :name="stat.icon" size="22px" />
           </div>
-        </q-card>
+          <div>
+            <div class="wo-stat-value">{{ stat.value }}</div>
+            <div class="wo-stat-label">{{ stat.label }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Filters -->
-    <q-card flat bordered class="erp-stat-card q-mb-md">
-      <q-card-section class="q-py-sm">
-        <div class="row q-col-gutter-sm items-center">
-          <div class="col-12 col-md-4">
-            <q-input dark dense outlined v-model="search" placeholder="Search orders..." clearable>
-              <template #prepend><q-icon name="search" color="grey-5" /></template>
-            </q-input>
-          </div>
-          <div class="col-12 col-md-3">
-            <q-select
-              dark
-              dense
-              outlined
-              v-model="statusFilter"
-              :options="statusOptions"
-              emit-value
-              map-options
-              label="Filter by Status"
-            />
-          </div>
-          <div class="col-auto">
-            <q-btn
-              flat
-              round
-              dense
-              icon="refresh"
-              color="amber-6"
-              :loading="loading"
-              @click="loadOrders"
-            >
-              <q-tooltip>Refresh</q-tooltip>
-            </q-btn>
-          </div>
-          <q-space />
-          <div class="col-auto">
-            <q-chip color="green-9" text-color="white" icon="wifi" dense v-if="isLive">LIVE</q-chip>
-          </div>
+    <div class="wo-filter-bar q-mb-md">
+      <div class="row q-col-gutter-sm items-center">
+        <div class="col-12 col-md-4">
+          <q-input dense outlined v-model="search" placeholder="Search orders..." clearable>
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
         </div>
-      </q-card-section>
-    </q-card>
+        <div class="col-12 col-md-3">
+          <q-select
+            dense
+            outlined
+            v-model="statusFilter"
+            :options="statusOptions"
+            emit-value
+            map-options
+            label="Filter by Status"
+          />
+        </div>
+        <div class="col-auto">
+          <q-btn flat round dense icon="refresh" class="wo-refresh-btn" :loading="loading" @click="loadOrders">
+            <q-tooltip>Refresh</q-tooltip>
+          </q-btn>
+        </div>
+        <q-space />
+        <div class="col-auto">
+          <q-chip class="wo-live-chip" icon="wifi" dense v-if="isLive">LIVE</q-chip>
+        </div>
+      </div>
+    </div>
 
     <!-- Orders Table -->
-    <q-card flat bordered class="erp-data-grid">
+    <div class="wo-data-grid">
       <q-table
         :rows="filteredOrders"
         :columns="columns"
         row-key="id"
-        dark
         flat
         :loading="loading"
         :rows-per-page-options="[20, 50, 100]"
         :pagination="{ rowsPerPage: 20 }"
         no-data-label="No website orders found"
+        class="wo-table"
       >
         <template #body-cell-order_number="props">
           <q-td :props="props">
-            <span class="text-weight-bold text-amber-4">#{{ props.row.order_number }}</span>
+            <span class="wo-order-num">#{{ props.row.order_number }}</span>
           </q-td>
         </template>
 
@@ -103,7 +90,7 @@
             >
               {{ deliveryStatusLabel(props.row.delivery.status) }}
             </q-chip>
-            <span v-else class="text-grey-6 text-caption">—</span>
+            <span v-else class="wo-muted text-caption">—</span>
           </q-td>
         </template>
 
@@ -118,7 +105,7 @@
               {{ paymentStatusLabel(props.row.payment_status) }}
             </q-chip>
             <div
-              class="text-caption text-grey-6 q-mt-xs"
+              class="text-caption wo-muted q-mt-xs"
               v-if="props.row.payment_method && props.row.payment_method !== 'cash'"
             >
               {{ props.row.payment_method?.toUpperCase() }}
@@ -129,13 +116,13 @@
         <template #body-cell-rider="props">
           <q-td :props="props">
             <span v-if="props.row.delivery?.rider">{{ props.row.delivery.rider.full_name }}</span>
-            <span v-else class="text-grey-6 text-caption">Not assigned</span>
+            <span v-else class="wo-muted text-caption">Not assigned</span>
           </q-td>
         </template>
 
         <template #body-cell-total_amount="props">
           <q-td :props="props">
-            <span class="text-weight-bold text-green-4"
+            <span class="wo-amount text-weight-bold"
               >Rs. {{ Number(props.row.total_amount || 0).toFixed(2) }}</span
             >
           </q-td>
@@ -143,8 +130,8 @@
 
         <template #body-cell-created_at="props">
           <q-td :props="props">
-            <div class="text-caption">{{ formatDate(props.row.created_at) }}</div>
-            <div class="text-caption text-grey-6">{{ timeAgo(props.row.created_at) }}</div>
+            <div class="text-caption wo-detail-text">{{ formatDate(props.row.created_at) }}</div>
+            <div class="text-caption wo-muted">{{ timeAgo(props.row.created_at) }}</div>
           </q-td>
         </template>
 
@@ -155,7 +142,7 @@
               round
               dense
               icon="visibility"
-              color="blue-4"
+              class="wo-action-btn--view"
               size="sm"
               @click="viewOrder(props.row)"
             >
@@ -171,7 +158,7 @@
               round
               dense
               icon="currency_exchange"
-              color="orange-5"
+              class="wo-action-btn--refund"
               size="sm"
               @click="refundOrder(props.row)"
             >
@@ -183,7 +170,7 @@
               round
               dense
               icon="cancel"
-              color="red-4"
+              class="wo-action-btn--cancel"
               size="sm"
               @click="cancelOrder(props.row)"
             >
@@ -192,7 +179,7 @@
           </q-td>
         </template>
       </q-table>
-    </q-card>
+    </div>
 
     <!-- Order Detail Dialog -->
     <q-dialog
@@ -201,15 +188,10 @@
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card style="background: var(--erp-bg-page, #0b0f19); color: #fff">
-        <q-toolbar
-          style="
-            background: var(--erp-bg-form-card, #111827);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          "
-        >
-          <q-icon name="receipt_long" size="24px" color="amber-6" class="q-mr-sm" />
-          <q-toolbar-title class="text-weight-bold">
+      <q-card class="wo-dialog-card">
+        <q-toolbar class="wo-dialog-toolbar">
+          <q-icon name="receipt_long" size="24px" class="wo-dialog-toolbar__icon q-mr-sm" />
+          <q-toolbar-title class="text-weight-bold wo-dialog-toolbar__title">
             Order #{{ selectedOrder?.order_number }}
             <q-chip
               dense
@@ -222,7 +204,7 @@
             </q-chip>
           </q-toolbar-title>
           <q-space />
-          <q-btn flat round dense icon="close" v-close-popup color="grey-4" />
+          <q-btn flat round dense icon="close" v-close-popup class="wo-dialog-close" />
         </q-toolbar>
 
         <q-scroll-area style="height: calc(100vh - 56px)">
@@ -233,268 +215,215 @@
           >
             <!-- Left: Order Info -->
             <div class="col-12 col-md-5">
-              <q-card
-                flat
-                bordered
-                style="
-                  background: var(--erp-bg-form-card, #111827);
-                  border-color: rgba(255, 255, 255, 0.07);
-                "
-                class="q-mb-md"
-              >
-                <q-card-section>
-                  <div class="text-subtitle1 text-weight-bold text-amber-4 q-mb-md">
-                    Customer Details
+              <div class="wo-section-card q-mb-md">
+                <div class="wo-section-card__title wo-section-card__title--customer">
+                  Customer Details
+                </div>
+                <div class="q-gutter-y-sm">
+                  <div class="row items-center q-gutter-sm wo-detail-text">
+                    <q-icon name="person" size="18px" class="wo-detail-icon" />
+                    <span>{{ selectedOrder.customer_name || 'N/A' }}</span>
                   </div>
-                  <div class="q-gutter-y-sm">
-                    <div class="row items-center q-gutter-sm text-grey-3">
-                      <q-icon name="person" size="18px" color="grey-5" />
-                      <span>{{ selectedOrder.customer_name || 'N/A' }}</span>
-                    </div>
-                    <div class="row items-center q-gutter-sm text-grey-3">
-                      <q-icon name="phone" size="18px" color="grey-5" />
-                      <span>{{ selectedOrder.customer_phone || 'N/A' }}</span>
-                    </div>
-                    <div class="row items-start q-gutter-sm text-grey-3">
-                      <q-icon name="location_on" size="18px" color="grey-5" class="q-mt-xs" />
-                      <span>{{ selectedOrder.delivery_address || 'N/A' }}</span>
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.notes"
-                    >
-                      <q-icon name="note" size="18px" color="grey-5" />
-                      <span class="text-italic">{{ selectedOrder.notes }}</span>
-                    </div>
+                  <div class="row items-center q-gutter-sm wo-detail-text">
+                    <q-icon name="phone" size="18px" class="wo-detail-icon" />
+                    <span>{{ selectedOrder.customer_phone || 'N/A' }}</span>
                   </div>
-                </q-card-section>
-              </q-card>
+                  <div class="row items-start q-gutter-sm wo-detail-text">
+                    <q-icon name="location_on" size="18px" class="wo-detail-icon q-mt-xs" />
+                    <span>{{ selectedOrder.delivery_address || 'N/A' }}</span>
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.notes"
+                  >
+                    <q-icon name="note" size="18px" class="wo-detail-icon" />
+                    <span class="text-italic">{{ selectedOrder.notes }}</span>
+                  </div>
+                </div>
+              </div>
 
               <!-- Delivery Assignment -->
-              <q-card
-                flat
-                bordered
-                style="
-                  background: var(--erp-bg-form-card, #111827);
-                  border-color: rgba(255, 255, 255, 0.07);
-                "
-                class="q-mb-md"
-                v-if="selectedOrder.delivery"
-              >
-                <q-card-section>
-                  <div class="text-subtitle1 text-weight-bold text-blue-4 q-mb-md">
-                    Delivery Status
+              <div class="wo-section-card q-mb-md" v-if="selectedOrder.delivery">
+                <div class="wo-section-card__title wo-section-card__title--delivery">
+                  Delivery Status
+                </div>
+                <div class="q-gutter-y-sm">
+                  <div class="row items-center q-gutter-sm">
+                    <q-icon name="delivery_dining" size="18px" class="wo-detail-icon" />
+                    <q-chip
+                      dense
+                      :color="deliveryStatusColor(selectedOrder.delivery.status)"
+                      text-color="white"
+                    >
+                      {{ deliveryStatusLabel(selectedOrder.delivery.status) }}
+                    </q-chip>
                   </div>
-                  <div class="q-gutter-y-sm">
-                    <div class="row items-center q-gutter-sm">
-                      <q-icon name="delivery_dining" size="18px" color="grey-5" />
-                      <q-chip
-                        dense
-                        :color="deliveryStatusColor(selectedOrder.delivery.status)"
-                        text-color="white"
-                      >
-                        {{ deliveryStatusLabel(selectedOrder.delivery.status) }}
-                      </q-chip>
-                    </div>
-                    <div class="row items-center q-gutter-sm text-grey-3">
-                      <q-icon name="person" size="18px" color="grey-5" />
-                      <span
-                        >Rider:
-                        <strong>{{
-                          selectedOrder.delivery.rider?.full_name || 'Not assigned yet'
-                        }}</strong></span
-                      >
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.delivery.accepted_at"
+                  <div class="row items-center q-gutter-sm wo-detail-text">
+                    <q-icon name="person" size="18px" class="wo-detail-icon" />
+                    <span
+                      >Rider:
+                      <strong>{{
+                        selectedOrder.delivery.rider?.full_name || 'Not assigned yet'
+                      }}</strong></span
                     >
-                      <q-icon name="check_circle" size="18px" color="green-5" />
-                      <span>Accepted: {{ formatDate(selectedOrder.delivery.accepted_at) }}</span>
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.delivery.picked_up_at"
-                    >
-                      <q-icon name="local_shipping" size="18px" color="blue-5" />
-                      <span>Picked up: {{ formatDate(selectedOrder.delivery.picked_up_at) }}</span>
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.delivery.delivered_at"
-                    >
-                      <q-icon name="done_all" size="18px" color="green-5" />
-                      <span>Delivered: {{ formatDate(selectedOrder.delivery.delivered_at) }}</span>
-                    </div>
                   </div>
-                </q-card-section>
-              </q-card>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.delivery.accepted_at"
+                  >
+                    <q-icon name="check_circle" size="18px" class="wo-icon--success" />
+                    <span>Accepted: {{ formatDate(selectedOrder.delivery.accepted_at) }}</span>
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.delivery.picked_up_at"
+                  >
+                    <q-icon name="local_shipping" size="18px" class="wo-icon--info" />
+                    <span>Picked up: {{ formatDate(selectedOrder.delivery.picked_up_at) }}</span>
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.delivery.delivered_at"
+                  >
+                    <q-icon name="done_all" size="18px" class="wo-icon--success" />
+                    <span>Delivered: {{ formatDate(selectedOrder.delivery.delivered_at) }}</span>
+                  </div>
+                </div>
+              </div>
 
               <!-- Payment Info -->
-              <q-card
-                flat
-                bordered
-                style="
-                  background: var(--erp-bg-form-card, #111827);
-                  border-color: rgba(255, 255, 255, 0.07);
-                "
-                class="q-mb-md"
-              >
-                <q-card-section>
-                  <div class="text-subtitle1 text-weight-bold text-green-4 q-mb-md">
-                    Payment Info
+              <div class="wo-section-card q-mb-md">
+                <div class="wo-section-card__title wo-section-card__title--payment">
+                  Payment Info
+                </div>
+                <div class="q-gutter-y-sm">
+                  <div class="row items-center q-gutter-sm wo-detail-text">
+                    <q-icon name="payment" size="18px" class="wo-detail-icon" />
+                    <span
+                      >Method:
+                      <strong>{{
+                        (selectedOrder.payment_method || 'Cash').toUpperCase()
+                      }}</strong></span
+                    >
                   </div>
-                  <div class="q-gutter-y-sm">
-                    <div class="row items-center q-gutter-sm">
-                      <q-icon name="payment" size="18px" color="grey-5" />
-                      <span class="text-grey-3"
-                        >Method:
-                        <strong>{{
-                          (selectedOrder.payment_method || 'Cash').toUpperCase()
-                        }}</strong></span
-                      >
-                    </div>
-                    <div class="row items-center q-gutter-sm">
-                      <q-icon name="account_balance_wallet" size="18px" color="grey-5" />
-                      <q-chip
-                        dense
-                        :color="paymentStatusColor(selectedOrder.payment_status)"
-                        text-color="white"
-                      >
-                        {{ paymentStatusLabel(selectedOrder.payment_status) }}
-                      </q-chip>
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.paid_at"
+                  <div class="row items-center q-gutter-sm">
+                    <q-icon name="account_balance_wallet" size="18px" class="wo-detail-icon" />
+                    <q-chip
+                      dense
+                      :color="paymentStatusColor(selectedOrder.payment_status)"
+                      text-color="white"
                     >
-                      <q-icon name="check_circle" size="18px" color="green-5" />
-                      <span>Paid at: {{ formatDate(selectedOrder.paid_at) }}</span>
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-3"
-                      v-if="selectedOrder.gateway_ref"
-                    >
-                      <q-icon name="tag" size="18px" color="grey-5" />
-                      <span
-                        >Txn Ref: <code>{{ selectedOrder.gateway_ref }}</code></span
-                      >
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-orange-4"
-                      v-if="selectedOrder.refund_amount > 0"
-                    >
-                      <q-icon name="currency_exchange" size="18px" color="orange-5" />
-                      <span
-                        >Refunded: Rs.
-                        {{ Number(selectedOrder.refund_amount || 0).toFixed(2) }}</span
-                      >
-                    </div>
-                    <div
-                      class="row items-center q-gutter-sm text-grey-4"
-                      v-if="selectedOrder.refund_reason"
-                    >
-                      <q-icon name="info" size="18px" color="grey-6" />
-                      <span class="text-italic">{{ selectedOrder.refund_reason }}</span>
-                    </div>
+                      {{ paymentStatusLabel(selectedOrder.payment_status) }}
+                    </q-chip>
                   </div>
-                </q-card-section>
-              </q-card>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.paid_at"
+                  >
+                    <q-icon name="check_circle" size="18px" class="wo-icon--success" />
+                    <span>Paid at: {{ formatDate(selectedOrder.paid_at) }}</span>
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.gateway_ref"
+                  >
+                    <q-icon name="tag" size="18px" class="wo-detail-icon" />
+                    <span
+                      >Txn Ref: <code>{{ selectedOrder.gateway_ref }}</code></span
+                    >
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-refund-text"
+                    v-if="selectedOrder.refund_amount > 0"
+                  >
+                    <q-icon name="currency_exchange" size="18px" class="wo-icon--warning" />
+                    <span
+                      >Refunded: Rs.
+                      {{ Number(selectedOrder.refund_amount || 0).toFixed(2) }}</span
+                    >
+                  </div>
+                  <div
+                    class="row items-center q-gutter-sm wo-detail-text"
+                    v-if="selectedOrder.refund_reason"
+                  >
+                    <q-icon name="info" size="18px" class="wo-detail-icon" />
+                    <span class="text-italic">{{ selectedOrder.refund_reason }}</span>
+                  </div>
+                </div>
+              </div>
 
               <!-- Timeline -->
-              <q-card
-                flat
-                bordered
-                style="
-                  background: var(--erp-bg-form-card, #111827);
-                  border-color: rgba(255, 255, 255, 0.07);
-                "
-              >
-                <q-card-section>
-                  <div class="text-subtitle1 text-weight-bold text-purple-4 q-mb-md">Timeline</div>
-                  <div class="text-caption text-grey-4">
-                    <div class="q-mb-sm">
-                      📋 Order placed: {{ formatDate(selectedOrder.created_at) }}
-                    </div>
-                    <div class="q-mb-sm" v-if="selectedOrder.accepted_at">
-                      ✅ Accepted: {{ formatDate(selectedOrder.accepted_at) }}
-                    </div>
-                    <div class="q-mb-sm" v-if="selectedOrder.paid_at">
-                      💳 Paid: {{ formatDate(selectedOrder.paid_at) }}
-                    </div>
-                    <div class="q-mb-sm" v-if="selectedOrder.delivery?.accepted_at">
-                      🚴 Rider accepted: {{ formatDate(selectedOrder.delivery.accepted_at) }}
-                    </div>
-                    <div class="q-mb-sm" v-if="selectedOrder.delivery?.picked_up_at">
-                      📦 Picked up: {{ formatDate(selectedOrder.delivery.picked_up_at) }}
-                    </div>
-                    <div class="q-mb-sm" v-if="selectedOrder.delivery?.delivered_at">
-                      🎉 Delivered: {{ formatDate(selectedOrder.delivery.delivered_at) }}
-                    </div>
-                    <div class="q-mb-sm text-orange-4" v-if="selectedOrder.refunded_at">
-                      💸 Refunded: {{ formatDate(selectedOrder.refunded_at) }}
-                    </div>
+              <div class="wo-section-card">
+                <div class="wo-section-card__title wo-section-card__title--timeline">Timeline</div>
+                <div class="text-caption wo-timeline">
+                  <div class="q-mb-sm">
+                    📋 Order placed: {{ formatDate(selectedOrder.created_at) }}
                   </div>
-                </q-card-section>
-              </q-card>
+                  <div class="q-mb-sm" v-if="selectedOrder.accepted_at">
+                    ✅ Accepted: {{ formatDate(selectedOrder.accepted_at) }}
+                  </div>
+                  <div class="q-mb-sm" v-if="selectedOrder.paid_at">
+                    💳 Paid: {{ formatDate(selectedOrder.paid_at) }}
+                  </div>
+                  <div class="q-mb-sm" v-if="selectedOrder.delivery?.accepted_at">
+                    🚴 Rider accepted: {{ formatDate(selectedOrder.delivery.accepted_at) }}
+                  </div>
+                  <div class="q-mb-sm" v-if="selectedOrder.delivery?.picked_up_at">
+                    📦 Picked up: {{ formatDate(selectedOrder.delivery.picked_up_at) }}
+                  </div>
+                  <div class="q-mb-sm" v-if="selectedOrder.delivery?.delivered_at">
+                    🎉 Delivered: {{ formatDate(selectedOrder.delivery.delivered_at) }}
+                  </div>
+                  <div class="q-mb-sm wo-refund-text" v-if="selectedOrder.refunded_at">
+                    💸 Refunded: {{ formatDate(selectedOrder.refunded_at) }}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Right: Order Items -->
             <div class="col-12 col-md-7">
-              <q-card
-                flat
-                bordered
-                style="
-                  background: var(--erp-bg-form-card, #111827);
-                  border-color: rgba(255, 255, 255, 0.07);
-                "
-              >
-                <q-card-section>
-                  <div class="text-subtitle1 text-weight-bold text-green-4 q-mb-md">
-                    Order Items
-                  </div>
-                  <q-markup-table
-                    dark
-                    flat
-                    bordered
-                    dense
-                    class="text-caption"
-                    separator="cell"
-                    style="background: rgba(255, 255, 255, 0.02)"
-                  >
-                    <thead>
-                      <tr>
-                        <th class="text-left text-grey-4">Item</th>
-                        <th class="text-center text-grey-4">Qty</th>
-                        <th class="text-right text-grey-4">Price</th>
-                        <th class="text-right text-grey-4">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="item in selectedOrder.order_items" :key="item.id">
-                        <td class="text-grey-2">
-                          {{ item.menu_items?.name || item.item_name || 'Unknown' }}
-                        </td>
-                        <td class="text-center text-white">{{ item.quantity }}</td>
-                        <td class="text-right text-grey-3">
-                          Rs. {{ Number(item.unit_price || 0).toFixed(2) }}
-                        </td>
-                        <td class="text-right text-green-4 text-weight-bold">
-                          Rs. {{ Number(item.total_price || 0).toFixed(2) }}
-                        </td>
-                      </tr>
-                    </tbody>
-                    <tfoot>
-                      <tr class="text-weight-bold">
-                        <td colspan="3" class="text-right text-amber-4">Grand Total</td>
-                        <td class="text-right text-amber-4">
-                          Rs. {{ Number(selectedOrder.total_amount || 0).toFixed(2) }}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </q-markup-table>
-                </q-card-section>
-              </q-card>
+              <div class="wo-section-card">
+                <div class="wo-section-card__title wo-section-card__title--items">Order Items</div>
+                <q-markup-table
+                  flat
+                  bordered
+                  dense
+                  class="text-caption wo-items-table"
+                  separator="cell"
+                >
+                  <thead>
+                    <tr>
+                      <th class="text-left wo-table-head">Item</th>
+                      <th class="text-center wo-table-head">Qty</th>
+                      <th class="text-right wo-table-head">Price</th>
+                      <th class="text-right wo-table-head">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in selectedOrder.order_items" :key="item.id">
+                      <td class="wo-detail-text">
+                        {{ item.menu_items?.name || item.item_name || 'Unknown' }}
+                      </td>
+                      <td class="text-center wo-detail-primary">{{ item.quantity }}</td>
+                      <td class="text-right wo-muted">
+                        Rs. {{ Number(item.unit_price || 0).toFixed(2) }}
+                      </td>
+                      <td class="text-right wo-amount text-weight-bold">
+                        Rs. {{ Number(item.total_price || 0).toFixed(2) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr class="text-weight-bold">
+                      <td colspan="3" class="text-right wo-grand-total">Grand Total</td>
+                      <td class="text-right wo-grand-total">
+                        Rs. {{ Number(selectedOrder.total_amount || 0).toFixed(2) }}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </q-markup-table>
+              </div>
             </div>
           </div>
         </q-scroll-area>
@@ -908,13 +837,242 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-.erp-stat-card {
-  background: var(--erp-bg-form-card, #111827);
-  border: 1px solid var(--erp-input-border, #374151);
-  border-radius: 12px;
+// Page
+.wo-page {
+  background: var(--erp-bg-page);
+  min-height: 100vh;
 }
-.erp-data-grid {
-  background: var(--erp-bg-form-card, #111827);
-  border-radius: 12px;
+
+// Stat cards
+.wo-stat-card {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: box-shadow 0.2s, transform 0.2s;
+  &:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+}
+.wo-stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &--amber {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+  }
+  &--orange {
+    background: rgba(249, 115, 22, 0.12);
+    color: #f97316;
+  }
+  &--blue {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+  }
+  &--green {
+    background: var(--erp-success-subtle);
+    color: var(--erp-success);
+  }
+}
+.wo-stat-value {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--erp-text-primary);
+  line-height: 1;
+}
+.wo-stat-label {
+  font-size: 0.78rem;
+  color: var(--erp-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+// Filter bar
+.wo-filter-bar {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  padding: 14px 16px;
+}
+.wo-refresh-btn {
+  color: var(--erp-mod-website) !important;
+}
+.wo-live-chip {
+  background: var(--erp-success-subtle) !important;
+  color: var(--erp-success) !important;
+  font-weight: 700;
+}
+
+// Data grid / table
+.wo-data-grid {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  overflow: hidden;
+}
+.wo-table {
+  background: transparent !important;
+  :deep(thead tr th) {
+    background: var(--erp-bg-page);
+    color: var(--erp-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  :deep(tbody tr td) {
+    color: var(--erp-text-primary);
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  :deep(tbody tr:hover td) {
+    background: var(--erp-bg-page) !important;
+  }
+  :deep(.q-table__bottom) {
+    background: var(--erp-bg-card);
+    color: var(--erp-text-muted);
+    border-top: 1px solid var(--erp-border);
+  }
+  :deep(.q-linear-progress__track),
+  :deep(.q-linear-progress__model) {
+    color: var(--erp-mod-website);
+  }
+}
+.wo-order-num {
+  font-weight: 700;
+  color: var(--erp-mod-website);
+}
+.wo-amount {
+  color: var(--erp-success);
+}
+.wo-muted {
+  color: var(--erp-text-muted);
+}
+.wo-detail-text {
+  color: var(--erp-text-secondary);
+}
+.wo-detail-primary {
+  color: var(--erp-text-primary);
+}
+
+// Action buttons
+.wo-action-btn--view {
+  color: #3b82f6 !important;
+}
+.wo-action-btn--refund {
+  color: #f97316 !important;
+}
+.wo-action-btn--cancel {
+  color: var(--erp-danger) !important;
+}
+
+// Dialog
+.wo-dialog-card {
+  background: var(--erp-bg-page) !important;
+  color: var(--erp-text-primary) !important;
+}
+.wo-dialog-toolbar {
+  background: var(--erp-bg-card) !important;
+  border-bottom: 1px solid var(--erp-border) !important;
+}
+.wo-dialog-toolbar__icon {
+  color: var(--erp-mod-website);
+}
+.wo-dialog-toolbar__title {
+  color: var(--erp-text-primary);
+}
+.wo-dialog-close {
+  color: var(--erp-text-muted) !important;
+}
+
+// Section cards in dialog
+.wo-section-card {
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-card);
+  padding: 20px;
+}
+.wo-section-card__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-left: 10px;
+  &--customer {
+    color: var(--erp-mod-website);
+    border-left: 3px solid var(--erp-mod-website);
+  }
+  &--delivery {
+    color: #3b82f6;
+    border-left: 3px solid #3b82f6;
+  }
+  &--payment {
+    color: var(--erp-success);
+    border-left: 3px solid var(--erp-success);
+  }
+  &--timeline {
+    color: #8b5cf6;
+    border-left: 3px solid #8b5cf6;
+  }
+  &--items {
+    color: var(--erp-success);
+    border-left: 3px solid var(--erp-success);
+  }
+}
+.wo-detail-icon {
+  color: var(--erp-text-muted);
+}
+.wo-icon--success {
+  color: var(--erp-success);
+}
+.wo-icon--info {
+  color: #3b82f6;
+}
+.wo-icon--warning {
+  color: var(--erp-warning);
+}
+.wo-refund-text {
+  color: var(--erp-warning);
+}
+.wo-timeline {
+  color: var(--erp-text-secondary);
+}
+.wo-grand-total {
+  color: var(--erp-mod-website);
+}
+
+// Items markup table
+.wo-items-table {
+  background: var(--erp-bg-page) !important;
+  border-radius: 8px;
+  overflow: hidden;
+  :deep(thead tr th) {
+    background: var(--erp-bg-page);
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  :deep(tbody tr td) {
+    border-bottom: 1px solid var(--erp-border) !important;
+  }
+  :deep(tfoot tr td) {
+    border-top: 1px solid var(--erp-border) !important;
+    background: var(--erp-bg-card);
+  }
+}
+.wo-table-head {
+  color: var(--erp-text-muted) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
 }
 </style>

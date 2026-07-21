@@ -89,15 +89,18 @@ function elapsedMin(dt) {
 // ─── Order Cards ─────────────────────────────────────────────────────────────
 .order-card {
   border-radius: 12px;
-  transition: transform 0.15s;
-}
-.order-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid v-bind(dotColor) !important;
+  transition: transform 0.15s, box-shadow 0.2s;
+  box-shadow: -2px 0 8px color-mix(in srgb, v-bind(dotColor) 15%, transparent);
+
+  &:active { transform: scale(0.985); }
 }
 .lt .order-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
+  border-left: 3px solid v-bind(dotColor) !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
@@ -106,6 +109,7 @@ function elapsedMin(dt) {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 6px v-bind(dotColor);
 }
 
 .order-number {

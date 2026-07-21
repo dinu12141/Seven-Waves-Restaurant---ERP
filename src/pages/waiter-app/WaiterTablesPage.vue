@@ -351,7 +351,7 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .waiter-tables {
   min-height: 100vh;
-  background: #f8fafc;
+  background: #f1f5f9;
   font-family: 'Inter', 'Roboto', sans-serif;
 }
 
@@ -361,11 +361,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
   position: sticky;
   top: 0;
   z-index: 5;
+  box-shadow: 0 4px 20px rgba(49, 46, 129, 0.4);
 }
 .tables-header__left {
   display: flex;
@@ -379,14 +379,14 @@ onUnmounted(() => {
 .tables-header__title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #fff;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .tables-header__sub {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.6);
   margin-top: 1px;
 }
 
@@ -403,7 +403,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: #64748b;
   text-transform: uppercase;
@@ -414,9 +414,9 @@ onUnmounted(() => {
   height: 8px;
   border-radius: 50%;
   &--available { background: #059669; }
-  &--occupied { background: #2563eb; }
-  &--billing { background: #d97706; }
-  &--reserved { background: #7c3aed; }
+  &--occupied  { background: #f97316; }
+  &--billing   { background: #d97706; }
+  &--reserved  { background: #7c3aed; }
 }
 
 // ─── Filter Tabs ─────────────────────────────────────────────────
@@ -441,22 +441,22 @@ onUnmounted(() => {
   &::-webkit-scrollbar { height: 0; }
 }
 .tables-filter-btn {
-  padding: 6px 14px;
+  padding: 7px 18px;
   border-radius: 20px;
   border: 1.5px solid #e2e8f0;
   background: #fff;
   color: #64748b;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all 0.18s ease;
 
   &.active {
-    background: #fff7ed;
-    border-color: #fb923c;
-    color: #ea580c;
-    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.06);
+    background: linear-gradient(135deg, #f97316, #ef4444);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
   }
   &:hover:not(.active) {
     background: #f8fafc;
@@ -481,24 +481,24 @@ onUnmounted(() => {
   text-align: center;
 }
 .tables-empty__icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #4c1d95, #312e81);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
+  box-shadow: 0 8px 24px rgba(76, 29, 149, 0.3);
 }
 .tables-empty__title {
   font-size: 1.08rem;
   font-weight: 700;
-  color: #94a3b8;
+  color: #475569;
 }
 .tables-empty__sub {
-  font-size: 0.92rem;
-  color: #cbd5e1;
+  font-size: 0.88rem;
+  color: #94a3b8;
 }
 
 // ─── Table Grid ──────────────────────────────────────────────────
@@ -515,49 +515,41 @@ onUnmounted(() => {
 
 // ─── Table Card ──────────────────────────────────────────────────
 .table-card {
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 14px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
   padding: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
 
-  &:active {
-    transform: scale(0.97);
-  }
+  &:active { transform: scale(0.95); }
 
   &--available {
-    border-left: 3.5px solid #059669;
-    &:hover {
-      border-color: #a7f3d0;
-      border-left-color: #059669;
-    }
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border-color: #a7f3d0;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+    &:hover { box-shadow: 0 8px 24px rgba(16, 185, 129, 0.22); border-color: #6ee7b7; }
   }
   &--occupied {
-    border-left: 3.5px solid #2563eb;
-    background: #f8faff;
-    &:hover {
-      border-color: #93c5fd;
-      border-left-color: #2563eb;
-    }
+    background: linear-gradient(135deg, #fff7ed, #fed7aa);
+    border-color: #fdba74;
+    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.12);
+    &:hover { box-shadow: 0 8px 24px rgba(249, 115, 22, 0.22); border-color: #fb923c; }
   }
   &--billing {
-    border-left: 3.5px solid #d97706;
-    background: #fffdf7;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border-color: #fcd34d;
+    box-shadow: 0 4px 16px rgba(217, 119, 6, 0.15);
     animation: billing-pulse 2s ease-in-out infinite;
-    &:hover {
-      border-color: #fcd34d;
-      border-left-color: #d97706;
-    }
+    &:hover { box-shadow: 0 8px 24px rgba(217, 119, 6, 0.28); }
   }
   &--reserved {
-    border-left: 3.5px solid #7c3aed;
-    &:hover {
-      border-color: #c4b5fd;
-      border-left-color: #7c3aed;
-    }
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    border-color: #c4b5fd;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.1);
+    &:hover { box-shadow: 0 8px 24px rgba(124, 58, 237, 0.2); border-color: #a78bfa; }
   }
 
   &__header {
@@ -567,43 +559,34 @@ onUnmounted(() => {
     margin-bottom: 6px;
   }
   &__number {
-    font-size: 1.25rem;
-    font-weight: 800;
+    font-size: 1.4rem;
+    font-weight: 900;
     color: #0f172a;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.5px;
   }
   &__capacity {
     display: flex;
     align-items: center;
     gap: 2px;
-    font-size: 0.82rem;
-    color: #94a3b8;
+    font-size: 0.78rem;
+    color: #64748b;
     font-weight: 600;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 6px;
+    padding: 2px 5px;
   }
   &__status-badge {
     display: inline-block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 3px 8px;
     border-radius: 6px;
-    &--available {
-      color: #059669;
-      background: #ecfdf5;
-    }
-    &--occupied {
-      color: #2563eb;
-      background: #dbeafe;
-    }
-    &--billing {
-      color: #d97706;
-      background: #fef3c7;
-    }
-    &--reserved {
-      color: #7c3aed;
-      background: #ede9fe;
-    }
+    &--available { color: #065f46; background: rgba(255, 255, 255, 0.7); }
+    &--occupied  { color: #9a3412; background: rgba(255, 255, 255, 0.7); }
+    &--billing   { color: #92400e; background: rgba(255, 255, 255, 0.7); }
+    &--reserved  { color: #4c1d95; background: rgba(255, 255, 255, 0.7); }
   }
   &__info {
     margin-top: 8px;
@@ -614,7 +597,7 @@ onUnmounted(() => {
   &__actions {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -625,8 +608,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.82rem;
-  color: #64748b;
+  font-size: 0.8rem;
+  color: #475569;
   font-weight: 500;
 }
 .bill-amount {
@@ -643,8 +626,8 @@ onUnmounted(() => {
 }
 
 @keyframes billing-pulse {
-  0%, 100% { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); }
-  50% { box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.08); }
+  0%, 100% { box-shadow: 0 4px 16px rgba(217, 119, 6, 0.15); }
+  50%       { box-shadow: 0 4px 28px rgba(217, 119, 6, 0.38); }
 }
 
 // ─── Expand Transition ───────────────────────────────────────────
@@ -671,62 +654,71 @@ body.body--dark {
     color: #e2e8f0;
 
     .tables-header {
-      background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1650 100%);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
     .tables-header__title { color: #f8fafc; }
-    
+    .tables-header__sub   { color: rgba(255, 255, 255, 0.45); }
+
     .tables-legend {
       background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      border-bottom-color: rgba(255, 255, 255, 0.06);
     }
+    .legend-item { color: #64748b; }
 
     .tables-sections {
       background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      border-bottom-color: rgba(255, 255, 255, 0.06);
     }
 
     .tables-filters {
       background: #1e293b;
-      border-bottom-color: rgba(255, 255, 255, 0.08);
+      border-bottom-color: rgba(255, 255, 255, 0.06);
     }
     .tables-filter-btn {
       background: #0f172a;
-      border-color: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.08);
       color: #94a3b8;
-      &:hover:not(.active) {
-        background: #1e293b;
-        border-color: rgba(255, 255, 255, 0.2);
-      }
+      &:hover:not(.active) { background: #1e293b; border-color: rgba(255, 255, 255, 0.15); }
       &.active {
-        background: rgba(234, 88, 12, 0.1);
-        border-color: #fb923c;
-        color: #fb923c;
+        background: linear-gradient(135deg, #f97316, #ef4444);
+        border-color: transparent;
+        color: #fff;
       }
     }
 
     .table-card {
-      background: #1e293b;
-      border-color: rgba(255, 255, 255, 0.08);
-      &__number { color: #f8fafc; }
-      
+      &--available {
+        background: linear-gradient(135deg, rgba(5,150,105,0.14), rgba(16,185,129,0.07));
+        border-color: rgba(16, 185, 129, 0.25);
+      }
       &--occupied {
-        background: rgba(37, 99, 235, 0.05);
-        border-color: rgba(37, 99, 235, 0.2);
-        &:hover { border-color: #3b82f6; }
+        background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(234,88,12,0.06));
+        border-color: rgba(249, 115, 22, 0.25);
       }
       &--billing {
-        background: rgba(217, 119, 6, 0.05);
-        border-color: rgba(217, 119, 6, 0.2);
-        &:hover { border-color: #f59e0b; }
+        background: linear-gradient(135deg, rgba(217,119,6,0.12), rgba(245,158,11,0.06));
+        border-color: rgba(245, 158, 11, 0.28);
       }
-      
-      &__actions {
-        border-top-color: rgba(255, 255, 255, 0.08);
+      &--reserved {
+        background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(139,92,246,0.06));
+        border-color: rgba(139, 92, 246, 0.25);
       }
+      &__number { color: #f8fafc; }
+      &__capacity { background: rgba(255,255,255,0.06); color: #94a3b8; }
+      &__status-badge {
+        &--available { color: #6ee7b7; background: rgba(255,255,255,0.08); }
+        &--occupied  { color: #fdba74; background: rgba(255,255,255,0.08); }
+        &--billing   { color: #fcd34d; background: rgba(255,255,255,0.08); }
+        &--reserved  { color: #c4b5fd; background: rgba(255,255,255,0.08); }
+      }
+      &__actions { border-top-color: rgba(255, 255, 255, 0.08); }
     }
 
     .info-row { color: #94a3b8; }
+    .bill-amount { color: #fbbf24; }
+    .tables-empty__title { color: #94a3b8; }
+    .tables-empty__sub   { color: #64748b; }
   }
 }
 </style>

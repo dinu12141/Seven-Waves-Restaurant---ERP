@@ -58,10 +58,10 @@ const trendClass = computed(() => {
 <style scoped lang="scss">
 .sys-kpi-card {
   border-radius: 12px;
-  padding: 16px 18px 14px;
+  padding: 14px 14px 12px;
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   position: relative;
   overflow: hidden;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.25s ease;
@@ -185,23 +185,26 @@ const trendClass = computed(() => {
 .sys-kpi-value {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   line-height: 1.1;
   margin-bottom: 12px;
   font-variant-numeric: tabular-nums;
   word-wrap: break-word;
+  font-size: 20px;
+  font-weight: 800;
   
   // Professional Price Display
   .sys-kpi-currency-symbol {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     opacity: 0.75;
-    margin-right: 6px;
+    margin-right: 4px;
     letter-spacing: -0.2px;
     text-transform: uppercase;
   }
   .sys-kpi-amount {
-    font-size: 24px;
-    font-weight: 900;
+    font-size: 20px;
+    font-weight: 800;
     letter-spacing: -0.5px;
   }
 }
@@ -218,8 +221,9 @@ const trendClass = computed(() => {
 .sys-kpi-meta-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  line-height: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.2;
 }
 .sys-kpi-trend {
   display: inline-flex;

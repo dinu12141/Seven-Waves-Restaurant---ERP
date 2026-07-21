@@ -722,17 +722,7 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'FINANCE',
     group: 'Cash & Banking',
   },
-  // ── Configuration ──
-  {
-    label: 'Fiscal Periods',
-    icon: 'calendar_month',
-    to: '/finance/fiscal-periods',
-    section: 'FINANCE',
-    group: 'Configuration',
-    roles: ['admin', 'finance'],
-    permission: 'finance.admin',
-    moduleCode: 'FINANCE',
-  },
+
   // ── Receivables & Payables ──
   {
     label: 'Accounts Receivable',

@@ -36,7 +36,8 @@ const props = defineProps({
 const authStore = useAuthStore()
 
 const hasPermission = computed(() => {
-  if (authStore.roles?.includes('super_admin')) return true
+  if (authStore.roles?.includes('super_admin') || authStore.roles?.includes('admin')) return true
+  if (authStore.permissions?.includes('*')) return true
   if (props.role) return authStore.roles?.includes(props.role) ?? false
   if (props.roles.length > 0) return props.roles.some((r) => authStore.roles?.includes(r))
   const permsToCheck = props.permission ? [props.permission] : props.permissions

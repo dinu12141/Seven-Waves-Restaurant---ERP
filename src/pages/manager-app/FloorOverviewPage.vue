@@ -240,21 +240,49 @@ function htColor(t) {
   gap: 3px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.25s ease, border-color 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+
+  &:nth-child(1)::before { background: linear-gradient(90deg, #22d3ee, #0d9488); }
+  &:nth-child(2)::before { background: linear-gradient(90deg, #f97316, #ea580c); }
+  &:nth-child(3)::before { background: linear-gradient(90deg, #10b981, #059669); }
 }
 .lt .mini-kpi {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .mini-val {
   font-size: 1.3rem;
   font-weight: 800;
   line-height: 1;
 }
-.mini-val--cyan  { color: #0ea5e9; }
-.mini-val--orange { color: #f97316; }
-.mini-val--green { color: #10b981; }
+.mini-val--cyan {
+  color: #22d3ee;
+  filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.4));
+}
+.mini-val--orange {
+  color: #fb923c;
+  filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.4));
+}
+.mini-val--green {
+  color: #34d399;
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.4));
+}
+.lt .mini-val--cyan { color: #0891b2; filter: none; }
+.lt .mini-val--orange { color: #ea580c; filter: none; }
+.lt .mini-val--green { color: #059669; filter: none; }
 .mini-lbl {
   font-size: 0.75rem;
   font-weight: 600;
@@ -269,15 +297,23 @@ function htColor(t) {
   padding: 12px 16px;
   display: flex;
   align-items: center;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(234, 88, 12, 0.06));
+  border: 1px solid rgba(245, 158, 11, 0.25);
   color: #fbbf24;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.1), inset 0 0 0 1px rgba(251, 191, 36, 0.05);
+  animation: alertPulse 2.5s ease-in-out infinite;
   transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.1); }
+  50% { box-shadow: 0 0 22px rgba(245, 158, 11, 0.22); }
 }
 .lt .alert-banner {
   background: #fffbeb;
   border: 1px solid #fde68a;
   color: #d97706;
+  box-shadow: none;
+  animation: none;
 }
 .alert-action {
   font-weight: 700 !important;
@@ -311,24 +347,37 @@ function htColor(t) {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.25s ease, border-color 0.15s, transform 0.15s;
+  transition: background 0.2s ease, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: rgba(34, 211, 238, 0.2);
+    box-shadow: 0 4px 16px rgba(34, 211, 238, 0.06);
+  }
 }
 .lt .waiter-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    border-color: rgba(8, 145, 178, 0.25);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.08);
+  }
 }
 .waiter-card:active {
-  transform: scale(0.98);
-  border-color: rgba(34, 211, 238, 0.3);
+  transform: scale(0.985);
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.08);
 }
 .lt .waiter-card:active {
-  border-color: rgba(8, 145, 178, 0.3);
+  border-color: rgba(8, 145, 178, 0.35);
+  box-shadow: none;
 }
 
 .waiter-avatar {
-  background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important;
+  background: linear-gradient(135deg, #22d3ee, #6366f1) !important;
   font-size: 16px !important;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2), 0 4px 12px rgba(34, 211, 238, 0.18) !important;
 }
 
 .waiter-name {

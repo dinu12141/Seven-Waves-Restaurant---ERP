@@ -16,8 +16,8 @@ try {
     if (key === 'VITE_SUPABASE_ANON_KEY') SUPABASE_KEY = val
     if (key === 'VITE_SUPABASE_SERVICE_ROLE_KEY') SUPABASE_SERVICE_KEY = val
   }
-} catch (e) {
-  console.error('Cannot read .env')
+} catch (err) {
+  console.error('Cannot read .env:', err)
   process.exit(1)
 }
 

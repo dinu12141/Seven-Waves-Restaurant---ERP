@@ -1349,17 +1349,7 @@ body.body--light {
    ACCESSIBILITY — Focus Visible, Reduced Motion, Screen Reader
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Focus-visible ring for keyboard navigation */
-*:focus-visible {
-  outline: 2px solid var(--erp-primary) !important;
-  outline-offset: 2px !important;
-  border-radius: var(--erp-radius-sm);
-}
-
-/* Remove focus outline for mouse users */
-*:focus:not(:focus-visible) {
-  outline: none !important;
-}
+/* Focus visibility overrides removed to prevent conflicts with Quasar components */
 
 /* Reduced motion — respect user OS preference */
 @media (prefers-reduced-motion: reduce) {

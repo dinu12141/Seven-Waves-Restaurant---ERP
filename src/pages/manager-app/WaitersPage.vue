@@ -132,11 +132,16 @@ function initials(name) {
   justify-content: center;
 }
 .page-header__icon-wrap--purple {
-  background: rgba(139, 92, 246, 0.12);
-  color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(139, 92, 246, 0.12));
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.2);
 }
 .lt .page-header__icon-wrap--purple {
-  background: rgba(139, 92, 246, 0.08);
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  box-shadow: none;
+  color: #6366f1;
 }
 .page-header__title {
   font-size: 1.1rem;
@@ -160,31 +165,52 @@ function initials(name) {
 
 // ─── Search ──────────────────────────────────────────────────────────────────
 .search-input {
-  border-radius: 12px !important;
+  border-radius: 24px !important;
 }
 .search-input :deep(.q-field__control) {
   background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.1);
+  border-radius: 24px !important;
   color: #e5e7eb;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-within {
+    border-color: rgba(34, 211, 238, 0.3) !important;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.08);
+  }
 }
 .lt .search-input :deep(.q-field__control) {
   background: #ffffff !important;
   border: 1px solid #e5e7eb;
+  border-radius: 24px !important;
 }
-.search-icon {
-  color: #6b7280;
-}
+.search-icon { color: #22d3ee; }
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
 .empty-state {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .empty-state__icon {
-  color: #374151;
-  margin-bottom: 8px;
+  width: 72px !important;
+  height: 72px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(139, 92, 246, 0.07));
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  border-radius: 50%;
+  color: #818cf8;
+  margin-bottom: 12px;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.12);
 }
 .lt .empty-state__icon {
-  color: #cbd5e1;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  box-shadow: none;
 }
 .empty-state__text {
   font-size: 0.88rem;
@@ -196,29 +222,37 @@ function initials(name) {
   border-radius: 12px;
   padding: 12px 14px;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
-}
-.waiter-row {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+
+  &:hover {
+    border-color: rgba(34, 211, 238, 0.18);
+    box-shadow: 0 4px 14px rgba(34, 211, 238, 0.05);
+  }
+  &:active {
+    transform: scale(0.985);
+    border-color: rgba(34, 211, 238, 0.35);
+  }
 }
 .lt .waiter-row {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-.waiter-row:active {
-  transform: scale(0.98);
-}
-.waiter-row:active {
-  border-color: rgba(34, 211, 238, 0.3);
-}
-.lt .waiter-row:active {
-  border-color: rgba(8, 145, 178, 0.3);
+
+  &:hover {
+    border-color: rgba(8, 145, 178, 0.22);
+    box-shadow: 0 4px 10px rgba(8, 145, 178, 0.07);
+  }
+  &:active { border-color: rgba(8, 145, 178, 0.35); }
 }
 .waiter-avatar {
-  background: linear-gradient(135deg, #06b6d4, #8b5cf6) !important;
+  background: linear-gradient(135deg, #22d3ee, #6366f1) !important;
   font-size: 15px !important;
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.3),
+    0 0 0 4px rgba(34, 211, 238, 0.1),
+    0 4px 16px rgba(34, 211, 238, 0.28) !important;
 }
 .waiter-name {
   font-size: 0.90rem;
@@ -243,13 +277,15 @@ function initials(name) {
 }
 .points-chip {
   font-weight: 700 !important;
-}
-.points-chip {
-  background: rgba(251, 191, 36, 0.12) !important;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08)) !important;
   color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.2) !important;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.1) !important;
 }
 .lt .points-chip {
   background: rgba(217, 119, 6, 0.08) !important;
   color: #d97706 !important;
+  border: 1px solid rgba(217, 119, 6, 0.15) !important;
+  box-shadow: none !important;
 }
 </style>

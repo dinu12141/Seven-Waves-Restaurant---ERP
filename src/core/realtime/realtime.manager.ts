@@ -133,10 +133,12 @@ class RealtimeManager {
     if (!managed) return
 
     this.clearReconnectTimer(managed)
+    this.channels.delete(resolvedKey) // Delete before removeChannel to prevent reconnect
+
     if (managed.channel) {
       supabase.removeChannel(managed.channel)
     }
-    this.channels.delete(resolvedKey)
+    
     logger.info(`[RT] Unsubscribed: ${resolvedKey}`)
   }
 

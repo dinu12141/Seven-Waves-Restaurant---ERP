@@ -92,8 +92,7 @@ const tab = ref('pending')
 
 <style lang="scss" scoped>
 .mgr-orders-page {
-  // min-height and padding handled by mobile-app-shell
-  background: #090c14;
+  background: #060a12;
 }
 .mgr-orders-page.lt {
   background: #f1f5f9;
@@ -117,13 +116,18 @@ const tab = ref('pending')
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: box-shadow 0.25s ease;
 }
 .page-header__icon-wrap--orange {
-  background: rgba(249, 115, 22, 0.12);
-  color: #f97316;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.12));
+  color: #fb923c;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.15);
 }
 .lt .page-header__icon-wrap--orange {
-  background: rgba(249, 115, 22, 0.08);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(234, 88, 12, 0.06));
+  color: #ea580c;
+  box-shadow: none;
 }
 .page-header__title {
   font-size: 1.1rem;
@@ -149,10 +153,8 @@ const tab = ref('pending')
 .order-tabs {
   border-radius: 12px;
   overflow: hidden;
-}
-.order-tabs {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.08);
 }
 .lt .order-tabs {
   background: #ffffff;
@@ -162,8 +164,6 @@ const tab = ref('pending')
   font-size: 0.82rem;
   font-weight: 600;
   min-height: 38px;
-}
-.order-tabs :deep(.q-tab) {
   color: #6b7280;
 }
 .lt .order-tabs :deep(.q-tab) {
@@ -171,8 +171,19 @@ const tab = ref('pending')
 }
 .order-tabs :deep(.q-tab--active) {
   color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
 }
 .lt .order-tabs :deep(.q-tab--active) {
   color: #0891b2;
+  text-shadow: none;
+}
+.order-tabs :deep(.q-tabs__content) {
+  background: transparent;
+}
+.order-tabs :deep(.q-tab-indicator) {
+  background: linear-gradient(90deg, #22d3ee, #6366f1) !important;
+  height: 2px !important;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.5);
 }
 </style>

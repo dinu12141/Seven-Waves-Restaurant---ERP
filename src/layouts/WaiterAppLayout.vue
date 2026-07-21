@@ -397,18 +397,18 @@ const totalAlertCount = computed(
 // ── Off-shift route guard ────────────────────────────────────────────────────
 // Block off-shift waiters from accessing functional pages
 
-const removeShiftGuard = router.beforeEach((to, from, next) => {
+const removeShiftGuard = router.beforeEach((to) => {
   // Only guard waiter-app routes
-  if (!to.path.startsWith('/waiter-app')) return next()
+  if (!to.path.startsWith('/waiter-app')) return true
   // Allow home and profile always
   if (
     to.path === '/waiter-app' ||
     to.path === '/waiter-app/profile' ||
     to.path === '/waiter-app/notifs'
   )
-    return next()
+    return true
   // Admin/manager bypass
-  if (isAdminOrManager.value) return next()
+  if (isAdminOrManager.value) return true
   // If not on shift, block
   if (!store.isOnShift && !store.loading) {
     Notify.create({
@@ -419,9 +419,15 @@ const removeShiftGuard = router.beforeEach((to, from, next) => {
       position: 'top',
       timeout: 3000,
     })
-    return next('/waiter-app')
+    return '/waiter-app'
   }
-  next()
+  return true
+})
+
+onUnmounted(() => {
+  if (removeShiftGuard) {
+    removeShiftGuard()
+  }
 })
 
 // ── Bottom tabs ───────────────────────────────────────────────────────────────
@@ -872,115 +878,92 @@ const tabs = computed(() => [
 
 </style>
 
-<!-- ── GLOBAL (unscoped) text-size boost for ALL waiter-app child pages ──── -->
+<!-- ── GLOBAL (unscoped) styles for all waiter-app child pages ──── -->
 <style lang="scss">
 .waiter-app-layout {
-  // Force a mobile-friendly base font-size on all waiter-app pages
   font-size: 15px !important;
-
-  // Boost all .q-page content
-  .q-page {
-    font-size: 15px !important;
-  }
-
-  // Boost buttons across all waiter pages
-  .q-btn {
-    font-size: 13px !important;
-  }
-
-  // Boost chips
-  .q-chip {
-    font-size: 12px !important;
-    height: 26px !important;
-  }
-
-  // Boost captions (Quasar text-caption class is typically 11px → 13px)
-  .text-caption {
-    font-size: 13px !important;
-  }
-
-  // Boost item labels
-  .q-item__label {
-    font-size: 14px !important;
-  }
-  .q-item__label--caption {
-    font-size: 12px !important;
-  }
-
-  // Boost notification text
-  .q-notification__message {
-    font-size: 14px !important;
-  }
-  .q-notification__caption {
-    font-size: 12px !important;
-  }
+  .q-page { font-size: 15px !important; }
+  .q-btn { font-size: 13px !important; }
+  .q-chip { font-size: 12px !important; height: 26px !important; }
+  .text-caption { font-size: 13px !important; }
+  .q-item__label { font-size: 14px !important; }
+  .q-item__label--caption { font-size: 12px !important; }
+  .q-notification__message { font-size: 14px !important; }
+  .q-notification__caption { font-size: 12px !important; }
 }
 
-/* ══════════════════════════════════════════════════
-   DARK MODE OVERRIDES (Wait Layout)
-   ══════════════════════════════════════════════════ */
+/* ── DARK MODE ────────────────────────────────────────────────────────────── */
 body.body--dark {
-  // ── Top Bar ──
+  // Top Bar — dark indigo with purple tint
   .waiter-top-bar {
-    background: #1e293b !important;
-    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-  }
-  .waiter-app-layout .brand-name {
-    color: #f8fafc;
-  }
-  .waiter-app-layout .theme-toggle-btn {
-    color: #94a3b8 !important;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1e1650 100%) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55) !important;
   }
 
-  // ── Bottom Nav ──
+  // Bottom Nav — deep slate
   .waiter-app-layout .bottom-nav-bar {
-    background: #1e293b;
-    border-top-color: rgba(255, 255, 255, 0.08);
-  }
-  .waiter-app-layout .nav-tab__label {
-    color: #94a3b8;
+    background: #0f172a !important;
+    border-top-color: rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35) !important;
   }
   .waiter-app-layout .nav-tab {
-    color: #64748b;
+    color: #475569;
   }
   .waiter-app-layout .nav-tab--active {
-    color: #fb923c;
+    color: #fff;
     .nav-tab__label { color: #fb923c; }
+    // pill keeps the same orange gradient in dark mode
+    .nav-tab__icon-wrap {
+      background: linear-gradient(135deg, #f97316, #ef4444) !important;
+      box-shadow: 0 4px 18px rgba(249, 115, 22, 0.5) !important;
+    }
   }
 
-  // ── Selectors & Menus ──
-  .waiter-user-menu,
-  .waiter-selector-list {
-    background: #1e293b !important;
+  // User Menu — glass dark
+  .waiter-user-menu {
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
   }
-  .waiter-user-menu .wum-name,
-  .waiter-user-menu .wum-item,
-  .waiter-selector-list .q-item__label {
-    color: #e2e8f0 !important;
+  .waiter-user-menu .wum-header {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(239, 68, 68, 0.06));
   }
-  .waiter-user-menu .wum-code,
-  .waiter-selector-list .q-item__label--caption {
-    color: #94a3b8 !important;
+  .waiter-user-menu .wum-name { color: #f1f5f9 !important; }
+  .waiter-user-menu .wum-code {
+    color: #fb923c !important;
+    background: rgba(249, 115, 22, 0.15) !important;
   }
-  .waiter-selector-list .selector-item:hover {
-    background: rgba(255, 255, 255, 0.05) !important;
-  }
-  .waiter-selector-list .selector-item--reset {
-    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-  }
+  .waiter-user-menu .wum-item { color: #e2e8f0 !important; }
+  .waiter-user-menu .wum-item:hover { background: rgba(255, 255, 255, 0.05) !important; }
+  .waiter-user-menu .wum-item--danger { color: #f87171 !important; }
 
-  // ── Admin Selector Bar ──
+  // Selector List — glass dark
+  .waiter-selector-list {
+    background: rgba(15, 23, 42, 0.97) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+  .waiter-selector-list .q-item__label { color: #e2e8f0 !important; }
+  .waiter-selector-list .q-item__label--caption { color: #94a3b8 !important; }
+  .waiter-selector-list .selector-item:hover { background: rgba(255, 255, 255, 0.05) !important; }
+  .waiter-selector-list .selector-item--reset { border-bottom-color: rgba(255, 255, 255, 0.07) !important; }
+  .waiter-selector-list .selector-item--active { background: rgba(124, 58, 237, 0.12) !important; }
+
+  // Admin Selector Bar
   .waiter-app-layout .waiter-selector-bar {
-    background: rgba(124, 58, 237, 0.1);
-    border-bottom-color: rgba(124, 58, 237, 0.2);
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.12), rgba(139, 92, 246, 0.07));
+    border-bottom-color: rgba(124, 58, 237, 0.22) !important;
   }
 
-  // ── Banners ──
-  .waiter-app-layout .off-shift-banner {
-    background: rgba(239, 68, 68, 0.1);
-    border-bottom-color: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
+  // Alert Card
+  .order-alert-card {
+    background: #1e293b !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(249, 115, 22, 0.2) !important;
   }
+  .order-alert-card .alert-header {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(239, 68, 68, 0.07));
+    border-bottom-color: rgba(249, 115, 22, 0.18) !important;
+  }
+  .alert-msg { color: #94a3b8 !important; }
 }
 </style>

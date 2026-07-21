@@ -8,7 +8,7 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SU
 
 async function run() {
   console.log('Logging in as admin@sevenwaves.lk...');
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+  const { error: authError } = await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
     password: 'Admin@123456',
   });

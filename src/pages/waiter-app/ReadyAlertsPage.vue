@@ -223,25 +223,39 @@ async function markServedFromAlert(orderId) {
 <style lang="scss" scoped>
 @import './waiter-shared.scss';
 
+// ── Header ───────────────────────────────────────────────────────
 .inner-header {
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  height: 48px;
+  background: linear-gradient(135deg, #92400e 0%, #b45309 60%, #d97706 100%);
+  box-shadow: 0 4px 20px rgba(146, 64, 14, 0.4);
+  height: 52px;
+  border-bottom: none;
 }
 
+// ── Alert badge ──────────────────────────────────────────────────
 .alert-badge {
   font-weight: 700 !important;
   animation: badge-pulse 1s ease-in-out infinite;
 }
 @keyframes badge-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.1);
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.12); }
+}
+
+// ── Empty state ───────────────────────────────────────────────────
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 28px;
+  text-align: center;
+
+  :deep(.q-icon) {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border-radius: 50%;
+    padding: 16px;
+    color: #059669 !important;
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.2);
   }
 }
 
@@ -249,36 +263,31 @@ async function markServedFromAlert(orderId) {
 .section-header {
   display: flex;
   align-items: center;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: #4b5563;
+  color: #94a3b8;
 
   &__dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     margin-right: 8px;
     &--blue {
       background: #3b82f6;
-      box-shadow: 0 0 6px #3b82f6;
+      box-shadow: 0 0 8px #3b82f6;
     }
     &--green {
       background: #22c55e;
-      box-shadow: 0 0 6px #22c55e;
+      box-shadow: 0 0 8px #22c55e;
       animation: dot-pulse 1.5s ease-in-out infinite;
     }
   }
 }
 @keyframes dot-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px #22c55e; }
+  50% { opacity: 0.5; box-shadow: 0 0 3px #22c55e; }
 }
 
 .section-divider {
@@ -289,77 +298,109 @@ async function markServedFromAlert(orderId) {
 
 // ── Alert Cards ───────────────────────────────────────────────────
 .alert-card {
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
+  transition: transform 0.15s;
+
+  &:active { transform: scale(0.99); }
 
   &__actions {
     border-top: 1px solid transparent;
   }
 
   &--new {
-    background: rgba(59, 130, 246, 0.06);
-    border: 1px solid rgba(59, 130, 246, 0.22);
+    background: rgba(59, 130, 246, 0.07);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    animation: new-order-pulse 2.5s ease-in-out infinite;
+
     &__actions {
       border-top-color: rgba(59, 130, 246, 0.12);
     }
-    animation: new-order-pulse 2.5s ease-in-out infinite;
   }
 
   &--ready {
-    background: rgba(34, 197, 94, 0.05);
-    border: 1px solid rgba(34, 197, 94, 0.22);
+    background: linear-gradient(135deg, rgba(255, 251, 235, 0.92), rgba(254, 243, 199, 0.92));
+    border: 1.5px solid #fcd34d;
+    box-shadow: 0 4px 20px rgba(252, 211, 77, 0.2);
+    animation: ready-border-pulse 2s ease-in-out infinite;
+
     &__actions {
-      border-top-color: rgba(34, 197, 94, 0.12);
+      border-top-color: rgba(252, 211, 77, 0.4);
     }
   }
 }
 
 @keyframes new-order-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.22);
-  }
-  50% {
-    box-shadow: 0 0 14px 2px rgba(59, 130, 246, 0.1);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2); }
+  50% { box-shadow: 0 0 14px 3px rgba(59, 130, 246, 0.1); }
+}
+
+@keyframes ready-border-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(252, 211, 77, 0.2), 0 0 0 0 rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 4px 28px rgba(252, 211, 77, 0.35), 0 0 12px 3px rgba(245, 158, 11, 0.15); }
 }
 
 // ── Alert icon wraps ─────────────────────────────────────────────
 .alert-icon-wrap {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 
   &--blue {
-    background: rgba(59, 130, 246, 0.12);
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
   }
   &--green {
-    background: rgba(34, 197, 94, 0.12);
+    background: linear-gradient(135deg, #f59e0b20, #d9770620);
+    border: 1.5px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+    animation: fire-glow 2s ease-in-out infinite;
   }
+}
+
+@keyframes fire-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.5); }
+}
+
+// ── Kitchen ready text (inside --ready card) ─────────────────────
+.alert-card--ready {
+  .text-white { color: #78350f !important; font-weight: 800; }
+  .text-grey-5 { color: #92400e !important; }
 }
 
 // ── Kitchen ready banner ─────────────────────────────────────────
 .pulse-banner {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 12px;
   padding: 12px 16px;
   display: flex;
   align-items: center;
-  color: #4ade80;
+  color: #d97706;
+  font-size: 0.95rem;
   animation: banner-glow 2s ease-in-out infinite;
 }
 @keyframes banner-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 12px 3px rgba(34, 197, 94, 0.1);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 16px 4px rgba(245, 158, 11, 0.12); }
+}
+
+// ── Serve button override (green gradient) ────────────────────────
+:deep(.alert-card--ready .q-btn.bg-green-9) {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.4) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  height: 52px !important;
+}
+:deep(.alert-card--new .q-btn.bg-blue-9) {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+  border-radius: 12px !important;
 }
 </style>

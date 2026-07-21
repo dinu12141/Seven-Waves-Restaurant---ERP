@@ -264,7 +264,9 @@
         <!-- Empty -->
         <template #no-data>
           <div class="hb-empty">
-            <q-icon name="meeting_room" size="48px" />
+            <div class="hb-empty__icon-wrap">
+              <q-icon name="meeting_room" size="32px" />
+            </div>
             <div class="hb-empty__text">No hall bookings found</div>
             <div class="hb-empty__sub">Hall booking requests from the website will appear here</div>
           </div>
@@ -658,7 +660,7 @@ onMounted(() => {
 /* ── Page ─────────────────────────────────────────────────────────── */
 .hb-page {
   padding: var(--erp-spacing-lg);
-  background: var(--erp-bg-main);
+  background: var(--erp-bg-page);
   min-height: 100vh;
 }
 
@@ -729,35 +731,37 @@ onMounted(() => {
   background: var(--erp-bg-card);
   border: 1px solid var(--erp-border);
   border-radius: var(--erp-radius-lg);
-  border-top: 2px solid transparent;
+  border-left: 3px solid transparent;
+  transition: box-shadow 0.2s, transform 0.2s;
+  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
   &--blue {
-    border-top-color: var(--erp-primary);
+    border-left-color: var(--erp-mod-website);
   }
   &--orange {
-    border-top-color: #f59e0b;
+    border-left-color: var(--erp-warning);
   }
   &--green {
-    border-top-color: var(--erp-success);
+    border-left-color: var(--erp-success);
   }
   &--red {
-    border-top-color: var(--erp-danger);
+    border-left-color: var(--erp-danger);
   }
 
   &__icon {
     width: 36px;
     height: 36px;
     border-radius: var(--erp-radius-md);
-    background: var(--erp-primary-subtle);
-    color: var(--erp-primary-light);
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 
     &--warning {
-      background: rgba(245, 158, 11, 0.12);
-      color: #f59e0b;
+      background: var(--erp-warning-subtle);
+      color: var(--erp-warning);
     }
     &--success {
       background: var(--erp-success-subtle);
@@ -877,7 +881,8 @@ onMounted(() => {
   }
 
   &--pending {
-    background: rgba(245, 158, 11, 0.03) !important;
+    background: rgba(245, 158, 11, 0.04) !important;
+    border-left: 3px solid var(--erp-warning) !important;
     td,
     .q-td {
       font-weight: var(--erp-font-weight-medium);
@@ -909,8 +914,8 @@ onMounted(() => {
   font-weight: var(--erp-font-weight-bold) !important;
 
   &--pending {
-    background: rgba(245, 158, 11, 0.15) !important;
-    color: #f59e0b !important;
+    background: var(--erp-warning-subtle) !important;
+    color: var(--erp-warning) !important;
   }
 }
 .hb-cell-date {
@@ -940,9 +945,9 @@ onMounted(() => {
   white-space: nowrap;
 
   &--main {
-    background: rgba(67, 133, 245, 0.1);
-    color: var(--erp-primary);
-    border: 1px solid rgba(67, 133, 245, 0.2);
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+    border: 1px solid rgba(6, 182, 212, 0.2);
   }
   &--vip {
     background: rgba(168, 85, 247, 0.1);
@@ -982,8 +987,8 @@ onMounted(() => {
   white-space: nowrap;
 
   &--pending {
-    background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    background: var(--erp-warning-subtle);
+    color: var(--erp-warning);
     border: 1px solid rgba(245, 158, 11, 0.25);
   }
   &--confirmed {
@@ -992,9 +997,9 @@ onMounted(() => {
     border: 1px solid rgba(22, 163, 74, 0.25);
   }
   &--completed {
-    background: var(--erp-primary-subtle);
-    color: var(--erp-primary);
-    border: 1px solid rgba(67, 133, 245, 0.2);
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+    border: 1px solid rgba(6, 182, 212, 0.2);
   }
   &--cancelled {
     background: var(--erp-danger-subtle);
@@ -1013,8 +1018,8 @@ onMounted(() => {
 .hb-action-btn {
   color: var(--erp-text-secondary) !important;
   &:hover {
-    color: var(--erp-primary) !important;
-    background: var(--erp-primary-subtle) !important;
+    color: var(--erp-mod-website) !important;
+    background: var(--erp-mod-website-subtle) !important;
   }
   &--success:hover {
     color: var(--erp-success) !important;
@@ -1025,8 +1030,8 @@ onMounted(() => {
     background: var(--erp-danger-subtle) !important;
   }
   &--info:hover {
-    color: var(--erp-primary) !important;
-    background: var(--erp-primary-subtle) !important;
+    color: var(--erp-mod-website) !important;
+    background: var(--erp-mod-website-subtle) !important;
   }
 }
 
@@ -1037,17 +1042,29 @@ onMounted(() => {
   align-items: center;
   padding: 48px 24px;
   color: var(--erp-text-muted);
+  gap: 10px;
 
+  &__icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--erp-mod-website-subtle);
+    color: var(--erp-mod-website);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
   &__text {
     font-size: var(--erp-font-size-h3);
     font-weight: var(--erp-font-weight-semibold);
     color: var(--erp-text-secondary);
-    margin-top: 12px;
+    margin: 0;
   }
   &__sub {
     font-size: var(--erp-font-size-table);
     color: var(--erp-text-muted);
-    margin-top: 4px;
+    margin: 0;
   }
 }
 
@@ -1070,7 +1087,7 @@ onMounted(() => {
     }
   }
   &--primary {
-    background: var(--erp-primary) !important;
+    background: var(--erp-mod-website) !important;
     color: #fff !important;
   }
   &--success {
@@ -1082,7 +1099,7 @@ onMounted(() => {
     color: #fff !important;
   }
   &--info {
-    background: var(--erp-primary) !important;
+    background: var(--erp-mod-website) !important;
     color: #fff !important;
   }
 }
@@ -1112,8 +1129,8 @@ onMounted(() => {
     gap: 12px;
   }
   &__avatar {
-    background: var(--erp-primary-subtle) !important;
-    color: var(--erp-primary) !important;
+    background: var(--erp-mod-website-subtle) !important;
+    color: var(--erp-mod-website) !important;
     font-size: 14px !important;
     font-weight: var(--erp-font-weight-bold) !important;
   }
@@ -1149,8 +1166,8 @@ onMounted(() => {
     letter-spacing: 0.5px;
 
     &--main {
-      background: rgba(67, 133, 245, 0.1);
-      color: var(--erp-primary);
+      background: var(--erp-mod-website-subtle);
+      color: var(--erp-mod-website);
     }
     &--vip {
       background: rgba(168, 85, 247, 0.1);

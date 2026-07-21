@@ -70,7 +70,7 @@ async function runTest() {
 
   // Insert order item
   console.log('4. Inserting order item...');
-  const { data: newItem, error: itemError } = await supabase
+  const { error: itemError } = await supabase
     .from('order_items')
     .insert({
       order_id: newOrder.id,

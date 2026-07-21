@@ -440,10 +440,9 @@ export const useAuthStore = defineStore('auth', {
 
     /**
      * Sign In with Numeric User Code (for Waiters / Cashiers):
-     * Calls the login-with-code Edge Function which:
-     *   1. Looks up the email by user_code
-     *   2. Signs in with email+password
-     *   3. Returns session + roles
+     * 1. Looks up email from profiles by user_code via SECURITY DEFINER RPC (works as anon)
+     * 2. Signs in with the found email + password
+     * 3. Loads roles, permissions, branches and caches for fast future logins
      */
     async signInWithCode(userCode: string, password: string): Promise<{ data: any; error: any }> {
       this.loading = true
@@ -468,27 +467,57 @@ export const useAuthStore = defineStore('auth', {
           return { data: null, error: { message: msg } }
         }
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+        // ── Step 1: Look up email by user_code via SECURITY DEFINER RPC ──
+        // Runs as anon before auth — the function is granted to anon role.
+        const { data: rows, error: lookupError } = await supabase
+          .rpc('get_email_by_user_code', { p_user_code: identifier })
 
-        const response = await fetch(`${supabaseUrl}/functions/v1/login-with-code`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': anonKey,
-          },
-          body: JSON.stringify({ user_code: userCode, password }),
-        })
+        if (lookupError) {
+          const msg = 'Login service error. Please try email login.'
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
 
-        const result = await response.json()
+        const profileRow = Array.isArray(rows) ? rows[0] : null
 
-        if (!response.ok || result.error) {
+        if (!profileRow) {
           _loginAttempts++
           if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
             _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
           }
           recordFailedAttempt('login', identifier)
-          const msg = result.error || 'Invalid user code or password'
+          const msg = 'No account found with this user code. Please check your code or use email login.'
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
+        if (!profileRow.is_active) {
+          const msg = 'This account has been deactivated. Contact your manager.'
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
+        if (!profileRow.email) {
+          const msg = 'This account has no email linked. Contact admin.'
+          this.error = msg
+          return { data: null, error: { message: msg } }
+        }
+
+        // ── Step 2: Sign in with the found email ──────────────────
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: profileRow.email,
+          password,
+        })
+
+        if (error) {
+          _loginAttempts++
+          if (_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+            _lockoutUntil = Date.now() + LOCKOUT_DURATION_MS
+          }
+          recordFailedAttempt('login', identifier)
+          let msg = error.message
+          if (msg.includes('Invalid login credentials')) msg = 'Incorrect password. Please try again.'
+          else if (msg.includes('Too many requests')) msg = 'Too many attempts. Try later.'
           this.error = msg
           return { data: null, error: { message: msg } }
         }
@@ -498,60 +527,48 @@ export const useAuthStore = defineStore('auth', {
         _lockoutUntil = null
         resetRateLimit('login', identifier)
 
-        // Set the session from the edge function response
-        if (result.session) {
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: result.session.access_token,
-            refresh_token: result.session.refresh_token,
-          })
+        this.user = data.user
+        this.session = data.session
 
-          if (sessionError) {
-            this.error = 'Failed to establish session'
-            return { data: null, error: { message: 'Failed to establish session' } }
-          }
+        // ── Try cache first ───────────────────────────────────────
+        const cache = loadAuthCache(data.user.id)
 
-          this.user = sessionData.user
-          this.session = sessionData.session
-        }
-
-        // Apply roles from edge function response (instant — no extra DB call)
-        if (result.roles && Array.isArray(result.roles)) {
-          this.roles = result.roles as UserRole[]
-        }
-
-        // Fetch remaining data (permissions, branches) in parallel
-        await Promise.all([
-          this._fetchPermissions(),
-          this._fetchBranches(),
-        ])
-
-        // Cache for fast future logins
-        if (this.user) {
-          saveAuthCache(this.user.id, {
+        if (cache) {
+          this.roles = cache.roles
+          this.permissions = cache.permissions
+          this.branches = cache.branches
+          this.rolesVerified = false
+          this._backgroundRefreshUserData()
+        } else {
+          await Promise.all([
+            this._fetchRoles(),
+            this._fetchPermissions(),
+            this._fetchBranches(),
+          ])
+          saveAuthCache(data.user.id, {
             roles: this.roles,
             permissions: this.permissions,
             branches: this.branches,
           })
+          this.rolesVerified = true
         }
-        this.rolesVerified = true
 
-        // ── Step 5: Profile, modules, notifications — ALL background ──
-        // Don't block navigation — the profile name will appear within ~200ms
+        // Profile, modules, notifications — all background
         this._backgroundFetchNonCritical()
 
-        // ── Step 03D: Subscribe to realtime channels ──────────────────
+        // Subscribe to realtime channels
         this._subscribeRealtimeChannels()
 
-        // 🔐 Audit log — fire & forget
+        // Audit log — fire & forget
         writeLoginAudit({
-          user_id: this.user?.id,
-          email: this.user?.email,
-          full_name: this.profile?.full_name,
+          user_id: data.user.id,
+          email: data.user.email,
+          full_name: profileRow.full_name,
           role: this.roles[0] || 'unknown',
           status: 'success',
         })
 
-        return { data: result, error: null }
+        return { data, error: null }
       } catch (err: any) {
         this.error = err.message || 'An unexpected error occurred'
         return { data: null, error: err }
