@@ -267,7 +267,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Notify, Loading } from 'quasar'
+import { Notify, Loading, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useAuthStore } from 'src/stores/auth'
@@ -275,6 +275,7 @@ import { useAuthStore } from 'src/stores/auth'
 const router = useRouter()
 const store = useOrderStore()
 const authStore = useAuthStore()
+const $q = useQuasar()
 
 // ── State ────────────────────────────────────────────────
 const searchQuery = ref('')
@@ -322,7 +323,7 @@ async function fetchMenuItems() {
           .select(
             `
             id, override_price, is_available, sort_order,
-            menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name))
+            menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name), item_variants(id, name, price, is_active))
           `,
           )
           .eq('menu_book_id', bookData.id)
@@ -339,6 +340,11 @@ async function fetchMenuItems() {
               kitchen_id: bi.menu_items.kitchen_id,
               image: bi.menu_items.image_url || '',
               category: bi.menu_items.categories?.name || 'Other',
+              variants: bi.menu_items.item_variants ? bi.menu_items.item_variants.filter(v => v.is_active).map(v => ({
+                id: v.id,
+                name: v.name,
+                price: parseFloat(v.price)
+              })) : [],
             }))
         }
       }
@@ -348,7 +354,7 @@ async function fetchMenuItems() {
     if (!products.length) {
       const { data, error } = await supabase
         .from('menu_items')
-        .select('id, name, base_price, image_url, is_available, kitchen_id, categories(id, name)')
+        .select('id, name, base_price, image_url, is_available, kitchen_id, categories(id, name), item_variants(id, name, price, is_active)')
         .eq('is_available', true)
         .order('name')
 
@@ -361,6 +367,11 @@ async function fetchMenuItems() {
         kitchen_id: item.kitchen_id,
         image: item.image_url || '',
         category: item.categories?.name || 'Other',
+        variants: item.item_variants ? item.item_variants.filter(v => v.is_active).map(v => ({
+          id: v.id,
+          name: v.name,
+          price: parseFloat(v.price)
+        })) : [],
       }))
     }
 
@@ -393,14 +404,46 @@ function goBack() {
 }
 
 function addToCart(product) {
-  store.addItem(product)
-  Notify.create({
-    message: `${product.name} added`,
-    color: 'positive',
-    icon: 'add_circle',
-    position: 'top',
-    timeout: 500,
-  })
+  if (product.variants && product.variants.length > 0) {
+    $q.dialog({
+      title: '🍕 Select Size',
+      message: `Choose a size for ${product.name}:`,
+      options: {
+        type: 'radio',
+        model: product.variants[0].id,
+        items: product.variants.map((v) => ({
+          label: `${v.name} - LKR ${v.price.toLocaleString()}`,
+          value: v.id,
+        })),
+      },
+      cancel: { flat: true, color: 'grey-5', noCaps: true },
+      ok: { color: 'warning', unelevated: true, noCaps: true, label: 'Add Item' },
+      persistent: true,
+      dark: true,
+      class: 'pos-dark-dialog',
+    }).onOk((selectedVariantId) => {
+      const variant = product.variants.find((v) => v.id === selectedVariantId)
+      if (variant) {
+        store.addItem(product, variant)
+        Notify.create({
+          message: `${product.name} (${variant.name}) added`,
+          color: 'positive',
+          icon: 'add_circle',
+          position: 'top',
+          timeout: 500,
+        })
+      }
+    })
+  } else {
+    store.addItem(product)
+    Notify.create({
+      message: `${product.name} added`,
+      color: 'positive',
+      icon: 'add_circle',
+      position: 'top',
+      timeout: 500,
+    })
+  }
 }
 
 function changeQty(idx, delta) {
@@ -1192,5 +1235,38 @@ body.body--dark {
       &.active { background: linear-gradient(135deg, #f97316, #ea580c); border-color: transparent; color: #fff; }
     }
   }
+}
+</style>
+
+<!-- Unscoped: Quasar q-dialog content renders in a teleported portal, outside scoped CSS scope -->
+<style>
+.pos-dark-dialog {
+  background: #0f1120 !important;
+  color: #e0e0e0 !important;
+  border: 1px solid #2a2a40 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important;
+}
+.pos-dark-dialog .q-card__section {
+  color: #e0e0e0 !important;
+}
+.pos-dark-dialog .q-dialog__title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+.pos-dark-dialog .q-dialog__message {
+  color: #b0b3c6 !important;
+}
+.pos-dark-dialog .q-radio {
+  color: #ffffff !important;
+}
+.pos-dark-dialog .q-radio__label {
+  color: #ffffff !important;
+}
+.pos-dark-dialog .q-radio__inner {
+  color: #fb923c !important; /* warning/orange active radio circle */
+}
+.pos-dark-dialog .q-radio__inner--unchecked {
+  color: rgba(255, 255, 255, 0.4) !important; /* unselected circle outline */
 }
 </style>

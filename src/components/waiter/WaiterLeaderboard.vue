@@ -239,7 +239,7 @@ onMounted(() => loadRankings())
 defineExpose({ refresh: loadRankings })
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .waiter-leaderboard {
   padding: 4px 0;
 }
@@ -257,13 +257,13 @@ defineExpose({ refresh: loadRankings })
   border: 1px solid var(--erp-border, #e2e8f0);
   border-radius: 8px;
   padding: 1px;
-  :deep(.q-btn) {
-    font-size: 0.68rem;
-    font-weight: 600;
-    border-radius: 6px !important;
-    min-height: 28px;
-    padding: 0 10px;
-  }
+}
+.lb-period-toggle :deep(.q-btn) {
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 6px !important;
+  min-height: 28px;
+  padding: 0 10px;
 }
 
 .rank-card {
@@ -273,24 +273,23 @@ defineExpose({ refresh: loadRankings })
   transition: all 0.15s ease;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-
-  &--gold {
-    background: #fffbeb;
-    border-color: #fde68a;
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.12);
-  }
-  &--silver {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-  }
-  &--bronze {
-    background: #fff7ed;
-    border-color: #fed7aa;
-  }
-  &--me {
-    border-color: #fb923c !important;
-    background: #fff7ed !important;
-  }
+}
+.rank-card--gold {
+  background: #fffbeb;
+  border-color: #fde68a;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.12);
+}
+.rank-card--silver {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.rank-card--bronze {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.rank-card--me {
+  border-color: #fb923c !important;
+  background: #fff7ed !important;
 }
 
 .rank-badge {
@@ -349,59 +348,52 @@ defineExpose({ refresh: loadRankings })
   border-radius: 2px;
   transition: width 0.4s ease;
 }
-
 </style>
 
-<style lang="scss">
+<style>
 /* Unscoped dark-mode overrides for WaiterLeaderboard */
-body.body--dark {
-  // ── Period Toggle ──
-  .waiter-leaderboard .lb-period-toggle {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.08);
-  }
+body.body--dark .waiter-leaderboard .lb-period-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
 
-  // ── Rank Cards ──
-  .waiter-leaderboard .rank-card {
-    background: #1e293b;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  }
-  .waiter-leaderboard .rank-card--gold {
-    background: rgba(217, 119, 6, 0.1);
-    border-color: rgba(251, 191, 36, 0.3);
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.08);
-  }
-  .waiter-leaderboard .rank-card--silver {
-    background: rgba(148, 163, 184, 0.08);
-    border-color: rgba(148, 163, 184, 0.2);
-  }
-  .waiter-leaderboard .rank-card--bronze {
-    background: rgba(234, 88, 12, 0.08);
-    border-color: rgba(251, 146, 60, 0.2);
-  }
-  .waiter-leaderboard .rank-card--me {
-    border-color: rgba(251, 146, 60, 0.5) !important;
-    background: rgba(234, 88, 12, 0.08) !important;
-  }
+body.body--dark .waiter-leaderboard .rank-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+body.body--dark .waiter-leaderboard .rank-card--gold {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.08);
+}
+body.body--dark .waiter-leaderboard .rank-card--silver {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+body.body--dark .waiter-leaderboard .rank-card--bronze {
+  background: rgba(234, 88, 12, 0.08);
+  border-color: rgba(251, 146, 60, 0.2);
+}
+body.body--dark .waiter-leaderboard .rank-card--me {
+  border-color: rgba(251, 146, 60, 0.5) !important;
+  background: rgba(234, 88, 12, 0.08) !important;
+}
 
-  // ── Text Colors ──
-  .waiter-leaderboard .rank-name {
-    color: #e2e8f0;
-  }
-  .waiter-leaderboard .rank-num {
-    color: #64748b;
-  }
-  .waiter-leaderboard .rank-points-value {
-    color: #fbbf24;
-  }
-  .waiter-leaderboard .rank-points-label {
-    color: #64748b;
-  }
+body.body--dark .waiter-leaderboard .rank-name {
+  color: #e2e8f0;
+}
+body.body--dark .waiter-leaderboard .rank-num {
+  color: #64748b;
+}
+body.body--dark .waiter-leaderboard .rank-points-value {
+  color: #fbbf24;
+}
+body.body--dark .waiter-leaderboard .rank-points-label {
+  color: #64748b;
+}
 
-  // ── Progress Bar ──
-  .waiter-leaderboard .rank-progress-bar {
-    background: rgba(255, 255, 255, 0.06);
-  }
+body.body--dark .waiter-leaderboard .rank-progress-bar {
+  background: rgba(255, 255, 255, 0.06);
 }
 </style>

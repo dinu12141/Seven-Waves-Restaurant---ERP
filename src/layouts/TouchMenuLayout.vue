@@ -256,8 +256,14 @@ provide('touchMenuState', {
     customerStore.isLoggedIn ? customerStore.pointsBalance : legacyLoyaltyPoints.value,
   ),
   cartItems,
-  addToCart: (item) => {
-    const existing = cartItems.value.find((i) => i.menu_item_id === item.id)
+  addToCart: (item, variant = null) => {
+    const variantName = variant ? (typeof variant === 'object' ? variant.name : variant) : null
+    const variantId = variant ? (typeof variant === 'object' ? variant.id : null) : null
+    const resolvedPrice = variant ? (typeof variant === 'object' ? variant.price : item.price) : item.price
+
+    const existing = cartItems.value.find(
+      (i) => i.menu_item_id === item.id && i.variant === variantName,
+    )
     if (existing) {
       existing.quantity++
       existing.total_price = existing.quantity * existing.unit_price
@@ -265,30 +271,38 @@ provide('touchMenuState', {
       cartItems.value.push({
         menu_item_id: item.id,
         name: item.name,
-        unit_price: item.price,
+        unit_price: resolvedPrice,
         quantity: 1,
-        total_price: item.price,
+        total_price: resolvedPrice,
         image_url: item.image_url,
         notes: '',
+        variant: variantName,
+        variant_id: variantId,
       })
     }
     $q.notify({
-      message: `${item.name} added to order`,
+      message: `${item.name}${variantName ? ' (' + variantName + ')' : ''} added to order`,
       color: 'positive',
       position: 'top',
       timeout: 1500,
       icon: 'check_circle',
     })
   },
-  removeFromCart: (itemId) => {
-    cartItems.value = cartItems.value.filter((i) => i.menu_item_id !== itemId)
+  removeFromCart: (itemId, variantName = null) => {
+    cartItems.value = cartItems.value.filter(
+      (i) => !(i.menu_item_id === itemId && i.variant === variantName),
+    )
   },
-  updateQuantity: (itemId, delta) => {
-    const item = cartItems.value.find((i) => i.menu_item_id === itemId)
+  updateQuantity: (itemId, delta, variantName = null) => {
+    const item = cartItems.value.find(
+      (i) => i.menu_item_id === itemId && i.variant === variantName,
+    )
     if (item) {
       item.quantity += delta
       if (item.quantity <= 0) {
-        cartItems.value = cartItems.value.filter((i) => i.menu_item_id !== itemId)
+        cartItems.value = cartItems.value.filter(
+          (i) => !(i.menu_item_id === itemId && i.variant === variantName),
+        )
       } else {
         item.total_price = item.quantity * item.unit_price
       }

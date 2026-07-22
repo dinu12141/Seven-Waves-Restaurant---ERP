@@ -1207,7 +1207,7 @@ async function fetchMenuItems() {
           .select(
             `
             id, override_price, is_available, sort_order,
-            menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name))
+            menu_items(id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name), item_variants(id, name, price, is_active))
           `,
           )
           .eq('menu_book_id', bookData.id)
@@ -1225,7 +1225,11 @@ async function fetchMenuItems() {
               sub_category_id: bi.menu_items.sub_category_id,
               image: bi.menu_items.image_url || '',
               category: bi.menu_items.categories?.name || 'Other',
-              variants: [],
+              variants: bi.menu_items.item_variants ? bi.menu_items.item_variants.filter(v => v.is_active).map(v => ({
+                id: v.id,
+                name: v.name,
+                price: parseFloat(v.price)
+              })) : [],
             }))
           usedMenuBook = true
           console.log(`[POS] Loaded ${products.length} items from menu book: ${bookData.name}`)
@@ -1238,7 +1242,7 @@ async function fetchMenuItems() {
       const { data, error } = await supabase
         .from('menu_items')
         .select(
-          `id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name)`,
+          `id, name, base_price, image_url, is_available, kitchen_id, sub_category_id, categories(id, name), item_variants(id, name, price, is_active)`,
         )
         .eq('is_available', true)
         .order('name')
@@ -1253,7 +1257,11 @@ async function fetchMenuItems() {
         sub_category_id: item.sub_category_id,
         image: item.image_url || '',
         category: item.categories?.name || 'Other',
-        variants: [],
+        variants: item.item_variants ? item.item_variants.filter(v => v.is_active).map(v => ({
+          id: v.id,
+          name: v.name,
+          price: parseFloat(v.price)
+        })) : [],
       }))
     }
 
@@ -1464,18 +1472,54 @@ function selectSubCategory(sub) {
 }
 
 function addItemToOrder(product) {
-  const qty = parseInt(numBuffer.value) || 1
-  for (let i = 0; i < qty; i++) {
-    store.addItem(product)
+  if (product.variants && product.variants.length > 0) {
+    $q.dialog({
+      title: '🍕 Select Size',
+      message: `Choose a size for ${product.name}:`,
+      options: {
+        type: 'radio',
+        model: product.variants[0].id,
+        items: product.variants.map((v) => ({
+          label: `${v.name} - LKR ${v.price.toLocaleString()}`,
+          value: v.id,
+        })),
+      },
+      cancel: { flat: true, color: 'grey-5', noCaps: true },
+      ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Add Item' },
+      persistent: true,
+      dark: true,
+      class: 'pos-dark-dialog',
+    }).onOk((selectedVariantId) => {
+      const variant = product.variants.find((v) => v.id === selectedVariantId)
+      if (variant) {
+        const qty = parseInt(numBuffer.value) || 1
+        for (let i = 0; i < qty; i++) {
+          store.addItem(product, variant)
+        }
+        numBuffer.value = ''
+        Notify.create({
+          message: `${product.name} (${variant.name}) × ${qty} added`,
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 600,
+        })
+      }
+    })
+  } else {
+    const qty = parseInt(numBuffer.value) || 1
+    for (let i = 0; i < qty; i++) {
+      store.addItem(product)
+    }
+    numBuffer.value = ''
+    Notify.create({
+      message: `${product.name} × ${qty} added`,
+      color: 'positive',
+      icon: 'check_circle',
+      position: 'top',
+      timeout: 600,
+    })
   }
-  numBuffer.value = ''
-  Notify.create({
-    message: `${product.name} × ${qty} added`,
-    color: 'positive',
-    icon: 'check_circle',
-    position: 'top',
-    timeout: 600,
-  })
 }
 
 // ── Customer Search Handlers ────────────────────────────
@@ -3799,6 +3843,25 @@ function fmtCurrency(val) {
   border: 1px solid #2a2a40 !important;
   border-radius: 8px !important;
   box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important;
+}
+.pos-dark-dialog .q-dialog__title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+.pos-dark-dialog .q-dialog__message {
+  color: #b0b3c6 !important;
+}
+.pos-dark-dialog .q-radio {
+  color: #ffffff !important;
+}
+.pos-dark-dialog .q-radio__label {
+  color: #ffffff !important;
+}
+.pos-dark-dialog .q-radio__inner {
+  color: #ffeb3b !important; /* gold/yellow active radio circle */
+}
+.pos-dark-dialog .q-radio__inner--unchecked {
+  color: rgba(255, 255, 255, 0.4) !important; /* unselected circle outline */
 }
 .pos-dark-dialog .q-card__section {
   color: #e0e0e0 !important;

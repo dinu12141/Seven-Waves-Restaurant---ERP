@@ -65,8 +65,12 @@ export const useOrderStore = defineStore('posOrder', () => {
    * product.id must be a real UUID from menu_items table.
    */
   function addItem(product, variant = null) {
+    const variantName = variant ? (typeof variant === 'object' ? variant.name : variant) : null
+    const variantId = variant ? (typeof variant === 'object' ? variant.id : null) : null
+    const resolvedPrice = variant ? (typeof variant === 'object' ? variant.price : product.price) : product.price
+
     const existingIndex = cartItems.value.findIndex(
-      (item) => item.productId === product.id && item.variant === variant,
+      (item) => item.productId === product.id && item.variant === variantName,
     )
 
     if (existingIndex !== -1) {
@@ -76,10 +80,11 @@ export const useOrderStore = defineStore('posOrder', () => {
         id: _uid(),
         productId: product.id, // UUID from menu_items
         name: product.name,
-        price: product.price,
+        price: resolvedPrice,
         image: product.image,
         kitchenId: product.kitchen_id, // Store kitchen info for KOT routing
-        variant,
+        variant: variantName,
+        variant_id: variantId,
         qty: 1,
         notes: '',
       })
@@ -199,6 +204,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         return {
           order_id: order.id,
           menu_item_id: item.productId,
+          variant_id: item.variant_id || null,
           kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
           quantity: itemQty,
           unit_price: itemPrice,
@@ -219,8 +225,19 @@ export const useOrderStore = defineStore('posOrder', () => {
         throw new Error(`Failed to save order items: ${itemsError.message}`)
       }
 
-      // Order stays in pending_waiter — a waiter will accept it from ShiftInboxPage,
-      // which triggers KOT generation and kitchen routing via accept_order_as_waiter RPC.
+      // ── Step 4: Update table status to occupied for real-time responsiveness ──
+      if (isDineIn && _isUUID(selectedTable.value)) {
+        await supabase
+          .from('restaurant_tables')
+          .update({
+            status: 'occupied',
+            current_order_id: order.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedTable.value)
+          .catch((err) => console.warn('[OrderStore] Table status update notice:', err.message))
+      }
+
       return { success: true, order }
     } finally {
       isSending.value = false
@@ -299,6 +316,7 @@ export const useOrderStore = defineStore('posOrder', () => {
         return {
           order_id: order.id,
           menu_item_id: item.productId,
+          variant_id: item.variant_id || null,
           kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
           quantity: qty,
           unit_price: price,

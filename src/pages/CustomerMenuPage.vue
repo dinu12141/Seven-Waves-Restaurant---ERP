@@ -72,7 +72,7 @@
               :key="item.id"
               :product="item"
               :cart-qty="store.getItemQty(item.id)"
-              @add="store.addItem(item)"
+              @add="handleAddItem(item)"
               @remove="decrementItem(item)"
             />
           </div>
@@ -96,7 +96,7 @@
             :key="item.id"
             :product="item"
             :cart-qty="store.getItemQty(item.id)"
-            @add="store.addItem(item)"
+            @add="handleAddItem(item)"
             @remove="decrementItem(item)"
           />
         </div>
@@ -140,6 +140,37 @@
         </q-btn>
       </q-page-sticky>
     </transition>
+
+    <!-- Variant Selection Dialog -->
+    <q-dialog v-model="showVariantDialog" backdrop-filter="blur(2px)">
+      <q-card style="width: 320px; background: #12121c; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; color: #fff;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle1 text-weight-bold text-white">Select Size</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup color="grey-5" />
+        </q-card-section>
+
+        <q-card-section class="q-py-md">
+          <div class="text-caption text-grey-5 q-mb-md">
+            {{ activeProductForVariant?.name }}
+          </div>
+          <div class="column q-gutter-y-sm">
+            <q-btn
+              v-for="v in activeProductForVariant?.variants"
+              :key="v.id"
+              unelevated
+              no-caps
+              align="between"
+              class="variant-select-btn"
+              @click="selectVariantAndAdd(v)"
+            >
+              <span class="text-weight-medium text-white">{{ v.name }}</span>
+              <span class="text-weight-bold text-orange">LKR {{ v.price.toLocaleString() }}</span>
+            </q-btn>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -192,10 +223,10 @@ async function fetchMenu() {
       ]
     }
 
-    // 2. Fetch Menu Items
+    // 2. Fetch Menu Items with active variants
     const { data: itemData } = await supabase
       .from('menu_items')
-      .select('*')
+      .select('*, item_variants(id, name, price, is_active)')
       .eq('company_id', store.companyId)
       .eq('is_available', true)
       .order('sort_order')
@@ -215,6 +246,11 @@ async function fetchMenu() {
             'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&h=450&fit=crop',
           kitchen_id: i.kitchen_id,
           is_popular: i.sort_order < 3,
+          variants: i.item_variants ? i.item_variants.filter(v => v.is_active).map(v => ({
+            id: v.id,
+            name: v.name,
+            price: Number(v.price)
+          })) : []
         }
       })
     }
@@ -265,6 +301,26 @@ function resetFilters() {
 function decrementItem(product) {
   const idx = store.cartItems.findIndex((i) => i.productId === product.id)
   if (idx !== -1) store.updateQuantity(idx, store.cartItems[idx].qty - 1)
+}
+
+const showVariantDialog = ref(false)
+const activeProductForVariant = ref(null)
+
+function handleAddItem(product) {
+  if (product.variants && product.variants.length > 0) {
+    activeProductForVariant.value = product
+    showVariantDialog.value = true
+  } else {
+    store.addItem(product)
+  }
+}
+
+function selectVariantAndAdd(variant) {
+  if (activeProductForVariant.value) {
+    store.addItem(activeProductForVariant.value, variant)
+    showVariantDialog.value = false
+    activeProductForVariant.value = null
+  }
 }
 </script>
 
@@ -448,5 +504,18 @@ function decrementItem(product) {
 .cart-fab-leave-to {
   transform: translateY(80px);
   opacity: 0;
+}
+
+.variant-select-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(249, 115, 22, 0.08);
+    border-color: rgba(249, 115, 22, 0.4);
+  }
 }
 </style>

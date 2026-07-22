@@ -55,6 +55,9 @@
               style="font-size: 14px"
               >{{ item.name }}</q-item-label
             >
+            <div v-if="item.variant" class="text-caption text-orange q-mt-xs font-bold">
+              Size: {{ item.variant }}
+            </div>
             <q-item-label caption class="text-primary text-weight-bold q-mt-xs price-font">
               LKR
               {{ Math.round(item.unit_price).toLocaleString('en-LK') }}
@@ -69,7 +72,7 @@
                 text-color="white"
                 icon="remove"
                 size="xs"
-                @click="updateQuantity(item.menu_item_id, -1)"
+                @click="updateQuantity(item.menu_item_id, -1, item.variant)"
               />
               <span class="text-weight-bold text-white q-px-md font-mono" style="font-size: 15px">{{
                 item.quantity
@@ -82,7 +85,7 @@
                 text-color="white"
                 icon="add"
                 size="xs"
-                @click="updateQuantity(item.menu_item_id, 1)"
+                @click="updateQuantity(item.menu_item_id, 1, item.variant)"
               />
             </div>
 
@@ -180,13 +183,13 @@ const total = computed(() => subtotal.value - loyaltyDiscount.value)
 function confirmRemove(item) {
   $q.dialog({
     title: 'Remove Item',
-    message: `Remove ${item.name} from your order?`,
+    message: `Remove ${item.name}${item.variant ? ' (' + item.variant + ')' : ''} from your order?`,
     dark: true,
     cancel: true,
     persistent: true,
     ok: { color: 'negative', flat: true },
   }).onOk(() => {
-    removeFromCart(item.menu_item_id)
+    removeFromCart(item.menu_item_id, item.variant)
   })
 }
 
@@ -195,6 +198,7 @@ async function submitOrder() {
 
   const items = cartItems.value.map((item) => ({
     menu_item_id: item.menu_item_id,
+    variant_id: item.variant_id || null,
     qty: item.quantity,
     notes: item.notes || null,
   }))

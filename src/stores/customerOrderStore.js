@@ -166,8 +166,12 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
   // ── Cart Actions ────────────────────────────────────────────
 
   function addItem(product, variant = null) {
+    const variantName = variant ? (typeof variant === 'object' ? variant.name : variant) : null
+    const variantId = variant ? (typeof variant === 'object' ? variant.id : null) : null
+    const resolvedPrice = variant ? (typeof variant === 'object' ? variant.price : product.price) : product.price
+
     const existingIndex = cartItems.value.findIndex(
-      (item) => item.productId === product.id && item.variant === variant,
+      (item) => item.productId === product.id && item.variant === variantName,
     )
     if (existingIndex !== -1) {
       cartItems.value[existingIndex].qty++
@@ -176,10 +180,11 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
         id: Math.random().toString(36).slice(2, 9),
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: resolvedPrice,
         image: product.image,
         kitchenId: product.kitchen_id,
-        variant,
+        variant: variantName,
+        variant_id: variantId,
         qty: 1,
         notes: '',
       })
@@ -211,9 +216,10 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
     cartDrawerOpen.value = !cartDrawerOpen.value
   }
 
-  function getItemQty(productId, variant = null) {
-    const item = cartItems.value.find((i) => i.productId === productId && i.variant === variant)
-    return item ? item.qty : 0
+  function getItemQty(productId) {
+    return cartItems.value
+      .filter((i) => i.productId === productId)
+      .reduce((sum, i) => sum + i.qty, 0)
   }
 
   // ── Order Actions ──────────────────────────────────────────
@@ -254,6 +260,7 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
       const orderItemsData = cartItems.value.map((item) => ({
         order_id: order.id,
         menu_item_id: item.productId,
+        variant_id: item.variant_id || null,
         kitchen_id: item.kitchenId,
         quantity: item.qty,
         unit_price: item.price,

@@ -144,7 +144,7 @@
             v-for="item in filteredItems"
             :key="item.id"
             :item="item"
-            @add-to-cart="touchState.addToCart"
+            @add-to-cart="handleGridAddToCart"
             @request-add="openItemDetails"
           />
         </div>
@@ -188,7 +188,7 @@
         <q-card-section class="q-pt-md">
           <div class="row justify-between items-center q-mb-sm">
             <div class="text-h4 font-mono font-black text-primary">
-              LKR {{ Number(selectedItem.price).toLocaleString('en-LK') }}
+              LKR {{ Number(displayPrice).toLocaleString('en-LK') }}
             </div>
             <div class="row q-gutter-x-sm">
               <q-badge v-if="selectedItem.is_veg" color="positive" class="text-weight-bold"
@@ -208,6 +208,26 @@
               'Deliciously crafted by our executive chefs for your perfect evening.'
             }}
           </p>
+
+          <!-- Variant Selector -->
+          <div v-if="selectedItem.variants && selectedItem.variants.length > 0" class="q-mt-md">
+            <div class="text-subtitle2 font-bold q-mb-sm" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">Portion Size:</div>
+            <div class="row q-gutter-x-sm">
+              <q-btn
+                v-for="v in selectedItem.variants"
+                :key="v.id"
+                outline
+                no-caps
+                class="variant-btn font-bold"
+                :color="selectedVariant?.id === v.id ? 'primary' : 'grey-7'"
+                :class="{ 'variant-btn--selected': selectedVariant?.id === v.id }"
+                @click="selectedVariant = v"
+              >
+                {{ v.name }}
+              </q-btn>
+            </div>
+          </div>
+
           <div
             class="row items-center q-mt-md font-bold"
             :class="$q.dark.isActive ? 'text-white' : 'text-black'"
@@ -252,6 +272,13 @@ const searchQuery = ref('')
 
 const detailsModalOpen = ref(false)
 const selectedItem = ref(null)
+const selectedVariant = ref(null)
+
+const displayPrice = computed(() => {
+  if (!selectedItem.value) return 0
+  if (selectedVariant.value) return selectedVariant.value.price
+  return selectedItem.value.price
+})
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const visibleSubCategories = computed(() => {
@@ -350,6 +377,11 @@ async function fetchData() {
               ...mi,
               price: Number(bi.override_price || mi.base_price),
               image_url: mi.image_url || getPremiumFallbackImage(mi.name),
+              variants: mi.item_variants ? mi.item_variants.filter(v => v.is_active).map(v => ({
+                id: v.id,
+                name: v.name,
+                price: Number(v.price)
+              })) : []
             }
           })
         const usedSubCatIds = new Set(loadedItems.map((i) => i.sub_category_id).filter(Boolean))
@@ -363,12 +395,17 @@ async function fetchData() {
 
     categories.value = loadedCategories
     mainCategories.value = loadedMainCategories
-    const { data: itemData, error: itemErr } = await supabase.from('menu_items').select('*')
+    const { data: itemData, error: itemErr } = await supabase.from('menu_items').select('*, item_variants(id, name, price, is_active)')
     if (itemErr) throw itemErr
     items.value = (itemData || []).map((i) => ({
       ...i,
       price: i.base_price != null ? Number(i.base_price) : 400,
       image_url: i.image_url || getPremiumFallbackImage(i.name),
+      variants: i.item_variants ? i.item_variants.filter(v => v.is_active).map(v => ({
+        id: v.id,
+        name: v.name,
+        price: Number(v.price)
+      })) : []
     }))
   } catch (err) {
     console.error('Fetch error:', err)
@@ -415,6 +452,7 @@ function getPremiumFallbackImage(name) {
 function openItemDetails(item) {
   if (!item.is_available) return
   selectedItem.value = item
+  selectedVariant.value = (item.variants && item.variants.length > 0) ? item.variants[0] : null
   detailsModalOpen.value = true
 }
 
@@ -430,8 +468,16 @@ function selectMainCategory(id) {
 }
 
 function addToCartAndClose(item) {
-  touchState.addToCart(item)
+  touchState.addToCart(item, selectedVariant.value)
   detailsModalOpen.value = false
+}
+
+function handleGridAddToCart(item) {
+  if (item.variants && item.variants.length > 0) {
+    openItemDetails(item)
+  } else {
+    touchState.addToCart(item)
+  }
 }
 
 onMounted(() => {
@@ -884,5 +930,17 @@ onMounted(() => {
 }
 .line-height-1-5 {
   line-height: 1.5;
+}
+
+.variant-btn {
+  border-radius: 10px;
+  min-width: 80px;
+  transition: all 0.2s ease;
+  border-width: 1.5px;
+  
+  &--selected {
+    background: rgba(249, 115, 22, 0.1) !important;
+    border-color: var(--q-primary) !important;
+  }
 }
 </style>
