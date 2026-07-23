@@ -419,8 +419,8 @@ function addToCart(product) {
       cancel: { flat: true, color: 'grey-5', noCaps: true },
       ok: { color: 'warning', unelevated: true, noCaps: true, label: 'Add Item' },
       persistent: true,
-      dark: true,
-      class: 'pos-dark-dialog',
+      dark: $q.dark.isActive,
+      class: $q.dark.isActive ? 'pos-dark-dialog' : '',
     }).onOk((selectedVariantId) => {
       const variant = product.variants.find((v) => v.id === selectedVariantId)
       if (variant) {

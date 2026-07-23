@@ -145,6 +145,22 @@ ON CONFLICT (filename) DO NOTHING;
 --     VALUES ('fix_missing_rls_policies.sql', 'Security: 19-section RLS hardening')
 --     ON CONFLICT DO NOTHING;
 
+-- [1b] CRITICAL SECURITY — Apply after fix_price_and_discount_security.sql
+-- security_lockdown_apply.sql   (ERP-DB-Fixer, task #73 + #38, 2026-07-23)
+--   Master delta file. Closes gaps not covered by [1]/[3]:
+--     • #38 variant-aware POS unit_price validation (fixes base_price-only gap)
+--       + process_cashier_payment ignores client p_amount_paid (charges
+--       server-side orders.total_amount).
+--     • #34 revoke anon writes on notifications/delivery_tracking/kot_items/
+--       kot_tickets; drop delivery_tracking WITH CHECK(true) INSERT (dt_ins).
+--     • #35 testimonials public SELECT limited to moderated rows.
+--   Prereqs: erp_security_lockdown.sql, fix_missing_rls_policies.sql,
+--            fix_price_and_discount_security.sql. Idempotent / re-runnable.
+--   After applying:
+--     INSERT INTO applied_migrations (filename, notes)
+--     VALUES ('security_lockdown_apply.sql', 'Security: #38 variant price + payment recompute, #34 anon-write revoke, #35 testimonials')
+--     ON CONFLICT DO NOTHING;
+
 -- [2] CRITICAL — Apply after fix_missing_rls_policies.sql
 -- fix_rls_missing_tables.sql
 --   RLS for 15 base-schema tables with no policies at all:

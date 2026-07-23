@@ -3,7 +3,7 @@
   <div class="q-pa-md">
     <div class="row q-col-gutter-lg">
       <!-- Left: Menu Books List -->
-      <div class="col-12 col-md-5">
+      <div class="col-12" v-if="!selectedBookId">
         <q-card
           :class="
             $q.dark.isActive
@@ -100,19 +100,19 @@
       </div>
 
       <!-- Right: Book Items Management -->
-      <div class="col-12 col-md-7">
+      <div class="col-12" v-if="selectedBookId">
         <q-card
-          :class="[
+          :class="
             $q.dark.isActive
               ? 'bg-grey-9 text-white border-subtle erp-card'
-              : 'bg-white text-black erp-card',
-            { 'disabled-overlay': !selectedBookId },
-          ]"
+              : 'bg-white text-black erp-card'
+          "
         >
           <q-card-section class="row items-center q-pb-none">
+            <q-btn flat round dense icon="arrow_back" color="grey-7" @click="selectedBookId = null" class="q-mr-sm" />
             <div class="text-h6 text-secondary">
               Menu Book Items
-              <span v-if="selectedBook" class="text-caption text-grey-5 block">
+              <span class="text-caption text-grey-5 block">
                 {{ selectedBook.name }} — {{ filteredBookItems.length }} items{{
                   bookItemSubFilter ? ' in ' + bookItemSubFilter : ''
                 }}
@@ -120,7 +120,6 @@
             </div>
             <q-space />
             <q-btn
-              v-if="selectedBookId"
               color="secondary"
               icon="playlist_add"
               label="Add Item"
@@ -131,30 +130,55 @@
             </q-btn>
           </q-card-section>
           <q-card-section
-            v-if="selectedBookId && bookSubCategories.length > 1"
-            class="q-pa-md q-pb-none"
+            v-if="bookCategories.length > 1 || bookSubCategories.length > 1 || bookKitchens.length > 1"
+            class="q-px-md q-pt-md q-pb-none"
           >
-            <div class="row items-center q-gutter-sm">
-              <q-chip
-                clickable
-                :color="!bookItemSubFilter ? 'primary' : 'grey-8'"
-                :text-color="!bookItemSubFilter ? 'white' : 'grey-3'"
-                @click="bookItemSubFilter = null"
-                dense
-              >
-                All ({{ bookItems.length }})
-              </q-chip>
-              <q-chip
-                v-for="sub in bookSubCategories"
-                :key="sub.id"
-                clickable
-                :color="bookItemSubFilter === sub.name ? 'primary' : 'grey-8'"
-                :text-color="bookItemSubFilter === sub.name ? 'white' : 'grey-3'"
-                @click="bookItemSubFilter = sub.name"
-                dense
-              >
-                {{ sub.name }} ({{ sub.count }})
-              </q-chip>
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-4" v-if="bookCategories.length > 1">
+                <q-select
+                  v-model="bookItemCatFilter"
+                  :options="[
+                    { label: `All Categories`, value: null },
+                    ...bookCategories.map(s => ({ label: `${s.name} (${s.count})`, value: s.name }))
+                  ]"
+                  :dark="$q.dark.isActive"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  label="Filter by Category"
+                />
+              </div>
+              <div class="col-12 col-sm-4" v-if="bookSubCategories.length > 1">
+                <q-select
+                  v-model="bookItemSubFilter"
+                  :options="[
+                    { label: `All Sub Categories`, value: null },
+                    ...bookSubCategories.map(s => ({ label: `${s.name} (${s.count})`, value: s.name }))
+                  ]"
+                  :dark="$q.dark.isActive"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  label="Filter by Sub Category"
+                />
+              </div>
+              <div class="col-12 col-sm-4" v-if="bookKitchens.length > 1">
+                <q-select
+                  v-model="bookItemKitchenFilter"
+                  :options="[
+                    { label: `All Kitchens`, value: null },
+                    ...bookKitchens.map(s => ({ label: `${s.name} (${s.count})`, value: s.name }))
+                  ]"
+                  :dark="$q.dark.isActive"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  label="Filter by Kitchen"
+                />
+              </div>
             </div>
           </q-card-section>
           <q-card-section class="q-pa-md">
@@ -744,7 +768,9 @@ const priceDialog = reactive({
   price: null,
 })
 
+const bookItemCatFilter = ref(null)
 const bookItemSubFilter = ref(null)
+const bookItemKitchenFilter = ref(null)
 
 const itemColumns = [
   {
@@ -795,6 +821,19 @@ const itemColumns = [
   { name: 'actions', label: 'Actions', align: 'center' },
 ]
 
+// Categories present in the current book
+const bookCategories = computed(() => {
+  const map = {}
+  for (const bi of bookItems.value) {
+    const catName = bi.menu_items?.categories?.name
+    if (catName) {
+      if (!map[catName]) map[catName] = { name: catName, count: 0 }
+      map[catName].count++
+    }
+  }
+  return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
+})
+
 // Sub-categories present in the current book
 const bookSubCategories = computed(() => {
   const map = {}
@@ -809,12 +848,32 @@ const bookSubCategories = computed(() => {
   return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
 })
 
-// Filtered book items by sub-category
+// Kitchens present in the current book
+const bookKitchens = computed(() => {
+  const map = {}
+  for (const bi of bookItems.value) {
+    const kitchenName = bi.menu_items?.kitchens?.name
+    if (kitchenName) {
+      if (!map[kitchenName]) map[kitchenName] = { name: kitchenName, count: 0 }
+      map[kitchenName].count++
+    }
+  }
+  return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
+})
+
+// Filtered book items
 const filteredBookItems = computed(() => {
-  if (!bookItemSubFilter.value) return bookItems.value
-  return bookItems.value.filter(
-    (bi) => bi.menu_items?.menu_sub_categories?.name === bookItemSubFilter.value,
-  )
+  let items = bookItems.value
+  if (bookItemCatFilter.value) {
+    items = items.filter((bi) => bi.menu_items?.categories?.name === bookItemCatFilter.value)
+  }
+  if (bookItemSubFilter.value) {
+    items = items.filter((bi) => bi.menu_items?.menu_sub_categories?.name === bookItemSubFilter.value)
+  }
+  if (bookItemKitchenFilter.value) {
+    items = items.filter((bi) => bi.menu_items?.kitchens?.name === bookItemKitchenFilter.value)
+  }
+  return items
 })
 
 const selectedBook = computed(() => menuBooks.value.find((b) => b.id === selectedBookId.value))

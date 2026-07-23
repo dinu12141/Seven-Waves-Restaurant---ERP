@@ -11,7 +11,7 @@ try {
   for (const line of envContent.split('\n')) {
     const trimmed = line.trim()
     if (trimmed.startsWith('VITE_SUPABASE_URL=')) SUPABASE_URL = trimmed.split('=')[1].replace(/^["']|["']$/g, '')
-    if (trimmed.startsWith('VITE_SUPABASE_SERVICE_ROLE_KEY=')) SUPABASE_SERVICE_KEY = trimmed.split('=')[1].replace(/^["']|["']$/g, '')
+    if (trimmed.startsWith('SUPABASE_SERVICE_ROLE_KEY=')) SUPABASE_SERVICE_KEY = trimmed.split('=')[1].replace(/^["']|["']$/g, '')
   }
 } catch (error) {
   console.error('Failed to read .env file:', error.message)

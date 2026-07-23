@@ -76,6 +76,66 @@ process.on('unhandledRejection', (reason) => {
 // -- Window reference ---------------------------------------------------------
 let mainWindow
 
+// -- Navigation / window-open guards ------------------------------------------
+// Determines whether a target URL is the app itself (dev server or bundled
+// file://). Anything else is treated as external and denied for in-app
+// navigation / new-window creation.
+function isAppUrl (targetUrl) {
+  try {
+    const u = new URL(targetUrl)
+    if (u.protocol === 'file:') return true
+    if (process.env.DEV && process.env.APP_URL) {
+      const dev = new URL(process.env.APP_URL)
+      return u.origin === dev.origin
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+function applyNavigationGuards (contents) {
+  // Block in-place navigation away from the app origin.
+  contents.on('will-navigate', (event, targetUrl) => {
+    if (!isAppUrl(targetUrl)) {
+      event.preventDefault()
+      writeLog('[Security] Blocked navigation to external URL: ' + targetUrl)
+      if (typeof targetUrl === 'string' && targetUrl.startsWith('https://')) {
+        shell.openExternal(targetUrl).catch(() => {})
+      }
+    }
+  })
+
+  // Deny redirects to non-app origins as well (defense-in-depth).
+  contents.on('will-redirect', (event, targetUrl) => {
+    if (!isAppUrl(targetUrl)) {
+      event.preventDefault()
+      writeLog('[Security] Blocked redirect to external URL: ' + targetUrl)
+    }
+  })
+
+  // Deny ALL programmatic window.open / target=_blank popups. Legitimate
+  // external links are opened in the system browser after https validation.
+  contents.setWindowOpenHandler(({ url }) => {
+    if (typeof url === 'string' && url.startsWith('https://')) {
+      shell.openExternal(url).catch(() => {})
+    } else {
+      writeLog('[Security] Blocked window.open for non-https URL: ' + url)
+    }
+    return { action: 'deny' }
+  })
+
+  // Never allow <webview> tags to attach (we don't use them).
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault()
+    writeLog('[Security] Blocked <webview> attach attempt')
+  })
+}
+
+// Global safety net: apply the same guards to ANY web contents ever created,
+// even ones spawned outside createWindow().
+app.on('web-contents-created', (_e, contents) => applyNavigationGuards(contents))
+
 // -- Window factory -----------------------------------------------------------
 async function createWindow () {
   writeLog('createWindow() start')
@@ -102,10 +162,16 @@ async function createWindow () {
     show: true,
     webPreferences: {
       contextIsolation: true,
+      nodeIntegration: false,  // SECURITY: explicit — renderer gets no Node.js globals (safety net vs. version downgrade / copy-paste)
       sandbox: true,           // Renderer process sandbox (Electron 20+ default; explicit for clarity)
+      webSecurity: true,       // SECURITY: keep same-origin policy on in prod (default true; explicit)
       preload: preloadPath,
     },
   })
+
+  // Navigation / window-open hardening is applied globally via the
+  // app-level `web-contents-created` handler (see applyNavigationGuards),
+  // which also covers this window's webContents at creation time.
 
   mainWindow.maximize()
   writeLog('BrowserWindow created and maximized')

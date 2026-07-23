@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <div class="row q-col-gutter-lg">
       <!-- Left: Sub Categories List -->
-      <div class="col-12 col-md-5">
+      <div class="col-12" v-if="!selectedSubId">
         <q-card class="erp-card" flat bordered>
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6 text-primary">Sub Categories</div>
@@ -69,12 +69,13 @@
       </div>
 
       <!-- Right: Kitchen Assignment -->
-      <div class="col-12 col-md-7">
-        <q-card class="erp-card" flat bordered :class="{ 'disabled-overlay': !selectedSubId }">
+      <div class="col-12" v-if="selectedSubId">
+        <q-card class="erp-card" flat bordered>
           <q-card-section class="row items-center q-pb-none">
+            <q-btn flat round dense icon="arrow_back" color="grey-7" @click="selectedSubId = null" class="q-mr-sm" />
             <div class="text-h6 text-secondary">
               Kitchen Assignment
-              <span v-if="selectedSub" class="text-caption text-grey-5 block">
+              <span class="text-caption text-grey-5 block">
                 {{ selectedSub.name }} → Kitchen Routing
               </span>
             </div>
@@ -85,7 +86,6 @@
           </q-card-section>
 
           <q-card-section class="q-pa-md">
-            <template v-if="selectedSubId">
               <div class="text-body2 text-grey-4 q-mb-md">
                 Select which kitchen should receive KOT tickets for items in
                 <strong class="text-primary">{{ selectedSub?.name }}</strong
@@ -147,12 +147,6 @@
                   @click="removeMapping"
                 />
               </div>
-            </template>
-
-            <div v-else class="text-center q-pa-xl text-grey-5 flex flex-center flex-column">
-              <q-icon name="route" size="48px" />
-              <div class="q-mt-sm">Select a sub-category to assign its kitchen routing</div>
-            </div>
           </q-card-section>
         </q-card>
 

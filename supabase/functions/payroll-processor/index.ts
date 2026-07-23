@@ -8,6 +8,47 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function jsonRes(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  })
+}
+
+/**
+ * Server-side authorization gate. verify_jwt only proves *some* valid JWT; this
+ * function runs a full payroll cycle with the service_role key (bypasses RLS),
+ * so it MUST enforce the caller's role. Allows a service_role bearer for
+ * cron/server-to-server. Returns null when authorized, else a Response.
+ */
+async function requireRole(
+  req: Request,
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  allowedRoles: string[],
+): Promise<Response | null> {
+  const token = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim()
+  if (!token) return jsonRes({ success: false, error: 'Missing Authorization header' }, 401)
+  if (token === serviceRoleKey) return null
+
+  const authClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceRoleKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+  const { data: { user }, error } = await authClient.auth.getUser()
+  if (error || !user) return jsonRes({ success: false, error: 'Invalid or expired token' }, 401)
+
+  const admin = createClient(supabaseUrl, serviceRoleKey)
+  const { data: roleRows } = await admin
+    .from('user_roles')
+    .select('roles(name)')
+    .eq('user_id', user.id)
+  const roles = (roleRows ?? []).map((r: any) => r.roles?.name).filter(Boolean)
+  if (!roles.some((r: string) => allowedRoles.includes(r))) {
+    return jsonRes({ success: false, error: 'Insufficient permissions' }, 403)
+  }
+  return null
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS })
@@ -20,6 +61,10 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
     }
+
+    // ── Authorization: running a payroll cycle is admin/hr/finance-only ──
+    const denied = await requireRole(req, supabaseUrl, supabaseKey, ['admin', 'hr', 'finance'])
+    if (denied) return denied
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 

@@ -28,6 +28,43 @@ function jsonRes(body: unknown, status = 200) {
   })
 }
 
+/**
+ * Server-side authorization gate. The platform verify_jwt only proves *some*
+ * valid JWT was presented (including any low-privilege staff member). This
+ * function bypasses RLS via the service_role key, so it MUST enforce the
+ * caller's role itself. Allows a service_role bearer for cron/server-to-server.
+ * Returns null when authorized, or a Response to return when not.
+ */
+async function requireRole(
+  req: Request,
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  allowedRoles: string[],
+): Promise<Response | null> {
+  const token = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim()
+  if (!token) return jsonRes({ success: false, error: 'Missing Authorization header' }, 401)
+
+  // Server-to-server (cron/webhook) invocation with the service_role key.
+  if (token === serviceRoleKey) return null
+
+  const authClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceRoleKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+  const { data: { user }, error } = await authClient.auth.getUser()
+  if (error || !user) return jsonRes({ success: false, error: 'Invalid or expired token' }, 401)
+
+  const admin = createClient(supabaseUrl, serviceRoleKey)
+  const { data: roleRows } = await admin
+    .from('user_roles')
+    .select('roles(name)')
+    .eq('user_id', user.id)
+  const roles = (roleRows ?? []).map((r: any) => r.roles?.name).filter(Boolean)
+  if (!roles.some((r: string) => allowedRoles.includes(r))) {
+    return jsonRes({ success: false, error: 'Insufficient permissions' }, 403)
+  }
+  return null
+}
+
 function fmtLKR(v: number): string {
   return Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -179,6 +216,10 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendKey   = Deno.env.get('RESEND_API_KEY')
     const fromEmail   = Deno.env.get('FROM_EMAIL') || 'payroll@restaurant-erp.local'
+
+    // ── Authorization: payroll is HR/finance-only ────────────────────────
+    const denied = await requireRole(req, supabaseUrl, supabaseKey, ['admin', 'hr', 'finance', 'manager'])
+    if (denied) return denied
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 

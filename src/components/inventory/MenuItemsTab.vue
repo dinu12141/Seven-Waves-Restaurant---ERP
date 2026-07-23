@@ -253,7 +253,7 @@
 
               <ERPFormSection title="Classification" collapsible>
                 <div class="row q-col-gutter-md">
-                  <div class="col-6">
+                  <div class="col-12">
                     <ERPFormField label="Category" required :error="vErrors.category_id">
                       <q-select
                         v-model="form.category_id"
@@ -281,7 +281,7 @@
                       </q-select>
                     </ERPFormField>
                   </div>
-                  <div class="col-6">
+                  <div class="col-12">
                     <ERPFormField
                       label="Sub Category"
                       :helper="!form.category_id ? 'Select a category first' : ''"
@@ -315,7 +315,7 @@
                       </q-select>
                     </ERPFormField>
                   </div>
-                  <div class="col-6">
+                  <div class="col-12">
                     <ERPFormField label="Routing Kitchen" helper="Where KOTs are dispatched">
                       <q-select
                         v-model="form.kitchen_id"

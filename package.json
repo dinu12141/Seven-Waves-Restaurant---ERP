@@ -14,9 +14,11 @@
     "test:watch": "vitest watch",
     "type-check": "node --max-old-space-size=6144 node_modules/vue-tsc/bin/vue-tsc.js --noEmit --skipLibCheck",
     "dev": "quasar dev",
+    "check:secrets": "node scripts/check-no-service-key-leak.mjs",
+    "prebuild": "node scripts/check-no-service-key-leak.mjs",
     "build": "quasar build",
-    "build:staging": "VITE_APP_ENV=staging quasar build",
-    "build:production": "VITE_APP_ENV=production quasar build",
+    "build:staging": "npm run check:secrets && VITE_APP_ENV=staging quasar build",
+    "build:production": "npm run check:secrets && VITE_APP_ENV=production quasar build",
     "health-check": "bash scripts/health-check.sh",
     "postinstall": "quasar prepare"
   },

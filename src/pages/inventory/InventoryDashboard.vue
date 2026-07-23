@@ -477,7 +477,6 @@ onUnmounted(() => clearInterval(timer))
 .alert-panel__title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--erp-text, #f3f4f6);
   display: flex;
   align-items: center;
 }
@@ -542,7 +541,6 @@ onUnmounted(() => clearInterval(timer))
   &__name {
     font-size: 13px;
     font-weight: 600;
-    color: var(--erp-text, #f3f4f6);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

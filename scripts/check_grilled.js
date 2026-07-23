@@ -7,7 +7,7 @@ const env = fs.readFileSync('.env', 'utf-8').split('\n').reduce((acc, line) => {
   return acc;
 }, {});
 
-const s = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const s = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function run() {
   const { data: all } = await s.from('menu_items').select('id, name, base_price').in('sub_category_id', [

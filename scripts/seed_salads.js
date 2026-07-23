@@ -14,7 +14,7 @@ try {
     const val = rest.join('=').replace(/^["']|["']$/g, '')
     if (key === 'VITE_SUPABASE_URL') SUPABASE_URL = val
     if (key === 'VITE_SUPABASE_ANON_KEY') SUPABASE_KEY = val
-    if (key === 'VITE_SUPABASE_SERVICE_ROLE_KEY') SUPABASE_SERVICE_KEY = val
+    if (key === 'SUPABASE_SERVICE_ROLE_KEY') SUPABASE_SERVICE_KEY = val
   }
 } catch (err) {
   console.error('Cannot read .env:', err)

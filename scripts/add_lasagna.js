@@ -7,7 +7,7 @@ const env = fs.readFileSync('.env', 'utf-8').split('\n').reduce((acc, line) => {
   return acc;
 }, {});
 
-const s = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const s = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function run() {
   const companyId = '5c7ff29c-418a-461a-9624-3667375c2af4';

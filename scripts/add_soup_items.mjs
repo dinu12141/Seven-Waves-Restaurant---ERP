@@ -12,7 +12,7 @@ try {
     if (trimmed.startsWith('VITE_SUPABASE_URL=')) {
       SUPABASE_URL = trimmed.split('=')[1].replace(/^["']|["']$/g, '');
     }
-    if (trimmed.startsWith('VITE_SUPABASE_SERVICE_ROLE_KEY=')) {
+    if (trimmed.startsWith('SUPABASE_SERVICE_ROLE_KEY=')) {
       SUPABASE_SERVICE_KEY = trimmed.split('=')[1].replace(/^["']|["']$/g, '');
     }
   }
@@ -22,7 +22,7 @@ try {
 }
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_SERVICE_ROLE_KEY in .env');
+  console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
   process.exit(1);
 }
 

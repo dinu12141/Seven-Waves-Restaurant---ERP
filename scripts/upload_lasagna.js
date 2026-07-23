@@ -8,7 +8,7 @@ const env = fs.readFileSync('.env', 'utf-8').split('\n').reduce((acc, line) => {
   return acc;
 }, {});
 
-const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 const brainDir = 'C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9';
 
 const items = [

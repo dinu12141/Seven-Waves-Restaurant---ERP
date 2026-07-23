@@ -205,69 +205,86 @@
               <button class="cbtn scroll-btn" @click="scrollCategoriesDown">▼</button>
             </template>
             <template v-else>
-              <div style="background: var(--yellow); padding: 12px; color: #000; font-weight: 800; text-align: center; font-size: 14px; text-transform: uppercase;">Payment Method</div>
-              <div class="cat-grid" style="grid-template-columns: 1fr; margin-top: 10px; gap: 10px;">
+              <div class="text-subtitle1 text-weight-bold text-center q-mb-md text-uppercase text-primary" style="border-bottom: 2px solid currentColor; padding-bottom: 8px;">
+                Payment Method
+              </div>
+              
+              <div class="row q-col-gutter-sm">
                 <!-- CASH -->
-                <button
-                  class="cbtn c-yellow"
-                  :class="{ 'payment-active': selectedPaymentMethod === 'CASH' }"
-                  @click="selectPaymentGroup('CASH')"
-                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
-                >CASH</button>
-
-                <!-- CARD + sub-options -->
-                <button
-                  class="cbtn c-yellow"
-                  :class="{ 'payment-active': selectedPaymentMethod === 'CARD' }"
-                  @click="selectPaymentGroup('CARD')"
-                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
-                >CARD</button>
-                <div v-if="selectedPaymentMethod === 'CARD'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: -4px;">
-                  <button
-                    class="cbtn"
-                    :class="{ 'payment-active': selectedCardType === 'MASTER' }"
-                    @click="selectedCardType = 'MASTER'"
-                    style="font-size: 13px; font-weight: 700; padding: 10px 0; background: #1a237e; color: #fff; border: 2px solid transparent;"
-                    :style="selectedCardType === 'MASTER' ? 'border-color: #ffeb3b;' : ''"
-                  >MASTER</button>
-                  <button
-                    class="cbtn"
-                    :class="{ 'payment-active': selectedCardType === 'VISA' }"
-                    @click="selectedCardType = 'VISA'"
-                    style="font-size: 13px; font-weight: 700; padding: 10px 0; background: #1565c0; color: #fff; border: 2px solid transparent;"
-                    :style="selectedCardType === 'VISA' ? 'border-color: #ffeb3b;' : ''"
-                  >VISA</button>
+                <div class="col-12">
+                  <q-btn
+                    class="full-w text-weight-bolder"
+                    :color="selectedPaymentMethod === 'CASH' ? 'primary' : 'grey-9'"
+                    text-color="white"
+                    unelevated
+                    label="CASH"
+                    icon="payments"
+                    size="xl"
+                    @click="selectPaymentGroup('CASH')"
+                  />
                 </div>
 
-                <!-- OTHER + sub-options -->
-                <button
-                  class="cbtn c-yellow"
-                  :class="{ 'payment-active': selectedPaymentMethod === 'OTHER' }"
-                  @click="selectPaymentGroup('OTHER')"
-                  style="font-size: 16px; font-weight: bold; padding: 15px 0; border-width: 3px;"
-                >OTHER</button>
-                <div v-if="selectedPaymentMethod === 'OTHER'" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: -4px;">
-                  <button
-                    class="cbtn"
-                    :class="{ 'payment-active': selectedOtherType === 'UBER' }"
-                    @click="selectedOtherType = 'UBER'"
-                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #1b5e20; color: #fff; border: 2px solid transparent;"
-                    :style="selectedOtherType === 'UBER' ? 'border-color: #ffeb3b;' : ''"
-                  >UBER</button>
-                  <button
-                    class="cbtn"
-                    :class="{ 'payment-active': selectedOtherType === 'PICKME' }"
-                    @click="selectedOtherType = 'PICKME'"
-                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #b71c1c; color: #fff; border: 2px solid transparent;"
-                    :style="selectedOtherType === 'PICKME' ? 'border-color: #ffeb3b;' : ''"
-                  >PICKME</button>
-                  <button
-                    class="cbtn"
-                    :class="{ 'payment-active': selectedOtherType === 'WEBSITE' }"
-                    @click="selectedOtherType = 'WEBSITE'"
-                    style="font-size: 12px; font-weight: 700; padding: 10px 0; background: #006064; color: #fff; border: 2px solid transparent;"
-                    :style="selectedOtherType === 'WEBSITE' ? 'border-color: #ffeb3b;' : ''"
-                  >WEBSITE</button>
+                <!-- CARD -->
+                <div class="col-12">
+                  <q-btn
+                    class="full-w text-weight-bolder"
+                    :color="selectedPaymentMethod === 'CARD' ? 'primary' : 'grey-9'"
+                    text-color="white"
+                    unelevated
+                    label="CARD"
+                    icon="credit_card"
+                    size="xl"
+                    @click="selectPaymentGroup('CARD')"
+                  />
+                  <div v-if="selectedPaymentMethod === 'CARD'" class="row q-col-gutter-xs q-mt-xs">
+                    <div class="col-6">
+                      <q-btn
+                        class="full-w text-weight-bold"
+                        :color="selectedCardType === 'MASTER' ? 'primary' : 'grey-8'"
+                        text-color="white"
+                        unelevated
+                        label="MASTER"
+                        size="lg"
+                        @click="selectedCardType = 'MASTER'"
+                      />
+                    </div>
+                    <div class="col-6">
+                      <q-btn
+                        class="full-w text-weight-bold"
+                        :color="selectedCardType === 'VISA' ? 'primary' : 'grey-8'"
+                        text-color="white"
+                        unelevated
+                        label="VISA"
+                        size="lg"
+                        @click="selectedCardType = 'VISA'"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- OTHER -->
+                <div class="col-12">
+                  <q-btn
+                    class="full-w text-weight-bolder"
+                    :color="selectedPaymentMethod === 'OTHER' ? 'primary' : 'grey-9'"
+                    text-color="white"
+                    unelevated
+                    label="OTHER"
+                    icon="more_horiz"
+                    size="xl"
+                    @click="selectPaymentGroup('OTHER')"
+                  />
+                  <div v-if="selectedPaymentMethod === 'OTHER'" class="row q-col-gutter-xs q-mt-xs">
+                    <div class="col-4">
+                      <q-btn class="full-w text-weight-bold" :color="selectedOtherType === 'UBER' ? 'green-7' : 'grey-8'" text-color="white" unelevated label="UBER" size="md" @click="selectedOtherType = 'UBER'" />
+                    </div>
+                    <div class="col-4">
+                      <q-btn class="full-w text-weight-bold" :color="selectedOtherType === 'PICKME' ? 'red-7' : 'grey-8'" text-color="white" unelevated label="PICKME" size="md" @click="selectedOtherType = 'PICKME'" />
+                    </div>
+                    <div class="col-4">
+                      <q-btn class="full-w text-weight-bold" :color="selectedOtherType === 'WEBSITE' ? 'cyan-7' : 'grey-8'" text-color="white" unelevated label="WEBSITE" size="md" @click="selectedOtherType = 'WEBSITE'" />
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -1487,8 +1504,8 @@ function addItemToOrder(product) {
       cancel: { flat: true, color: 'grey-5', noCaps: true },
       ok: { color: 'primary', unelevated: true, noCaps: true, label: 'Add Item' },
       persistent: true,
-      dark: true,
-      class: 'pos-dark-dialog',
+      dark: $q.dark.isActive,
+      class: $q.dark.isActive ? 'pos-dark-dialog' : '',
     }).onOk((selectedVariantId) => {
       const variant = product.variants.find((v) => v.id === selectedVariantId)
       if (variant) {
