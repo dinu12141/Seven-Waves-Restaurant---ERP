@@ -51,9 +51,29 @@
           />
         </q-td>
 
-        <!-- UOM -->
-        <q-td key="uom" :props="props">
-          {{ props.row.uom_name }}
+        <!-- UOM: Select (Editable) or Text (Readonly) -->
+        <q-td key="uom" :props="props" style="min-width: 130px">
+          <div v-if="readOnly || !allowEditUom || !uomOptions || uomOptions.length === 0">
+            {{ props.row.uom_name || getUomName(props.row.uom_id) }}
+          </div>
+          <q-select
+            v-else
+            v-model="props.row.uom_id"
+            :options="uomOptions"
+            option-label="name"
+            option-value="id"
+            dense
+            borderless
+            emit-value
+            map-options
+            @update:model-value="(val) => {
+              const selectedUom = uomOptions.find(opt => opt.id === val)
+              if (selectedUom) {
+                props.row.uom_name = selectedUom.name || selectedUom.code
+              }
+              $emit('uom-change', props.row, selectedUom)
+            }"
+          />
         </q-td>
 
         <!-- Quantity -->
@@ -126,12 +146,20 @@ const props = defineProps({
   mode: { type: String, required: true }, // 'PO' | 'GRN' | 'INVOICE' | 'RETURN'
   readOnly: { type: Boolean, required: false },
   itemOptions: { type: Array, required: false },
+  uomOptions: { type: Array, required: false, default: () => [] },
   title: { type: String, required: false },
   allowAdd: { type: Boolean, required: false },
   allowEditItem: { type: Boolean, required: false },
+  allowEditUom: { type: Boolean, required: false, default: true },
 })
 
-defineEmits(['add-line', 'remove-line', 'item-change'])
+defineEmits(['add-line', 'remove-line', 'item-change', 'uom-change'])
+
+const getUomName = (uomId) => {
+  if (!uomId) return ''
+  const found = (props.uomOptions || []).find((u) => u.id === uomId)
+  return found?.name || found?.code || ''
+}
 
 const showPrice = computed(() => ['PO', 'INVOICE', 'RETURN'].includes(props.mode))
 const showDiscount = computed(() => ['PO', 'INVOICE'].includes(props.mode))

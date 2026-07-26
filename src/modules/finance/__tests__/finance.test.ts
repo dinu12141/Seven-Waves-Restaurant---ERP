@@ -153,9 +153,13 @@ describe('Finance Re-Architecture: Service Files', () => {
     expect(src).toContain('Creator cannot approve their own voucher')
   })
 
-  it('voucher service validates double-entry balance', () => {
+  it('voucher service posts atomically via the guarded RPC (double-entry balance enforced server-side)', () => {
+    // P0 #50/#51 — posting now goes through the post_finance_voucher RPC, which
+    // guards the double-entry balance, the approved-status check, and the ledger
+    // delta inside a single FOR UPDATE-locked transaction. The old client-side
+    // 'Double-entry imbalance' string moved into that RPC by design.
     const src = fs.readFileSync(path.join(servicesDir, 'finance-voucher.service.js'), 'utf-8')
-    expect(src).toContain('Double-entry imbalance')
+    expect(src).toContain("rpc('post_finance_voucher'")
   })
 
   it('voucher service creates cashbook entries on post', () => {
@@ -169,9 +173,11 @@ describe('Finance Re-Architecture: Service Files', () => {
   })
 
   it('voucher service enforces immutability of posted vouchers', () => {
+    // Edit guard stays client-side; the approved-status post guard ('Only approved
+    // vouchers can be posted') moved into the post_finance_voucher RPC (P0 #50).
     const src = fs.readFileSync(path.join(servicesDir, 'finance-voucher.service.js'), 'utf-8')
     expect(src).toContain('Only draft or rejected vouchers can be edited')
-    expect(src).toContain('Only approved vouchers can be posted')
+    expect(src).toContain("rpc('post_finance_voucher'")
   })
 
   it('ledger service has audit logging', () => {

@@ -56,6 +56,36 @@ function isValidUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
 }
 
+/**
+ * Server-side throttle via the shared check_qr_rate_limit RPC (SECURITY DEFINER;
+ * upserts a per-identifier+endpoint minute bucket). Returns true if the request
+ * may proceed. Fails OPEN on infra error — a rate-limit table hiccup must never
+ * block a legitimate payment. Applied only to the JWT-authenticated actions;
+ * gateway webhooks are authenticated by signature and must not be dropped. [#99/#46]
+ */
+async function withinRateLimit(
+  admin: any,
+  identifier: string,
+  endpoint: string,
+  limit: number,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.rpc('check_qr_rate_limit', {
+      p_identifier: identifier,
+      p_endpoint: endpoint,
+      p_limit: limit,
+    })
+    if (error) {
+      console.warn(`[payment-handler] rate-limit check failed (fail-open): ${error.message}`)
+      return true
+    }
+    return (data?.allowed ?? true) === true
+  } catch (e) {
+    console.warn('[payment-handler] rate-limit check threw (fail-open):', e)
+    return true
+  }
+}
+
 // ─── Stripe Helpers ──────────────────────────────────────────────────────────
 
 /**
@@ -360,6 +390,11 @@ Deno.serve(async (req: Request) => {
 
       console.log(`[payment-handler] Authenticated user: ${user.id}`)
 
+      // ── Throttle intent creation per user (12/min; fail-open on infra error) ──
+      if (!(await withinRateLimit(supabaseAdmin, `user:${user.id}`, 'pay_create_intent', 12))) {
+        return errorResponse('Too many payment attempts. Please wait a moment.', 429)
+      }
+
       // ── Validate Input ──────────────────────────────────────────
       const orderId = body.order_id as string
       const paymentMethod = (body.payment_method as string) ?? 'stripe'
@@ -570,6 +605,11 @@ Deno.serve(async (req: Request) => {
       const { data: { user }, error: userError } = await supabaseAuth.auth.getUser()
       if (userError || !user) {
         return errorResponse('Invalid or expired JWT token', 401)
+      }
+
+      // ── Throttle verification polling per user (30/min; fail-open on infra error) ──
+      if (!(await withinRateLimit(supabaseAdmin, `user:${user.id}`, 'pay_verify', 30))) {
+        return errorResponse('Too many verification attempts. Please wait a moment.', 429)
       }
 
       const orderId = body.order_id as string

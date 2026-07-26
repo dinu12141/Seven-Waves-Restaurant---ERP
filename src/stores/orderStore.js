@@ -189,20 +189,13 @@ export const useOrderStore = defineStore('posOrder', () => {
         delivery_source: deliverySource.value || null,
       }
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderPayload)
-        .select('id, order_number, status')
-        .single()
-
-      if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
-
-      // ── Step 2: Insert order_items ────────────────────────
+      // ── Steps 2+3: Atomic order + items insert (P0 #48/#49) ──────────
+      // One DB transaction: if items fail, the order rolls back too — no
+      // orphaned zero-item orders and no fragile client-side delete-rollback.
       const itemsPayload = cartItems.value.map((item) => {
         const itemQty = parseInt(item.qty) || 1
         const itemPrice = parseFloat(item.price) || 0
         return {
-          order_id: order.id,
           menu_item_id: item.productId,
           variant_id: item.variant_id || null,
           kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
@@ -214,16 +207,13 @@ export const useOrderStore = defineStore('posOrder', () => {
         }
       })
 
-      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload)
-
-      // ── Step 3: Rollback if items insert failed ───────────
-      if (itemsError) {
-        const { error: deleteErr } = await supabase.from('orders').delete().eq('id', order.id)
-        if (deleteErr) {
-          console.error(`[OrderStore] Orphaned order ${order.id} — rollback delete failed:`, deleteErr.message)
-        }
-        throw new Error(`Failed to save order items: ${itemsError.message}`)
-      }
+      const { data: createRes, error: createErr } = await supabase.rpc(
+        'pos_create_order_with_items',
+        { p_order: orderPayload, p_items: itemsPayload },
+      )
+      if (createErr) throw new Error(`Failed to create order: ${createErr.message}`)
+      if (!createRes?.success) throw new Error(createRes?.error || 'Failed to create order')
+      const order = createRes.order
 
       // ── Step 4: Update table status to occupied for real-time responsiveness ──
       if (isDineIn && _isUUID(selectedTable.value)) {
@@ -300,21 +290,13 @@ export const useOrderStore = defineStore('posOrder', () => {
         delivery_source: deliverySource.value || null,
       }
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderPayload)
-        .select('id, order_number')
-        .single()
-
-      if (orderError) throw new Error(`Failed to create order: ${orderError.message}`)
-
+      // ── Steps 1+2: Atomic order + items insert (P0 #48/#49) ──────────
       // NOTE: kitchen_id may be null for items without a direct pin.
       // The accept/generate_kots RPC resolves routing via subcategory → kitchen map.
       const itemsPayload = cartItems.value.map((item) => {
         const qty = parseInt(item.qty) || 1
         const price = parseFloat(item.price) || 0
         return {
-          order_id: order.id,
           menu_item_id: item.productId,
           variant_id: item.variant_id || null,
           kitchen_id: item.kitchenId || null, // null = let RPC resolve via subcategory map
@@ -326,52 +308,43 @@ export const useOrderStore = defineStore('posOrder', () => {
         }
       })
 
-      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload)
-      if (itemsError) {
-        // Best-effort cleanup
-        await supabase.from('orders').delete().eq('id', order.id)
-        throw new Error(`Failed to save order items: ${itemsError.message}`)
-      }
-
-      // ── Step 3: Accept order via orchestration RPC (generates KOTs + queues) ─
-      const { data: acceptData, error: acceptError } = await supabase.rpc('process_waiter_accept', {
-        p_order_id: order.id,
-      })
-      if (acceptError) throw new Error(`Accept RPC failed: ${acceptError.message}`)
-      if (!acceptData?.success) throw new Error(acceptData?.error || 'process_waiter_accept failed')
-
-      // ── Step 4: Mark as invoiced (cashier step) ──────────────────────────
-      const { data: invoiceData, error: invoiceRpcError } = await supabase.rpc(
-        'process_cashier_invoice',
-        { p_order_id: order.id },
+      const { data: createRes, error: createErr } = await supabase.rpc(
+        'pos_create_order_with_items',
+        { p_order: orderPayload, p_items: itemsPayload },
       )
-      if (invoiceRpcError) throw new Error(`Invoice RPC failed: ${invoiceRpcError.message}`)
-      if (!invoiceData?.success)
-        throw new Error(invoiceData?.error || 'process_cashier_invoice failed')
+      if (createErr) throw new Error(`Failed to create order: ${createErr.message}`)
+      if (!createRes?.success) throw new Error(createRes?.error || 'Failed to create order')
+      const order = createRes.order
 
-      // ── Step 5: Record payment via orchestration RPC (posts finance + stock) ─
-      const { data: payData, error: payRpcError } = await supabase.rpc('process_cashier_payment', {
+      // ── Step 3: Accept + invoice + payment in ONE atomic txn (P0 #48) ─────
+      // pos_quick_pay wraps process_waiter_accept → process_cashier_invoice →
+      // process_cashier_payment server-side; any failure rolls the whole thing
+      // back, so there is no cooked/dispatched-but-unpaid window. The RPC charges
+      // the server-side locked order.total_amount; p_amount_paid is cash tendered
+      // (used only for change_due).
+      const { data: quickPay, error: quickPayErr } = await supabase.rpc('pos_quick_pay', {
         p_order_id: order.id,
         p_payment_method: paymentMethodName || 'cash',
         p_amount_paid: parseFloat(total.value.toFixed(2)),
       })
-      if (payRpcError) throw new Error(`Payment RPC failed: ${payRpcError.message}`)
-      if (!payData?.success) throw new Error(payData?.error || 'process_cashier_payment failed')
+      if (quickPayErr) throw new Error(`Quick-Pay RPC failed: ${quickPayErr.message}`)
+      if (!quickPay?.success) throw new Error(quickPay?.error || 'pos_quick_pay failed')
 
-      // ── Step 6: Loyalty reward (best-effort — do not fail payment) ─────────
+      // ── Step 4: Loyalty reward (best-effort — do not fail payment) ─────────
       const customerId = selectedCustomer.value?.id || selectedCustomer.value?.customer_id
       if (customerId) {
         await supabase.rpc('rpc_apply_loyalty_reward', { p_order_id: order.id }).catch(() => {})
       }
 
-      // ── Step 7: Success ──────────────────────────────────────────────────
+      // ── Step 5: Success ──────────────────────────────────────────────────
       const result = {
         success: true,
         orderId: order.id,
         orderNumber: order.order_number,
         paymentMethod: paymentMethodName,
         total: parseFloat(total.value.toFixed(2)),
-        kotCount: acceptData.kot_count,
+        changeDue: quickPay.change_due ?? 0,
+        kotCount: quickPay.kot_count ?? 0,
       }
 
       clearCart()

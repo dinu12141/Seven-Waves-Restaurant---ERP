@@ -670,44 +670,27 @@ async function processMergedPayment(methodName) {
 
 /**
  * Process payment for a billing queue order.
- * Calls accept → invoice → payment RPCs in sequence.
+ * Calls the atomic pos_quick_pay RPC (accept + invoice + payment in one txn).
  */
 async function processQueueOrderPayment(methodName) {
   isProcessing.value = true
   const orderId = props.queueOrder.id
 
   try {
-    // Step 1: Accept order if still pending_waiter
-    if (props.queueOrder.status === 'pending_waiter') {
-      const { data: acceptData, error: acceptError } = await supabase.rpc('process_waiter_accept', {
-        p_order_id: orderId,
-      })
-      if (acceptError) throw new Error(`Accept failed: ${acceptError.message}`)
-      if (!acceptData?.success && acceptData?.code !== 'ALREADY_ACCEPTED') {
-        throw new Error(acceptData?.error || 'Accept failed')
-      }
-    }
-
-    // Step 2: Generate invoice if not already invoiced
-    const status = props.queueOrder.status
-    if (status !== 'invoiced' && status !== 'paid') {
-      const { data: invData, error: invError } = await supabase.rpc('process_cashier_invoice', {
-        p_order_id: orderId,
-      })
-      if (invError) throw new Error(`Invoice failed: ${invError.message}`)
-      if (!invData?.success && invData?.message !== 'Already invoiced.') {
-        throw new Error(invData?.error || 'Invoice failed')
-      }
-    }
-
-    // Step 3: Record payment
-    const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+    // Accept (if pending) + invoice + payment in ONE atomic txn (Security #74).
+    // pos_quick_pay wraps process_waiter_accept → process_cashier_invoice →
+    // process_cashier_payment server-side; any failure rolls the whole thing back
+    // (no cooked/invoiced-but-unpaid window). It is idempotent for pre-existing
+    // queue orders (already-accepted/invoiced/paid sub-RPCs all return success:true)
+    // and charges the server-side LOCKED order.total_amount — p_amount_paid is the
+    // cash tendered, used only for change_due.
+    const { data: payData, error: payError } = await supabase.rpc('pos_quick_pay', {
       p_order_id: orderId,
       p_payment_method: methodName,
       p_amount_paid: effectiveTotalAmount.value,
     })
     if (payError) throw new Error(`Payment failed: ${payError.message}`)
-    if (!payData?.success && payData?.message !== 'Already paid.') {
+    if (!payData?.success) {
       throw new Error(payData?.error || 'Payment failed')
     }
 

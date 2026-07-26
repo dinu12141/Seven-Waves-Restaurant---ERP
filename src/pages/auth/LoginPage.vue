@@ -280,21 +280,21 @@ const handleLogin = async () => {
       return
     }
 
-    // Role-based redirect
-    let redirect = '/dashboard'
-    if (authStore.hasRole('kitchen') && !authStore.isAdmin && !authStore.hasRole('manager')) {
-      redirect = '/kitchen'
-    } else if (
-      authStore.hasRole('cashier') &&
-      !authStore.isAdmin &&
-      !authStore.hasRole('manager')
-    ) {
-      redirect = '/pos'
-    } else if (authStore.hasRole('waiter') && !authStore.isAdmin && !authStore.hasRole('manager')) {
-      redirect = '/waiter-app'
+    // Role-based redirect using single source of truth defaultLandingPage
+    const targetPath = authStore.defaultLandingPage || '/dashboard'
+    // Always clear the spinner — if the route guard bounces the target (e.g. a
+    // brief branch-context gap), navigation resolves without moving and the
+    // button would otherwise spin forever. Surface a message if we didn't move.
+    try {
+      await router.push(targetPath)
+      if (router.currentRoute.value.path.startsWith('/auth')) {
+        errorMessage.value = 'Login succeeded but access to your workspace was blocked. Contact your manager.'
+      }
+    } catch {
+      /* redirected by guard — ignore */
+    } finally {
+      loading.value = false
     }
-
-    router.push(redirect).catch(() => {})
   } catch {
     errorMessage.value = 'An unexpected error occurred. Please try again.'
     loading.value = false

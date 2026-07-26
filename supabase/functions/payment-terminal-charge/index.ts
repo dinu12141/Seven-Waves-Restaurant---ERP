@@ -63,6 +63,35 @@ function isValidUUID(str: string): boolean {
 }
 
 /**
+ * Server-side throttle via the shared check_qr_rate_limit RPC (SECURITY DEFINER;
+ * upserts a per-identifier+endpoint minute bucket). Returns true if the request
+ * may proceed. Fails OPEN on infra error — a rate-limit table hiccup must never
+ * block a legitimate card payment. [#99 / #46]
+ */
+async function withinRateLimit(
+  admin: any,
+  identifier: string,
+  endpoint: string,
+  limit: number,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.rpc('check_qr_rate_limit', {
+      p_identifier: identifier,
+      p_endpoint: endpoint,
+      p_limit: limit,
+    })
+    if (error) {
+      console.warn(`[payment-terminal-charge] rate-limit check failed (fail-open): ${error.message}`)
+      return true
+    }
+    return (data?.allowed ?? true) === true
+  } catch (e) {
+    console.warn('[payment-terminal-charge] rate-limit check threw (fail-open):', e)
+    return true
+  }
+}
+
+/**
  * In-function authorization gate. Requires a staff JWT with a payment-capable
  * role. Returns { user } on success or a Response to return on failure.
  */
@@ -154,6 +183,16 @@ Deno.serve(async (req: Request) => {
     if (gate instanceof Response) return gate
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
+
+    // Throttle per staff user — max 15 terminal charge/refund attempts per
+    // minute. Blocks brute-force / runaway retries; fails open on infra error.
+    if (!(await withinRateLimit(admin, `user:${gate.user.id}`, 'terminal_charge', 15))) {
+      return jsonRes(
+        { success: false, error: 'Too many payment attempts. Please wait a moment.', rate_limited: true },
+        429,
+      )
+    }
+
     const body = await req.json().catch(() => ({}))
     const action = (body.action as string) ?? 'charge'
     const orderId = body.orderId as string

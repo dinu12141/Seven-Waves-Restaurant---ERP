@@ -230,9 +230,21 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
    * 2. Create order_items
    * 3. Create KOT tickets by kitchen
    * 4. Create KOT items
+   *
+   * QR-token sessions route through the atomic `create_order_from_session` RPC
+   * (server resolves table/branch/company from the session, re-validates prices
+   * from menu_items, and generates KOTs in one transaction — client-supplied
+   * prices/table_id are never trusted). The legacy table-code path (no session
+   * token) keeps the direct insert for now.
    */
   async function placeOrder() {
     if (isEmpty.value) return { success: false }
+
+    // ── QR-token path → atomic, server-validated RPC ──────────────
+    if (sessionToken.value) {
+      return placeOrderViaSession()
+    }
+
     isPlacingOrder.value = true
 
     try {
@@ -290,6 +302,61 @@ export const useCustomerOrderStore = defineStore('customerOrder', () => {
       return { success: true, order }
     } catch (e) {
       console.error('Place order failed:', e)
+      return { success: false, error: e.message }
+    } finally {
+      isPlacingOrder.value = false
+    }
+  }
+
+  /**
+   * QR-token order creation via the atomic `create_order_from_session` RPC.
+   * The server derives table/branch/company from the session and re-prices
+   * every line from menu_items — the client only supplies which items + qty.
+   */
+  async function placeOrderViaSession() {
+    isPlacingOrder.value = true
+
+    // Snapshot cart for the tracking UI before we clear it.
+    const cartSnapshot = cartItems.value.map((item) => ({
+      ...item,
+    }))
+
+    try {
+      const itemsPayload = cartItems.value.map((item) => ({
+        menu_item_id: item.productId,
+        qty: item.qty,
+        notes: item.notes || null,
+      }))
+
+      const { data: res, error } = await supabase.rpc('create_order_from_session', {
+        p_session_token: sessionToken.value,
+        p_items: itemsPayload,
+        p_source: 'qr',
+      })
+
+      if (error) throw error
+      if (!res?.success) throw new Error(res?.error || 'Failed to place order')
+
+      // Build the tracking order from the RPC response + cart snapshot.
+      // Server is the source of truth for id/subtotal/status.
+      currentOrder.value = {
+        id: res.order_id,
+        table_id: res.table_id,
+        branch_id: res.branch_id,
+        subtotal: res.subtotal,
+        total_amount: res.subtotal,
+        status: res.status || 'pending_waiter',
+        order_source: res.order_source || 'qr',
+        table_name: tableName.value,
+        items: cartSnapshot,
+      }
+
+      clearCart()
+      startSubscriptions(res.order_id)
+
+      return { success: true, order: currentOrder.value }
+    } catch (e) {
+      console.error('Place order (session) failed:', e)
       return { success: false, error: e.message }
     } finally {
       isPlacingOrder.value = false

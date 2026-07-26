@@ -91,7 +91,7 @@
         </q-tabs>
         <div class="q-gutter-sm">
           <q-btn
-            v-if="activeTab === 'advances'"
+            v-if="activeTab === 'advances' && canManageFinance"
             unelevated
             color="amber-8"
             text-color="dark"
@@ -104,7 +104,7 @@
             @click="openNewAdvance"
           />
           <q-btn
-            v-if="activeTab === 'expenses'"
+            v-if="activeTab === 'expenses' && canManageFinance"
             unelevated
             color="amber-8"
             text-color="dark"
@@ -226,7 +226,11 @@
                   :color="statusColor(props.row.status)"
                   :label="props.row.status"
                   class="text-capitalize"
-                />
+                >
+                  <q-tooltip v-if="props.row.status === 'approved'">
+                    Auto-deducted from the next monthly payroll run
+                  </q-tooltip>
+                </q-badge>
               </q-td>
             </template>
             <template #body-cell-actions="props">
@@ -539,6 +543,10 @@
               rows="2"
             />
           </div>
+          <div class="text-caption text-grey-6">
+            <q-icon name="info" size="14px" class="q-mr-xs" />Approved advances are auto-deducted
+            from the employee's next monthly payroll.
+          </div>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey-7" no-caps v-close-popup />
@@ -703,10 +711,16 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { usePermission } from 'src/core/rbac/usePermission'
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const { can } = usePermission()
+// employee_advances / employee_expenses INSERT is RLS-limited to admin + HR.
+// Use the wildcard-aware RBAC check (hr holds 'hr.*'; manager does NOT hold
+// hr.finance.manage) so the create buttons only show to users who can save.
+const canManageFinance = computed(() => can('hr.finance.manage'))
 
 const activeTab = ref('advances')
 
@@ -823,15 +837,36 @@ const filteredExpenses = computed(() => {
   return rows
 })
 
+// Map raw Supabase errors to actionable messages (RLS denials are cryptic).
+function humanizeError(err, action) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return `You need admin or HR permission to create ${action} for employees.`
+  }
+  return msg
+}
+
 // Data Fetching
 async function loadEmployees() {
   const branchId = authStore.currentBranch?.id
-  if (!branchId) return
-  const { data } = await supabase
-    .from('employees')
-    .select('id, full_name, first_name, employee_code')
-    .eq('branch_id', branchId)
-    .order('first_name')
+  const companyId = authStore.currentBranch?.company_id
+  let data = null
+  if (branchId) {
+    ;({ data } = await supabase
+      .from('employees')
+      .select('id, full_name, first_name, employee_code')
+      .eq('branch_id', branchId)
+      .order('first_name'))
+  }
+  // Fall back to company-scoped employees when the branch filter is empty or
+  // yields nothing, so the dropdown is never empty on a branch mismatch.
+  if ((!data || data.length === 0) && companyId) {
+    ;({ data } = await supabase
+      .from('employees')
+      .select('id, full_name, first_name, employee_code')
+      .eq('company_id', companyId)
+      .order('first_name'))
+  }
   allEmployees.value = data || []
 }
 
@@ -915,8 +950,14 @@ async function saveAdvance() {
     showAdvanceDialog.value = false
     loadData()
   } catch (err) {
-    console.error(err)
-    $q.notify({ type: 'negative', message: err.message })
+    console.error('[EmployeeFinances] saveAdvance:', err)
+    $q.notify({
+      type: 'negative',
+      message: humanizeError(err, 'advances'),
+      position: 'top',
+      timeout: 4000,
+      multiLine: true,
+    })
   } finally {
     saving.value = false
   }
@@ -945,8 +986,14 @@ async function saveExpense() {
     showExpenseDialog.value = false
     loadData()
   } catch (err) {
-    console.error(err)
-    $q.notify({ type: 'negative', message: err.message })
+    console.error('[EmployeeFinances] saveExpense:', err)
+    $q.notify({
+      type: 'negative',
+      message: humanizeError(err, 'expenses'),
+      position: 'top',
+      timeout: 4000,
+      multiLine: true,
+    })
   } finally {
     saving.value = false
   }

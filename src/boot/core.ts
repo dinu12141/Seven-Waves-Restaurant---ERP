@@ -19,9 +19,33 @@ export default boot(({ app, router }) => {
   }
 
   // ── 2. Unhandled Promise Rejection ───────────────────────────────
+  // NOTE: This is the single global rejection handler for the app. The former
+  // src/boot/error-handler.ts registered a second, competing listener (double
+  // firing the rejection path + clobbering app.config.errorHandler). Its useful
+  // infrastructure-noise suppression is merged in here.
   if (typeof window !== 'undefined') {
     window.addEventListener('unhandledrejection', (event) => {
-      errorHandler.handle(event.reason, 'global', 'unhandledRejection')
+      const reason = event.reason
+      const msg = reason instanceof Error ? reason.message : String(reason)
+
+      // Suppress non-critical infrastructure noise (Supabase reconnects,
+      // AbortErrors, transient network blips) — don't surface these to users.
+      const isSilent =
+        msg.includes('AbortError') ||
+        msg.includes('NetworkError') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('Load failed') ||
+        msg.includes('timeout') ||
+        msg.includes('The object can only be used once') ||
+        (reason?.code && ['PGRST', 'CHANNEL_ERROR'].some((p) => String(reason.code).startsWith(p)))
+
+      if (isSilent) {
+        logger.warn('[Unhandled Rejection – suppressed]', { message: msg })
+        event.preventDefault()
+        return
+      }
+
+      errorHandler.handle(reason, 'global', 'unhandledRejection')
       event.preventDefault() // Don't crash the app
     })
   }

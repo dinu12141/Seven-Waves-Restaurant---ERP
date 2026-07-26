@@ -27,7 +27,7 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n', 'axios', 'supabase', 'auth', 'error-handler', 'core', 'realtime', 'directives', 'tauri-auth'],
+    boot: ['i18n', 'axios', 'supabase', 'sentry', 'auth', 'core', 'realtime', 'directives', 'tauri-auth'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],

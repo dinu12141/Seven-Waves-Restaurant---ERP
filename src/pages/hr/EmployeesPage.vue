@@ -2784,7 +2784,7 @@
                               ? 'background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px'
                               : 'background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px'
                           "
-                          style="min-height: 130px; display: flex; flex-direction: column"
+                          style="min-height: 140px; display: flex; flex-direction: column"
                         >
                           <!-- Card header -->
                           <div
@@ -2810,8 +2810,20 @@
                               :color="docType.color"
                               :label="empDocsByType[docType.key].length"
                               outline
+                              class="q-mr-xs"
                               style="font-size: 10px; padding: 2px 7px"
                             />
+                            <q-btn
+                              flat
+                              round
+                              dense
+                              icon="cloud_upload"
+                              color="amber-8"
+                              size="xs"
+                              @click.stop="openUploadDoc(docType.key)"
+                            >
+                              <q-tooltip>Upload {{ docType.label }}</q-tooltip>
+                            </q-btn>
                           </div>
 
                           <!-- Document list -->
@@ -2875,7 +2887,18 @@
                                   :loading="previewLoading && previewDocId === doc.id"
                                   @click="previewDoc(doc)"
                                 >
-                                  <q-tooltip>View</q-tooltip>
+                                  <q-tooltip>View / Preview</q-tooltip>
+                                </q-btn>
+                                <q-btn
+                                  flat
+                                  round
+                                  dense
+                                  icon="download"
+                                  color="amber-8"
+                                  size="xs"
+                                  @click="downloadDoc(doc)"
+                                >
+                                  <q-tooltip>Download File</q-tooltip>
                                 </q-btn>
                                 <q-btn
                                   flat
@@ -2892,28 +2915,29 @@
                             </div>
                           </div>
 
-                          <!-- Empty state -->
+                          <!-- Empty state (clickable upload zone) -->
                           <div
                             v-else
-                            class="col column items-center justify-center q-pa-md"
+                            class="col column items-center justify-center q-pa-md cursor-pointer"
                             :style="
                               $q.dark.isActive
-                                ? 'border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 0 0 12px 12px; margin: 0 12px 12px'
-                                : 'border: 1.5px dashed #e2e8f0; border-radius: 0 0 8px 8px; margin: 0 12px 12px'
+                                ? 'border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 0 0 12px 12px; margin: 8px 12px 12px; background: rgba(255,255,255,0.02)'
+                                : 'border: 1.5px dashed #cbd5e1; border-radius: 0 0 8px 8px; margin: 8px 12px 12px; background: #f8fafc'
                             "
+                            @click="openUploadDoc(docType.key)"
                           >
                             <q-icon
-                              name="upload_file"
+                              name="cloud_upload"
                               size="24px"
-                              :color="$q.dark.isActive ? 'grey-7' : 'grey-4'"
+                              :color="$q.dark.isActive ? 'amber-5' : 'indigo-5'"
                             />
                             <div
                               :class="[
-                                'text-caption q-mt-xs',
-                                $q.dark.isActive ? 'text-grey-6' : 'text-grey-5',
+                                'text-caption text-weight-medium q-mt-xs',
+                                $q.dark.isActive ? 'text-grey-4' : 'text-grey-7',
                               ]"
                             >
-                              Not uploaded
+                              Click to upload {{ docType.label }}
                             </div>
                           </div>
                         </q-card>
@@ -4765,6 +4789,11 @@ async function uploadFormDocuments(empId) {
   ]
   if (!toUpload.length) return
   const errors = []
+  const companyId =
+    authStore.currentBranch?.company_id ||
+    authStore.profile?.company_id ||
+    form.company_id
+
   for (const entry of toUpload) {
     try {
       const isImage = entry.file.type.startsWith('image/')
@@ -4783,10 +4812,10 @@ async function uploadFormDocuments(empId) {
       const path = `${empId}/${entry.doc_type}_${Date.now()}_${Math.random().toString(36).slice(2)}.${pathExt}`
       const { error: uploadErr } = await supabase.storage
         .from('employee-documents')
-        .upload(path, fileToUpload, { contentType: mimeType, upsert: false })
+        .upload(path, fileToUpload, { contentType: mimeType, upsert: true })
       if (uploadErr) throw uploadErr
       const { error: dbErr } = await supabase.from('employee_documents').insert({
-        company_id: authStore.currentBranch?.company_id,
+        company_id: companyId,
         employee_id: empId,
         doc_type: entry.doc_type,
         doc_name: entry.doc_name,
@@ -4999,9 +5028,41 @@ async function deleteDoc(doc) {
   }
 }
 
-function openUploadDoc() {
+async function downloadDoc(doc) {
+  try {
+    let url = docSignedUrls.value[doc.id]
+    if (!url) {
+      const { data, error } = await supabase.storage
+        .from('employee-documents')
+        .createSignedUrl(doc.file_path, 3600)
+      if (error) throw error
+      url = data.signedUrl
+      docSignedUrls.value[doc.id] = url
+    }
+
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    const fileName = doc.doc_name || doc.file_path?.split('/').pop() || 'document'
+    const ext = doc.file_path?.split('.').pop() || 'file'
+    a.download = fileName.endsWith(`.${ext}`) ? fileName : `${fileName}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+
+    $q.notify({ type: 'positive', message: 'Downloading document...' })
+  } catch (err) {
+    console.error('Download failed:', err)
+    $q.notify({ type: 'negative', message: 'Download failed: ' + err.message })
+  }
+}
+
+function openUploadDoc(docTypeKey = null) {
   Object.assign(uploadDocForm, {
-    doc_type: null,
+    doc_type: typeof docTypeKey === 'string' ? docTypeKey : null,
     doc_name: '',
     file: null,
     expiry_date: '',
@@ -5018,17 +5079,26 @@ async function uploadDocument() {
   uploadingDoc.value = true
   try {
     const empId = viewEmp.value?.id
+    if (!empId) throw new Error('Employee ID is missing')
+
     const file = uploadDocForm.file
     const ext = file.name.split('.').pop()
     const path = `${empId}/${uploadDocForm.doc_type}_${Date.now()}.${ext}`
 
+    const companyId =
+      authStore.currentBranch?.company_id ||
+      viewEmp.value?.company_id ||
+      authStore.profile?.company_id
+
+    if (!companyId) throw new Error('Company ID is missing')
+
     const { error: uploadErr } = await supabase.storage
       .from('employee-documents')
-      .upload(path, file, { upsert: false })
+      .upload(path, file, { contentType: file.type, upsert: true })
     if (uploadErr) throw uploadErr
 
     const { error: dbErr } = await supabase.from('employee_documents').insert({
-      company_id: authStore.currentBranch?.company_id,
+      company_id: companyId,
       employee_id: empId,
       doc_type: uploadDocForm.doc_type,
       doc_name: uploadDocForm.doc_name || file.name,
@@ -5662,26 +5732,98 @@ function unsubscribeProfileRealtime() {
   }
 }
 
+function cleanEmployeePayload(rawPayload) {
+  const payload = { ...rawPayload }
+
+  // 1. Remove database-managed / read-only / generated / relational columns
+  delete payload.id
+  delete payload.full_name
+  delete payload.created_at
+  delete payload.updated_at
+  delete payload.departments
+  delete payload.designations
+
+  // 2. Remove UI-only keys
+  const uiOnlyKeys = [
+    'salary_method',
+    'basic_salary',
+    'hourly_rate',
+    'day_rate',
+    'unit_rate',
+    'housing_allowance',
+    'transport_allowance',
+    'meal_allowance',
+    'overtime_rate_multiplier',
+    'holiday_ot_multiplier',
+    'epf_employee_pct',
+    'salary',
+    'title',
+    'pay_type',
+    'ot',
+    'shift',
+    'probation_period',
+    'epf_amount',
+    'welfare_amount',
+    'internal_company',
+    'morning_ot',
+    'late_deduct',
+    'no_pay_deduct',
+    'etf_allowed',
+    'user_pic',
+    'epf_etf_eligible',
+    'shift_rate',
+  ]
+  uiOnlyKeys.forEach((k) => delete payload[k])
+
+  // 3. Convert empty strings to null for nullable DATE / UUID fields
+  const nullableKeys = [
+    'date_of_birth',
+    'termination_date',
+    'salary_hold_date',
+    'department_id',
+    'designation_id',
+    'profile_id',
+    'salary_hold_by',
+    'education_level',
+  ]
+  nullableKeys.forEach((k) => {
+    if (payload[k] === '' || payload[k] === undefined) {
+      payload[k] = null
+    }
+  })
+
+  // 4. Ensure NOT NULL columns have valid fallbacks
+  if (!payload.hire_date || payload.hire_date === '') {
+    payload.hire_date = new Date().toISOString().split('T')[0]
+  }
+
+  if (payload.mobile && !payload.phone) {
+    payload.phone = payload.mobile
+  }
+
+  return payload
+}
+
 async function saveEmployee() {
   saving.value = true
   try {
-    const payload = { ...form }
-    const empId = payload.id
-    delete payload.id
+    const rawPayload = { ...form }
+    const empId = rawPayload.id
+    const userPicFile = rawPayload.user_pic
 
     // Salary structure fields — extracted before employee insert
     const salaryPayload = {
-      salary_method: payload.salary_method ?? 'basic_salary',
-      basic_salary: payload.basic_salary ?? 0,
-      hourly_rate: payload.hourly_rate ?? 0,
-      day_rate: payload.day_rate ?? 0,
-      unit_rate: payload.unit_rate ?? 0,
-      housing_allowance: payload.housing_allowance ?? 0,
-      transport_allowance: payload.transport_allowance ?? 0,
-      meal_allowance: payload.meal_allowance ?? 0,
-      overtime_rate_multiplier: payload.overtime_rate_multiplier ?? 1.5,
-      holiday_ot_multiplier: payload.holiday_ot_multiplier ?? 2.0,
-      epf_employee_pct: payload.epf_employee_pct ?? 8,
+      salary_method: rawPayload.salary_method ?? 'basic_salary',
+      basic_salary: rawPayload.basic_salary ?? 0,
+      hourly_rate: rawPayload.hourly_rate ?? 0,
+      day_rate: rawPayload.day_rate ?? 0,
+      unit_rate: rawPayload.unit_rate ?? 0,
+      housing_allowance: rawPayload.housing_allowance ?? 0,
+      transport_allowance: rawPayload.transport_allowance ?? 0,
+      meal_allowance: rawPayload.meal_allowance ?? 0,
+      overtime_rate_multiplier: rawPayload.overtime_rate_multiplier ?? 1.5,
+      holiday_ot_multiplier: rawPayload.holiday_ot_multiplier ?? 2.0,
+      epf_employee_pct: rawPayload.epf_employee_pct ?? 8,
       epf_employer_pct: 12,
       etf_employer_pct: 3,
       other_allowances: extraAllowances.value.reduce((s, a) => s + (Number(a.amount) || 0), 0),
@@ -5691,47 +5833,7 @@ async function saveEmployee() {
       company_id: authStore.currentBranch?.company_id,
     }
 
-    // Remove salary-structure-only keys from employee payload
-    const salaryKeys = [
-      'salary_method',
-      'basic_salary',
-      'hourly_rate',
-      'day_rate',
-      'unit_rate',
-      'housing_allowance',
-      'transport_allowance',
-      'meal_allowance',
-      'overtime_rate_multiplier',
-      'holiday_ot_multiplier',
-      'epf_employee_pct',
-    ]
-    salaryKeys.forEach((k) => delete payload[k])
-
-    // Strip UI-only fields that do NOT exist in the employees table
-    delete payload.salary
-    delete payload.title
-    delete payload.pay_type
-    delete payload.ot
-    delete payload.shift
-    delete payload.probation_period
-    delete payload.epf_amount
-    delete payload.welfare_amount
-    delete payload.internal_company
-    delete payload.morning_ot
-    delete payload.late_deduct
-    delete payload.no_pay_deduct
-    delete payload.etf_allowed
-    // Extract user_pic File before deleting from payload
-    const userPicFile = payload.user_pic
-    delete payload.user_pic
-    delete payload.epf_etf_eligible
-    delete payload.shift_rate
-
-    // Map phone field
-    if (payload.mobile && !payload.phone) {
-      payload.phone = payload.mobile
-    }
-
+    const payload = cleanEmployeePayload(rawPayload)
     payload.company_id = authStore.currentBranch?.company_id
     payload.branch_id = authStore.currentBranch?.id
     payload.created_by = authStore.user?.id
@@ -5834,7 +5936,7 @@ async function updateProfile() {
   if (!viewEmp.value?.id) return
   savingProfile.value = true
   try {
-    const payload = {
+    const rawPayload = {
       first_name: viewForm.first_name || '',
       last_name: viewForm.last_name || '',
       name_with_initials: viewForm.last_name
@@ -5859,6 +5961,8 @@ async function updateProfile() {
       emergency_contact_relationship: viewForm.emergency_contact_relationship || '',
       emergency_contact_phone: viewForm.emergency_contact_phone || '',
     }
+
+    const payload = cleanEmployeePayload(rawPayload)
 
     const { error } = await supabase.from('employees').update(payload).eq('id', viewEmp.value.id)
     if (error) throw error

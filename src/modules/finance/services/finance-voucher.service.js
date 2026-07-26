@@ -104,60 +104,46 @@ export const financeVoucherService = {
   },
 
   async postVoucher(id) {
-    const userId = (await supabase.auth.getUser()).data?.user?.id
-    const voucher = await this.getById(id)
+    // P0 #50/#51 — post atomically in a single DB transaction. The RPC guards
+    // against the double-post race (WHERE status='approved'), writes the
+    // cashbook + optional cheque, and applies the ledger balance as an in-DB
+    // delta (no read-modify-write => no lost update).
+    const before = await this.getById(id)
 
-    if (voucher.status !== 'approved') throw new Error('Only approved vouchers can be posted')
-
-    // Validate double-entry balance for multi-line vouchers
-    if (voucher.lines?.length > 0) {
-      const totalDebit = voucher.lines.reduce((s, l) => s + Number(l.debit_amount), 0)
-      const totalCredit = voucher.lines.reduce((s, l) => s + Number(l.credit_amount), 0)
-      if (Math.abs(totalDebit - totalCredit) > 0.01) {
-        throw new Error(`Double-entry imbalance: Debit ${totalDebit} ≠ Credit ${totalCredit}`)
-      }
-    }
-
-    // Post the voucher
-    const { data, error } = await supabase.from('finance_vouchers').update({
-      status: 'posted', posted_by: userId, posted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq('id', id).select().single()
-
+    const { data: result, error } = await supabase.rpc('post_finance_voucher', {
+      p_voucher_id: id,
+    })
     if (error) throw error
+    if (!result?.success) throw new Error(result?.error || 'Failed to post voucher')
 
-    // Create cashbook entry
-    await this._createCashbookEntry(voucher)
-
-    // Create cheque plan if payment_method = cheque
-    if (voucher.payment_method === 'cheque') {
-      await this._createChequeFromVoucher(voucher)
+    const after = await this.getById(id)
+    if (!result.already_posted) {
+      await logFinanceAudit('voucher_posted', 'finance_voucher', id, before, after)
     }
-
-    // Update ledger balance
-    await this._updateLedgerBalance(voucher)
-
-    await logFinanceAudit('voucher_posted', 'finance_voucher', id, voucher, data)
-    return data
+    return after
   },
 
   async cancelVoucher(id, reason) {
-    const userId = (await supabase.auth.getUser()).data?.user?.id
-    const voucher = await this.getById(id)
+    // #98 — cancel atomically via RPC. The SECURITY DEFINER cancel_finance_voucher
+    // row-locks the voucher and, for POSTED vouchers, writes the reversal cashbook
+    // entry, applies the inverse ledger delta in-DB (no read-modify-write / lost
+    // update), and voids any issued cheque — all in ONE transaction. Replaces the
+    // previous non-atomic client 3-step reversal (partial-commit family, same as
+    // post #50/#51). Mirrors postVoucher's before/after + audit pattern.
+    const before = await this.getById(id)
 
-    if (voucher.status === 'posted') {
-      // Create reversal cashbook entry for already-posted voucher
-      await this._createReversalCashbookEntry(voucher)
-      await this._reverseLedgerBalance(voucher)
-    }
-
-    const { data, error } = await supabase.from('finance_vouchers').update({
-      status: 'cancelled', updated_by: userId, updated_at: new Date().toISOString(),
-    }).eq('id', id).select().single()
-
+    const { data: result, error } = await supabase.rpc('cancel_finance_voucher', {
+      p_voucher_id: id,
+      p_reason: reason || null,
+    })
     if (error) throw error
-    await logFinanceAudit('voucher_cancelled', 'finance_voucher', id, voucher, { ...data, cancel_reason: reason })
-    return data
+    if (!result?.success) throw new Error(result?.error || 'Failed to cancel voucher')
+
+    const after = await this.getById(id)
+    if (!result.already_cancelled) {
+      await logFinanceAudit('voucher_cancelled', 'finance_voucher', id, before, { ...after, cancel_reason: reason })
+    }
+    return after
   },
 
   // ── Update (draft only) ───────────────────────────────────────────────────
@@ -196,9 +182,11 @@ export const financeVoucherService = {
 
   // ── Internal helpers ──────────────────────────────────────────────────────
   async _generateVoucherNo(type) {
-    const prefix = type === 'pay' ? 'PV' : 'RV'
-    const { count } = await supabase.from('finance_vouchers').select('*', { count: 'exact', head: true }).eq('voucher_type', type)
-    return `${prefix}-${String((count || 0) + 1).padStart(6, '0')}`
+    // P0 #54 — concurrency-safe sequence-backed numbering (was client count()+1,
+    // which produced duplicates when two vouchers were created at once).
+    const { data, error } = await supabase.rpc('next_voucher_no', { p_type: type })
+    if (error) throw error
+    return data
   },
 
   async _updateStatus(id, status, auditAction) {

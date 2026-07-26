@@ -530,7 +530,20 @@ export async function getAnyPODetails(poId: string, source: 'procurement' | 'inv
 export async function createPO(header: Omit<PurchaseOrder, 'id' | 'doc_number'>, lines: POLine[]) {
   const { company_id, branch_id, user_id } = getContext()
 
-  if (!lines || lines.length === 0) throw new Error('At least one line item is required.')
+  // Filter out blank lines where item_id is missing or empty
+  const validLines = (lines || []).filter(
+    (l) => l && l.item_id && typeof l.item_id === 'string' && l.item_id.trim() !== '',
+  )
+  if (validLines.length === 0) throw new Error('At least one item line is required.')
+
+  // Fetch fallback UOM in case a line item lacks uom_id
+  let defaultUomId: string | null = null
+  try {
+    const { data: uomData } = await supabase.from('uom').select('id').limit(1).maybeSingle()
+    if (uomData) defaultUomId = uomData.id
+  } catch {
+    /* fallback */
+  }
 
   // Insert header
   const { data: po, error: poErr } = await supabase
@@ -542,7 +555,7 @@ export async function createPO(header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
       doc_date: header.doc_date,
       delivery_date: header.expected_date || null,
       supplier_id: header.supplier_id,
-      warehouse_id: header.warehouse_id || null,
+      warehouse_id: (header.warehouse_id && header.warehouse_id.trim()) ? header.warehouse_id.trim() : null,
       currency: header.currency || 'LKR',
       exchange_rate: header.exchange_rate || 1,
       remarks: header.remarks || null,
@@ -565,27 +578,36 @@ export async function createPO(header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
     await supabase.from('purchase_orders').update({ doc_number: docNum }).eq('id', po.id)
   }
 
-  // Insert lines
-  const linePayloads = lines.map((l, idx) => ({
-    po_id: po.id,
-    line_number: idx + 1,
-    item_id: l.item_id,
-    description: l.description || null,
-    uom_id: l.uom_id,
-    quantity: l.quantity,
-    unit_price: l.unit_price,
-    discount_pct: l.discount_pct || 0,
-    tax_pct: l.tax_pct || 0,
-    warehouse_id: l.warehouse_id || null,
-    notes: l.notes || null,
-  }))
+  // Insert lines with sanitized UUIDs
+  const linePayloads = validLines.map((l, idx) => {
+    const rawUom = typeof l.uom_id === 'string' ? l.uom_id.trim() : ''
+    const cleanUom = rawUom || defaultUomId
+    if (!cleanUom) throw new Error(`Unit of Measure (UOM) is missing for line #${idx + 1}.`)
+
+    const rawWarehouse = typeof l.warehouse_id === 'string' ? l.warehouse_id.trim() : ''
+    const cleanWarehouse = rawWarehouse || null
+
+    return {
+      po_id: po.id,
+      line_number: idx + 1,
+      item_id: l.item_id.trim(),
+      description: l.description || null,
+      uom_id: cleanUom,
+      quantity: Number(l.quantity) || 1,
+      unit_price: Number(l.unit_price) || 0,
+      discount_pct: Number(l.discount_pct) || 0,
+      tax_pct: Number(l.tax_pct) || 0,
+      warehouse_id: cleanWarehouse,
+      notes: (l.notes && typeof l.notes === 'string' && l.notes.trim()) ? l.notes.trim() : null,
+    }
+  })
 
   const { error: linesErr } = await supabase.from('purchase_order_lines').insert(linePayloads)
   if (linesErr) throw new Error(linesErr.message)
 
   // Update totals on header
-  const subtotal = lines.reduce(
-    (s, l) => s + l.quantity * l.unit_price * (1 - (l.discount_pct || 0) / 100),
+  const subtotal = validLines.reduce(
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0) * (1 - (Number(l.discount_pct) || 0) / 100),
     0,
   )
   await supabase
@@ -1727,9 +1749,9 @@ export async function listItems() {
   const { data, error } = await supabase
     .from('items')
     .select(
-      `id, code, name, purchase_uom_id,
-       uom!purchase_uom_id(id, code, name),
-       last_purchase_price`,
+      `id, code, name, purchase_uom_id, inventory_uom_id, last_purchase_price, cost_price,
+       pur_uom:uom!items_purchase_uom_id_fkey(id, code, name),
+       inv_uom:uom!items_inventory_uom_id_fkey(id, code, name)`,
     )
     .eq('company_id', company_id)
     .eq('is_active', true)
@@ -1738,11 +1760,25 @@ export async function listItems() {
   if (error) throw new Error(error.message)
 
   return (
-    (data || []).map((item: any) => ({
-      ...item,
-      default_uom_id: item.purchase_uom_id,
-      unit_cost: item.last_purchase_price,
-    })) ?? []
+    (data || []).map((item: any) => {
+      const resolvedUomObj = item.pur_uom || item.inv_uom || null
+      const resolvedUomId = item.purchase_uom_id || item.inventory_uom_id || null
+      const resolvedUomName = resolvedUomObj?.name || resolvedUomObj?.code || 'PCS'
+      const resolvedCost = item.last_purchase_price || item.cost_price || 0
+
+      return {
+        ...item,
+        purchase_uom_id: item.purchase_uom_id,
+        inventory_uom_id: item.inventory_uom_id,
+        default_uom_id: resolvedUomId,
+        uom_id: resolvedUomId,
+        uom_name: resolvedUomName,
+        uom: resolvedUomObj,
+        unit_cost: resolvedCost,
+        last_purchase_price: item.last_purchase_price,
+        cost_price: item.cost_price,
+      }
+    }) ?? []
   )
 }
 
@@ -1752,6 +1788,20 @@ export async function listPaymentTerms() {
   const { data, error } = await supabase
     .from('payment_terms')
     .select('id, code, name, net_days, discount_pct, discount_days')
+    .eq('company_id', company_id)
+    .eq('is_active', true)
+    .order('name')
+
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+/** Fetch all active Units of Measure (UOM) for a company */
+export async function listUoms() {
+  const { company_id } = getContext()
+  const { data, error } = await supabase
+    .from('uom')
+    .select('id, code, name')
     .eq('company_id', company_id)
     .eq('is_active', true)
     .order('name')

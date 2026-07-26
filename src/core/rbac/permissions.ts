@@ -116,8 +116,23 @@ export function hasModuleAccess(
   module: string,
   explicitPermissions: string[] = [],
 ): boolean {
-  return hasPermission(roles, `${module}.view`, explicitPermissions) ||
-         hasPermission(roles, `${module}.*`, explicitPermissions)
+  if (roles.includes('admin')) return true
+
+  // Fast path: an explicit view/wildcard grant.
+  if (hasPermission(roles, `${module}.view`, explicitPermissions)) return true
+  if (hasPermission(roles, `${module}.*`, explicitPermissions)) return true
+
+  // A user who holds ANY permission inside the module namespace has access to
+  // the module — e.g. a cashier with 'pos.order.create' can reach /pos even
+  // though they don't hold 'pos.view' or 'pos.*'. Without this, such users hit
+  // an infinite redirect loop on module-gated routes.
+  const prefix = `${module}.`
+  if (explicitPermissions.some((p) => p === '*' || p.startsWith(prefix))) return true
+  for (const role of roles) {
+    const defaults = ROLE_DEFAULT_PERMISSIONS[role] || []
+    if (defaults.some((p) => p === '*' || p.startsWith(prefix))) return true
+  }
+  return false
 }
 
 /**

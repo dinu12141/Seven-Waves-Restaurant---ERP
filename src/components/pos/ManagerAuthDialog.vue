@@ -69,11 +69,21 @@ import { ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 
-defineProps({
+const props = defineProps({
   actionName: {
     type: String,
     required: true,
     default: 'Action'
+  },
+  // Optional privileged callback. When supplied, it runs WHILE the manager is
+  // signed in (after the role check, before the cashier session is restored) so
+  // any RPC it calls sees auth.uid() === the verified manager. Receives
+  // { managerId, cashierId }; its resolved value is returned via onDialogOK as
+  // `actionResult`. A throw aborts the dialog but the cashier session is still
+  // restored (see the finally-block in verifyManager). [#97 / #76]
+  elevatedAction: {
+    type: Function,
+    default: null
   }
 })
 
@@ -87,10 +97,31 @@ const loading = ref(false)
 
 async function verifyManager() {
   loading.value = true
+
+  // Session captured BEFORE elevation so we can (a) identify the initiating
+  // cashier server-side and (b) always restore their session afterwards.
+  let originalSession = null
+  let elevated = false
+
+  // Restore the cashier session. Idempotent (guarded by `elevated`) so it can be
+  // called on the success path AND again in finally without double-swapping.
+  const restoreCashierSession = async () => {
+    if (elevated && originalSession) {
+      const { error: restoreErr } = await supabase.auth.setSession({
+        access_token: originalSession.access_token,
+        refresh_token: originalSession.refresh_token
+      })
+      if (restoreErr) console.warn('Failed to restore cashier session:', restoreErr)
+      elevated = false
+    }
+  }
+
   try {
-    // Save current cashier session to restore later
+    // Save current cashier session to restore later + capture initiator uid.
     const { data: originalSessionRes, error: sessErr } = await supabase.auth.getSession()
     if (sessErr) throw sessErr
+    originalSession = originalSessionRes?.session || null
+    const cashierId = originalSession?.user?.id || null
 
     let loginEmail = username.value.trim()
 
@@ -103,15 +134,16 @@ async function verifyManager() {
       loginEmail = resolvedEmail
     }
 
-    // 1. Sign in as manager
+    // 1. Sign in as manager (this REPLACES the cashier session on the client).
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password: password.value
     })
-    
+
     if (authError) {
       throw new Error('Invalid Username/Code or Password')
     }
+    elevated = true
 
     const userId = authData.user.id
 
@@ -128,17 +160,21 @@ async function verifyManager() {
       throw new Error('User does not have Manager privileges')
     }
 
-    // Restore original cashier session
-    if (originalSessionRes?.session) {
-      const { error: restoreErr } = await supabase.auth.setSession({
-        access_token: originalSessionRes.session.access_token,
-        refresh_token: originalSessionRes.session.refresh_token
-      })
-      if (restoreErr) console.warn('Failed to restore cashier session:', restoreErr)
+    // 3. Run the privileged action (if any) WHILE the manager session is live,
+    //    so the RPC it calls sees auth.uid() === this verified manager. If it
+    //    throws, we fall through to catch — but the cashier session is still
+    //    restored by the finally-block, never stranding an elevated session.
+    let actionResult = null
+    if (typeof props.elevatedAction === 'function') {
+      actionResult = await props.elevatedAction({ managerId: userId, cashierId })
     }
 
-    // Success! Pass back the manager's user ID
-    onDialogOK({ managerId: userId })
+    // Restore the cashier session BEFORE resolving the dialog so the caller's
+    // onOk handler always runs as the cashier again.
+    await restoreCashierSession()
+
+    // Success! Pass back the manager's user ID + the action's result.
+    onDialogOK({ managerId: userId, actionResult })
 
   } catch (err) {
     console.error('Manager Auth Error:', err)
@@ -150,6 +186,9 @@ async function verifyManager() {
       position: 'top'
     })
   } finally {
+    // Safety net: guarantee the cashier session is restored on every path
+    // (e.g. an elevatedAction throw) so the terminal is never left as manager.
+    await restoreCashierSession()
     loading.value = false
   }
 }

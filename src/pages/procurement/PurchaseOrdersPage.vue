@@ -82,12 +82,15 @@
             mode="PO"
             :read-only="form.status !== 'draft'"
             :item-options="itemOptions"
+            :uom-options="uomOptions"
             title="Items"
             allow-add
             allow-edit-item
+            allow-edit-uom
             @add-line="addLine"
             @remove-line="removeLine"
             @item-change="onItemChange"
+            @uom-change="onUomChange"
           />
 
           <!-- Totals -->
@@ -121,7 +124,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
-import { listPO, createPO, listSuppliers, listItems, approvePO, listInventoryPOs, getAnyPODetails } from 'src/services/procurementService'
+import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
@@ -141,6 +144,7 @@ const detailLoading = ref(false)
 const purchaseOrders = ref([])
 const supplierOptions = ref([])
 const itemOptions = ref([])
+const uomOptions = ref([])
 
 // Form
 const defaultForm = {
@@ -253,7 +257,7 @@ function tabCount(tabVal) {
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([fetchPOs(), fetchSuppliers(), fetchItems()])
+  await Promise.all([fetchPOs(), fetchSuppliers(), fetchItems(), fetchUoms()])
   loading.value = false
 
   // Handle ?action=new (redirect from inventory module)
@@ -292,6 +296,10 @@ async function fetchSuppliers() {
 
 async function fetchItems() {
   itemOptions.value = await listItems()
+}
+
+async function fetchUoms() {
+  uomOptions.value = await listUoms()
 }
 
 const filteredPOs = computed(() => {
@@ -374,10 +382,16 @@ function onItemChange(line, item) {
   if (!item) return
   line.item_id = item.id
   line.item_name = item.name
-  line.uom_id = item.default_uom_id || ''
-  line.uom_name = item.uom?.name || 'UNIT'
-  line.unit_price = item.unit_cost || 0
+  line.uom_id = item.purchase_uom_id || item.inventory_uom_id || item.default_uom_id || item.uom_id || ''
+  line.uom_name = item.uom_name || item.uom?.name || item.uom?.code || 'PCS'
+  line.unit_price = item.last_purchase_price || item.cost_price || item.unit_cost || 0
   recalcLine(line)
+}
+
+function onUomChange(line, uom) {
+  if (!uom) return
+  line.uom_id = uom.id
+  line.uom_name = uom.name || uom.code || 'PCS'
 }
 
 function recalcLine(line) {
@@ -400,27 +414,36 @@ async function savePO(targetStatus) {
     return
   }
 
+  // Filter valid lines where item_id is selected
+  const rawLines = form.value.lines || []
+  const validLines = rawLines.filter((l) => l && l.item_id && typeof l.item_id === 'string' && l.item_id.trim() !== '')
+
+  if (validLines.length === 0) {
+    $q.notify({ type: 'warning', message: 'Please select at least one item line.' })
+    return
+  }
+
   saving.value = true
   try {
     const headPayload = {
       supplier_id: supplierId,
       doc_date: form.value.doc_date || new Date().toISOString().slice(0, 10),
       expected_date: form.value.expected_date || undefined,
-      warehouse_id: form.value.warehouse_id || undefined,
+      warehouse_id: (form.value.warehouse_id && typeof form.value.warehouse_id === 'string' && form.value.warehouse_id.trim()) ? form.value.warehouse_id.trim() : undefined,
       currency: form.value.currency || 'LKR',
       remarks: form.value.remarks || undefined,
     }
-    const lines = (form.value.lines || []).map((l, idx) => ({
+    const lines = validLines.map((l, idx) => ({
       line_number: idx + 1,
-      item_id: l.item_id,
-      description: l.description,
-      uom_id: l.uom_id,
-      quantity: l.quantity,
-      unit_price: l.unit_price,
-      discount_pct: l.discount_pct || 0,
-      tax_pct: l.tax_pct || 0,
-      warehouse_id: l.warehouse_id || null,
-      notes: l.notes || null,
+      item_id: l.item_id.trim(),
+      description: l.description || l.item_name || null,
+      uom_id: (l.uom_id && typeof l.uom_id === 'string' && l.uom_id.trim()) ? l.uom_id.trim() : null,
+      quantity: Number(l.quantity) || 1,
+      unit_price: Number(l.unit_price) || 0,
+      discount_pct: Number(l.discount_pct) || 0,
+      tax_pct: Number(l.tax_pct) || 0,
+      warehouse_id: (l.warehouse_id && typeof l.warehouse_id === 'string' && l.warehouse_id.trim()) ? l.warehouse_id.trim() : null,
+      notes: (l.notes && typeof l.notes === 'string' && l.notes.trim()) ? l.notes.trim() : null,
     }))
 
     if (form.value.id) {
@@ -437,7 +460,7 @@ async function savePO(targetStatus) {
     dialogVisible.value = false
     fetchPOs()
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed', caption: e.message })
+    $q.notify({ type: 'negative', message: 'Failed to save PO', caption: e.message })
   } finally {
     saving.value = false
   }

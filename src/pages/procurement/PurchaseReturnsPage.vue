@@ -313,9 +313,9 @@ function onItemChange(line, item) {
   if (!item) return
   line.item_id = item.id
   line.item_name = item.name
-  line.uom_id = item.uom_id
-  line.uom_name = item.uom_name || 'UNIT'
-  line.unit_price = item.last_purchase_price || 0
+  line.uom_id = item.purchase_uom_id || item.inventory_uom_id || item.default_uom_id || item.uom_id || ''
+  line.uom_name = item.uom_name || item.uom?.name || item.uom?.code || 'PCS'
+  line.unit_price = item.last_purchase_price || item.cost_price || item.unit_cost || 0
 }
 
 async function saveReturn(targetStatus) {

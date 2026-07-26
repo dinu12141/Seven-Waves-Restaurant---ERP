@@ -191,7 +191,7 @@ export const useAuthStore = defineStore('auth', {
 
           // Try cache first — avoids 3 DB calls on every app restart
           const cache = loadAuthCache(session.user.id)
-          if (cache) {
+          if (cache && Array.isArray(cache.roles) && cache.roles.length > 0) {
             this.roles = cache.roles
             this.permissions = cache.permissions
             this.branches = cache.branches
@@ -316,11 +316,15 @@ export const useAuthStore = defineStore('auth', {
           .select('is_home_branch, branches(id, name, company_id, is_main, is_active)')
           .eq('user_id', this.user?.id)
         this.branches = data || []
-        // Set activeBranchId to home branch on first load if not already set
-        if (!this.activeBranchId && this.branches.length > 0) {
+        // Resolve the active branch. Also reset a STALE activeBranchId that a
+        // previous user on this machine may have left persisted but which this
+        // user is not a member of — otherwise branch context is wrong.
+        const memberBranchIds = this.branches.map((b: any) => b.branches?.id).filter(Boolean)
+        const activeIsValid = this.activeBranchId && memberBranchIds.includes(this.activeBranchId)
+        if (!activeIsValid && this.branches.length > 0) {
           const home = this.branches.find((b) => b.is_home_branch)
           const branch = home?.branches || this.branches[0]?.branches
-          if (branch?.id) this.activeBranchId = branch.id
+          this.activeBranchId = branch?.id || null
         }
       } catch {
         /* non-critical */
@@ -385,33 +389,19 @@ export const useAuthStore = defineStore('auth', {
         this.user = data.user
         this.session = data.session
 
-        // ── Try cache first ───────────────────────────────────────
-        const cache = loadAuthCache(data.user.id)
-
-        if (cache) {
-          // Instant restore — no extra DB calls before navigating
-          this.roles = cache.roles
-          this.permissions = cache.permissions
-          this.branches = cache.branches
-          this.rolesVerified = false
-
-          // Refresh all data silently in background
-          this._backgroundRefreshUserData()
-        } else {
-          // First login for this user — fetch in parallel (no cache yet)
-          await Promise.all([
-            this._fetchRoles(),
-            this._fetchPermissions(),
-            this._fetchBranches(),
-          ])
-          // Save to cache for next login
-          saveAuthCache(data.user.id, {
-            roles: this.roles,
-            permissions: this.permissions,
-            branches: this.branches,
-          })
-          this.rolesVerified = true
-        }
+        // Fetch roles, permissions, profile, and branches
+        await Promise.all([
+          this._fetchRoles(),
+          this._fetchPermissions(),
+          this._fetchProfile(),
+          this._fetchBranches(),
+        ])
+        saveAuthCache(data.user.id, {
+          roles: this.roles,
+          permissions: this.permissions,
+          branches: this.branches,
+        })
+        this.rolesVerified = true
 
         // ── Step 4: Profile, modules, notifications — ALL background ──
         // Don't block navigation for profile fetch — page renders instantly
@@ -530,28 +520,19 @@ export const useAuthStore = defineStore('auth', {
         this.user = data.user
         this.session = data.session
 
-        // ── Try cache first ───────────────────────────────────────
-        const cache = loadAuthCache(data.user.id)
-
-        if (cache) {
-          this.roles = cache.roles
-          this.permissions = cache.permissions
-          this.branches = cache.branches
-          this.rolesVerified = false
-          this._backgroundRefreshUserData()
-        } else {
-          await Promise.all([
-            this._fetchRoles(),
-            this._fetchPermissions(),
-            this._fetchBranches(),
-          ])
-          saveAuthCache(data.user.id, {
-            roles: this.roles,
-            permissions: this.permissions,
-            branches: this.branches,
-          })
-          this.rolesVerified = true
-        }
+        // Fetch roles, permissions, profile, and branches
+        await Promise.all([
+          this._fetchRoles(),
+          this._fetchPermissions(),
+          this._fetchProfile(),
+          this._fetchBranches(),
+        ])
+        saveAuthCache(data.user.id, {
+          roles: this.roles,
+          permissions: this.permissions,
+          branches: this.branches,
+        })
+        this.rolesVerified = true
 
         // Profile, modules, notifications — all background
         this._backgroundFetchNonCritical()

@@ -84,16 +84,37 @@
         </template>
       </q-select>
 
+      <q-select
+        :dark="$q.dark.isActive"
+        outlined
+        dense
+        v-model="availabilityFilter"
+        :options="availabilityOptions"
+        emit-value
+        map-options
+        clearable
+        class="mi-filter-select"
+        bg-color="transparent"
+      >
+        <template #prepend><q-icon name="toggle_on" size="14px" color="grey-5" /></template>
+        <template v-if="availabilityFilter" #selected>
+          <span class="mi-filter-label">{{ availabilityOptions.find((o) => o.value === availabilityFilter)?.label }}</span>
+        </template>
+        <template v-else #selected>
+          <span class="mi-filter-placeholder">All Statuses</span>
+        </template>
+      </q-select>
+
       <q-space />
 
       <q-btn
-        v-if="categoryFilter || subCategoryFilter || filter"
+        v-if="categoryFilter || subCategoryFilter || availabilityFilter !== null || filter"
         flat no-caps dense
         icon="filter_alt_off"
         label="Clear"
         color="grey-5"
         size="sm"
-        @click="filter = ''; categoryFilter = null; subCategoryFilter = null"
+        @click="filter = ''; categoryFilter = null; subCategoryFilter = null; availabilityFilter = null"
       />
     </div>
 
@@ -483,6 +504,12 @@ const saving = ref(false)
 const filter = ref('')
 const categoryFilter = ref(null)
 const subCategoryFilter = ref(null)
+const availabilityFilter = ref(null) // null = all, true = available, false = unavailable
+
+const availabilityOptions = [
+  { label: 'Available', value: true },
+  { label: 'Unavailable', value: false },
+]
 
 const erpForm = ref(null)
 const imageInputRef = ref(null)
@@ -579,6 +606,9 @@ const filteredItems = computed(() => {
   }
   if (subCategoryFilter.value) {
     result = result.filter((i) => String(i.sub_category_id) === String(subCategoryFilter.value))
+  }
+  if (availabilityFilter.value !== null) {
+    result = result.filter((i) => Boolean(i.is_available) === availabilityFilter.value)
   }
   return result
 })

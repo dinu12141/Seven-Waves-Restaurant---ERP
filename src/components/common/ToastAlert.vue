@@ -24,7 +24,10 @@ const props = defineProps({
   type: {
     type: String,
     default: 'info',
-    validator: (value) => ['info', 'success', 'warning', 'error'].includes(value),
+    // Accept both semantic (success/error) and Quasar (positive/negative) vocab —
+    // the app's notification store uses Quasar's $q.notify types (positive/negative).
+    validator: (value) =>
+      ['info', 'success', 'warning', 'error', 'positive', 'negative', 'ongoing'].includes(value),
   },
   duration: {
     type: Number,
@@ -48,10 +51,12 @@ onMounted(() => {
 const typeClass = computed(() => {
   switch (props.type) {
     case 'success':
+    case 'positive':
       return 'bg-positive text-white'
     case 'warning':
       return 'bg-warning text-dark'
     case 'error':
+    case 'negative':
       return 'bg-negative text-white'
     default:
       return 'bg-info text-white'
@@ -61,10 +66,12 @@ const typeClass = computed(() => {
 const icon = computed(() => {
   switch (props.type) {
     case 'success':
+    case 'positive':
       return 'check_circle'
     case 'warning':
       return 'warning'
     case 'error':
+    case 'negative':
       return 'error'
     default:
       return 'info'

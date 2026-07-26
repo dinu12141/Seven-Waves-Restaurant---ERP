@@ -9,6 +9,20 @@ import { logger } from '../logging/logger'
 
 type ErrorListener = (error: ErpError) => void
 
+// Minimal shape of the Sentry client we depend on. Injected from src/boot/sentry.ts
+// so this module has no hard dependency on @sentry/vue (keeps it importable
+// everywhere + testable, and a no-op when Sentry isn't configured).
+interface SentryLike {
+  captureException(error: unknown, hint?: { tags?: Record<string, string | undefined>; extra?: Record<string, unknown> }): void
+}
+
+let sentryClient: SentryLike | null = null
+
+/** Wire the Sentry client so classified errors are forwarded to it. */
+export function setSentryClient(client: SentryLike | null): void {
+  sentryClient = client
+}
+
 class ErrorHandler {
   private listeners: ErrorListener[] = []
   private recentErrors: ErpError[] = []
@@ -32,6 +46,30 @@ class ErrorHandler {
     this.recentErrors.unshift(erpError)
     if (this.recentErrors.length > this.MAX_RECENT) {
       this.recentErrors.pop()
+    }
+
+    // Forward to Sentry (no-op if not configured). Skip INFO-level noise.
+    if (sentryClient && erpError.severity !== ErrorSeverity.INFO) {
+      try {
+        sentryClient.captureException(
+          erpError.originalError ?? new Error(erpError.technicalMessage),
+          {
+            tags: {
+              module: erpError.module,
+              action: erpError.action,
+              category: erpError.category,
+              severity: erpError.severity,
+            },
+            extra: {
+              correlationId: erpError.correlationId,
+              technicalMessage: erpError.technicalMessage,
+              userMessage: erpError.userMessage,
+            },
+          },
+        )
+      } catch {
+        // Never let telemetry break the error path.
+      }
     }
 
     // Show to user based on category

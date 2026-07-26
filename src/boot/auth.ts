@@ -1,8 +1,8 @@
 import { boot } from 'quasar/wrappers'
 import { watch } from 'vue'
-import { useAuthStore } from 'src/stores/auth'
-import { canAccessRoute } from 'src/config/roles'
-import { hasPermission, hasModuleAccess } from 'src/core/rbac/permissions'
+import { useAuthStore } from '../stores/auth'
+import { canAccessRoute } from '../config/roles'
+import { hasPermission, hasModuleAccess } from '../core/rbac/permissions'
 
 // ── Branch Access Guard ────────────────────────────────────────────────────
 /**
@@ -110,7 +110,7 @@ export default boot(async ({ router }) => {
     // Pure managers (no admin role AND no operational roles like kitchen/cashier/waiter)
     // can ONLY access /manager-app.
     // Any attempt to reach a MainLayout ERP route is blocked → /manager-app.
-    const hasOperationalRole = authStore.roles.some(r => ['kitchen', 'cashier', 'waiter'].includes(r))
+    const hasOperationalRole = authStore.roles.some((r: string) => ['kitchen', 'cashier', 'waiter'].includes(r))
     const isPureManager =
       authStore.isAuthenticated &&
       authStore.roles.includes('manager') &&
@@ -132,6 +132,13 @@ export default boot(async ({ router }) => {
 
     // Role-based guard (for non-manager, non-admin roles)
     if (requiresAuth && authStore.isAuthenticated && !authStore.isAdmin) {
+      // Loop-safe deny: never redirect a blocked route back to itself (that
+      // causes Vue Router's "infinite redirection" abort). If the landing page
+      // IS the blocked route, send to /unauthorized instead.
+      const denyTo = () => {
+        const landing = authStore.defaultLandingPage || '/unauthorized'
+        return landing === to.path ? '/unauthorized' : landing
+      }
       // 1. Collect ALL role requirement sets across matched records.
       // A parent's roles AND a child's roles must both be satisfied.
       const requiredRoleSets = to.matched
@@ -152,10 +159,10 @@ export default boot(async ({ router }) => {
 
         // User must satisfy every set (at least one role from each).
         const passesAll = requiredRoleSets.every((set) =>
-          set.some((role) => authStore.roles.includes(role as import('src/stores/auth').UserRole)),
+          set.some((role) => authStore.roles.includes(role as import('../stores/auth').UserRole)),
         )
         if (!passesAll) {
-          return '/unauthorized'
+          return denyTo()
         }
       }
 
@@ -168,7 +175,7 @@ export default boot(async ({ router }) => {
       if (requiredPermission) {
         const permitted = hasPermission(authStore.roles, requiredPermission, authStore.permissions || [])
         if (!permitted) {
-          return '/unauthorized'
+          return denyTo()
         }
       }
 
@@ -179,15 +186,15 @@ export default boot(async ({ router }) => {
         .pop()
 
       if (requiredModule) {
-        const moduleAllowed = hasModuleAccess(authStore.roles, requiredModule)
+        const moduleAllowed = hasModuleAccess(authStore.roles, requiredModule, authStore.permissions || [])
         if (!moduleAllowed) {
-          return '/unauthorized'
+          return denyTo()
         }
       }
 
       // 4. Check centralized config (legacy route ACL table)
       if (!canAccessRoute(authStore.roles, to.path, authStore.permissions)) {
-        return '/unauthorized'
+        return denyTo()
       }
     }
 

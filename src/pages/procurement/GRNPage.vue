@@ -149,12 +149,15 @@
             mode="GRN"
             :read-only="form.status !== 'draft'"
             :item-options="itemOptions"
+            :uom-options="uomOptions"
             title="Items Received"
             :allow-add="createMode === 'direct' || isEditing"
             :allow-edit-item="createMode === 'direct'"
+            allow-edit-uom
             @add-line="addLine"
             @remove-line="removeLine"
             @item-change="onItemChange"
+            @uom-change="onUomChange"
           />
 
           <!-- Totals -->
@@ -215,6 +218,7 @@ import {
   listSuppliers,
   listWarehouses,
   listItems,
+  listUoms,
   listPO,
   listInventoryPOs,
   getAnyPODetails,
@@ -239,6 +243,7 @@ const supplierOptions = ref([])
 const poOptions = ref([])
 const warehouseOptions = ref([])
 const itemOptions = ref([])
+const uomOptions = ref([])
 
 const createMode = ref('po')
 const selectedSupplier = ref(null)
@@ -321,7 +326,7 @@ const gridActions = [
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([fetchGRNs(), fetchSuppliers(), fetchWarehouses(), fetchItems()])
+  await Promise.all([fetchGRNs(), fetchSuppliers(), fetchWarehouses(), fetchItems(), fetchUoms()])
   loading.value = false
 })
 
@@ -340,6 +345,9 @@ async function fetchWarehouses() {
 }
 async function fetchItems() {
   itemOptions.value = await listItems()
+}
+async function fetchUoms() {
+  uomOptions.value = await listUoms()
 }
 
 // ── PO Loading ─────────────────────────────────────────────────────────
@@ -500,8 +508,14 @@ function onItemChange(line, item) {
   if (!item) return
   line.item_id = item.id
   line.item_name = item.name
-  line.uom_id = item.uom_id || item.purchase_uom_id || ''
-  line.uom_name = item.uom_name || 'UNIT'
+  line.uom_id = item.purchase_uom_id || item.inventory_uom_id || item.default_uom_id || item.uom_id || ''
+  line.uom_name = item.uom_name || item.uom?.name || item.uom?.code || 'PCS'
+}
+
+function onUomChange(line, uom) {
+  if (!uom) return
+  line.uom_id = uom.id
+  line.uom_name = uom.name || uom.code || 'PCS'
 }
 
 // ── Save / Post ─────────────────────────────────────────────────────────

@@ -39,6 +39,13 @@ function getUserId(): string | null {
   return auth.user?.id ?? null
 }
 
+// Guard against sending `?col=eq.undefined` / `eq.null` to PostgREST — Postgres
+// rejects a non-UUID literal with 400 (22P02). Returns true only for a real UUID.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isUuid(v: unknown): v is string {
+  return typeof v === 'string' && UUID_RE.test(v)
+}
+
 /* ====================================================================
    DOCUMENT FILTERS
 ==================================================================== */
@@ -99,7 +106,12 @@ export function useDocumentList() {
     error.value = null
     try {
       const companyId = getCompanyId()
-      if (!companyId) throw new Error('No company context — please log in.')
+      // Bail out (rather than throw) if auth isn't hydrated yet — avoids sending
+      // company_id=eq.undefined to PostgREST (400 22P02) on early mount.
+      if (!isUuid(companyId)) {
+        documents.value = []
+        return
+      }
 
       let query = supabase
         .from('inventory_documents')
@@ -235,6 +247,7 @@ export async function listOpenPOs() {
 ==================================================================== */
 
 export async function fetchDocumentById(docId: string) {
+  if (!isUuid(docId)) throw new Error('Invalid document id')
   const { data: header, error: err1 } = await supabase
     .from('inventory_documents')
     .select(

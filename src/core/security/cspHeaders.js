@@ -8,20 +8,34 @@
  * Content Security Policy for production.
  * Restricts script sources, prevents XSS, and blocks unwanted resources.
  */
+// NOTE: Keep in sync with netlify.toml + vercel.json — those are the LIVE header
+// sources. This module is a documentation/generator helper (not imported at runtime).
 export const CSP_POLICY = {
   'default-src': ["'self'"],
-  'script-src': ["'self'"],  // No inline scripts in Quasar prod build (verified dist/spa/index.html)
+  // No inline scripts in Quasar prod build (verified dist/spa/index.html) — no 'unsafe-inline'
+  'script-src': ["'self'", 'https://maps.googleapis.com', 'https://*.sentry.io'],
   'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-  'font-src': ["'self'", 'https://fonts.gstatic.com'],
-  'img-src': ["'self'", 'data:', 'blob:', 'https://*.supabase.co'],
+  'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
+  'img-src': [
+    "'self'", 'data:', 'blob:',
+    'https://*.supabase.co',
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    'https://*.googleusercontent.com',
+  ],
   'connect-src': [
     "'self'",
     'https://*.supabase.co',         // Supabase API
     'wss://*.supabase.co',           // Supabase Realtime
+    'https://maps.googleapis.com',   // Google Maps
+    'https://*.sentry.io',           // Sentry error reporting
+    'https://*.google-analytics.com', // Analytics
     'https://generativelanguage.googleapis.com',  // Gemini API (via edge fn)
   ],
   'media-src': ["'self'", 'blob:'],
   'object-src': ["'none'"],
+  'worker-src': ["'self'"],          // PWA service worker
+  'manifest-src': ["'self'"],        // PWA manifest
   'base-uri': ["'self'"],
   'form-action': ["'self'"],
   'frame-ancestors': ["'none'"],     // Prevent clickjacking
@@ -49,7 +63,7 @@ export const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=()',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=(), usb=()',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Resource-Policy': 'same-origin',

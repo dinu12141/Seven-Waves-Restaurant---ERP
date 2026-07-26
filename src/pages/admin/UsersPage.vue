@@ -89,9 +89,7 @@
         <!-- Designation cell -->
         <template #body-cell-designation="props">
           <q-td :props="props">
-            <span class="um-designation">
-              {{ props.row.employees?.[0]?.designations?.title || '—' }}
-            </span>
+            <span class="um-designation">{{ props.row._designation || '—' }}</span>
           </q-td>
         </template>
         <!-- Status cell -->
@@ -119,6 +117,12 @@
                   :class="props.row.is_active ? 'um-action-btn um-action-btn--danger' : 'um-action-btn um-action-btn--success'"
                   @click="toggleUserStatus(props.row)">
                   <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
+                </q-btn>
+              </PermissionGate>
+              <PermissionGate permission="admin.users.manage">
+                <q-btn flat round size="sm" icon="delete" class="um-action-btn um-action-btn--danger"
+                  @click="deleteUser(props.row)">
+                  <q-tooltip>Delete User</q-tooltip>
                 </q-btn>
               </PermissionGate>
             </div>
@@ -405,7 +409,7 @@ const columns = [
     name: 'designation',
     label: 'Designation',
     align: 'left',
-    field: (row) => row.employees?.[0]?.designations?.title || '',
+    field: (row) => row._designation || '',
     sortable: true,
   },
   { name: 'phone', label: 'Phone', align: 'left', field: 'phone' },
@@ -450,11 +454,19 @@ const fetchUsers = async () => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*, employees(designation_id, designations(title))')
+      .select('*, employees(designation_id, designations(title)), user_roles(roles(name))')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    users.value = data
+    // Flatten a display designation: employee designation → else system role.
+    users.value = (data || []).map((u) => ({
+      ...u,
+      _designation:
+        u.employees?.[0]?.designations?.title ||
+        titleCase(u.user_roles?.[0]?.roles?.name) ||
+        '',
+    }))
   } catch (err) {
     console.error('Error fetching users:', err)
   } finally {
@@ -578,12 +590,14 @@ const saveUser = async () => {
           .eq('id', selectedEmployee.value.id)
       }
 
-      // Assign role
+      // Assign role (idempotent — safe when reclaiming an account or re-adding)
       if (form.roleId && newUserId) {
-        const { error: roleError } = await supabase.from('user_roles').insert({
-          user_id: newUserId,
-          role_id: form.roleId,
-        })
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .upsert(
+            { user_id: newUserId, role_id: form.roleId },
+            { onConflict: 'user_id,role_id', ignoreDuplicates: true },
+          )
         if (roleError) console.error('[UsersPage] Role assignment error:', roleError)
       }
 
@@ -605,7 +619,12 @@ const saveUser = async () => {
     await fetchUsers()
   } catch (err) {
     console.error('Error saving user:', err)
-    $q.notify({ type: 'negative', message: err.message || 'Failed to save user' })
+    $q.notify({
+      type: 'negative',
+      message: err.message || 'Failed to save user',
+      position: 'top',
+      timeout: 4000,
+    })
   } finally {
     saving.value = false
   }
@@ -651,6 +670,39 @@ const toggleUserStatus = (user) => {
       loading.value = false
     }
   })
+}
+
+const deleteUser = (user) => {
+  $q.dialog({
+    title: 'Delete User',
+    message: `Are you sure you want to delete <strong>${user.full_name || user.email}</strong>?<br><br>
+              The account will be removed from this list and can no longer log in.
+              Their order & audit history is preserved.`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Delete User', color: 'negative', unelevated: true },
+  }).onOk(async () => {
+    try {
+      loading.value = true
+      const { error } = await supabase.rpc('admin_soft_delete_user', {
+        target_user_id: user.id,
+      })
+      if (error) throw new Error(error.message || 'Server error occurred')
+      $q.notify({ type: 'positive', message: 'User deleted' })
+      await fetchUsers()
+    } catch (err) {
+      console.error('Error deleting user:', err)
+      $q.notify({ type: 'negative', message: err.message || 'Failed to delete user' })
+    } finally {
+      loading.value = false
+    }
+  })
+}
+
+function titleCase(s) {
+  if (!s) return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 function initials(name) {

@@ -88,6 +88,30 @@
             style="height: 40px"
           />
           <q-btn
+            color="deep-orange"
+            icon="person_off"
+            label="Mark Absentees"
+            @click="markAbsentees"
+            :loading="markingAbsentees"
+            no-caps
+            unelevated
+            style="height: 40px"
+          >
+            <q-tooltip>Create no-pay records for scheduled staff who never clocked in</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="canManageAttendance"
+            color="indigo"
+            icon="fact_check"
+            label="Bulk / Finalize"
+            @click="openBulkBuilder"
+            no-caps
+            unelevated
+            style="height: 40px"
+          >
+            <q-tooltip>Month-end: bulk build / correct attendance before payroll</q-tooltip>
+          </q-btn>
+          <q-btn
             color="positive"
             icon="download"
             label="Excel"
@@ -124,7 +148,7 @@
 
     <!-- KPI Row -->
     <div class="row q-col-gutter-md q-mb-md items-stretch">
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat class="hr-kpi-card hr-kpi-card--green">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="how_to_reg" size="22px" color="white" /></div>
@@ -137,7 +161,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat class="hr-kpi-card hr-kpi-card--red">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="person_off" size="22px" color="white" /></div>
@@ -150,7 +174,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat class="hr-kpi-card hr-kpi-card--amber">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="schedule" size="22px" color="white" /></div>
@@ -163,7 +187,7 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat class="hr-kpi-card hr-kpi-card--cyan">
           <q-card-section class="hr-kpi-inner">
             <div class="hr-kpi-icon"><q-icon name="beach_access" size="22px" color="white" /></div>
@@ -172,6 +196,19 @@
               <div class="hr-kpi-value">{{ stats.leave }}</div>
             </div>
             <q-icon name="event_available" size="64px" class="hr-kpi-watermark" color="white" />
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <div class="col-12 col-sm-6 col-md">
+        <q-card flat class="hr-kpi-card hr-kpi-card--orange">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="money_off" size="22px" color="white" /></div>
+            <div style="flex: 1">
+              <div class="hr-kpi-label">No Pay</div>
+              <div class="hr-kpi-value">{{ stats.no_pay }}</div>
+            </div>
+            <q-icon name="paid" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
@@ -313,7 +350,7 @@
               dense
               outlined
               v-model="editForm.status"
-              :options="['present', 'absent', 'late', 'half_day', 'on_leave']"
+              :options="statusOptions"
             />
           </div>
 
@@ -377,6 +414,29 @@
                   >
                 </div>
               </div>
+              <div class="col-6">
+                <div class="text-caption text-grey-6 q-mb-xs">Early Departure (Mins)</div>
+                <div
+                  class="text-h6 text-weight-bold"
+                  :class="
+                    editForm.early_departure_minutes > 0
+                      ? 'text-deep-orange'
+                      : $q.dark.isActive
+                        ? 'text-white'
+                        : 'text-dark'
+                  "
+                >
+                  {{ editForm.early_departure_minutes || 0 }}
+                  <span
+                    v-if="editForm.early_departure_minutes > 0"
+                    class="text-caption text-deep-orange q-ml-xs"
+                    >mins early</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div v-if="editForm.no_shift" class="text-caption text-orange q-mt-sm">
+              <q-icon name="warning" size="14px" class="q-mr-xs" />No shift assigned for this date
             </div>
             <div v-if="calculating" class="text-caption text-grey-5 q-mt-xs">
               <q-spinner size="10px" class="q-mr-xs" />Calculating...
@@ -549,7 +609,7 @@
               dense
               outlined
               v-model="markForm.status"
-              :options="['present', 'absent', 'late', 'half_day', 'on_leave']"
+              :options="statusOptions"
             />
           </div>
 
@@ -608,6 +668,28 @@
                   </span>
                 </div>
               </div>
+              <q-separator vertical />
+              <div>
+                <div class="text-caption text-grey-6">Early Departure</div>
+                <div
+                  class="text-h5 text-weight-bold q-mt-xs"
+                  :class="
+                    markForm.early_departure_minutes > 0
+                      ? 'text-deep-orange'
+                      : $q.dark.isActive
+                        ? 'text-grey-4'
+                        : 'text-grey-7'
+                  "
+                >
+                  {{ markForm.early_departure_minutes || 0 }}
+                  <span class="text-caption q-ml-xs">
+                    {{ markForm.early_departure_minutes > 0 ? 'mins early' : 'none' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-if="markForm.no_shift" class="text-caption text-orange q-mt-sm">
+              <q-icon name="warning" size="14px" class="q-mr-xs" />No shift assigned for this date
             </div>
             <div v-if="calculating" class="text-caption text-grey-5 q-mt-sm">
               <q-spinner size="10px" class="q-mr-xs" />Calculating metrics...
@@ -632,6 +714,217 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Bulk / Month-End Builder Dialog -->
+    <q-dialog v-model="showBulk" persistent>
+      <q-card
+        style="min-width: 720px; max-width: 96vw; padding: 0"
+        :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'"
+      >
+        <q-card-section
+          class="row items-center q-pa-md"
+          :style="{
+            borderBottom: $q.dark.isActive
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.1)',
+          }"
+        >
+          <q-icon name="fact_check" size="20px" color="indigo" class="q-mr-sm" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">Month-End Attendance Builder</div>
+            <div class="text-caption text-grey-6">
+              Pre-payroll finalization — build or correct attendance for a date range before running
+              payroll
+            </div>
+          </div>
+          <q-space />
+          <q-btn
+            flat
+            round
+            dense
+            icon="close"
+            v-close-popup
+            :color="$q.dark.isActive ? 'grey-4' : 'grey-8'"
+          />
+        </q-card-section>
+
+        <q-card-section class="q-pa-lg">
+          <div class="row q-col-gutter-sm items-end">
+            <div class="col-6 col-sm-3">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                Start Date *
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="bulkForm.start_date"
+                type="date"
+              />
+            </div>
+            <div class="col-6 col-sm-3">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                End Date *
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="bulkForm.end_date"
+                type="date"
+              />
+            </div>
+            <div class="col-12 col-sm-4">
+              <div
+                :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
+              >
+                Department
+              </div>
+              <q-select
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model="bulkForm.department_id"
+                :options="departments"
+                option-label="name"
+                option-value="id"
+                emit-value
+                map-options
+                clearable
+              />
+            </div>
+            <div class="col-12 col-sm-2">
+              <q-btn
+                color="indigo"
+                icon="grid_on"
+                label="Build"
+                @click="buildBulkGrid"
+                :loading="bulkBuilding"
+                no-caps
+                unelevated
+                class="full-width"
+                style="height: 40px"
+              />
+            </div>
+          </div>
+
+          <div class="row items-center q-mt-sm">
+            <q-checkbox
+              v-model="bulkForm.autoFill"
+              label="Auto-fill assigned days as Present (using shift times)"
+              :dark="$q.dark.isActive"
+              dense
+            />
+            <q-space />
+            <div v-if="bulkRows.length" class="text-caption text-grey-6">
+              {{ bulkRows.length }} employee-days · {{ bulkSaveCount }} to save
+            </div>
+          </div>
+
+          <q-banner
+            v-if="bulkRows.length"
+            dense
+            class="q-mt-sm rounded-borders"
+            :class="$q.dark.isActive ? 'bg-indigo-10 text-indigo-2' : 'bg-indigo-1 text-indigo-9'"
+          >
+            <template #avatar><q-icon name="info" color="indigo" /></template>
+            Set a status per employee-day. Rows left as <b>skip</b> are not written. Saving upserts
+            (re-running corrects existing rows); late/OT/early are recomputed server-side.
+          </q-banner>
+
+          <q-table
+            v-if="bulkRows.length"
+            :dark="$q.dark.isActive"
+            flat
+            bordered
+            dense
+            class="q-mt-sm"
+            :rows="bulkRows"
+            :columns="bulkColumns"
+            row-key="key"
+            :pagination="{ rowsPerPage: 0 }"
+            hide-bottom
+            style="max-height: 46vh"
+            virtual-scroll
+          >
+            <template #body-cell-shift="props">
+              <q-td :props="props">
+                <q-icon
+                  :name="props.row.has_shift ? 'event_available' : 'event_busy'"
+                  :color="props.row.has_shift ? 'green' : 'grey'"
+                  size="18px"
+                >
+                  <q-tooltip>{{
+                    props.row.has_shift ? 'Shift assigned' : 'No shift assigned'
+                  }}</q-tooltip>
+                </q-icon>
+              </q-td>
+            </template>
+            <template #body-cell-status="props">
+              <q-td :props="props">
+                <q-select
+                  :dark="$q.dark.isActive"
+                  dense
+                  outlined
+                  v-model="props.row.status"
+                  :options="bulkStatusOptions"
+                  style="min-width: 120px"
+                />
+              </q-td>
+            </template>
+            <template #body-cell-clock_in="props">
+              <q-td :props="props">
+                <q-input
+                  :dark="$q.dark.isActive"
+                  dense
+                  outlined
+                  v-model="props.row.clock_in"
+                  mask="time"
+                  style="width: 90px"
+                  :disable="props.row.status === 'skip'"
+                />
+              </q-td>
+            </template>
+            <template #body-cell-clock_out="props">
+              <q-td :props="props">
+                <q-input
+                  :dark="$q.dark.isActive"
+                  dense
+                  outlined
+                  v-model="props.row.clock_out"
+                  mask="time"
+                  style="width: 90px"
+                  :disable="props.row.status === 'skip'"
+                />
+              </q-td>
+            </template>
+          </q-table>
+
+          <div v-else class="text-center text-grey-6 q-pa-lg">
+            <q-icon name="calendar_month" size="42px" class="q-mb-sm" />
+            <div>Pick a date range + department, then <b>Build</b> the grid.</div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup color="grey-6" no-caps />
+          <q-btn
+            color="indigo"
+            :label="`Save ${bulkSaveCount} Record${bulkSaveCount === 1 ? '' : 's'}`"
+            unelevated
+            icon="save"
+            @click="saveBulk"
+            :loading="bulkSaving"
+            :disable="bulkSaveCount === 0"
+            no-caps
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -640,6 +933,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { usePermission } from 'src/core/rbac/usePermission'
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -647,8 +941,13 @@ import * as xlsx from 'xlsx'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const { can } = usePermission()
+// Admin/HR/manager can build & finalize attendance before payroll.
+// Uses the wildcard-aware RBAC check (hr/manager hold 'hr.attendance.*').
+const canManageAttendance = computed(() => can('hr.attendance.manage'))
 const loading = ref(false)
 const saving = ref(false)
+const markingAbsentees = ref(false)
 const records = ref([])
 const search = ref('')
 const filterDate = ref(new Date().toISOString().split('T')[0])
@@ -675,6 +974,13 @@ const editForm = reactive({
   status: 'present',
   late_minutes: 0,
   overtime_hours: 0,
+  early_departure_minutes: 0,
+  total_hours: 0,
+  break_hours: 0,
+  shift_id: null,
+  scheduled_start: null,
+  scheduled_end: null,
+  no_shift: false,
 })
 
 // Mark Dialog
@@ -687,9 +993,16 @@ const markForm = reactive({
   status: 'present',
   late_minutes: 0,
   overtime_hours: 0,
+  early_departure_minutes: 0,
+  total_hours: 0,
+  break_hours: 0,
+  shift_id: null,
+  scheduled_start: null,
+  scheduled_end: null,
+  no_shift: false,
 })
 
-const stats = reactive({ present: 0, absent: 0, late: 0, leave: 0 })
+const stats = reactive({ present: 0, absent: 0, late: 0, leave: 0, no_pay: 0 })
 
 const columns = [
   {
@@ -716,16 +1029,32 @@ const columns = [
   },
   { name: 'status', label: 'Status', align: 'center', field: 'status' },
   { name: 'late', label: 'Late Mins', align: 'center', field: 'late_minutes' },
+  {
+    name: 'early',
+    label: 'Early Dep (Mins)',
+    align: 'center',
+    field: 'early_departure_minutes',
+    format: (v) => v || 0,
+  },
   { name: 'ot', label: 'OT Hrs', align: 'center', field: 'overtime_hours' },
   { name: 'actions', label: '', align: 'center' },
 ]
 
 function attColor(s) {
   return (
-    { present: 'green', absent: 'red', late: 'amber-8', half_day: 'orange', on_leave: 'cyan' }[s] ||
-    'grey'
+    {
+      present: 'green',
+      absent: 'red',
+      late: 'amber-8',
+      half_day: 'orange',
+      on_leave: 'cyan',
+      no_pay: 'deep-orange',
+    }[s] || 'grey'
   )
 }
+
+// Status options shared by the edit + mark selects
+const statusOptions = ['present', 'absent', 'late', 'half_day', 'on_leave', 'no_pay']
 
 async function loadAttendance() {
   loading.value = true
@@ -755,12 +1084,56 @@ async function loadAttendance() {
     stats.absent = records.value.filter((r) => r.status === 'absent').length
     stats.late = records.value.filter((r) => r.status === 'late').length
     stats.leave = records.value.filter((r) => r.status === 'on_leave').length
+    stats.no_pay = records.value.filter((r) => r.status === 'no_pay').length
   } catch (err) {
     console.error('Failed to load attendance:', err.message)
     $q.notify({ type: 'negative', message: 'Failed to load attendance records' })
   } finally {
     loading.value = false
   }
+}
+
+// Create no-pay rows for employees scheduled on the filtered date who never
+// clocked in. Server-side (fn_mark_absentees) so leave/holiday are respected.
+function markAbsentees() {
+  const branchId = authStore.currentBranch?.id
+  if (!filterDate.value) {
+    $q.notify({ type: 'warning', message: 'Select a date first' })
+    return
+  }
+  if (!branchId) {
+    $q.notify({ type: 'warning', message: 'No branch selected' })
+    return
+  }
+  $q.dialog({
+    title: 'Mark Absentees',
+    message: `Create no-pay attendance records for all staff scheduled on ${filterDate.value} who have no attendance and are not on approved leave/holiday?`,
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Mark Absentees', color: 'deep-orange', unelevated: true, noCaps: true },
+  }).onOk(async () => {
+    markingAbsentees.value = true
+    try {
+      const { data, error } = await supabase.rpc('fn_mark_absentees', {
+        p_date: filterDate.value,
+        p_branch_id: branchId,
+      })
+      if (error) throw error
+      const count = typeof data === 'number' ? data : data?.count || 0
+      $q.notify({
+        type: count > 0 ? 'positive' : 'info',
+        message:
+          count > 0
+            ? `Marked ${count} employee${count === 1 ? '' : 's'} as no-pay`
+            : 'No absentees to mark',
+      })
+      loadAttendance()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err.message })
+    } finally {
+      markingAbsentees.value = false
+    }
+  })
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
@@ -796,78 +1169,52 @@ function extractTime(timestampOrTime) {
   return timestampOrTime.slice(0, 5)
 }
 
+// Metrics are computed server-side (single source of truth). We resolve the
+// employee's assigned shift for the date, then ask the DB RPC to calculate
+// late/OT/early-departure/hours — the BEFORE trigger recomputes on save anyway,
+// so this is only a thin, authoritative preview.
 async function calculateMetricsForForm(formRef, inTime, outTime, empId, attDate) {
   if (!empId || !attDate || !inTime) return
   calculating.value = true
   try {
-    // Try to find shift assignment for this employee on this date
-    const { data: shiftData } = await supabase
+    // Resolve the shift assigned to this employee on this date.
+    const { data: shiftAssign } = await supabase
       .from('shift_assignments')
-      .select('shifts(start_time, end_time, grace_minutes, break_duration_minutes, is_overnight)')
+      .select('shift_id')
       .eq('employee_id', empId)
       .eq('assignment_date', attDate)
       .maybeSingle()
 
-    const shift = shiftData?.shifts
+    const shiftId = shiftAssign?.shift_id || null
+    formRef.shift_id = shiftId
+    formRef.no_shift = !shiftId
 
-    // Parse actual check-in as a plain local date+time (no timezone)
-    const actualStart = new Date(`${attDate}T${inTime}:00`)
+    const clockInTs = formatTimeToTimestamp(attDate, inTime)
+    const clockOutTs = outTime ? formatTimeToTimestamp(attDate, outTime) : null
 
-    // ── 1. Late Minutes ──────────────────────────────────────────────────────
-    if (shift) {
-      const shiftStartStr = shift.start_time.slice(0, 5) // "09:00"
-      const shiftStart = new Date(`${attDate}T${shiftStartStr}:00`)
-      const graceMinutes = shift.grace_minutes ?? 10
-      const graceTime = new Date(shiftStart.getTime() + graceMinutes * 60000)
-      if (actualStart > graceTime) {
-        formRef.late_minutes = Math.round((actualStart - shiftStart) / 60000)
-        formRef.status = 'late'
-      } else {
-        formRef.late_minutes = 0
-        if (formRef.status === 'late') formRef.status = 'present'
-      }
-    } else {
-      // No shift assigned — use a standard 09:00 reference with 10-min grace
-      const shiftStart = new Date(`${attDate}T09:00:00`)
-      const graceTime = new Date(shiftStart.getTime() + 10 * 60000)
-      if (actualStart > graceTime) {
-        formRef.late_minutes = Math.round((actualStart - shiftStart) / 60000)
-        formRef.status = 'late'
-      } else {
-        formRef.late_minutes = 0
-        if (formRef.status === 'late') formRef.status = 'present'
-      }
-    }
+    const { data, error } = await supabase.rpc('fn_calc_attendance_metrics', {
+      p_shift_id: shiftId,
+      p_clock_in: clockInTs,
+      p_clock_out: clockOutTs,
+      p_date: attDate,
+    })
+    if (error) throw error
 
-    // ── 2. OT Hours ──────────────────────────────────────────────────────────
-    if (inTime && outTime) {
-      const start = new Date(`${attDate}T${inTime}:00`)
-      let end = new Date(`${attDate}T${outTime}:00`)
-      // Handle overnight (check-out before check-in)
-      if (end <= start) end.setDate(end.getDate() + 1)
-      const totalHours = (end - start) / 3600000
+    // fn_calc_attendance_metrics RETURNS TABLE → PostgREST returns an array.
+    const m = (Array.isArray(data) ? data[0] : data) || {}
+    formRef.late_minutes = m.late_minutes || 0
+    formRef.overtime_hours = m.overtime_hours || 0
+    formRef.early_departure_minutes = m.early_departure_minutes || 0
+    formRef.total_hours = m.total_hours || 0
+    formRef.break_hours = m.break_hours || 0
+    formRef.scheduled_start = m.scheduled_start || null
+    formRef.scheduled_end = m.scheduled_end || null
 
-      if (shift) {
-        const shiftStartStr = shift.start_time.slice(0, 5)
-        const shiftEndStr = shift.end_time.slice(0, 5)
-        const shiftStart = new Date(`${attDate}T${shiftStartStr}:00`)
-        let shiftEnd = new Date(`${attDate}T${shiftEndStr}:00`)
-        if (shift.is_overnight || shiftEnd <= shiftStart) shiftEnd.setDate(shiftEnd.getDate() + 1)
-        const shiftHours = (shiftEnd - shiftStart) / 3600000
-        const breakHours = (shift.break_duration_minutes || 0) / 60
-        const expectedWorkHours = shiftHours - breakHours
-        formRef.overtime_hours =
-          totalHours > expectedWorkHours
-            ? parseFloat((totalHours - expectedWorkHours).toFixed(2))
-            : 0
-      } else {
-        // No shift — treat 8 hours as standard
-        const standardHours = 8
-        formRef.overtime_hours =
-          totalHours > standardHours ? parseFloat((totalHours - standardHours).toFixed(2)) : 0
-      }
-    } else {
-      formRef.overtime_hours = 0
+    // Reflect the server's derived status (computed_status) as a preview, but
+    // never override an explicit manual selection (absent / leave / half-day / no-pay).
+    const manualStatuses = ['absent', 'on_leave', 'half_day', 'no_pay']
+    if (m.computed_status && !manualStatuses.includes(formRef.status)) {
+      formRef.status = m.computed_status
     }
   } catch (err) {
     console.error('Failed calculating metrics:', err)
@@ -882,6 +1229,24 @@ const calculating = ref(false)
 // Check if a time string is a complete HH:MM (5 chars, no placeholder _)
 function isCompleteTime(t) {
   return t && t.length === 5 && !t.includes('_') && /^\d{2}:\d{2}$/.test(t)
+}
+
+// Resolve the assigned shift for an employee+date and flag when none exists,
+// so the UI can warn instead of silently assuming a 09:00 default.
+async function resolveShiftForForm(formRef, empId, attDate) {
+  if (!empId || !attDate) {
+    formRef.shift_id = null
+    formRef.no_shift = false
+    return
+  }
+  const { data } = await supabase
+    .from('shift_assignments')
+    .select('shift_id')
+    .eq('employee_id', empId)
+    .eq('assignment_date', attDate)
+    .maybeSingle()
+  formRef.shift_id = data?.shift_id || null
+  formRef.no_shift = !data?.shift_id
 }
 
 // Trigger calculation for the Mark dialog — only when time is complete
@@ -912,8 +1277,10 @@ function triggerEditCalc() {
   }
 }
 
-// Auto-trigger when employee or date changes in the Mark form (if time already set)
+// Auto-trigger when employee or date changes in the Mark form: resolve the
+// shift (for the no-shift hint) and recalc metrics if a time is already set.
 watch([() => markForm.employee_id, () => markForm.attendance_date], () => {
+  resolveShiftForForm(markForm, markForm.employee_id, markForm.attendance_date)
   triggerMarkCalc()
 })
 
@@ -926,17 +1293,30 @@ function editRecord(row) {
   editForm.status = row.status
   editForm.late_minutes = row.late_minutes || 0
   editForm.overtime_hours = row.overtime_hours || 0
+  editForm.early_departure_minutes = row.early_departure_minutes || 0
+  editForm.total_hours = row.total_hours || 0
+  editForm.break_hours = row.break_hours || 0
+  editForm.shift_id = row.shift_id || null
+  editForm.scheduled_start = row.scheduled_start || null
+  editForm.scheduled_end = row.scheduled_end || null
+  editForm.no_shift = false
   showEdit.value = true
 }
 
 async function saveEdit() {
   saving.value = true
   try {
+    // Stored metrics are recomputed by the BEFORE trigger from shift_id + clocks.
+    // We still send our preview values + shift_id so the trigger has the shift.
     const payload = {
       status: editForm.status,
       late_minutes: editForm.late_minutes,
       overtime_hours: editForm.overtime_hours,
+      early_departure_minutes: editForm.early_departure_minutes,
+      shift_id: editForm.shift_id,
     }
+    if (editForm.scheduled_start) payload.scheduled_start = editForm.scheduled_start
+    if (editForm.scheduled_end) payload.scheduled_end = editForm.scheduled_end
     if (editForm.clock_in)
       payload.clock_in = formatTimeToTimestamp(editForm.date, editForm.clock_in)
     if (editForm.clock_out)
@@ -981,6 +1361,13 @@ function openMarkAttendance() {
     status: 'present',
     late_minutes: 0,
     overtime_hours: 0,
+    early_departure_minutes: 0,
+    total_hours: 0,
+    break_hours: 0,
+    shift_id: null,
+    scheduled_start: null,
+    scheduled_end: null,
+    no_shift: false,
   })
   showMark.value = true
 }
@@ -1006,7 +1393,13 @@ async function saveMarkAttendance() {
       status: markForm.status,
       late_minutes: markForm.late_minutes || 0,
       overtime_hours: markForm.overtime_hours || 0,
+      early_departure_minutes: markForm.early_departure_minutes || 0,
+      shift_id: markForm.shift_id,
     }
+    // Populate the schedule window from the resolved shift so the trigger and
+    // reports have it (values are re-derived server-side on insert anyway).
+    if (markForm.scheduled_start) payload.scheduled_start = markForm.scheduled_start
+    if (markForm.scheduled_end) payload.scheduled_end = markForm.scheduled_end
 
     const { error } = await supabase.from('attendance_records').insert(payload)
     if (error) throw error
@@ -1022,6 +1415,186 @@ async function saveMarkAttendance() {
     $q.notify({ type: 'negative', message: err.message })
   } finally {
     saving.value = false
+  }
+}
+
+// ── Bulk / Month-End Builder ─────────────────────────────────────────────────
+const showBulk = ref(false)
+const bulkBuilding = ref(false)
+const bulkSaving = ref(false)
+const bulkRows = ref([])
+const bulkForm = reactive({
+  start_date: '',
+  end_date: '',
+  department_id: null,
+  autoFill: true,
+})
+// 'skip' is a grid-only sentinel meaning "do not write this employee-day".
+const bulkStatusOptions = ['skip', ...statusOptions]
+const bulkColumns = [
+  { name: 'employee', label: 'Employee', align: 'left', field: 'employee_name' },
+  { name: 'date', label: 'Date', align: 'left', field: 'attendance_date' },
+  { name: 'shift', label: 'Shift', align: 'center', field: 'has_shift' },
+  { name: 'status', label: 'Status', align: 'center', field: 'status' },
+  { name: 'clock_in', label: 'In', align: 'center', field: 'clock_in' },
+  { name: 'clock_out', label: 'Out', align: 'center', field: 'clock_out' },
+]
+
+const bulkSaveCount = computed(() => bulkRows.value.filter((r) => r.status !== 'skip').length)
+
+function enumerateDates(start, end) {
+  const dates = []
+  const d = new Date(`${start}T00:00:00`)
+  const last = new Date(`${end}T00:00:00`)
+  while (d <= last) {
+    dates.push(d.toISOString().split('T')[0])
+    d.setDate(d.getDate() + 1)
+  }
+  return dates
+}
+
+function openBulkBuilder() {
+  bulkForm.start_date = filterDate.value
+  bulkForm.end_date = filterDate.value
+  bulkForm.department_id = filterDepartment.value
+  bulkForm.autoFill = true
+  bulkRows.value = []
+  showBulk.value = true
+}
+
+async function buildBulkGrid() {
+  if (!bulkForm.start_date || !bulkForm.end_date) {
+    $q.notify({ type: 'warning', message: 'Pick a start and end date' })
+    return
+  }
+  if (bulkForm.end_date < bulkForm.start_date) {
+    $q.notify({ type: 'warning', message: 'End date must be on or after start date' })
+    return
+  }
+  const dates = enumerateDates(bulkForm.start_date, bulkForm.end_date)
+  const emps = bulkForm.department_id
+    ? employees.value.filter((e) => e.department_id === bulkForm.department_id)
+    : employees.value
+  if (!emps.length) {
+    $q.notify({ type: 'warning', message: 'No employees for this filter' })
+    return
+  }
+  if (emps.length * dates.length > 1500) {
+    $q.notify({
+      type: 'warning',
+      message: 'Range too large — narrow the date range or department (max 1500 rows)',
+    })
+    return
+  }
+
+  bulkBuilding.value = true
+  try {
+    const empIds = emps.map((e) => e.id)
+
+    // Assignments in range → shift map keyed by employee|date
+    const { data: assigns } = await supabase
+      .from('shift_assignments')
+      .select('employee_id, assignment_date, shift_id, shifts(start_time, end_time)')
+      .in('employee_id', empIds)
+      .gte('assignment_date', bulkForm.start_date)
+      .lte('assignment_date', bulkForm.end_date)
+      .neq('status', 'cancelled')
+    const assignMap = {}
+    for (const a of assigns || []) assignMap[`${a.employee_id}|${a.assignment_date}`] = a
+
+    // Existing attendance in range → prefill so re-runs correct, not duplicate
+    const { data: existing } = await supabase
+      .from('attendance_records')
+      .select('id, employee_id, attendance_date, status, clock_in, clock_out, shift_id')
+      .eq('branch_id', authStore.currentBranch?.id)
+      .in('employee_id', empIds)
+      .gte('attendance_date', bulkForm.start_date)
+      .lte('attendance_date', bulkForm.end_date)
+    const existMap = {}
+    for (const r of existing || []) existMap[`${r.employee_id}|${r.attendance_date}`] = r
+
+    const rows = []
+    for (const emp of emps) {
+      for (const date of dates) {
+        const key = `${emp.id}|${date}`
+        const a = assignMap[key]
+        const ex = existMap[key]
+        const hasShift = !!a
+        let status
+        if (ex) status = ex.status
+        else if (hasShift) status = 'present'
+        else status = 'skip'
+        rows.push({
+          key,
+          employee_id: emp.id,
+          employee_name: emp.full_name,
+          employee_code: emp.employee_code,
+          attendance_date: date,
+          has_shift: hasShift,
+          shift_id: a?.shift_id || ex?.shift_id || null,
+          existing_id: ex?.id || null,
+          status,
+          clock_in: ex
+            ? extractTime(ex.clock_in)
+            : bulkForm.autoFill && a?.shifts?.start_time
+              ? a.shifts.start_time.slice(0, 5)
+              : '',
+          clock_out: ex
+            ? extractTime(ex.clock_out)
+            : bulkForm.autoFill && a?.shifts?.end_time
+              ? a.shifts.end_time.slice(0, 5)
+              : '',
+        })
+      }
+    }
+    bulkRows.value = rows
+    if (!rows.some((r) => r.status !== 'skip')) {
+      $q.notify({ type: 'info', message: 'No shift assignments in range — set statuses manually' })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    bulkBuilding.value = false
+  }
+}
+
+async function saveBulk() {
+  const toSave = bulkRows.value.filter((r) => r.status !== 'skip')
+  if (!toSave.length) {
+    $q.notify({ type: 'warning', message: 'Nothing to save — all rows are set to skip' })
+    return
+  }
+  bulkSaving.value = true
+  try {
+    const companyId = authStore.currentBranch?.company_id
+    const branchId = authStore.currentBranch?.id
+    // Trigger recomputes late/OT/early + scheduled_* from shift_id + clocks.
+    const payloads = toSave.map((r) => ({
+      company_id: companyId,
+      branch_id: branchId,
+      employee_id: r.employee_id,
+      attendance_date: r.attendance_date,
+      status: r.status,
+      shift_id: r.shift_id,
+      clock_in: r.clock_in ? formatTimeToTimestamp(r.attendance_date, r.clock_in) : null,
+      clock_out: r.clock_out ? formatTimeToTimestamp(r.attendance_date, r.clock_out) : null,
+    }))
+
+    const { error } = await supabase
+      .from('attendance_records')
+      .upsert(payloads, { onConflict: 'employee_id,attendance_date' })
+    if (error) throw error
+
+    $q.notify({
+      type: 'positive',
+      message: `Saved ${payloads.length} attendance record${payloads.length === 1 ? '' : 's'}`,
+    })
+    showBulk.value = false
+    loadAttendance()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    bulkSaving.value = false
   }
 }
 
@@ -1086,6 +1659,7 @@ function exportPDF() {
       'Check Out',
       'Status',
       'Late (Mins)',
+      'Early Dep (Mins)',
       'OT (Hrs)',
     ],
   ]
@@ -1098,6 +1672,7 @@ function exportPDF() {
     formatDisplayTime(r.clock_out),
     r.status || '—',
     r.late_minutes || 0,
+    r.early_departure_minutes || 0,
     r.overtime_hours || 0,
   ])
 
@@ -1128,6 +1703,7 @@ function exportExcel() {
     'Check Out': formatDisplayTime(r.clock_out),
     Status: r.status || '',
     'Late (Mins)': r.late_minutes || 0,
+    'Early Dep (Mins)': r.early_departure_minutes || 0,
     'OT (Hrs)': r.overtime_hours || 0,
   }))
 

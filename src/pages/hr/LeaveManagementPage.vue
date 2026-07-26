@@ -799,7 +799,21 @@
             class="q-pa-sm rounded-borders text-center q-mb-md"
             style="background: rgba(249, 168, 37, 0.1); border: 1px solid rgba(249, 168, 37, 0.3)"
           >
-            <span class="text-amber text-weight-bold">{{ reqForm.total_days }} working day(s)</span>
+            <span class="text-amber text-weight-bold">{{ reqForm.total_days }} day(s)</span>
+            <div class="text-caption text-grey-6 q-mt-xs">
+              {{ reqForm.working_days }} working · {{ reqForm.calendar_days }} calendar day(s)
+            </div>
+            <div
+              v-if="reqForm.working_days === 0 && reqForm.calendar_days > 0"
+              class="text-caption text-orange q-mt-xs"
+            >
+              <q-icon name="info" size="13px" class="q-mr-xs" />Range covers only non-working days
+              (weekend) — counted as calendar days
+            </div>
+          </div>
+          <div class="text-caption text-grey-6 q-mb-md">
+            <q-icon name="paid" size="14px" class="q-mr-xs" />On approval, paid leave is recorded as
+            a paid attendance day (on_leave); unpaid leave as no-pay.
           </div>
           <div class="q-mb-sm">
             <div
@@ -1055,6 +1069,8 @@ const reqForm = reactive({
   start_date: '',
   end_date: '',
   total_days: 0,
+  working_days: 0,
+  calendar_days: 0,
   reason: '',
 })
 
@@ -1153,6 +1169,8 @@ function statusColor(s) {
 }
 
 function calcDays() {
+  reqForm.working_days = 0
+  reqForm.calendar_days = 0
   if (!reqForm.start_date || !reqForm.end_date) {
     reqForm.total_days = 0
     return
@@ -1163,14 +1181,30 @@ function calcDays() {
     reqForm.total_days = 0
     return
   }
-  let days = 0
+  let working = 0
+  let calendar = 0
   const cur = new Date(start)
   while (cur <= end) {
+    calendar++
     const d = cur.getDay()
-    if (d !== 0 && d !== 6) days++
+    if (d !== 0 && d !== 6) working++
     cur.setDate(cur.getDate() + 1)
   }
-  reqForm.total_days = days
+  reqForm.working_days = working
+  reqForm.calendar_days = calendar
+  // Persisted total defaults to working days, but a weekend-only range (working
+  // = 0) falls back to the inclusive calendar-day count so single-day / weekend
+  // leave still submits instead of being blocked as "invalid".
+  reqForm.total_days = working > 0 ? working : calendar
+}
+
+// Map raw Supabase errors to actionable messages (RLS denials are cryptic).
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You do not have permission to create leave for other employees. Requires admin or HR.'
+  }
+  return msg
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -1238,12 +1272,24 @@ async function loadBalances() {
 
 async function loadEmployees() {
   const branchId = authStore.currentBranch?.id
-  if (!branchId) return
-  const { data } = await supabase
-    .from('employees')
-    .select('id, full_name, first_name, employee_code')
-    .eq('branch_id', branchId)
-    .order('first_name')
+  const companyId = authStore.currentBranch?.company_id
+  let data = null
+  if (branchId) {
+    ;({ data } = await supabase
+      .from('employees')
+      .select('id, full_name, first_name, employee_code')
+      .eq('branch_id', branchId)
+      .order('first_name'))
+  }
+  // Fall back to company-scoped employees when the branch filter is empty or
+  // yields nothing (matches other HR pages), so the dropdown is never empty.
+  if ((!data || data.length === 0) && companyId) {
+    ;({ data } = await supabase
+      .from('employees')
+      .select('id, full_name, first_name, employee_code')
+      .eq('company_id', companyId)
+      .order('first_name'))
+  }
   allEmployees.value = data || []
 }
 
@@ -1255,6 +1301,8 @@ function openNewRequest() {
     start_date: '',
     end_date: '',
     total_days: 0,
+    working_days: 0,
+    calendar_days: 0,
     reason: '',
   })
   showNewRequest.value = true
@@ -1266,7 +1314,7 @@ async function saveLeaveRequest() {
     return
   }
   if (reqForm.total_days <= 0) {
-    $q.notify({ type: 'warning', message: 'Invalid date range — no working days selected' })
+    $q.notify({ type: 'warning', message: 'Invalid date range — end date is before start date' })
     return
   }
   savingRequest.value = true
@@ -1287,7 +1335,14 @@ async function saveLeaveRequest() {
     showNewRequest.value = false
     loadRequests()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    console.error('[Leave] saveLeaveRequest:', err)
+    $q.notify({
+      type: 'negative',
+      message: humanizeError(err),
+      position: 'top',
+      timeout: 6000,
+      multiLine: true,
+    })
   } finally {
     savingRequest.value = false
   }

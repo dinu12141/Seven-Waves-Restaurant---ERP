@@ -250,7 +250,7 @@
 
           <!-- Ingredient Table -->
           <div style="overflow-x: auto; -webkit-overflow-scrolling: touch">
-            <div style="min-width: 560px">
+            <div style="min-width: 628px">
               <!-- Header -->
               <div
                 class="row no-wrap items-center rounded-borders q-px-xs q-py-xs"
@@ -310,6 +310,19 @@
                 </div>
                 <div
                   style="
+                    width: 64px;
+                    flex-shrink: 0;
+                    font-size: 9px;
+                    font-weight: 700;
+                    letter-spacing: 0.7px;
+                    color: #9e9e9e;
+                    text-align: right;
+                  "
+                >
+                  WASTE %
+                </div>
+                <div
+                  style="
                     width: 80px;
                     flex-shrink: 0;
                     font-size: 9px;
@@ -330,7 +343,7 @@
                   v-for="(ing, index) in form.ingredients"
                   :key="index"
                   class="row no-wrap items-center rounded-borders"
-                  style="gap: 4px; padding: 3px 4px; min-width: 480px"
+                  style="gap: 4px; padding: 3px 4px; min-width: 548px"
                   :style="{
                     border: '1px solid',
                     borderColor: $q.dark.isActive ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
@@ -464,6 +477,29 @@
                         </q-item>
                       </template>
                     </q-select>
+                  </div>
+
+                  <!-- WASTE % -->
+                  <div style="width: 64px; flex-shrink: 0">
+                    <q-input
+                      v-model.number="ing.wastage_percent"
+                      type="number"
+                      min="0"
+                      dense
+                      outlined
+                      :dark="$q.dark.isActive"
+                      hide-bottom-space
+                      placeholder="0"
+                      suffix="%"
+                      :input-style="{
+                        fontSize: '12px',
+                        padding: '0 2px',
+                        textAlign: 'right',
+                        fontWeight: '500',
+                      }"
+                    >
+                      <q-tooltip>Wastage % — extra ingredient consumed &amp; deducted from stock</q-tooltip>
+                    </q-input>
                   </div>
 
                   <!-- COST -->

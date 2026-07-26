@@ -94,14 +94,15 @@ export const ROLE_LANDING: Record<UserRole, string> = {
  */
 export const ROLE_PRIORITY: UserRole[] = [
   'admin',
+  'super_admin',
   'manager',
   'finance',
   'hr',
   'procurement',
   'inventory',
+  'cashier',
   'kitchen',
   'delivery',
-  'cashier',
   'waiter',
 ]
 

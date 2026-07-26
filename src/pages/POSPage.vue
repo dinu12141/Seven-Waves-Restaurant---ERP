@@ -1988,222 +1988,186 @@ async function handleFOC() {
     return
   }
 
-  // 2. Step 1: Manager Authorization
+  // 2. Capture the FOC reason FIRST, then authorize. The FOC write itself runs
+  //    server-side under the manager session via ManagerAuthDialog's
+  //    elevatedAction (see processFOCOrder) — the client never sets the price or
+  //    the authorizer, and a failed RPC never strands an elevated session. [#97/#76]
   $q.dialog({
-    component: ManagerAuthDialog,
-    componentProps: { actionName: 'FOC' }
-  }).onOk((authResult) => {
-    if (!authResult || !authResult.managerId) return
-    const managerUserId = authResult.managerId
+    title: '📝 FOC Reason',
+    message: 'Enter the reason for this Free of Charge order:',
+    dark: true,
+    prompt: {
+      model: '',
+      type: 'textarea',
+      label: 'Reason (required)',
+      outlined: true,
+    },
+    cancel: { flat: true, color: 'grey-5', noCaps: true },
+    ok: { color: 'green', unelevated: true, noCaps: true, label: 'Continue' },
+    persistent: true,
+  }).onOk((focReasonRaw) => {
+    const focReason = (focReasonRaw || '').trim()
+    if (!focReason) {
+      Notify.create({ message: 'FOC reason is required', color: 'red', position: 'top' })
+      return
+    }
 
-    try {
-        // Step 3: FOC Reason input
-        $q.dialog({
-          title: '📝 FOC Reason',
-          message: 'Enter the reason for this Free of Charge order:',
-          dark: true,
-          prompt: {
-            model: '',
-            type: 'textarea',
-            label: 'Reason (required)',
-            outlined: true,
-          },
-          cancel: { flat: true, color: 'grey-5', noCaps: true },
-          ok: { color: 'green', unelevated: true, noCaps: true, label: 'Submit FOC' },
-          persistent: true,
-        }).onOk(async (focReason) => {
-          if (!focReason || !focReason.trim()) {
-            Notify.create({ message: 'FOC reason is required', color: 'red', position: 'top' })
-            return
-          }
-
-          await processFOCOrder(managerUserId, focReason.trim())
-        })
-      } catch (err) {
-        Loading.hide()
-        console.error('FOC processing error:', err)
-        Notify.create({ message: 'Processing error', caption: err.message, color: 'red', position: 'top' })
+    // 3. Manager authorization. The FOC RPC executes inside the dialog while the
+    //    manager is signed in, so its auth.uid() is the verified manager.
+    $q.dialog({
+      component: ManagerAuthDialog,
+      componentProps: {
+        actionName: 'FOC',
+        elevatedAction: (ctx) => processFOCOrder(focReason, ctx),
       }
+    }).onOk(async (result) => {
+      const foc = result?.actionResult
+      if (!foc?.success) return // the dialog already surfaced any error
+      await printFOCReceipt(focReason, foc)
+    })
   })
 }
 
-async function processFOCOrder(managerUserId, focReason) {
+// Runs UNDER the manager session (as ManagerAuthDialog.elevatedAction), so the
+// FOC RPCs see auth.uid() === the verified manager. Those SECURITY DEFINER RPCs
+// set foc_authorized_by=auth.uid(), total_amount=0, payment_method='foc' and
+// status='paid' SERVER-SIDE and do the accept+invoice+FOC atomically — the
+// client no longer sends foc_authorized_by/total_amount or raw-UPDATEs the bill.
+// p_cashier_id is the pre-auth initiator uid (informational; the manager is the
+// accountable authorizer). Throws on failure → the dialog restores the cashier
+// session and surfaces the error. [#97 / #76]
+async function processFOCOrder(focReason, { cashierId } = {}) {
   Loading.show({ message: 'Processing FOC order...' })
   try {
-    let finalOrderId = null
-
     if (store._loadedOrderId && selectedQueueOrder.value) {
-      // ── QUEUE ORDER: mark existing order as FOC ──
-      finalOrderId = store._loadedOrderId
-
-      // Accept if still pending
-      if (selectedQueueOrder.value.status === 'pending_waiter') {
-        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
-        if (acceptError) throw new Error(acceptError.message)
-      }
-
-      // Create invoice if not invoiced
-      const status = selectedQueueOrder.value.status
-      if (status !== 'invoiced' && status !== 'paid') {
-        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
-        if (invError) throw new Error(invError.message)
-      }
-
-      // Update series: mark order as FOC with reason
-      const { error: focError } = await supabase
-        .from('orders')
-        .update({
-          status: 'paid',
-          payment_status: 'paid',
-          payment_method: 'foc',
-          foc_reason: focReason,
-          foc_authorized_by: managerUserId,
-          total_amount: 0,
-          paid_at: new Date().toISOString(),
-        })
-        .eq('id', finalOrderId)
-      if (focError) throw new Error(focError.message)
-
-      // Also update invoice to reflect FOC
-      await supabase
-        .from('invoices')
-        .update({ payment_status: 'paid', total: 0 })
-        .eq('order_id', finalOrderId)
-
-    } else {
-      // ── MANUAL POS: create new order as FOC ──
-      const companyId = authStore.currentBranch?.company_id
-      const branchId = authStore.currentBranch?.id
-      const userId = authStore.user?.id
-
-      if (!companyId) {
-        throw new Error('Company information not loaded. Please refresh the page and try again.')
-      }
-
-      const orderPayload = {
-        company_id: companyId,
-        branch_id: branchId,
-        waiter_id: userId || null,
-        order_type: store.orderType === 'dine-in' ? 'dine_in' : 'takeaway',
-        order_source: 'pos',
-        status: 'paid',
-        payment_status: 'paid',
-        payment_method: 'foc',
-        table_id: null,
-        table_number: store.tableNumber ? (parseInt(String(store.tableNumber).replace(/\D/g, '')) || null) : null,
-        total_amount: 0,
-        subtotal: parseFloat(store.subtotal.toFixed(2)),
-        tax_amount: 0,
-        service_charge: 0,
-        discount_amount: 0,
-        customer_name: store.customerName || null,
-        foc_reason: focReason,
-        foc_authorized_by: managerUserId,
-        paid_at: new Date().toISOString(),
-      }
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderPayload)
-        .select('id, order_number')
-        .single()
-      if (orderError) throw new Error(`Failed to create FOC order: ${orderError.message}`)
-
-      finalOrderId = order.id
-
-      // Insert order items
-      const itemsPayload = store.cartItems.map((item) => {
-        const qty = parseInt(item.qty) || 1
-        const price = parseFloat(item.price) || 0
-        return {
-          order_id: order.id,
-          menu_item_id: item.productId,
-          kitchen_id: item.kitchenId || null,
-          quantity: qty,
-          unit_price: price,
-          total_price: parseFloat((qty * price).toFixed(2)),
-          notes: item.notes || null,
-          status: 'queued',
-        }
+      // ── QUEUE ORDER: atomic accept + invoice + mark FOC ──
+      const { data, error } = await supabase.rpc('process_foc_order', {
+        p_order_id: store._loadedOrderId,
+        p_reason: focReason,
+        p_cashier_id: cashierId || null,
       })
-
-      const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload)
-      if (itemsError) throw new Error(`Failed to save FOC items: ${itemsError.message}`)
-
-      // Create invoice for FOC
-      await supabase.from('invoices').insert({
-        order_id: order.id,
-        branch_id: branchId,
-        cashier_id: userId,
-        total: 0,
-        subtotal: parseFloat(store.subtotal.toFixed(2)),
-        payment_status: 'paid',
-      })
+      if (error) throw new Error(error.message)
+      if (!data?.success) throw new Error(data.error || 'FOC failed')
+      return {
+        success: true,
+        orderId: data.order_id || store._loadedOrderId,
+        orderNumber: selectedQueueOrder.value?.order_number || null,
+      }
     }
 
-    // ── Print FOC Receipt ──
-    const items = store.cartItems.map((item, idx) => ({
-      id: idx,
-      menu_item_name: item.name + (item.variant ? ` (${item.variant})` : ''),
-      quantity: item.qty,
-      unit_price: item.price,
-      total_price: item.price * item.qty,
-    }))
+    // ── MANUAL POS: create a NEW order as FOC (atomic create + zero invoice) ──
+    const companyId = authStore.currentBranch?.company_id
+    const branchId = authStore.currentBranch?.id
+    const userId = authStore.user?.id
 
-    const orderTypeMap = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
-    const effectiveOrderType = orderTypeMap[store.orderType] || 'dine_in'
-
-    directPrintInvoice.value = {
-      invoice_number: selectedQueueOrder.value?.order_number || store.orderNumber || 'FOC',
-      created_at: new Date().toISOString(),
-      subtotal: store.subtotal,
-      grand_total: 0,
-      delivery_charge: 0,
-      service_charge: 0,
-      customer_name: store.customerName || '',
-      customer_phone: selectedQueueOrder.value?.customer_phone || '',
-      invoice_items: items,
-      payments: [{ payment_methods: { name: 'FOC' }, amount: 0 }],
-      orders: {
-        order_type: effectiveOrderType,
-        order_number: selectedQueueOrder.value?.order_number || store.orderNumber,
-        customer_name: store.customerName || '',
-        customer_phone: '',
-        delivery_address: '',
-        pax: 1,
-        waiter: { full_name: authStore.profile?.full_name || 'Cashier' },
-        kot_tickets: [],
-        restaurant_tables: store.tableNumber ? { table_number: store.tableNumber } : null,
-      },
-      __focReason: focReason,
+    if (!companyId) {
+      throw new Error('Company information not loaded. Please refresh the page and try again.')
     }
 
-    await nextTick()
-    await new Promise(r => setTimeout(r, 300))
-
-    if (directPrintRef.value?.printReceipt) {
-      directPrintRef.value.printReceipt()
+    // Base order fields ONLY — the RPC forces status/payment/total/foc_* server-side.
+    const orderPayload = {
+      company_id: companyId,
+      branch_id: branchId,
+      waiter_id: userId || null,
+      order_type: store.orderType === 'dine-in' ? 'dine_in' : 'takeaway',
+      order_source: 'pos',
+      table_id: null,
+      table_number: store.tableNumber ? (parseInt(String(store.tableNumber).replace(/\D/g, '')) || null) : null,
+      subtotal: parseFloat(store.subtotal.toFixed(2)),
+      customer_name: store.customerName || null,
     }
 
-    Notify.create({
-      message: 'FOC Order Saved & Printed',
-      caption: `Reason: ${focReason}`,
-      color: 'positive',
-      icon: 'check_circle',
-      position: 'top',
-      timeout: 3000,
+    const itemsPayload = store.cartItems.map((item) => {
+      const qty = parseInt(item.qty) || 1
+      const price = parseFloat(item.price) || 0
+      return {
+        menu_item_id: item.productId,
+        kitchen_id: item.kitchenId || null,
+        quantity: qty,
+        unit_price: price,
+        total_price: parseFloat((qty * price).toFixed(2)),
+        notes: item.notes || null,
+        status: 'queued',
+      }
     })
 
-    // Reset UI
-    handleNewOrderAfterPayment()
-    cancelPaymentMode()
-
-  } catch (err) {
-    console.error('FOC Error:', err)
-    Notify.create({ message: 'FOC processing error', caption: err.message, color: 'red', position: 'top' })
+    const { data, error } = await supabase.rpc('process_foc_order_new', {
+      p_order: orderPayload,
+      p_items: itemsPayload,
+      p_reason: focReason,
+      p_cashier_id: cashierId || null,
+    })
+    if (error) throw new Error(error.message)
+    if (!data?.success) throw new Error(data.error || 'Failed to create FOC order')
+    return {
+      success: true,
+      orderId: data.order_id || data.order?.id || null,
+      orderNumber: data.order?.order_number || null,
+    }
   } finally {
     Loading.hide()
   }
+}
+
+// Prints the FOC receipt and resets the terminal. Runs back in the CASHIER
+// session (from ManagerAuthDialog's onOk, after the session is restored).
+async function printFOCReceipt(focReason, foc) {
+  const items = store.cartItems.map((item, idx) => ({
+    id: idx,
+    menu_item_name: item.name + (item.variant ? ` (${item.variant})` : ''),
+    quantity: item.qty,
+    unit_price: item.price,
+    total_price: item.price * item.qty,
+  }))
+
+  const orderTypeMap = { 'dine-in': 'dine_in', takeaway: 'takeaway', delivery: 'delivery' }
+  const effectiveOrderType = orderTypeMap[store.orderType] || 'dine_in'
+  const receiptNumber = foc?.orderNumber || selectedQueueOrder.value?.order_number || store.orderNumber || 'FOC'
+
+  directPrintInvoice.value = {
+    invoice_number: receiptNumber,
+    created_at: new Date().toISOString(),
+    subtotal: store.subtotal,
+    grand_total: 0,
+    delivery_charge: 0,
+    service_charge: 0,
+    customer_name: store.customerName || '',
+    customer_phone: selectedQueueOrder.value?.customer_phone || '',
+    invoice_items: items,
+    payments: [{ payment_methods: { name: 'FOC' }, amount: 0 }],
+    orders: {
+      order_type: effectiveOrderType,
+      order_number: receiptNumber,
+      customer_name: store.customerName || '',
+      customer_phone: '',
+      delivery_address: '',
+      pax: 1,
+      waiter: { full_name: authStore.profile?.full_name || 'Cashier' },
+      kot_tickets: [],
+      restaurant_tables: store.tableNumber ? { table_number: store.tableNumber } : null,
+    },
+    __focReason: focReason,
+  }
+
+  await nextTick()
+  await new Promise(r => setTimeout(r, 300))
+
+  if (directPrintRef.value?.printReceipt) {
+    directPrintRef.value.printReceipt()
+  }
+
+  Notify.create({
+    message: 'FOC Order Saved & Printed',
+    caption: `Reason: ${focReason}`,
+    color: 'positive',
+    icon: 'check_circle',
+    position: 'top',
+    timeout: 3000,
+  })
+
+  // Reset UI
+  handleNewOrderAfterPayment()
+  cancelPaymentMode()
 }
 
 function handleBack() {
@@ -2324,29 +2288,19 @@ async function processInlinePayment() {
     } else if (store._loadedOrderId && selectedQueueOrder.value) {
       // ── QUEUE ORDER FLOW (From Order Lookup) ──
       finalOrderId = store._loadedOrderId
-      
-      // 1. If still pending_waiter, accept it
-      if (selectedQueueOrder.value.status === 'pending_waiter') {
-        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
-        if (acceptError) throw new Error(acceptError.message)
-      }
-      
-      // 2. Mark as invoiced if not already
-      const status = selectedQueueOrder.value.status
-      if (status !== 'invoiced' && status !== 'paid') {
-        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
-        if (invError) throw new Error(invError.message)
-      }
 
-      // 3. Record payment
-      const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+      // Accept (if pending) + invoice + payment in ONE atomic txn (Security #74).
+      // pos_quick_pay is idempotent for pre-existing queue orders (already-accepted/
+      // invoiced/paid sub-RPCs all return success:true) and charges the server-side
+      // LOCKED order.total_amount — no partial-commit window, no client-price trust.
+      const { data: payData, error: payError } = await supabase.rpc('pos_quick_pay', {
         p_order_id: finalOrderId,
         p_payment_method: methodName.toLowerCase(),
         p_amount_paid: store.total
       })
       if (payError) throw new Error(payError.message)
-      if (!payData?.success && payData?.message !== 'Already paid.') throw new Error(payData?.error || 'Payment failed')
-      
+      if (!payData?.success) throw new Error(payData?.error || 'Payment failed')
+
     } else {
       // ── MANUAL POS FLOW (unsaved items) ──
       const res = await store.processPayment(methodName.toLowerCase())
@@ -2777,27 +2731,20 @@ async function processSplitPayment() {
     let finalOrderId = null
 
     if (store._loadedOrderId && selectedQueueOrder.value) {
-      // Queue order flow
+      // Queue order flow — accept (if pending) + invoice + payment in ONE atomic
+      // txn (Security #74). The split lines are validated client-side to equal the
+      // order total (see splitPaymentBalance guard above); pos_quick_pay records a
+      // single 'split'-method payment against the server-side LOCKED total, matching
+      // the prior behaviour but without the partial-commit window.
       finalOrderId = store._loadedOrderId
 
-      if (selectedQueueOrder.value.status === 'pending_waiter') {
-        const { error: acceptError } = await supabase.rpc('process_waiter_accept', { p_order_id: finalOrderId })
-        if (acceptError) throw new Error(acceptError.message)
-      }
-
-      const status = selectedQueueOrder.value.status
-      if (status !== 'invoiced' && status !== 'paid') {
-        const { error: invError } = await supabase.rpc('process_cashier_invoice', { p_order_id: finalOrderId })
-        if (invError) throw new Error(invError.message)
-      }
-
-      const { data: payData, error: payError } = await supabase.rpc('process_cashier_payment', {
+      const { data: payData, error: payError } = await supabase.rpc('pos_quick_pay', {
         p_order_id: finalOrderId,
         p_payment_method: 'split',
         p_amount_paid: store.total
       })
       if (payError) throw new Error(payError.message)
-      if (!payData?.success && payData?.message !== 'Already paid.') throw new Error(payData?.error || 'Payment failed')
+      if (!payData?.success) throw new Error(payData?.error || 'Payment failed')
 
     } else {
       // Manual POS flow
