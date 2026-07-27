@@ -51,9 +51,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useQuasar } from 'quasar'
 import { useFinanceStatementsStore } from '../stores/finance-statements.store'
 import FinancialStatementViewer from '../components/FinancialStatementViewer.vue'
 
+const $q = useQuasar()
 const stmtStore = useFinanceStatementsStore()
 const tab = ref('trial')
 const filters = ref({ date_from: '', date_to: '' })
@@ -99,5 +101,8 @@ async function generate() {
   if (tab.value === 'trial') await stmtStore.fetchTrialBalance(filters.value)
   else if (tab.value === 'pl') await stmtStore.fetchProfitLoss(filters.value)
   else await stmtStore.fetchBalanceSheet(filters.value)
+  if (stmtStore.error) {
+    $q.notify({ type: 'negative', message: stmtStore.error, position: 'top', timeout: 4000 })
+  }
 }
 </script>

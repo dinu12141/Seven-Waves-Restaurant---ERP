@@ -36,8 +36,11 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn flat round size="sm" icon="edit" @click="editLedger(props.row)" />
-          <q-btn flat round size="sm" icon="visibility_off" color="red" @click="deactivate(props.row)" v-if="props.row.is_active && !props.row.is_system_ledger" />
+          <q-btn flat round size="sm" icon="edit" color="primary" @click="editLedger(props.row)" />
+          <q-btn flat round size="sm" icon="visibility_off" color="orange" @click="deactivate(props.row)" v-if="props.row.is_active && !props.row.is_system_ledger" />
+          <q-btn flat round size="sm" icon="delete" color="negative" @click="confirmDelete(props.row)" v-if="isAdmin && !props.row.is_system_ledger">
+            <q-tooltip>Delete (admin)</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -49,12 +52,23 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from 'src/stores/auth'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import LedgerForm from '../components/LedgerForm.vue'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 const ledgerStore = useFinanceLedgerStore()
 const showForm = ref(false)
+const isAdmin = computed(() => authStore.isAdmin)
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 const editingLedger = ref(null)
 const search = ref('')
 const filters = ref({ ledger_type: null })
@@ -87,13 +101,39 @@ async function handleSave(form) {
     else await ledgerStore.createLedger(form)
     $q.notify({ type: 'positive', message: `Ledger ${form._isEdit ? 'updated' : 'created'}` })
     editingLedger.value = null
-  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+    // Re-fetch so the list (balance etc.) reflects the saved row immediately.
+    await loadLedgers()
+  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
+}
+
+function confirmDelete(l) {
+  $q.dialog({
+    title: 'Delete Ledger',
+    message: `Delete ledger <strong>${l.ledger_name}</strong>? This cannot be undone.<br><br>
+              If it has posted transactions it cannot be deleted — deactivate it instead.`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Delete', color: 'negative', unelevated: true },
+  }).onOk(async () => {
+    try {
+      await ledgerStore.deleteLedger(l.id)
+      $q.notify({ type: 'positive', message: 'Ledger deleted' })
+    } catch (e) {
+      const msg = /foreign key|violates/i.test(e?.message || '')
+        ? 'This ledger has linked transactions and cannot be deleted. Deactivate it instead.'
+        : humanizeError(e)
+      $q.notify({ type: 'negative', message: msg, position: 'top', timeout: 4000 })
+    }
+  })
 }
 
 async function deactivate(l) {
   $q.dialog({ title: 'Deactivate Ledger?', message: `Deactivate "${l.ledger_name}"?`, cancel: true }).onOk(async () => {
-    await ledgerStore.deactivateLedger(l.id)
-    $q.notify({ type: 'warning', message: 'Ledger deactivated' })
+    try {
+      await ledgerStore.deactivateLedger(l.id)
+      $q.notify({ type: 'warning', message: 'Ledger deactivated' })
+    } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
   })
 }
 

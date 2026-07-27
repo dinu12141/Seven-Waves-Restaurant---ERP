@@ -40,7 +40,12 @@ export const useFinanceLedgerStore = defineStore('financeLedger', () => {
   async function updateLedger(id, data) {
     const result = await financeLedgerService.update(id, data)
     const idx = ledgers.value.findIndex(l => l.id === id)
-    if (idx !== -1) ledgers.value[idx] = result
+    // Replace the whole array so q-table reliably re-renders the edited row.
+    if (idx !== -1) {
+      const next = ledgers.value.slice()
+      next[idx] = result
+      ledgers.value = next
+    }
     return result
   }
 
@@ -50,5 +55,11 @@ export const useFinanceLedgerStore = defineStore('financeLedger', () => {
     if (idx !== -1) ledgers.value[idx].is_active = false
   }
 
-  return { ledgers, loading, error, selectedLedger, activeLedgers, cashbookLedgers, bankLedgers, pettyCashLedgers, ledgersByType, fetchLedgers, createLedger, updateLedger, deactivateLedger }
+  async function deleteLedger(id) {
+    await financeLedgerService.remove(id)
+    ledgers.value = ledgers.value.filter(l => l.id !== id)
+    return true
+  }
+
+  return { ledgers, loading, error, selectedLedger, activeLedgers, cashbookLedgers, bankLedgers, pettyCashLedgers, ledgersByType, fetchLedgers, createLedger, updateLedger, deactivateLedger, deleteLedger }
 })

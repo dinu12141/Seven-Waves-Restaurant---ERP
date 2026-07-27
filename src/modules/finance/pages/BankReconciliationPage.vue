@@ -57,6 +57,14 @@ const accountStore = useFinanceAccountStore()
 import { financeBankReconciliationService } from '../services/finance-bank-reconciliation.service'
 const reconStore = ref({ reconciliations: [], loading: false })
 
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
+
 const showCreate = ref(false)
 const createForm = ref({ bank_account_id: '', reconciliation_month: '', statement_start_date: '', statement_end_date: '', opening_bank_balance: 0, closing_bank_balance: 0 })
 
@@ -84,12 +92,12 @@ async function createRecon() {
   try {
     await financeBankReconciliationService.create(createForm.value)
     showCreate.value = false; $q.notify({ type: 'positive', message: 'Created' }); loadRecons()
-  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
 }
 
 async function approveRecon(id) {
   try { await financeBankReconciliationService.approve(id); $q.notify({ type: 'positive', message: 'Approved' }); loadRecons() }
-  catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+  catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
 }
 
 function viewRecon(r) { $q.notify({ message: `View reconciliation ${r.reconciliation_month} — lines: ${r.lines?.length || 0}` }) }

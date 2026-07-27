@@ -871,24 +871,26 @@ async function loadEmployees() {
 }
 
 async function loadData() {
-  const companyId = authStore.currentBranch?.company_id
-  const branchId = authStore.currentBranch?.id
-  if (!companyId || !branchId) return
+  const companyId = authStore.currentBranch?.company_id || authStore.profile?.company_id
+  if (!companyId) return
 
   loadingAdvances.value = true
   loadingExpenses.value = true
 
   try {
+    // Scope by COMPANY, not branch — an advance/expense created under a different
+    // branch (or before a branch switch) must still be visible. RLS already
+    // restricts rows to the user's company/branch, so this is safe.
     const [advRes, expRes] = await Promise.all([
       supabase
         .from('employee_advances')
         .select('*, employees(id, full_name, first_name, employee_code)')
-        .eq('branch_id', branchId)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false }),
       supabase
         .from('employee_expenses')
         .select('*, employees(id, full_name, first_name, employee_code)')
-        .eq('branch_id', branchId)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: false }),
     ])
     if (advRes.error) throw advRes.error

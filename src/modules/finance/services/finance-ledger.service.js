@@ -30,10 +30,16 @@ export const financeLedgerService = {
     const cleaned = { ...ledger }
     delete cleaned._isEdit
     delete cleaned._id
+    // A ledger's live balance must START at its opening balance — otherwise it
+    // shows 0 until the first voucher posts. current_balance then tracks
+    // opening + posted deltas. (A credit-nature opening balance is negative.)
+    const opening = Number(cleaned.opening_balance) || 0
+    const signedOpening = cleaned.opening_balance_type === 'credit' ? -opening : opening
     const payload = {
       ...cleaned,
       company_id: cleaned.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
       branch_id: cleaned.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
+      current_balance: cleaned.current_balance ?? signedOpening,
       created_by: authStore.user?.id || null,
       updated_by: authStore.user?.id || null
     }
@@ -62,6 +68,18 @@ export const financeLedgerService = {
 
   async deactivate(id) {
     return this.update(id, { is_active: false })
+  },
+
+  // Hard delete — admin only (finance_ledgers RLS: admin ALL; UI hides for
+  // non-admins). System ledgers and any ledger with posted movements (FK from
+  // cashbook/vouchers) cannot be deleted — deactivate instead.
+  async remove(id) {
+    const old = await this.getById(id).catch(() => null)
+    if (old?.is_system_ledger) throw new Error('System ledgers cannot be deleted.')
+    const { error } = await supabase.from('finance_ledgers').delete().eq('id', id)
+    if (error) throw error
+    await logFinanceAudit('ledger_deleted', 'finance_ledger', id, old, null)
+    return true
   },
 
   async getBalance(id) {

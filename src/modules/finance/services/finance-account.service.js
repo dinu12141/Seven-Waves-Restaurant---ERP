@@ -28,14 +28,19 @@ export const financeAccountService = {
     const cleaned = { ...account }
     delete cleaned._isEdit
     delete cleaned._id
+    // Seed the live balance from the opening balance — otherwise a new account
+    // always shows LKR 0 until a transaction posts. current_balance then tracks
+    // opening + posted movements.
+    const opening = Number(cleaned.opening_balance) || 0
     const payload = {
       ...cleaned,
       company_id: cleaned.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
       branch_id: cleaned.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
+      current_balance: cleaned.current_balance ?? opening,
       created_by: authStore.user?.id || null,
       updated_by: authStore.user?.id || null
     }
-    const { data, error } = await supabase.from('finance_accounts').insert(payload).select().single()
+    const { data, error } = await supabase.from('finance_accounts').insert(payload).select('*, ledger:finance_ledgers(*)').single()
     if (error) throw error
     await logFinanceAudit('account_created', 'finance_account', data.id, null, data)
     return data
@@ -52,7 +57,16 @@ export const financeAccountService = {
       updated_by: authStore.user?.id || null,
       updated_at: new Date().toISOString()
     }
-    const { data, error } = await supabase.from('finance_accounts').update(payload).eq('id', id).select().single()
+    // If the opening balance was edited and no posted movement has occurred yet
+    // (current == old opening), keep current_balance in step with the new opening.
+    if (
+      cleaned.opening_balance !== undefined &&
+      cleaned.current_balance === undefined &&
+      Number(old?.current_balance || 0) === Number(old?.opening_balance || 0)
+    ) {
+      payload.current_balance = Number(cleaned.opening_balance) || 0
+    }
+    const { data, error } = await supabase.from('finance_accounts').update(payload).eq('id', id).select('*, ledger:finance_ledgers(*)').single()
     if (error) throw error
     await logFinanceAudit('account_updated', 'finance_account', id, old, data)
     return data
@@ -60,6 +74,17 @@ export const financeAccountService = {
 
   async deactivate(id) {
     return this.update(id, { is_active: false })
+  },
+
+  // Hard delete — admin only. Gated in the DB by finance_accounts RLS
+  // (admin ALL); the UI also hides the button for non-admins. Blocks deleting
+  // an account that has posted cashbook/cheque movements (FK) — deactivate instead.
+  async remove(id) {
+    const old = await this.getById(id).catch(() => null)
+    const { error } = await supabase.from('finance_accounts').delete().eq('id', id)
+    if (error) throw error
+    await logFinanceAudit('account_deleted', 'finance_account', id, old, null)
+    return true
   },
 
   async getBalance(id) {

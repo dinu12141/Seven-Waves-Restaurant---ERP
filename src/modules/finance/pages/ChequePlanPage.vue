@@ -44,6 +44,14 @@ import { useFinanceChequeStore } from '../stores/finance-cheque.store'
 const $q = useQuasar()
 const chequeStore = useFinanceChequeStore()
 const filters = ref({ status: null, date_from: '', date_to: '' })
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 const statusOptions = ['planned','issued','cleared','bounced','cancelled','stale'].map(s => ({ label: s, value: s }))
 const cancelDialog = ref(false)
 const cancelTarget = ref(null)
@@ -61,10 +69,10 @@ const columns = [
 
 function chequeColor(s) { return { planned: 'grey', issued: 'blue', cleared: 'green', bounced: 'red', cancelled: 'dark', stale: 'orange' }[s] || 'grey' }
 
-async function clear(id) { try { await chequeStore.markCleared(id); $q.notify({ type: 'positive', message: 'Cleared' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
-async function bounce(id) { try { await chequeStore.markBounced(id); $q.notify({ type: 'warning', message: 'Bounced' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
+async function clear(id) { try { await chequeStore.markCleared(id); $q.notify({ type: 'positive', message: 'Cleared' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function bounce(id) { try { await chequeStore.markBounced(id); $q.notify({ type: 'warning', message: 'Bounced' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 function cancelCheque(c) { cancelTarget.value = c; cancelDialog.value = true; cancelReason.value = '' }
-async function doCancel() { try { await chequeStore.cancel(cancelTarget.value.id, cancelReason.value); cancelDialog.value = false; $q.notify({ type: 'info', message: 'Cancelled' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
+async function doCancel() { try { await chequeStore.cancel(cancelTarget.value.id, cancelReason.value); cancelDialog.value = false; $q.notify({ type: 'info', message: 'Cancelled' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 
 async function load() { await chequeStore.fetchCheques(filters.value) }
 onMounted(load)

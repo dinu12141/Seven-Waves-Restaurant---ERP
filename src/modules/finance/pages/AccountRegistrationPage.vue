@@ -16,7 +16,12 @@
       </template>
       <template v-slot:body-cell-actions="p">
         <q-td :props="p">
-          <q-btn flat round size="sm" icon="edit" @click="edit(p.row)" />
+          <q-btn flat round size="sm" icon="edit" color="primary" @click="edit(p.row)">
+            <q-tooltip>Edit</q-tooltip>
+          </q-btn>
+          <q-btn v-if="isAdmin" flat round size="sm" icon="delete" color="negative" @click="confirmDelete(p.row)">
+            <q-tooltip>Delete (admin)</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </q-table>
@@ -26,17 +31,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from 'src/stores/auth'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import AccountForm from '../components/AccountForm.vue'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 const accountStore = useFinanceAccountStore()
 const ledgerStore = useFinanceLedgerStore()
 const showForm = ref(false)
 const editing = ref(null)
+const isAdmin = computed(() => authStore.isAdmin)
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 
 const columns = [
   { name: 'registered_name', label: 'Name', field: 'registered_name', align: 'left', sortable: true },
@@ -57,7 +73,31 @@ async function handleSave(form) {
     else await accountStore.createAccount(form)
     $q.notify({ type: 'positive', message: `Account ${form._isEdit ? 'updated' : 'created'}` })
     editing.value = null
-  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+    // Re-fetch so the list (balance, bank, embeds) reflects the saved row immediately.
+    await accountStore.fetchAccounts()
+  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
+}
+
+function confirmDelete(row) {
+  $q.dialog({
+    title: 'Delete Account',
+    message: `Delete account <strong>${row.registered_name}</strong>? This cannot be undone.<br><br>
+              If the account has posted transactions it cannot be deleted — deactivate it instead.`,
+    html: true,
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Delete', color: 'negative', unelevated: true },
+  }).onOk(async () => {
+    try {
+      await accountStore.deleteAccount(row.id)
+      $q.notify({ type: 'positive', message: 'Account deleted' })
+    } catch (e) {
+      const msg = /foreign key|violates/i.test(e?.message || '')
+        ? 'This account has linked transactions and cannot be deleted. Deactivate it instead.'
+        : humanizeError(e)
+      $q.notify({ type: 'negative', message: msg, position: 'top', timeout: 4000 })
+    }
+  })
 }
 
 onMounted(async () => {

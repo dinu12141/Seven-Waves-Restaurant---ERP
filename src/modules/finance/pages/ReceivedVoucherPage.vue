@@ -37,6 +37,14 @@ import VoucherForm from '../components/VoucherForm.vue'
 const $q = useQuasar()
 const voucherStore = useFinanceVoucherStore()
 const showForm = ref(false)
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 const filters = ref({ status: null, date_from: '', date_to: '' })
 const statusOptions = ['draft','submitted','approved','rejected','posted','cancelled'].map(s => ({ label: s, value: s }))
 const columns = [
@@ -55,11 +63,11 @@ async function handleSave(form) {
     const result = await voucherStore.createReceivedVoucher(form)
     $q.notify({ type: 'positive', message: `Received voucher created — Voucher # ${result?.voucher_no ?? ''}` })
     load()
-  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
 }
-async function submit(id) { try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
-async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
-async function post(id) { try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted!' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
+async function submit(id) { try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function post(id) { try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted!' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 
 async function load() { await voucherStore.fetchVouchers({ voucher_type: 'received', ...filters.value }) }
 onMounted(async () => { await useFinanceLedgerStore().fetchLedgers(); await useFinanceAccountStore().fetchAccounts(); await load() })

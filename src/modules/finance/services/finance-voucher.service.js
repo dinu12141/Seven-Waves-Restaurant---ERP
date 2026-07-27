@@ -4,8 +4,12 @@
 
 import { supabase } from 'src/boot/supabase'
 import { logFinanceAudit } from './finance-ledger.service'
+import { useAuthStore } from 'src/stores/auth'
 
-const VOUCHER_SELECT = '*, ledger:finance_ledgers(*), account:finance_accounts(*), lines:finance_voucher_lines(*, ledger:finance_ledgers(*))'
+// finance_vouchers has TWO FKs to finance_accounts (account_id + bank_id), so the
+// embed MUST name the FK explicitly — otherwise PostgREST returns PGRST201 (400)
+// "more than one relationship found" and every voucher list/get fails.
+const VOUCHER_SELECT = '*, ledger:finance_ledgers(*), account:finance_accounts!finance_vouchers_account_id_fkey(*), bank:finance_accounts!finance_vouchers_bank_id_fkey(*), lines:finance_voucher_lines(*, ledger:finance_ledgers(*))'
 
 export const financeVoucherService = {
   // ── List ──────────────────────────────────────────────────────────────────
@@ -38,6 +42,7 @@ export const financeVoucherService = {
   },
 
   async _createVoucher(form) {
+    const authStore = useAuthStore()
     const voucherNo = await this._generateVoucherNo(form.voucher_type)
     const { lines, ...voucherData } = form
     delete voucherData.cheque_no
@@ -48,6 +53,9 @@ export const financeVoucherService = {
       voucher_no: voucherNo,
       status: 'draft',
       approval_status: 'pending',
+      company_id: voucherData.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
+      branch_id: voucherData.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
+      created_by: voucherData.created_by || authStore.user?.id || null,
     }).select().single()
 
     if (error) throw error

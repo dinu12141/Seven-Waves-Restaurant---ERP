@@ -29,9 +29,20 @@ export const useFinanceAccountStore = defineStore('financeAccount', () => {
   async function updateAccount(id, data) {
     const result = await financeAccountService.update(id, data)
     const idx = accounts.value.findIndex(a => a.id === id)
-    if (idx !== -1) accounts.value[idx] = result
+    // Replace the whole array so Quasar's q-table reliably re-renders the row.
+    if (idx !== -1) {
+      const next = accounts.value.slice()
+      next[idx] = result
+      accounts.value = next
+    }
     return result
   }
 
-  return { accounts, loading, error, activeAccounts, bankAccounts, cashAccounts, pettyCashAccounts, defaultAccount, fetchAccounts, createAccount, updateAccount }
+  async function deleteAccount(id) {
+    await financeAccountService.remove(id)
+    accounts.value = accounts.value.filter(a => a.id !== id)
+    return true
+  }
+
+  return { accounts, loading, error, activeAccounts, bankAccounts, cashAccounts, pettyCashAccounts, defaultAccount, fetchAccounts, createAccount, updateAccount, deleteAccount }
 })

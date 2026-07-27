@@ -46,6 +46,14 @@ const showForm = ref(false)
 const selected = ref(null)
 const actionLoading = ref(false)
 const filters = ref({ status: null, date_from: '', date_to: '' })
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 const statusOptions = ['draft','submitted','approved','rejected','posted','cancelled'].map(s => ({ label: s, value: s }))
 
 const columns = [
@@ -66,12 +74,12 @@ async function handleSave(form) {
     const result = await voucherStore.createPayVoucher(form)
     $q.notify({ type: 'positive', message: `Pay voucher created — Voucher # ${result?.voucher_no ?? ''}` })
     load()
-  } catch (e) { $q.notify({ type: 'negative', message: e.message }) }
+  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
 }
-async function submit(id) { actionLoading.value = true; try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }
-async function approve(id) { actionLoading.value = true; try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }
-async function reject(payload) { actionLoading.value = true; try { await voucherStore.rejectVoucher(payload.id, payload.reason); $q.notify({ type: 'warning', message: 'Rejected' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }
-async function post(id) { actionLoading.value = true; try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted to books!' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } finally { actionLoading.value = false } }
+async function submit(id) { actionLoading.value = true; try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } finally { actionLoading.value = false } }
+async function approve(id) { actionLoading.value = true; try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } finally { actionLoading.value = false } }
+async function reject(payload) { actionLoading.value = true; try { await voucherStore.rejectVoucher(payload.id, payload.reason); $q.notify({ type: 'warning', message: 'Rejected' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } finally { actionLoading.value = false } }
+async function post(id) { actionLoading.value = true; try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted to books!' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } finally { actionLoading.value = false } }
 
 async function load() { await voucherStore.fetchVouchers({ voucher_type: 'pay', ...filters.value }) }
 onMounted(async () => { await ledgerStore.fetchLedgers(); await accountStore.fetchAccounts(); await load() })

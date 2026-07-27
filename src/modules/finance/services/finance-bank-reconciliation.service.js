@@ -4,6 +4,7 @@
 
 import { supabase } from 'src/boot/supabase'
 import { logFinanceAudit } from './finance-ledger.service'
+import { useAuthStore } from 'src/stores/auth'
 
 export const financeBankReconciliationService = {
   async list(filters = {}) {
@@ -25,9 +26,14 @@ export const financeBankReconciliationService = {
   },
 
   async create(recon) {
+    const authStore = useAuthStore()
     const userId = (await supabase.auth.getUser()).data?.user?.id
     const { data, error } = await supabase.from('finance_bank_reconciliations').insert({
-      ...recon, prepared_by: userId, status: 'draft',
+      ...recon,
+      prepared_by: userId,
+      status: 'draft',
+      company_id: recon.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
+      branch_id: recon.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
     }).select().single()
     if (error) throw error
     await logFinanceAudit('reconciliation_created', 'bank_reconciliation', data.id, null, data)

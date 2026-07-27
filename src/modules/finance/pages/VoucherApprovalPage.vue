@@ -38,6 +38,14 @@ import { useFinanceVoucherStore } from '../stores/finance-voucher.store'
 const $q = useQuasar()
 const voucherStore = useFinanceVoucherStore()
 const rejectDialog = ref(false)
+
+function humanizeError(err) {
+  const msg = err?.message || String(err || 'Unknown error')
+  if (err?.code === '42501' || /row-level security|violates row-level/i.test(msg)) {
+    return 'You need finance or admin permission for this action.'
+  }
+  return msg
+}
 const rejectTarget = ref(null)
 const rejectReason = ref('')
 
@@ -51,9 +59,9 @@ const columns = [
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 
-async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
+async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 function openReject(v) { rejectTarget.value = v; rejectDialog.value = true; rejectReason.value = '' }
-async function reject() { try { await voucherStore.rejectVoucher(rejectTarget.value.id, rejectReason.value); rejectDialog.value = false; $q.notify({ type: 'warning', message: 'Rejected' }) } catch (e) { $q.notify({ type: 'negative', message: e.message }) } }
+async function reject() { try { await voucherStore.rejectVoucher(rejectTarget.value.id, rejectReason.value); rejectDialog.value = false; $q.notify({ type: 'warning', message: 'Rejected' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 
 onMounted(() => voucherStore.fetchApprovalQueue())
 </script>
