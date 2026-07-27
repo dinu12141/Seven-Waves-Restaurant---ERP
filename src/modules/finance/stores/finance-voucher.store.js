@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { financeVoucherService } from '../services/finance-voucher.service'
+import { useFinanceAccountStore } from './finance-account.store'
+import { useFinanceLedgerStore } from './finance-ledger.store'
 
 export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
   const vouchers = ref([])
@@ -50,6 +52,8 @@ export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
     const result = await financeVoucherService.approveVoucher(id)
     _replaceVoucher(id, result)
     approvalQueue.value = approvalQueue.value.filter(v => v.id !== id)
+    useFinanceAccountStore().fetchAccounts().catch(() => {})
+    useFinanceLedgerStore().fetchLedgers().catch(() => {})
     return result
   }
 
@@ -63,12 +67,16 @@ export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
   async function postVoucher(id) {
     const result = await financeVoucherService.postVoucher(id)
     _replaceVoucher(id, result)
+    useFinanceAccountStore().fetchAccounts().catch(() => {})
+    useFinanceLedgerStore().fetchLedgers().catch(() => {})
     return result
   }
 
   async function cancelVoucher(id, reason) {
     const result = await financeVoucherService.cancelVoucher(id, reason)
     _replaceVoucher(id, result)
+    useFinanceAccountStore().fetchAccounts().catch(() => {})
+    useFinanceLedgerStore().fetchLedgers().catch(() => {})
     return result
   }
 

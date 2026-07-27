@@ -208,6 +208,24 @@
         <span v-if="ticket.waiterName" class="text-caption text-orange-4 text-weight-medium">
           <q-icon name="person" size="12px" class="q-mr-xs" />{{ ticket.waiterName }}
         </span>
+        <q-badge
+          v-if="ticket.served"
+          color="green-8"
+          text-color="white"
+          class="text-bold q-ml-sm"
+          style="padding: 2px 8px; font-size: 0.7rem;"
+        >
+          <q-icon name="check_circle" size="10px" class="q-mr-xs" />SERVED
+        </q-badge>
+        <q-badge
+          v-else
+          color="amber-8"
+          text-color="white"
+          class="text-bold q-ml-sm"
+          style="padding: 2px 8px; font-size: 0.7rem;"
+        >
+          <q-icon name="hourglass_top" size="10px" class="q-mr-xs" />WAITING
+        </q-badge>
       </div>
       <div class="row items-center q-gutter-x-xs" style="flex-shrink: 0">
         <div class="text-caption font-mono text-grey-5 q-mr-xs">{{ ticket.timeElapsed }}</div>

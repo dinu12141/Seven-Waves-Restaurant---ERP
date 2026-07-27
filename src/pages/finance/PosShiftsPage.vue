@@ -42,7 +42,7 @@
       </q-btn>
       <q-space />
       <q-btn-dropdown color="primary" icon="download" label="Export">
-        <q-list dark style="background: #1e1e1e">
+        <q-list>
           <q-item clickable v-close-popup @click="exportToCsv">
             <q-item-section avatar><q-icon name="description" /></q-item-section>
             <q-item-section>Export to CSV</q-item-section>

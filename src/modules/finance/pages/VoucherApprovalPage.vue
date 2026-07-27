@@ -59,9 +59,26 @@ const columns = [
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
 
-async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function approve(id) {
+  try {
+    await voucherStore.approveVoucher(id)
+    $q.notify({ type: 'positive', message: 'Voucher approved & posted to accounts!', position: 'top' })
+    await voucherStore.fetchApprovalQueue()
+  } catch (e) {
+    $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
+  }
+}
 function openReject(v) { rejectTarget.value = v; rejectDialog.value = true; rejectReason.value = '' }
-async function reject() { try { await voucherStore.rejectVoucher(rejectTarget.value.id, rejectReason.value); rejectDialog.value = false; $q.notify({ type: 'warning', message: 'Rejected' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function reject() {
+  try {
+    await voucherStore.rejectVoucher(rejectTarget.value.id, rejectReason.value)
+    rejectDialog.value = false
+    $q.notify({ type: 'warning', message: 'Voucher rejected', position: 'top' })
+    await voucherStore.fetchApprovalQueue()
+  } catch (e) {
+    $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
+  }
+}
 
 onMounted(() => voucherStore.fetchApprovalQueue())
 </script>

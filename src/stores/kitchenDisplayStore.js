@@ -30,6 +30,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   // Subscriptions
   let kotChannel = null
   let timerInterval = null
+  let currentDay = new Date().toISOString().split('T')[0] // tracks current date for midnight auto-clear
 
   // ── Getters ────────────────────────────────────────────────
   const newTickets = computed(() =>
@@ -127,8 +128,6 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
     const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
 
-    // Fetch today's active tickets (new + preparing) AND all ready tickets (any date, not yet dismissed)
-    // We do two queries and merge to avoid the date filter excluding old ready tickets
     const selectFields = `
       id,
       order_id,
@@ -163,7 +162,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       kitchen:kitchens ( name )
     `
 
-    // Query 1: Today's non-ready tickets (new/preparing)
+    // Query 1: Today's non-ready tickets (new/preparing) — must not be completed
     let todayQuery = supabase
       .from('kot_tickets')
       .select(selectFields)
@@ -172,12 +171,13 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       .gte('created_at', todayStart)
       .order('created_at', { ascending: true })
 
-    // Query 2: ALL ready tickets that haven't been dismissed (completed_at IS NULL)
+    // Query 2: ALL ready tickets created TODAY — stay visible entire day
+    //          regardless of completed_at (served orders still show)
     let readyQuery = supabase
       .from('kot_tickets')
       .select(selectFields)
       .eq('status', 'ready')
-      .is('completed_at', null)
+      .gte('created_at', todayStart)
       .order('created_at', { ascending: false })
 
     if (!isCashierDisplay) {
@@ -285,8 +285,14 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (eventType === 'UPDATE') {
       const idx = tickets.value.findIndex((t) => t.id === newRow.id)
 
-      // Remove if completed/cancelled
-      if (newRow.status === 'cancelled' || newRow.completed_at) {
+      // Remove only if cancelled (NOT when completed_at is set — ready tickets stay all day)
+      if (newRow.status === 'cancelled') {
+        if (idx !== -1) tickets.value.splice(idx, 1)
+        return
+      }
+
+      // If completed_at is set on a non-ready ticket, remove it
+      if (newRow.completed_at && newRow.status !== 'ready') {
         if (idx !== -1) tickets.value.splice(idx, 1)
         return
       }
@@ -298,7 +304,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
           status: newRow.status,
           printed_at: newRow.printed_at,
           accepted_at: newRow.accepted_at,
+          completed_at: newRow.completed_at,
           updated_at: newRow.updated_at,
+          served: !!newRow.completed_at,
         }
       } else if (['created', 'pending', 'accepted', 'preparing', 'ready'].includes(newRow.status)) {
         // Not in list yet — fetch full details
@@ -375,21 +383,22 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (error || !data) return
 
-    // Today filter check — only for non-ready tickets
-    // Ready tickets should always show regardless of creation date
-    if (data.status !== 'ready') {
-      const todayStart = new Date().setHours(0, 0, 0, 0)
-      const ticketDate = new Date(data.created_at).getTime()
-      if (ticketDate < todayStart) return
-    }
+    // Today filter — all tickets (including ready) must be from today
+    const todayStart = new Date().setHours(0, 0, 0, 0)
+    const ticketDate = new Date(data.created_at).getTime()
+    if (ticketDate < todayStart) return
 
     // 🔒 KITCHEN GUARD — Only add/update if it belongs to OUR kitchen
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
     if (!isCashierDisplay && data.kitchen_id !== selectedKitchenId.value) return
-    if (
-      data.completed_at ||
-      data.status === 'cancelled'
-    ) {
+
+    // Remove cancelled tickets
+    if (data.status === 'cancelled') {
+      tickets.value = tickets.value.filter((t) => t.id !== kotId)
+      return
+    }
+    // For non-ready tickets, remove if completed
+    if (data.completed_at && data.status !== 'ready') {
       tickets.value = tickets.value.filter((t) => t.id !== kotId)
       return
     }
@@ -670,6 +679,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       waiterName: ticket.order?.waiter?.full_name || '',
       customerName: ticket.order?.customer_name || '',
       kitchenName: ticket.kitchen?.name || '',
+      served: !!ticket.completed_at, // true if waiter has collected/served this order
       items: (ticket.kot_items || []).map((ki) => ({
         id: ki.id,
         name: ki.order_item?.menu_item?.name || 'Unknown Item',
@@ -707,6 +717,15 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       tickets.value.forEach((t) => {
         t.timeElapsed = getTimeElapsed(t.created_at)
       })
+
+      // Midnight auto-clear: when the day changes, re-fetch tickets
+      // so yesterday's ready tickets are no longer shown
+      const nowDay = new Date().toISOString().split('T')[0]
+      if (nowDay !== currentDay) {
+        console.log('[KDS] Day changed from %s to %s — clearing stale ready tickets', currentDay, nowDay)
+        currentDay = nowDay
+        fetchTickets() // re-fetches with new todayStart, old ready tickets naturally excluded
+      }
     }, 1000)
   }
 

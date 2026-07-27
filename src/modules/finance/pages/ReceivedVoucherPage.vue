@@ -58,12 +58,8 @@ const columns = [
 ]
 function statusColor(s) { return { draft: 'grey', submitted: 'orange', approved: 'blue', rejected: 'red', posted: 'green', cancelled: 'dark' }[s] || 'grey' }
 
-async function handleSave(form) {
-  try {
-    const result = await voucherStore.createReceivedVoucher(form)
-    $q.notify({ type: 'positive', message: `Received voucher created — Voucher # ${result?.voucher_no ?? ''}` })
-    load()
-  } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
+async function handleSave() {
+  await load()
 }
 async function submit(id) { try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }

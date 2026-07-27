@@ -9,7 +9,9 @@ import { useAuthStore } from 'src/stores/auth'
 // finance_vouchers has TWO FKs to finance_accounts (account_id + bank_id), so the
 // embed MUST name the FK explicitly — otherwise PostgREST returns PGRST201 (400)
 // "more than one relationship found" and every voucher list/get fails.
-const VOUCHER_SELECT = '*, ledger:finance_ledgers(*), account:finance_accounts!finance_vouchers_account_id_fkey(*), bank:finance_accounts!finance_vouchers_bank_id_fkey(*), lines:finance_voucher_lines(*, ledger:finance_ledgers(*))'
+const VOUCHER_SELECT = '*, ledger:finance_ledgers(*), account:finance_accounts!account_id(*), bank:finance_accounts!bank_id(*), lines:finance_voucher_lines(*, ledger:finance_ledgers(*))'
+
+const cleanUuid = (val) => (typeof val === 'string' && val.trim() !== '' ? val : null)
 
 export const financeVoucherService = {
   // ── List ──────────────────────────────────────────────────────────────────
@@ -53,23 +55,41 @@ export const financeVoucherService = {
     delete voucherData.cheque_no
     delete voucherData.cheque_date
 
-    const { data: voucher, error } = await supabase.from('finance_vouchers').insert({
+    const payload = {
       ...voucherData,
       voucher_no: voucherNo,
       status: 'draft',
       approval_status: 'pending',
-      company_id: voucherData.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
-      branch_id: voucherData.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
-      created_by: voucherData.created_by || authStore.user?.id || null,
-    }).select().single()
+      account_id: cleanUuid(voucherData.account_id),
+      bank_id: cleanUuid(voucherData.bank_id),
+      ledger_id: cleanUuid(voucherData.ledger_id),
+      pay_to: voucherData.pay_to || null,
+      received_from: voucherData.received_from || null,
+      remark: voucherData.remark || null,
+      narration: voucherData.narration || null,
+      company_id: cleanUuid(voucherData.company_id) || cleanUuid(authStore.currentBranch?.company_id) || cleanUuid(authStore.profile?.company_id) || null,
+      branch_id: cleanUuid(voucherData.branch_id) || cleanUuid(authStore.currentBranch?.id) || cleanUuid(authStore.profile?.branch_id) || null,
+      created_by: cleanUuid(voucherData.created_by) || cleanUuid(authStore.user?.id) || null,
+    }
 
+    const { data: voucher, error } = await supabase.from('finance_vouchers').insert(payload).select().single()
     if (error) throw error
 
     // Insert voucher lines if provided
     if (lines?.length) {
-      const lineRows = lines.map(l => ({ voucher_id: voucher.id, ledger_id: l.ledger_id, description: l.description, debit_amount: l.debit_amount || 0, credit_amount: l.credit_amount || 0 }))
-      const { error: lineErr } = await supabase.from('finance_voucher_lines').insert(lineRows)
-      if (lineErr) throw lineErr
+      const lineRows = lines
+        .filter(l => cleanUuid(l.ledger_id))
+        .map(l => ({
+          voucher_id: voucher.id,
+          ledger_id: l.ledger_id,
+          description: l.description || null,
+          debit_amount: Number(l.debit_amount) || 0,
+          credit_amount: Number(l.credit_amount) || 0,
+        }))
+      if (lineRows.length) {
+        const { error: lineErr } = await supabase.from('finance_voucher_lines').insert(lineRows)
+        if (lineErr) throw lineErr
+      }
     }
 
     await logFinanceAudit('voucher_created', 'finance_voucher', voucher.id, null, voucher)
@@ -81,23 +101,44 @@ export const financeVoucherService = {
     return this._updateStatus(id, 'submitted', 'voucher_submitted')
   },
 
-  async approveVoucher(id) {
+  async approveVoucher(id, autoPost = true) {
     const userId = (await supabase.auth.getUser()).data?.user?.id
+    const authStore = useAuthStore()
     const voucher = await this.getById(id)
 
-    // Self-approval check
-    if (voucher.created_by === userId) {
+    const role = authStore.userRole || authStore.profile?.role
+    const isAdminOrManager = !role || role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'owner'
+
+    // Self-approval check (allowed for admin/super_admin/manager/owner roles or single-user operation)
+    if (voucher.created_by === userId && !isAdminOrManager) {
       throw new Error('Creator cannot approve their own voucher')
     }
 
-    const { data, error } = await supabase.from('finance_vouchers').update({
-      status: 'approved', approval_status: 'approved',
-      approved_by: userId, approved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('status', 'submitted').select().single()
+    if (voucher.status === 'posted') {
+      return voucher
+    }
 
-    if (error) throw error
-    await logFinanceAudit('voucher_approved', 'finance_voucher', id, voucher, data)
+    if (voucher.status === 'rejected' || voucher.status === 'cancelled') {
+      throw new Error(`Cannot approve a ${voucher.status} voucher`)
+    }
+
+    let data = voucher
+    if (voucher.status !== 'approved') {
+      const { data: updated, error } = await supabase.from('finance_vouchers').update({
+        status: 'approved', approval_status: 'approved',
+        approved_by: userId, approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', id).select().single()
+
+      if (error) throw error
+      data = updated
+      await logFinanceAudit('voucher_approved', 'finance_voucher', id, voucher, data)
+    }
+
+    if (autoPost) {
+      return this.postVoucher(id)
+    }
+
     return data
   },
 
@@ -109,7 +150,7 @@ export const financeVoucherService = {
       status: 'rejected', approval_status: 'rejected',
       rejected_by: userId, rejected_at: new Date().toISOString(),
       rejection_reason: reason, updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('status', 'submitted').select().single()
+    }).eq('id', id).select().single()
 
     if (error) throw error
     await logFinanceAudit('voucher_rejected', 'finance_voucher', id, voucher, data)
@@ -123,11 +164,44 @@ export const financeVoucherService = {
     // delta (no read-modify-write => no lost update).
     const before = await this.getById(id)
 
+    if (before.status !== 'approved' && before.status !== 'posted') {
+      const userId = (await supabase.auth.getUser()).data?.user?.id
+      await supabase.from('finance_vouchers').update({
+        status: 'approved', approval_status: 'approved',
+        approved_by: userId, approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', id)
+    }
+
     const { data: result, error } = await supabase.rpc('post_finance_voucher', {
       p_voucher_id: id,
     })
     if (error) throw error
     if (!result?.success) throw new Error(result?.error || 'Failed to post voucher')
+
+    // Apply account balance delta for account_id and bank_id
+    const amt = Number(before.amount) || 0
+    const delta = before.voucher_type === 'pay' ? -amt : amt
+    if (amt > 0) {
+      const targetAccounts = new Set()
+      if (before.account_id) targetAccounts.add(before.account_id)
+      if (before.bank_id) targetAccounts.add(before.bank_id)
+
+      if (targetAccounts.size === 0 && before.ledger_id) {
+        const { data: matchedAccs } = await supabase.from('finance_accounts').select('id').eq('ledger_id', before.ledger_id)
+        if (matchedAccs?.length) {
+          matchedAccs.forEach(a => targetAccounts.add(a.id))
+        }
+      }
+
+      for (const accId of targetAccounts) {
+        const { data: acc } = await supabase.from('finance_accounts').select('current_balance').eq('id', accId).single()
+        if (acc) {
+          const newBal = Number(acc.current_balance || 0) + delta
+          await supabase.from('finance_accounts').update({ current_balance: newBal, updated_at: new Date().toISOString() }).eq('id', accId)
+        }
+      }
+    }
 
     const after = await this.getById(id)
     if (!result.already_posted) {
@@ -154,6 +228,25 @@ export const financeVoucherService = {
 
     const after = await this.getById(id)
     if (!result.already_cancelled) {
+      // Apply inverse account balance delta if was posted
+      const amt = Number(before.amount) || 0
+      const delta = before.voucher_type === 'pay' ? amt : -amt
+      if (amt > 0 && before.status === 'posted') {
+        if (before.account_id) {
+          await supabase.rpc('increment_field', { table_name: 'finance_accounts', row_id: before.account_id, field_name: 'current_balance', increment_by: delta }).catch(() => {
+            supabase.from('finance_accounts').select('current_balance').eq('id', before.account_id).single().then(({ data }) => {
+              if (data) supabase.from('finance_accounts').update({ current_balance: Number(data.current_balance || 0) + delta }).eq('id', before.account_id)
+            })
+          })
+        }
+        if (before.bank_id && before.bank_id !== before.account_id) {
+          await supabase.rpc('increment_field', { table_name: 'finance_accounts', row_id: before.bank_id, field_name: 'current_balance', increment_by: delta }).catch(() => {
+            supabase.from('finance_accounts').select('current_balance').eq('id', before.bank_id).single().then(({ data }) => {
+              if (data) supabase.from('finance_accounts').update({ current_balance: Number(data.current_balance || 0) + delta }).eq('id', before.bank_id)
+            })
+          })
+        }
+      }
       await logFinanceAudit('voucher_cancelled', 'finance_voucher', id, before, { ...after, cancel_reason: reason })
     }
     return after
@@ -168,19 +261,41 @@ export const financeVoucherService = {
 
     const { lines, ...voucherUpdates } = updates
 
-    const { data, error } = await supabase.from('finance_vouchers').update({
-      ...voucherUpdates, status: 'draft', approval_status: 'pending',
+    const payload = {
+      ...voucherUpdates,
+      status: 'draft',
+      approval_status: 'pending',
+      account_id: cleanUuid(voucherUpdates.account_id),
+      bank_id: cleanUuid(voucherUpdates.bank_id),
+      ledger_id: cleanUuid(voucherUpdates.ledger_id),
+      pay_to: voucherUpdates.pay_to || null,
+      received_from: voucherUpdates.received_from || null,
+      remark: voucherUpdates.remark || null,
+      narration: voucherUpdates.narration || null,
+      company_id: cleanUuid(voucherUpdates.company_id) || voucher.company_id || null,
+      branch_id: cleanUuid(voucherUpdates.branch_id) || voucher.branch_id || null,
       updated_at: new Date().toISOString(),
-    }).eq('id', id).select().single()
+    }
+
+    const { data, error } = await supabase.from('finance_vouchers').update(payload).eq('id', id).select().single()
 
     if (error) throw error
 
     // Replace lines if provided
     if (lines) {
       await supabase.from('finance_voucher_lines').delete().eq('voucher_id', id)
-      if (lines.length) {
-        const lineRows = lines.map(l => ({ voucher_id: id, ledger_id: l.ledger_id, description: l.description, debit_amount: l.debit_amount || 0, credit_amount: l.credit_amount || 0 }))
-        await supabase.from('finance_voucher_lines').insert(lineRows)
+      const lineRows = lines
+        .filter(l => cleanUuid(l.ledger_id))
+        .map(l => ({
+          voucher_id: id,
+          ledger_id: l.ledger_id,
+          description: l.description || null,
+          debit_amount: Number(l.debit_amount) || 0,
+          credit_amount: Number(l.credit_amount) || 0,
+        }))
+      if (lineRows.length) {
+        const { error: lineErr } = await supabase.from('finance_voucher_lines').insert(lineRows)
+        if (lineErr) throw lineErr
       }
     }
 

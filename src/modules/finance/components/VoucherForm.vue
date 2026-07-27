@@ -61,10 +61,11 @@
                   </q-select>
                 </div>
                 <div class="col-12">
-                  <div class="fin-label">Account</div>
+                  <div class="fin-label">Account <span class="fin-req">*</span></div>
                   <q-select v-model="form.account_id" outlined dense :dark="$q.dark.isActive"
-                    emit-value map-options clearable :options="accountOptions" hide-bottom-space
-                    placeholder="Optional — cash/bank account" />
+                    emit-value map-options :options="accountOptions"
+                    :rules="[v => !!v || 'Please select an Account (Cash/Bank)']" hide-bottom-space
+                    placeholder="Select Cash or Bank Account" />
                 </div>
               </div>
             </div>
@@ -154,6 +155,7 @@ import { ref, watch, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
+import { useFinanceVoucherStore } from '../stores/finance-voucher.store'
 
 const $q = useQuasar()
 const props = defineProps({ modelValue: Boolean, type: { type: String, default: 'pay' } })
@@ -161,6 +163,8 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 
 const ledgerStore = useFinanceLedgerStore()
 const accountStore = useFinanceAccountStore()
+const voucherStore = useFinanceVoucherStore()
+
 const visible = ref(props.modelValue)
 const saving = ref(false)
 
@@ -170,8 +174,8 @@ const needsCheque = computed(() => form.value.payment_method === 'cheque')
 
 const defaultForm = () => ({
   voucher_date: new Date().toISOString().split('T')[0],
-  pay_to: '', received_from: '', amount: 0,
-  payment_method: 'cash', ledger_id: '', account_id: '', bank_id: '',
+  pay_to: '', received_from: '', amount: null,
+  payment_method: 'cash', ledger_id: null, account_id: null, bank_id: null,
   cheque_no: '', cheque_date: '', remark: '', narration: '', lines: [],
 })
 const form = ref(defaultForm())
@@ -198,20 +202,47 @@ const totalDebit = computed(() => form.value.lines.reduce((s, l) => s + (Number(
 const totalCredit = computed(() => form.value.lines.reduce((s, l) => s + (Number(l.credit_amount) || 0), 0))
 const balanced = computed(() => Math.abs(totalDebit.value - totalCredit.value) < 0.01)
 
-function addLine() { form.value.lines.push({ ledger_id: '', description: '', debit_amount: 0, credit_amount: 0, idx: Date.now() + Math.random() }) }
+function addLine() { form.value.lines.push({ ledger_id: null, description: '', debit_amount: 0, credit_amount: 0, idx: Date.now() + Math.random() }) }
 function removeLine(idx) { form.value.lines.splice(idx, 1) }
 
 watch(() => props.modelValue, v => {
   visible.value = v
-  if (v) form.value = defaultForm()   // fresh form each open
+  if (v) {
+    form.value = defaultForm()
+    if (accountOptions.value.length) {
+      const def = accountStore.defaultAccount?.id || accountOptions.value[0].value
+      form.value.account_id = def
+    }
+  }
 })
 watch(visible, v => emit('update:modelValue', v))
 
 function close() { visible.value = false }
 async function save() {
   saving.value = true
-  try { emit('saved', { ...form.value, voucher_type: props.type }); close() }
-  finally { saving.value = false }
+  try {
+    let result
+    if (isPay.value) {
+      result = await voucherStore.createPayVoucher({ ...form.value, voucher_type: 'pay' })
+    } else {
+      result = await voucherStore.createReceivedVoucher({ ...form.value, voucher_type: 'received' })
+    }
+    $q.notify({
+      type: 'positive',
+      message: `${isPay.value ? 'Pay' : 'Received'} voucher created — Voucher # ${result?.voucher_no ?? ''}`,
+      position: 'top',
+    })
+    emit('saved', result)
+    close()
+  } catch (e) {
+    const msg = e?.message || String(e || 'Unknown error')
+    const userMsg = (e?.code === '42501' || /row-level security|violates row-level/i.test(msg))
+      ? 'You need finance or admin permission for this action.'
+      : msg
+    $q.notify({ type: 'negative', message: userMsg, position: 'top', timeout: 5000 })
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 

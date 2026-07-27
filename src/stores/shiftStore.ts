@@ -251,13 +251,61 @@ export const useShiftStore = defineStore('posShift', () => {
         return { success: false, error: result.error }
       }
 
-      // Post journal entry
+      // Post journal entry & Auto-Transfer
       const updatedShift = await apiGetSummary(activeShift.value.id)
       if (updatedShift) {
         const journalResult = await postShiftJournal(updatedShift)
         if (!journalResult.success) {
           console.error('[ShiftStore] Journal posting failed:', journalResult.error)
-          // Don't fail the close — journal can be posted manually
+        }
+
+        // Auto-Transfer POS Cash to Finance Cashbook
+        if ((counts.countedCash || 0) > 0) {
+          try {
+            const { supabase } = await import('src/boot/supabase')
+            const { financeVoucherService } = await import('src/modules/finance/services/finance-voucher.service')
+            
+            // 1. Find the default Cash Account
+            const { data: accounts } = await supabase.from('finance_accounts').select('id, ledger_id').eq('is_default', true).limit(1)
+            let accountId = accounts?.[0]?.id
+            let ledgerId = accounts?.[0]?.ledger_id
+
+            // Fallback to first available if no default is set
+            if (!accountId || !ledgerId) {
+              const { data: anyAccount } = await supabase.from('finance_accounts').select('id, ledger_id').limit(1)
+              accountId = anyAccount?.[0]?.id
+              ledgerId = anyAccount?.[0]?.ledger_id
+            }
+
+            if (accountId && ledgerId) {
+              // 2. Create the Received Voucher
+              const voucherForm = {
+                voucher_type: 'received',
+                voucher_date: new Date().toISOString().split('T')[0],
+                received_from: `POS Cash Transfer - Shift ${updatedShift.id.slice(0, 8)}`,
+                amount: counts.countedCash,
+                payment_method: 'cash',
+                account_id: accountId,
+                ledger_id: ledgerId,
+                remark: 'Auto-transfer from POS Shift Close',
+                narration: 'POS Cash Transfer',
+                branch_id: updatedShift.branch_id
+              }
+              
+              const createdVoucher = await financeVoucherService.createReceivedVoucher(voucherForm)
+              
+              // 3. Post it immediately using RPC to bypass frontend role restrictions for cashiers
+              if (createdVoucher?.id) {
+                const { error: postErr } = await supabase.rpc('post_finance_voucher', { p_voucher_id: createdVoucher.id })
+                if (postErr) throw postErr
+                console.log('[ShiftStore] POS Cash Auto-Transfer completed:', createdVoucher.voucher_no)
+              }
+            } else {
+              console.warn('[ShiftStore] Could not auto-transfer cash: No valid finance account/ledger found.')
+            }
+          } catch (finErr) {
+            console.error('[ShiftStore] Auto-Transfer failed:', finErr)
+          }
         }
       }
 

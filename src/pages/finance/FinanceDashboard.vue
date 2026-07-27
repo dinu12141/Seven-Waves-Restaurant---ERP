@@ -160,7 +160,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
-import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
@@ -174,7 +173,6 @@ import {
 const loading = ref(false)
 const chartReady = ref(false)
 const $q = useQuasar()
-const authStore = useAuthStore()
 
 const kpis = ref([
   {
@@ -202,7 +200,7 @@ const kpis = ref([
     isCurrency: true,
   },
   {
-    label: 'Receivables',
+    label: 'Outstanding AR',
     value: 0,
     icon: 'request_quote',
     color: 'orange',
@@ -210,7 +208,7 @@ const kpis = ref([
     isCurrency: true,
   },
   {
-    label: 'Payables',
+    label: 'Outstanding AP',
     value: 0,
     icon: 'receipt_long',
     color: 'purple',
@@ -325,35 +323,44 @@ function getLast6MonthsRange() {
 async function fetchAll() {
   loading.value = true
   try {
-    const companyId = authStore.currentBranch?.company_id
     const sixMonthsAgo = getLast6MonthsRange()[0].start
 
-    const [kpiRes, jeRes, balRes, expRes, revenueChartRes, expenseChartRes] = await Promise.all([
+    const [kpiRes, jeRes, balRes, expRes, posRevenueChartRes, recvVouchersChartRes, payVouchersChartRes, expenseChartRes] = await Promise.all([
       fetchDashboardKPIs(),
       fetchJournalEntries({ limit: 5 }),
       fetchAccountBalances(),
       fetchExpenses({ limit: 8 }),
 
-      // Monthly revenue: paid orders grouped by month (last 6 months)
-      companyId
-        ? supabase
-            .from('orders')
-            .select('total_amount, created_at')
-            .eq('company_id', companyId)
-            .eq('payment_status', 'paid')
-            .gte('created_at', sixMonthsAgo + 'T00:00:00')
-            .order('created_at')
-        : Promise.resolve({ data: [] }),
+      // Monthly POS paid orders revenue
+      supabase
+        .from('orders')
+        .select('total_amount, created_at')
+        .eq('payment_status', 'paid')
+        .gte('created_at', sixMonthsAgo + 'T00:00:00')
+        .order('created_at'),
 
-      // Monthly expenses: approved/paid expense entries last 6 months
-      companyId
-        ? supabase
-            .from('expense_entries')
-            .select('amount, expense_date')
-            .in('status', ['approved', 'paid'])
-            .gte('expense_date', sixMonthsAgo)
-            .order('expense_date')
-        : Promise.resolve({ data: [] }),
+      // Monthly Received Vouchers revenue
+      supabase
+        .from('finance_vouchers')
+        .select('amount, voucher_date, created_at')
+        .eq('voucher_type', 'received')
+        .in('status', ['posted', 'approved', 'submitted'])
+        .gte('voucher_date', sixMonthsAgo),
+
+      // Monthly Pay Vouchers expenses
+      supabase
+        .from('finance_vouchers')
+        .select('amount, voucher_date, created_at')
+        .eq('voucher_type', 'pay')
+        .in('status', ['posted', 'approved', 'submitted'])
+        .gte('voucher_date', sixMonthsAgo),
+
+      // Monthly expense_entries
+      supabase
+        .from('expense_entries')
+        .select('amount, expense_date')
+        .in('status', ['approved', 'paid'])
+        .gte('expense_date', sixMonthsAgo),
     ])
 
     if (kpiRes) {
@@ -380,13 +387,25 @@ async function fetchAll() {
       expenseByMonth[m.key] = 0
     })
 
-    for (const row of revenueChartRes.data || []) {
+    for (const row of posRevenueChartRes.data || []) {
       const monthKey = (row.created_at || '').substring(0, 7)
       if (revenueByMonth[monthKey] !== undefined) {
         revenueByMonth[monthKey] += Number(row.total_amount || 0)
       }
     }
+    for (const row of recvVouchersChartRes.data || []) {
+      const monthKey = (row.voucher_date || row.created_at || '').substring(0, 7)
+      if (revenueByMonth[monthKey] !== undefined) {
+        revenueByMonth[monthKey] += Number(row.amount || 0)
+      }
+    }
 
+    for (const row of payVouchersChartRes.data || []) {
+      const monthKey = (row.voucher_date || row.created_at || '').substring(0, 7)
+      if (expenseByMonth[monthKey] !== undefined) {
+        expenseByMonth[monthKey] += Number(row.amount || 0)
+      }
+    }
     for (const row of expenseChartRes.data || []) {
       const monthKey = (row.expense_date || '').substring(0, 7)
       if (expenseByMonth[monthKey] !== undefined) {

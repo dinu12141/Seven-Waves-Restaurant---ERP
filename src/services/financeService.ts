@@ -62,6 +62,43 @@ export async function updateAccount(id: any, updates: any) {
 // JOURNAL ENTRIES
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchJournalEntries(filters: FinanceFilters = {}) {
+  // Query real finance_cashbook_entries & finance_vouchers first
+  const { data: cashbook } = await supabase
+    .from('finance_cashbook_entries')
+    .select('id, description, debit_amount, credit_amount, entry_date, created_at, source_type')
+    .order('created_at', { ascending: false })
+    .limit(filters.limit || 10)
+
+  if (cashbook && cashbook.length > 0) {
+    const mapped = cashbook.map((c: any) => ({
+      id: c.id,
+      description: c.description,
+      doc_date: c.entry_date || c.created_at,
+      total_dr: Number(c.debit_amount || c.credit_amount || 0),
+      reference_type: c.source_type || 'cashbook',
+    }))
+    return { data: mapped, error: null }
+  }
+
+  // Also try real finance_vouchers
+  const { data: vouchers } = await supabase
+    .from('finance_vouchers')
+    .select('id, voucher_no, voucher_type, voucher_date, amount, pay_to, received_from, created_at')
+    .order('created_at', { ascending: false })
+    .limit(filters.limit || 10)
+
+  if (vouchers && vouchers.length > 0) {
+    const mapped = vouchers.map((v: any) => ({
+      id: v.id,
+      description: `${v.voucher_no} — ${v.voucher_type === 'pay' ? (v.pay_to || 'Pay Voucher') : (v.received_from || 'Received Voucher')}`,
+      doc_date: v.voucher_date || v.created_at,
+      total_dr: Number(v.amount || 0),
+      reference_type: v.voucher_type === 'pay' ? 'pay_voucher' : 'received_voucher',
+    }))
+    return { data: mapped, error: null }
+  }
+
+  // Fallback to journal_entries
   let query = supabase
     .from('journal_entries')
     .select(`*, journal_lines(*)`)
@@ -159,10 +196,34 @@ export async function reverseJournalEntry(id: string) {
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchAccountBalances() {
   const { data, error } = await supabase
-    .from('v_account_balances')
-    .select('*')
-    .order('code')
-  return { data, error }
+    .from('finance_accounts')
+    .select('id, registered_name, account_type, account_number, current_balance')
+    .eq('is_active', true)
+    .order('registered_name')
+
+  if (error || !data || data.length === 0) {
+    const { data: ledgers } = await supabase
+      .from('finance_ledgers')
+      .select('id, ledger_code, ledger_name, ledger_type, current_balance')
+      .eq('is_active', true)
+      .order('ledger_code')
+    const mappedLedgers = (ledgers || []).map((l: any) => ({
+      code: l.ledger_code,
+      name: l.ledger_name,
+      account_type: (l.ledger_type || 'asset').toUpperCase(),
+      balance: Number(l.current_balance || 0),
+    }))
+    return { data: mappedLedgers, error: null }
+  }
+
+  const mapped = (data || []).map((a: any) => ({
+    code: a.account_number || a.id.substring(0, 6).toUpperCase(),
+    name: a.registered_name,
+    account_type: (a.account_type || 'bank').toUpperCase(),
+    balance: Number(a.current_balance || 0),
+  }))
+
+  return { data: mapped, error: null }
 }
 
 export async function fetchTrialBalance() {
@@ -273,47 +334,100 @@ export async function createCashTransaction(txn: FinanceFilters) {
 // ACCOUNTS RECEIVABLE
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchReceivables(filters: FinanceFilters = {}) {
-  let query = supabase
-    .from('customer_receivables')
-    .select('*, customers(name, email, phone, bank_name, bank_account_number)')
-    .order('created_at', { ascending: false })
+  // Combine customer_receivables (if any) and unpaid orders
+  const [crRes, ordersRes] = await Promise.all([
+    supabase.from('customer_receivables')
+      .select('*, customers(name, email, phone, bank_name, bank_account_number)')
+      .order('created_at', { ascending: false }),
+    supabase.from('orders')
+      .select('id, total_amount, created_at, customer_id, customers(name, email, phone)')
+      .neq('payment_status', 'paid')
+      .in('status', ['ready', 'served', 'invoiced', 'completed'])
+      .order('created_at', { ascending: false })
+  ]);
 
-  if (filters.status) query = query.eq('status', filters.status)
-  if (filters.branchId) query = query.eq('branch_id', filters.branchId)
-  if (filters.limit) query = query.limit(filters.limit)
+  let data = (crRes.data || []).map(r => ({ ...r, source: 'cr' }));
+  
+  const orders = (ordersRes.data || []).map(o => ({
+    id: o.id,
+    invoice_id: o.id.substring(0, 8),
+    balance: o.total_amount,
+    total_amount: o.total_amount,
+    paid_amount: 0,
+    status: 'outstanding',
+    due_date: new Date(o.created_at).toISOString().split('T')[0],
+    created_at: o.created_at,
+    customers: o.customers,
+    source: 'order'
+  }));
 
-  const { data, error } = await query
-  return { data, error }
+  data = [...data, ...orders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return { data, error: null }
 }
 
 export async function fetchReceivableAging() {
-  const { data, error } = await supabase
-    .from('v_receivable_aging')
-    .select('*')
-  return { data, error }
+  const { data } = await fetchReceivables();
+  const now = new Date().getTime();
+  
+  const res = (data || []).map(r => {
+    const docDate = new Date(r.created_at || r.due_date).getTime();
+    const days = Math.floor((now - docDate) / (1000 * 3600 * 24));
+    let bucket = 'CURRENT';
+    if (days >= 1 && days <= 30) bucket = '1_30_DAYS';
+    else if (days >= 31 && days <= 60) bucket = '31_60_DAYS';
+    else if (days >= 61 && days <= 90) bucket = '61_90_DAYS';
+    else if (days > 90) bucket = 'OVER_90_DAYS';
+
+    return {
+      id: r.id,
+      customer_id: r.customer_id || r.customers?.id,
+      customer_name: r.customers?.name,
+      balance: r.balance,
+      aging_bucket: bucket
+    }
+  });
+
+  return { data: res, error: null }
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // ACCOUNTS PAYABLE (links to procurement AP)
 // ═══════════════════════════════════════════════════════════════════
-export async function fetchPayableAging() {
-  const { data, error } = await supabase
-    .from('v_payable_aging')
-    .select('*')
-  return { data, error }
-}
-
 export async function fetchApInvoices(filters: FinanceFilters = {}) {
   let query = supabase
     .from('ap_invoices')
     .select('*, suppliers(name)')
+    .not('status', 'in', '("cancelled","paid")')
     .order('created_at', { ascending: false })
 
-  if (filters.status) query = query.eq('status', filters.status)
   if (filters.limit) query = query.limit(filters.limit)
-
   const { data, error } = await query
   return { data, error }
+}
+
+export async function fetchPayableAging() {
+  const { data } = await fetchApInvoices();
+  const now = new Date().getTime();
+
+  const res = (data || []).map(r => {
+    const docDate = new Date(r.invoice_date || r.created_at).getTime();
+    const days = Math.floor((now - docDate) / (1000 * 3600 * 24));
+    let bucket = 'CURRENT';
+    if (days >= 1 && days <= 30) bucket = '1_30_DAYS';
+    else if (days >= 31 && days <= 60) bucket = '31_60_DAYS';
+    else if (days >= 61 && days <= 90) bucket = '61_90_DAYS';
+    else if (days > 90) bucket = 'OVER_90_DAYS';
+
+    return {
+      id: r.id,
+      supplier_id: r.supplier_id,
+      supplier_name: r.suppliers?.name,
+      balance: r.balance_due,
+      aging_bucket: bucket
+    }
+  });
+
+  return { data: res, error: null }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -329,6 +443,25 @@ export async function fetchExpenseCategories() {
 }
 
 export async function fetchExpenses(filters: FinanceFilters = {}) {
+  const { data: payVouchers } = await supabase
+    .from('finance_vouchers')
+    .select('id, voucher_no, voucher_date, amount, status, pay_to, remark, narration, created_at')
+    .eq('voucher_type', 'pay')
+    .order('created_at', { ascending: false })
+    .limit(filters.limit || 8)
+
+  if (payVouchers && payVouchers.length > 0) {
+    const mapped = payVouchers.map((v: any) => ({
+      id: v.id,
+      expense_date: v.voucher_date || v.created_at?.split('T')[0],
+      expense_categories: { name: v.pay_to || 'Pay Voucher' },
+      description: `${v.voucher_no} — ${v.remark || v.narration || ''}`.trim(),
+      amount: Number(v.amount || 0),
+      status: v.status,
+    }))
+    return { data: mapped, error: null }
+  }
+
   let query = supabase
     .from('expense_entries')
     .select('*, expense_categories(name), departments(name)')
@@ -710,39 +843,82 @@ export async function logFinanceAction(action: FinanceFilters) {
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchDashboardKPIs(branchId?: any) {
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayDateStr = today.toISOString().split('T')[0]
+  const offset = today.getTimezoneOffset() * 60000
+  const localDate = new Date(today.getTime() - offset)
+  const todayDateStr = localDate.toISOString().split('T')[0]
 
-  const [revenueRes, expenseRes, bankRes, receivableRes, payableRes, payrollRes] = await Promise.all([
-    // Today's revenue from Journal Lines (Accounts starting with 4)
-    supabase.from('journal_lines').select('cr_amount, dr_amount, account_code, journal_entries!inner(doc_date, is_reversed)')
-      .gte('journal_entries.doc_date', todayDateStr)
-      .eq('journal_entries.is_reversed', false)
-      .like('account_code', '4%'),
-    // Today's expenses
-    supabase.from('expense_entries').select('amount').gte('expense_date', todayDateStr),
-    // Bank balances (using v_account_balances for accurate ledger view of ALL cash/bank assets)
-    supabase.from('v_account_balances').select('balance, code').like('code', '10%'),
-    // Outstanding receivables
+  const [ordersRes, recvVouchersRes, payVouchersRes, expRes, accountsRes, ledgersRes, receivableRes, payableRes, payrollRes, unpaidOrdersRes] = await Promise.all([
+    // Today POS paid orders revenue
+    supabase.from('orders').select('total_amount')
+      .gte('created_at', todayDateStr + 'T00:00:00')
+      .eq('payment_status', 'paid'),
+
+    // Today Received Vouchers (posted or approved) - Excluding POS Auto-Transfers to prevent double counting
+    supabase.from('finance_vouchers').select('amount')
+      .eq('voucher_type', 'received')
+      .not('received_from', 'ilike', 'POS Cash Transfer%')
+      .in('status', ['posted', 'approved'])
+      .gte('voucher_date', todayDateStr),
+
+    // Today Pay Vouchers (posted or approved)
+    supabase.from('finance_vouchers').select('amount')
+      .eq('voucher_type', 'pay')
+      .in('status', ['posted', 'approved'])
+      .gte('voucher_date', todayDateStr),
+
+    // Today Expense Entries (approved or paid)
+    supabase.from('expense_entries').select('amount')
+      .in('status', ['approved', 'paid'])
+      .gte('expense_date', todayDateStr),
+
+    // Real Bank & Cash Accounts balance (from finance_accounts)
+    supabase.from('finance_accounts').select('current_balance').eq('is_active', true),
+
+    // Real Ledgers balance (from finance_ledgers)
+    supabase.from('finance_ledgers').select('current_balance, ledger_type').eq('is_active', true),
+
+    // Outstanding receivables: customer_receivables + unpaid/credit orders
     supabase.from('customer_receivables').select('balance').in('status', ['outstanding', 'partial', 'overdue']),
-    // Outstanding payables (posted or partially paid invoices)
-    supabase.from('ap_invoices').select('total_amount, paid_amount').in('status', ['posted', 'partial_paid']),
+
+    // Outstanding payables (AP invoices) — include ALL non-cancelled statuses
+    supabase.from('ap_invoices').select('balance_due, status')
+      .not('status', 'in', '("cancelled","paid")'),
+
     // Latest payroll
     supabase.from('payroll_cycles').select('total_net, status').order('period_end', { ascending: false }).limit(1),
+
+    // Unpaid/credit orders (also count as receivables)
+    supabase.from('orders').select('total_amount')
+      .neq('payment_status', 'paid')
+      .in('status', ['ready', 'served', 'invoiced', 'completed']),
   ])
 
-  let todayRevenue = 0
-  if (revenueRes.data) {
-    todayRevenue = revenueRes.data.reduce((s: any, row: any) => s + (Number(row.cr_amount || 0) - Number(row.dr_amount || 0)), 0)
+  // Calculate Today Revenue = POS Paid Orders + Received Vouchers
+  const posRevenue = (ordersRes.data || []).reduce((s: any, o: any) => s + Number(o.total_amount || 0), 0)
+  const voucherRevenue = (recvVouchersRes.data || []).reduce((s: any, v: any) => s + Number(v.amount || 0), 0)
+  const todayRevenue = posRevenue + voucherRevenue
+
+  // Calculate Today Expenses = Pay Vouchers + Expense Entries
+  const voucherExpenses = (payVouchersRes.data || []).reduce((s: any, v: any) => s + Number(v.amount || 0), 0)
+  const otherExpenses = (expRes.data || []).reduce((s: any, e: any) => s + Number(e.amount || 0), 0)
+  const todayExpenses = voucherExpenses + otherExpenses
+
+  // Calculate Bank & Cash Balance = Sum of active finance_accounts current_balance
+  let bankBalance = (accountsRes.data || []).reduce((s: any, a: any) => s + Number(a.current_balance || 0), 0)
+  if (!accountsRes.data?.length && ledgersRes.data?.length) {
+    bankBalance = ledgersRes.data
+      .filter((l: any) => l.ledger_type === 'asset')
+      .reduce((s: any, l: any) => s + Number(l.current_balance || 0), 0)
   }
 
-  const todayExpenses = (expenseRes.data || []).reduce((s: any, e: any) => s + Number(e.amount || 0), 0)
-  
-  // Bank balance from chart of accounts 1000 (Cash) + 1010 (Bank)
-  const bankBalance = (bankRes.data || []).reduce((s: any, b: any) => s + Number(b.balance || 0), 0)
-  
-  const outstandingAR = (receivableRes.data || []).reduce((s: any, r: any) => s + Number(r.balance || 0), 0)
-  const outstandingAP = (payableRes.data || []).reduce((s: any, p: any) => s + Number((p.total_amount || 0) - (p.paid_amount || 0)), 0)
+  // AR = customer_receivables + unpaid credit orders
+  const arFromReceivables = (receivableRes.data || []).reduce((s: any, r: any) => s + Number(r.balance || 0), 0)
+  const arFromOrders = (unpaidOrdersRes.data || []).reduce((s: any, o: any) => s + Number(o.total_amount || 0), 0)
+  const outstandingAR = arFromReceivables + arFromOrders
+
+  // AP = sum of balance_due from all non-cancelled/non-paid AP invoices
+  const outstandingAP = (payableRes.data || []).reduce((s: any, p: any) => s + Number(p.balance_due || 0), 0)
+
   const payrollDue = payrollRes.data?.[0]?.status !== 'posted' ? Number(payrollRes.data?.[0]?.total_net || 0) : 0
 
   return {
