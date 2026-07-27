@@ -203,16 +203,10 @@ export default defineConfig((ctx) => {
         cfg.skipWaiting = true
         cfg.clientsClaim = true
         cfg.cleanupOutdatedCaches = true
-        // Cache JS/CSS/fonts with stale-while-revalidate (fast loads, background updates)
+        // JS/CSS bundles are content-hashed and already precached by GenerateSW —
+        // a runtime StaleWhileRevalidate rule would race with the precache and serve
+        // stale bundles after a deploy, causing 400 errors from outdated API calls.
         cfg.runtimeCaching = [
-          {
-            urlPattern: /\.(?:js|css|woff2?)$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'static-assets',
-              expiration: { maxEntries: 60, maxAgeSeconds: 7 * 24 * 60 * 60 },
-            },
-          },
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
             handler: 'CacheFirst',

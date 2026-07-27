@@ -14,13 +14,18 @@ const VOUCHER_SELECT = '*, ledger:finance_ledgers(*), account:finance_accounts!f
 export const financeVoucherService = {
   // ── List ──────────────────────────────────────────────────────────────────
   async list(filters = {}) {
+    // Guard: only apply a filter when it is a real, non-empty value. A stray
+    // `undefined`/`null`/'' (e.g. branch_id=undefined) would become
+    // `col=eq.undefined` and PostgREST 400s (invalid uuid/date). This keeps the
+    // voucher list from breaking on a half-initialised filter object.
+    const ok = (v) => v !== undefined && v !== null && v !== ''
     let q = supabase.from('finance_vouchers').select(VOUCHER_SELECT).is('deleted_at', null).order('created_at', { ascending: false })
-    if (filters.voucher_type) q = q.eq('voucher_type', filters.voucher_type)
-    if (filters.status) q = q.eq('status', filters.status)
-    if (filters.branch_id) q = q.eq('branch_id', filters.branch_id)
-    if (filters.date_from) q = q.gte('voucher_date', filters.date_from)
-    if (filters.date_to) q = q.lte('voucher_date', filters.date_to)
-    if (filters.ledger_id) q = q.eq('ledger_id', filters.ledger_id)
+    if (ok(filters.voucher_type)) q = q.eq('voucher_type', filters.voucher_type)
+    if (ok(filters.status)) q = q.eq('status', filters.status)
+    if (ok(filters.branch_id)) q = q.eq('branch_id', filters.branch_id)
+    if (ok(filters.date_from)) q = q.gte('voucher_date', filters.date_from)
+    if (ok(filters.date_to)) q = q.lte('voucher_date', filters.date_to)
+    if (ok(filters.ledger_id)) q = q.eq('ledger_id', filters.ledger_id)
     const { data, error } = await q
     if (error) throw error
     return data || []

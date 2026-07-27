@@ -4,7 +4,7 @@
       <q-icon name="book" size="md" color="primary" class="q-mr-sm" />
       <div class="text-h5 text-weight-bold">Ledger Registration</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Register Ledger" unelevated @click="showForm = true" />
+      <q-btn color="primary" icon="add" label="Register Ledger" unelevated @click="editingLedger = null; showForm = true" />
     </div>
 
     <div class="row q-col-gutter-sm q-mb-md">

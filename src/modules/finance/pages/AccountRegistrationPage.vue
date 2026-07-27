@@ -57,7 +57,8 @@ function humanizeError(err) {
 const columns = [
   { name: 'registered_name', label: 'Name', field: 'registered_name', align: 'left', sortable: true },
   { name: 'account_type', label: 'Type', field: 'account_type', align: 'left' },
-  { name: 'bank_name', label: 'Bank', field: 'bank_name', align: 'left' },
+  { name: 'bank_name', label: 'Bank', field: 'bank_name', align: 'left', format: (v) => v || '—' },
+  { name: 'bank_branch', label: 'Branch', field: 'bank_branch', align: 'left', format: (v) => v || '—' },
   { name: 'account_number', label: 'Acc No.', field: 'account_number', align: 'left' },
   { name: 'currency', label: 'Currency', field: 'currency', align: 'center' },
   { name: 'current_balance', label: 'Balance', field: 'current_balance', align: 'right', sortable: true },

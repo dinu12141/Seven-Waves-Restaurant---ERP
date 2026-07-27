@@ -28,6 +28,9 @@ export const financeAccountService = {
     const cleaned = { ...account }
     delete cleaned._isEdit
     delete cleaned._id
+    // Strip the embedded join object (ledger:finance_ledgers(*)) that list() injects —
+    // it is not a column and PostgREST rejects it on INSERT.
+    delete cleaned.ledger
     // Seed the live balance from the opening balance — otherwise a new account
     // always shows LKR 0 until a transaction posts. current_balance then tracks
     // opening + posted movements.
@@ -52,6 +55,9 @@ export const financeAccountService = {
     const cleaned = { ...updates }
     delete cleaned._isEdit
     delete cleaned._id
+    // Strip the embedded join object (ledger:finance_ledgers(*)) that list() injects —
+    // it is not a column and PostgREST would 400 on UPDATE if present.
+    delete cleaned.ledger
     const payload = {
       ...cleaned,
       updated_by: authStore.user?.id || null,
