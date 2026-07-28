@@ -88,7 +88,7 @@ export default boot(async ({ router }) => {
     )
   }
 
-  router.beforeEach(async (to) => {
+  router.beforeEach(async (to, from) => {
     // Make sure we have the latest session
     if (!authStore.initialized) {
       await authStore.initialize()
@@ -100,12 +100,20 @@ export default boot(async ({ router }) => {
     // A customer's browser back-button can walk past the QR flow (which uses
     // router.replace() and therefore never pushes history entries) straight
     // into whatever ERP page was open on that device before the QR scan —
-    // typically the staff login screen. If this device is mid table-session
-    // (tm_session_token present) and isn't an actual staff login, send them
-    // back into the customer flow instead of showing the ERP login page.
+    // typically the staff login screen. If the browser is actually coming
+    // FROM the customer touch-menu flow (not just "has a stale table-session
+    // token lying around from an old visit"), send it back into the customer
+    // flow instead of showing the ERP login page. Scoping this to `from` (not
+    // just localStorage) keeps staff able to load the ERP login/dashboard
+    // directly on any device, even one that previously ran a table session.
     if (requiresAuth && !authStore.isAuthenticated && typeof window !== 'undefined') {
+      const cameFromTouchFlow =
+        from.path.startsWith('/touch') ||
+        from.path.startsWith('/table/') ||
+        from.path.startsWith('/customer/') ||
+        from.path.startsWith('/c/')
       const hasTableSession = !!localStorage.getItem('tm_session_token')
-      if (hasTableSession) {
+      if (cameFromTouchFlow && hasTableSession) {
         return '/touch'
       }
     }
