@@ -1067,6 +1067,27 @@ async function handleTableClick(table) {
 async function selectLiveTable(table) {
   // Only allow interacting with occupied/locked tables
   if (table.status === 'available' && !lockedTables.value.has(table.id)) {
+    if (authStore.isAdmin || authStore.roles?.includes('manager')) {
+      $q.dialog({
+        title: 'Delete Table?',
+        message: `This table is available and has no active orders. Do you want to delete table ${table.table_number}?`,
+        persistent: true,
+        ok: { label: 'Delete', color: 'negative', flat: true },
+        cancel: { label: 'Cancel', flat: true }
+      }).onOk(async () => {
+        try {
+          const { error } = await supabase.from('restaurant_tables').delete().eq('id', table.id)
+          if (error) {
+            if (error.message.includes('foreign key constraint')) throw new Error('Cannot delete this table because it has past orders.')
+            throw error
+          }
+          $q.notify({ type: 'positive', message: 'Table deleted successfully' })
+          fetchLiveTables()
+        } catch (err) {
+          $q.notify({ type: 'negative', message: err.message || 'Failed to delete table' })
+        }
+      })
+    }
     return
   }
 

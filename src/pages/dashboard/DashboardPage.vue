@@ -300,7 +300,7 @@
           <q-icon name="info" size="40px" color="grey-5" />
           <div class="text-grey-6 q-mt-md">No active order found for this table.</div>
           <q-btn
-            v-if="['admin', 'manager'].includes(authStore.user?.role)"
+            v-if="authStore.isAdmin || authStore.roles?.includes('manager')"
             flat
             color="negative"
             icon="delete"
