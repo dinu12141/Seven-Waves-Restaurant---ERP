@@ -17,11 +17,26 @@ const mockRpc = vi.fn()
 const mockFrom = vi.fn(() => ({
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockResolvedValue({ data: [], error: null }), // We also return this if it's chained further or just return { data: [], error: null } if awaited
   single: vi.fn().mockResolvedValue({ data: null, error: null }),
   insert: vi.fn().mockResolvedValue({ data: null, error: null }),
   update: vi.fn().mockReturnThis(),
   order: vi.fn().mockResolvedValue({ data: [], error: null }),
 }))
+
+// Make limit chainable if needed
+mockFrom.mockImplementation(() => {
+  const chainable: any = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({ data: null, error: null }),
+    insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+    update: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: [], error: null }),
+  }
+  chainable.limit = vi.fn().mockReturnValue(Promise.resolve({ data: [], error: null }))
+  return chainable
+})
 
 vi.mock('src/boot/supabase', () => ({
   supabase: {
