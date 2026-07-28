@@ -147,13 +147,21 @@ class ErrorHandler {
         break
 
       case ErrorCategory.SESSION:
+        const isTouchRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/touch')
+        
+        if (isTouchRoute && typeof window !== 'undefined') {
+          window.localStorage.removeItem('tm_session_token')
+        }
+        
         Dialog.create({
           title: 'Session Expired',
-          message: error.userMessage,
+          message: isTouchRoute ? 'Your table session has expired. Please scan the QR code again.' : error.userMessage,
           persistent: true,
-          ok: { label: 'Log In', color: 'primary' },
+          ok: { label: isTouchRoute ? 'Okay' : 'Log In', color: 'primary' },
         }).onOk(() => {
-          if (typeof window !== 'undefined') window.location.href = '/auth/login'
+          if (typeof window !== 'undefined') {
+            window.location.href = isTouchRoute ? '/touch' : '/auth/login'
+          }
         })
         break
 

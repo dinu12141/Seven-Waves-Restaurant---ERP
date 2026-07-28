@@ -78,15 +78,22 @@ export default boot(({ app, router }) => {
     } catch (err) {
       logger.warn('[Session] signOut on expiry failed', { error: String(err) })
     }
+    
+    const isTouchRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/touch')
+    
+    if (isTouchRoute && typeof window !== 'undefined') {
+      window.localStorage.removeItem('tm_session_token')
+    }
+    
     Notify.create({
       type: 'negative',
-      message: 'Your session has expired. Redirecting to login...',
+      message: isTouchRoute ? 'Your table session has expired. Please scan the QR code again.' : 'Your session has expired. Redirecting to login...',
       icon: 'lock',
       position: 'top',
       timeout: 3000,
     })
     setTimeout(() => {
-      router.push('/auth/login')
+      router.push(isTouchRoute ? '/touch' : '/auth/login')
     }, 2000)
   })
 
