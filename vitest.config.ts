@@ -14,6 +14,8 @@ export default defineConfig({
     globals: false,
     env: {
       VITE_QR_SECRET: 'test-secret-for-vitest',
+      VITE_SUPABASE_URL: 'https://test.supabase.co',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key'
     },
   },
 })
