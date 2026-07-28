@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Seven Waves Restaurant ERP** — a multi-branch restaurant management system built as a Quasar 2 SPA/PWA backed by Supabase (PostgreSQL 17). The same codebase targets web, PWA, Electron (desktop), and Tauri.
 
 - **Supabase project ref:** `clykwuzajtwvwuavmtzs` (region: `ap-northeast-2`)
-- **Deployed at:** `https://seven-waves.netlify.app`
+- **Deployed at:** Vercel (fronted by Cloudflare)
 
 ---
 
@@ -179,7 +179,7 @@ Customer scans QR (URL: {VITE_APP_PUBLIC_URL}/c/{qrToken})
 2. `import.meta.env.VITE_APP_PUBLIC_URL`
 3. `window.location.origin` (fallback — always correct for the current deployment)
 
-`VITE_APP_PUBLIC_URL` is intentionally commented out in `.env`. Set it in **Netlify environment variables** only when using a custom domain.
+`VITE_APP_PUBLIC_URL` is intentionally commented out in `.env`. Set it in **Vercel environment variables** only when using a custom domain.
 
 ---
 

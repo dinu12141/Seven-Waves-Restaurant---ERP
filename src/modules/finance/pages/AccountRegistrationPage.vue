@@ -4,7 +4,7 @@
       <q-icon name="account_balance" size="md" color="primary" class="q-mr-sm" />
       <div class="text-h5 text-weight-bold">Account Registration</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Register Account" unelevated @click="showForm = true" />
+      <q-btn color="primary" icon="add" label="Register Account" unelevated @click="editing = null; showForm = true" />
     </div>
 
     <q-table flat bordered :rows="accountStore.accounts" :columns="columns" row-key="id" :loading="accountStore.loading" :pagination="{ rowsPerPage: 20 }">

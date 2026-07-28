@@ -333,7 +333,10 @@ function toggleLeftDrawer() {
 
 async function logout() {
   await authStore.signOut()
-  router.push('/auth/login')
+  // replace (not push): drops the authenticated page from history so the
+  // browser back-button from the login page can't resurrect a stale,
+  // now-signed-out ERP view.
+  router.replace('/auth/login')
 }
 
 /** User initials for avatar */

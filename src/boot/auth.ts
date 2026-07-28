@@ -96,6 +96,20 @@ export default boot(async ({ router }) => {
 
     const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
 
+    // ── QR / table-session back-navigation trap ─────────────────────────────
+    // A customer's browser back-button can walk past the QR flow (which uses
+    // router.replace() and therefore never pushes history entries) straight
+    // into whatever ERP page was open on that device before the QR scan —
+    // typically the staff login screen. If this device is mid table-session
+    // (tm_session_token present) and isn't an actual staff login, send them
+    // back into the customer flow instead of showing the ERP login page.
+    if (requiresAuth && !authStore.isAuthenticated && typeof window !== 'undefined') {
+      const hasTableSession = !!localStorage.getItem('tm_session_token')
+      if (hasTableSession) {
+        return '/touch'
+      }
+    }
+
     // Not authenticated → login
     if (requiresAuth && !authStore.isAuthenticated) {
       return { path: '/auth/login', query: { redirect: to.fullPath } }

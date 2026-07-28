@@ -1249,7 +1249,6 @@ async function fetchMenuItems() {
               })) : [],
             }))
           usedMenuBook = true
-          console.log(`[POS] Loaded ${products.length} items from menu book: ${bookData.name}`)
         }
       }
     }
@@ -2382,8 +2381,18 @@ function handleOther() {
   }).onOk((data) => {
     const val = parseFloat(data)
     if (!isNaN(val) && val >= 0 && val <= 100) {
-      store.discount = val
-      Notify.create({ message: `Discount set to ${val}%`, color: 'positive', position: 'top' })
+      if (val === 100 && !authStore.isAdmin && !authStore.roles?.includes('manager')) {
+        $q.dialog({
+          component: ManagerAuthDialog,
+          componentProps: { actionName: '100% DISCOUNT' }
+        }).onOk(() => {
+          store.discount = val
+          Notify.create({ message: `Discount set to ${val}%`, color: 'positive', position: 'top' })
+        })
+      } else {
+        store.discount = val
+        Notify.create({ message: `Discount set to ${val}%`, color: 'positive', position: 'top' })
+      }
     }
   })
 }

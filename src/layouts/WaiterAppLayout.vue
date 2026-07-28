@@ -373,8 +373,9 @@ function initials(name) {
 function logout() {
   store.cleanup()
   authStore.signOut()
-  // Use router.push for instant SPA navigation — no full page reload
-  router.push('/auth/login')
+  // replace (not push): drops the authenticated page from history so back
+  // from the login page can't resurrect a stale, now-signed-out view.
+  router.replace('/auth/login')
 }
 
 // ── Admin / Manager bypass ───────────────────────────────────────────────────

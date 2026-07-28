@@ -33,7 +33,7 @@ export default boot(async () => {
             if (error) {
               console.error('[Tauri Auth] Code exchange failed:', error.message)
             } else {
-              console.log('[Tauri Auth] Session established for:', data.user?.email)
+              console.log('[Tauri Auth] Session established')
               // Reload the app to reflect the authenticated state
               window.location.reload()
             }

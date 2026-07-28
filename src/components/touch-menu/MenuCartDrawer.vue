@@ -270,8 +270,7 @@ async function submitOrder() {
           submitting.value = false
           return
         }
-        console.log('[MenuCartDrawer] Session order path → token prefix:', token.substring(0, 8))
-        ;({ data, error } = await supabase.rpc('create_order_from_session', {
+;({ data, error } = await supabase.rpc('create_order_from_session', {
           p_session_token: token,
           p_items: items,
           p_source: 'table_screen',

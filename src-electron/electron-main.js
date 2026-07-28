@@ -9,7 +9,7 @@
  * - 30s startup watchdog detects hung init (fires even if whenReady hangs)
  */
 
-import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, dialog, session } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
@@ -27,13 +27,16 @@ import * as os from 'node:os'
 //    rendering while keeping the process alive.
 // ===========================================================================
 app.disableHardwareAcceleration()
-app.commandLine.appendSwitch('disable-gpu-sandbox')
+// SECURITY: disable-gpu-sandbox disables the GPU process sandbox (not the renderer sandbox).
+// Gated to dev because the renderer sandbox (sandbox:true, contextIsolation:true) is the
+// primary isolation boundary. For GPU/Optimus crashes in a packaged build, set
+// ELECTRON_DISABLE_GPU_SANDBOX=1 in the launch environment explicitly.
+if (process.env.DEV || process.env.ELECTRON_DISABLE_GPU_SANDBOX) {
+  app.commandLine.appendSwitch('disable-gpu-sandbox')
+}
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
-// SECURITY: --no-sandbox disables the Chromium renderer process sandbox.
-// It was previously added as a blanket GPU workaround but is NOT required for
-// the actual GPU/Optimus fix (disableHardwareAcceleration + disable-gpu-sandbox handle that).
-// Only re-enable in dev if encountering sandbox-specific crashes:
-//   if (process.env.DEV) app.commandLine.appendSwitch('no-sandbox')
+// SECURITY: --no-sandbox is NOT set. The renderer sandbox is enforced via
+// webPreferences.sandbox=true + contextIsolation=true + nodeIntegration=false.
 
 // -- app.getAppPath() is safe before ready() ---------------------------------
 // Dev:        <project root>
@@ -451,6 +454,30 @@ const startupWatchdog = setTimeout(() => {
 app.whenReady().then(() => {
   clearTimeout(startupWatchdog)
   writeLog('app.whenReady() fired')
+
+  // SECURITY: Inject Content-Security-Policy for all responses (including file://).
+  // 'unsafe-inline' on script-src is acceptable for packaged desktop apps where
+  // the renderer runs app-owned code only; the renderer process sandbox is the
+  // primary isolation boundary.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self';" +
+          " script-src 'self' 'unsafe-inline';" +
+          " style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;" +
+          " font-src 'self' https://fonts.gstatic.com data:;" +
+          " img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com;" +
+          " connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io https://generativelanguage.googleapis.com;" +
+          " media-src 'self' blob: data:;" +
+          " object-src 'none';" +
+          " worker-src 'self';" +
+          " base-uri 'self';"
+        ],
+      },
+    })
+  })
 
   createWindow().catch((err) => {
     writeLog('createWindow FAILED: ' + (err.stack || err.message))

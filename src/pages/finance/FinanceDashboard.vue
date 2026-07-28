@@ -27,7 +27,7 @@
         <div class="fin-panel full-height">
           <div class="fin-panel__header">
             <span class="fin-panel__title">Revenue vs Expenses</span>
-            <span class="fin-panel__subtitle">Last 7 days</span>
+            <span class="fin-panel__subtitle">Last 6 months</span>
           </div>
           <div class="fin-panel__body">
             <DashboardChart
@@ -160,6 +160,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
@@ -173,6 +174,7 @@ import {
 const loading = ref(false)
 const chartReady = ref(false)
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const kpis = ref([
   {
@@ -325,21 +327,22 @@ async function fetchAll() {
   try {
     const sixMonthsAgo = getLast6MonthsRange()[0].start
 
-    const [kpiRes, jeRes, balRes, expRes, posRevenueChartRes, recvVouchersChartRes, payVouchersChartRes, expenseChartRes] = await Promise.all([
+    const today = new Date().toISOString().split('T')[0]
+
+    const [kpiRes, jeRes, balRes, expRes, posRevenueRpc, recvVouchersChartRes, payVouchersChartRes, expenseChartRes] = await Promise.all([
       fetchDashboardKPIs(),
       fetchJournalEntries({ limit: 5 }),
       fetchAccountBalances(),
       fetchExpenses({ limit: 8 }),
 
-      // Monthly POS paid orders revenue
-      supabase
-        .from('orders')
-        .select('total_amount, created_at')
-        .eq('payment_status', 'paid')
-        .gte('created_at', sixMonthsAgo + 'T00:00:00')
-        .order('created_at'),
+      // Monthly POS revenue via MV-backed RPC (branch-isolated, pre-aggregated)
+      supabase.rpc('fn_rpt_monthly_sales', {
+        p_branch_id: authStore.activeBranchId,
+        p_start_date: sixMonthsAgo,
+        p_end_date: today,
+      }),
 
-      // Monthly Received Vouchers revenue
+      // Monthly Received Vouchers revenue (no expense data in MV)
       supabase
         .from('finance_vouchers')
         .select('amount, voucher_date, created_at')
@@ -387,10 +390,13 @@ async function fetchAll() {
       expenseByMonth[m.key] = 0
     })
 
-    for (const row of posRevenueChartRes.data || []) {
-      const monthKey = (row.created_at || '').substring(0, 7)
-      if (revenueByMonth[monthKey] !== undefined) {
-        revenueByMonth[monthKey] += Number(row.total_amount || 0)
+    // POS revenue from MV-backed RPC (collected_revenue = paid orders net)
+    const salesPayload = posRevenueRpc.data
+    if (salesPayload?.success && Array.isArray(salesPayload.months)) {
+      for (const row of salesPayload.months) {
+        if (revenueByMonth[row.month] !== undefined) {
+          revenueByMonth[row.month] += Number(row.collected_revenue || 0)
+        }
       }
     }
     for (const row of recvVouchersChartRes.data || []) {

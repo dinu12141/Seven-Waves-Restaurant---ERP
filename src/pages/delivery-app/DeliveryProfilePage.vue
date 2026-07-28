@@ -164,7 +164,9 @@ const avgTime = computed(() => {
 function logout() {
   store.cleanup()
   authStore.signOut()
-  router.push('/auth/login')
+  // replace (not push): drops the authenticated page from history so back
+  // from the login page can't resurrect a stale, now-signed-out view.
+  router.replace('/auth/login')
 }
 </script>
 

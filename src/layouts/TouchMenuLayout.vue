@@ -443,6 +443,23 @@ function subscribeToOrders() {
     .subscribe()
 }
 
+// ── Back-button trap ─────────────────────────────────────────────────────
+// The QR entry flow (QrEntryPage → CustomerAuthPage) uses router.replace()
+// throughout, so it never pushes history entries. That means a customer's
+// browser back-button can skip straight past the whole table session to
+// whatever page (often the ERP staff login) was open on the device before
+// they scanned the QR code. Push a duplicate history entry so back/forward
+// navigation stays inside the touch menu instead of escaping the app.
+function armBackTrap() {
+  if (typeof window === 'undefined') return
+  history.pushState({ swTouchTrap: true }, '', window.location.href)
+}
+
+function handlePopState() {
+  // Re-arm immediately so every subsequent back press is absorbed here too.
+  armBackTrap()
+}
+
 onMounted(async () => {
   if (route.query.table) {
     tableId.value = route.query.table
@@ -454,10 +471,14 @@ onMounted(async () => {
   await resolveTableUuid()
   fetchActiveOrdersCount()
   subscribeToOrders()
+
+  armBackTrap()
+  window.addEventListener('popstate', handlePopState)
 })
 
 onUnmounted(() => {
   if (ordersChannel) supabase.removeChannel(ordersChannel)
+  window.removeEventListener('popstate', handlePopState)
 })
 </script>
 
