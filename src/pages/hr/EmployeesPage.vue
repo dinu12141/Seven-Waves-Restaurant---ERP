@@ -187,7 +187,7 @@
     >
       <template #body-cell-view_id="props">
         <q-td :props="props">
-          {{ props.rowIndex + 1 }}
+          {{ props.row.employee_code || props.rowIndex + 1 }}
         </q-td>
       </template>
 

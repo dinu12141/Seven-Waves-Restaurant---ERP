@@ -17,7 +17,7 @@
       <template v-slot:body-cell-actions="p">
         <q-td :props="p" class="q-gutter-xs">
           <q-btn v-if="p.row.status === 'issued'" flat round size="sm" icon="check_circle" color="positive" @click="clear(p.row.id)"><q-tooltip>Mark Cleared</q-tooltip></q-btn>
-          <q-btn v-if="p.row.status === 'issued'" flat round size="sm" icon="report_problem" color="orange" @click="bounce(p.row.id)"><q-tooltip>Mark Bounced</q-tooltip></q-btn>
+          <q-btn v-if="p.row.status === 'issued'" flat round size="sm" icon="report_problem" color="orange" @click="bounce(p.row)"><q-tooltip>Mark Bounced</q-tooltip></q-btn>
           <q-btn v-if="['planned','issued'].includes(p.row.status)" flat round size="sm" icon="cancel" color="negative" @click="cancelCheque(p.row)"><q-tooltip>Cancel</q-tooltip></q-btn>
         </q-td>
       </template>
@@ -30,6 +30,20 @@
         <q-card-actions align="right">
           <q-btn flat label="Close" @click="cancelDialog = false" />
           <q-btn color="negative" label="Cancel Cheque" @click="doCancel" :disable="!cancelReason" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="bounceDialog">
+      <q-card style="min-width:350px">
+        <q-card-section class="text-h6">Mark Cheque {{ bounceTarget?.cheque_no }} Bounced</q-card-section>
+        <q-card-section class="text-caption text-grey-7">
+          This reverses the ledger, cashbook, and account balance effect of the voucher this cheque was issued for.
+        </q-card-section>
+        <q-card-section><q-input v-model="bounceReason" outlined label="Reason *" type="textarea" rows="2" /></q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" @click="bounceDialog = false" />
+          <q-btn color="orange" label="Mark Bounced" @click="doBounce" :disable="!bounceReason" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -56,6 +70,9 @@ const statusOptions = ['planned','issued','cleared','bounced','cancelled','stale
 const cancelDialog = ref(false)
 const cancelTarget = ref(null)
 const cancelReason = ref('')
+const bounceDialog = ref(false)
+const bounceTarget = ref(null)
+const bounceReason = ref('')
 
 const columns = [
   { name: 'cheque_no', label: 'Cheque #', field: 'cheque_no', align: 'left', sortable: true },
@@ -70,7 +87,16 @@ const columns = [
 function chequeColor(s) { return { planned: 'grey', issued: 'blue', cleared: 'green', bounced: 'red', cancelled: 'dark', stale: 'orange' }[s] || 'grey' }
 
 async function clear(id) { try { await chequeStore.markCleared(id); $q.notify({ type: 'positive', message: 'Cleared' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
-async function bounce(id) { try { await chequeStore.markBounced(id); $q.notify({ type: 'warning', message: 'Bounced' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+function bounce(c) { bounceTarget.value = c; bounceDialog.value = true; bounceReason.value = '' }
+async function doBounce() {
+  try {
+    await chequeStore.markBounced(bounceTarget.value.id, bounceReason.value)
+    bounceDialog.value = false
+    $q.notify({ type: 'warning', message: 'Cheque marked bounced — ledger and cashbook reversed' })
+  } catch (e) {
+    $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
+  }
+}
 function cancelCheque(c) { cancelTarget.value = c; cancelDialog.value = true; cancelReason.value = '' }
 async function doCancel() { try { await chequeStore.cancel(cancelTarget.value.id, cancelReason.value); cancelDialog.value = false; $q.notify({ type: 'info', message: 'Cancelled' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
 

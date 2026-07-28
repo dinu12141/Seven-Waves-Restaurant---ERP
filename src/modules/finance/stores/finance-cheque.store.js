@@ -23,7 +23,16 @@ export const useFinanceChequeStore = defineStore('financeCheque', () => {
 
   async function markCleared(id, date) { return updateStatus(id, 'cleared', { cleared_date: date }) }
   async function cancel(id, reason) { return updateStatus(id, 'cancelled', { cancelled_reason: reason }) }
-  async function markBounced(id) { return updateStatus(id, 'bounced') }
+
+  // Bouncing reverses the ledger/cashbook/account effect server-side, so it
+  // goes through financeChequeService.markBounced (RPC) instead of the plain
+  // status-update path used by clear/cancel.
+  async function markBounced(id, reason) {
+    const result = await financeChequeService.markBounced(id, reason)
+    const idx = cheques.value.findIndex(c => c.id === id)
+    if (idx !== -1) cheques.value[idx] = { ...cheques.value[idx], ...result }
+    return result
+  }
 
   return { cheques, loading, error, fetchCheques, updateStatus, markCleared, cancel, markBounced }
 })

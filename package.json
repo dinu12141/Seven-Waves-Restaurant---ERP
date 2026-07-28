@@ -6,7 +6,6 @@
   "author": "dinu12141 <kmudinusha@gmail.com>",
   "type": "module",
   "private": true,
-  "main": "./electron-main.cjs",
   "scripts": {
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,vue,scss,html,md,json}\" --ignore-path .gitignore",
@@ -51,7 +50,6 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@electron/packager": "^18.4.4",
     "@eslint/js": "^9.14.0",
     "@intlify/unplugin-vue-i18n": "^4.0.0",
     "@quasar/app-vite": "^2.1.0",
@@ -61,8 +59,6 @@
     "@vue/eslint-config-prettier": "^10.1.0",
     "autoprefixer": "^10.4.2",
     "docx": "^9.6.1",
-    "electron": "^41.0.2",
-    "electron-builder": "^26.8.1",
     "eslint": "^9.14.0",
     "eslint-plugin-vue": "^10.4.0",
     "globals": "^16.4.0",

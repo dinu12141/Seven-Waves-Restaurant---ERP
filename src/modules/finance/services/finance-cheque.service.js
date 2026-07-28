@@ -52,7 +52,16 @@ export const financeChequeService = {
     return this.updateStatus(id, 'cancelled', { cancelled_reason: reason })
   },
 
-  async markBounced(id) {
-    return this.updateStatus(id, 'bounced')
+  async markBounced(id, reason) {
+    // Bouncing a cheque must reverse the ledger/cashbook/account effect that
+    // post_finance_voucher applied when it was issued — not just flip the
+    // status label. Done atomically server-side; see mark_cheque_bounced.
+    const { data, error } = await supabase.rpc('mark_cheque_bounced', {
+      p_cheque_id: id,
+      p_reason: reason || null,
+    })
+    if (error) throw error
+    if (!data?.success) throw new Error(data?.error || 'Failed to mark cheque as bounced')
+    return this.getById(id)
   },
 }
