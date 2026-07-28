@@ -139,6 +139,7 @@ export const useCashierStore = defineStore('cashier', () => {
           table_id, table_number, branch_id,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          assigned_waiter:profiles!orders_assigned_waiter_id_fkey ( full_name ),
           order_items (
             id, quantity, unit_price, total_price, notes, status,
             menu_items ( id, name )
@@ -166,6 +167,7 @@ export const useCashierStore = defineStore('cashier', () => {
           table_id, table_number, branch_id,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          assigned_waiter:profiles!orders_assigned_waiter_id_fkey ( full_name ),
           order_items (
             id, quantity, unit_price, total_price, notes, status,
             menu_items ( id, name )
@@ -498,6 +500,7 @@ export const useCashierStore = defineStore('cashier', () => {
           delivery_charge,
           restaurant_tables ( table_number, section ),
           waiter:profiles!orders_waiter_id_fkey ( full_name ),
+          assigned_waiter:profiles!orders_assigned_waiter_id_fkey ( full_name ),
           kot_tickets ( id, kot_number, status, kitchen_id )
         ),
         invoice_items ( id, description, qty, unit_price, line_total ),

@@ -200,7 +200,8 @@ const kotNumber = computed(() => {
 })
 
 const waiterName = computed(() => {
-  return props.invoice.orders?.waiter?.full_name || '—'
+  const o = props.invoice.orders
+  return o?.assigned_waiter?.full_name || o?.waiter?.full_name || '-'
 })
 
 const cashierNameDisplay = computed(() => {

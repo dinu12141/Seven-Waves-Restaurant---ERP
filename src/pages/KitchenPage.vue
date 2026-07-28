@@ -78,6 +78,17 @@
           >
             <q-tooltip>{{ isFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}</q-tooltip>
           </q-btn>
+          <!-- Logout -->
+          <q-btn
+            flat
+            round
+            dense
+            icon="logout"
+            color="red-5"
+            @click="handleLogout"
+          >
+            <q-tooltip>Logout</q-tooltip>
+          </q-btn>
         </div>
       </div>
 
@@ -261,13 +272,17 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useKitchenDisplayStore } from 'src/stores/kitchenDisplayStore'
+import { useAuthStore } from 'src/stores/auth'
 import KitchenTicketCard from 'src/components/kitchen/KitchenTicketCard.vue'
 import KotReceipt from 'src/components/common/KotReceipt.vue'
 
 const $q = useQuasar()
 const store = useKitchenDisplayStore()
+const authStore = useAuthStore()
+const router = useRouter()
 const filterMode = ref('All')
 const isFullscreen = ref(false)
 
@@ -430,6 +445,20 @@ watch(
     selectedKitchen.value = val
   },
 )
+
+
+
+async function handleLogout() {
+  try {
+    $q.loading.show()
+    await authStore.signOut()
+    router.push('/auth/login')
+  } catch (error) {
+    console.error('Logout error:', error)
+  } finally {
+    $q.loading.hide()
+  }
+}
 </script>
 
 <style scoped>

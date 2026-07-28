@@ -150,8 +150,8 @@ BEGIN
   END IF;
 
   IF v_canonical IS NULL THEN
-    -- No variant match (or no variant) → fall back to the menu item base price.
-    SELECT COALESCE(mi.base_price, mi.price)
+    -- No variant match (or no variant)   fall back to the menu item base price.
+    SELECT COALESCE(mi.base_price, 0)
       INTO v_canonical
     FROM public.menu_items mi
     WHERE mi.id = NEW.menu_item_id;
