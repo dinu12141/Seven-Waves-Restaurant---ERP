@@ -97,20 +97,32 @@
     </div>
 
     <!-- ── Category Pill Bar ──────────────────────────────────────────── -->
-    <div class="category-pill-bar border-bottom">
-      <div class="pill-track">
-        <button
-          v-for="cat in visibleSubCategories"
-          :key="'pill-' + cat.id"
-          class="pill-btn"
-          :class="{ 'pill-btn--active': activeCategoryId === cat.id && !searchQuery }"
-          @click="selectSubCategory(cat.id)"
-        >
-          <div class="pill-img-wrap">
-            <img :src="getCategoryImgUrl(cat)" class="pill-img" loading="lazy" />
-          </div>
-          <span class="pill-label">{{ cat.name }}</span>
-        </button>
+    <div
+      class="category-pill-bar border-bottom"
+      @mouseenter="pauseMarquee = true"
+      @mouseleave="pauseMarquee = false"
+      @touchstart="pauseMarquee = true"
+      @touchend="pauseMarquee = false"
+    >
+      <div 
+        class="marquee-track" 
+        :class="{ 'marquee-paused': pauseMarquee }" 
+        :style="{ animationDuration: Math.max(15, visibleSubCategories.length * 2.5) + 's' }"
+      >
+        <div class="pill-track" v-for="i in 2" :key="'track-' + i">
+          <button
+            v-for="cat in visibleSubCategories"
+            :key="'pill-' + i + '-' + cat.id"
+            class="pill-btn"
+            :class="{ 'pill-btn--active': activeCategoryId === cat.id && !searchQuery }"
+            @click="selectSubCategory(cat.id)"
+          >
+            <div class="pill-img-wrap">
+              <img :src="getCategoryImgUrl(cat)" class="pill-img" loading="lazy" />
+            </div>
+            <span class="pill-label">{{ cat.name }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -269,6 +281,7 @@ const loading = ref(true)
 const activeMainCategory = ref('all')
 const activeCategoryId = ref('all')
 const searchQuery = ref('')
+const pauseMarquee = ref(false)
 
 const detailsModalOpen = ref(false)
 const selectedItem = ref(null)
@@ -415,13 +428,46 @@ async function fetchData() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getCategoryImgUrl(item) {
-  if (item.image_url) return item.image_url
-  return getPremiumFallbackImage(item.name)
+function getCategoryImgUrl(cat) {
+  // 1. If category has its own valid image_url
+  if (cat.image_url && cat.image_url.length > 5 && !cat.image_url.includes('null')) {
+    return cat.image_url
+  }
+  
+  // 2. Find an item in this category that has a real image uploaded (not a fallback)
+  const firstItemWithImg = items.value.find(i => 
+    i.sub_category_id === cat.id && 
+    i.image_url && 
+    i.image_url.length > 5 &&
+    !i.image_url.includes('unsplash.com') &&
+    !i.image_url.includes('null')
+  )
+  if (firstItemWithImg) {
+    return firstItemWithImg.image_url
+  }
+
+  // 3. Fallback to generic premium images
+  return getPremiumFallbackImage(cat.name)
 }
 
 function getPremiumFallbackImage(name) {
   const n = (name || '').toLowerCase()
+  if (n.includes('koththu') || n.includes('kottu'))
+    return 'https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('string hopper') || n.includes('indiappa'))
+    return 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('noodle'))
+    return 'https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('curry') || n.includes('curries') || n.includes('non-veg') || n.includes('vegetable'))
+    return 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('rotty') || n.includes('roti') || n.includes('paratha'))
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('bun') || n.includes('buns'))
+    return 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('cheese') || n.includes('cheesy'))
+    return 'https://images.unsplash.com/photo-1552767059-ce182ead6c1b?auto=format&fit=crop&w=600&q=80'
+  if (n.includes('favourite'))
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
   if (n.includes('milkshake'))
     return 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80'
   if (n.includes('juice') || n.includes('fresh'))
@@ -442,11 +488,13 @@ function getPremiumFallbackImage(name) {
     return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'
   if (n.includes('pizza'))
     return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80'
-  if (n.includes('rice') || n.includes('biryani'))
+  if (n.includes('rice') || n.includes('biryani') || n.includes('fried rice'))
     return 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80'
   if (n.includes('dessert') || n.includes('cake') || n.includes('waffle'))
     return 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=600&q=80'
-  return 'https://images.unsplash.com/photo-1514362545818-883fd015ef0b?auto=format&fit=crop&w=600&q=80'
+  
+  // A robust generic fallback
+  return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80'
 }
 
 function openItemDetails(item) {
@@ -710,17 +758,12 @@ onMounted(() => {
 
 // ── Category Pill Bar ──────────────────────────────────────────────────────────
 .category-pill-bar {
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  padding: 8px 12px;
+  overflow: hidden;
+  width: 100%;
+  padding: 8px 0;
 
   @media (min-width: 600px) {
-    padding: 10px 20px;
+    padding: 10px 0;
   }
 }
 
@@ -731,12 +774,29 @@ onMounted(() => {
   background: rgba(241, 245, 249, 0.6);
 }
 
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: scroll-left 30s linear infinite;
+}
+
+.marquee-paused {
+  animation-play-state: paused !important;
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 .pill-track {
   display: flex;
   gap: 8px;
+  padding-right: 8px;
   width: max-content;
   @media (min-width: 600px) {
     gap: 10px;
+    padding-right: 10px;
   }
 }
 

@@ -15,7 +15,9 @@ try {
     if (key === 'VITE_SUPABASE_URL') SUPABASE_URL = val
     if (key === 'SUPABASE_SERVICE_ROLE_KEY') SUPABASE_SERVICE_KEY = val
   }
-} catch (error) {}
+} catch {
+  // ignore
+}
 
 const s = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 

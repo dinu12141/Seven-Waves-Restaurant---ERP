@@ -3,8 +3,6 @@
 
 import { defineConfig } from '#q-app/wrappers'
 import { fileURLToPath } from 'node:url'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { join as pathJoin } from 'node:path'
 import { networkInterfaces } from 'node:os'
 
 function getLocalIP() {
