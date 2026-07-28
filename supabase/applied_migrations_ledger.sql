@@ -124,7 +124,18 @@ INSERT INTO public.applied_migrations (filename, notes) VALUES
   ('CRITICAL_fix_revoke_anon_functions.sql','Critical: revoke anon function access'),
   ('check_roles.sql',                       'Role check utilities'),
   ('verify_realtime_downstream.sql',        'Verify realtime downstream'),
-  ('erp_security_lockdown.sql',             'Security lockdown: revoke anon, harden')
+  ('erp_security_lockdown.sql',             'Security lockdown: revoke anon, harden'),
+  ('fix_missing_rls_policies.sql',          'Security: 19-section RLS hardening'),
+  ('security_lockdown_apply.sql',           'Security: #38 variant price + payment recompute, #34 anon-write revoke, #35 testimonials'),
+  ('fix_rls_missing_tables.sql',            'Security: RLS for 15 unprotected operational tables'),
+  ('fix_accept_order_overload.sql',         'Fix: drop 1-arg overload of accept_order_as_waiter'),
+  ('offline_sync_rpcs.sql',                 'Offline sync RPCs: pos_create_order, waiter_accept_order, etc.'),
+  ('fix_missing_indexes.sql',               'Perf: 13 missing FK indexes + additional query indexes'),
+  ('fix_order_data_integrity.sql',          'Data integrity: payment constraints, discount cap, duplicate trigger'),
+  ('fix_apply_discount_rpc.sql',            'Security: server-side discount validation RPC'),
+  ('fix_company_id_columns.sql',            'Multi-tenancy: company_id on 7 core tables'),
+  ('fix_order_status_machine.sql',          'Data integrity: order status transition guard trigger'),
+  ('fix_soft_delete.sql',                   'Feature: soft delete for menu_items, categories, ingredients, recipes')
 ON CONFLICT (filename) DO NOTHING;
 
 
@@ -137,7 +148,7 @@ ON CONFLICT (filename) DO NOTHING;
 -- APPLY IN ORDER (each depends on helpers from erp_security_lockdown.sql):
 
 -- [1] CRITICAL SECURITY — Apply first
--- fix_missing_rls_policies.sql
+-- [APPLIED] fix_missing_rls_policies.sql
 --   19-section RLS hardening (companies, branches, journal_entries, finance,
 --   payroll, AI tables, user_roles, customer_sessions, loyalty, audit_logs, uom)
 --   After applying:
@@ -146,7 +157,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [1b] CRITICAL SECURITY — Apply after fix_price_and_discount_security.sql
--- security_lockdown_apply.sql   (ERP-DB-Fixer, task #73 + #38, 2026-07-23)
+-- [APPLIED] security_lockdown_apply.sql   (ERP-DB-Fixer, task #73 + #38, 2026-07-23)
 --   Master delta file. Closes gaps not covered by [1]/[3]:
 --     • #38 variant-aware POS unit_price validation (fixes base_price-only gap)
 --       + process_cashier_payment ignores client p_amount_paid (charges
@@ -162,7 +173,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [2] CRITICAL — Apply after fix_missing_rls_policies.sql
--- fix_rls_missing_tables.sql
+-- [APPLIED] fix_rls_missing_tables.sql
 --   RLS for 15 base-schema tables with no policies at all:
 --   kitchens, restaurant_tables, categories, menu_items, ingredients, recipes,
 --   stock_movements, payments, order_items, kot_tickets, kot_items,
@@ -173,7 +184,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [3] CRITICAL — Apply before onboarding any waiters
--- fix_accept_order_overload.sql
+-- [APPLIED] fix_accept_order_overload.sql
 --   Drop 1-arg accept_order_as_waiter overload to prevent PGRST203.
 --   Then re-run rpc_waiter_accept_order.sql to ensure canonical 2-arg version.
 --   After applying:
@@ -182,7 +193,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [4] CRITICAL FUNCTIONALITY
--- offline_sync_rpcs.sql
+-- [APPLIED] offline_sync_rpcs.sql
 --   5 offline sync RPCs (pos_create_order, waiter_accept_order, etc.)
 --   After applying:
 --     INSERT INTO applied_migrations (filename, notes)
@@ -190,7 +201,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [5] HIGH — Performance (safe to apply anytime, all IF NOT EXISTS)
--- fix_missing_indexes.sql
+-- [APPLIED] fix_missing_indexes.sql
 --   13 missing FK indexes on core schema tables + additional high-value indexes
 --   After applying:
 --     INSERT INTO applied_migrations (filename, notes)
@@ -198,7 +209,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [6] HIGH — Data integrity constraints
--- fix_order_data_integrity.sql
+-- [APPLIED] fix_order_data_integrity.sql
 --   payments: amount > 0, valid method CHECK constraints
 --   orders: discount non-negative cap, service_charge_rate column
 --   Remove duplicate trg_order_status trigger (double audit log entries)
@@ -209,7 +220,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [7] HIGH — Server-side discount RPC (replaces client-side discount logic)
--- fix_apply_discount_rpc.sql
+-- [APPLIED] fix_apply_discount_rpc.sql
 --   apply_discount_to_order(order_id, pct, reason) — validates 0-100%, checks state
 --   After applying:
 --     INSERT INTO applied_migrations (filename, notes)
@@ -217,7 +228,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [8] MEDIUM — Multi-tenancy (requires data review for multi-company deployments)
--- fix_company_id_columns.sql
+-- [APPLIED] fix_company_id_columns.sql
 --   Adds company_id to menu_items, categories, ingredients, recipes,
 --   stores, stock_levels, stock_movements + backfill + indexes
 --   ⚠️ Review backfill logic for multi-company setups before applying
@@ -227,7 +238,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [9] MEDIUM — Order status guard
--- fix_order_status_machine.sql
+-- [APPLIED] fix_order_status_machine.sql
 --   BEFORE UPDATE trigger: blocks invalid order status transitions
 --   ⚠️ Test on staging first — will reject non-sequential status changes
 --   After applying:
@@ -236,7 +247,7 @@ ON CONFLICT (filename) DO NOTHING;
 --     ON CONFLICT DO NOTHING;
 
 -- [10] LOW — Soft delete for menu items / categories / ingredients
--- fix_soft_delete.sql
+-- [APPLIED] fix_soft_delete.sql
 --   Adds deleted_at column + partial indexes + soft_delete_menu_item() RPC
 --   After applying:
 --     INSERT INTO applied_migrations (filename, notes)
