@@ -257,11 +257,8 @@
                 v-for="t in floorTables"
                 :key="t.id"
                 class="table-cell"
-                :class="[
-                  t.occupied ? 'table-cell--occupied' : 'table-cell--available',
-                  t.occupied ? 'table-cell--clickable' : '',
-                ]"
-                @click="t.occupied ? openTableOrder(t) : null"
+                :class="['table-cell--' + t.status, { 'cursor-pointer': true }]"
+                @click="openTableOrder(t)"
               >
                 <div class="table-cell__number">
                   {{ (t.table_number || '').replace(/table/i, '').trim() || t.id?.slice(-2) }}
@@ -302,6 +299,15 @@
         <q-card-section v-else-if="!tableOrderData" class="column items-center q-pa-xl">
           <q-icon name="info" size="40px" color="grey-5" />
           <div class="text-grey-6 q-mt-md">No active order found for this table.</div>
+          <q-btn
+            v-if="['admin', 'manager'].includes(authStore.user?.role)"
+            flat
+            color="negative"
+            icon="delete"
+            label="Delete Table"
+            class="q-mt-lg"
+            @click="deleteSelectedTable"
+          />
         </q-card-section>
 
         <q-scroll-area v-else style="height: calc(100vh - 80px)">
@@ -826,6 +832,7 @@ const showTableOrderDialog = ref(false)
 const tableOrderData = ref(null)
 const tableOrderLoading = ref(false)
 const selectedTableName = ref('')
+const selectedTableId = ref(null)
 
 const orderStatusColorMap = {
   pending_waiter: 'orange-8',
@@ -898,6 +905,7 @@ const orderTimeline = computed(() => {
 })
 
 async function openTableOrder(table) {
+  selectedTableId.value = table.id
   selectedTableName.value = table.table_number || `Table ${table.id?.slice(-4)}`
   showTableOrderDialog.value = true
   tableOrderLoading.value = true
@@ -943,11 +951,37 @@ async function openTableOrder(table) {
       }
       tableOrderData.value = { ...data, waiter_name: waiterName }
     }
-  } catch (err) {
-    console.error('[Dashboard] Table order fetch error:', err)
+  } catch (e) {
+    console.error(e)
   } finally {
     tableOrderLoading.value = false
   }
+}
+
+async function deleteSelectedTable() {
+  if (!selectedTableId.value) return
+  $q.dialog({
+    title: 'Confirm Delete',
+    message: `Are you sure you want to delete ${selectedTableName.value}?`,
+    cancel: true,
+    persistent: true,
+    color: 'negative'
+  }).onOk(async () => {
+    try {
+      const { error } = await supabase.from('restaurant_tables').delete().eq('id', selectedTableId.value)
+      if (error) {
+        if (error.message.includes('foreign key constraint')) {
+          throw new Error('Cannot delete this table because it has past orders.')
+        }
+        throw error
+      }
+      $q.notify({ type: 'positive', message: 'Table deleted successfully' })
+      showTableOrderDialog.value = false
+      await fetchDashboardData()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err.message || 'Failed to delete table' })
+    }
+  })
 }
 
 onUnmounted(() => {
