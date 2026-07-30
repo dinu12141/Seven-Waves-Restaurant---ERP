@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AI-Powered Restaurant Management System — Academic Poster (A4)</title>
+<style>
+  :root{
+    --navy:#1F4E79;
+    --blue:#2E75B6;
+    --light-blue:#DEEBF7;
+    --green:#1E7A34;
+    --light-green:#E8F5E9;
+    --orange:#C2540A;
+    --light-orange:#FFF3E0;
+    --red:#B3261E;
+    --light-red:#FDECEA;
+    --grey:#5B5B5B;
+    --light-grey:#F3F3F4;
+    --purple:#5B2A86;
+    --light-purple:#F1E8F8;
+    --ink:#1A1A1A;
+    --card-bg:#FFFFFF;
+    --page-bg:#eef1f5;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--page-bg);
+    font-family: "Segoe UI", "Calibri", Arial, sans-serif;
+    color: var(--ink);
+  }
+
+  /* ---- Editable content mostly lives below; structure/styling above ---- */
+
+  .poster {
+    width: 210mm;       /* A4 portrait width  */
+    min-height: 297mm;  /* A4 portrait height */
+    margin: 20px auto;
+    background: linear-gradient(135deg, #6a5acd 0%, #4b6cb7 100%);
+    padding: 4mm;
+    border-radius: 3mm;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+
+  .sheet {
+    background: #ffffff;
+    border-radius: 2.5mm;
+    padding: 6mm 7mm;
+    height: 100%;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(120deg, var(--navy), var(--blue));
+    color: #fff;
+    border-radius: 2.5mm;
+    padding: 3.5mm 5mm;
+    text-align: center;
+    margin-bottom: 3mm;
+  }
+  .header .byline {
+    font-size: 8.5pt;
+    opacity: 0.92;
+    letter-spacing: 0.3px;
+    margin-bottom: 1mm;
+  }
+  .header h1 {
+    font-size: 16.5pt;
+    margin: 0 0 1mm 0;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .header .subtitle {
+    font-size: 8.5pt;
+    font-weight: 400;
+    opacity: 0.95;
+  }
+
+  /* Grid layout: 2 columns to fit A4 width */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3mm;
+  }
+
+  .col { display: flex; flex-direction: column; gap: 3mm; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid #e3e3e8;
+    border-left: 1.3mm solid var(--blue);
+    border-radius: 1.5mm;
+    padding: 2.4mm 3mm;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 8.6pt;
+    margin: 0 0 1.3mm 0;
+    color: var(--navy);
+    border-bottom: 1px solid #e6e6ec;
+    padding-bottom: 1mm;
+    display: flex;
+    align-items: center;
+    gap: 1.2mm;
+  }
+  .card h2 .icon { font-size: 8.6pt; }
+
+  .card p { font-size: 6.7pt; line-height: 1.32; margin: 0 0 1.2mm 0; }
+  .card ul { margin: 0; padding-left: 3mm; font-size: 6.7pt; line-height: 1.32; }
+  .card ul li { margin-bottom: 0.7mm; }
+  .card strong { color: var(--navy); }
+
+  /* colour variants for left border */
+  .card.red   { border-left-color: var(--red); }
+  .card.green { border-left-color: var(--green); }
+  .card.orange{ border-left-color: var(--orange); }
+  .card.purple{ border-left-color: var(--purple); }
+
+  /* Callout box (statistics highlight) */
+  .callout {
+    background: var(--red);
+    color: #fff;
+    border-radius: 1.2mm;
+    padding: 1.6mm 2mm;
+    font-size: 6.5pt;
+    line-height: 1.32;
+    margin: 1.2mm 0;
+  }
+  .callout strong { color: #fff; }
+
+  /* Metric tiles */
+  .metrics { display: flex; gap: 1.6mm; }
+  .metric-tile {
+    flex: 1;
+    background: linear-gradient(120deg, var(--green), #2fa84f);
+    color: #fff;
+    border-radius: 1.2mm;
+    padding: 1.8mm 1mm;
+    text-align: center;
+  }
+  .metric-tile .num { font-size: 12pt; font-weight: 800; line-height: 1; }
+  .metric-tile .label { font-size: 5.4pt; opacity: 0.95; margin-top: 0.6mm; line-height: 1.15; }
+  .metric-tile.blue { background: linear-gradient(120deg, var(--navy), var(--blue)); }
+
+  /* tech badges */
+  .badges { display: flex; flex-wrap: wrap; gap: 1mm; margin: 1mm 0 1.6mm 0; }
+  .badge {
+    background: var(--navy);
+    color: #fff;
+    font-size: 5.6pt;
+    padding: 0.6mm 1.8mm;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .arch-box {
+    background: var(--light-grey);
+    border: 1px dashed #b6b6c2;
+    border-radius: 1.2mm;
+    padding: 1.6mm;
+    font-size: 6pt;
+    text-align: center;
+    line-height: 1.35;
+    margin-bottom: 1.4mm;
+    color: var(--grey);
+    font-family: "Consolas", monospace;
+  }
+
+  /* 2-col mini grid inside cards (challenges) */
+  .mini-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.3mm;
+  }
+  .mini-card {
+    background: var(--light-orange);
+    border-left: 1mm solid var(--orange);
+    border-radius: 1mm;
+    padding: 1.3mm 1.6mm;
+    font-size: 6.1pt;
+    line-height: 1.25;
+  }
+  .mini-card strong { display:block; color: var(--orange); font-size: 6.3pt; margin-bottom: 0.4mm; }
+
+  /* footer */
+  .footer {
+    margin-top: 3mm;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 1.5mm;
+    padding: 1.8mm 4mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 6pt;
+    flex-wrap: wrap;
+    gap: 1.2mm;
+  }
+  .footer b { color: #ffd166; }
+
+  /* Print setup: one page, A4 portrait */
+  @media print {
+    body { background: #fff; }
+    .poster { box-shadow: none; margin: 0; border-radius: 0; width: 100%; min-height: 0; padding: 3mm; }
+    @page { size: A4 portrait; margin: 0; }
+  }
+
+  /* Screen toolbar (not printed) */
+  .toolbar {
+    max-width: 210mm;
+    margin: 10px auto 0 auto;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    color: #333;
+  }
+  .toolbar button {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 6px;
+  }
+  .toolbar button:hover { background: var(--blue); }
+  @media print { .toolbar { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <p>Edit the text directly in <code>poster.html</code> (open with any text editor), then reload this page in your browser.<br/>
+  To export as PDF/print: click the button below, choose "Save as PDF", paper size <b>A4</b>, portrait, margins "None".</p>
+  <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+</div>
+
+<div class="poster">
+  <div class="sheet">
+
+    <!-- ============== HEADER ============== -->
+    <div class="header">
+      <div class="byline">Dinusha Madushanka &nbsp;•&nbsp; Final Year Project &nbsp;•&nbsp; BSc (Hons) Computing</div>
+      <h1>AI-Powered Restaurant Management System</h1>
+      <div class="subtitle">A Real-Time, Multi-Branch Cloud Platform Replacing Fragmented POS, Kitchen &amp; Order Workflows</div>
+    </div>
+
+    <!-- ============== 2-COLUMN GRID ============== -->
+    <div class="grid">
+
+      <!-- ===== COLUMN 1 ===== -->
+      <div class="col">
+
+        <div class="card red">
+          <h2><span class="icon">🎯</span> Aims &amp; Objectives</h2>
+          <ul>
+            <li><strong>Goal:</strong> Unify POS, kitchen, waiter, inventory, finance &amp; AI analytics in one real-time platform</li>
+            <li>Kitchen tickets delivered to the correct station in under 1 second</li>
+            <li>Branch- and role-level access enforced at the database layer</li>
+            <li>Usable through short connectivity outages; sales linked directly to stock via BOM deduction</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2><span class="icon">🔍</span> Rationale &amp; Context</h2>
+          <p><strong>Problem:</strong> Multi-branch restaurants on paper tickets and standalone POS terminals suffer fragmented order visibility, no cross-branch oversight, and stock that silently drifts from actual sales.</p>
+          <div class="callout">
+            <strong>Key Pain Points:</strong> No shared realtime order record · 10 staff roles need scoped access · sales rarely trigger stock deduction
+          </div>
+        </div>
+
+        <div class="card purple">
+          <h2><span class="icon">📚</span> Literature Review</h2>
+          <ul>
+            <li>Commercial platforms rarely combine branch-scoped RBAC, offline-first PWAs and finance in one architecture</li>
+            <li>Trigger-driven realtime beats polling for sub-second updates</li>
+            <li>DB-enforced Row Level Security is safer than app-only checks</li>
+            <li>Offline queue-and-replay is standard for unreliable connectivity</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2><span class="icon">🗺️</span> Scope &amp; Data Model</h2>
+          <ul>
+            <li>7 client layouts (ERP, waiter/manager/delivery PWAs, kiosk, customer menu, auth) share one schema</li>
+            <li>Core entities: branches, staff/shifts, orders, order items, kitchen tickets, inventory, ledgers</li>
+            <li>Every table carries a <code>branch_id</code> for tenant isolation; BOM links items to stock</li>
+          </ul>
+        </div>
+
+        <div class="card orange">
+          <h2><span class="icon">🚧</span> Challenges &amp; Solutions</h2>
+          <div class="mini-grid">
+            <div class="mini-card"><strong>Trigger Ordering</strong>Kitchen assignment must precede status change or KOTs lose routing</div>
+            <div class="mini-card"><strong>Cross-Branch RLS Leak</strong>Unscoped policies fixed &amp; re-tested</div>
+            <div class="mini-card"><strong>Non-Atomic Billing</strong>3-step billing merged into one atomic RPC</div>
+            <div class="mini-card"><strong>Dual Realtime Systems</strong>Two layers flagged as debt to consolidate</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===== COLUMN 2 ===== -->
+      <div class="col">
+
+        <div class="card green">
+          <h2><span class="icon">⚙️</span> Technical Implementation</h2>
+          <div class="arch-box">
+            Vue 3 + Quasar 2 (SPA / PWA / Electron / Tauri)<br/>
+            ⇅<br/>
+            Supabase (PostgREST · Auth · Realtime)<br/>
+            ⇅<br/>
+            PostgreSQL 17 — RLS · Triggers · RPCs
+          </div>
+          <div class="badges">
+            <span class="badge">Vue 3</span>
+            <span class="badge">Quasar 2</span>
+            <span class="badge">Supabase</span>
+            <span class="badge">PostgreSQL 17</span>
+            <span class="badge">Pinia</span>
+            <span class="badge">Electron/Tauri</span>
+            <span class="badge">Gemini</span>
+          </div>
+          <ul>
+            <li>Trigger-driven Kitchen Order Ticket (KOT) generation, routed per station</li>
+            <li>Realtime pipeline via PostgreSQL logical replication</li>
+            <li>Offline-first sync (IndexedDB queue &amp; replay)</li>
+            <li>10-role RBAC enforced by database Row Level Security</li>
+            <li>QR-code table ordering &amp; touch-menu kiosk flow</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2><span class="icon">🧪</span> Methodology</h2>
+          <p><strong>Iterative, feature-driven build</strong> against a live backend — module by module: auth/RBAC → POS &amp; orders → KOT/kitchen display → waiter PWA → QR ordering → inventory → finance → HR/payroll → AI dashboard.</p>
+          <ul>
+            <li>Automated unit/integration tests (Vitest) for RBAC &amp; store logic</li>
+            <li>Manual end-to-end walkthroughs of the order lifecycle</li>
+            <li>Dedicated security review of RLS policies</li>
+          </ul>
+        </div>
+
+        <div class="card green">
+          <h2><span class="icon">📊</span> Key Results</h2>
+          <div class="metrics">
+            <div class="metric-tile">
+              <div class="num">&lt;1s</div>
+              <div class="label">Order→Kitchen Latency</div>
+            </div>
+            <div class="metric-tile blue">
+              <div class="num">10</div>
+              <div class="label">Roles Under Branch RBAC</div>
+            </div>
+            <div class="metric-tile">
+              <div class="num">13</div>
+              <div class="label">Defects Found &amp; Fixed</div>
+            </div>
+          </div>
+          <p style="margin-top:1.6mm;"><strong>Reliability:</strong> Offline sync preserves order data through short outages, replaying queued writes in order on reconnect.</p>
+        </div>
+
+        <div class="card">
+          <h2><span class="icon">⚡</span> Evaluation Highlights</h2>
+          <ul>
+            <li>Cross-branch data isolation confirmed via targeted RLS penetration checks</li>
+            <li>Client-side route guards verified as UX-only — DB is the real security boundary</li>
+            <li>BOM stock deduction functionally complete; recipe coverage remains partial</li>
+          </ul>
+        </div>
+
+        <div class="card purple">
+          <h2><span class="icon">🔮</span> Future Enhancements</h2>
+          <ul>
+            <li><strong>Migration Tooling:</strong> Formal, versioned schema migrations</li>
+            <li><strong>Realtime Consolidation:</strong> Merge dual subscription layers</li>
+            <li><strong>BOM Coverage:</strong> Complete recipe data across the menu</li>
+            <li><strong>AI Forecasting:</strong> Benchmark accuracy against real sales data</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2><span class="icon">🎓</span> Academic Contributions</h2>
+          <ul>
+            <li>Worked example combining trigger-driven realtime, DB-enforced multi-tenancy and offline-first PWA design</li>
+            <li>Critical evaluation of theory-to-practice gaps in RLS composition and realtime architecture</li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ============== FOOTER ============== -->
+    <div class="footer">
+      <span>Contact: <b>dinusha.madushanka@student.university.edu</b></span>
+      <span>Supervisor: <b>[Supervisor Name]</b></span>
+      <span>Poster Exhibition: <b>[Date]</b></span>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
