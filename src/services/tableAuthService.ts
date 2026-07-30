@@ -48,9 +48,21 @@ export async function loginWithDeviceCode(
 
 /**
  * Obtains (or creates) a customer session using a QR token embedded in the URL.
+ * Rate-limited: max 10 scans/minute per QR token to prevent brute-force abuse.
  * Calls get_or_create_session_by_qr RPC.
  */
 export async function loginWithQrToken(qrToken: string): Promise<TableSessionResult> {
+  // SEC-C: enforce rate limit before the session RPC so a flood of QR scans
+  // (automated or accidental) is blocked at the DB level and logged to audit_logs.
+  const { data: rlData, error: rlError } = await supabase.rpc('check_qr_rate_limit', {
+    p_identifier: qrToken,
+    p_endpoint: 'qr_scan',
+    p_limit: 10,
+  })
+  if (!rlError && rlData && !(rlData as { allowed: boolean }).allowed) {
+    return { success: false, error: 'Too many scan attempts. Please wait a moment before trying again.' }
+  }
+
   const { data, error } = await supabase.rpc('get_or_create_session_by_qr', {
     p_qr_token: qrToken,
   })

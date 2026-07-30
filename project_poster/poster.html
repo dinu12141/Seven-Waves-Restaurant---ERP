@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>AI-Powered Restaurant Management System — Academic Poster (A4)</title>
+<title>AI-Powered Restaurant Management System — Academic Poster (A1)</title>
 <style>
   :root{
     --navy:#1F4E79;
@@ -36,19 +36,19 @@
   /* ---- Editable content mostly lives below; structure/styling above ---- */
 
   .poster {
-    width: 210mm;       /* A4 portrait width  */
-    min-height: 297mm;  /* A4 portrait height */
+    width: 594mm;       /* A1 portrait width (half of A0's 841mm width)  */
+    min-height: 841mm;  /* A1 portrait height */
     margin: 20px auto;
     background: linear-gradient(135deg, #6a5acd 0%, #4b6cb7 100%);
-    padding: 4mm;
-    border-radius: 3mm;
+    padding: 11mm;
+    border-radius: 8mm;
     box-shadow: 0 10px 40px rgba(0,0,0,0.25);
   }
 
   .sheet {
     background: #ffffff;
-    border-radius: 2.5mm;
-    padding: 6mm 7mm;
+    border-radius: 7mm;
+    padding: 17mm 20mm;
     height: 100%;
   }
 
@@ -56,61 +56,61 @@
   .header {
     background: linear-gradient(120deg, var(--navy), var(--blue));
     color: #fff;
-    border-radius: 2.5mm;
-    padding: 3.5mm 5mm;
+    border-radius: 7mm;
+    padding: 10mm 14mm;
     text-align: center;
-    margin-bottom: 3mm;
+    margin-bottom: 8mm;
   }
   .header .byline {
-    font-size: 8.5pt;
+    font-size: 24pt;
     opacity: 0.92;
-    letter-spacing: 0.3px;
-    margin-bottom: 1mm;
+    letter-spacing: 0.5px;
+    margin-bottom: 3mm;
   }
   .header h1 {
-    font-size: 16.5pt;
-    margin: 0 0 1mm 0;
+    font-size: 52pt;
+    margin: 0 0 3mm 0;
     font-weight: 800;
     line-height: 1.1;
   }
   .header .subtitle {
-    font-size: 8.5pt;
+    font-size: 24pt;
     font-weight: 400;
     opacity: 0.95;
   }
 
-  /* Grid layout: 2 columns to fit A4 width */
+  /* Grid layout: 2 columns to fit A1 width */
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 3mm;
+    gap: 8mm;
   }
 
-  .col { display: flex; flex-direction: column; gap: 3mm; }
+  .col { display: flex; flex-direction: column; gap: 8mm; }
 
   .card {
     background: var(--card-bg);
     border: 1px solid #e3e3e8;
-    border-left: 1.3mm solid var(--blue);
-    border-radius: 1.5mm;
-    padding: 2.4mm 3mm;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 3.5mm solid var(--blue);
+    border-radius: 4mm;
+    padding: 7mm 8mm;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   }
   .card h2 {
-    font-size: 8.6pt;
-    margin: 0 0 1.3mm 0;
+    font-size: 24pt;
+    margin: 0 0 4mm 0;
     color: var(--navy);
-    border-bottom: 1px solid #e6e6ec;
-    padding-bottom: 1mm;
+    border-bottom: 2px solid #e6e6ec;
+    padding-bottom: 3mm;
     display: flex;
     align-items: center;
-    gap: 1.2mm;
+    gap: 3.5mm;
   }
-  .card h2 .icon { font-size: 8.6pt; }
+  .card h2 .icon { font-size: 24pt; }
 
-  .card p { font-size: 6.7pt; line-height: 1.32; margin: 0 0 1.2mm 0; }
-  .card ul { margin: 0; padding-left: 3mm; font-size: 6.7pt; line-height: 1.32; }
-  .card ul li { margin-bottom: 0.7mm; }
+  .card p { font-size: 19pt; line-height: 1.35; margin: 0 0 3.5mm 0; }
+  .card ul { margin: 0; padding-left: 8mm; font-size: 19pt; line-height: 1.35; }
+  .card ul li { margin-bottom: 2mm; }
   .card strong { color: var(--navy); }
 
   /* colour variants for left border */
@@ -123,35 +123,35 @@
   .callout {
     background: var(--red);
     color: #fff;
-    border-radius: 1.2mm;
-    padding: 1.6mm 2mm;
-    font-size: 6.5pt;
-    line-height: 1.32;
-    margin: 1.2mm 0;
+    border-radius: 3.5mm;
+    padding: 4.5mm 6mm;
+    font-size: 18.5pt;
+    line-height: 1.35;
+    margin: 3.5mm 0;
   }
   .callout strong { color: #fff; }
 
   /* Metric tiles */
-  .metrics { display: flex; gap: 1.6mm; }
+  .metrics { display: flex; gap: 4.5mm; }
   .metric-tile {
     flex: 1;
     background: linear-gradient(120deg, var(--green), #2fa84f);
     color: #fff;
-    border-radius: 1.2mm;
-    padding: 1.8mm 1mm;
+    border-radius: 3.5mm;
+    padding: 5mm 3mm;
     text-align: center;
   }
-  .metric-tile .num { font-size: 12pt; font-weight: 800; line-height: 1; }
-  .metric-tile .label { font-size: 5.4pt; opacity: 0.95; margin-top: 0.6mm; line-height: 1.15; }
+  .metric-tile .num { font-size: 34pt; font-weight: 800; line-height: 1; }
+  .metric-tile .label { font-size: 15pt; opacity: 0.95; margin-top: 1.8mm; line-height: 1.2; }
   .metric-tile.blue { background: linear-gradient(120deg, var(--navy), var(--blue)); }
 
   /* tech badges */
-  .badges { display: flex; flex-wrap: wrap; gap: 1mm; margin: 1mm 0 1.6mm 0; }
+  .badges { display: flex; flex-wrap: wrap; gap: 3mm; margin: 3mm 0 4.5mm 0; }
   .badge {
     background: var(--navy);
     color: #fff;
-    font-size: 5.6pt;
-    padding: 0.6mm 1.8mm;
+    font-size: 16pt;
+    padding: 1.8mm 5mm;
     border-radius: 20px;
     font-weight: 600;
   }
@@ -159,12 +159,12 @@
   .arch-box {
     background: var(--light-grey);
     border: 1px dashed #b6b6c2;
-    border-radius: 1.2mm;
-    padding: 1.6mm;
-    font-size: 6pt;
+    border-radius: 3.5mm;
+    padding: 4.5mm;
+    font-size: 17pt;
     text-align: center;
-    line-height: 1.35;
-    margin-bottom: 1.4mm;
+    line-height: 1.4;
+    margin-bottom: 4mm;
     color: var(--grey);
     font-family: "Consolas", monospace;
   }
@@ -173,44 +173,44 @@
   .mini-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.3mm;
+    gap: 3.5mm;
   }
   .mini-card {
     background: var(--light-orange);
-    border-left: 1mm solid var(--orange);
-    border-radius: 1mm;
-    padding: 1.3mm 1.6mm;
-    font-size: 6.1pt;
-    line-height: 1.25;
+    border-left: 2.8mm solid var(--orange);
+    border-radius: 2.5mm;
+    padding: 3.5mm 4.5mm;
+    font-size: 17.5pt;
+    line-height: 1.3;
   }
-  .mini-card strong { display:block; color: var(--orange); font-size: 6.3pt; margin-bottom: 0.4mm; }
+  .mini-card strong { display:block; color: var(--orange); font-size: 18pt; margin-bottom: 1.2mm; }
 
   /* footer */
   .footer {
-    margin-top: 3mm;
+    margin-top: 8mm;
     background: var(--ink);
     color: #fff;
-    border-radius: 1.5mm;
-    padding: 1.8mm 4mm;
+    border-radius: 4mm;
+    padding: 5mm 11mm;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 6pt;
+    font-size: 17pt;
     flex-wrap: wrap;
-    gap: 1.2mm;
+    gap: 3.5mm;
   }
   .footer b { color: #ffd166; }
 
-  /* Print setup: one page, A4 portrait */
+  /* Print setup: one page, A1 portrait */
   @media print {
     body { background: #fff; }
-    .poster { box-shadow: none; margin: 0; border-radius: 0; width: 100%; min-height: 0; padding: 3mm; }
-    @page { size: A4 portrait; margin: 0; }
+    .poster { box-shadow: none; margin: 0; border-radius: 0; width: 100%; min-height: 0; padding: 8mm; }
+    @page { size: A1 portrait; margin: 0; }
   }
 
   /* Screen toolbar (not printed) */
   .toolbar {
-    max-width: 210mm;
+    max-width: 594mm;
     margin: 10px auto 0 auto;
     text-align: center;
     font-family: Arial, sans-serif;
@@ -234,7 +234,7 @@
 
 <div class="toolbar">
   <p>Edit the text directly in <code>poster.html</code> (open with any text editor), then reload this page in your browser.<br/>
-  To export as PDF/print: click the button below, choose "Save as PDF", paper size <b>A4</b>, portrait, margins "None".</p>
+  To export as PDF/print: click the button below, choose "Save as PDF", paper size <b>A1</b> (custom size 594mm × 841mm if A1 isn't listed), portrait, margins "None".</p>
   <button onclick="window.print()">🖨️ Print / Save as PDF</button>
 </div>
 
