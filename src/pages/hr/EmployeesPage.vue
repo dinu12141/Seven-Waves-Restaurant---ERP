@@ -5522,7 +5522,7 @@ async function loadEmployees() {
     if (!branchId) return
     const { data, error } = await supabase
       .from('employees')
-      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, departments(name), designations(title)')
+      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, nic_number, epf_no, departments(name), designations(title)')
       .eq('branch_id', branchId)
       .order('first_name')
       .range(0, 49) // Paginate initial load to save egress
@@ -5652,11 +5652,7 @@ async function openForm(emp) {
   showForm.value = true
 }
 
-async function viewEmployee(emp) {
-  // Open the dialog instantly so the UI doesn't hang waiting for the DB queries!
-  viewTab.value = 'settings'
-  showDetail.value = true
-
+function populateViewForm(emp) {
   viewEmp.value = emp
 
   viewForm.first_name = emp.first_name || ''
@@ -5683,6 +5679,28 @@ async function viewEmployee(emp) {
 
   // Load photo URL
   viewEmpPhotoUrl.value = emp.photo_url || ''
+}
+
+async function viewEmployee(emp) {
+  // Open the dialog instantly so the UI doesn't hang waiting for the DB queries!
+  viewTab.value = 'settings'
+  showDetail.value = true
+
+  // The table row (emp) only carries the light columns from loadEmployees()'s
+  // list query — it never has nic_number, address_line1, bank_*, etc. Populate
+  // with what we have first so the dialog isn't blank, then replace with the
+  // full record once it arrives so NIC and other fields actually show up.
+  populateViewForm(emp)
+
+  supabase
+    .from('employees')
+    .select('*, departments(name), designations(title)')
+    .eq('id', emp.id)
+    .single()
+    .then(({ data, error }) => {
+      if (!error && data) populateViewForm(data)
+      else console.error('[HR] Could not fetch full employee record for view:', error)
+    })
 
   // Clear previous data while loading
   viewEmpSalary.value = null
