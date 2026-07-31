@@ -5,7 +5,6 @@
  * and subscription storage.
  */
 import { ref } from 'vue'
-import { supabase } from 'src/boot/supabase'
 
 const EDGE_FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/waiter-push-notify`
 
@@ -43,10 +42,20 @@ function urlBase64ToUint8Array(base64String) {
 
 /**
  * Register the waiter service worker.
+ *
+ * IMPORTANT: scoped to /waiter-app/ (not '/'), because Quasar's PWA build
+ * (quasar.config.js, workboxMode: 'GenerateSW') auto-registers its own
+ * Workbox-generated service worker at the root scope with skipWaiting +
+ * clientsClaim. Two service workers cannot both control the same scope —
+ * registering this one at '/' would have it fight the Workbox SW for control,
+ * silently breaking push delivery after the Workbox SW reclaims the page on
+ * its next activation. A narrower scope lets both coexist: Workbox still
+ * handles precaching/offline for the whole app, and this SW exclusively
+ * handles push/notificationclick for waiter-app routes.
  */
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) throw new Error('Service Worker not supported')
-  const reg = await navigator.serviceWorker.register('/waiter-sw.js', { scope: '/' })
+  const reg = await navigator.serviceWorker.register('/waiter-sw.js', { scope: '/waiter-app/' })
   await navigator.serviceWorker.ready
   return reg
 }
@@ -112,6 +121,7 @@ async function subscribePush(userId) {
     }
 
     pushSubscribed.value = true
+    lastSubscribedUserId = userId
     return { success: true }
   } catch (err) {
     pushError.value = err.message
@@ -123,6 +133,39 @@ async function subscribePush(userId) {
 }
 
 /**
+ * Persist a subscription object (already created by the service worker,
+ * e.g. from a pushsubscriptionchange event) to the backend directly, without
+ * re-requesting permission or re-registering the SW.
+ */
+async function saveSubscription(userId, subscription) {
+  if (!userId || !subscription) return
+  try {
+    const deviceName = `${navigator.platform || 'Browser'} — ${new Date().toLocaleDateString()}`
+    await fetch(`${EDGE_FN_BASE}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, subscription, device_name: deviceName }),
+    })
+  } catch (err) {
+    console.warn('[WaiterPush] saveSubscription error:', err.message)
+  }
+}
+
+// Remember which user we last subscribed as, so an automatic
+// pushsubscriptionchange re-subscribe (fired by the service worker when the
+// browser rotates/expires the push endpoint) can be persisted without the
+// waiter having to manually re-enable notifications.
+let lastSubscribedUserId = null
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED' && lastSubscribedUserId) {
+      saveSubscription(lastSubscribedUserId, event.data.subscription)
+    }
+  })
+}
+
+/**
  * Unsubscribe from Web Push and remove from DB.
  */
 async function unsubscribePush() {
@@ -131,12 +174,16 @@ async function unsubscribePush() {
     const reg = await navigator.serviceWorker.ready
     const subscription = await reg.pushManager.getSubscription()
     if (subscription) {
+      const endpoint = subscription.endpoint
       await subscription.unsubscribe()
-      // Mark token as inactive in Supabase
-      await supabase
-        .from('push_tokens')
-        .update({ is_active: false })
-        .eq('token', subscription.endpoint)
+      // Mark subscription as inactive via the edge function (service-role write —
+      // push_subscriptions has no client-side DELETE/UPDATE-by-endpoint policy
+      // since RLS scopes rows by user_id, and the endpoint is what we know here).
+      await fetch(`${EDGE_FN_BASE}/unsubscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      }).catch(() => {})
     }
     pushSubscribed.value = false
   } catch (err) {
@@ -147,13 +194,14 @@ async function unsubscribePush() {
 /**
  * Check if we already have an active subscription.
  */
-async function checkExistingSubscription() {
+async function checkExistingSubscription(userId = null) {
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     const reg = await navigator.serviceWorker.ready
     const subscription = await reg.pushManager.getSubscription()
     pushSubscribed.value = !!subscription
     pushPermission.value = Notification.permission
+    if (subscription && userId) lastSubscribedUserId = userId
   } catch {
     /* ignore */
   }

@@ -235,6 +235,26 @@
     <!-- Global Offline Banner -->
     <OfflineBanner />
 
+    <!-- Push Notification Opt-in Banner — shown once until the waiter grants/denies -->
+    <div v-if="showPushBanner" class="push-permission-banner">
+      <q-icon name="notifications_active" size="20px" class="q-mr-sm" />
+      <span class="push-permission-banner__text">
+        Enable notifications to get new-order alerts even when the app is closed.
+      </span>
+      <q-btn
+        dense
+        no-caps
+        unelevated
+        color="white"
+        text-color="orange-9"
+        label="Enable"
+        class="q-ml-sm"
+        :loading="pushLoading"
+        @click="enablePushNotifications"
+      />
+      <q-btn flat round dense icon="close" size="sm" class="q-ml-xs" @click="dismissPushBanner" />
+    </div>
+
     <!-- ── Bottom Navigation ─────────────────────────────────────────────── -->
     <q-footer class="waiter-bottom-nav mobile-bottom-nav">
       <div class="bottom-nav-bar mobile-nav-bar">
@@ -284,7 +304,28 @@ const authStore = useAuthStore()
 const uiStore = useUIStore()
 const $q = useQuasar()
 const router = useRouter()
-const { checkExistingSubscription } = useWaiterPush()
+const { pushPermission, pushSubscribed, pushLoading, subscribePush, checkExistingSubscription } =
+  useWaiterPush()
+
+const PUSH_BANNER_DISMISSED_KEY = 'sw_waiter_push_banner_dismissed'
+const showPushBanner = ref(false)
+
+function dismissPushBanner() {
+  showPushBanner.value = false
+  localStorage.setItem(PUSH_BANNER_DISMISSED_KEY, '1')
+}
+
+async function enablePushNotifications() {
+  const userId = authStore.user?.id
+  if (!userId) return
+  const result = await subscribePush(userId)
+  if (result.success) {
+    showPushBanner.value = false
+    $q.notify({ type: 'positive', message: 'Notifications enabled', position: 'top' })
+  } else {
+    $q.notify({ type: 'negative', message: result.error || 'Could not enable notifications', position: 'top' })
+  }
+}
 
 // Real-time alerts
 const showNewOrderAlert = ref(false)
@@ -331,8 +372,16 @@ onMounted(async () => {
     await store.initialize()
   }
 
-  // Check existing push subscription (non-blocking)
-  checkExistingSubscription().catch(() => {})
+  // Check existing push subscription (non-blocking), then decide whether to
+  // show the opt-in banner: only if not already subscribed, permission hasn't
+  // been denied, and the waiter hasn't dismissed the banner before.
+  checkExistingSubscription(authStore.user?.id)
+    .then(() => {
+      const dismissed = localStorage.getItem(PUSH_BANNER_DISMISSED_KEY) === '1'
+      showPushBanner.value =
+        !dismissed && !pushSubscribed.value && pushPermission.value !== 'denied'
+    })
+    .catch(() => {})
 
   // PWA install prompt listener
   window.addEventListener('beforeinstallprompt', handleInstallPrompt)
@@ -452,6 +501,29 @@ const tabs = computed(() => [
 </script>
 
 <style lang="scss" scoped>
+// ─── Push Notification Opt-in Banner ──────────────────────────────────────────
+.push-permission-banner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  position: fixed;
+  bottom: 64px; // sit above the bottom nav bar
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
+
+  &__text {
+    flex: 1;
+    line-height: 1.3;
+  }
+}
+
 // ─── Layout ──────────────────────────────────────────────────────────────────
 .waiter-app-layout {
   background: var(--erp-bg-page, #f1f5f9);

@@ -45,9 +45,7 @@ async function fetchWithRetry(
       return res
     } catch (err) {
       lastError = err as Error
-      console.warn(
-        `[order-notifier] Network error on attempt ${attempt + 1}: ${lastError.message}`,
-      )
+      console.warn(`[order-notifier] Network error on attempt ${attempt + 1}: ${lastError.message}`)
       if (attempt < maxRetries - 1) {
         await new Promise((r) => setTimeout(r, backoffMs * Math.pow(2, attempt)))
       }
@@ -72,10 +70,7 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
   }
 
   const encode = (obj: unknown) =>
-    btoa(JSON.stringify(obj))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '')
+    btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
   const unsignedToken = `${encode(header)}.${encode(claims)}`
 
@@ -184,22 +179,19 @@ async function sendFcmNotification(
   // ── FCM Legacy API (fallback) ───────────────────────────────────
   if (fcmServerKey) {
     try {
-      const res = await fetchWithRetry(
-        'https://fcm.googleapis.com/fcm/send',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `key=${fcmServerKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            to: token,
-            notification: { title, body, sound: 'default' },
-            data,
-            priority: 'high',
-          }),
+      const res = await fetchWithRetry('https://fcm.googleapis.com/fcm/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `key=${fcmServerKey}`,
+          'Content-Type': 'application/json',
         },
-      )
+        body: JSON.stringify({
+          to: token,
+          notification: { title, body, sound: 'default' },
+          data,
+          priority: 'high',
+        }),
+      })
 
       const result = await res.json()
       if (result.failure > 0) {
@@ -211,7 +203,10 @@ async function sendFcmNotification(
     }
   }
 
-  return { success: false, error: 'No FCM credentials configured (FCM_SERVER_KEY or SERVICE_ACCOUNT_JSON)' }
+  return {
+    success: false,
+    error: 'No FCM credentials configured (FCM_SERVER_KEY or SERVICE_ACCOUNT_JSON)',
+  }
 }
 
 // ── Status labels for human-readable messages ───────────────────────────────
@@ -250,10 +245,10 @@ Deno.serve(async (req: Request) => {
     // ── Parse webhook payload ─────────────────────────────────────
     const payload = await req.json().catch(() => null)
     if (!payload) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid or empty payload' }),
-        { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
-      )
+      return new Response(JSON.stringify({ success: false, error: 'Invalid or empty payload' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
     }
 
     console.log(`[order-notifier] Received webhook: table=${payload.table}, type=${payload.type}`)
@@ -318,10 +313,10 @@ Deno.serve(async (req: Request) => {
 
       if (orderErr || !order) {
         console.error('[order-notifier] Could not find parent order:', orderErr)
-        return new Response(
-          JSON.stringify({ success: false, error: 'Parent order not found' }),
-          { status: 404, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
-        )
+        return new Response(JSON.stringify({ success: false, error: 'Parent order not found' }), {
+          status: 404,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        })
       }
 
       orderNumber = order.order_number
@@ -447,22 +442,54 @@ Deno.serve(async (req: Request) => {
     )
 
     // ── Also insert into waiter_notifications for in-app display ──
-    const notificationInserts = recipientIds.map((userId) => ({
-      profile_id: userId,
-      title: notificationTitle,
-      body: notificationBody,
-      type: 'order_status',
-      metadata: dataPayload,
-      is_read: false,
-      created_at: new Date().toISOString(),
-    }))
+    // IMPORTANT: waiter_notifications is keyed by waiter_profiles.id (see
+    // waiterAppStore.js loadNotifications/markAllNotifsRead/realtime filter,
+    // and NotificationsPage.vue), NOT by profiles.id / auth.uid(). recipientIds
+    // above are profiles.id-space (orders.assigned_waiter_id, user_roles.user_id),
+    // so they must be translated to waiter_profiles.id before inserting, or the
+    // notification rows never match the frontend's query/realtime filter and
+    // silently vanish. Column names must also match what the frontend reads:
+    // waiter_profile_id (not profile_id), notification_type (not type), and
+    // payload (not metadata) — NotificationsPage.vue keys its icon/theme/urgent-tab
+    // classification and click-navigation entirely off notif.notification_type
+    // and n.payload, so using the wrong names silently breaks that UI even when
+    // title/body happen to still show.
+    const { data: waiterProfileRows, error: waiterProfileErr } = await supabase
+      .from('waiter_profiles')
+      .select('id, user_id')
+      .in('user_id', recipientIds)
 
-    const { error: notifInsertErr } = await supabase
-      .from('waiter_notifications')
-      .insert(notificationInserts)
+    if (waiterProfileErr) {
+      console.warn(
+        '[order-notifier] Could not resolve waiter_profiles for recipients:',
+        waiterProfileErr,
+      )
+    }
 
-    if (notifInsertErr) {
-      console.warn('[order-notifier] Could not insert in-app notifications:', notifInsertErr)
+    const waiterProfileIds = (waiterProfileRows ?? []).map((wp) => wp.id)
+
+    if (waiterProfileIds.length === 0) {
+      console.log(
+        '[order-notifier] No matching waiter_profiles for recipients, skipping in-app notification insert',
+      )
+    } else {
+      const notificationInserts = waiterProfileIds.map((waiterProfileId) => ({
+        waiter_profile_id: waiterProfileId,
+        title: notificationTitle,
+        body: notificationBody,
+        notification_type: 'order_status',
+        payload: dataPayload,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      }))
+
+      const { error: notifInsertErr } = await supabase
+        .from('waiter_notifications')
+        .insert(notificationInserts)
+
+      if (notifInsertErr) {
+        console.warn('[order-notifier] Could not insert in-app notifications:', notifInsertErr)
+      }
     }
 
     // ── Dry Run Mode ──────────────────────────────────────────────
@@ -523,9 +550,7 @@ Deno.serve(async (req: Request) => {
     const successCount = results.filter((r) => r.success).length
     const failCount = results.filter((r) => !r.success).length
 
-    console.log(
-      `[order-notifier] Done. Sent: ${successCount}, Failed: ${failCount}`,
-    )
+    console.log(`[order-notifier] Done. Sent: ${successCount}, Failed: ${failCount}`)
 
     // ── Log to erp_event_log for auditing ─────────────────────────
     await supabase.from('erp_event_log').insert({

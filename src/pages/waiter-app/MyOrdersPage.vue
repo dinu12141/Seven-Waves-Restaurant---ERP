@@ -43,7 +43,7 @@
           :ref="el => { if (el) orderCardRefs[order.id] = el }"
           class="order-card"
           :class="{
-            'order-card--ready': order.status === 'ready',
+            'order-card--ready': ['ready', 'paid', 'invoiced'].includes(order.status),
             'order-card--preparing': order.status === 'preparing',
             'order-card--highlighted': highlightedOrderId === order.id,
           }"
@@ -123,8 +123,11 @@
             </div>
           </div>
 
-          <!-- Ready action bar -->
-          <div v-if="order.status === 'ready'" class="order-card__ready-bar">
+          <!-- Ready action bar (also shown once paid/invoiced — payment does not block serving) -->
+          <div
+            v-if="['ready', 'paid', 'invoiced'].includes(order.status)"
+            class="order-card__ready-bar"
+          >
             <q-btn
               unelevated
               class="full-width serve-btn"
@@ -317,9 +320,9 @@
             </div>
           </div>
 
-          <!-- Mark Served button -->
+          <!-- Mark Served button (also shown once paid/invoiced — payment does not block serving) -->
           <q-btn
-            v-if="detailOrder.status === 'ready'"
+            v-if="['ready', 'paid', 'invoiced'].includes(detailOrder.status)"
             unelevated
             class="full-width q-mt-md"
             color="green-8"
@@ -811,7 +814,17 @@ const PROGRESS_STEPS = [
 ]
 
 function getStepState(order, stepKey) {
-  const statusOrder = ['accepted', 'sent_to_kitchen', 'preparing', 'ready', 'served']
+  // 'paid'/'invoiced' can happen before 'served' (Quick Pay skips straight to
+  // paid) — treat them as past 'ready' so the tracker doesn't freeze/blank out.
+  const statusOrder = [
+    'accepted',
+    'sent_to_kitchen',
+    'preparing',
+    'ready',
+    'paid',
+    'invoiced',
+    'served',
+  ]
   const orderStatus = order.status
   const stepToStatus = {
     accepted: 'accepted',
@@ -889,7 +902,15 @@ function fmtDateTime(dateStr) {
 }
 function statusLabel(s) {
   return (
-    { accepted: 'Accepted', sent_to_kitchen: 'In Kitchen', preparing: 'Preparing', ready: '🔔 Ready', served: 'Served' }[s] || s
+    {
+      accepted: 'Accepted',
+      sent_to_kitchen: 'In Kitchen',
+      preparing: 'Preparing',
+      ready: '🔔 Ready',
+      paid: '💳 Paid — Ready to Serve',
+      invoiced: 'Invoiced — Ready to Serve',
+      served: 'Served',
+    }[s] || s
   )
 }
 function itemLabel(s) {

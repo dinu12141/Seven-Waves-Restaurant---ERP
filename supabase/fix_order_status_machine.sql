@@ -19,8 +19,8 @@
 --   preparing      → ready | cancelled
 --   ready          → served | invoiced | paid | cancelled
 --   served         → invoiced | paid | cancelled          ← paid allowed (Quick Pay skips invoiced)
---   invoiced       → paid | cancelled
---   paid           → refunded
+--   invoiced       → paid | served | cancelled
+--   paid           → served | refunded                     ← served allowed (Quick Pay skips served; must still be servable after payment)
 --   cancelled      → pending_waiter | pending  (admin un-cancel only — checked via is_admin())
 --   refunded       → (terminal — no further transitions)
 --
@@ -50,8 +50,8 @@ BEGIN
     (OLD.status = 'preparing'      AND NEW.status IN ('ready', 'cancelled'))                   OR
     (OLD.status = 'ready'          AND NEW.status IN ('served', 'invoiced', 'paid', 'cancelled'))  OR
     (OLD.status = 'served'         AND NEW.status IN ('invoiced', 'paid', 'cancelled'))         OR
-    (OLD.status = 'invoiced'       AND NEW.status IN ('paid', 'cancelled'))                    OR
-    (OLD.status = 'paid'           AND NEW.status IN ('refunded'))                             OR
+    (OLD.status = 'invoiced'       AND NEW.status IN ('paid', 'served', 'cancelled'))          OR
+    (OLD.status = 'paid'           AND NEW.status IN ('served', 'refunded'))                   OR
     -- Admin can un-cancel
     (OLD.status = 'cancelled'      AND NEW.status IN ('pending_waiter', 'pending') AND public.is_admin())
   ) THEN

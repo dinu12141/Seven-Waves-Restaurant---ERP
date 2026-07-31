@@ -137,7 +137,7 @@ BEGIN
         RETURN jsonb_build_object('success', true, 'message', 'Already served.');
     END IF;
 
-    IF v_order.status NOT IN ('ready', 'accepted', 'preparing') THEN
+    IF v_order.status NOT IN ('ready', 'accepted', 'preparing', 'paid', 'invoiced') THEN
         RETURN jsonb_build_object('success', false, 'error',
             'Order cannot be marked served. Status: ' || v_order.status);
     END IF;
