@@ -5581,13 +5581,54 @@ async function generateCode() {
   }
 }
 
-function openForm(emp) {
+async function openForm(emp) {
   if (emp) {
     isEditing.value = true
+
+    // ── Fetch the FULL employee record from DB so all fields are populated ──
+    let fullEmp = emp
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*, departments(name), designations(title)')
+        .eq('id', emp.id)
+        .single()
+      if (!error && data) fullEmp = data
+    } catch (e) {
+      console.warn('[HR] Could not fetch full employee record, using list data:', e)
+    }
+
     Object.keys(defaultForm).forEach((k) => {
-      form[k] = emp[k] ?? defaultForm[k]
+      form[k] = fullEmp[k] ?? defaultForm[k]
     })
-    form.id = emp.id
+    form.id = fullEmp.id
+
+    // ── Also load current salary structure into form ──
+    try {
+      const { data: salData } = await supabase
+        .from('salary_structures')
+        .select('*')
+        .eq('employee_id', fullEmp.id)
+        .eq('is_current', true)
+        .limit(1)
+        .single()
+      if (salData) {
+        form.salary_method = salData.salary_method ?? 'basic_salary'
+        form.basic_salary = salData.basic_salary ?? 0
+        form.hourly_rate = salData.hourly_rate ?? 0
+        form.day_rate = salData.day_rate ?? 0
+        form.unit_rate = salData.unit_rate ?? 0
+        form.housing_allowance = salData.housing_allowance ?? 0
+        form.transport_allowance = salData.transport_allowance ?? 0
+        form.meal_allowance = salData.meal_allowance ?? 0
+        form.overtime_rate_multiplier = salData.overtime_rate_multiplier ?? 1.5
+        form.holiday_ot_multiplier = salData.holiday_ot_multiplier ?? 2.0
+        form.epf_employee_pct = salData.epf_employee_pct ?? 8
+      }
+    } catch (e) {
+      console.warn('[HR] Could not fetch salary structure for edit:', e)
+    }
+
     extraAllowances.value = []
   } else {
     isEditing.value = false
@@ -5743,8 +5784,9 @@ function cleanEmployeePayload(rawPayload) {
   delete payload.departments
   delete payload.designations
 
-  // 2. Remove UI-only keys
+  // 2. Remove keys that exist only on the form / salary_structures table (NOT on employees)
   const uiOnlyKeys = [
+    // Salary structure fields (saved to salary_structures table, not employees)
     'salary_method',
     'basic_salary',
     'hourly_rate',
@@ -5757,20 +5799,9 @@ function cleanEmployeePayload(rawPayload) {
     'holiday_ot_multiplier',
     'epf_employee_pct',
     'salary',
-    'title',
-    'pay_type',
-    'ot',
-    'shift',
-    'probation_period',
-    'epf_amount',
-    'welfare_amount',
-    'internal_company',
-    'morning_ot',
-    'late_deduct',
-    'no_pay_deduct',
-    'etf_allowed',
+    // File upload handle (not a DB column)
     'user_pic',
-    'epf_etf_eligible',
+    // Legacy/unused
     'shift_rate',
   ]
   uiOnlyKeys.forEach((k) => delete payload[k])
