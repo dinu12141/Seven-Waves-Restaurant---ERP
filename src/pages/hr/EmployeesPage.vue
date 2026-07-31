@@ -5586,16 +5586,24 @@ async function openForm(emp) {
     isEditing.value = true
 
     // ── Fetch the FULL employee record from DB so all fields are populated ──
-    let fullEmp = emp
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*, departments(name), designations(title)')
-        .eq('id', emp.id)
-        .single()
-      if (!error && data) fullEmp = data
-    } catch (e) {
-      console.warn('[HR] Could not fetch full employee record, using list data:', e)
+    // IMPORTANT: if this fetch fails, we must NOT fall back to the sparse list
+    // row — doing so would silently reset every field not in the list query
+    // (NIC, address, bank details, etc.) back to defaultForm's blank values,
+    // and the user's next Save would overwrite the real DB data with blanks.
+    const { data: fullEmp, error: fetchErr } = await supabase
+      .from('employees')
+      .select('*, departments(name), designations(title)')
+      .eq('id', emp.id)
+      .single()
+
+    if (fetchErr || !fullEmp) {
+      console.error('[HR] Could not fetch full employee record for edit:', fetchErr)
+      $q.notify({
+        type: 'negative',
+        message: 'Could not load full employee details. Please try again — editing was cancelled to avoid overwriting saved data.',
+      })
+      isEditing.value = false
+      return
     }
 
     Object.keys(defaultForm).forEach((k) => {
