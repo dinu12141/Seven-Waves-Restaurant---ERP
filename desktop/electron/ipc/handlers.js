@@ -183,4 +183,98 @@ ipcMain.handle('device:heartbeat', async (_event, payload) => {
   return { success: true, timestamp: new Date().toISOString() }
 })
 
+// ─── BIOMETRIC (ZKTeco) ─────────────────────────────────────────
+//
+// The device sits on the local network (e.g. 192.168.x.x:4370) and speaks a
+// binary TCP protocol — only a process with LAN access can reach it, so this
+// MUST run here in Electron's main process (Node), not in Supabase Edge
+// Functions (cloud, no route to your LAN) and not in the browser renderer
+// (no raw TCP sockets). node-zklib handles the protocol; we just return the
+// raw punches to the renderer, which writes them to Supabase using the
+// logged-in user's own session (see zkteco.service.js) — the main process
+// intentionally does NOT hold a Supabase service-role key, since embedding
+// one in a distributed desktop binary would let it be extracted and used to
+// bypass all RLS.
+//
+// node-zklib@1.3.0 API surface (verified against installed package, do not
+// assume other versions match): createSocket, getInfo, getUsers,
+// getAttendances, getRealTimeLogs, disconnect, clearAttendanceLog,
+// disableDevice, enableDevice. There is NO setUser/deleteUser/setTime —
+// enrollment and clock-setting must be done on the device's own keypad
+// (User Mgmt / System menus), not remotely from the ERP.
+//
+// getAttendances() returns { data: [{ userSn, deviceUserId, recordTime }] }
+// with NO in/out flag in the raw record on this device/library combination —
+// punch direction is inferred client-side (zkteco.service.js) by alternating
+// in/out per employee per day, which is what these budget attendance
+// terminals expect you to rely on.
+ipcMain.handle('biometric:sync', async (_event, payload) => {
+  const { action, ip, port = 4370 } = payload || {}
+
+  if (!ip) {
+    return { success: false, error: 'Device IP address is required' }
+  }
+
+  let ZKLib
+  try {
+    ZKLib = require('node-zklib')
+  } catch {
+    return {
+      success: false,
+      error: 'node-zklib is not installed. Run "npm install" inside desktop/electron/ and rebuild the app.',
+    }
+  }
+
+  const zk = new ZKLib(ip, port, 10000, 4000)
+
+  try {
+    await zk.createSocket()
+
+    switch (action) {
+      case 'info': {
+        const info = await zk.getInfo()
+        await zk.disconnect()
+        return { success: true, ...info }
+      }
+
+      case 'pull': {
+        const { data, err } = await zk.getAttendances()
+        await zk.disconnect()
+        return {
+          success: true,
+          records: (data || []).map((a) => ({
+            // deviceUserId is the ASCII "User ID" string entered on the
+            // device's User Mgmt screen — must be enrolled as the ERP
+            // employee_code (e.g. "EMP001") so it round-trips directly.
+            user_id: String(a.deviceUserId ?? '').trim(),
+            punch_time: new Date(a.recordTime).toISOString(),
+          })),
+          partial: !!err,
+        }
+      }
+
+      case 'clear_attendance': {
+        await zk.clearAttendanceLog()
+        await zk.disconnect()
+        return { success: true }
+      }
+
+      default:
+        await zk.disconnect()
+        return {
+          success: false,
+          error: `Unsupported biometric action: ${action}. This device library only supports info/pull/clear_attendance — enrollment and device clock must be set on the device keypad.`,
+        }
+    }
+  } catch (err) {
+    try {
+      await zk.disconnect()
+    } catch {
+      /* already disconnected */
+    }
+    console.error('[IPC] Biometric sync error:', err.message)
+    return { success: false, error: `Cannot reach device at ${ip}:${port} — ${err.message}` }
+  }
+})
+
 console.log('[IPC] All handlers registered')

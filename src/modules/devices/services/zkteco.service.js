@@ -2,288 +2,164 @@
 // ZKTeco Biometric Service — Device protocol + attendance sync
 // Seven Waves ERP — Step 06 Device & Platform Expansion
 //
-// Supports: ZKTeco ZK9500, F22, MB20, K40 and compatible devices
-// Protocol: TCP/IP binary protocol (ZKTeco SDK reimplemented)
-// Runtime:  Electron only (requires node:net TCP socket)
+// Runtime: Electron desktop app ONLY. The device sits on the local network
+// (e.g. 192.168.x.x:4370) and speaks a binary TCP protocol — only a process
+// with LAN access can reach it. That's the Electron main process
+// (desktop/electron/ipc/handlers.js, using node-zklib), not Supabase Edge
+// Functions (cloud, no route to your LAN) and not this browser code directly
+// (no raw TCP sockets). This file is the renderer-side bridge: it asks the
+// Electron main process to talk to the device, then writes the resulting
+// punches into `attendance_logs` — the SAME table the existing
+// process_attendance_logs() engine (biometric_integration.sql) already
+// reads from every 5 minutes via pg_cron to build attendance_records.
 //
-// DB writes go through biometric.service.js — this file handles
-// the device communication layer only.
+// Employee matching: the device only knows a "User ID" string per enrolled
+// fingerprint (entered on the device's own keypad under User Mgmt — this
+// library version cannot enroll/delete users remotely). Enter the ERP's
+// employee_code there (e.g. "EMP001") so a pulled punch's device user id
+// round-trips directly to attendance_logs.employee_code with no separate
+// mapping table needed.
+//
+// Punch direction: the ZKTeco protocol CAN report an in/out flag per record,
+// but this device/library combination's 40-byte record format does not
+// expose it (verified against the installed node-zklib@1.3.0 decoder) — only
+// { deviceUserId, recordTime } come back. So direction is inferred here by
+// alternating in/out per employee per calendar day: first punch of the day
+// is "in", the next is "out", and so on. This matches how these budget
+// terminals are meant to be used (punch once arriving, once leaving).
 // ═══════════════════════════════════════════════════════════════════
 
 import { logger } from 'src/core/logging/logger'
-import { createBiometricSyncEntry, syncPendingEntries } from './biometric.service'
-
-// ─── ZKTeco Protocol Constants ───────────────────────────────────────────────
+import { supabase } from 'src/boot/supabase'
 
 const ZK_PORT_DEFAULT = 4370
-const ZK_SESSION_START = Buffer.from([0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
 
-// ZKTeco command codes
-const CMD = {
-  CONNECT:      0x03E8,  // 1000
-  DISCONNECT:   0x03E9,  // 1001
-  GET_INFO:     0x000B,  // 11
-  GET_ATT_LOG:  0x000D,  // 13
-  CLEAR_ATT:   0x000E,  // 14
-  DISABLE_DEV:  0x0011,  // 17
-  ENABLE_DEV:   0x0012,  // 18
-  SET_TIME:     0x000C,  // 12
-  ACK_OK:       0x07D0,  // 2000
-  ACK_ERROR:    0x07D1,  // 2001
+function _isElectron() {
+  return typeof window !== 'undefined' && typeof window.electronAPI?.syncBiometric === 'function'
 }
 
-const PUNCH_TYPE = {
-  0: 'check_in',
-  1: 'check_out',
-  4: 'overtime_in',
-  5: 'overtime_out',
+async function _call(params) {
+  if (!_isElectron()) {
+    return { success: false, error: 'ZKTeco sync requires the Electron desktop app' }
+  }
+  return window.electronAPI.syncBiometric(params)
 }
 
 // ─── Main Service Class ───────────────────────────────────────────────────────
 
 /**
  * ZKTeco device client.
- * All methods require Electron context (TCP socket via IPC).
  *
  * Usage:
- *   const device = new ZKTecoClient({ ip: '192.168.1.201', branchId: '...' })
- *   const { data } = await device.pullAttendance()
- *   // data is written to biometric_sync_logs table automatically
+ *   const device = new ZKTecoClient({ ip: '192.168.1.201', branchId, companyId })
+ *   const result = await device.syncToDatabase()
  */
 export class ZKTecoClient {
-  constructor ({ ip, port = ZK_PORT_DEFAULT, branchId, deviceId }) {
+  constructor({ ip, port = ZK_PORT_DEFAULT, branchId, companyId }) {
     this.ip = ip
     this.port = port
     this.branchId = branchId
-    this.deviceId = deviceId
-    this._sessionId = 0
-    this._replyId = 0
+    this.companyId = companyId
+  }
+
+  /** Get device info: { userCounts, logCounts, logCapacity }. */
+  async getDeviceInfo() {
+    return _call({ action: 'info', ip: this.ip, port: this.port })
   }
 
   /**
-   * Pull attendance records from the device.
-   * Writes records to biometric_sync_logs via biometric.service.
-   * Returns count of records fetched.
+   * Pull attendance records from the device and write them to
+   * attendance_logs. The existing process_attendance_logs() cron job (runs
+   * every 5 minutes) picks these up and turns them into attendance_records.
    */
-  async pullAttendance () {
-    if (!_isElectron()) {
-      return { success: false, error: 'ZKTeco sync requires Electron (desktop app)' }
-    }
-
-    logger.info('[ZKTeco] Connecting to device', { ip: this.ip, port: this.port })
-
-    try {
-      // Delegate TCP communication to Electron main via IPC
-      const result = await window.electronAPI.printRaw({
-        data: Array.from(this._buildConnectPacket()),
-        ip: this.ip,
-        port: this.port,
-      })
-
-      if (!result.success) {
-        return { success: false, error: `Cannot connect to ZKTeco device at ${this.ip}: ${result.error}` }
-      }
-
-      // In a real implementation, we'd read the response, send GET_ATT_LOG, parse records.
-      // For now, return a structured stub that the caller can detect and act on.
-      // Full protocol requires bidirectional TCP — needs a dedicated Electron IPC handler
-      // (see ZKTECO_IPC note below).
-      logger.info('[ZKTeco] Connected — use dedicated Electron handler for full sync')
-      return {
-        success: true,
-        message: 'Use electron ipcMain handler "biometric:sync" for full attendance pull',
-        requiresHandler: true,
-      }
-    } catch (err) {
-      logger.error('[ZKTeco] Pull attendance error', err)
-      return { success: false, error: err.message }
-    }
-  }
-
-  /**
-   * Get device info (firmware, user count, attendance count).
-   * Uses the Electron IPC channel 'biometric:sync' with action='info'.
-   */
-  async getDeviceInfo () {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-    return _ipcCall('biometric:sync', { action: 'info', ip: this.ip, port: this.port })
-  }
-
-  /**
-   * Sync attendance records from device → DB.
-   * Full implementation uses the Electron IPC handler.
-   */
-  async syncToDatabase () {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-
-    const result = await _ipcCall('biometric:sync', {
-      action: 'pull',
-      ip: this.ip,
-      port: this.port,
-      deviceId: this.deviceId,
-      branchId: this.branchId,
-    })
-
+  async syncToDatabase() {
+    const result = await _call({ action: 'pull', ip: this.ip, port: this.port })
     if (!result.success) return result
 
-    // result.records is an array of { user_id, punch_time, punch_type, verify_type }
-    const records = result.records || []
-    let written = 0
-
-    for (const rec of records) {
-      const { error } = await createBiometricSyncEntry({
-        device_id: this.deviceId,
-        branch_id: this.branchId,
-        employee_id: rec.user_id,     // ZK user_id = employee_id in ERP
-        punch_time: rec.punch_time,
-        punch_type: PUNCH_TYPE[rec.punch_type] || 'check_in',
-        verify_type: _verifyType(rec.verify_type),
-        sync_status: 'pending',
-        raw_data: rec,
-      })
-
-      if (!error) written++
+    const records = (result.records || []).filter((r) => r.user_id)
+    if (records.length === 0) {
+      return { success: true, fetched: 0, written: 0 }
     }
 
-    // Now process pending → synced in DB
-    const syncResult = await syncPendingEntries(this.branchId)
-
-    return {
-      success: true,
-      fetched: records.length,
-      written,
-      synced: syncResult.synced,
-      failed: syncResult.failed,
+    // ── Infer punch direction (in/out) ──────────────────────────────────
+    // Group by employee + calendar day, sort chronologically, then alternate
+    // in/out starting from whatever this employee's last known punch was
+    // today (so a sync that only picks up the "out" half of a day still
+    // continues the correct sequence instead of resetting to "in").
+    const byEmployeeDay = new Map()
+    for (const r of records) {
+      const day = r.punch_time.slice(0, 10)
+      const key = `${r.user_id}|${day}`
+      if (!byEmployeeDay.has(key)) byEmployeeDay.set(key, [])
+      byEmployeeDay.get(key).push(r)
     }
+
+    const lastTypeByKey = new Map()
+    for (const key of byEmployeeDay.keys()) {
+      const [employeeCode, day] = key.split('|')
+      const { data: last } = await supabase
+        .from('attendance_logs')
+        .select('punch_type')
+        .eq('employee_code', employeeCode)
+        .eq('device_id', this.ip)
+        .gte('punch_time', `${day}T00:00:00`)
+        .lt('punch_time', `${day}T23:59:59.999`)
+        .order('punch_time', { ascending: false })
+        .limit(1)
+      lastTypeByKey.set(key, last?.[0]?.punch_type || null)
+    }
+
+    const rows = []
+    for (const [key, dayRecords] of byEmployeeDay) {
+      dayRecords.sort((a, b) => new Date(a.punch_time) - new Date(b.punch_time))
+      let lastType = lastTypeByKey.get(key)
+      for (const r of dayRecords) {
+        const punchType = lastType === 'in' ? 'out' : 'in'
+        lastType = punchType
+        rows.push({
+          company_id: this.companyId,
+          branch_id: this.branchId,
+          employee_code: r.user_id,
+          device_id: this.ip,
+          punch_time: r.punch_time,
+          punch_type: punchType,
+          source: 'biometric',
+          raw_data: r,
+          is_processed: false,
+        })
+      }
+    }
+
+    const { error } = await supabase
+      .from('attendance_logs')
+      .upsert(rows, { onConflict: 'employee_code,punch_time,device_id', ignoreDuplicates: true })
+
+    if (error) {
+      logger.error('[ZKTeco] Failed to write attendance_logs', error)
+      return { success: false, error: error.message, fetched: records.length, written: 0 }
+    }
+
+    // Nudge the processing function immediately instead of waiting for the
+    // next cron tick, so the sync feels instant in the UI.
+    const { error: procError } = await supabase.rpc('process_attendance_logs')
+    if (procError) {
+      logger.warn('[ZKTeco] process_attendance_logs RPC failed (cron will retry)', procError)
+    }
+
+    return { success: true, fetched: records.length, written: rows.length }
   }
 
-  /**
-   * Clear attendance log on the device after successful sync.
-   * Only call after confirming all records are safely in DB.
-   */
-  async clearAttendanceLog () {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-    return _ipcCall('biometric:sync', {
-      action: 'clear_attendance',
-      ip: this.ip,
-      port: this.port,
-    })
+  /** Clear the attendance log on the device after a confirmed successful sync. */
+  async clearAttendanceLog() {
+    return _call({ action: 'clear_attendance', ip: this.ip, port: this.port })
   }
 
-  /**
-   * Enroll a new fingerprint template on the device.
-   */
-  async enrollUser ({ employeeId, name, privilegeLevel = 0 }) {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-    return _ipcCall('biometric:sync', {
-      action: 'enroll',
-      ip: this.ip,
-      port: this.port,
-      userId: employeeId,
-      userName: name.substring(0, 24),
-      privilege: privilegeLevel,
-    })
-  }
-
-  /**
-   * Delete a user from the device (e.g., on employee termination).
-   */
-  async deleteUser (employeeId) {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-    return _ipcCall('biometric:sync', {
-      action: 'delete_user',
-      ip: this.ip,
-      port: this.port,
-      userId: employeeId,
-    })
-  }
-
-  /**
-   * Set the device clock to current time.
-   */
-  async syncTime () {
-    if (!_isElectron()) return { success: false, error: 'Electron required' }
-    return _ipcCall('biometric:sync', {
-      action: 'set_time',
-      ip: this.ip,
-      port: this.port,
-      time: new Date().toISOString(),
-    })
-  }
-
-  // ─── Internal: packet builders ─────────────────────────────────────────────
-
-  _buildConnectPacket () {
-    return _buildPacket(CMD.CONNECT, ZK_SESSION_START, this._sessionId, this._replyId)
-  }
+  // NOTE: node-zklib@1.3.0 has no remote enroll/delete-user/set-time support
+  // — fingerprint enrollment, user removal, and the device clock must all be
+  // set on the device's own keypad (Main Menu → User Mgmt / System). Enroll
+  // using the ERP employee_code as the device's "User ID" so pulled punches
+  // match back to the right employee automatically.
 }
-
-// ─── Electron Main Handler (to register in electron-main.js) ─────────────────
-//
-// ZKTECO_IPC NOTE:
-// The full ZKTeco protocol requires bidirectional TCP (send command, read response,
-// parse binary records). This cannot be done over the single-shot printRaw channel.
-// The Electron main process needs a persistent TCP socket manager.
-//
-// Register this in electron-main.js:
-//   import { registerZKTecoHandler } from './zkteco.electron.cjs'
-//   registerZKTecoHandler(ipcMain, writeLog)
-//
-// The handler below is a spec — implement in src-electron/zkteco.electron.cjs.
-
-export const ZKTECO_ELECTRON_HANDLER_SPEC = `
-// src-electron/zkteco.electron.cjs — add to electron-main.js
-// ipcMain.handle('biometric:sync', async (_e, { action, ip, port = 4370, ...params }) => {
-//   const ZKLib = require('node-zklib')   // npm install node-zklib
-//   const zk = new ZKLib(ip, port, 4000, 4000)
-//   try {
-//     await zk.createSocket()
-//     switch (action) {
-//       case 'info': {
-//         const info = await zk.getInfo()
-//         await zk.disconnect()
-//         return { success: true, ...info }
-//       }
-//       case 'pull': {
-//         const { data: { attendances } } = await zk.getAttendances()
-//         await zk.disconnect()
-//         return { success: true, records: attendances.map(a => ({
-//           user_id: String(a.deviceUserId),
-//           punch_time: a.recordTime.toISOString(),
-//           punch_type: a.type,
-//           verify_type: a.verifyType,
-//         })) }
-//       }
-//       case 'clear_attendance': {
-//         await zk.clearAttendanceLog()
-//         await zk.disconnect()
-//         return { success: true }
-//       }
-//       case 'enroll': {
-//         await zk.setUser(parseInt(params.userId), params.userId, params.userName, params.privilege, '')
-//         await zk.disconnect()
-//         return { success: true }
-//       }
-//       case 'delete_user': {
-//         await zk.deleteUser(parseInt(params.userId))
-//         await zk.disconnect()
-//         return { success: true }
-//       }
-//       case 'set_time': {
-//         await zk.setTime(new Date(params.time))
-//         await zk.disconnect()
-//         return { success: true }
-//       }
-//       default:
-//         await zk.disconnect()
-//         return { success: false, error: 'Unknown action: ' + action }
-//     }
-//   } catch (err) {
-//     try { await zk.disconnect() } catch {}
-//     return { success: false, error: err.message }
-//   }
-// })
-`
 
 // ─── Auto-sync Scheduler ──────────────────────────────────────────────────────
 
@@ -293,10 +169,10 @@ let _syncInterval = null
  * Start automatic attendance sync on an interval.
  * Typically called on Electron app startup.
  *
- * @param {Array<{ ip, port, branchId, deviceId }>} devices
+ * @param {Array<{ ip, port, branchId, companyId }>} devices
  * @param {number} intervalMs - how often to sync (default 5 min)
  */
-export function startAutoSync (devices, intervalMs = 5 * 60 * 1000) {
+export function startAutoSync(devices, intervalMs = 5 * 60 * 1000) {
   stopAutoSync()
 
   const syncAll = async () => {
@@ -316,46 +192,10 @@ export function startAutoSync (devices, intervalMs = 5 * 60 * 1000) {
   logger.info('[ZKTeco] Auto-sync started', { devices: devices.length, intervalMs })
 }
 
-export function stopAutoSync () {
+export function stopAutoSync() {
   if (_syncInterval) {
     clearInterval(_syncInterval)
     _syncInterval = null
     logger.info('[ZKTeco] Auto-sync stopped')
   }
-}
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-function _isElectron () {
-  return typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined'
-}
-
-async function _ipcCall (channel, params) {
-  // biometric:sync is NOT in the preload whitelist yet — it needs to be added.
-  // For now, delegate via the generic printRaw channel with a JSON envelope.
-  // TODO: add 'biometric:sync' to ALLOWED_INVOKE in electron-preload.js
-  if (window.electronAPI?.biometricSync) {
-    return window.electronAPI.biometricSync(params)
-  }
-  logger.warn('[ZKTeco] biometricSync IPC not available — add to preload', { channel })
-  return { success: false, error: 'biometricSync IPC not registered in preload' }
-}
-
-function _verifyType (code) {
-  const types = { 0: 'fingerprint', 1: 'fingerprint', 3: 'password', 4: 'card', 15: 'face' }
-  return types[code] || 'fingerprint'
-}
-
-function _buildPacket (command, data, sessionId = 0, replyId = 0) {
-  const buf = Buffer.alloc(8 + data.length)
-  buf.writeUInt16LE(command,   0)
-  buf.writeUInt16LE(0,         2)  // checksum placeholder
-  buf.writeUInt16LE(sessionId, 4)
-  buf.writeUInt16LE(replyId,   6)
-  data.copy(buf, 8)
-  // Simple checksum
-  let cs = 0
-  for (let i = 0; i < buf.length; i++) cs += buf[i]
-  buf.writeUInt16LE(cs & 0xFFFF, 2)
-  return buf
 }
