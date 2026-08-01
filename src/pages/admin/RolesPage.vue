@@ -334,7 +334,7 @@ const form = reactive({
 const isAdmin = (user) => {
   return (
     user.user_roles?.some((ur) => ur.roles.name === 'admin') ||
-    user.user_permissions?.some((up) => up.permission_code === 'admin:console')
+    user.user_permissions?.some((up) => up.permission_code === 'admin.view')
   )
 }
 
@@ -459,25 +459,29 @@ async function saveRoleModuleAccess() {
 }
 
 // ─── Dialog Section Config ─────────────────────────────────
-// Maps each Console Section to its permission prefixes and icon
+// Maps each Console Section to its permission prefixes and icon.
+//
+// IMPORTANT: prefixes use DOT format ('finance.', 'hr.') to match what the
+// router guard (src/boot/auth.ts + src/core/rbac/permissions.ts) actually
+// checks against route meta.module/meta.permission — NOT the old colon
+// format ('finance:', 'hr:') which the legacy nav/ACL config
+// (src/config/roles.ts) uses but the real enforcement path never reads.
+// Granting '{module}.view' here is what makes a custom access grant actually
+// unlock a section for a user who lacks the matching role (see
+// 20260801_fix_custom_permission_grants.sql, which seeds these '.view' codes).
 const sectionConfig = [
-  { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', prefixes: ['dashboard:'] },
-  { key: 'pos', label: 'Point of Sale', icon: 'point_of_sale', prefixes: ['pos:', 'cashier:'] },
-  { key: 'orders', label: 'Order Management', icon: 'receipt_long', prefixes: ['orders:'] },
-  { key: 'kitchen', label: 'Kitchen Display', icon: 'restaurant', prefixes: ['kitchen:'] },
-  {
-    key: 'tables',
-    label: 'Table Management',
-    icon: 'table_restaurant',
-    prefixes: ['tables:', 'waiter:'],
-  },
-  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', prefixes: ['inventory:'] },
-  { key: 'procurement', label: 'Procurement', icon: 'local_shipping', prefixes: ['procurement:'] },
-  { key: 'finance', label: 'Finance', icon: 'account_balance', prefixes: ['finance:'] },
-  { key: 'hr', label: 'HR & Payroll', icon: 'badge', prefixes: ['hr:'] },
-  { key: 'reports', label: 'Reports', icon: 'assessment', prefixes: ['reports:'] },
-  { key: 'crm', label: 'CRM / Customers', icon: 'people', prefixes: ['crm:', 'loyalty:'] },
-  { key: 'system', label: 'System Config', icon: 'settings', prefixes: ['admin:'] },
+  { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', prefixes: ['dashboard.'] },
+  { key: 'operations', label: 'Operations', icon: 'point_of_sale', prefixes: ['operations.', 'pos.'] },
+  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', prefixes: ['inventory.'] },
+  { key: 'procurement', label: 'Procurement', icon: 'local_shipping', prefixes: ['procurement.'] },
+  { key: 'finance', label: 'Finance', icon: 'account_balance', prefixes: ['finance.'] },
+  { key: 'hr', label: 'HR & Payroll', icon: 'badge', prefixes: ['hr.'] },
+  { key: 'devices', label: 'Device Management', icon: 'devices', prefixes: ['devices.'] },
+  { key: 'reports', label: 'Reports', icon: 'assessment', prefixes: ['reports.'] },
+  { key: 'crm', label: 'CRM / Customers', icon: 'people', prefixes: ['crm.'] },
+  { key: 'ai', label: 'AI Intelligence', icon: 'auto_awesome', prefixes: ['ai.'] },
+  { key: 'audit', label: 'Audit Center', icon: 'gavel', prefixes: ['audit.'] },
+  { key: 'admin', label: 'System Administration', icon: 'settings', prefixes: ['admin.'] },
 ]
 
 const dialogSections = computed(() => {
@@ -524,40 +528,27 @@ const filteredUsers = computed(() => {
   )
 })
 
-// Auto-assign permissions when a role is selected
+// Auto-assign module-level access when a role is checked (dot format — see
+// sectionConfig comment above for why this must match routes.js, not the
+// legacy colon format from src/config/roles.ts).
 const defaultRolePrefixes = {
-  admin: ['admin:console'],
-  cashier: ['pos:', 'orders:', 'cashier:'],
-  waiter: ['pos:', 'orders:', 'waiter:', 'tables:'],
-  kitchen: ['kitchen:'],
-  finance: ['finance:'],
-  hr: ['hr:'],
-  inventory: ['inventory:', 'procurement:'],
-  manager: ['pos:', 'orders:', 'inventory:', 'finance:', 'hr:'],
+  admin: ['admin.view'],
+  cashier: ['operations.view'],
+  waiter: ['operations.view'],
+  kitchen: ['operations.view'],
+  finance: ['finance.view'],
+  hr: ['hr.view'],
+  inventory: ['inventory.view', 'procurement.view'],
+  manager: ['operations.view', 'inventory.view', 'finance.view', 'hr.view'],
 }
 
 const onRoleToggled = (newRoleIds, role) => {
   // Only auto-add when the role is explicitly CHECKED
   if (newRoleIds.includes(role.id)) {
     const roleName = role.name.toLowerCase()
+    const codes = defaultRolePrefixes[roleName] || []
 
-    if (roleName === 'admin') {
-      if (!form.permissionCodes.includes('admin:console')) {
-        form.permissionCodes.push('admin:console')
-      }
-      return
-    }
-
-    const prefixes = defaultRolePrefixes[roleName] || []
-    if (prefixes.length === 0) return
-
-    // Find permissions matching the prefix
-    const permsToAdd = allPermissions.value
-      .filter((p) => prefixes.some((pre) => p.code.startsWith(pre)))
-      .map((p) => p.code)
-
-    // Add without duplicates
-    permsToAdd.forEach((code) => {
+    codes.forEach((code) => {
       if (!form.permissionCodes.includes(code)) {
         form.permissionCodes.push(code)
       }

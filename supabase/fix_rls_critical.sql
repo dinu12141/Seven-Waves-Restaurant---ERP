@@ -22,11 +22,21 @@ CREATE POLICY "user_roles_update_admin" ON public.user_roles
   USING (is_admin())
   WITH CHECK (is_admin());
 
+-- NOTE: last-admin protection added in 20260801_protect_last_admin.sql —
+-- keep the USING clause here in sync with that migration if this file is
+-- ever re-applied wholesale (a plain is_admin() check re-opens the hole that
+-- let any admin strip the last admin's role grant via raw table DELETE).
 DROP POLICY IF EXISTS "user_roles_delete_admin" ON public.user_roles;
 CREATE POLICY "user_roles_delete_admin" ON public.user_roles
   FOR DELETE
   TO authenticated
-  USING (is_admin());
+  USING (
+    is_admin()
+    AND NOT (
+      EXISTS (SELECT 1 FROM public.roles r WHERE r.id = role_id AND r.name = 'admin')
+      AND public.count_active_admins() <= 1
+    )
+  );
 
 -- ============================================================
 -- FIX 2: profiles — add HR/manager read access (SELECT) and
@@ -44,12 +54,15 @@ CREATE POLICY "profiles_select_manager_hr" ON public.profiles
     OR auth_has_role('finance')
   );
 
--- Admin can delete profiles (e.g., deactivated employees)
+-- Admin can delete profiles (e.g., deactivated employees).
+-- NOTE: last-admin protection added in 20260801_protect_last_admin.sql — a
+-- plain is_admin() check here would let any admin hard-delete the last
+-- remaining admin's profile via raw table DELETE, locking the system out.
 DROP POLICY IF EXISTS "profiles_delete_admin" ON public.profiles;
 CREATE POLICY "profiles_delete_admin" ON public.profiles
   FOR DELETE
   TO authenticated
-  USING (is_admin());
+  USING (is_admin() AND NOT public.is_last_active_admin(id));
 
 -- ============================================================
 -- FIX 3: salary_structures — no RLS existed; add full coverage

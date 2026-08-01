@@ -922,9 +922,12 @@ CREATE POLICY user_branches_manage_admin ON public.user_branches FOR ALL
 -- Fix: Add admin DELETE; block self-delete (use is_active=false instead)
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- NOTE: last-admin protection added in 20260801_protect_last_admin.sql — a
+-- plain is_admin() check re-opens the hole that let any admin hard-delete
+-- the last remaining admin's profile via raw table DELETE.
 DROP POLICY IF EXISTS profiles_delete_admin ON public.profiles;
 CREATE POLICY profiles_delete_admin ON public.profiles FOR DELETE
-  USING (is_admin());
+  USING (is_admin() AND NOT public.is_last_active_admin(id));
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
