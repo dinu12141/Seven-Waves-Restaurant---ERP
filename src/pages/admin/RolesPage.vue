@@ -236,7 +236,7 @@
                 <tbody>
                   <template v-for="section in dialogSections" :key="section.key">
                     <tr class="acm-et-section-row">
-                      <td class="acm-et-section-cell" :rowspan="section.perms.length + 1">
+                      <td class="acm-et-section-cell" :rowspan="section.rowCount + 1">
                         <div class="acm-et-section-inner">
                           <q-icon
                             :name="section.icon"
@@ -248,7 +248,7 @@
                       </td>
                       <td class="acm-et-toggle-cell" colspan="2">
                         <div class="acm-et-toggle-row">
-                          <span class="acm-et-toggle-label">Toggle all features in this module</span>
+                          <span class="acm-et-toggle-label">Select all pages in this section</span>
                           <q-toggle
                             :model-value="sectionHasAllAccess(section)"
                             @update:model-value="toggleSection(section, $event)"
@@ -258,23 +258,28 @@
                         </div>
                       </td>
                     </tr>
-                    <tr v-for="perm in section.perms" :key="perm.code" class="acm-et-feature-row">
-                      <td class="acm-et-feature-cell">
-                        <div class="acm-et-feature-name">{{ perm.description || perm.code }}</div>
-                        <div class="acm-et-feature-code">{{ perm.code }}</div>
-                      </td>
-                      <td class="acm-et-check-cell">
-                        <q-checkbox v-model="form.permissionCodes" :val="perm.code" color="green-7" dense />
-                      </td>
-                    </tr>
+                    <template v-for="grp in section.groupList" :key="grp.groupLabel">
+                      <tr v-if="section.groupList.length > 1" class="acm-et-group-row">
+                        <td colspan="2" class="acm-et-group-cell">{{ grp.groupLabel }}</td>
+                      </tr>
+                      <tr v-for="perm in grp.perms" :key="perm.code" class="acm-et-feature-row">
+                        <td class="acm-et-feature-cell">
+                          <div class="acm-et-feature-name">{{ perm.description || perm.code }}</div>
+                          <div class="acm-et-feature-code">{{ perm.code }}</div>
+                        </td>
+                        <td class="acm-et-check-cell">
+                          <q-checkbox v-model="form.permissionCodes" :val="perm.code" color="green-7" dense />
+                        </td>
+                      </tr>
+                    </template>
                   </template>
 
                   <tr v-if="dialogSections.length === 0">
                     <td colspan="3">
                       <div class="acm-empty">
                         <div class="acm-empty__icon"><q-icon name="lock_outline" size="32px" /></div>
-                        <div class="acm-empty__title">No permissions defined</div>
-                        <div class="acm-empty__sub">No permission entries found in the system</div>
+                        <div class="acm-empty__title">No pages defined</div>
+                        <div class="acm-empty__sub">No navigable pages found in the system</div>
                       </div>
                     </td>
                   </tr>
@@ -304,6 +309,7 @@ import PageHeader from 'components/common/PageHeader.vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { NAV_ITEMS } from 'src/config/roles'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -315,7 +321,6 @@ const matrixSaving = ref(false)
 const matrixDirty = ref(false)
 const users = ref([])
 const allRoles = ref([])
-const allPermissions = ref([])
 const selectedUser = ref(null)
 
 const columns = [
@@ -458,41 +463,68 @@ async function saveRoleModuleAccess() {
   }
 }
 
-// ─── Dialog Section Config ─────────────────────────────────
-// Maps each Console Section to its permission prefixes and icon.
-//
-// IMPORTANT: prefixes use DOT format ('finance.', 'hr.') to match what the
-// router guard (src/boot/auth.ts + src/core/rbac/permissions.ts) actually
-// checks against route meta.module/meta.permission — NOT the old colon
-// format ('finance:', 'hr:') which the legacy nav/ACL config
-// (src/config/roles.ts) uses but the real enforcement path never reads.
-// Granting '{module}.view' here is what makes a custom access grant actually
-// unlock a section for a user who lacks the matching role (see
-// 20260801_fix_custom_permission_grants.sql, which seeds these '.view' codes).
-const sectionConfig = [
-  { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', prefixes: ['dashboard.'] },
-  { key: 'operations', label: 'Operations', icon: 'point_of_sale', prefixes: ['operations.', 'pos.'] },
-  { key: 'inventory', label: 'Inventory', icon: 'inventory_2', prefixes: ['inventory.'] },
-  { key: 'procurement', label: 'Procurement', icon: 'local_shipping', prefixes: ['procurement.'] },
-  { key: 'finance', label: 'Finance', icon: 'account_balance', prefixes: ['finance.'] },
-  { key: 'hr', label: 'HR & Payroll', icon: 'badge', prefixes: ['hr.'] },
-  { key: 'devices', label: 'Device Management', icon: 'devices', prefixes: ['devices.'] },
-  { key: 'reports', label: 'Reports', icon: 'assessment', prefixes: ['reports.'] },
-  { key: 'crm', label: 'CRM / Customers', icon: 'people', prefixes: ['crm.'] },
-  { key: 'ai', label: 'AI Intelligence', icon: 'auto_awesome', prefixes: ['ai.'] },
-  { key: 'audit', label: 'Audit Center', icon: 'gavel', prefixes: ['audit.'] },
-  { key: 'admin', label: 'System Administration', icon: 'settings', prefixes: ['admin.'] },
-]
+// ─── Dialog Section Tree — built directly from NAV_ITEMS ───────────────────
+// NAV_ITEMS (src/config/roles.ts) is the single source of truth for every
+// page in the console — each leaf item's `permission` field is the exact
+// dot-format code the router guard checks (src/boot/auth.ts + routes.js meta),
+// so building the Edit Access checklist straight from it guarantees the
+// checkboxes shown here always match what a grant actually unlocks. This
+// replaces the old approach of filtering the DB `permissions` table by
+// prefix, which only had ~13 generic module-level codes and could never
+// show a full per-page tree (Ledger Registration, Pay Vouchers, Employees,
+// Payroll, etc.) or guarantee the codes matched real enforcement.
+const sectionIcons = {
+  MAIN: 'dashboard',
+  OPERATIONS: 'point_of_sale',
+  INVENTORY: 'inventory_2',
+  PROCUREMENT: 'local_shipping',
+  FINANCE: 'account_balance',
+  HR: 'badge',
+  REPORTS: 'assessment',
+  WEBSITE: 'language',
+  SYSTEM: 'settings',
+}
 
 const dialogSections = computed(() => {
-  return sectionConfig
-    .map((sec) => {
-      const perms = allPermissions.value.filter((p) =>
-        sec.prefixes.some((pre) => p.code.startsWith(pre)),
-      )
-      return { ...sec, perms }
-    })
-    .filter((sec) => sec.perms.length > 0)
+  const bySection = new Map()
+
+  for (const item of NAV_ITEMS) {
+    if (!item.permission || !item.to) continue // skip parent-only / role-only entries
+    // MAIN section duplicates items already listed under their real section
+    // (Operations/Inventory/Finance/HR/Reports) — skip to avoid showing the
+    // same page twice in the checklist.
+    if (item.section === 'MAIN') continue
+
+    const sectionKey = item.section || 'OTHER'
+    if (!bySection.has(sectionKey)) {
+      bySection.set(sectionKey, {
+        key: sectionKey.toLowerCase(),
+        label: sectionKey.charAt(0) + sectionKey.slice(1).toLowerCase(),
+        icon: sectionIcons[sectionKey] || 'folder',
+        groups: new Map(),
+      })
+    }
+    const section = bySection.get(sectionKey)
+    const groupKey = item.group || 'General'
+    if (!section.groups.has(groupKey)) section.groups.set(groupKey, [])
+    // De-dupe by permission code (a few nav items intentionally share one
+    // page/permission, e.g. Inventory Dashboard appears via two `to` paths).
+    if (!section.groups.get(groupKey).some((p) => p.code === item.permission)) {
+      section.groups.get(groupKey).push({ code: item.permission, description: item.label })
+    }
+  }
+
+  return Array.from(bySection.values()).map((sec) => {
+    const groupList = Array.from(sec.groups.entries()).map(([groupLabel, perms]) => ({
+      groupLabel,
+      perms,
+    }))
+    const perms = groupList.flatMap((g) => g.perms)
+    // Row count for the section's rowspan: one row per permission, plus one
+    // group-header row for each group (only rendered when there's >1 group).
+    const rowCount = perms.length + (groupList.length > 1 ? groupList.length : 0)
+    return { ...sec, perms, groupList, rowCount }
+  })
 })
 
 function sectionHasAnyAccess(section) {
@@ -593,15 +625,6 @@ const fetchData = async () => {
 
     if (rolesError) throw rolesError
     allRoles.value = rolesData
-
-    // Fetch Permissions
-    const { data: permsData, error: permsError } = await supabase
-      .from('permissions')
-      .select('*')
-      .order('code')
-
-    if (permsError) throw permsError
-    allPermissions.value = permsData
   } catch (err) {
     console.error('Error fetching access data:', err)
     $q.notify({ type: 'negative', message: 'Failed to load access system data' })
@@ -617,22 +640,26 @@ const editUserAccess = (user) => {
   // Start with saved custom permissions
   const savedPerms = new Set(user.user_permissions?.map((up) => up.permission_code) || [])
 
-  // Auto-populate based on current roles
+  // Auto-populate based on current roles (visual convenience only — roles
+  // already grant real access via ROLE_DEFAULT_PERMISSIONS wildcards in
+  // core/rbac/permissions.ts regardless of these checkboxes; this just shows
+  // an admin what a role already covers before they add anything extra).
+  const allPageCodes = dialogSections.value.flatMap((s) => s.perms.map((p) => p.code))
   for (const ur of user.user_roles || []) {
     const roleName = ur.roles?.name?.toLowerCase()
     if (!roleName) continue
 
     // Admin gets everything
     if (roleName === 'admin') {
-      allPermissions.value.forEach((p) => savedPerms.add(p.code))
+      allPageCodes.forEach((code) => savedPerms.add(code))
       break
     }
 
     // Add matching permissions by role prefix
     const prefixes = defaultRolePrefixes[roleName] || []
-    allPermissions.value
-      .filter((p) => prefixes.some((pre) => p.code.startsWith(pre)))
-      .forEach((p) => savedPerms.add(p.code))
+    allPageCodes
+      .filter((code) => prefixes.some((pre) => code.startsWith(pre)))
+      .forEach((code) => savedPerms.add(code))
   }
 
   form.permissionCodes = [...savedPerms]
@@ -1221,6 +1248,19 @@ const saveUserAccess = async () => {
   font-size: 0.78rem;
   color: var(--erp-text-muted);
   font-style: italic;
+}
+
+.acm-et-group-row td {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.acm-et-group-cell {
+  padding-left: 16px !important;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #8b5cf6;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 .acm-et-feature-row:hover td {

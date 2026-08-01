@@ -427,7 +427,7 @@ describe('Route Access Protection', () => {
 
     expect(deviceRoute).toBeDefined()
     expect(deviceRoute.meta?.roles).toContain('admin')
-    expect(deviceRoute.meta?.permission).toBe('devices.view')
+    expect(deviceRoute.meta?.permission).toBe('devices.dashboard.view')
   })
 
   it('HR routes require HR role', async () => {

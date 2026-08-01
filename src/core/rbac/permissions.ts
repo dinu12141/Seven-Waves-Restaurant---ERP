@@ -24,45 +24,47 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   admin: ['*'], // Admin has all permissions
 
   manager: [
-    'pos.*', 'kitchen.*', 'inventory.*', 'finance.view',
-    'finance.journal.create', 'procurement.*', 'hr.view',
-    'hr.attendance.*', 'hr.shifts.*', 'reports.*',
-    'crm.*', 'delivery.*', 'audit.view',
+    'pos.*', 'kitchen.*', 'inventory.*', 'finance.*',
+    'procurement.*', 'hr.*', 'reports.*',
+    'crm.*', 'delivery.*', 'audit.view', 'website.*',
+    'operations.*',
   ],
 
   finance: [
-    'finance.*', 'procurement.view', 'procurement.ap.*',
+    'finance.*', 'procurement.dashboard.view', 'procurement.view', 'procurement.ap.*',
     'procurement.payment.*', 'reports.finance.*', 'reports.sales.*',
-    'audit.view',
+    'reports.view', 'audit.view',
   ],
 
   cashier: [
     'pos.order.create', 'pos.order.view', 'pos.payment.*',
     'pos.order.void', 'pos.receipt.*', 'crm.loyalty.redeem',
     'pos.shift.open', 'pos.shift.close', 'pos.shift.view',
-    'pos.shift.cash_movement',
+    'pos.shift.cash_movement', 'website.orders.view',
+    'crm.loyalty.view', 'operations.view',
   ],
 
   waiter: [
     'pos.order.create', 'pos.order.view', 'kitchen.view',
-    'pos.table.manage',
+    'pos.table.manage', 'operations.view',
   ],
 
   kitchen: [
-    'kitchen.*', 'inventory.stock.view',
+    'kitchen.*', 'inventory.stock.view', 'operations.view',
   ],
 
   inventory: [
-    'inventory.*', 'procurement.view', 'reports.inventory.*',
+    'inventory.*', 'procurement.dashboard.view', 'procurement.view',
+    'reports.inventory.*', 'reports.view',
   ],
 
   procurement: [
     'procurement.*', 'inventory.view', 'finance.view',
-    'reports.procurement.*',
+    'reports.procurement.*', 'reports.view',
   ],
 
   hr: [
-    'hr.*', 'reports.hr.*', 'finance.payroll.view',
+    'hr.*', 'reports.hr.*', 'reports.view', 'finance.payroll.view',
   ],
 
   delivery: [

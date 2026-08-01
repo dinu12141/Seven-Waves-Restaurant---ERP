@@ -38,27 +38,27 @@ const routes = [
       {
         path: 'website-orders',
         component: () => import('pages/WebsiteOrdersPage.vue'),
-        meta: { roles: ['admin', 'manager', 'cashier'], module: 'pos', permission: 'pos.order.view' },
+        meta: { roles: ['admin', 'manager', 'cashier'], module: 'website', permission: 'website.orders.view' },
       },
       {
         path: 'website/dashboard',
         component: () => import('pages/website/WebsiteDashboard.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.dashboard.view' },
       },
       {
         path: 'website-messages',
         component: () => import('pages/website/WebsiteMessagesPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.messages.view' },
       },
       {
         path: 'website-reservations',
         component: () => import('pages/website/WebsiteReservationsPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.reservations.view' },
       },
       {
         path: 'website-hall-bookings',
         component: () => import('pages/website/WebsiteHallBookingsPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'operations', permission: 'operations.view' },
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.hall_bookings.view' },
       },
       {
         path: 'cashier',
@@ -68,27 +68,31 @@ const routes = [
       {
         path: 'inventory',
         component: () => import('pages/InventoryPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.view' },
+        // NOTE: this single page handles all "?tab=" nav items (Items, Menu
+        // Items, Categories, Stock, Warehouses, etc. — see config/roles.ts
+        // NAV_ITEMS INVENTORY section) internally; the route itself can only
+        // gate the page as a whole, not each tab, since it's one component.
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/dashboard',
         component: () => import('pages/inventory/InventoryDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/items',
         component: () => import('pages/inventory/ItemsPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.items' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.items.view' },
       },
       {
         path: 'inventory/adjustments',
         component: () => import('pages/inventory/StockAdjustmentPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.adjust' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.adjustments.view' },
       },
       {
         path: 'inventory/stocktake',
         component: () => import('pages/inventory/StockTakePage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake.view' },
       },
       {
         path: 'finance',
@@ -98,43 +102,43 @@ const routes = [
           { path: '', redirect: '/finance/dashboard' },
 
           // ── Overview ──
-          { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue') },
+          { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue'), meta: { permission: 'finance.dashboard.view' } },
 
           // ── ERP Accounting (New) ──
-          { path: 'ledgers', component: () => import('src/modules/finance/pages/LedgerRegistrationPage.vue') },
-          { path: 'accounts', component: () => import('src/modules/finance/pages/AccountRegistrationPage.vue') },
+          { path: 'ledgers', component: () => import('src/modules/finance/pages/LedgerRegistrationPage.vue'), meta: { permission: 'finance.ledgers.view' } },
+          { path: 'accounts', component: () => import('src/modules/finance/pages/AccountRegistrationPage.vue'), meta: { permission: 'finance.accounts.view' } },
 
           // ── Voucher Management (New) ──
-          { path: 'pay-vouchers', component: () => import('src/modules/finance/pages/PayVoucherPage.vue') },
-          { path: 'received-vouchers', component: () => import('src/modules/finance/pages/ReceivedVoucherPage.vue') },
-          { path: 'voucher-approvals', component: () => import('src/modules/finance/pages/VoucherApprovalPage.vue') },
+          { path: 'pay-vouchers', component: () => import('src/modules/finance/pages/PayVoucherPage.vue'), meta: { permission: 'finance.pay_vouchers.view' } },
+          { path: 'received-vouchers', component: () => import('src/modules/finance/pages/ReceivedVoucherPage.vue'), meta: { permission: 'finance.received_vouchers.view' } },
+          { path: 'voucher-approvals', component: () => import('src/modules/finance/pages/VoucherApprovalPage.vue'), meta: { permission: 'finance.voucher_approvals.view' } },
 
           // ── Cash & Banking (New ERP) ──
-          { path: 'cashbook', component: () => import('src/modules/finance/pages/CashbookPage.vue') },
-          { path: 'petty-cash', component: () => import('src/modules/finance/pages/PettyCashBookPage.vue') },
-          { path: 'cheque-plan', component: () => import('src/modules/finance/pages/ChequePlanPage.vue') },
-          { path: 'bank-reconciliation', component: () => import('src/modules/finance/pages/BankReconciliationPage.vue') },
-          { path: 'fiscal-periods', component: () => import('src/modules/finance/pages/FiscalPeriodsPage.vue') },
-          { path: 'pos-shifts', component: () => import('pages/finance/PosShiftsPage.vue') },
+          { path: 'cashbook', component: () => import('src/modules/finance/pages/CashbookPage.vue'), meta: { permission: 'finance.cashbook.view' } },
+          { path: 'petty-cash', component: () => import('src/modules/finance/pages/PettyCashBookPage.vue'), meta: { permission: 'finance.petty_cash.view' } },
+          { path: 'cheque-plan', component: () => import('src/modules/finance/pages/ChequePlanPage.vue'), meta: { permission: 'finance.cheque_plan.view' } },
+          { path: 'bank-reconciliation', component: () => import('src/modules/finance/pages/BankReconciliationPage.vue'), meta: { permission: 'finance.bank_reconciliation.view' } },
+          { path: 'fiscal-periods', component: () => import('src/modules/finance/pages/FiscalPeriodsPage.vue'), meta: { permission: 'finance.fiscal_periods.view' } },
+          { path: 'pos-shifts', component: () => import('pages/finance/PosShiftsPage.vue'), meta: { permission: 'finance.pos_shifts.view' } },
 
           // ── Statutory Reports (New ERP) ──
-          { path: 'financial-statements', component: () => import('src/modules/finance/pages/FinancialStatementsPage.vue') },
+          { path: 'financial-statements', component: () => import('src/modules/finance/pages/FinancialStatementsPage.vue'), meta: { permission: 'finance.financial_statements.view' } },
 
           // ── Receivables, Payables, Expenses, Tax (Kept) ──
-          { path: 'receivables', component: () => import('pages/finance/ReceivablesPage.vue') },
-          { path: 'payables', component: () => import('pages/finance/PayablesPage.vue') },
-          { path: 'expenses', component: () => import('pages/finance/ExpensesPage.vue') },
-          { path: 'tax', component: () => import('pages/finance/TaxPage.vue') },
+          { path: 'receivables', component: () => import('pages/finance/ReceivablesPage.vue'), meta: { permission: 'finance.receivables.view' } },
+          { path: 'payables', component: () => import('pages/finance/PayablesPage.vue'), meta: { permission: 'finance.payables.view' } },
+          { path: 'expenses', component: () => import('pages/finance/ExpensesPage.vue'), meta: { permission: 'finance.expenses.view' } },
+          { path: 'tax', component: () => import('pages/finance/TaxPage.vue'), meta: { permission: 'finance.tax.view' } },
 
           // ── Payroll (Kept) ──
-          { path: 'payroll', component: () => import('pages/finance/PayrollPage.vue') },
-          { path: 'payroll/run', component: () => import('pages/finance/PayrollRunPage.vue') },
-          { path: 'payroll/payslips', component: () => import('pages/finance/PayslipsPage.vue') },
-          { path: 'payroll/salary-structure', component: () => import('pages/finance/SalaryStructurePage.vue') },
+          { path: 'payroll', component: () => import('pages/finance/PayrollPage.vue'), meta: { permission: 'finance.payroll.view' } },
+          { path: 'payroll/run', component: () => import('pages/finance/PayrollRunPage.vue'), meta: { permission: 'finance.payroll.view' } },
+          { path: 'payroll/payslips', component: () => import('pages/finance/PayslipsPage.vue'), meta: { permission: 'finance.payroll.view' } },
+          { path: 'payroll/salary-structure', component: () => import('pages/finance/SalaryStructurePage.vue'), meta: { permission: 'finance.payroll.view' } },
 
           // ── Reports & Audit (Kept) ──
-          { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue') },
-          { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue') },
+          { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue'), meta: { permission: 'finance.reports.view' } },
+          { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue'), meta: { permission: 'finance.audit.view' } },
 
           // ── Backward-compatibility redirects (old paths → new ERP) ──
           { path: 'chart-of-accounts', redirect: '/finance/ledgers' },
@@ -147,13 +151,13 @@ const routes = [
       // ── DEVICE MANAGEMENT ─────────────────────────────────────────────
       {
         path: 'devices',
-        meta: { roles: ['admin', 'manager'], module: 'devices', permission: 'devices.view' },
+        meta: { roles: ['admin', 'manager'], module: 'devices', permission: 'devices.dashboard.view' },
         children: [
-          { path: '', component: () => import('src/modules/devices/pages/DeviceDashboardPage.vue') },
-          { path: 'printers', component: () => import('src/modules/devices/pages/PrinterManagementPage.vue') },
-          { path: 'scanners', component: () => import('src/modules/devices/pages/ScannerManagementPage.vue') },
-          { path: 'biometrics', component: () => import('src/modules/devices/pages/BiometricDevicesPage.vue') },
-          { path: 'health', component: () => import('src/modules/devices/pages/DeviceHealthPage.vue') },
+          { path: '', component: () => import('src/modules/devices/pages/DeviceDashboardPage.vue'), meta: { permission: 'devices.dashboard.view' } },
+          { path: 'printers', component: () => import('src/modules/devices/pages/PrinterManagementPage.vue'), meta: { permission: 'devices.printers.view' } },
+          { path: 'scanners', component: () => import('src/modules/devices/pages/ScannerManagementPage.vue'), meta: { permission: 'devices.scanners.view' } },
+          { path: 'biometrics', component: () => import('src/modules/devices/pages/BiometricDevicesPage.vue'), meta: { permission: 'devices.biometrics.view' } },
+          { path: 'health', component: () => import('src/modules/devices/pages/DeviceHealthPage.vue'), meta: { permission: 'devices.health.view' } },
         ],
       },
       {
@@ -163,17 +167,17 @@ const routes = [
         children: [
           { path: '', redirect: '/hr/dashboard' },
           { path: 'dashboard', component: () => import('pages/hr/HRDashboard.vue') },
-          { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue') },
-          { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue') },
-          { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue') },
-          { path: 'commission', component: () => import('pages/hr/CommissionPage.vue') },
-          { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue') },
+          { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue'), meta: { permission: 'hr.employees.view' } },
+          { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue'), meta: { permission: 'hr.attendance.view' } },
+          { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue'), meta: { permission: 'hr.payroll.view' } },
+          { path: 'commission', component: () => import('pages/hr/CommissionPage.vue'), meta: { permission: 'hr.commission.view' } },
+          { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue'), meta: { permission: 'hr.audit.view' } },
 
-          { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue') },
-          { path: 'shifts', component: () => import('pages/hr/ShiftManagementPage.vue') },
-          { path: 'leave', component: () => import('pages/hr/LeaveManagementPage.vue') },
-          { path: 'finances', component: () => import('pages/hr/EmployeeFinancesPage.vue') },
-          { path: 'documents', component: () => import('pages/hr/DocumentManagementPage.vue') },
+          { path: 'resignation', component: () => import('pages/hr/ResignationPage.vue'), meta: { permission: 'hr.resignation.view' } },
+          { path: 'shifts', component: () => import('pages/hr/ShiftManagementPage.vue'), meta: { permission: 'hr.shifts.view' } },
+          { path: 'leave', component: () => import('pages/hr/LeaveManagementPage.vue'), meta: { permission: 'hr.leave.view' } },
+          { path: 'finances', component: () => import('pages/hr/EmployeeFinancesPage.vue'), meta: { permission: 'hr.finances.view' } },
+          { path: 'documents', component: () => import('pages/hr/DocumentManagementPage.vue'), meta: { permission: 'hr.documents.view' } },
         ],
       },
       {
@@ -184,28 +188,32 @@ const routes = [
           {
             path: 'dashboard',
             component: () => import('pages/procurement/ProcurementDashboard.vue'),
+            meta: { permission: 'procurement.dashboard.view' },
           },
-          { path: 'suppliers', component: () => import('pages/procurement/SuppliersPage.vue') },
+          { path: 'suppliers', component: () => import('pages/procurement/SuppliersPage.vue'), meta: { permission: 'procurement.suppliers.view' } },
           {
             path: 'purchase-orders',
             component: () => import('pages/procurement/PurchaseOrdersPage.vue'),
+            meta: { permission: 'procurement.purchase_orders.view' },
           },
-          { path: 'grn', component: () => import('pages/procurement/GRNPage.vue') },
-          { path: 'gin', component: () => import('pages/procurement/GINPage.vue') },
-          { path: 'ap-invoices', component: () => import('pages/procurement/APInvoicesPage.vue') },
-          { path: 'payments', component: () => import('pages/procurement/PaymentsPage.vue') },
-          { path: 'payments-report', component: () => import('pages/procurement/SupplierPaymentReport.vue') },
-          { path: 'returns', component: () => import('pages/procurement/PurchaseReturnsPage.vue') },
+          { path: 'grn', component: () => import('pages/procurement/GRNPage.vue'), meta: { permission: 'procurement.grn.view' } },
+          { path: 'gin', component: () => import('pages/procurement/GINPage.vue'), meta: { permission: 'procurement.gin.view' } },
+          { path: 'ap-invoices', component: () => import('pages/procurement/APInvoicesPage.vue'), meta: { permission: 'procurement.ap_invoices.view' } },
+          { path: 'payments', component: () => import('pages/procurement/PaymentsPage.vue'), meta: { permission: 'procurement.payments.view' } },
+          { path: 'payments-report', component: () => import('pages/procurement/SupplierPaymentReport.vue'), meta: { permission: 'procurement.payments_report.view' } },
+          { path: 'returns', component: () => import('pages/procurement/PurchaseReturnsPage.vue'), meta: { permission: 'procurement.returns.view' } },
           {
             path: 'reports',
             component: () => import('pages/procurement/ProcurementReportsPage.vue'),
+            meta: { permission: 'procurement.reports.view' },
           },
           {
             path: 'settings',
             component: () => import('pages/procurement/ProcurementSettingsPage.vue'),
+            meta: { permission: 'procurement.settings.view' },
           },
         ],
-        meta: { roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'], module: 'procurement', permission: 'procurement.po.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'finance', 'procurement'], module: 'procurement', permission: 'procurement.dashboard.view' },
       },
       {
         path: 'admin',
@@ -216,22 +224,22 @@ const routes = [
       {
         path: 'ai',
         component: () => import('src/modules/ai/pages/AiDashboardPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.dashboard.view' },
       },
       {
         path: 'ai/forecasts',
         component: () => import('src/modules/ai/pages/AiForecastPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.forecasts.view' },
       },
       {
         path: 'ai/anomalies',
         component: () => import('src/modules/ai/pages/AiAnomalyCenterPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.security' },
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.anomalies.view' },
       },
       {
         path: 'ai/assistant',
         component: () => import('src/modules/ai/pages/AiAssistantPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
+        meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.assistant.view' },
       },
       {
         path: 'admin/ai-insights',
@@ -256,12 +264,12 @@ const routes = [
       {
         path: 'admin/printers',
         component: () => import('pages/admin/PrintersPage.vue'),
-        meta: { roles: ['admin'], module: 'admin', permission: 'admin.view' },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.printers.view' },
       },
       {
         path: 'admin/settings',
         component: () => import('pages/admin/SettingsPage.vue'),
-        meta: { roles: ['admin'], module: 'admin', permission: 'admin.view' },
+        meta: { roles: ['admin'], module: 'admin', permission: 'admin.settings.view' },
       },
       {
         path: 'audit',
@@ -318,117 +326,138 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'], module: 'reports', permission: 'reports.view' },
         children: [
           { path: '', redirect: '/reports/dashboard' },
-          { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue') },
+          { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue'), meta: { permission: 'reports.dashboard.view' } },
           // ── Sales Reports ─────────────────────────────────
-          { path: 'sales', component: () => import('pages/reports/SalesReport.vue') },
+          { path: 'sales', component: () => import('pages/reports/SalesReport.vue'), meta: { permission: 'reports.sales.view' } },
           {
             path: 'electronic-journal',
             component: () => import('pages/reports/ElectronicJournal.vue'),
+            meta: { permission: 'reports.electronic_journal.view' },
           },
-          { path: 'item-wise-sale', component: () => import('pages/reports/ItemWiseSale.vue') },
-          { path: 'waiter-wise-sale', component: () => import('pages/reports/WaiterWiseSale.vue') },
-          { path: 'table-wise-sale', component: () => import('pages/reports/TableWiseSale.vue') },
-          { path: 'sales-statement', component: () => import('pages/reports/SalesStatement.vue') },
-          { path: 'group-summary', component: () => import('pages/reports/GroupSummary.vue') },
+          { path: 'item-wise-sale', component: () => import('pages/reports/ItemWiseSale.vue'), meta: { permission: 'reports.item_wise_sale.view' } },
+          { path: 'waiter-wise-sale', component: () => import('pages/reports/WaiterWiseSale.vue'), meta: { permission: 'reports.waiter_wise_sale.view' } },
+          { path: 'table-wise-sale', component: () => import('pages/reports/TableWiseSale.vue'), meta: { permission: 'reports.table_wise_sale.view' } },
+          { path: 'sales-statement', component: () => import('pages/reports/SalesStatement.vue'), meta: { permission: 'reports.sales_statement.view' } },
+          { path: 'group-summary', component: () => import('pages/reports/GroupSummary.vue'), meta: { permission: 'reports.group_summary.view' } },
           {
             path: 'category-wise-sales',
             component: () => import('pages/reports/CategoryWiseSales.vue'),
+            meta: { permission: 'reports.category_wise_sales.view' },
           },
-          { path: 'hourly-sales', component: () => import('pages/reports/HourlySalesReport.vue') },
+          { path: 'hourly-sales', component: () => import('pages/reports/HourlySalesReport.vue'), meta: { permission: 'reports.hourly_sales.view' } },
           {
             path: 'branch-wise-sales',
             component: () => import('pages/reports/BranchWiseSales.vue'),
+            meta: { permission: 'reports.branch_wise_sales.view' },
           },
-          { path: 'discount-report', component: () => import('pages/reports/DiscountReport.vue') },
+          { path: 'discount-report', component: () => import('pages/reports/DiscountReport.vue'), meta: { permission: 'reports.discount_report.view' } },
           {
             path: 'void-cancelled',
             component: () => import('pages/reports/VoidCancelledReport.vue'),
+            meta: { permission: 'reports.void_cancelled.view' },
           },
           {
             path: 'payment-summary',
             component: () => import('pages/reports/PaymentMethodSummary.vue'),
+            meta: { permission: 'reports.payment_summary.view' },
           },
           // ── Operations Reports ────────────────────────────
           {
             path: 'kitchen-orders',
             component: () => import('pages/reports/KitchenOrderReport.vue'),
+            meta: { permission: 'reports.kitchen_orders.view' },
           },
-          { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue') },
+          { path: 'order-status', component: () => import('pages/reports/OrderStatusReport.vue'), meta: { permission: 'reports.order_status.view' } },
           {
             path: 'item-availability',
             component: () => import('pages/reports/ItemAvailability.vue'),
+            meta: { permission: 'reports.item_availability.view' },
           },
           {
             path: 'delivery-performance',
             component: () => import('pages/reports/DeliveryPerformanceReport.vue'),
+            meta: { permission: 'reports.delivery_performance.view' },
           },
           {
             path: 'rider-performance',
             component: () => import('pages/reports/RiderPerformanceReport.vue'),
+            meta: { permission: 'reports.rider_performance.view' },
           },
           {
             path: 'pickup-delivery',
             component: () => import('pages/reports/PickupDeliverySummary.vue'),
+            meta: { permission: 'reports.pickup_delivery.view' },
           },
-          { path: 'reservation', component: () => import('pages/reports/ReservationReport.vue') },
+          { path: 'reservation', component: () => import('pages/reports/ReservationReport.vue'), meta: { permission: 'reports.reservation.view' } },
           {
             path: 'kitchen-usage',
             component: () => import('pages/reports/DailyKitchenUsage.vue'),
+            meta: { permission: 'reports.kitchen_usage.view' },
           },
           {
             path: 'customer-history',
             component: () => import('pages/reports/CustomerOrderHistory.vue'),
+            meta: { permission: 'reports.customer_history.view' },
           },
           // ── Inventory Reports ─────────────────────────────
-          { path: 'stock-on-hand', component: () => import('pages/reports/StockOnHand.vue') },
-          { path: 'inventory', component: () => import('pages/reports/InventoryLedger.vue') },
-          { path: 'wastage', component: () => import('pages/reports/WastageReport.vue') },
+          { path: 'stock-on-hand', component: () => import('pages/reports/StockOnHand.vue'), meta: { permission: 'reports.stock_on_hand.view' } },
+          { path: 'inventory', component: () => import('pages/reports/InventoryLedger.vue'), meta: { permission: 'reports.inventory.view' } },
+          { path: 'wastage', component: () => import('pages/reports/WastageReport.vue'), meta: { permission: 'reports.wastage.view' } },
           {
             path: 'ingredient-consumption',
             component: () => import('pages/reports/IngredientConsumption.vue'),
+            meta: { permission: 'reports.ingredient_consumption.view' },
           },
           {
             path: 'reorder-level',
             component: () => import('pages/reports/ReorderLevelReport.vue'),
+            meta: { permission: 'reports.reorder_level.view' },
           },
           {
             path: 'purchase-consumption',
             component: () => import('pages/reports/PurchaseConsumptionAnalysis.vue'),
+            meta: { permission: 'reports.purchase_consumption.view' },
           },
-          { path: 'variance', component: () => import('pages/reports/VarianceReport.vue') },
+          { path: 'variance', component: () => import('pages/reports/VarianceReport.vue'), meta: { permission: 'reports.variance.view' } },
           {
             path: 'kot-deduction-log',
             component: () => import('pages/reports/KotDeductionLog.vue'),
+            meta: { permission: 'reports.kot_deduction_log.view' },
           },
           // ── Procurement Reports ───────────────────────────
           {
             path: 'purchase-summary',
             component: () => import('pages/reports/PurchaseSummary.vue'),
+            meta: { permission: 'reports.purchase_summary.view' },
           },
           {
             path: 'supplier-purchases',
             component: () => import('pages/reports/SupplierWisePurchases.vue'),
+            meta: { permission: 'reports.supplier_purchases.view' },
           },
-          { path: 'grn-report', component: () => import('pages/reports/GRNReport.vue') },
+          { path: 'grn-report', component: () => import('pages/reports/GRNReport.vue'), meta: { permission: 'reports.grn_report.view' } },
           // ── Finance Reports ───────────────────────────────
-          { path: 'revenue-summary', component: () => import('pages/reports/RevenueSummary.vue') },
-          { path: 'expense-summary', component: () => import('pages/reports/ExpenseSummary.vue') },
-          { path: 'daily-cash', component: () => import('pages/reports/DailyCashSummary.vue') },
+          { path: 'revenue-summary', component: () => import('pages/reports/RevenueSummary.vue'), meta: { permission: 'reports.revenue_summary.view' } },
+          { path: 'expense-summary', component: () => import('pages/reports/ExpenseSummary.vue'), meta: { permission: 'reports.expense_summary.view' } },
+          { path: 'daily-cash', component: () => import('pages/reports/DailyCashSummary.vue'), meta: { permission: 'reports.daily_cash.view' } },
           // ── HR / Staff Reports ────────────────────────────
           {
             path: 'staff-performance',
             component: () => import('pages/reports/StaffSalesPerformance.vue'),
+            meta: { permission: 'reports.staff_performance.view' },
           },
           {
             path: 'cashier-performance',
             component: () => import('pages/reports/CashierPerformance.vue'),
+            meta: { permission: 'reports.cashier_performance.view' },
           },
           // ── System / Audit Reports ────────────────────────
-          { path: 'user-activity', component: () => import('pages/reports/UserActivityLog.vue') },
-          { path: 'price-change', component: () => import('pages/reports/PriceChangeLog.vue') },
+          { path: 'user-activity', component: () => import('pages/reports/UserActivityLog.vue'), meta: { permission: 'reports.user_activity.view' } },
+          { path: 'price-change', component: () => import('pages/reports/PriceChangeLog.vue'), meta: { permission: 'reports.price_change.view' } },
           {
             path: 'inventory-adjustments',
             component: () => import('pages/reports/InventoryAdjustmentLog.vue'),
+            meta: { permission: 'reports.inventory_adjustments.view' },
           },
         ],
       },

@@ -452,7 +452,7 @@ describe('Device Routes & RBAC', () => {
     const deviceRoute = children.find(r => r.path === 'devices')
     expect(deviceRoute).toBeDefined()
     expect(deviceRoute.meta.module).toBe('devices')
-    expect(deviceRoute.meta.permission).toBe('devices.view')
+    expect(deviceRoute.meta.permission).toBe('devices.dashboard.view')
     expect(deviceRoute.children.length).toBe(5)
   })
 
