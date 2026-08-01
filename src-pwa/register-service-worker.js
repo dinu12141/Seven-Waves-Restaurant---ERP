@@ -27,10 +27,17 @@ register(process.env.SERVICE_WORKER_FILE, {
     // console.log('New content is downloading.')
   },
 
-  updated(/* registration */) {
-    // Automatically reload the page when an update is deployed to Vercel (PWA)
-    console.log('New content is available; forcefully refreshing...')
-    window.location.reload(true)
+  updated(registration) {
+    // A new version has been deployed and its service worker has already
+    // activated in the background (skipWaiting/clientsClaim are enabled in
+    // quasar.config.js). Previously this force-reloaded immediately with no
+    // warning — jarring mid-order on POS/waiter/kitchen screens. Instead,
+    // surface a dismissible "Update available" prompt and let the user pick
+    // when to reload. App.vue listens for this event and shows the UI.
+    console.log('[PWA] New content is available.')
+    window.dispatchEvent(
+      new CustomEvent('sw-update-available', { detail: { registration } }),
+    )
   },
 
   offline() {

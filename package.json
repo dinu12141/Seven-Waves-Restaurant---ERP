@@ -22,6 +22,8 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.8",
     "@google/generative-ai": "^0.24.1",
     "@quasar/extras": "^1.16.4",
     "@sentry/vue": "^10.67.0",
