@@ -157,12 +157,10 @@ import { inject, computed, ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
 import { useTableSessionStore } from 'src/stores/tableSessionStore'
-import { useCustomerStore } from 'src/stores/customerStore'
 
 const $q = useQuasar()
 const emit = defineEmits(['close'])
 const sessionStore = useTableSessionStore()
-const customerStore = useCustomerStore()
 
 const { sessionToken, cartItems, updateQuantity, removeFromCart, clearCart, tableUuid } =
   inject('touchMenuState')
@@ -248,33 +246,32 @@ async function submitOrder() {
         if (anyTable) finalTableUuid = anyTable.id
       }
 
-      // ── PRIMARY PATH: Kiosk mode — use table UUID directly (NO pgcrypto/crypt needed) ──
-      if (finalTableUuid) {
+      // ── PRIMARY PATH: Session-based (QR or Table Login) ──
+      const token =
+        sessionStore.sessionToken ||
+        sessionToken?.value ||
+        localStorage.getItem('tm_session_token') ||
+        localStorage.getItem('qr_session_token')
+
+      if (token) {
+        console.log('[MenuCartDrawer] Session order path')
+        ;({ data, error } = await supabase.rpc('create_order_from_session', {
+          p_session_token: token,
+          p_items: items,
+          p_source: 'qr',
+        }))
+      } else if (finalTableUuid) {
+        // ── FALLBACK PATH: Kiosk mode — use table UUID directly ──
         console.log('[MenuCartDrawer] Kiosk order path → table:', finalTableUuid)
         ;({ data, error } = await supabase.rpc('create_kiosk_order', {
           p_table_id: finalTableUuid,
           p_items: items,
           p_source: 'table_screen',
-          p_customer_name: customerStore.isLoggedIn ? customerStore.displayName : null,
-          p_customer_phone: customerStore.isLoggedIn ? customerStore.phone : null,
-          p_customer_id: customerStore.isLoggedIn ? customerStore.customerId : null,
         }))
       } else {
-        // ── FALLBACK PATH: Session token (pgcrypto-based) ──
-        const token =
-          sessionStore.sessionToken ||
-          sessionToken?.value ||
-          localStorage.getItem('tm_session_token')
-        if (!token) {
-          $q.notify({ message: 'No table session could be verified.', color: 'negative' })
-          submitting.value = false
-          return
-        }
-;({ data, error } = await supabase.rpc('create_order_from_session', {
-          p_session_token: token,
-          p_items: items,
-          p_source: 'table_screen',
-        }))
+        $q.notify({ message: 'No table session could be verified.', color: 'negative' })
+        submitting.value = false
+        return
       }
 
       if (error) {
