@@ -4,7 +4,7 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      { path: '', redirect: 'dashboard' },
+      { path: '', redirect: '/dashboard' },
       {
         path: 'dashboard',
         component: () => import('pages/dashboard/DashboardPage.vue'),
@@ -95,7 +95,7 @@ const routes = [
         component: () => import('pages/finance/FinanceLayout.vue'),
         meta: { roles: ['admin', 'manager', 'finance'], module: 'finance', permission: 'finance.view' },
         children: [
-          { path: '', redirect: 'dashboard' },
+          { path: '', redirect: '/finance/dashboard' },
 
           // ── Overview ──
           { path: 'dashboard', component: () => import('pages/finance/FinanceDashboard.vue') },
@@ -137,11 +137,11 @@ const routes = [
           { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue') },
 
           // ── Backward-compatibility redirects (old paths → new ERP) ──
-          { path: 'chart-of-accounts', redirect: 'ledgers' },
-          { path: 'journal-entries', redirect: 'pay-vouchers' },
-          { path: 'general-ledger', redirect: 'ledgers' },
-          { path: 'trial-balance', redirect: 'financial-statements' },
-          { path: 'cash-bank', redirect: 'cashbook' },
+          { path: 'chart-of-accounts', redirect: '/finance/ledgers' },
+          { path: 'journal-entries', redirect: '/finance/pay-vouchers' },
+          { path: 'general-ledger', redirect: '/finance/ledgers' },
+          { path: 'trial-balance', redirect: '/finance/financial-statements' },
+          { path: 'cash-bank', redirect: '/finance/cashbook' },
         ],
       },
       // ── DEVICE MANAGEMENT ─────────────────────────────────────────────
@@ -161,7 +161,7 @@ const routes = [
         component: () => import('pages/hr/HRLayout.vue'),
         meta: { roles: ['admin', 'manager', 'hr'], module: 'hr', permission: 'hr.view' },
         children: [
-          { path: '', redirect: 'dashboard' },
+          { path: '', redirect: '/hr/dashboard' },
           { path: 'dashboard', component: () => import('pages/hr/HRDashboard.vue') },
           { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue') },
           { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue') },
@@ -180,7 +180,7 @@ const routes = [
         path: 'procurement',
         component: () => import('pages/procurement/ProcurementLayout.vue'),
         children: [
-          { path: '', redirect: 'dashboard' },
+          { path: '', redirect: '/procurement/dashboard' },
           {
             path: 'dashboard',
             component: () => import('pages/procurement/ProcurementDashboard.vue'),
@@ -317,7 +317,7 @@ const routes = [
         component: () => import('layouts/ReportsLayout.vue'),
         meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'], module: 'reports', permission: 'reports.view' },
         children: [
-          { path: '', redirect: 'dashboard' },
+          { path: '', redirect: '/reports/dashboard' },
           { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue') },
           // ── Sales Reports ─────────────────────────────────
           { path: 'sales', component: () => import('pages/reports/SalesReport.vue') },
