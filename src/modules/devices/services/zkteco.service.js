@@ -2,31 +2,36 @@
 // ZKTeco Biometric Service — Device protocol + attendance sync
 // Seven Waves ERP — Step 06 Device & Platform Expansion
 //
-// Runtime: Electron desktop app ONLY. The device sits on the local network
-// (e.g. 192.168.x.x:4370) and speaks a binary TCP protocol — only a process
-// with LAN access can reach it. That's the Electron main process
-// (desktop/electron/ipc/handlers.js, using node-zklib), not Supabase Edge
-// Functions (cloud, no route to your LAN) and not this browser code directly
-// (no raw TCP sockets). This file is the renderer-side bridge: it asks the
-// Electron main process to talk to the device, then writes the resulting
-// punches into `attendance_logs` — the SAME table the existing
-// process_attendance_logs() engine (biometric_integration.sql) already
-// reads from every 5 minutes via pg_cron to build attendance_records.
+// Runtime: desktop app ONLY (Electron OR Tauri — this codebase ships both).
+// The device sits on the local network (e.g. 192.168.x.x:4370) and speaks a
+// binary TCP protocol — only a process with LAN access can reach it, not
+// Supabase Edge Functions (cloud, no route to your LAN) and not a browser
+// tab (no raw TCP sockets). The actual protocol implementation lives in each
+// desktop backend: desktop/electron/ipc/handlers.js (Node, uses node-zklib)
+// or src-tauri/src/zkteco.rs (Rust, hand-ported TCP protocol — Tauri has no
+// Node runtime to run node-zklib in). This file is the renderer-side bridge
+// that detects which shell is active (mirrors the pattern already used in
+// usePrinter.js/useCashDrawer.js) and normalizes both backends' responses to
+// one shape, then writes the resulting punches into `attendance_logs` — the
+// SAME table the existing process_attendance_logs() engine
+// (biometric_integration.sql) already reads from every 5 minutes via
+// pg_cron to build attendance_records.
 //
 // Employee matching: the device only knows a "User ID" string per enrolled
-// fingerprint (entered on the device's own keypad under User Mgmt — this
-// library version cannot enroll/delete users remotely). Enter the ERP's
-// employee_code there (e.g. "EMP001") so a pulled punch's device user id
-// round-trips directly to attendance_logs.employee_code with no separate
-// mapping table needed.
+// fingerprint (entered on the device's own keypad under User Mgmt — neither
+// backend can enroll/delete users remotely with this library/protocol).
+// Enter the ERP's employee_code there (e.g. "EMP001") so a pulled punch's
+// device user id round-trips directly to attendance_logs.employee_code with
+// no separate mapping table needed.
 //
 // Punch direction: the ZKTeco protocol CAN report an in/out flag per record,
 // but this device/library combination's 40-byte record format does not
-// expose it (verified against the installed node-zklib@1.3.0 decoder) — only
-// { deviceUserId, recordTime } come back. So direction is inferred here by
-// alternating in/out per employee per calendar day: first punch of the day
-// is "in", the next is "out", and so on. This matches how these budget
-// terminals are meant to be used (punch once arriving, once leaving).
+// expose it (verified against the installed node-zklib@1.3.0 decoder, and
+// matched exactly in the Rust port) — only { deviceUserId, recordTime } come
+// back. So direction is inferred here by alternating in/out per employee per
+// calendar day: first punch of the day is "in", the next is "out", and so
+// on. This matches how these budget terminals are meant to be used (punch
+// once arriving, once leaving).
 // ═══════════════════════════════════════════════════════════════════
 
 import { logger } from 'src/core/logging/logger'
@@ -34,15 +39,99 @@ import { supabase } from 'src/boot/supabase'
 
 const ZK_PORT_DEFAULT = 4370
 
-function _isElectron() {
-  return typeof window !== 'undefined' && typeof window.electronAPI?.syncBiometric === 'function'
+function _getPlatformBridge() {
+  if (typeof window === 'undefined') return 'none'
+  // Tauri v2 no longer injects `window.__TAURI__` unless `app.withGlobalTauri`
+  // is enabled in tauri.conf.json (it isn't here) — the always-present marker
+  // in v2 is `window.__TAURI_INTERNALS__`.
+  if ('__TAURI_INTERNALS__' in window) return 'tauri'
+  if (typeof window.electronAPI?.syncBiometric === 'function') return 'electron'
+  return 'none'
 }
 
-async function _call(params) {
-  if (!_isElectron()) {
-    return { success: false, error: 'ZKTeco sync requires the Electron desktop app' }
+function isDesktopAvailable() {
+  return _getPlatformBridge() !== 'none'
+}
+
+/** Normalize Electron's { action, ip, port } IPC shape to a common result. */
+async function _callElectron(action, ip, port) {
+  const result = await window.electronAPI.syncBiometric({ action, ip, port })
+  if (!result.success) return { success: false, error: result.error }
+
+  if (action === 'info') {
+    return {
+      success: true,
+      info: {
+        userCounts: result.userCounts,
+        logCounts: result.logCounts,
+        logCapacity: result.logCapacity,
+      },
+    }
   }
-  return window.electronAPI.syncBiometric(params)
+  if (action === 'pull') {
+    return {
+      success: true,
+      records: (result.records || []).map((r) => ({
+        user_id: r.user_id,
+        punch_time: r.punch_time,
+      })),
+    }
+  }
+  return { success: true }
+}
+
+/** Normalize the Tauri Rust command's { success, error, info, records } shape. */
+async function _callTauri(command, ip, port) {
+  const { invoke } = await import('@tauri-apps/api/core')
+  const result = await invoke(command, { ip, port })
+  if (!result.success) return { success: false, error: result.error }
+
+  if (result.info) {
+    return {
+      success: true,
+      info: {
+        userCounts: result.info.user_counts,
+        logCounts: result.info.log_counts,
+        logCapacity: result.info.log_capacity,
+      },
+    }
+  }
+  if (result.records) {
+    return {
+      success: true,
+      // record_time is a naive "YYYY-MM-DDTHH:MM:SS" string (no timezone
+      // suffix) decoded straight from the device's packed timestamp, which
+      // is assumed to be set to the restaurant's local time (same assumption
+      // the Electron path makes when it does new Date(recordTime) — a plain
+      // Date constructor interprets a component-based date as local time
+      // too). new Date() on this string in JS interprets it as local time,
+      // matching intent without needing an explicit timezone conversion here.
+      records: result.records.map((r) => ({
+        user_id: r.user_id,
+        punch_time: r.record_time,
+      })),
+    }
+  }
+  return { success: true }
+}
+
+async function _call(action, ip, port) {
+  const bridge = _getPlatformBridge()
+
+  if (bridge === 'electron') {
+    return _callElectron(action, ip, port)
+  }
+
+  if (bridge === 'tauri') {
+    const command = {
+      info: 'biometric_get_info',
+      pull: 'biometric_pull_attendance',
+      clear_attendance: 'biometric_clear_log',
+    }[action]
+    return _callTauri(command, ip, port)
+  }
+
+  return { success: false, error: 'ZKTeco sync requires the Seven Waves desktop app (Electron or Tauri)' }
 }
 
 // ─── Main Service Class ───────────────────────────────────────────────────────
@@ -62,9 +151,11 @@ export class ZKTecoClient {
     this.companyId = companyId
   }
 
-  /** Get device info: { userCounts, logCounts, logCapacity }. */
+  /** Get device info: { success, info: { userCounts, logCounts, logCapacity } } or { success: false, error }. */
   async getDeviceInfo() {
-    return _call({ action: 'info', ip: this.ip, port: this.port })
+    const result = await _call('info', this.ip, this.port)
+    if (!result.success) return result
+    return { success: true, ...result.info }
   }
 
   /**
@@ -73,7 +164,7 @@ export class ZKTecoClient {
    * every 5 minutes) picks these up and turns them into attendance_records.
    */
   async syncToDatabase() {
-    const result = await _call({ action: 'pull', ip: this.ip, port: this.port })
+    const result = await _call('pull', this.ip, this.port)
     if (!result.success) return result
 
     const records = (result.records || []).filter((r) => r.user_id)
@@ -151,15 +242,19 @@ export class ZKTecoClient {
 
   /** Clear the attendance log on the device after a confirmed successful sync. */
   async clearAttendanceLog() {
-    return _call({ action: 'clear_attendance', ip: this.ip, port: this.port })
+    return _call('clear_attendance', this.ip, this.port)
   }
 
-  // NOTE: node-zklib@1.3.0 has no remote enroll/delete-user/set-time support
-  // — fingerprint enrollment, user removal, and the device clock must all be
-  // set on the device's own keypad (Main Menu → User Mgmt / System). Enroll
-  // using the ERP employee_code as the device's "User ID" so pulled punches
-  // match back to the right employee automatically.
+  // NOTE: neither backend (node-zklib on Electron, the hand-ported protocol
+  // on Tauri) supports remote enroll/delete-user/set-time — fingerprint
+  // enrollment, user removal, and the device clock must all be set on the
+  // device's own keypad (Main Menu → User Mgmt / System). Enroll using the
+  // ERP employee_code as the device's "User ID" so pulled punches match back
+  // to the right employee automatically.
 }
+
+/** True if running inside a desktop shell (Electron or Tauri) that can reach LAN devices. */
+export { isDesktopAvailable }
 
 // ─── Auto-sync Scheduler ──────────────────────────────────────────────────────
 

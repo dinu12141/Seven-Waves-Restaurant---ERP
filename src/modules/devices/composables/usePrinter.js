@@ -14,7 +14,7 @@ import { logger } from 'src/core/logging/logger'
  */
 function getPlatformBridge() {
   if (typeof window === 'undefined') return 'none'
-  if ('__TAURI__' in window) return 'tauri'
+  if ('__TAURI_INTERNALS__' in window) return 'tauri'
   if (typeof window.electronAPI !== 'undefined') return 'electron'
   if ('navigator' in window && 'usb' in navigator) return 'webusb'
   return 'network'

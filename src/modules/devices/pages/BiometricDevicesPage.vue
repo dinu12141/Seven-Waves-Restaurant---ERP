@@ -6,13 +6,6 @@
       <q-btn color="primary" icon="add" label="Add Device" @click="showAddDialog = true" />
     </div>
 
-    <q-banner v-if="!isElectron" class="bg-warning text-dark q-mb-md" rounded>
-      <template #avatar><q-icon name="desktop_windows" /></template>
-      Fingerprint sync only works in the Seven Waves ERP <strong>desktop app</strong> (Electron) —
-      it needs direct network access to the device, which a web browser cannot do. Device
-      management (add/remove) works here, but "Sync Now" requires the desktop app.
-    </q-banner>
-
     <div class="row q-gutter-md q-mb-lg">
       <q-card flat bordered class="col-12 col-md-3" v-for="stat in stats" :key="stat.label">
         <q-card-section class="row items-center">
@@ -50,7 +43,7 @@
               icon="sync"
               color="primary"
               :loading="syncingDeviceId === device.id"
-              :disable="!isElectron"
+              :disable="!isDesktopApp"
               @click="syncDevice(device)"
             >
               <q-tooltip>Sync Now — pull attendance punches</q-tooltip>
@@ -61,7 +54,7 @@
               round
               icon="info"
               color="grey-7"
-              :disable="!isElectron"
+              :disable="!isDesktopApp"
               @click="checkDeviceInfo(device)"
             >
               <q-tooltip>Device Info</q-tooltip>
@@ -151,13 +144,17 @@ import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { useDeviceStore } from '../stores/device.store'
-import { ZKTecoClient } from '../services/zkteco.service'
+import { ZKTecoClient, isDesktopAvailable } from '../services/zkteco.service'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
 const deviceStore = useDeviceStore()
 
-const isElectron = typeof window !== 'undefined' && typeof window.electronAPI?.syncBiometric === 'function'
+// Works in either desktop shell this app ships (Electron or Tauri) — both
+// have their own native TCP bridge to reach the fingerprint device's LAN IP.
+// Reactive (not a one-time const) since window.__TAURI_INTERNALS__/electronAPI
+// can be injected slightly after this component's setup() runs.
+const isDesktopApp = ref(isDesktopAvailable())
 
 const loading = ref(false)
 const adding = ref(false)
@@ -219,6 +216,7 @@ async function loadPunches() {
 }
 
 onMounted(async () => {
+  isDesktopApp.value = isDesktopAvailable()
   branchId.value = authStore.currentBranch?.id
   companyId.value = authStore.currentBranch?.company_id
   if (branchId.value) {

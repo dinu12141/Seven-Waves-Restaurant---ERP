@@ -1,5 +1,7 @@
 use tauri::{Emitter, Manager};
 
+mod zkteco;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -32,6 +34,15 @@ pub fn run() {
             }
             Ok(())
         })
+        // ── Biometric (ZKTeco fingerprint device) ─────────────────────
+        // Runs the TCP protocol directly in Rust — this app is Tauri, not
+        // Electron, so the Node-based node-zklib library used elsewhere in
+        // the codebase cannot run here. See src-tauri/src/zkteco.rs.
+        .invoke_handler(tauri::generate_handler![
+            zkteco::biometric_get_info,
+            zkteco::biometric_pull_attendance,
+            zkteco::biometric_clear_log,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Seven Waves ERP");
 }

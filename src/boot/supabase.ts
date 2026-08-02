@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Detect Tauri desktop environment (safe for SSR where window doesn't exist)
-const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 // Exponential backoff: 2s, 4s, 8s, 16s, 30s (capped)
 // Prevents the WebSocket reconnection storm / console flood

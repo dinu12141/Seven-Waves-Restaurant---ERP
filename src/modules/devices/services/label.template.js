@@ -294,7 +294,7 @@ export async function sendLabel (label, printerCfg = {}) {
   }
 
   // Tauri path
-  if (typeof window !== 'undefined' && '__TAURI__' in window) {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
     const { invoke } = await import('@tauri-apps/api/core')
     return invoke('print_raw', { data: Array.from(bytes), ip: ip || '', port, printer: printerName || '' })
   }

@@ -62,7 +62,7 @@ export function useCashDrawer() {
           reason,
           paymentId,
         })
-      } else if (typeof window !== 'undefined' && '__TAURI__' in window) {
+      } else if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
         const { invoke } = await import('@tauri-apps/api/core')
         result = await invoke('open_cash_drawer', {
           data: Array.from(buffer),
