@@ -1350,6 +1350,13 @@ async function saveLeaveRequest() {
 
 async function approveRequest(req) {
   try {
+    // Column-only status update on leave_requests — trg_leave_apply_attendance
+    // (att_leave_attendance_116.sql, rewired by the HR #2 no-pay-split
+    // migration) fires AFTER UPDATE OF status and writes the actual
+    // attendance_records rows via _apply_leave_attendance_rows ->
+    // fn_calc_leave_no_pay_split, honoring the combined-across-leave-types
+    // monthly paid cap. This code no longer needs (and must not attempt) any
+    // attendance-row logic of its own.
     const { error } = await supabase
       .from('leave_requests')
       .update({
@@ -1360,26 +1367,51 @@ async function approveRequest(req) {
       .eq('id', req.id)
     if (error) throw error
 
-    // Update leave balance used_days
+    // Leave balance used_days bookkeeping — tracks the leave TYPE's own
+    // annual entitlement (a separate concern from the monthly no-pay cap,
+    // which is enforced automatically by the trigger above regardless of
+    // this balance). Upsert instead of the previous "only update if a row
+    // already exists" — if no balance row exists yet for this employee/type/
+    // year, one is created here instead of silently skipping the increment
+    // (previously: naive `used_days + total_days` with no ceiling check AND
+    // no row created when missing). used_days is still allowed to exceed
+    // total_entitlement (that's the whole point — it's how "over quota" is
+    // visible in the Balances tab), it is just no longer silently dropped
+    // when the balance row didn't already exist.
     const year = new Date(req.start_date).getFullYear()
-    const { data: bal } = await supabase
+    const { data: bal, error: balErr } = await supabase
       .from('leave_balances')
       .select('id, used_days')
       .eq('employee_id', req.employee_id)
       .eq('leave_type_id', req.leave_type_id)
       .eq('year', year)
       .maybeSingle()
+    if (balErr) throw balErr
+
     if (bal) {
-      await supabase
+      const { error: updErr } = await supabase
         .from('leave_balances')
-        .update({ used_days: Number(bal.used_days) + Number(req.total_days) })
+        .update({ used_days: Number(bal.used_days || 0) + Number(req.total_days) })
         .eq('id', bal.id)
+      if (updErr) throw updErr
+    } else {
+      const leaveType = leaveTypes.value.find((t) => t.id === req.leave_type_id)
+      const { error: insErr } = await supabase.from('leave_balances').insert({
+        company_id: authStore.currentBranch?.company_id,
+        employee_id: req.employee_id,
+        leave_type_id: req.leave_type_id,
+        year,
+        total_entitlement: leaveType?.annual_quota || 0,
+        used_days: Number(req.total_days),
+      })
+      if (insErr) throw insErr
     }
 
     $q.notify({ type: 'positive', message: 'Leave request approved' })
     loadRequests()
+    loadBalances()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    $q.notify({ type: 'negative', message: humanizeError(err) })
   }
 }
 

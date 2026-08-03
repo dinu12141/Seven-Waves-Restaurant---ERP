@@ -26,6 +26,12 @@ export const RATE_LIMITS = {
   printer_job:    { maxAttempts: 20, windowMs: 60_000,   lockoutMs: 60_000   },  // 20/min
   voucher_post:   { maxAttempts: 10, windowMs: 60_000,   lockoutMs: 120_000  },  // 10/min, 2min lockout
   qr_validate:    { maxAttempts: 30, windowMs: 60_000,   lockoutMs: 30_000   },  // 30/min
+  // NOTE: client-side only (in-memory, per tab/session) — does not throttle
+  // the underlying Management API server-side. Sufficient to stop accidental
+  // double-clicks/spam from a single admin session; a real server-side
+  // limiter (e.g. in the edge function itself, keyed by user id) is a
+  // follow-up if abuse across sessions/devices becomes a concern.
+  system_backup:  { maxAttempts: 3,  windowMs: 300_000,  lockoutMs: 300_000  },  // 3/5min
 }
 
 /**

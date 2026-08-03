@@ -161,7 +161,7 @@ const getUomName = (uomId) => {
   return found?.name || found?.code || ''
 }
 
-const showPrice = computed(() => ['PO', 'INVOICE', 'RETURN'].includes(props.mode))
+const showPrice = computed(() => ['PO', 'GRN', 'INVOICE', 'RETURN'].includes(props.mode))
 const showDiscount = computed(() => ['PO', 'INVOICE'].includes(props.mode))
 
 // @ts-ignore

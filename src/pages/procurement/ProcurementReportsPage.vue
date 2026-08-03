@@ -18,6 +18,7 @@
         <q-tab name="statement" label="Supplier Statement" icon="description" />
         <q-tab name="aging" label="AP Aging" icon="access_time" />
         <q-tab name="po_grn" label="PO vs GRN" icon="compare_arrows" />
+        <q-tab name="summary" label="Supplier Summary" icon="summarize" />
       </q-tabs>
       <q-separator />
 
@@ -25,53 +26,61 @@
 
         <!-- ══ TAB 1: SUPPLIER STATEMENT ══════════════════════════════════ -->
         <q-tab-panel name="statement" class="q-pa-md">
-          <div class="row q-col-gutter-md q-mb-md items-end">
-            <div class="col-12 col-md-4">
-              <div class="text-caption q-mb-xs text-weight-medium">Supplier</div>
-              <q-select
-                v-model="statementSupplier"
-                :options="supplierOptions"
-                option-label="name"
-                option-value="id"
-                emit-value
-                map-options
-                outlined
-                dense
-                clearable
-                placeholder="Select supplier"
-                use-input
-                input-debounce="0"
-                @filter="filterSuppliers"
-              />
+          <div class="row items-center justify-between q-mb-md">
+            <div class="row q-col-gutter-md items-end col-grow">
+              <div class="col-12 col-md-4">
+                <div class="text-caption q-mb-xs text-weight-medium">Supplier</div>
+                <q-select
+                  v-model="statementSupplier"
+                  :options="supplierOptions"
+                  option-label="name"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  clearable
+                  placeholder="Select supplier"
+                  use-input
+                  input-debounce="0"
+                  @filter="filterSuppliers"
+                />
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">From</div>
+                <q-input v-model="statementFrom" type="date" outlined dense />
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">To</div>
+                <q-input v-model="statementTo" type="date" outlined dense />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-btn
+                  unelevated
+                  color="amber-8"
+                  text-color="dark"
+                  icon="search"
+                  label="Generate"
+                  no-caps
+                  class="full-width"
+                  :loading="loadingStatement"
+                  :disable="!statementSupplier"
+                  @click="loadStatement"
+                />
+              </div>
             </div>
-            <div class="col-6 col-md-3">
-              <div class="text-caption q-mb-xs text-weight-medium">From</div>
-              <q-input v-model="statementFrom" type="date" outlined dense />
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="text-caption q-mb-xs text-weight-medium">To</div>
-              <q-input v-model="statementTo" type="date" outlined dense />
-            </div>
-            <div class="col-12 col-md-2 row q-gutter-sm">
+            <div class="row q-gutter-sm q-ml-sm" v-if="statementRows.length > 0">
               <q-btn
-                unelevated
-                color="amber-8"
-                text-color="dark"
-                icon="search"
-                label="Generate"
-                no-caps
-                :loading="loadingStatement"
-                :disable="!statementSupplier"
-                @click="loadStatement"
+                flat dense icon="print" label="Print" color="grey-8" no-caps
+                @click="printReport(statementCols, statementRows, 'Supplier Statement', statementSubtitle)"
               />
               <q-btn
-                v-if="statementRows.length > 0"
-                outline
-                color="positive"
-                icon="download"
-                label="CSV"
-                no-caps
-                @click="exportCSV(statementRows, statementCsvFields, 'supplier_statement')"
+                flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                @click="exportPDF(statementCols, statementRows, 'Supplier_Statement', statementSubtitle)"
+              />
+              <q-btn
+                flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                @click="exportExcel(statementCols, statementRows, 'Supplier_Statement')"
               />
             </div>
           </div>
@@ -123,6 +132,16 @@
                 </q-chip>
               </q-td>
             </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold">
+                <q-td>TOTAL</q-td>
+                <q-td />
+                <q-td class="text-right">{{ fmtCur(statementTotals.amount) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(statementTotals.paid) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(statementTotals.balance) }}</q-td>
+                <q-td />
+              </q-tr>
+            </template>
             <template #no-data>
               <div class="full-width row justify-center text-grey q-pa-md">
                 {{ statementSupplier ? 'No invoices found for this period' : 'Select a supplier to view statement' }}
@@ -146,15 +165,20 @@
                 :loading="loadingAging"
                 @click="loadAging"
               />
-              <q-btn
-                v-if="agingRows.length > 0"
-                outline
-                color="positive"
-                icon="download"
-                label="CSV"
-                no-caps
-                @click="exportCSV(agingRows, agingCsvFields, 'ap_aging')"
-              />
+              <template v-if="agingRows.length > 0">
+                <q-btn
+                  flat dense icon="print" label="Print" color="grey-8" no-caps
+                  @click="printReport(agingCols, agingRows, 'AP Aging', agingSubtitle)"
+                />
+                <q-btn
+                  flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                  @click="exportPDF(agingCols, agingRows, 'AP_Aging', agingSubtitle)"
+                />
+                <q-btn
+                  flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                  @click="exportExcel(agingCols, agingRows, 'AP_Aging')"
+                />
+              </template>
             </div>
           </div>
 
@@ -202,6 +226,18 @@
                 {{ fmtCur(props.row.balance_due) }}
               </q-td>
             </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold">
+                <q-td>TOTAL</q-td>
+                <q-td />
+                <q-td />
+                <q-td class="text-right">{{ fmtCur(agingTotals.total) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(agingTotals.paid) }}</q-td>
+                <q-td class="text-right text-red-6">{{ fmtCur(agingTotals.balance) }}</q-td>
+                <q-td />
+                <q-td />
+              </q-tr>
+            </template>
             <template #no-data>
               <div class="full-width row justify-center text-grey q-pa-md">
                 No outstanding AP invoices
@@ -221,7 +257,7 @@
               <div class="text-caption q-mb-xs text-weight-medium">To</div>
               <q-input v-model="poGrnTo" type="date" outlined dense />
             </div>
-            <div class="col-12 col-md-4 row q-gutter-sm">
+            <div class="col-12 col-md-2">
               <q-btn
                 unelevated
                 color="amber-8"
@@ -229,17 +265,23 @@
                 icon="search"
                 label="Load"
                 no-caps
+                class="full-width"
                 :loading="loadingPoGrn"
                 @click="loadPoGrn"
               />
+            </div>
+            <div class="col-12 col-md-3 row q-gutter-sm" v-if="poGrnRows.length > 0">
               <q-btn
-                v-if="poGrnRows.length > 0"
-                outline
-                color="positive"
-                icon="download"
-                label="CSV"
-                no-caps
-                @click="exportCSV(poGrnRows, poGrnCsvFields, 'po_vs_grn')"
+                flat dense icon="print" label="Print" color="grey-8" no-caps
+                @click="printReport(poGrnCols, poGrnRows, 'PO vs GRN', poGrnSubtitle)"
+              />
+              <q-btn
+                flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                @click="exportPDF(poGrnCols, poGrnRows, 'PO_vs_GRN', poGrnSubtitle)"
+              />
+              <q-btn
+                flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                @click="exportExcel(poGrnCols, poGrnRows, 'PO_vs_GRN')"
               />
             </div>
           </div>
@@ -263,9 +305,127 @@
                 {{ fmtCur(props.row.variance) }}
               </q-td>
             </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold">
+                <q-td>TOTAL</q-td>
+                <q-td />
+                <q-td />
+                <q-td class="text-right">{{ fmtCur(poGrnTotals.poAmount) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(poGrnTotals.received) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(poGrnTotals.variance) }}</q-td>
+                <q-td />
+              </q-tr>
+            </template>
             <template #no-data>
               <div class="full-width row justify-center text-grey q-pa-md">
                 No purchase orders found for this period
+              </div>
+            </template>
+          </q-table>
+        </q-tab-panel>
+
+        <!-- ══ TAB 4: SUPPLIER SUMMARY ═══════════════════════════════════════ -->
+        <q-tab-panel name="summary" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <div class="row q-col-gutter-md items-end col-grow">
+              <div class="col-6 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">From</div>
+                <q-input v-model="summaryFrom" type="date" outlined dense />
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">To</div>
+                <q-input v-model="summaryTo" type="date" outlined dense />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-btn
+                  unelevated
+                  color="amber-8"
+                  text-color="dark"
+                  icon="search"
+                  label="Load"
+                  no-caps
+                  class="full-width"
+                  :loading="loadingSummary"
+                  @click="loadSummary"
+                />
+              </div>
+            </div>
+            <div class="row q-gutter-sm q-ml-sm" v-if="summaryRows.length > 0">
+              <q-btn
+                flat dense icon="print" label="Print" color="grey-8" no-caps
+                @click="printReport(summaryCols, summaryRows, 'Supplier Summary', summarySubtitle)"
+              />
+              <q-btn
+                flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                @click="exportPDF(summaryCols, summaryRows, 'Supplier_Summary', summarySubtitle)"
+              />
+              <q-btn
+                flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                @click="exportExcel(summaryCols, summaryRows, 'Supplier_Summary')"
+              />
+            </div>
+          </div>
+
+          <!-- Grand totals chips -->
+          <div v-if="summaryRows.length > 0" class="row q-col-gutter-sm q-mb-md">
+            <div class="col-auto">
+              <q-chip color="blue-grey-7" text-color="white" dense>
+                Total Invoiced: {{ fmtCur(summaryTotals.total_invoiced) }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="green-7" text-color="white" dense>
+                Total Paid: {{ fmtCur(summaryTotals.total_paid) }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip :color="summaryTotals.total_due > 0 ? 'red-7' : 'green-7'" text-color="white" dense>
+                Total Due: {{ fmtCur(summaryTotals.total_due) }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="deep-orange-7" text-color="white" dense>
+                Overdue Invoices: {{ summaryTotals.overdue_count }}
+              </q-chip>
+            </div>
+          </div>
+
+          <q-table
+            :rows="summaryRows"
+            :columns="summaryCols"
+            row-key="supplier_id"
+            flat
+            bordered
+            dense
+            :loading="loadingSummary"
+            :rows-per-page-options="[20, 50, 0]"
+          >
+            <template #body-cell-total_due="props">
+              <q-td :props="props" class="text-right text-weight-bold" :class="props.row.total_due > 0 ? 'text-red-6' : 'text-green-6'">
+                {{ fmtCur(props.row.total_due) }}
+              </q-td>
+            </template>
+            <template #body-cell-overdue_count="props">
+              <q-td :props="props" class="text-center">
+                <q-chip v-if="props.row.overdue_count > 0" dense size="sm" color="red-5" text-color="white">
+                  {{ props.row.overdue_count }}
+                </q-chip>
+                <span v-else>0</span>
+              </q-td>
+            </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold">
+                <q-td>TOTAL</q-td>
+                <q-td class="text-right">{{ fmtCur(summaryTotals.total_invoiced) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(summaryTotals.total_paid) }}</q-td>
+                <q-td class="text-right">{{ fmtCur(summaryTotals.total_due) }}</q-td>
+                <q-td class="text-center">{{ summaryTotals.invoice_count }}</q-td>
+                <q-td class="text-center">{{ summaryTotals.overdue_count }}</q-td>
+              </q-tr>
+            </template>
+            <template #no-data>
+              <div class="full-width row justify-center text-grey q-pa-md">
+                No supplier invoices found for this period
               </div>
             </template>
           </q-table>
@@ -279,10 +439,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { getSupplierSummaryReport } from 'src/services/procurementService'
+import { exportTableToExcel, exportTableToPDF, printTableAsPDF } from 'src/services/exportService'
 
 const $q = useQuasar()
 
 const activeTab = ref('statement')
+const exporting = ref(false)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtCur(val) {
@@ -292,26 +455,36 @@ function fmtCur(val) {
   })
 }
 
-function exportCSV(rows, fields, filename) {
-  const header = fields.map((f) => f.label).join(',')
-  const body = rows
-    .map((r) =>
-      fields
-        .map((f) => {
-          const v = typeof f.field === 'function' ? f.field(r) : r[f.field]
-          return `"${String(v ?? '').replace(/"/g, '""')}"`
-        })
-        .join(','),
-    )
-    .join('\n')
-  const csv = header + '\n' + body
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+// Shared Print / Export PDF / Export Excel handlers (matches SupplierPaymentReport.vue UX)
+async function printReport(columns, rows, title, subtitle) {
+  exporting.value = true
+  try {
+    await printTableAsPDF(columns, rows, title, subtitle)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Print failed' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function exportPDF(columns, rows, title, subtitle) {
+  exporting.value = true
+  try {
+    await exportTableToPDF(columns, rows, title, subtitle)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'PDF export failed' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+function exportExcel(columns, rows, filename) {
+  try {
+    exportTableToExcel(columns, rows, filename)
+    $q.notify({ type: 'positive', message: 'Excel exported successfully' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Excel export failed' })
+  }
 }
 
 // ── Supplier list ─────────────────────────────────────────────────────────────
@@ -323,6 +496,7 @@ onMounted(async () => {
   allSuppliers.value = data || []
   supplierOptions.value = allSuppliers.value
   loadAging()
+  loadSummary()
 })
 
 function filterSuppliers(val, update) {
@@ -372,14 +546,10 @@ const statementCols = [
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
 ]
 
-const statementCsvFields = [
-  { label: 'Invoice #', field: 'doc_number' },
-  { label: 'Invoice Date', field: 'doc_date' },
-  { label: 'Amount', field: (r) => fmtCur(r.total_amount) },
-  { label: 'Paid', field: (r) => fmtCur(r.paid_amount) },
-  { label: 'Balance', field: (r) => fmtCur(r.balance_due) },
-  { label: 'Status', field: 'status' },
-]
+const statementSubtitle = computed(() => {
+  const supplierName = allSuppliers.value.find((s) => s.id === statementSupplier.value)?.name
+  return `Period: ${statementFrom.value} to ${statementTo.value}${supplierName ? ' | Supplier: ' + supplierName : ''}`
+})
 
 const statementTotals = computed(() => ({
   amount: statementRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
@@ -429,21 +599,30 @@ const agingCols = [
     field: 'paid_amount',
     format: (v) => fmtCur(v),
   },
-  { name: 'balance_due', label: 'Balance Due', align: 'right', field: 'balance_due' },
+  {
+    name: 'balance_due',
+    label: 'Balance Due',
+    align: 'right',
+    field: 'balance_due',
+    format: (v) => fmtCur(v),
+  },
   { name: 'days_overdue', label: 'Days', field: 'days_overdue', align: 'center', sortable: true },
-  { name: 'bucket', label: 'Age Bucket', field: 'days_overdue', align: 'center' },
+  {
+    name: 'bucket',
+    label: 'Age Bucket',
+    field: 'days_overdue',
+    align: 'center',
+    format: (v) => agingBucketLabel(v),
+  },
 ]
 
-const agingCsvFields = [
-  { label: 'Supplier', field: (r) => r.suppliers?.name || '' },
-  { label: 'Invoice #', field: 'doc_number' },
-  { label: 'Date', field: 'doc_date' },
-  { label: 'Total', field: (r) => fmtCur(r.total_amount) },
-  { label: 'Paid', field: (r) => fmtCur(r.paid_amount) },
-  { label: 'Balance Due', field: (r) => fmtCur(r.balance_due) },
-  { label: 'Days Overdue', field: 'days_overdue' },
-  { label: 'Bucket', field: (r) => agingBucketLabel(r.days_overdue) },
-]
+const agingSubtitle = computed(() => `As of ${todayStr}`)
+
+const agingTotals = computed(() => ({
+  total: agingRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+  paid: agingRows.value.reduce((s, r) => s + Number(r.paid_amount || 0), 0),
+  balance: agingRows.value.reduce((s, r) => s + Number(r.balance_due || 0), 0),
+}))
 
 function agingBucketLabel(days) {
   if (days <= 0) return 'Current'
@@ -529,19 +708,23 @@ const poGrnCols = [
     align: 'right',
     format: (v) => fmtCur(v),
   },
-  { name: 'variance', label: 'Variance', field: 'variance', align: 'right' },
+  {
+    name: 'variance',
+    label: 'Variance',
+    field: 'variance',
+    align: 'right',
+    format: (v) => fmtCur(v),
+  },
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
 ]
 
-const poGrnCsvFields = [
-  { label: 'PO #', field: 'doc_number' },
-  { label: 'PO Date', field: 'doc_date' },
-  { label: 'Supplier', field: (r) => r.suppliers?.name || '' },
-  { label: 'PO Amount', field: (r) => fmtCur(r.total_amount) },
-  { label: 'Received', field: (r) => fmtCur(r.received_amount) },
-  { label: 'Variance', field: (r) => fmtCur(r.variance) },
-  { label: 'Status', field: 'status' },
-]
+const poGrnSubtitle = computed(() => `Period: ${poGrnFrom.value} to ${poGrnTo.value}`)
+
+const poGrnTotals = computed(() => ({
+  poAmount: poGrnRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+  received: poGrnRows.value.reduce((s, r) => s + Number(r.received_amount || 0), 0),
+  variance: poGrnRows.value.reduce((s, r) => s + Number(r.variance || 0), 0),
+}))
 
 async function loadPoGrn() {
   loadingPoGrn.value = true
@@ -580,6 +763,67 @@ async function loadPoGrn() {
     $q.notify({ type: 'negative', message: err.message || 'Failed to load PO vs GRN data' })
   } finally {
     loadingPoGrn.value = false
+  }
+}
+
+// ── TAB 4: Supplier Summary ────────────────────────────────────────────────────
+const summaryFrom = ref(firstOfMonth)
+const summaryTo = ref(todayStr)
+const loadingSummary = ref(false)
+const summaryRows = ref([])
+const summaryTotals = ref({
+  total_invoiced: 0,
+  total_paid: 0,
+  total_due: 0,
+  invoice_count: 0,
+  overdue_count: 0,
+})
+
+const summaryCols = [
+  { name: 'supplier_name', label: 'Supplier', field: 'supplier_name', align: 'left', sortable: true },
+  {
+    name: 'total_invoiced',
+    label: 'Total Invoiced',
+    field: 'total_invoiced',
+    align: 'right',
+    format: (v) => fmtCur(v),
+    sortable: true,
+  },
+  {
+    name: 'total_paid',
+    label: 'Total Paid',
+    field: 'total_paid',
+    align: 'right',
+    format: (v) => fmtCur(v),
+    sortable: true,
+  },
+  {
+    name: 'total_due',
+    label: 'Total Due',
+    field: 'total_due',
+    align: 'right',
+    format: (v) => fmtCur(v),
+    sortable: true,
+  },
+  { name: 'invoice_count', label: '# Invoices', field: 'invoice_count', align: 'center', sortable: true },
+  { name: 'overdue_count', label: '# Overdue', field: 'overdue_count', align: 'center', sortable: true },
+]
+
+const summarySubtitle = computed(() => `Period: ${summaryFrom.value} to ${summaryTo.value}`)
+
+async function loadSummary() {
+  loadingSummary.value = true
+  try {
+    const { rows, totals } = await getSupplierSummaryReport({
+      from_date: summaryFrom.value,
+      to_date: summaryTo.value,
+    })
+    summaryRows.value = rows
+    summaryTotals.value = totals
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load supplier summary' })
+  } finally {
+    loadingSummary.value = false
   }
 }
 </script>

@@ -108,6 +108,14 @@ const modules = ref([
     to: '/admin/loyalty',
     permission: 'admin:customers',
   },
+  {
+    title: 'System Backup',
+    description: 'View backup status and download/trigger information.',
+    icon: 'cloud_download',
+    color: 'deep-purple',
+    to: '/admin/backup',
+    permission: 'admin:backup',
+  },
 ])
 
 const filteredModules = computed(() => {

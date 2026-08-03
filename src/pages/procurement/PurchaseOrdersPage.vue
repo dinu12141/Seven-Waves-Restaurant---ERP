@@ -39,6 +39,7 @@
       no-data-label="No purchase orders found"
       @edit="editPO"
       @view="editPO"
+      @close="confirmClosePO"
     />
 
     <!-- PO Dialog (Professionalized & Balanced) -->
@@ -124,14 +125,20 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
-import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails } from 'src/services/procurementService'
+import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails, closePO } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
+import { usePermission } from 'src/core/rbac/usePermission'
 
 const $q = useQuasar()
+const { can } = usePermission()
+// GRN no longer auto-closes POs (supplier-direct GRN rework, designnew.md
+// Section 5) — closing a PO is now a manual action, gated the same as other
+// procurement-admin actions.
+const canClosePO = computed(() => can('procurement.suppliers.edit'))
 const route = useRoute()
 const router = useRouter()
 const tab = ref('all')
@@ -219,10 +226,17 @@ const gridActions = [
     color: 'primary',
     show: (row) => row.status === 'draft',
   },
+  {
+    event: 'close',
+    icon: 'task_alt',
+    label: 'Close PO',
+    color: 'positive',
+    show: (row) => canClosePO.value && ['open', 'approved', 'partial'].includes(row.status),
+  },
 ]
 
 // Filter drawer config
-const gridFilters = [
+const gridFilters = computed(() => [
   {
     field: 'doc_date',
     label: 'PO Date',
@@ -240,7 +254,16 @@ const gridFilters = [
       { label: 'Cancelled', value: 'cancelled' },
     ],
   },
-]
+  {
+    field: 'supplier_id',
+    label: 'Supplier',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      ...supplierOptions.value.map((s) => ({ label: s.name, value: s.id })),
+    ],
+  },
+])
 
 // Tab config
 const tabOptions = [
@@ -291,7 +314,7 @@ async function fetchPOs() {
 }
 
 async function fetchSuppliers() {
-  supplierOptions.value = await listSuppliers()
+  supplierOptions.value = await listSuppliers(true)
 }
 
 async function fetchItems() {
@@ -356,6 +379,23 @@ async function editPO(row) {
   } finally {
     detailLoading.value = false
   }
+}
+
+function confirmClosePO(row) {
+  $q.dialog({
+    title: 'Close Purchase Order?',
+    message: `Mark ${row.doc_number} as closed? This is now a manual action — GRN receipts no longer auto-close POs.`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await closePO(row.id)
+      $q.notify({ type: 'positive', message: `PO ${row.doc_number} closed` })
+      fetchPOs()
+    } catch (e) {
+      $q.notify({ type: 'negative', message: 'Failed to close PO', caption: e.message })
+    }
+  })
 }
 
 function addLine() {

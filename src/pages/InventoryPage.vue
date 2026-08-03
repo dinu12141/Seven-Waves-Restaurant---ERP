@@ -63,11 +63,6 @@
           <WarehousesTab ref="tabRef" />
         </q-tab-panel>
 
-        <!-- Suppliers -->
-        <q-tab-panel name="suppliers" class="q-pa-none">
-          <SuppliersTab ref="tabRef" />
-        </q-tab-panel>
-
         <!-- Documents List -->
         <q-tab-panel name="documents" class="q-pa-none">
           <DocumentsTab
@@ -116,7 +111,6 @@ import DocumentsTab from 'components/inventory/DocumentsTab.vue'
 import DocumentCreateTab from 'components/inventory/DocumentCreateTab.vue'
 import StockLevelsTab from 'components/inventory/StockLevelsTab.vue'
 import StockLedgerTab from 'components/inventory/StockLedgerTab.vue'
-import SuppliersTab from 'components/inventory/SuppliersTab.vue'
 import RecipesTab from 'components/inventory/RecipesTab.vue'
 import MenuItemsTab from 'components/inventory/MenuItemsTab.vue'
 import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vue'
@@ -185,7 +179,6 @@ function handleExport(format) {
       items: 'Inventory Items',
       warehouses: 'Warehouses',
       'stock-levels': 'Stock Levels',
-      suppliers: 'Suppliers',
       recipes: 'Recipes',
       'menu-items': 'Menu Items',
       'category-management': 'Categories',

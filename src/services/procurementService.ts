@@ -203,6 +203,23 @@ export interface PurchaseReturn {
   lines?: ReturnLine[]
 }
 
+export interface SupplierItemPrice {
+  id?: string
+  supplier_id: string
+  item_id: string
+  uom_id: string
+  last_price: number
+  min_order_qty?: number
+  lead_time_days?: number
+  effective_from?: string
+  effective_to?: string
+  is_active?: boolean
+  // joined for display
+  item_name?: string
+  item_code?: string
+  uom_code?: string
+}
+
 export interface POFilterOptions {
   status?: string
   supplier_id?: string
@@ -373,6 +390,109 @@ export async function getSupplierBalance(supplierId: string) {
     totalCredit,
     computedBalance: totalCredit - totalDebit,
   }
+}
+
+/**
+ * List the "Items Supplied" catalogue rows for a given supplier.
+ * Joins to items for name/code and uom for display code.
+ */
+export async function listSupplierItems(supplierId: string): Promise<SupplierItemPrice[]> {
+  const { company_id } = getContext()
+
+  const { data, error } = await supabase
+    .from('supplier_item_prices')
+    .select(
+      `id, supplier_id, item_id, uom_id, last_price, min_order_qty, lead_time_days,
+       effective_from, effective_to, is_active,
+       items(name, code),
+       uom(code)`,
+    )
+    .eq('supplier_id', supplierId)
+    .eq('company_id', company_id)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    supplier_id: row.supplier_id,
+    item_id: row.item_id,
+    uom_id: row.uom_id,
+    last_price: row.last_price,
+    min_order_qty: row.min_order_qty,
+    lead_time_days: row.lead_time_days,
+    effective_from: row.effective_from,
+    effective_to: row.effective_to,
+    is_active: row.is_active,
+    item_name: row.items?.name ?? '',
+    item_code: row.items?.code ?? '',
+    uom_code: row.uom?.code ?? '',
+  }))
+}
+
+/**
+ * Create or update a supplier item price row.
+ * Pass `id` to update, omit to create.
+ * Validates numeric fields are non-negative before hitting the DB.
+ */
+export async function upsertSupplierItem(row: Partial<SupplierItemPrice> & {
+  supplier_id: string
+  item_id: string
+  uom_id: string
+}) {
+  const { company_id } = getContext()
+
+  const lastPrice = Number(row.last_price ?? 0)
+  const minOrderQty = Number(row.min_order_qty ?? 0)
+  const leadTimeDays = Number(row.lead_time_days ?? 0)
+
+  if (!Number.isFinite(lastPrice) || lastPrice < 0) {
+    throw new Error('Price must be a non-negative number.')
+  }
+  if (!Number.isFinite(minOrderQty) || minOrderQty < 0) {
+    throw new Error('Min order qty must be a non-negative number.')
+  }
+  if (!Number.isFinite(leadTimeDays) || leadTimeDays < 0) {
+    throw new Error('Lead time days must be a non-negative number.')
+  }
+
+  const payload: any = {
+    supplier_id: row.supplier_id,
+    item_id: row.item_id,
+    uom_id: row.uom_id,
+    last_price: lastPrice,
+    min_order_qty: minOrderQty,
+    lead_time_days: Math.trunc(leadTimeDays),
+    is_active: row.is_active ?? true,
+  }
+
+  if (row.id) {
+    const { data, error } = await supabase
+      .from('supplier_item_prices')
+      .update(payload)
+      .eq('id', row.id)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  } else {
+    const { data, error } = await supabase
+      .from('supplier_item_prices')
+      .insert({ ...payload, company_id })
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data
+  }
+}
+
+/**
+ * Delete a supplier item price row.
+ */
+export async function deleteSupplierItem(id: string) {
+  const { error } = await supabase.from('supplier_item_prices').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+  return { success: true }
 }
 
 // ─────────────────────────────────────────────
@@ -646,6 +766,26 @@ export async function cancelPO(poId: string, reason?: string) {
     })
     .eq('id', poId)
     .in('status', ['draft', 'approved'])
+
+  if (error) throw new Error(error.message)
+  return { success: true }
+}
+
+/**
+ * Manually mark a PO as closed.
+ *
+ * Since GRN is now supplier-direct only (no po_line_id linkage — see
+ * designnew.md Section 5, GRN Rework), post_goods_receipt() no longer
+ * auto-closes POs on full receipt for any new GRN. Closing a PO is now
+ * a manual, informational action taken from PurchaseOrdersPage.vue —
+ * "was this PO ever received" is no longer system-enforced.
+ */
+export async function closePO(poId: string) {
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({ status: 'closed', closed_at: new Date().toISOString() })
+    .eq('id', poId)
+    .in('status', ['open', 'approved', 'partial'])
 
   if (error) throw new Error(error.message)
   return { success: true }
@@ -1880,6 +2020,84 @@ export async function getAPAging() {
 }
 
 /**
+ * Supplier Summary: aggregates ap_invoices across ALL suppliers for a company,
+ * filterable by doc_date range. Used by ProcurementReportsPage's "Supplier
+ * Summary" tab. Scoped by company_id only, matching getAPAging()/
+ * getSupplierStatement() above — ap_invoices does carry branch_id too, but
+ * existing procurement reports intentionally aggregate company-wide.
+ */
+export async function getSupplierSummaryReport(
+  filters: { from_date?: string; to_date?: string } = {},
+) {
+  const { company_id } = getContext()
+  const today = new Date().toISOString().slice(0, 10)
+
+  let query = supabase
+    .from('ap_invoices')
+    .select('id, supplier_id, total_amount, paid_amount, balance_due, due_date, status, suppliers(id, name)')
+    .eq('company_id', company_id)
+    .neq('status', 'cancelled')
+
+  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  const bySupplier = new Map<string, {
+    supplier_id: string
+    supplier_name: string
+    total_invoiced: number
+    total_paid: number
+    total_due: number
+    invoice_count: number
+    overdue_count: number
+  }>()
+
+  for (const inv of (data ?? []) as any[]) {
+    const supplierId = inv.supplier_id
+    if (!bySupplier.has(supplierId)) {
+      bySupplier.set(supplierId, {
+        supplier_id: supplierId,
+        supplier_name: inv.suppliers?.name || '—',
+        total_invoiced: 0,
+        total_paid: 0,
+        total_due: 0,
+        invoice_count: 0,
+        overdue_count: 0,
+      })
+    }
+    const row = bySupplier.get(supplierId)!
+    row.total_invoiced += Number(inv.total_amount || 0)
+    row.total_paid += Number(inv.paid_amount || 0)
+    row.total_due += Number(inv.balance_due || 0)
+    row.invoice_count += 1
+    // "Overdue" is derived, not a stored status: due_date has passed and balance remains.
+    if (inv.due_date && inv.due_date < today && Number(inv.balance_due || 0) > 0) {
+      row.overdue_count += 1
+    }
+  }
+
+  const rows = Array.from(bySupplier.values()).sort((a, b) =>
+    a.supplier_name.localeCompare(b.supplier_name),
+  )
+
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.total_invoiced += r.total_invoiced
+      acc.total_paid += r.total_paid
+      acc.total_due += r.total_due
+      acc.invoice_count += r.invoice_count
+      acc.overdue_count += r.overdue_count
+      return acc
+    },
+    { total_invoiced: 0, total_paid: 0, total_due: 0, invoice_count: 0, overdue_count: 0 },
+  )
+
+  return { rows, totals }
+}
+
+/**
  * PO vs GRN vs Invoice Variance: compare ordered qty, received qty, invoiced qty.
  */
 export async function getPOVarianceReport(
@@ -1950,6 +2168,22 @@ export async function saveProcurementSetting(key: string, value: any): Promise<v
   )
 
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Recompute items.avg_cost from scratch for a given month (quantity-weighted
+ * average over that month's POSTED goods receipts). Runs automatically via
+ * pg_cron on the 1st of each month for the previous month; this wrapper is
+ * for the manual "Recalculate Average Cost Now" trigger (Procurement > Settings).
+ * SECURITY DEFINER on the DB side — see fn_recompute_monthly_avg_cost() in
+ * supabase/migrations/20260803_grn_rework_supplier_direct_costing.sql.
+ */
+export async function recomputeMonthlyAvgCost(month?: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fn_recompute_monthly_avg_cost', {
+    p_month: month || null,
+  })
+  if (error) throw new Error(error.message)
+  return (data as number) ?? 0
 }
 
 /**

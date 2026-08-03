@@ -209,17 +209,10 @@
                     LKR
                     {{
                       Number(
-                        props.row.override_price || props.row.menu_items?.base_price || 0,
+                        props.row.menu_items?.base_price || 0,
                       ).toFixed(2)
                     }}
                   </span>
-                  <q-badge
-                    v-if="props.row.override_price"
-                    color="amber-8"
-                    text-color="white"
-                    class="q-ml-xs"
-                    label="Custom"
-                  />
                 </q-td>
               </template>
               <template #body-cell-available="props">
@@ -246,17 +239,7 @@
                   >
                     <q-tooltip>Edit Base Item</q-tooltip>
                   </q-btn>
-                  <q-btn
-                    flat
-                    dense
-                    round
-                    icon="attach_money"
-                    size="sm"
-                    color="amber"
-                    @click="editBookItem(props.row)"
-                  >
-                    <q-tooltip>Override Price</q-tooltip>
-                  </q-btn>
+
                   <q-btn
                     flat
                     dense
@@ -596,31 +579,7 @@
                   </div>
                 </div>
               </q-card-section>
-              <q-separator dark />
-              <q-card-section class="q-pa-md q-pt-sm">
-                <q-input
-                  :dark="$q.dark.isActive"
-                  outlined
-                  dense
-                  v-model.number="overridePrice"
-                  type="number"
-                  prefix="LKR"
-                  label="Book Price Override (optional)"
-                  hint="Leave blank to use base price"
-                >
-                  <template v-slot:append>
-                    <q-btn
-                      v-if="overridePrice"
-                      flat
-                      dense
-                      size="sm"
-                      icon="clear"
-                      color="grey"
-                      @click="overridePrice = null"
-                    />
-                  </template>
-                </q-input>
-              </q-card-section>
+
             </q-card>
             <!-- Summary Card for Multiple Selection -->
             <q-card
@@ -634,31 +593,7 @@
                 <div class="text-h6 text-primary">{{ addFilterItemIds.length }} Items Selected</div>
                 <div class="text-caption text-grey-4">Price override will apply to ALL selected items if provided.</div>
               </q-card-section>
-              <q-separator dark />
-              <q-card-section class="q-pa-md q-pt-sm">
-                <q-input
-                  :dark="$q.dark.isActive"
-                  outlined
-                  dense
-                  v-model.number="overridePrice"
-                  type="number"
-                  prefix="LKR"
-                  label="Batch Price Override (optional)"
-                  hint="Leave blank to use individual base prices"
-                >
-                  <template v-slot:append>
-                    <q-btn
-                      v-if="overridePrice"
-                      flat
-                      dense
-                      size="sm"
-                      icon="clear"
-                      color="grey"
-                      @click="overridePrice = null"
-                    />
-                  </template>
-                </q-input>
-              </q-card-section>
+
             </q-card>
           </transition>
         </q-card-section>
@@ -677,34 +612,7 @@
       </q-card>
     </q-dialog>
 
-    <!-- Override Price Dialog -->
-    <q-dialog v-model="priceDialog.show" persistent>
-      <q-card
-        :dark="$q.dark.isActive"
-        :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-white text-black'"
-        style="min-width: 350px"
-      >
-        <q-card-section>
-          <div class="text-h6">Override Price</div>
-          <div class="text-caption text-grey-5">{{ priceDialog.itemName }}</div>
-        </q-card-section>
-        <q-card-section>
-          <q-input
-            :dark="$q.dark.isActive"
-            outlined
-            v-model.number="priceDialog.price"
-            type="number"
-            label="Override Price (leave empty for default)"
-            prefix="LKR"
-            clearable
-          />
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn color="primary" label="Save" @click="savePriceOverride" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+
   </div>
 </template>
 
@@ -747,7 +655,6 @@ const bookDialog = reactive({
 const addFilterCategoryId = ref(null)
 const addFilterSubCategoryId = ref(null)
 const addFilterItemIds = ref([])
-const overridePrice = ref(null)
 const addingItem = ref(false)
 const itemSearchText = ref('')
 const filteredItemOptions = ref([])
@@ -761,12 +668,6 @@ const allKitchens = ref([])
 const kitchenMappings = ref([])
 
 // Price Override
-const priceDialog = reactive({
-  show: false,
-  bookItemId: null,
-  itemName: '',
-  price: null,
-})
 
 const bookItemCatFilter = ref(null)
 const bookItemSubFilter = ref(null)
@@ -1157,7 +1058,6 @@ async function openAddItems() {
   addFilterCategoryId.value = null
   addFilterSubCategoryId.value = null
   addFilterItemIds.value = []
-  overridePrice.value = null
   itemSearchText.value = ''
 
   // Pre-load the items BEFORE opening the dialog
@@ -1177,7 +1077,6 @@ async function saveNewItemToBook() {
     const payloads = addFilterItemIds.value.map((itemId, idx) => ({
       menu_book_id: selectedBookId.value,
       menu_item_id: itemId,
-      override_price: overridePrice.value || null,
       sort_order: bookItems.value.length + idx + 1,
     }))
 
@@ -1188,8 +1087,7 @@ async function saveNewItemToBook() {
 
     // Reset selection to allow adding another item quickly
     addFilterItemIds.value = []
-    overridePrice.value = null
-
+  
     await fetchBookItems()
     fetchBooks() // update count
 
@@ -1224,22 +1122,7 @@ async function toggleItemAvailability(row) {
   fetchBookItems()
 }
 
-function editBookItem(row) {
-  priceDialog.bookItemId = row.id
-  priceDialog.itemName = row.menu_items?.name || ''
-  priceDialog.price = row.override_price
-  priceDialog.show = true
-}
 
-async function savePriceOverride() {
-  await supabase
-    .from('menu_book_items')
-    .update({ override_price: priceDialog.price || null })
-    .eq('id', priceDialog.bookItemId)
-  priceDialog.show = false
-  fetchBookItems()
-  $q.notify({ type: 'positive', message: 'Price override saved' })
-}
 
 defineExpose({
   columns: itemColumns,

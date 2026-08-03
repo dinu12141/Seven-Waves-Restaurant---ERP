@@ -272,6 +272,11 @@ const routes = [
         meta: { roles: ['admin'], module: 'admin', permission: 'admin.settings.view' },
       },
       {
+        path: 'admin/backup',
+        component: () => import('pages/admin/SystemBackupPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin'], module: 'admin', permission: 'admin.backup.manage' },
+      },
+      {
         path: 'audit',
         component: () => import('pages/audit/AuditCenterPage.vue'),
         meta: { roles: ['admin', 'super_admin'], module: 'audit', permission: 'audit.view' },

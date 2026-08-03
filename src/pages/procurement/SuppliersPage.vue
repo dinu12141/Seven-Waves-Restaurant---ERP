@@ -252,18 +252,216 @@
                   </div>
                 </div>
               </ERPFormSection>
+
+              <ERPFormSection v-if="isEditing && form.id" title="Items Supplied" collapsible>
+                <q-table
+                  :rows="supplierItems"
+                  :columns="supplierItemColumns"
+                  row-key="id"
+                  :loading="loadingSupplierItems"
+                  flat
+                  bordered
+                  dense
+                  hide-pagination
+                  :rows-per-page-options="[0]"
+                  no-data-label="No items linked to this supplier yet"
+                  class="q-mb-md"
+                >
+                  <template v-slot:body-cell-is_active="props">
+                    <q-td :props="props">
+                      <q-toggle
+                        :model-value="props.row.is_active"
+                        dense
+                        color="green"
+                        @update:model-value="(val) => toggleSupplierItemActive(props.row, val)"
+                      />
+                    </q-td>
+                  </template>
+                  <template v-slot:body-cell-actions="props">
+                    <q-td :props="props" align="right">
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        color="negative"
+                        icon="delete"
+                        @click="removeSupplierItem(props.row)"
+                      >
+                        <q-tooltip>Remove</q-tooltip>
+                      </q-btn>
+                    </q-td>
+                  </template>
+                </q-table>
+
+                <div class="text-caption text-weight-medium q-mb-xs">Add Item</div>
+                <div class="row q-col-gutter-sm items-end">
+                  <div class="col-12 col-sm-4">
+                    <q-select
+                      v-model="newSupplierItem.item_id"
+                      :options="itemOptions"
+                      option-label="label"
+                      option-value="id"
+                      emit-value
+                      map-options
+                      dense
+                      outlined
+                      use-input
+                      input-debounce="0"
+                      clearable
+                      placeholder="Search item..."
+                      @filter="filterItemOptions"
+                      @update:model-value="onSupplierItemPicked"
+                    >
+                      <template v-slot:append>
+                        <q-btn
+                          v-if="canEditSupplierItems"
+                          flat
+                          dense
+                          round
+                          size="sm"
+                          icon="add"
+                          color="primary"
+                          @click.stop="openNewItemDialog"
+                        >
+                          <q-tooltip>+ New Item</q-tooltip>
+                        </q-btn>
+                      </template>
+                    </q-select>
+                  </div>
+                  <div class="col-6 col-sm-2">
+                    <q-select
+                      v-model="newSupplierItem.uom_id"
+                      :options="uomSelectOptions"
+                      option-label="label"
+                      option-value="id"
+                      emit-value
+                      map-options
+                      dense
+                      outlined
+                      label="UOM"
+                    />
+                  </div>
+                  <div class="col-6 col-sm-2">
+                    <q-input
+                      v-model.number="newSupplierItem.last_price"
+                      type="number"
+                      dense
+                      outlined
+                      label="Price"
+                      min="0"
+                    />
+                  </div>
+                  <div class="col-6 col-sm-2">
+                    <q-input
+                      v-model.number="newSupplierItem.min_order_qty"
+                      type="number"
+                      dense
+                      outlined
+                      label="Min Qty"
+                      min="0"
+                    />
+                  </div>
+                  <div class="col-6 col-sm-1">
+                    <q-input
+                      v-model.number="newSupplierItem.lead_time_days"
+                      type="number"
+                      dense
+                      outlined
+                      label="Lead (d)"
+                      min="0"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-1">
+                    <q-btn
+                      class="full-width"
+                      color="primary"
+                      unelevated
+                      dense
+                      icon="add"
+                      :loading="savingSupplierItem"
+                      :disable="!newSupplierItem.item_id || !newSupplierItem.uom_id"
+                      @click="addSupplierItem"
+                    />
+                  </div>
+                </div>
+              </ERPFormSection>
             </ERPFormCard>
           </div>
         </q-scroll-area>
       </div>
     </q-dialog>
+
+    <!-- + New Item inline dialog -->
+    <q-dialog v-model="newItemDialogVisible" persistent>
+      <q-card style="min-width: 380px; max-width: 95vw">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">New Item</div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="q-gutter-sm">
+          <q-input v-model="newItemForm.name" label="Item Name *" dense outlined />
+          <q-select
+            v-model="newItemForm.category_id"
+            :options="categorySelectOptions"
+            option-label="label"
+            option-value="id"
+            emit-value
+            map-options
+            label="Category *"
+            dense
+            outlined
+          />
+          <q-select
+            v-model="newItemForm.inventory_uom_id"
+            :options="uomSelectOptions"
+            option-label="label"
+            option-value="id"
+            emit-value
+            map-options
+            label="Unit of Measure *"
+            dense
+            outlined
+          />
+          <q-input
+            v-model.number="newItemForm.reorder_level"
+            type="number"
+            label="Reorder Level"
+            dense
+            outlined
+            min="0"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            unelevated
+            no-caps
+            label="Create Item"
+            color="primary"
+            :loading="savingNewItem"
+            @click="saveNewItem"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
-import { listSuppliers, upsertSupplier, deleteSupplier } from 'src/services/procurementService'
+import {
+  listSuppliers,
+  upsertSupplier,
+  deleteSupplier,
+  listSupplierItems,
+  upsertSupplierItem,
+  deleteSupplierItem,
+} from 'src/services/procurementService'
+import { useItemsList, useCategoryList, useUomList } from 'src/services/inventoryService'
+import { usePermission } from 'src/core/rbac/usePermission'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import ERPFormCard from 'components/erp/ERPFormCard.vue'
 import ERPFormSection from 'components/erp/ERPFormSection.vue'
@@ -271,6 +469,8 @@ import ERPFormField from 'components/erp/ERPFormField.vue'
 import ERPStyledToggle from 'components/erp/ERPStyledToggle.vue'
 
 const $q = useQuasar()
+const { can } = usePermission()
+const canEditSupplierItems = computed(() => can('procurement.suppliers.edit'))
 
 const suppliers = ref([])
 const loading = ref(false)
@@ -350,6 +550,8 @@ function openDialog() {
   isEditing.value = false
   form.value = { ...defaultForm }
   clearErrors()
+  supplierItems.value = []
+  resetNewSupplierItem()
   dialogVisible.value = true
 }
 
@@ -358,6 +560,7 @@ function editSupplier(row) {
   form.value = { ...row }
   clearErrors()
   dialogVisible.value = true
+  fetchSupplierItems(row.id)
 }
 
 function validateForm() {
@@ -391,11 +594,21 @@ async function saveSupplier() {
     if (isEditing.value && form.value.id) {
       await upsertSupplier({ ...form.value, name: form.value.name.trim(), code: form.value.code })
       $q.notify({ type: 'positive', message: 'Supplier updated' })
+      dialogVisible.value = false
     } else {
-      await upsertSupplier({ ...form.value, name: form.value.name.trim(), code: form.value.code })
+      const created = await upsertSupplier({
+        ...form.value,
+        name: form.value.name.trim(),
+        code: form.value.code,
+      })
       $q.notify({ type: 'positive', message: 'Supplier created' })
+      // Switch into edit mode in the same dialog (instead of closing it) so
+      // "Items Supplied" becomes visible right away — the user can add the
+      // items this supplier sells without having to reopen the dialog.
+      form.value = { ...created }
+      isEditing.value = true
+      fetchSupplierItems(created.id)
     }
-    dialogVisible.value = false
     fetchSuppliers()
   } catch (err) {
     $q.notify({
@@ -428,5 +641,230 @@ function deleteSupplierAction(row) {
       })
     }
   })
+}
+
+// ─────────────────────────────────────────────
+// Items Supplied catalogue
+// ─────────────────────────────────────────────
+const { items: allItems, listItems, createItem } = useItemsList()
+const { categories, listCategories } = useCategoryList()
+const { uoms, listUoms } = useUomList()
+
+const supplierItems = ref([])
+const loadingSupplierItems = ref(false)
+const savingSupplierItem = ref(false)
+
+const supplierItemColumns = [
+  { name: 'item_name', label: 'Item', field: 'item_name', align: 'left' },
+  { name: 'uom_code', label: 'UOM', field: 'uom_code', align: 'center' },
+  {
+    name: 'last_price',
+    label: 'Last Price',
+    field: 'last_price',
+    align: 'right',
+    format: (v) => formatCurrency(v),
+  },
+  { name: 'min_order_qty', label: 'Min Qty', field: 'min_order_qty', align: 'right' },
+  { name: 'lead_time_days', label: 'Lead Time (d)', field: 'lead_time_days', align: 'right' },
+  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' },
+  { name: 'actions', label: '', field: 'actions', align: 'right' },
+]
+
+const itemOptions = ref([])
+
+function resetNewSupplierItem() {
+  newSupplierItem.value = {
+    item_id: null,
+    uom_id: null,
+    last_price: 0,
+    min_order_qty: 0,
+    lead_time_days: 0,
+  }
+}
+
+const newSupplierItem = ref({
+  item_id: null,
+  uom_id: null,
+  last_price: 0,
+  min_order_qty: 0,
+  lead_time_days: 0,
+})
+
+const uomSelectOptions = computed(() =>
+  uoms.value.map((u) => ({
+    label: u.name && u.name !== u.code ? `${u.code} — ${u.name}` : u.code,
+    id: u.id,
+  })),
+)
+
+const categorySelectOptions = computed(() =>
+  categories.value.map((c) => ({ label: c.name, id: c.id })),
+)
+
+async function fetchSupplierItems(supplierId) {
+  loadingSupplierItems.value = true
+  try {
+    supplierItems.value = await listSupplierItems(supplierId)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to load items supplied', caption: err.message })
+  } finally {
+    loadingSupplierItems.value = false
+  }
+}
+
+async function ensureItemsLoaded() {
+  if (!allItems.value.length) await listItems()
+  if (!categories.value.length) await listCategories()
+  if (!uoms.value.length) await listUoms()
+  itemOptions.value = allItems.value.map((i) => ({
+    label: `${i.name} (${i.code})`,
+    id: i.id,
+    inventory_uom_id: i.inventory_uom_id || i.uom_id,
+  }))
+}
+
+function filterItemOptions(val, update) {
+  update(() => {
+    if (!val) {
+      itemOptions.value = allItems.value.map((i) => ({
+        label: `${i.name} (${i.code})`,
+        id: i.id,
+        inventory_uom_id: i.inventory_uom_id || i.uom_id,
+      }))
+      return
+    }
+    const q = val.toLowerCase()
+    itemOptions.value = allItems.value
+      .filter((i) => i.name?.toLowerCase().includes(q) || i.code?.toLowerCase().includes(q))
+      .map((i) => ({
+        label: `${i.name} (${i.code})`,
+        id: i.id,
+        inventory_uom_id: i.inventory_uom_id || i.uom_id,
+      }))
+  })
+}
+
+function onSupplierItemPicked(itemId) {
+  if (!itemId) return
+  const picked = allItems.value.find((i) => i.id === itemId)
+  if (picked) {
+    newSupplierItem.value.uom_id = picked.inventory_uom_id || picked.uom_id || null
+  }
+}
+
+watch(
+  () => isEditing.value && dialogVisible.value,
+  (open) => {
+    if (open) ensureItemsLoaded()
+  },
+)
+
+async function addSupplierItem() {
+  if (!form.value.id) return
+  if (!newSupplierItem.value.item_id || !newSupplierItem.value.uom_id) {
+    $q.notify({ type: 'warning', message: 'Select an item and UOM first' })
+    return
+  }
+  if (newSupplierItem.value.last_price < 0 || newSupplierItem.value.min_order_qty < 0 || newSupplierItem.value.lead_time_days < 0) {
+    $q.notify({ type: 'negative', message: 'Price, min qty and lead time cannot be negative' })
+    return
+  }
+  savingSupplierItem.value = true
+  try {
+    await upsertSupplierItem({
+      supplier_id: form.value.id,
+      item_id: newSupplierItem.value.item_id,
+      uom_id: newSupplierItem.value.uom_id,
+      last_price: Number(newSupplierItem.value.last_price) || 0,
+      min_order_qty: Number(newSupplierItem.value.min_order_qty) || 0,
+      lead_time_days: Number(newSupplierItem.value.lead_time_days) || 0,
+    })
+    $q.notify({ type: 'positive', message: 'Item added to supplier catalogue' })
+    resetNewSupplierItem()
+    await fetchSupplierItems(form.value.id)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to add item', caption: err.message })
+  } finally {
+    savingSupplierItem.value = false
+  }
+}
+
+async function toggleSupplierItemActive(row, val) {
+  try {
+    await upsertSupplierItem({ ...row, is_active: val })
+    row.is_active = val
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to update item', caption: err.message })
+  }
+}
+
+function removeSupplierItem(row) {
+  $q.dialog({
+    title: 'Remove Item',
+    message: `Remove "${row.item_name}" from this supplier's catalogue?`,
+    cancel: true,
+    persistent: true,
+    color: 'negative',
+  }).onOk(async () => {
+    try {
+      await deleteSupplierItem(row.id)
+      $q.notify({ type: 'positive', message: 'Item removed' })
+      await fetchSupplierItems(form.value.id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: 'Failed to remove item', caption: err.message })
+    }
+  })
+}
+
+// ── + New Item inline dialog ──────────────────────────────────────────────────
+const newItemDialogVisible = ref(false)
+const savingNewItem = ref(false)
+const newItemForm = ref({
+  name: '',
+  category_id: null,
+  inventory_uom_id: null,
+  reorder_level: 0,
+})
+
+function openNewItemDialog() {
+  newItemForm.value = { name: '', category_id: null, inventory_uom_id: null, reorder_level: 0 }
+  newItemDialogVisible.value = true
+}
+
+async function saveNewItem() {
+  if (!newItemForm.value.name?.trim() || !newItemForm.value.category_id || !newItemForm.value.inventory_uom_id) {
+    $q.notify({ type: 'warning', message: 'Name, category and UOM are required' })
+    return
+  }
+  if (Number(newItemForm.value.reorder_level) < 0) {
+    $q.notify({ type: 'negative', message: 'Reorder level cannot be negative' })
+    return
+  }
+  savingNewItem.value = true
+  try {
+    const created = await createItem({
+      name: newItemForm.value.name.trim(),
+      category_id: newItemForm.value.category_id,
+      inventory_uom_id: newItemForm.value.inventory_uom_id,
+      reorder_level: Number(newItemForm.value.reorder_level) || 0,
+      is_active: true,
+    })
+    $q.notify({ type: 'positive', message: 'Item created' })
+    newItemDialogVisible.value = false
+    await listItems()
+    itemOptions.value = allItems.value.map((i) => ({
+      label: `${i.name} (${i.code})`,
+      id: i.id,
+      inventory_uom_id: i.inventory_uom_id || i.uom_id,
+    }))
+    if (created?.id) {
+      newSupplierItem.value.item_id = created.id
+      onSupplierItemPicked(created.id)
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to create item', caption: err.message })
+  } finally {
+    savingNewItem.value = false
+  }
 }
 </script>

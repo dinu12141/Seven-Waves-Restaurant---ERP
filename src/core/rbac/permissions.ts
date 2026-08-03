@@ -17,6 +17,7 @@ import type { UserRole } from 'src/stores/auth'
  *   pos.order.void
  *   pos.order.discount
  *   admin.users.manage
+ *   admin.backup.manage
  */
 
 /** Role → default permissions mapping (database overrides this) */

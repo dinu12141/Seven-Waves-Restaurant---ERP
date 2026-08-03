@@ -80,55 +80,6 @@
         <q-separator />
 
         <q-card-section class="col scroll q-pa-md">
-          <!-- Selection Mode (Only for New) -->
-          <div
-            v-if="!isEditing && !form.po_id && !form.lines.length"
-            class="row q-col-gutter-md q-mb-md q-pa-sm rounded-borders"
-            style="background: var(--erp-bg-hover); border: 1px solid var(--erp-border)"
-          >
-            <div class="col-12 text-subtitle2 text-weight-bold">Create From:</div>
-            <div class="col-12 row q-gutter-md">
-              <q-radio v-model="createMode" val="po" label="From Purchase Order" />
-              <q-radio v-model="createMode" val="direct" label="Direct Receipt" />
-            </div>
-
-            <div v-if="createMode === 'po'" class="col-12 row q-col-gutter-md items-center">
-              <div class="col-12 col-md-5">
-                <q-select
-                  v-model="selectedSupplier"
-                  :options="supplierOptions"
-                  option-label="name"
-                  label="Select Supplier"
-                  outlined
-                  dense
-                  @update:model-value="loadPOs"
-                />
-              </div>
-              <div class="col-12 col-md-5">
-                <q-select
-                  v-model="selectedPO"
-                  :options="poOptions"
-                  :option-label="(opt) => opt.doc_number"
-                  label="Select PO"
-                  outlined
-                  dense
-                  :disable="!selectedSupplier"
-                />
-              </div>
-              <div class="col-12 col-md-2">
-                <q-btn
-                  label="Load"
-                  color="primary"
-                  unelevated
-                  :disable="!selectedPO"
-                  @click="loadFromPO"
-                />
-              </div>
-            </div>
-          </div>
-
-          <q-separator v-if="!isEditing && !form.po_id && !form.lines.length" class="q-my-md" />
-
           <DocHeader
             title="Goods Receipt"
             icon="inventory"
@@ -151,8 +102,8 @@
             :item-options="itemOptions"
             :uom-options="uomOptions"
             title="Items Received"
-            :allow-add="createMode === 'direct' || isEditing"
-            :allow-edit-item="createMode === 'direct'"
+            allow-add
+            allow-edit-item
             allow-edit-uom
             @add-line="addLine"
             @remove-line="removeLine"
@@ -206,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {
   listGRNs,
@@ -219,9 +170,7 @@ import {
   listWarehouses,
   listItems,
   listUoms,
-  listPO,
-  listInventoryPOs,
-  getAnyPODetails,
+  listSupplierItems,
 } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
@@ -240,14 +189,13 @@ const deleteTarget = ref(null)
 
 const grns = ref([])
 const supplierOptions = ref([])
-const poOptions = ref([])
 const warehouseOptions = ref([])
 const itemOptions = ref([])
 const uomOptions = ref([])
 
-const createMode = ref('po')
-const selectedSupplier = ref(null)
-const selectedPO = ref(null)
+// Cache of supplier_item_prices rows for the currently selected supplier,
+// keyed by item_id, used to pre-fill unit_cost when a line's item changes.
+const supplierPriceMap = ref({})
 
 // Form
 const defaultForm = {
@@ -260,8 +208,6 @@ const defaultForm = {
   doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
   status: 'draft',
   lines: [],
-  po: null,
-  po_id: '',
   total_amount: 0,
   remarks: '',
 }
@@ -350,69 +296,23 @@ async function fetchUoms() {
   uomOptions.value = await listUoms()
 }
 
-// ── PO Loading ─────────────────────────────────────────────────────────
-async function loadPOs(supplier) {
-  selectedPO.value = null
-  poOptions.value = []
-  if (!supplier) return
-
-  const [procPOs, invPOs] = await Promise.all([
-    listPO({ supplier_id: supplier.id }),
-    listInventoryPOs({ supplier_id: supplier.id }),
-  ])
-
-  // Merge uniquely by doc_number
-  const procNumbers = new Set(procPOs.map((p) => p.doc_number))
-  const uniqueInvPOs = invPOs.filter((p) => !procNumbers.has(p.doc_number))
-  const allPOs = [...procPOs, ...uniqueInvPOs]
-
-  // Allow approved, open, and partial POs (partial = already received some qty)
-  poOptions.value = allPOs.filter((p) =>
-    ['approved', 'open', 'partial'].includes(p.status),
-  )
-}
-
-async function loadFromPO() {
-  if (!selectedPO.value) return
-  loading.value = true
+// ── Supplier item price prefill ────────────────────────────────────────
+// Loads supplier_item_prices for the currently selected supplier so line
+// unit_cost can be pre-filled from the supplier's last quoted price.
+async function loadSupplierPrices(supplierId) {
+  supplierPriceMap.value = {}
+  if (!supplierId) return
   try {
-    const po = await getAnyPODetails(selectedPO.value.id, selectedPO.value._source || 'procurement')
-    if (!po) throw new Error('Could not fetch PO details')
-
-    form.value.supplier = supplierOptions.value.find((s) => s.id === po.supplier_id) || null
-    form.value.warehouse = warehouseOptions.value.find((w) => w.id === po.warehouse_id) || null
-    form.value.po = po
-    form.value.po_id = po.id
-
-    // For partial POs: only load lines that still have open qty
-    const lines = (po.lines || [])
-      .filter((l) => (l.open_qty ?? l.quantity) > 0)
-      .map((l, idx) => ({
-        line_number: idx + 1,
-        item_id: l.item_id,
-        item_name: l.items?.name || l.item_name || '',
-        uom_id: l.uom_id,
-        uom_name: l.uom?.name || l.uom?.code || l.uom_name || '',
-        quantity: l.open_qty ?? l.quantity,
-        unit_cost: l.unit_price || 0,
-        line_total: (l.open_qty ?? l.quantity) * (l.unit_price || 0),
-        po_line_id: l.id,
-      }))
-
-    if (lines.length === 0) {
-      $q.notify({ type: 'warning', message: 'This PO has no remaining open quantities to receive.' })
-      return
+    const rows = await listSupplierItems(supplierId)
+    const map = {}
+    for (const row of rows || []) {
+      if (row.item_id && row.is_active !== false) {
+        map[row.item_id] = row.last_price ?? 0
+      }
     }
-
-    form.value.lines = lines
-    form.value.is_inventory_po = selectedPO.value._source === 'inventory'
-    selectedSupplier.value = null
-    selectedPO.value = null
-    $q.notify({ type: 'positive', message: `Loaded from PO: ${po.doc_number}` })
+    supplierPriceMap.value = map
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Load Failed', caption: e.message })
-  } finally {
-    loading.value = false
+    console.error('Failed to load supplier item prices:', e)
   }
 }
 
@@ -423,9 +323,7 @@ function formatCurrency(val) {
 function createNewGRN() {
   isEditing.value = false
   form.value = { ...defaultForm, lines: [] }
-  createMode.value = 'po'
-  selectedSupplier.value = null
-  selectedPO.value = null
+  supplierPriceMap.value = {}
   dialogVisible.value = true
 }
 
@@ -457,7 +355,6 @@ async function editGRN(row) {
       unit_cost: l.unit_cost || 0,
       unit_price: l.unit_cost || 0,
       line_total: l.line_total || l.quantity * (l.unit_cost || 0),
-      po_line_id: l.po_line_id || null,
       batch_no: l.batch_no || '',
       expiry_date: l.expiry_date || '',
     }))
@@ -510,7 +407,28 @@ function onItemChange(line, item) {
   line.item_name = item.name
   line.uom_id = item.purchase_uom_id || item.inventory_uom_id || item.default_uom_id || item.uom_id || ''
   line.uom_name = item.uom_name || item.uom?.name || item.uom?.code || 'PCS'
+
+  // Pre-fill unit price from supplier_item_prices.last_price as a starting
+  // suggestion — user can still override with the actual invoice price.
+  const suggestedPrice = supplierPriceMap.value[item.id]
+  line.unit_cost = suggestedPrice != null ? suggestedPrice : 0
+  line.unit_price = line.unit_cost
+  line.line_total = (line.quantity || 0) * line.unit_cost
 }
+
+// Reload supplier price suggestions whenever the GRN's supplier changes
+// (new GRN creation flow — supplier is chosen via DocHeader).
+watch(
+  () => form.value.supplier,
+  (supplier) => {
+    const supplierId = supplier?.id
+    if (supplierId) {
+      loadSupplierPrices(supplierId)
+    } else {
+      supplierPriceMap.value = {}
+    }
+  },
+)
 
 function onUomChange(line, uom) {
   if (!uom) return
@@ -525,10 +443,9 @@ async function saveGRN(targetStatus) {
     let grn
     const supplierId = form.value.supplier?.id || form.value.supplier_id
     const warehouseId = form.value.warehouse?.id || form.value.warehouse_id
-    const isInvSource = !!form.value.is_inventory_po
 
     if (!form.value.id) {
-      // New GRN
+      // New GRN — always supplier-direct, never linked to a PO.
       if (!supplierId || !warehouseId) {
         $q.notify({ type: 'warning', message: 'Supplier and Warehouse are required' })
         return
@@ -540,8 +457,6 @@ async function saveGRN(targetStatus) {
 
       const lines = form.value.lines.map((l, idx) => ({
         line_number: idx + 1,
-        po_line_id: !isInvSource ? (l.po_line_id || null) : null,
-        inventory_po_line_id: isInvSource ? (l.po_line_id || null) : null,
         item_id: l.item_id,
         uom_id: l.uom_id,
         quantity: l.quantity,
@@ -556,8 +471,6 @@ async function saveGRN(targetStatus) {
           supplier_id: supplierId,
           warehouse_id: warehouseId,
           doc_date: form.value.doc_date,
-          po_id: !isInvSource ? (form.value.po_id || null) : null,
-          inventory_po_id: isInvSource ? (form.value.po_id || null) : null,
           remarks: form.value.remarks,
         },
         lines,
@@ -566,8 +479,6 @@ async function saveGRN(targetStatus) {
       // Existing draft GRN — update header only (lines are read-only in view mode for now)
       const lines = form.value.lines.map((l, idx) => ({
         line_number: idx + 1,
-        po_line_id: l.po_line_id || null,
-        inventory_po_line_id: l.inventory_po_line_id || null,
         item_id: l.item_id,
         uom_id: l.uom_id,
         quantity: l.quantity,

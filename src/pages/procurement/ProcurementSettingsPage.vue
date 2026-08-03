@@ -145,6 +145,52 @@
         </q-card>
       </div>
 
+      <!-- ─────────────────────── ITEM COSTING ─────────────────────── -->
+      <div class="col-12 col-md-6">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6 q-mb-sm">
+              <q-icon name="calculate" class="q-mr-sm" color="deep-purple" />
+              Item Average Cost
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              <code>items.avg_cost</code> is recalculated automatically on the 1st of every
+              month, from scratch, as a quantity-weighted average of that month's posted GRN
+              prices/quantities — each GRN keeps its own actual invoice price unchanged (no
+              smoothing at receipt time). Items with no GRNs in a given month keep their
+              existing average cost.
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section>
+            <div class="row items-center q-col-gutter-md">
+              <div class="col-12 col-sm-7">
+                <div class="text-body2">
+                  Recalculates <strong>{{ currentMonthLabel }}</strong> using this month's
+                  posted GRNs so far.
+                </div>
+              </div>
+              <div class="col-12 col-sm-5 text-right">
+                <q-btn
+                  v-if="canRecalcAvgCost"
+                  unelevated
+                  color="deep-purple"
+                  icon="refresh"
+                  label="Recalculate Average Cost Now"
+                  :loading="recalculating"
+                  @click="recalcAvgCostNow"
+                />
+                <div v-else class="text-caption text-grey-6">
+                  You don't have permission to run this.
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+
       <!-- ─────────────────────── STATUS INFO ─────────────────────── -->
       <div class="col-12">
         <q-banner rounded class="bg-blue-1 text-blue-9">
@@ -161,16 +207,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useQuasar, date as qdate } from 'quasar'
 import {
   getProcurementSettings,
   saveProcurementSetting,
   listPaymentTerms,
+  recomputeMonthlyAvgCost,
 } from 'src/services/procurementService'
+import { usePermission } from 'src/core/rbac/usePermission'
 
 const $q = useQuasar()
+const { can } = usePermission()
 const loading = ref(true)
+const recalculating = ref(false)
+// Same permission used for other procurement-admin actions (supplier item
+// catalogue edits) — no dedicated permission exists for this yet.
+const canRecalcAvgCost = computed(() => can('procurement.suppliers.edit'))
+const currentMonthLabel = computed(() => qdate.formatDate(Date.now(), 'MMMM YYYY'))
 
 const settings = reactive({
   po_approval_required: false,
@@ -228,6 +282,23 @@ async function save(key, value) {
     $q.notify({ type: 'positive', message: 'Setting saved', timeout: 1500 })
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'Failed to save setting' })
+  }
+}
+
+async function recalcAvgCostNow() {
+  recalculating.value = true
+  try {
+    const currentMonth = qdate.formatDate(Date.now(), 'YYYY-MM-DD')
+    const updated = await recomputeMonthlyAvgCost(currentMonth)
+    $q.notify({
+      type: 'positive',
+      message: `Average cost recalculated for ${updated} item(s)`,
+      caption: currentMonthLabel.value,
+    })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to recalculate average cost' })
+  } finally {
+    recalculating.value = false
   }
 }
 </script>

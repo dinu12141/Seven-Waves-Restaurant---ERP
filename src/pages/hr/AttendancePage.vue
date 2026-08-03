@@ -243,6 +243,24 @@
             :label="props.row.status"
             class="text-capitalize"
           />
+          <q-icon
+            v-if="props.row.is_manual_override"
+            name="pan_tool"
+            size="14px"
+            color="amber-8"
+            class="q-ml-xs"
+          >
+            <q-tooltip>Manually overridden by HR/Manager — not auto-calculated</q-tooltip>
+          </q-icon>
+          <q-icon
+            v-else-if="props.row.status === 'no_pay'"
+            name="smart_toy"
+            size="14px"
+            color="grey-6"
+            class="q-ml-xs"
+          >
+            <q-tooltip>Auto-calculated (leave-cap split or absentee sweep)</q-tooltip>
+          </q-icon>
         </q-td>
       </template>
       <template #body-cell-actions="props">
@@ -353,6 +371,15 @@
               :options="statusOptions"
             />
           </div>
+
+          <q-checkbox
+            v-if="canManageAttendance"
+            v-model="editForm.is_manual_override"
+            label="Manual override (lock this status — auto no-pay/leave calc will not overwrite it)"
+            color="amber-8"
+            :dark="$q.dark.isActive"
+            dense
+          />
 
           <!-- Auto-calculated metrics -->
           <div
@@ -612,6 +639,15 @@
               :options="statusOptions"
             />
           </div>
+
+          <q-checkbox
+            v-if="canManageAttendance"
+            v-model="markForm.is_manual_override"
+            label="Manual override (lock this status — auto no-pay/leave calc will not overwrite it)"
+            color="amber-8"
+            :dark="$q.dark.isActive"
+            dense
+          />
 
           <!-- Auto-calculated results panel -->
           <div
@@ -981,6 +1017,7 @@ const editForm = reactive({
   scheduled_start: null,
   scheduled_end: null,
   no_shift: false,
+  is_manual_override: false,
 })
 
 // Mark Dialog
@@ -1000,6 +1037,7 @@ const markForm = reactive({
   scheduled_start: null,
   scheduled_end: null,
   no_shift: false,
+  is_manual_override: false,
 })
 
 const stats = reactive({ present: 0, absent: 0, late: 0, leave: 0, no_pay: 0 })
@@ -1300,6 +1338,7 @@ function editRecord(row) {
   editForm.scheduled_start = row.scheduled_start || null
   editForm.scheduled_end = row.scheduled_end || null
   editForm.no_shift = false
+  editForm.is_manual_override = !!row.is_manual_override
   showEdit.value = true
 }
 
@@ -1314,6 +1353,13 @@ async function saveEdit() {
       overtime_hours: editForm.overtime_hours,
       early_departure_minutes: editForm.early_departure_minutes,
       shift_id: editForm.shift_id,
+    }
+    // Locking this row prevents the leave-approval trigger / absentee sweep
+    // from silently overwriting an HR-chosen status later (see the
+    // is_manual_override guard added to _apply_leave_attendance_rows). Only
+    // sent when the user actually has manage rights on this page.
+    if (canManageAttendance.value) {
+      payload.is_manual_override = !!editForm.is_manual_override
     }
     if (editForm.scheduled_start) payload.scheduled_start = editForm.scheduled_start
     if (editForm.scheduled_end) payload.scheduled_end = editForm.scheduled_end
@@ -1368,6 +1414,7 @@ function openMarkAttendance() {
     scheduled_start: null,
     scheduled_end: null,
     no_shift: false,
+    is_manual_override: false,
   })
   showMark.value = true
 }
@@ -1400,6 +1447,9 @@ async function saveMarkAttendance() {
     // reports have it (values are re-derived server-side on insert anyway).
     if (markForm.scheduled_start) payload.scheduled_start = markForm.scheduled_start
     if (markForm.scheduled_end) payload.scheduled_end = markForm.scheduled_end
+    if (canManageAttendance.value) {
+      payload.is_manual_override = !!markForm.is_manual_override
+    }
 
     const { error } = await supabase.from('attendance_records').insert(payload)
     if (error) throw error
