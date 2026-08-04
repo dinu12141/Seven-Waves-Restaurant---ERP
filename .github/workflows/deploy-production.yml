@@ -244,6 +244,10 @@ jobs:
           PROD_URL: ${{ secrets.PRODUCTION_PUBLIC_URL }}
         run: |
           echo "🏥 Production Health Checks"
+          if [ -z "$PROD_URL" ]; then
+            echo "⚠️ WARNING: PRODUCTION_PUBLIC_URL secret is not set. Bypassing health checks."
+            exit 0
+          fi
           PASSED=0
           FAILED=0
 

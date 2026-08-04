@@ -35,7 +35,7 @@ BEGIN
       'Content-Type',  'application/json',
       'Authorization', 'Bearer ' || _service_role_key
     ),
-    body    := jsonb_build_object('action', 'trigger')::text
+    body    := jsonb_build_object('action', 'trigger')
   );
 END;
 $$;
