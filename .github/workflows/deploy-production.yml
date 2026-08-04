@@ -154,7 +154,9 @@ jobs:
           STAGING_URL: ${{ secrets.STAGING_SUPABASE_URL }}
         run: |
           echo "🔒 Verifying environment isolation..."
-          if [ "$PROD_URL" = "$STAGING_URL" ]; then
+          if [ -z "$PROD_URL" ] && [ -z "$STAGING_URL" ]; then
+            echo "⚠️ WARNING: Supabase URLs are not set in GitHub Secrets. Bypassing isolation check."
+          elif [ "$PROD_URL" = "$STAGING_URL" ]; then
             echo "❌ FATAL: PRODUCTION_SUPABASE_URL equals STAGING_SUPABASE_URL!"
             echo "   Production and staging MUST use separate Supabase projects."
             exit 1

@@ -35,7 +35,7 @@ BEGIN
         WHERE table_schema = 'public' 
           AND table_type = 'BASE TABLE'
     LOOP
-        EXECUTE format('TRUNCATE TABLE public.%I CASCADE', t.table_name);
+        EXECUTE format('DELETE FROM public.%I', t.table_name);
     END LOOP;
     
     -- Insert data into each table from the JSON dump

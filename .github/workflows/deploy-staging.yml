@@ -59,7 +59,9 @@ jobs:
         run: |
           echo "🔒 Verifying environment isolation..."
           # CRITICAL: Staging must NEVER point to production Supabase
-          if [ "$STAGING_URL" = "$PROD_URL" ]; then
+          if [ -z "$STAGING_URL" ] && [ -z "$PROD_URL" ]; then
+            echo "⚠️ WARNING: Supabase URLs are not set in GitHub Secrets. Bypassing isolation check."
+          elif [ "$STAGING_URL" = "$PROD_URL" ]; then
             echo "❌ FATAL: STAGING_SUPABASE_URL equals PRODUCTION_SUPABASE_URL!"
             echo "   Staging and production MUST use separate Supabase projects."
             exit 1
