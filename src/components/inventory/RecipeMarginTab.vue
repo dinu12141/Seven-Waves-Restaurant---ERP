@@ -59,24 +59,23 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed } from 'vue'
 import { getRecipeMarginReport } from '../../services/inventoryService'
-import { exportTableToExcel } from '../../services/exportService'
 
 const loading = ref(false)
-const rows = ref<any[]>([])
+const rows = ref([])
 
 const filters = ref({
   startDate: '',
   endDate: '',
 })
 
-const formatCurrency = (val: any) => {
+const formatCurrency = (val) => {
   return 'Rs. ' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const columns: any[] = [
+const columns = [
   { name: 'menu_item_name', label: 'Menu Item', field: 'menu_item_name', align: 'left', sortable: true },
   { name: 'category_name', label: 'Category', field: 'category_name', align: 'left', sortable: true },
   { name: 'kitchen_name', label: 'Kitchen', field: 'kitchen_name', align: 'left', sortable: true },
