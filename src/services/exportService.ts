@@ -545,3 +545,58 @@ export async function exportSupplierPaymentReportToPDF(rows: any[], filters: { s
   doc.save(`Supplier_Payment_Report_${filters.startDate}_${filters.endDate}.pdf`)
 }
 
+/**
+ * Export AP Invoices Report as a PDF with dynamic totals based on the filter status.
+ */
+export async function exportAPInvoicesToPDF(rows: any[], filters: { startDate: string; endDate: string; supplierName?: string; status?: string }) {
+  const doc = new jsPDF({ orientation: 'landscape' })
+  const subtitleParts = []
+  if (filters.startDate && filters.endDate) subtitleParts.push(`Period: ${filters.startDate} to ${filters.endDate}`)
+  if (filters.supplierName) subtitleParts.push(`Supplier: ${filters.supplierName}`)
+  if (filters.status) subtitleParts.push(`Status: ${filters.status.toUpperCase()}`)
+  const subtitle = subtitleParts.join(' | ') || 'All Invoices'
+
+  await drawSAPHeader(doc, 'AP INVOICES REPORT', subtitle)
+
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v || 0)
+
+  const body = rows.map((r, i) => [
+    i + 1,
+    r.doc_date,
+    r.doc_number,
+    r.suppliers?.name || '-',
+    r.grn_id ? r.goods_receipts?.doc_number || r.grn_id : '-',
+    fmt(r.total_amount),
+    fmt(r.balance_due),
+    (r.status || '').toUpperCase(),
+  ])
+
+  let totalLabel = 'TOTAL AMOUNT'
+  let totalValue = 0
+
+  if (filters.status === 'paid') {
+    totalLabel = 'TOTAL PAID AMOUNT'
+    totalValue = rows.reduce((sum, r) => sum + (parseFloat(r.paid_amount) || parseFloat(r.total_amount) || 0), 0)
+  } else if (filters.status === 'draft' || filters.status === 'UNPAID') {
+    totalLabel = 'TOTAL BALANCE DUE'
+    totalValue = rows.reduce((sum, r) => sum + (parseFloat(r.balance_due) || 0), 0)
+  } else {
+    totalLabel = 'TOTAL INVOICE AMOUNT'
+    totalValue = rows.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0)
+  }
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['#', 'Date', 'Invoice #', 'Supplier', 'GRN Ref', 'Total Amount', 'Balance Due', 'Status']],
+    body,
+    foot: [['', '', '', '', totalLabel, fmt(totalValue), '', '']],
+    theme: 'grid',
+    headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: [240, 240, 240], textColor: [27, 58, 107], fontStyle: 'bold', fontSize: 8 },
+    styles: { fontSize: 8 },
+    columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'center' } },
+  })
+
+  doc.save(`AP_Invoices_Report_${new Date().toISOString().slice(0, 10)}.pdf`)
+}

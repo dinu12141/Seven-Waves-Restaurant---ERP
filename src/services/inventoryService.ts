@@ -1092,6 +1092,20 @@ export interface RecipePayload {
   items: RecipeItemPayload[]
 }
 
+export async function getRecipeMarginReport(startDate?: string, endDate?: string) {
+  const companyId = getCompanyId()
+  if (!companyId) throw new Error('No company context.')
+
+  const { data, error } = await supabase.rpc('get_recipe_margin_report', {
+    p_company_id: companyId,
+    p_start_date: startDate || null,
+    p_end_date: endDate || null
+  })
+
+  if (error) throw error
+  return data || []
+}
+
 export function useRecipeList() {
   const recipes: Ref<any[]> = ref([])
   const loading = ref(false)

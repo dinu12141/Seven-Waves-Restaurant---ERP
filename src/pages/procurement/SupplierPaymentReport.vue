@@ -56,6 +56,17 @@
               emit-value map-options clearable
             />
           </div>
+          <div class="col-12 col-md-2">
+            <q-select
+              outlined dense
+              v-model="filters.taxStatus"
+              :options="taxStatusOptions"
+              option-value="value"
+              option-label="label"
+              label="Tax Status"
+              emit-value map-options clearable
+            />
+          </div>
           <div class="col-12 col-md-2 row justify-end">
             <q-btn
               color="primary" icon="search" label="Generate"
@@ -142,6 +153,15 @@
           </q-td>
         </template>
 
+        <!-- Bottom Row (Total) -->
+        <template v-slot:bottom-row>
+          <q-tr class="bg-grey-2 text-weight-bold" v-if="rows.length > 0">
+            <q-td colspan="5" class="text-right">TOTAL PAID AMOUNT:</q-td>
+            <q-td class="text-left">{{ formatCurrency(totalAmount) }}</q-td>
+            <q-td colspan="2"></q-td>
+          </q-tr>
+        </template>
+
         <!-- Empty State -->
         <template v-slot:no-data>
           <div class="full-width row flex-center text-grey-6 q-pa-xl">
@@ -180,7 +200,14 @@ const filters = ref({
   startDate: qDate.formatDate(pastMonth, 'YYYY-MM-DD'),
   endDate: qDate.formatDate(today, 'YYYY-MM-DD'),
   supplier_id: null,
+  taxStatus: null,
 })
+
+const taxStatusOptions = [
+  { label: 'All Suppliers', value: null },
+  { label: 'Tax Registered (VAT)', value: 'TAX' },
+  { label: 'Non-Tax', value: 'NON_TAX' },
+]
 
 const initialPagination = { sortBy: 'doc_date', descending: true, rowsPerPage: 20 }
 
@@ -221,7 +248,8 @@ async function fetchReport() {
     const data = await getSupplierPaymentsReport(
       filters.value.startDate,
       filters.value.endDate,
-      filters.value.supplier_id || undefined,
+      filters.value.supplier_id,
+      filters.value.taxStatus
     )
     rows.value = data || []
   } catch {
@@ -291,7 +319,14 @@ async function handlePrintReport() {
 
 function handleExportExcel() {
   const exportCols = columns.filter((c) => c.name !== 'actions')
-  exportTableToExcel(exportCols, rows.value, 'Supplier_Payment_Report')
+  const dataToExport = [...rows.value]
+  
+  dataToExport.push({
+    payment_method: 'TOTAL',
+    total_amount: totalAmount.value
+  })
+
+  exportTableToExcel(exportCols, dataToExport, 'Supplier_Payment_Report')
   $q.notify({ type: 'positive', message: 'Excel exported successfully' })
 }
 

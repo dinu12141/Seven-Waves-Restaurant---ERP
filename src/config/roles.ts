@@ -435,6 +435,16 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Catalog',
   },
   {
+    label: 'BOM Margins',
+    icon: 'analytics',
+    to: '/inventory?tab=bom_margins',
+    roles: ['admin', 'manager', 'inventory'],
+    permission: 'inventory.tab_recipes.view',
+    section: 'INVENTORY',
+    moduleCode: 'INVENTORY',
+    group: 'Catalog',
+  },
+  {
     label: 'Stock Levels',
     icon: 'inventory_2',
     to: '/inventory?tab=stock',

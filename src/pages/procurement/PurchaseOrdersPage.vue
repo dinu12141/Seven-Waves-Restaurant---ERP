@@ -125,7 +125,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
-import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails, closePO } from 'src/services/procurementService'
+import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails, closePO, listSupplierItems } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
@@ -150,7 +150,31 @@ const detailLoading = ref(false)
 
 const purchaseOrders = ref([])
 const supplierOptions = ref([])
-const itemOptions = ref([])
+const allItems = ref([])
+const supplierItemsList = ref([])
+
+const itemOptions = computed(() => {
+  if (!supplierItemsList.value.length) return allItems.value
+
+  const supplierItemIds = new Set(supplierItemsList.value.map(si => si.item_id))
+  
+  const supplierItems = []
+  const otherItems = []
+
+  for (const item of allItems.value) {
+    if (supplierItemIds.has(item.id)) {
+      supplierItems.push({
+        ...item,
+        display_name: `⭐ ${item.name} (Supplier Item)`
+      })
+    } else {
+      otherItems.push(item)
+    }
+  }
+
+  return [...supplierItems, ...otherItems]
+})
+
 const uomOptions = ref([])
 
 // Form
@@ -263,6 +287,16 @@ const gridFilters = computed(() => [
       ...supplierOptions.value.map((s) => ({ label: s.name, value: s.id })),
     ],
   },
+  {
+    field: 'supplier_tax_status',
+    label: 'Tax Status',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      { label: 'Tax Registered (VAT)', value: 'TAX' },
+      { label: 'Non-Tax', value: 'NON_TAX' },
+    ],
+  },
 ])
 
 // Tab config
@@ -297,7 +331,10 @@ async function fetchPOs() {
     // Merge: avoid duplicates by doc_number
     const procNumbers = new Set(procPOs.map((p) => p.doc_number))
     const uniqueInvPOs = invPOs.filter((p) => !procNumbers.has(p.doc_number))
-    const merged = [...procPOs, ...uniqueInvPOs]
+    const merged = [...procPOs, ...uniqueInvPOs].map(po => ({
+      ...po,
+      supplier_tax_status: po.suppliers?.is_tax_registered ? 'TAX' : 'NON_TAX'
+    }))
     // Manual sort by newest first (doc_date then created_at)
     purchaseOrders.value = merged.sort((a, b) => {
       const d1 = new Date(a.doc_date).getTime()
@@ -318,8 +355,21 @@ async function fetchSuppliers() {
 }
 
 async function fetchItems() {
-  itemOptions.value = await listItems()
+  allItems.value = await listItems()
 }
+
+watch(() => form.value._supplier, async (newSupplier) => {
+  if (newSupplier && newSupplier.id) {
+    try {
+      supplierItemsList.value = await listSupplierItems(newSupplier.id)
+    } catch (e) {
+      console.error(e)
+      supplierItemsList.value = []
+    }
+  } else {
+    supplierItemsList.value = []
+  }
+})
 
 async function fetchUoms() {
   uomOptions.value = await listUoms()

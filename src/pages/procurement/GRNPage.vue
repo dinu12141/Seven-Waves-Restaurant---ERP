@@ -188,14 +188,34 @@ const deleteConfirmVisible = ref(false)
 const deleteTarget = ref(null)
 
 const grns = ref([])
-const supplierOptions = ref([])
-const warehouseOptions = ref([])
-const itemOptions = ref([])
-const uomOptions = ref([])
+  const supplierOptions = ref([])
+  const warehouseOptions = ref([])
+  const allItems = ref([])
+  const uomOptions = ref([])
+  
+  // Cache of supplier_item_prices rows for the currently selected supplier,
+  // keyed by item_id, used to pre-fill unit_cost when a line's item changes.
+  const supplierPriceMap = ref({})
 
-// Cache of supplier_item_prices rows for the currently selected supplier,
-// keyed by item_id, used to pre-fill unit_cost when a line's item changes.
-const supplierPriceMap = ref({})
+  const itemOptions = computed(() => {
+    if (Object.keys(supplierPriceMap.value).length === 0) return allItems.value
+
+    const supplierItems = []
+    const otherItems = []
+
+    for (const item of allItems.value) {
+      if (item.id in supplierPriceMap.value) {
+        supplierItems.push({
+          ...item,
+          display_name: `⭐ ${item.name} (Supplier Item)`
+        })
+      } else {
+        otherItems.push(item)
+      }
+    }
+
+    return [...supplierItems, ...otherItems]
+  })
 
 // Form
 const defaultForm = {
@@ -289,9 +309,9 @@ async function fetchSuppliers() {
 async function fetchWarehouses() {
   warehouseOptions.value = await listWarehouses()
 }
-async function fetchItems() {
-  itemOptions.value = await listItems()
-}
+  async function fetchItems() {
+    allItems.value = await listItems()
+  }
 async function fetchUoms() {
   uomOptions.value = await listUoms()
 }

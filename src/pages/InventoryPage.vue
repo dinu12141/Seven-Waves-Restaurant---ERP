@@ -53,6 +53,11 @@
           <RecipesTab ref="tabRef" />
         </q-tab-panel>
 
+        <!-- BOM Margin Analysis -->
+        <q-tab-panel name="bom_margins" class="q-pa-none">
+          <RecipeMarginTab ref="tabRef" />
+        </q-tab-panel>
+
         <!-- Stock Levels -->
         <q-tab-panel name="stock" class="q-pa-none">
           <StockLevelsTab ref="tabRef" />
@@ -117,6 +122,7 @@ import CategoryManagementTab from 'components/inventory/CategoryManagementTab.vu
 import MenuBookTab from 'components/inventory/MenuBookTab.vue'
 import KitchenMappingTab from 'components/inventory/KitchenMappingTab.vue'
 import WastageTab from 'components/inventory/WastageTab.vue'
+import RecipeMarginTab from 'components/inventory/RecipeMarginTab.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -180,6 +186,7 @@ function handleExport(format) {
       warehouses: 'Warehouses',
       'stock-levels': 'Stock Levels',
       recipes: 'Recipes',
+      bom_margins: 'BOM Margins',
       'menu-items': 'Menu Items',
       'category-management': 'Categories',
       'menu-book': 'Menu Book',

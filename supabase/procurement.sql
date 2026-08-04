@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS payment_terms (
 
 CREATE INDEX IF NOT EXISTS idx_pt_company ON payment_terms(company_id);
 
+DROP TRIGGER IF EXISTS trg_payment_terms_updated ON payment_terms;
 CREATE TRIGGER trg_payment_terms_updated
 BEFORE UPDATE ON payment_terms
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS supplier_contacts (
 
 CREATE INDEX IF NOT EXISTS idx_sc_supplier ON supplier_contacts(supplier_id);
 
+DROP TRIGGER IF EXISTS trg_supplier_contacts_updated ON supplier_contacts;
 CREATE TRIGGER trg_supplier_contacts_updated
 BEFORE UPDATE ON supplier_contacts
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -102,6 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_sip_supplier ON supplier_item_prices(supplier_id)
 CREATE INDEX IF NOT EXISTS idx_sip_item ON supplier_item_prices(item_id);
 CREATE INDEX IF NOT EXISTS idx_sip_company ON supplier_item_prices(company_id);
 
+DROP TRIGGER IF EXISTS trg_sip_updated ON supplier_item_prices;
 CREATE TRIGGER trg_sip_updated
 BEFORE UPDATE ON supplier_item_prices
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -200,6 +203,7 @@ CREATE INDEX IF NOT EXISTS idx_po_status ON purchase_orders(status);
 CREATE INDEX IF NOT EXISTS idx_po_date ON purchase_orders(doc_date DESC);
 CREATE INDEX IF NOT EXISTS idx_po_doc_number ON purchase_orders(doc_number);
 
+DROP TRIGGER IF EXISTS trg_po_updated ON purchase_orders;
 CREATE TRIGGER trg_po_updated
 BEFORE UPDATE ON purchase_orders
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -278,6 +282,7 @@ CREATE INDEX IF NOT EXISTS idx_grn_warehouse ON goods_receipts(warehouse_id);
 CREATE INDEX IF NOT EXISTS idx_grn_status ON goods_receipts(status);
 CREATE INDEX IF NOT EXISTS idx_grn_date ON goods_receipts(doc_date DESC);
 
+DROP TRIGGER IF EXISTS trg_grn_updated ON goods_receipts;
 CREATE TRIGGER trg_grn_updated
 BEFORE UPDATE ON goods_receipts
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -364,6 +369,7 @@ CREATE INDEX IF NOT EXISTS idx_apinv_status ON ap_invoices(status);
 CREATE INDEX IF NOT EXISTS idx_apinv_due ON ap_invoices(due_date);
 CREATE INDEX IF NOT EXISTS idx_apinv_date ON ap_invoices(doc_date DESC);
 
+DROP TRIGGER IF EXISTS trg_apinv_updated ON ap_invoices;
 CREATE TRIGGER trg_apinv_updated
 BEFORE UPDATE ON ap_invoices
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -447,6 +453,7 @@ CREATE INDEX IF NOT EXISTS idx_suppay_status ON supplier_payments(status);
 CREATE INDEX IF NOT EXISTS idx_suppay_date ON supplier_payments(doc_date DESC);
 CREATE INDEX IF NOT EXISTS idx_suppay_method ON supplier_payments(payment_method);
 
+DROP TRIGGER IF EXISTS trg_suppay_updated ON supplier_payments;
 CREATE TRIGGER trg_suppay_updated
 BEFORE UPDATE ON supplier_payments
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -508,6 +515,7 @@ CREATE INDEX IF NOT EXISTS idx_pret_supplier ON purchase_returns(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_pret_status ON purchase_returns(status);
 CREATE INDEX IF NOT EXISTS idx_pret_date ON purchase_returns(doc_date DESC);
 
+DROP TRIGGER IF EXISTS trg_pret_updated ON purchase_returns;
 CREATE TRIGGER trg_pret_updated
 BEFORE UPDATE ON purchase_returns
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -708,18 +716,23 @@ BEGIN
                 v_line.batch_no, v_line.expiry_date, NEW.posted_by
             );
 
-            -- Update item avg cost + last purchase price
+            -- Update item last purchase price ONLY.
+            -- avg_cost is NOT updated here (removed 2026-08-03 per designnew.md
+            -- Section 5 — GRN Rework). avg_cost is exclusively recomputed once a
+            -- month, from scratch, by fn_recompute_monthly_avg_cost() (see
+            -- supabase/migrations/20260803_grn_rework_supplier_direct_costing.sql).
+            -- Each GRN's own unit_cost is preserved untouched (no smoothing at
+            -- receipt time).
             IF v_line.unit_cost > 0 THEN
                 UPDATE items SET
-                    last_purchase_price = v_line.unit_cost,
-                    avg_cost = CASE
-                        WHEN COALESCE(avg_cost, 0) = 0 THEN v_line.unit_cost
-                        ELSE (avg_cost + v_line.unit_cost) / 2
-                    END
+                    last_purchase_price = v_line.unit_cost
                 WHERE id = v_line.item_id;
             END IF;
 
-            -- Update PO line received_qty
+            -- Update PO line received_qty. Guarded — no-ops for supplier-direct
+            -- GRNs (po_line_id IS NULL), which is the only GRN creation path as
+            -- of 2026-08-03 (GRNPage.vue no longer writes po_line_id). Kept for
+            -- historical PO-linked GRNs.
             IF v_line.po_line_id IS NOT NULL THEN
                 UPDATE purchase_order_lines
                 SET received_qty = received_qty + v_line.quantity
@@ -727,7 +740,9 @@ BEGIN
             END IF;
         END LOOP;
 
-        -- Update PO status
+        -- Update PO status. Guarded — no-ops for supplier-direct GRNs (po_id IS
+        -- NULL). PO status is now a manual action (PurchaseOrdersPage.vue) for
+        -- all new GRNs; this block remains only for historical PO-linked GRNs.
         IF NEW.po_id IS NOT NULL THEN
             SELECT NOT EXISTS (
                 SELECT 1 FROM purchase_order_lines

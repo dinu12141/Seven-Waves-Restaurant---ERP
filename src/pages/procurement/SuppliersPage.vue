@@ -8,18 +8,35 @@
     </div>
 
     <!-- Search & Filter -->
-    <div class="row q-mb-md">
-      <q-input
-        dense
-        outlined
-        v-model="filter"
-        placeholder="Search suppliers..."
-        class="col-12 col-md-4"
-      >
-        <template v-slot:append>
-          <q-icon name="search" />
-        </template>
-      </q-input>
+    <!-- Search & Filter -->
+    <div class="row q-mb-md q-col-gutter-md">
+      <div class="col-12 col-md-4">
+        <q-input
+          dense
+          outlined
+          v-model="filter"
+          placeholder="Search suppliers..."
+        >
+          <template v-slot:append>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+      </div>
+      <div class="col-12 col-md-3">
+        <q-select
+          dense
+          outlined
+          v-model="taxStatusFilter"
+          :options="taxStatusOptions"
+          option-value="value"
+          option-label="label"
+          label="Tax Status"
+          emit-value
+          map-options
+          clearable
+          @update:model-value="fetchSuppliers"
+        />
+      </div>
     </div>
 
     <!-- Suppliers Table -->
@@ -31,6 +48,7 @@
       :loading="loading"
       flat
       bordered
+      @row-click="(evt, row) => editSupplier(row)"
     >
       <template v-slot:body-cell-credit_limit="props">
         <q-td :props="props" align="right">
@@ -76,6 +94,19 @@
         </q-td>
       </template>
 
+      <template v-slot:body-cell-is_tax_registered="props">
+        <q-td :props="props">
+          <q-chip
+            :color="props.row.is_tax_registered ? 'primary' : 'grey-5'"
+            text-color="white"
+            dense
+            size="sm"
+          >
+            {{ props.row.is_tax_registered ? 'TAX' : 'NON-TAX' }}
+          </q-chip>
+        </q-td>
+      </template>
+
       <template v-slot:body-cell-is_active="props">
         <q-td :props="props">
           <q-chip
@@ -93,7 +124,7 @@
     <!-- Add/Edit Dialog using ERPFormCard -->
     <q-dialog v-model="dialogVisible" persistent full-height position="right">
       <div
-        style="width: 500px; max-width: 100vw; height: 100vh; background-color: var(--erp-bg-main)"
+        style="width: 850px; max-width: 100vw; height: 100vh; background-color: var(--erp-bg-main)"
       >
         <q-scroll-area class="fit">
           <div class="q-pa-lg">
@@ -180,12 +211,15 @@
 
               <ERPFormSection title="Finance & Terms" collapsible>
                 <div class="row q-col-gutter-md">
-                  <div class="col-6">
+                  <div class="col-12 col-md-4">
+                    <ERPStyledToggle label="Tax Registered" v-model="form.is_tax_registered" />
+                  </div>
+                  <div class="col-12 col-md-4" v-if="form.is_tax_registered">
                     <ERPFormField label="Tax ID / VAT No">
                       <q-input v-model="form.tax_id" dense outlined placeholder="TAX-12345" />
                     </ERPFormField>
                   </div>
-                  <div class="col-6">
+                  <div class="col-12 col-md-4">
                     <ERPFormField label="Payment Terms">
                       <q-input
                         v-model.number="form.payment_terms_days"
@@ -253,7 +287,7 @@
                 </div>
               </ERPFormSection>
 
-              <ERPFormSection v-if="isEditing && form.id" title="Items Supplied" collapsible>
+              <ERPFormSection title="Items Supplied" collapsible>
                 <q-table
                   :rows="supplierItems"
                   :columns="supplierItemColumns"
@@ -267,16 +301,6 @@
                   no-data-label="No items linked to this supplier yet"
                   class="q-mb-md"
                 >
-                  <template v-slot:body-cell-is_active="props">
-                    <q-td :props="props">
-                      <q-toggle
-                        :model-value="props.row.is_active"
-                        dense
-                        color="green"
-                        @update:model-value="(val) => toggleSupplierItemActive(props.row, val)"
-                      />
-                    </q-td>
-                  </template>
                   <template v-slot:body-cell-actions="props">
                     <q-td :props="props" align="right">
                       <q-btn
@@ -475,6 +499,14 @@ const canEditSupplierItems = computed(() => can('procurement.suppliers.edit'))
 const suppliers = ref([])
 const loading = ref(false)
 const filter = ref('')
+const taxStatusFilter = ref(null)
+
+const taxStatusOptions = [
+  { label: 'All Suppliers', value: null },
+  { label: 'Tax Registered (VAT)', value: 'TAX' },
+  { label: 'Non-Tax', value: 'NON_TAX' }
+]
+
 const dialogVisible = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
@@ -490,6 +522,7 @@ const defaultForm = {
   email: '',
   address: '',
   tax_id: '',
+  is_tax_registered: false,
   payment_terms_days: 30,
   is_active: true,
   bank_name: '',
@@ -514,8 +547,9 @@ const columns = [
     sortable: true,
   },
   { name: 'balance', label: 'Balance', field: 'balance', align: 'right', sortable: true },
+  { name: 'is_tax_registered', label: 'Tax Status', field: 'is_tax_registered', align: 'center' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
-  { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
+  { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
 
 onMounted(() => {
@@ -525,7 +559,7 @@ onMounted(() => {
 async function fetchSuppliers() {
   loading.value = true
   try {
-    suppliers.value = await listSuppliers()
+    suppliers.value = await listSuppliers({ taxStatus: taxStatusFilter.value })
   } catch (err) {
     $q.notify({
       type: 'negative',
@@ -601,13 +635,26 @@ async function saveSupplier() {
         name: form.value.name.trim(),
         code: form.value.code,
       })
+      
+      // Save pending items
+      const pendingItems = supplierItems.value.filter(i => String(i.id).startsWith('pending_'))
+      for (const item of pendingItems) {
+        try {
+          await upsertSupplierItem({
+            supplier_id: created.id,
+            item_id: item.item_id,
+            uom_id: item.uom_id,
+            last_price: Number(item.last_price) || 0,
+            min_order_qty: Number(item.min_order_qty) || 0,
+            lead_time_days: Number(item.lead_time_days) || 0,
+          })
+        } catch(e) {
+          console.error("Failed to save pending item", e)
+        }
+      }
+
       $q.notify({ type: 'positive', message: 'Supplier created' })
-      // Switch into edit mode in the same dialog (instead of closing it) so
-      // "Items Supplied" becomes visible right away — the user can add the
-      // items this supplier sells without having to reopen the dialog.
-      form.value = { ...created }
-      isEditing.value = true
-      fetchSupplierItems(created.id)
+      dialogVisible.value = false
     }
     fetchSuppliers()
   } catch (err) {
@@ -666,7 +713,6 @@ const supplierItemColumns = [
   },
   { name: 'min_order_qty', label: 'Min Qty', field: 'min_order_qty', align: 'right' },
   { name: 'lead_time_days', label: 'Lead Time (d)', field: 'lead_time_days', align: 'right' },
-  { name: 'is_active', label: 'Active', field: 'is_active', align: 'center' },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
 
@@ -753,14 +799,13 @@ function onSupplierItemPicked(itemId) {
 }
 
 watch(
-  () => isEditing.value && dialogVisible.value,
+  () => dialogVisible.value,
   (open) => {
     if (open) ensureItemsLoaded()
   },
 )
 
 async function addSupplierItem() {
-  if (!form.value.id) return
   if (!newSupplierItem.value.item_id || !newSupplierItem.value.uom_id) {
     $q.notify({ type: 'warning', message: 'Select an item and UOM first' })
     return
@@ -769,6 +814,27 @@ async function addSupplierItem() {
     $q.notify({ type: 'negative', message: 'Price, min qty and lead time cannot be negative' })
     return
   }
+
+  const itemLabel = itemOptions.value.find((i) => i.id === newSupplierItem.value.item_id)?.label
+  const uomLabel = uomSelectOptions.value.find((u) => u.id === newSupplierItem.value.uom_id)?.label
+  const uomCode = uomLabel ? uomLabel.split(' — ')[0] : ''
+
+  if (!form.value.id) {
+    supplierItems.value.push({
+      id: 'pending_' + Date.now(),
+      item_id: newSupplierItem.value.item_id,
+      uom_id: newSupplierItem.value.uom_id,
+      item_name: itemLabel,
+      uom_code: uomCode || uomLabel,
+      last_price: Number(newSupplierItem.value.last_price) || 0,
+      min_order_qty: Number(newSupplierItem.value.min_order_qty) || 0,
+      lead_time_days: Number(newSupplierItem.value.lead_time_days) || 0,
+    })
+    $q.notify({ type: 'positive', message: 'Item added (pending save)' })
+    resetNewSupplierItem()
+    return
+  }
+
   savingSupplierItem.value = true
   try {
     await upsertSupplierItem({
@@ -789,16 +855,12 @@ async function addSupplierItem() {
   }
 }
 
-async function toggleSupplierItemActive(row, val) {
-  try {
-    await upsertSupplierItem({ ...row, is_active: val })
-    row.is_active = val
-  } catch (err) {
-    $q.notify({ type: 'negative', message: 'Failed to update item', caption: err.message })
-  }
-}
-
 function removeSupplierItem(row) {
+  if (row.id && String(row.id).startsWith('pending_')) {
+    supplierItems.value = supplierItems.value.filter((i) => i.id !== row.id)
+    return
+  }
+
   $q.dialog({
     title: 'Remove Item',
     message: `Remove "${row.item_name}" from this supplier's catalogue?`,

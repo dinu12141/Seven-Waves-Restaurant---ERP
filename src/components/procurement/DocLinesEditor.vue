@@ -38,7 +38,7 @@
             v-else
             v-model="props.row.item_id"
             :options="itemOptions"
-            option-label="name"
+            :option-label="(opt) => opt.display_name || opt.name"
             option-value="id"
             dense
             borderless

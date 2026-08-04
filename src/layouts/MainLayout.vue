@@ -247,18 +247,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+import { useQuasar, date } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
 import { getFilteredNavItems } from 'src/config/roles'
 import { useModulesStore } from 'src/stores/modules'
+import { supabase } from 'src/boot/supabase'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
 import GlobalSearch from 'components/common/GlobalSearch.vue'
 import OfflineBanner from 'components/common/OfflineBanner.vue'
-import { watch } from 'vue'
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
@@ -466,6 +466,44 @@ watch(
     }
   },
 )
+
+// Auto-download daily backup logic
+onMounted(async () => {
+  // We check if the user is an admin. If so, we check if today's backup has been auto-downloaded.
+  if (authStore.userRoles?.includes('admin')) {
+    const today = date.formatDate(Date.now(), 'YYYY-MM-DD')
+    const lastDownloaded = localStorage.getItem('last_auto_backup_date')
+    if (lastDownloaded !== today) {
+      try {
+        const { data, error } = await supabase.rpc('export_database')
+        if (!error && data) {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          
+          const now = new Date()
+          const pad = (n) => n.toString().padStart(2, '0')
+          const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+          a.download = `erp_backup_auto_${dateStr}.json`
+          
+          document.body.appendChild(a)
+          a.click()
+          
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+          
+          localStorage.setItem('last_auto_backup_date', today)
+          $q.notify({ type: 'info', message: 'Daily system backup generated and downloaded automatically.' })
+        }
+      } catch (e) {
+        // Ignore errors silently on auto-download to avoid spamming the user
+        console.warn('Auto-download backup skipped or failed:', e)
+      }
+    }
+  }
+})
+
 </script>
 
 <style scoped lang="scss">

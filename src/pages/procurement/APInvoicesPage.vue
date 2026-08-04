@@ -5,8 +5,35 @@
         <div class="text-h5 text-weight-bold">AP Invoices</div>
         <div class="text-caption text-grey">Accounts Payable — Supplier Invoices</div>
       </div>
-      <q-btn unelevated color="primary" icon="add" label="New Invoice" @click="createNewInvoice" />
+      <div class="row q-gutter-sm">
+        <q-btn flat dense icon="picture_as_pdf" label="Export PDF" color="negative" @click="handleExportPDF" :loading="exporting" />
+        <q-btn flat dense icon="table_view" label="Export Excel" color="positive" @click="handleExportExcel" :loading="exporting" />
+        <q-btn unelevated color="primary" icon="add" label="New Invoice" @click="createNewInvoice" />
+      </div>
     </div>
+
+    <!-- Filter Bar -->
+    <q-card class="q-mb-md flat-card" flat bordered>
+      <q-card-section>
+        <div class="row q-col-gutter-md items-center">
+          <div class="col-12 col-md-3">
+            <q-input outlined v-model="filters.startDate" label="Start Date" type="date" dense />
+          </div>
+          <div class="col-12 col-md-3">
+            <q-input outlined v-model="filters.endDate" label="End Date" type="date" dense />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select outlined dense v-model="filters.supplier_id" :options="supplierOptions" option-value="id" option-label="name" label="Supplier (All)" emit-value map-options clearable />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select outlined dense v-model="filters.status" :options="statusOptions" option-value="value" option-label="label" label="Status" emit-value map-options clearable />
+          </div>
+          <div class="col-12 col-md-2 row justify-end">
+            <q-btn color="primary" icon="search" label="Generate" class="full-width" @click="fetchInvoices" :loading="loading" />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <!-- Invoice List -->
     <q-table
@@ -42,6 +69,16 @@
             @click="editInvoice(props.row)"
           />
         </q-td>
+      </template>
+      <template v-slot:bottom-row>
+        <q-tr class="bg-grey-2 text-weight-bold" v-if="invoices.length > 0">
+          <q-td colspan="4" class="text-right">
+            {{ filters.status === 'paid' ? 'TOTAL PAID AMOUNT:' : (filters.status === 'UNPAID' || filters.status === 'draft' ? 'TOTAL BALANCE DUE:' : 'TOTAL INVOICE AMOUNT:') }}
+          </q-td>
+          <q-td align="right">{{ (filters.status !== 'UNPAID' && filters.status !== 'draft') ? formatCurrency(computedTotalAmount) : '-' }}</q-td>
+          <q-td align="right">{{ (filters.status === 'UNPAID' || filters.status === 'draft') ? formatCurrency(computedTotalAmount) : '-' }}</q-td>
+          <q-td colspan="2"></q-td>
+        </q-tr>
       </template>
     </q-table>
 
@@ -237,6 +274,7 @@ import {
   listSuppliers,
   listItems,
 } from 'src/services/procurementService'
+import { exportAPInvoicesToPDF, exportTableToExcel } from 'src/services/exportService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 
@@ -252,6 +290,22 @@ const supplierOptions = ref([])
 const itemOptions = ref([])
 
 const createMode = ref('direct')
+const exporting = ref(false)
+
+const filters = ref({
+  startDate: date.formatDate(Date.now(), 'YYYY-MM-01'),
+  endDate: date.formatDate(Date.now(), 'YYYY-MM-DD'),
+  supplier_id: null,
+  status: null,
+})
+
+const statusOptions = [
+  { label: 'All Invoices', value: null },
+  { label: 'Unpaid (Posted/Draft)', value: 'UNPAID' },
+  { label: 'Draft', value: 'draft' },
+  { label: 'Paid', value: 'paid' },
+  { label: 'Cancelled', value: 'cancelled' },
+]
 
 // Form
 const defaultForm = {
@@ -327,9 +381,17 @@ onMounted(async () => {
 
 async function fetchInvoices() {
   try {
-    invoices.value = await listInvoices()
+    loading.value = true
+    invoices.value = await listInvoices({
+      from_date: filters.value.startDate,
+      to_date: filters.value.endDate,
+      supplier_id: filters.value.supplier_id,
+      status: filters.value.status
+    })
   } catch (e) {
     console.error('Failed to load invoices:', e)
+  } finally {
+    loading.value = false
   }
 }
 async function fetchSuppliers() {
@@ -349,6 +411,16 @@ const totalAmount = computed(() => {
   )
 })
 
+const computedTotalAmount = computed(() => {
+  if (filters.value.status === 'paid') {
+    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || parseFloat(row.total_amount) || 0), 0)
+  } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
+    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.balance_due) || 0), 0)
+  } else {
+    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.total_amount) || 0), 0)
+  }
+})
+
 function formatCurrency(val) {
   return `LKR\u00A0${(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
@@ -359,6 +431,47 @@ function statusColor(status) {
   if (status === 'partial_paid') return 'orange-7'
   if (status === 'paid') return 'green-7'
   return 'red-7'
+}
+
+async function handleExportPDF() {
+  exporting.value = true
+  try {
+    const supplierName = supplierOptions.value.find((s) => s.id === filters.value.supplier_id)?.name
+    const statusLabel = statusOptions.find(s => s.value === filters.value.status)?.label
+    await exportAPInvoicesToPDF(invoices.value, {
+      startDate: filters.value.startDate,
+      endDate: filters.value.endDate,
+      supplierName,
+      status: statusLabel
+    })
+  } catch(e) {
+    console.error(e)
+    $q.notify({ type: 'negative', message: 'Export failed' })
+  } finally {
+    exporting.value = false
+  }
+}
+
+function handleExportExcel() {
+  const exportCols = columns.filter((c) => c.name !== 'actions')
+  const dataToExport = [...invoices.value]
+  
+  // Add total row for Excel
+  let totalLabel = 'TOTAL AMOUNT'
+  let amountField = 'total_amount'
+  
+  if (filters.value.status === 'paid') {
+    totalLabel = 'TOTAL PAID AMOUNT'
+  } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
+    totalLabel = 'TOTAL BALANCE DUE'
+    amountField = 'balance_due'
+  }
+
+  const totalRow = { doc_number: 'TOTAL', grn_ref: totalLabel }
+  totalRow[amountField] = computedTotalAmount.value
+  
+  dataToExport.push(totalRow)
+  exportTableToExcel(exportCols, dataToExport, 'AP_Invoices')
 }
 
 function createNewInvoice() {
