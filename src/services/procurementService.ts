@@ -32,7 +32,6 @@ export interface Supplier {
   tax_id?: string
   payment_terms_days?: number
   is_active: boolean
-  is_tax_registered?: boolean
   payment_term_id?: string
   credit_limit?: number
   balance?: number
@@ -277,7 +276,7 @@ export async function listSuppliers(filters: SupplierFilterOptions | boolean = f
   let query = supabase
     .from('suppliers')
     .select(
-      'id, code, name, contact_person, phone, email, address, tax_id, payment_terms_days, is_active, credit_limit, balance, is_tax_registered',
+      'id, code, name, contact_person, phone, email, address, tax_id, payment_terms_days, is_active, credit_limit, balance',
     )
     .eq('company_id', company_id)
     .order('name')
@@ -290,9 +289,9 @@ export async function listSuppliers(filters: SupplierFilterOptions | boolean = f
   }
   
   if (taxStatus === 'TAX') {
-    query = query.eq('is_tax_registered', true)
+    query = query.not('tax_id', 'is', null)
   } else if (taxStatus === 'NON_TAX') {
-    query = query.eq('is_tax_registered', false)
+    query = query.is('tax_id', null)
   }
 
   const { data, error } = await query
@@ -527,7 +526,7 @@ export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrd
     .from('purchase_orders')
     .select(
       `id, doc_number, doc_date, expected_date:delivery_date, status,
-       supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, is_tax_registered),
+       supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, tax_id),
        payment_term_id, warehouse_id,
        subtotal, discount_amount, tax_amount, total_amount,
        remarks, created_at, approved_at, closed_at`,
@@ -541,8 +540,8 @@ export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrd
   if (filters.from_date) query = query.gte('doc_date', filters.from_date)
   if (filters.to_date) query = query.lte('doc_date', filters.to_date)
   
-  if (filters.taxStatus === 'TAX') query = query.eq('suppliers.is_tax_registered', true)
-  if (filters.taxStatus === 'NON_TAX') query = query.eq('suppliers.is_tax_registered', false)
+  if (filters.taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
+  if (filters.taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
@@ -560,7 +559,7 @@ export async function listInventoryPOs(filters: POFilterOptions = {}): Promise<P
     .from('inventory_documents')
     .select(
       `id, doc_number, doc_date, status,
-       supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, is_tax_registered),
+       supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, tax_id),
        warehouse_id, grand_total, total_cost, sub_total,
        remarks, created_at`
     )
@@ -2256,7 +2255,7 @@ export async function getSupplierPaymentsReport(startDate: string, endDate: stri
   let query = supabase
     .from('supplier_payments')
     .select(
-      `*, suppliers${taxStatus ? '!inner' : ''}(id, name, code, is_tax_registered),
+      `*, suppliers${taxStatus ? '!inner' : ''}(id, name, code, tax_id),
        supplier_payment_allocations(
          id, amount,
          ap_invoices(id, doc_number, total_amount, balance_due)
@@ -2272,8 +2271,8 @@ export async function getSupplierPaymentsReport(startDate: string, endDate: stri
     query = query.eq('supplier_id', supplierId)
   }
   
-  if (taxStatus === 'TAX') query = query.eq('suppliers.is_tax_registered', true)
-  if (taxStatus === 'NON_TAX') query = query.eq('suppliers.is_tax_registered', false)
+  if (taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
+  if (taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
 
 
   const { data, error } = await query

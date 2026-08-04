@@ -333,7 +333,7 @@ async function fetchPOs() {
     const uniqueInvPOs = invPOs.filter((p) => !procNumbers.has(p.doc_number))
     const merged = [...procPOs, ...uniqueInvPOs].map(po => ({
       ...po,
-      supplier_tax_status: po.suppliers?.is_tax_registered ? 'TAX' : 'NON_TAX'
+      supplier_tax_status: po.suppliers?.tax_id ? 'TAX' : 'NON_TAX'
     }))
     // Manual sort by newest first (doc_date then created_at)
     purchaseOrders.value = merged.sort((a, b) => {

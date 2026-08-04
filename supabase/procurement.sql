@@ -1119,7 +1119,8 @@ FOR EACH ROW EXECUTE FUNCTION post_purchase_return();
 -- 23. SUPPLIER BALANCE VIEW
 -- =====================================================
 
-CREATE OR REPLACE VIEW v_supplier_balances AS
+CREATE OR REPLACE VIEW v_supplier_balances
+WITH (security_invoker = true) AS
 SELECT
     al.company_id,
     al.supplier_id,
@@ -1137,7 +1138,8 @@ GROUP BY al.company_id, al.supplier_id, s.code, s.name;
 -- 24. SUPPLIER AGING VIEW (30/60/90/120+ days)
 -- =====================================================
 
-CREATE OR REPLACE VIEW v_supplier_aging AS
+CREATE OR REPLACE VIEW v_supplier_aging
+WITH (security_invoker = true) AS
 SELECT
     i.company_id,
     i.supplier_id,
@@ -1159,7 +1161,8 @@ GROUP BY i.company_id, i.supplier_id, s.code, s.name;
 -- 25. PO STATUS SUMMARY VIEW
 -- =====================================================
 
-CREATE OR REPLACE VIEW v_purchase_order_summary AS
+CREATE OR REPLACE VIEW v_purchase_order_summary
+WITH (security_invoker = true) AS
 SELECT
     po.id,
     po.company_id,
@@ -1183,7 +1186,8 @@ GROUP BY po.id, po.company_id, po.branch_id, po.doc_number,
 -- 26. AP LEDGER DETAIL VIEW
 -- =====================================================
 
-CREATE OR REPLACE VIEW v_ap_ledger_detail AS
+CREATE OR REPLACE VIEW v_ap_ledger_detail
+WITH (security_invoker = true) AS
 SELECT
     al.id,
     al.company_id,

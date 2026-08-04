@@ -94,15 +94,15 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-is_tax_registered="props">
+      <template v-slot:body-cell-tax_status="props">
         <q-td :props="props">
           <q-chip
-            :color="props.row.is_tax_registered ? 'primary' : 'grey-5'"
+            :color="props.row.tax_id ? 'primary' : 'grey-5'"
             text-color="white"
             dense
             size="sm"
           >
-            {{ props.row.is_tax_registered ? 'TAX' : 'NON-TAX' }}
+            {{ props.row.tax_id ? 'TAX' : 'NON-TAX' }}
           </q-chip>
         </q-td>
       </template>
@@ -212,9 +212,6 @@
               <ERPFormSection title="Finance & Terms" collapsible>
                 <div class="row q-col-gutter-md">
                   <div class="col-12 col-md-4">
-                    <ERPStyledToggle label="Tax Registered" v-model="form.is_tax_registered" />
-                  </div>
-                  <div class="col-12 col-md-4" v-if="form.is_tax_registered">
                     <ERPFormField label="Tax ID / VAT No">
                       <q-input v-model="form.tax_id" dense outlined placeholder="TAX-12345" />
                     </ERPFormField>
@@ -522,7 +519,6 @@ const defaultForm = {
   email: '',
   address: '',
   tax_id: '',
-  is_tax_registered: false,
   payment_terms_days: 30,
   is_active: true,
   bank_name: '',
@@ -547,7 +543,7 @@ const columns = [
     sortable: true,
   },
   { name: 'balance', label: 'Balance', field: 'balance', align: 'right', sortable: true },
-  { name: 'is_tax_registered', label: 'Tax Status', field: 'is_tax_registered', align: 'center' },
+  { name: 'tax_status', label: 'Tax Status', field: (row) => row.tax_id ? 'TAX' : 'NON-TAX', align: 'center' },
   { name: 'is_active', label: 'Status', field: 'is_active', align: 'center' },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]

@@ -1096,14 +1096,112 @@ export async function getRecipeMarginReport(startDate?: string, endDate?: string
   const companyId = getCompanyId()
   if (!companyId) throw new Error('No company context.')
 
-  const { data, error } = await supabase.rpc('get_recipe_margin_report', {
-    p_company_id: companyId,
-    p_start_date: startDate || null,
-    p_end_date: endDate || null
+  const { data: recipes, error: recError } = await supabase
+    .from('recipes')
+    .select(`
+      id,
+      menu_items (
+        id, name, base_price,
+        categories (name),
+        kitchens (name)
+      ),
+      recipe_items (
+        item_id, qty_per_serving, wastage_percent, uom_id,
+        items (id, name, avg_cost, inventory_uom_id)
+      )
+    `)
+    .eq('company_id', companyId)
+  if (recError) throw recError
+
+  const { data: uoms, error: uomError } = await supabase
+    .from('uom')
+    .select('id, conversion_factor')
+    .eq('company_id', companyId)
+  if (uomError) throw uomError
+
+  const uomMap = (uoms || []).reduce((acc: any, u: any) => {
+    acc[u.id] = u.conversion_factor
+    return acc
+  }, {})
+
+  let grnQuery = supabase
+    .from('goods_receipt_lines')
+    .select(`
+      item_id, quantity, unit_cost,
+      goods_receipts!inner (company_id, status, doc_date, created_at)
+    `)
+    .eq('goods_receipts.company_id', companyId)
+    .eq('goods_receipts.status', 'posted')
+
+  if (startDate) grnQuery = grnQuery.gte('goods_receipts.doc_date', startDate)
+  if (endDate) grnQuery = grnQuery.lte('goods_receipts.doc_date', endDate)
+
+  const { data: grnLines, error: grnError } = await grnQuery
+  if (grnError) throw grnError
+
+  const itemCosts: Record<string, { totalQty: number, totalCost: number, latestCost: number, latestDate: number }> = {}
+  
+  if (grnLines) {
+    grnLines.forEach((line: any) => {
+      const iId = line.item_id
+      if (!itemCosts[iId]) {
+        itemCosts[iId] = { totalQty: 0, totalCost: 0, latestCost: line.unit_cost || 0, latestDate: new Date(line.goods_receipts?.created_at || 0).getTime() }
+      }
+      itemCosts[iId].totalQty += line.quantity || 0
+      itemCosts[iId].totalCost += (line.quantity || 0) * (line.unit_cost || 0)
+      
+      const lineDate = new Date(line.goods_receipts?.created_at || 0).getTime()
+      if (lineDate > itemCosts[iId].latestDate) {
+        itemCosts[iId].latestCost = line.unit_cost || 0
+        itemCosts[iId].latestDate = lineDate
+      }
+    })
+  }
+
+  const result = (recipes || []).map((r: any) => {
+    const mi = r.menu_items || {}
+    const menuPrice = Number(mi.base_price || 0)
+    let totalRecipeCost = 0
+
+    const items = r.recipe_items || []
+    items.forEach((ri: any) => {
+      const bomUom = uomMap[ri.uom_id] || 1
+      const stockUom = uomMap[ri.items?.inventory_uom_id] || 1
+      const convFactor = bomUom / stockUom
+      
+      const iId = ri.item_id
+      let periodCost = Number(ri.items?.avg_cost || 0)
+      if (itemCosts[iId]) {
+        if (startDate && endDate) {
+          if (itemCosts[iId].totalQty > 0) {
+            periodCost = itemCosts[iId].totalCost / itemCosts[iId].totalQty
+          }
+        } else {
+          periodCost = itemCosts[iId].latestCost
+        }
+      }
+
+      const qty = Number(ri.qty_per_serving || 0)
+      const wastage = 1 + (Number(ri.wastage_percent || 0) / 100)
+      totalRecipeCost += qty * wastage * convFactor * periodCost
+    })
+
+    const margin = menuPrice - totalRecipeCost
+    const marginPct = menuPrice > 0 ? (margin / menuPrice) * 100 : 0
+
+    return {
+      recipe_id: r.id,
+      menu_item_name: mi.name,
+      category_name: mi.categories?.name,
+      kitchen_name: mi.kitchens?.name,
+      real_menu_price: menuPrice,
+      real_cost: totalRecipeCost,
+      margin: margin,
+      margin_pct: marginPct
+    }
   })
 
-  if (error) throw error
-  return data || []
+  return result
 }
 
 export function useRecipeList() {
