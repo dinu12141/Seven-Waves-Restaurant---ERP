@@ -156,6 +156,8 @@ export interface NavItem {
   permission?: string
   /** Optional nested children */
   children?: NavItem[]
+  /** Hide from the sidebar (used for action permissions like create/edit/delete that appear in RolesPage) */
+  hidden?: boolean
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -546,6 +548,36 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'PROCUREMENT',
     section: 'PROCUREMENT',
     group: 'Procurement',
+  },
+  {
+    label: 'Create Supplier',
+    icon: 'add',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement.suppliers.create',
+    moduleCode: 'PROCUREMENT',
+    section: 'PROCUREMENT',
+    group: 'Procurement',
+    hidden: true,
+  },
+  {
+    label: 'Edit Supplier',
+    icon: 'edit',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement.suppliers.edit',
+    moduleCode: 'PROCUREMENT',
+    section: 'PROCUREMENT',
+    group: 'Procurement',
+    hidden: true,
+  },
+  {
+    label: 'Delete Supplier',
+    icon: 'delete',
+    roles: ['admin', 'manager', 'inventory', 'procurement'],
+    permission: 'procurement.suppliers.delete',
+    moduleCode: 'PROCUREMENT',
+    section: 'PROCUREMENT',
+    group: 'Procurement',
+    hidden: true,
   },
   {
     label: 'Purchase Orders',
@@ -1479,6 +1511,9 @@ export function getFilteredNavItems(
   function filterItems(items: NavItem[]): NavItem[] {
     return items
       .filter((item) => {
+        // Skip hidden items in the navigation sidebar
+        if (item.hidden) return false
+
         // Admin wildcard
         if (userRoles.includes('admin') || userPermissions.includes('admin:console')) return true
 

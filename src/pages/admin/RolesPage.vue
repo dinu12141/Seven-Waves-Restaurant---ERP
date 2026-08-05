@@ -489,7 +489,8 @@ const dialogSections = computed(() => {
   const bySection = new Map()
 
   for (const item of NAV_ITEMS) {
-    if (!item.permission || !item.to) continue // skip parent-only / role-only entries
+    if (!item.permission) continue
+    if (!item.to && !item.hidden) continue // skip parent-only / role-only entries unless they are explicitly hidden action permissions
     // MAIN section duplicates items already listed under their real section
     // (Operations/Inventory/Finance/HR/Reports) — skip to avoid showing the
     // same page twice in the checklist.
