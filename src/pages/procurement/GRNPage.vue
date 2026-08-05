@@ -147,7 +147,7 @@
               icon="check"
               label="Post GRN"
               :loading="saving"
-              @click="saveGRN('posted')"
+              @click="saveGRN"
             />
           </div>
         </q-card-actions>
@@ -457,15 +457,17 @@ function onUomChange(line, uom) {
 }
 
 // ── Save / Post ─────────────────────────────────────────────────────────
-async function saveGRN(targetStatus) {
+async function saveGRN() {
   saving.value = true
   try {
     let grn
+    let isNewGRN = false
     const supplierId = form.value.supplier?.id || form.value.supplier_id
     const warehouseId = form.value.warehouse?.id || form.value.warehouse_id
 
     if (!form.value.id) {
       // New GRN — always supplier-direct, never linked to a PO.
+      isNewGRN = true
       if (!supplierId || !warehouseId) {
         $q.notify({ type: 'warning', message: 'Supplier and Warehouse are required' })
         return
@@ -496,7 +498,7 @@ async function saveGRN(targetStatus) {
         lines,
       )
     } else {
-      // Existing draft GRN — update header only (lines are read-only in view mode for now)
+      // Existing draft GRN — update header and lines
       const lines = form.value.lines.map((l, idx) => ({
         line_number: idx + 1,
         item_id: l.item_id,
@@ -514,16 +516,23 @@ async function saveGRN(targetStatus) {
       )
     }
 
-    if (targetStatus === 'posted' && grn?.id) {
+    // Always post — GRNs should never remain in draft
+    if (grn?.id) {
       const res = await postGRN(grn.id)
-      if (!res.success) throw new Error(res.error)
+      if (!res.success) {
+        // If posting fails on a newly created GRN, clean up the draft
+        if (isNewGRN) {
+          try { await deleteGRN(grn.id) } catch { /* ignore cleanup errors */ }
+        }
+        throw new Error(res.error || 'Failed to post GRN')
+      }
       $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
     }
 
     dialogVisible.value = false
     fetchGRNs()
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed', caption: e.message })
+    $q.notify({ type: 'negative', message: 'Failed to post GRN', caption: e.message })
   } finally {
     saving.value = false
   }

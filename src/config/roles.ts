@@ -1467,6 +1467,109 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'SYSTEM',
     group: 'AI Engine',
   },
+  // ─── GRANULAR ACTION PERMISSIONS (HIDDEN FROM SIDEBAR, SHOWN IN MATRIX) ───
+  // Inventory Actions
+  { label: 'Create Item', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.items.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Edit Item', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.items.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Delete Item', icon: 'delete', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.items.delete', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+
+  { label: 'Create Menu Item', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_items.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Edit Menu Item', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_items.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Delete Menu Item', icon: 'delete', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_items.delete', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+
+  { label: 'Create Category', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_categories.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Edit Category', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_categories.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Delete Category', icon: 'delete', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_menu_categories.delete', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+
+  { label: 'Create Warehouse', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_warehouses.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Stock', hidden: true },
+  { label: 'Edit Warehouse', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_warehouses.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Stock', hidden: true },
+  { label: 'Delete Warehouse', icon: 'delete', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_warehouses.delete', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Stock', hidden: true },
+
+  { label: 'Create Adjustment', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.adjustments.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Edit Adjustment', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.adjustments.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Approve Adjustment', icon: 'check', roles: ['admin', 'manager'], permission: 'inventory.adjustments.approve', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+
+  { label: 'Create Stocktake', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.stocktake.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Edit Stocktake', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.stocktake.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+  { label: 'Approve Stocktake', icon: 'check', roles: ['admin', 'manager'], permission: 'inventory.stocktake.approve', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Inventory', hidden: true },
+
+  { label: 'Create Recipe', icon: 'add', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_recipes.create', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Edit Recipe', icon: 'edit', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_recipes.edit', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+  { label: 'Delete Recipe', icon: 'delete', roles: ['admin', 'manager', 'inventory'], permission: 'inventory.tab_recipes.delete', moduleCode: 'INVENTORY', section: 'INVENTORY', group: 'Catalog', hidden: true },
+
+  // Procurement Actions
+  { label: 'Create PO', icon: 'add', roles: ['admin', 'manager', 'procurement'], permission: 'procurement.purchase_orders.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Edit PO', icon: 'edit', roles: ['admin', 'manager', 'procurement'], permission: 'procurement.purchase_orders.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Delete PO', icon: 'delete', roles: ['admin', 'manager', 'procurement'], permission: 'procurement.purchase_orders.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+
+  { label: 'Create GRN', icon: 'add', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.grn.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Edit GRN', icon: 'edit', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.grn.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Delete GRN', icon: 'delete', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.grn.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+
+  { label: 'Create GIN', icon: 'add', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.gin.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Edit GIN', icon: 'edit', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.gin.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Delete GIN', icon: 'delete', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.gin.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+
+  { label: 'Create Return', icon: 'add', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.returns.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Edit Return', icon: 'edit', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.returns.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+  { label: 'Delete Return', icon: 'delete', roles: ['admin', 'manager', 'procurement', 'inventory'], permission: 'procurement.returns.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Procurement', hidden: true },
+
+  { label: 'Create AP Invoice', icon: 'add', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.ap_invoices.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+  { label: 'Edit AP Invoice', icon: 'edit', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.ap_invoices.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+  { label: 'Delete AP Invoice', icon: 'delete', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.ap_invoices.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+
+  { label: 'Create Supplier Payment', icon: 'add', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.payments.create', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+  { label: 'Edit Supplier Payment', icon: 'edit', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.payments.edit', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+  { label: 'Delete Supplier Payment', icon: 'delete', roles: ['admin', 'manager', 'finance', 'procurement'], permission: 'procurement.payments.delete', moduleCode: 'PROCUREMENT', section: 'PROCUREMENT', group: 'Payables', hidden: true },
+
+  // Finance Actions
+  { label: 'Create Ledger', icon: 'add', roles: ['admin', 'finance'], permission: 'finance.ledgers.create', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+  { label: 'Edit Ledger', icon: 'edit', roles: ['admin', 'finance'], permission: 'finance.ledgers.edit', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+  { label: 'Delete Ledger', icon: 'delete', roles: ['admin', 'finance'], permission: 'finance.ledgers.delete', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+
+  { label: 'Create Account', icon: 'add', roles: ['admin', 'finance'], permission: 'finance.accounts.create', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+  { label: 'Edit Account', icon: 'edit', roles: ['admin', 'finance'], permission: 'finance.accounts.edit', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+  { label: 'Delete Account', icon: 'delete', roles: ['admin', 'finance'], permission: 'finance.accounts.delete', moduleCode: 'FINANCE', section: 'FINANCE', group: 'ERP Accounting', hidden: true },
+
+  { label: 'Create Pay Voucher', icon: 'add', roles: ['admin', 'finance'], permission: 'finance.pay_vouchers.create', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+  { label: 'Edit Pay Voucher', icon: 'edit', roles: ['admin', 'finance'], permission: 'finance.pay_vouchers.edit', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+  { label: 'Delete Pay Voucher', icon: 'delete', roles: ['admin', 'finance'], permission: 'finance.pay_vouchers.delete', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+
+  { label: 'Create Received Voucher', icon: 'add', roles: ['admin', 'finance'], permission: 'finance.received_vouchers.create', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+  { label: 'Edit Received Voucher', icon: 'edit', roles: ['admin', 'finance'], permission: 'finance.received_vouchers.edit', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+  { label: 'Delete Received Voucher', icon: 'delete', roles: ['admin', 'finance'], permission: 'finance.received_vouchers.delete', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Voucher Management', hidden: true },
+
+  { label: 'Create Expense', icon: 'add', roles: ['admin', 'finance', 'manager'], permission: 'finance.expenses.create', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Expenses & Tax', hidden: true },
+  { label: 'Edit Expense', icon: 'edit', roles: ['admin', 'finance', 'manager'], permission: 'finance.expenses.edit', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Expenses & Tax', hidden: true },
+  { label: 'Delete Expense', icon: 'delete', roles: ['admin', 'finance', 'manager'], permission: 'finance.expenses.delete', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Expenses & Tax', hidden: true },
+  
+  { label: 'Manage Payroll', icon: 'settings', roles: ['admin', 'hr', 'finance'], permission: 'finance.payroll.manage', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Payroll', hidden: true },
+  { label: 'Run Payroll', icon: 'play_arrow', roles: ['admin', 'finance'], permission: 'finance.payroll.run', moduleCode: 'FINANCE', section: 'FINANCE', group: 'Payroll', hidden: true },
+
+  // HR Actions
+  { label: 'Create Employee', icon: 'add', roles: ['admin', 'hr'], permission: 'hr.employees.create', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+  { label: 'Edit Employee', icon: 'edit', roles: ['admin', 'hr'], permission: 'hr.employees.edit', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+  { label: 'Delete Employee', icon: 'delete', roles: ['admin', 'hr'], permission: 'hr.employees.delete', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+
+  { label: 'Create Shift', icon: 'add', roles: ['admin', 'hr', 'manager'], permission: 'hr.shifts.create', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+  { label: 'Edit Shift', icon: 'edit', roles: ['admin', 'hr', 'manager'], permission: 'hr.shifts.edit', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+  { label: 'Delete Shift', icon: 'delete', roles: ['admin', 'hr', 'manager'], permission: 'hr.shifts.delete', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+
+  { label: 'Approve Leave', icon: 'check', roles: ['admin', 'hr', 'manager'], permission: 'hr.leave.approve', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+  { label: 'Reject Leave', icon: 'close', roles: ['admin', 'hr', 'manager'], permission: 'hr.leave.reject', moduleCode: 'HR', section: 'HR', group: 'Staff', hidden: true },
+
+  // SYSTEM / ADMIN Actions
+  { label: 'Create Customer', icon: 'add', roles: ['admin', 'manager'], permission: 'crm.customers.create', moduleCode: 'CRM', section: 'SYSTEM', group: 'CRM', hidden: true },
+  { label: 'Edit Customer', icon: 'edit', roles: ['admin', 'manager'], permission: 'crm.customers.edit', moduleCode: 'CRM', section: 'SYSTEM', group: 'CRM', hidden: true },
+  { label: 'Delete Customer', icon: 'delete', roles: ['admin', 'manager'], permission: 'crm.customers.delete', moduleCode: 'CRM', section: 'SYSTEM', group: 'CRM', hidden: true },
+
+  { label: 'Create User', icon: 'add', roles: ['admin'], permission: 'admin.users.create', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
+  { label: 'Edit User', icon: 'edit', roles: ['admin'], permission: 'admin.users.edit', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
+  { label: 'Delete User', icon: 'delete', roles: ['admin'], permission: 'admin.users.delete', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
+
+  { label: 'Create Branch', icon: 'add', roles: ['admin'], permission: 'admin.branches.create', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
+  { label: 'Edit Branch', icon: 'edit', roles: ['admin'], permission: 'admin.branches.edit', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
+  { label: 'Delete Branch', icon: 'delete', roles: ['admin'], permission: 'admin.branches.delete', moduleCode: 'ADMIN', section: 'SYSTEM', group: 'Administration', hidden: true },
 ]
 
 /**

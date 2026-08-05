@@ -87,6 +87,7 @@
             borderless
             input-class="text-right"
             :min="0"
+            @update:model-value="recalcLine(props.row)"
           />
         </q-td>
 
@@ -101,6 +102,7 @@
             borderless
             input-class="text-right"
             :min="0"
+            @update:model-value="onPriceChange(props.row)"
           />
         </q-td>
 
@@ -153,7 +155,18 @@ const props = defineProps({
   allowEditUom: { type: Boolean, required: false, default: true },
 })
 
-defineEmits(['add-line', 'remove-line', 'item-change', 'uom-change'])
+defineEmits(['add-line', 'remove-line', 'item-change', 'uom-change', 'price-change'])
+
+// Recalculate line total when quantity or price changes
+function recalcLine(row) {
+  row.line_total = (row.quantity || 0) * (row.unit_price || row.unit_cost || 0)
+}
+
+// When user manually edits unit_price, sync unit_cost and recalculate total
+function onPriceChange(row) {
+  row.unit_cost = row.unit_price
+  recalcLine(row)
+}
 
 const getUomName = (uomId) => {
   if (!uomId) return ''

@@ -255,34 +255,34 @@ async function loadData(filters = {}) {
   loading.value = true
   expanded.value = new Set()
   try {
-    const linesJoin = filters.item_id ? 'inventory_document_lines!inner' : 'inventory_document_lines'
+    // Query goods_receipts directly for accurate GRN data
+    const linesJoin = filters.item_id ? 'goods_receipt_lines!inner' : 'goods_receipt_lines'
     let query = supabase
-      .from('inventory_documents')
+      .from('goods_receipts')
       .select(
-        `id, doc_number, reference_no, created_at, doc_date,
-         grand_total, status, remarks,
+        `id, doc_number, doc_date, created_at,
+         total_amount, status, remarks,
          supplier_id,
          suppliers ( name ),
          ${linesJoin} (
-           id, quantity, unit_cost, line_total, item_id,
+           id, item_id, quantity, unit_cost, line_total, uom_id,
            items ( name, code ),
-           uom ( name, code )
+           uom!goods_receipt_lines_uom_id_fkey ( name, code )
          )`
       )
-      .eq('doc_type', 'GRN')
       .order('created_at', { ascending: false })
 
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('doc_date', filters.dateFrom)
+    if (filters.dateTo) query = query.lte('doc_date', filters.dateTo)
     if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-    if (filters.item_id) query = query.eq('inventory_document_lines.item_id', filters.item_id)
+    if (filters.item_id) query = query.eq('goods_receipt_lines.item_id', filters.item_id)
 
     const { data, error } = await query.limit(1000)
     if (error) throw error
 
     rows.value = (data || []).map((r) => {
       const supplier = Array.isArray(r.suppliers) ? r.suppliers[0] : r.suppliers
-      const rawLines = r.inventory_document_lines || []
+      const rawLines = r.goods_receipt_lines || []
 
       const lines = rawLines.map((l) => {
         const item = Array.isArray(l.items) ? l.items[0] : l.items
@@ -303,8 +303,8 @@ async function loadData(filters = {}) {
         doc_number: r.doc_number || `GRN-${r.id?.slice(0, 6)}`,
         date: r.doc_date || r.created_at,
         supplier: supplier?.name || '—',
-        reference: r.reference_no || '—',
-        total: Number(r.grand_total || 0),
+        reference: '—',
+        total: Number(r.total_amount || 0),
         status: r.status || 'posted',
         notes: r.remarks,
         lines,
