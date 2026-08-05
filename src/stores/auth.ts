@@ -171,6 +171,12 @@ export const useAuthStore = defineStore('auth', {
 
           if (event === 'SIGNED_OUT') {
             this._clearUserData()
+            if (typeof window !== 'undefined') {
+              const current = window.location.pathname
+              if (current !== '/auth/login' && !current.startsWith('/touch')) {
+                window.location.href = '/auth/login'
+              }
+            }
           }
           // For SIGNED_IN, we handle data fetching in signIn() directly
           // The listener only handles external auth changes (e.g. token refresh)

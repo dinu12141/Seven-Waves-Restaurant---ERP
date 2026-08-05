@@ -179,6 +179,13 @@ export default boot(async ({ router }) => {
         )
         if (touchesPrivileged && !authStore.rolesVerified) {
           await authStore._backgroundRefreshUserData()
+          
+          // IMPORTANT: If background refresh triggered a token refresh failure (e.g. invalid refresh token),
+          // the session might have been cleared. If we're no longer authenticated, kick to login immediately
+          // instead of proceeding to /unauthorized.
+          if (!authStore.isAuthenticated) {
+            return { path: '/auth/login', query: { redirect: to.fullPath } }
+          }
         }
 
         // User must satisfy every set (at least one role from each).
