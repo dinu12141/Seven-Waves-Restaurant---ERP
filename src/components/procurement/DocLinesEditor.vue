@@ -7,6 +7,7 @@
     flat
     bordered
     :hide-bottom="true"
+    :pagination="{ rowsPerPage: 0 }"
     separator="cell"
   >
     <!-- Header Slot for Add Button -->
