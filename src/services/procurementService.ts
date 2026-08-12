@@ -103,6 +103,9 @@ export interface GoodsReceipt {
   warehouse_id: string
   status?: string
   subtotal?: number
+  discount_type?: 'percentage' | 'amount'
+  discount_value?: number
+  discount_amount?: number
   tax_amount?: number
   total_amount?: number
   remarks?: string
@@ -1036,9 +1039,23 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
   if (linesErr) throw new Error(linesErr.message)
 
   const subtotal = lines.reduce((s, l) => s + l.quantity * (l.unit_cost ?? 0), 0)
+  
+  const discount_type = header.discount_type || 'percentage'
+  const discount_value = header.discount_value || 0
+  const discount_amount = discount_type === 'percentage' 
+    ? (subtotal * discount_value) / 100 
+    : discount_value
+  const total_amount = subtotal - discount_amount
+
   await supabase
     .from('goods_receipts')
-    .update({ subtotal, total_amount: subtotal })
+    .update({ 
+      subtotal, 
+      discount_type,
+      discount_value,
+      discount_amount,
+      total_amount 
+    })
     .eq('id', grn.id)
 
   return grn
@@ -1087,9 +1104,26 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
   const { error: linesErr } = await supabase.from('goods_receipt_lines').insert(linePayloads)
   if (linesErr) throw new Error(linesErr.message)
 
-  // Update subtotal
+  // Update subtotal and calculate discount
   const subtotal = lines.reduce((s, l) => s + l.quantity * (l.unit_cost ?? 0), 0)
-  await supabase.from('goods_receipts').update({ subtotal, total_amount: subtotal }).eq('id', grnId)
+
+  const discount_type = header.discount_type || 'percentage'
+  const discount_value = header.discount_value || 0
+  const discount_amount = discount_type === 'percentage' 
+    ? (subtotal * discount_value) / 100 
+    : discount_value
+  const total_amount = subtotal - discount_amount
+
+  await supabase
+    .from('goods_receipts')
+    .update({ 
+      subtotal, 
+      discount_type,
+      discount_value,
+      discount_amount,
+      total_amount 
+    })
+    .eq('id', grnId)
 
   return { id: grnId }
 }

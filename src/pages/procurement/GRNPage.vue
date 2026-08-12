@@ -113,8 +113,48 @@
 
           <!-- Totals -->
           <div class="row justify-end q-mt-md">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-5">
               <div class="erp-card q-pa-md">
+                <div class="row justify-between items-center q-mb-sm">
+                  <span style="font-size: 14px; color: var(--erp-text-secondary)">Subtotal</span>
+                  <span style="font-size: 16px; font-weight: 500;">
+                    {{ formatCurrency(subtotalAmount) }}
+                  </span>
+                </div>
+                <div class="row justify-between items-center q-mb-sm q-col-gutter-sm">
+                  <div class="col-auto row items-center">
+                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-sm">Discount</span>
+                    <q-btn-toggle
+                      v-model="form.discount_type"
+                      :options="[
+                        {label: '%', value: 'percentage'},
+                        {label: 'Fixed', value: 'amount'}
+                      ]"
+                      size="sm"
+                      dense
+                      unelevated
+                      toggle-color="primary"
+                      class="border"
+                      :disable="form.status !== 'draft'"
+                    />
+                  </div>
+                  <div class="col-4">
+                    <q-input
+                      v-model.number="form.discount_value"
+                      type="number"
+                      dense
+                      outlined
+                      min="0"
+                      :max="form.discount_type === 'percentage' ? 100 : undefined"
+                      input-class="text-right"
+                      :readonly="form.status !== 'draft'"
+                    />
+                  </div>
+                  <div class="col-auto text-right text-negative" style="font-size: 16px; font-weight: 500; min-width: 90px;">
+                    - {{ formatCurrency(discountAmount) }}
+                  </div>
+                </div>
+                <q-separator class="q-my-sm" />
                 <div class="row justify-between items-center">
                   <span style="font-size: 14px; color: var(--erp-text-secondary)">Total Amount</span>
                   <span style="font-size: 18px; font-weight: 700; color: var(--erp-text-primary)">
@@ -228,17 +268,30 @@ const defaultForm = {
   doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
   status: 'draft',
   lines: [],
+  discount_type: 'percentage',
+  discount_value: 0,
   total_amount: 0,
   remarks: '',
 }
 const form = ref({ ...defaultForm })
 
-const totalAmount = computed(() =>
+const subtotalAmount = computed(() =>
   (form.value.lines || []).reduce(
     (acc, l) => acc + (l.line_total || l.quantity * (l.unit_cost || l.unit_price || 0)),
     0,
-  ),
+  )
 )
+
+const discountAmount = computed(() => {
+  const subtotal = subtotalAmount.value
+  const value = Number(form.value.discount_value) || 0
+  if (form.value.discount_type === 'percentage') {
+    return (subtotal * value) / 100
+  }
+  return value
+})
+
+const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value))
 
 // --- BaseDataGrid config ---
 const columns = [
@@ -391,6 +444,8 @@ async function editGRN(row) {
         (full.warehouse_id
           ? warehouseOptions.value.find((w) => w.id === full.warehouse_id) || null
           : null),
+      discount_type: full.discount_type || 'percentage',
+      discount_value: full.discount_value || 0,
       lines,
     }
   } catch (e) {
@@ -494,6 +549,8 @@ async function saveGRN() {
           warehouse_id: warehouseId,
           doc_date: form.value.doc_date,
           remarks: form.value.remarks,
+          discount_type: form.value.discount_type,
+          discount_value: form.value.discount_value,
         },
         lines,
       )
@@ -511,7 +568,13 @@ async function saveGRN() {
       }))
       grn = await updateGRN(
         form.value.id,
-        { doc_date: form.value.doc_date, warehouse_id: warehouseId, remarks: form.value.remarks },
+        { 
+          doc_date: form.value.doc_date, 
+          warehouse_id: warehouseId, 
+          remarks: form.value.remarks,
+          discount_type: form.value.discount_type,
+          discount_value: form.value.discount_value,
+        },
         lines,
       )
     }
