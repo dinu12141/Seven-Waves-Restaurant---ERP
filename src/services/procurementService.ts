@@ -106,6 +106,7 @@ export interface GoodsReceipt {
   discount_type?: 'percentage' | 'amount'
   discount_value?: number
   discount_amount?: number
+  tax_pct?: number
   tax_amount?: number
   total_amount?: number
   remarks?: string
@@ -1045,7 +1046,11 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
   const discount_amount = discount_type === 'percentage' 
     ? (subtotal * discount_value) / 100 
     : discount_value
-  const total_amount = subtotal - discount_amount
+    
+  const tax_pct = header.tax_pct || 0
+  const taxable_amount = subtotal - discount_amount
+  const tax_amount = (taxable_amount * tax_pct) / 100
+  const total_amount = taxable_amount + tax_amount
 
   await supabase
     .from('goods_receipts')
@@ -1054,6 +1059,8 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
       discount_type,
       discount_value,
       discount_amount,
+      tax_pct,
+      tax_amount,
       total_amount 
     })
     .eq('id', grn.id)
@@ -1112,7 +1119,11 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
   const discount_amount = discount_type === 'percentage' 
     ? (subtotal * discount_value) / 100 
     : discount_value
-  const total_amount = subtotal - discount_amount
+    
+  const tax_pct = header.tax_pct || 0
+  const taxable_amount = subtotal - discount_amount
+  const tax_amount = (taxable_amount * tax_pct) / 100
+  const total_amount = taxable_amount + tax_amount
 
   await supabase
     .from('goods_receipts')
@@ -1121,6 +1132,8 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
       discount_type,
       discount_value,
       discount_amount,
+      tax_pct,
+      tax_amount,
       total_amount 
     })
     .eq('id', grnId)

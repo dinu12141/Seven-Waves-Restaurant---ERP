@@ -30,15 +30,26 @@
           <template v-slot:option="scope">
             <q-item v-bind="scope.itemProps">
               <q-item-section>
-                <q-item-label>{{ scope.opt.name }}</q-item-label>
-                <q-item-label caption
-                  >Bal: {{ scope.opt.balance }} | Limit: {{ scope.opt.credit_limit }}</q-item-label
-                >
+                <q-item-label>
+                  {{ scope.opt.name }}
+                  <q-badge v-if="scope.opt.tax_id" color="primary" class="q-ml-sm" dense>TAX</q-badge>
+                </q-item-label>
+                <q-item-label caption>Bal: {{ scope.opt.balance }} | Limit: {{ scope.opt.credit_limit }}</q-item-label>
               </q-item-section>
             </q-item>
           </template>
+          <template v-slot:selected-item="scope">
+            <div class="row items-center q-gutter-x-sm">
+              <span>{{ scope.opt.name }}</span>
+              <q-badge v-if="scope.opt.tax_id" color="primary" dense>TAX</q-badge>
+            </div>
+          </template>
         </q-select>
-        <q-input v-else :model-value="supplier?.name" label="Supplier" outlined dense readonly />
+        <q-input v-else :model-value="supplier?.name" label="Supplier" outlined dense readonly>
+          <template v-slot:append>
+            <q-badge v-if="supplier?.tax_id" color="primary" dense>TAX</q-badge>
+          </template>
+        </q-input>
       </div>
 
       <div class="col-12 col-md-3">

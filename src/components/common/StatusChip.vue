@@ -40,7 +40,7 @@ const badgeClass = computed(() => {
   // Ready: Green
   if (['ready', 'served', 'active', 'approved', 'received'].includes(s)) return 'erp-badge--ready'
   // Paid: Green solid
-  if (['paid', 'completed', 'delivered'].includes(s)) return 'erp-badge--paid'
+  if (['paid', 'completed', 'delivered', 'posted'].includes(s)) return 'erp-badge--paid'
   // Cancelled: Red
   if (['cancelled', 'canceled', 'void', 'failed', 'critical', 'overdue', 'rejected'].includes(s))
     return 'erp-badge--cancelled'
@@ -55,7 +55,7 @@ const iconName = computed(() => {
   if (['pending', 'processing', 'scheduled'].includes(s)) return 'schedule'
   if (['preparing', 'cooking', 'in progress'].includes(s)) return 'restaurant'
   if (['ready', 'active', 'approved'].includes(s)) return 'done'
-  if (['paid', 'completed', 'delivered'].includes(s)) return 'check_circle'
+  if (['paid', 'completed', 'delivered', 'posted'].includes(s)) return 'check_circle'
   if (['cancelled', 'canceled', 'void', 'failed', 'rejected'].includes(s)) return 'cancel'
   if (['open', 'new'].includes(s)) return 'play_circle_outline'
   return 'info'

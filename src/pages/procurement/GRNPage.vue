@@ -154,6 +154,33 @@
                     - {{ formatCurrency(discountAmount) }}
                   </div>
                 </div>
+
+                <!-- TAX AMOUNT -->
+                <div class="row justify-between items-center q-mb-sm q-col-gutter-sm" v-if="form.supplier?.tax_id">
+                  <div class="col-auto row items-center">
+                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-sm">Tax Amount</span>
+                  </div>
+                  <div class="col-4">
+                    <q-input
+                      v-model.number="form.tax_pct"
+                      type="number"
+                      dense
+                      outlined
+                      min="0"
+                      max="100"
+                      input-class="text-right"
+                      :readonly="form.status !== 'draft'"
+                    >
+                      <template v-slot:append>
+                        <span class="text-caption">%</span>
+                      </template>
+                    </q-input>
+                  </div>
+                  <div class="col-auto text-right text-primary" style="font-size: 16px; font-weight: 500; min-width: 90px;">
+                    + {{ formatCurrency(taxAmount) }}
+                  </div>
+                </div>
+
                 <q-separator class="q-my-sm" />
                 <div class="row justify-between items-center">
                   <span style="font-size: 14px; color: var(--erp-text-secondary)">Total Amount</span>
@@ -270,6 +297,8 @@ const defaultForm = {
   lines: [],
   discount_type: 'percentage',
   discount_value: 0,
+  tax_pct: 0,
+  tax_amount: 0,
   total_amount: 0,
   remarks: '',
 }
@@ -291,7 +320,13 @@ const discountAmount = computed(() => {
   return value
 })
 
-const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value))
+const taxAmount = computed(() => {
+  const taxable_amount = Math.max(0, subtotalAmount.value - discountAmount.value)
+  const pct = Number(form.value.tax_pct) || 0
+  return (taxable_amount * pct) / 100
+})
+
+const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value) + taxAmount.value)
 
 // --- BaseDataGrid config ---
 const columns = [
@@ -446,6 +481,9 @@ async function editGRN(row) {
           : null),
       discount_type: full.discount_type || 'percentage',
       discount_value: full.discount_value || 0,
+      tax_pct: full.tax_pct || 0,
+      tax_amount: full.tax_amount || 0,
+      total_amount: full.total_amount || 0,
       lines,
     }
   } catch (e) {
@@ -551,6 +589,8 @@ async function saveGRN() {
           remarks: form.value.remarks,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
+          tax_pct: form.value.tax_pct,
+          tax_amount: taxAmount.value,
         },
         lines,
       )
@@ -574,6 +614,8 @@ async function saveGRN() {
           remarks: form.value.remarks,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
+          tax_pct: form.value.tax_pct,
+          tax_amount: taxAmount.value,
         },
         lines,
       )
