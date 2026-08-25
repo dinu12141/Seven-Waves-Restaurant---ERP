@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, existsSync } from 'fs';
-import path from 'path';
+
 
 const envPath = 'c:\\Users\\ROG STRIX\\Desktop\\Restaurant ERP new\\.env';
 
