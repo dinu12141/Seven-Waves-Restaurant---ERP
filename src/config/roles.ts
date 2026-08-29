@@ -1362,9 +1362,8 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/admin/approvals',
     roles: ['admin', 'manager'],
     permission: 'admin.system.view',
-    moduleCode: 'ADMIN',
-    section: 'SYSTEM',
-    group: 'Administration',
+    section: 'APPROVALS',
+    group: 'Governance',
   },
   {
     label: 'Users',

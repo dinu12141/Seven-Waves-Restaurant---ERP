@@ -409,6 +409,7 @@ const groupedSidebarItems = computed(() => {
  * Used on initial load and direct URL navigation only.
  */
 function sectionForPath(path) {
+  if (path.startsWith('/admin/approvals') || path.startsWith('/approvals')) return 'APPROVALS'
   if (path.startsWith('/inventory')) return 'INVENTORY'
   if (path.startsWith('/procurement')) return 'PROCUREMENT'
   if (path.startsWith('/finance')) return 'FINANCE'

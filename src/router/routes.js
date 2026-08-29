@@ -247,6 +247,11 @@ const routes = [
         meta: { roles: ['admin', 'manager'], module: 'ai', permission: 'ai.view' },
       },
       {
+        path: 'approvals',
+        component: () => import('pages/admin/ApprovalsCenterPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'admin', permission: 'admin.system.view' },
+      },
+      {
         path: 'admin/approvals',
         component: () => import('pages/admin/ApprovalsCenterPage.vue'),
         meta: { roles: ['admin', 'manager'], module: 'admin', permission: 'admin.system.view' },
