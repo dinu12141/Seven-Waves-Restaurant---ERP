@@ -534,6 +534,18 @@ onUnmounted(() => {
   background-color: #0b0e14;
 }
 
+.touch-cart-drawer {
+  transition: background-color 0.25s ease;
+}
+:global(.body--light) .touch-cart-drawer {
+  background: #ffffff !important;
+  border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+:global(.body--dark) .touch-cart-drawer {
+  background: #0f172a !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
 // ── Header Logo ───────────────────────────────────────────────────────────────
 .header-logo {
   gap: 8px;

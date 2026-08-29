@@ -1,8 +1,19 @@
 <template>
-  <div class="column full-height bg-dark text-white">
+  <div
+    class="column full-height order-progress-root"
+    :class="$q.dark.isActive ? 'progress-root--dark' : 'progress-root--light'"
+  >
     <!-- Header -->
-    <div class="row items-center q-pa-md border-bottom bg-header">
-      <div class="text-h6 text-weight-bolder">Active Orders</div>
+    <div
+      class="row items-center q-pa-md progress-header border-bottom"
+      :class="$q.dark.isActive ? 'progress-header--dark' : 'progress-header--light'"
+    >
+      <div
+        class="text-h6 text-weight-bolder"
+        :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+      >
+        Active Orders
+      </div>
       <q-space />
       <q-btn
         flat
@@ -11,16 +22,29 @@
         icon="close"
         size="sm"
         @click="$emit('close')"
-        class="text-grey-5 hover-white"
+        :class="$q.dark.isActive ? 'text-grey-5 hover-white' : 'text-grey-7 hover-dark'"
       />
     </div>
 
     <!-- Empty State -->
     <div v-if="orders.length === 0 && !loading" class="col flex flex-center text-center q-pa-xl">
       <div>
-        <q-icon name="history" size="64px" class="text-grey-8 q-mb-md" />
-        <div class="text-h6 text-grey-5 font-bold">No active orders</div>
-        <div class="text-caption text-grey-7 q-mt-sm">
+        <q-icon
+          name="history"
+          size="64px"
+          :class="$q.dark.isActive ? 'text-grey-8' : 'text-grey-4'"
+          class="q-mb-md"
+        />
+        <div
+          class="text-h6 font-bold"
+          :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-8'"
+        >
+          No active orders
+        </div>
+        <div
+          class="text-caption q-mt-sm"
+          :class="$q.dark.isActive ? 'text-grey-7' : 'text-grey-6'"
+        >
           Place an order to see its progress here in real-time.
         </div>
       </div>
@@ -36,16 +60,20 @@
         <q-card
           v-for="order in orders"
           :key="order.id"
-          class="q-mb-md bg-grey-10 order-card overflow-hidden"
+          class="q-mb-md order-card overflow-hidden"
+          :class="$q.dark.isActive ? 'order-card--dark' : 'order-card--light'"
           flat
         >
           <q-card-section class="q-pa-md">
             <div class="row justify-between items-start q-mb-sm">
               <div>
-                <div class="text-caption text-grey-5 font-mono uppercase">
+                <div class="text-caption text-grey-6 font-mono uppercase">
                   Order #{{ order.order_number || order.id.substring(0, 8) }}
                 </div>
-                <div class="text-subtitle1 text-weight-bold text-white q-mt-xs">
+                <div
+                  class="text-subtitle1 text-weight-bold q-mt-xs"
+                  :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+                >
                   {{ formatDate(order.created_at) }}
                 </div>
               </div>
@@ -375,19 +403,46 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-.bg-header {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(10px);
+.progress-root--dark {
+  background: #0f172a;
+  color: #f8fafc;
+}
+.progress-root--light {
+  background: #ffffff;
+  color: #0f172a;
 }
 
-.border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.progress-header--dark {
+  background: rgba(11, 14, 20, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.progress-header--light {
+  background: rgba(248, 250, 252, 0.98);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.order-card--dark {
+  background: #1e293b !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.order-card--light {
+  background: #f8fafc !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.hover-white:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1);
+}
+.hover-dark:hover {
+  color: #0f172a !important;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .order-card {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 
   &:active {
     transform: scale(0.98);

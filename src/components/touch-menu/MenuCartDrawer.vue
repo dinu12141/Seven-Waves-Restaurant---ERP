@@ -1,8 +1,19 @@
 <template>
-  <div class="column full-height bg-dark">
+  <div
+    class="column full-height cart-drawer-root"
+    :class="$q.dark.isActive ? 'cart-root--dark' : 'cart-root--light'"
+  >
     <!-- Header -->
-    <div class="row items-center q-pa-md border-bottom bg-header">
-      <div class="text-h6 text-weight-bolder text-white">Your Order</div>
+    <div
+      class="row items-center q-pa-md cart-header border-bottom"
+      :class="$q.dark.isActive ? 'cart-header--dark' : 'cart-header--light'"
+    >
+      <div
+        class="text-h6 text-weight-bolder"
+        :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+      >
+        Your Order
+      </div>
       <q-space />
       <q-btn
         flat
@@ -11,16 +22,29 @@
         icon="close"
         size="sm"
         @click="$emit('close')"
-        class="text-grey-5 hover-white transition-02"
+        :class="$q.dark.isActive ? 'text-grey-5 hover-white' : 'text-grey-7 hover-dark'"
       />
     </div>
 
     <!-- Empty State -->
     <div v-if="cartItems.length === 0" class="col flex flex-center text-center q-pa-xl">
       <div>
-        <q-icon name="restaurant" size="64px" class="text-grey-8 q-mb-md" />
-        <div class="text-h6 text-grey-5 font-bold">Your cart is empty</div>
-        <div class="text-caption text-grey-7 q-mt-sm">
+        <q-icon
+          name="restaurant"
+          size="64px"
+          :class="$q.dark.isActive ? 'text-grey-8' : 'text-grey-4'"
+          class="q-mb-md"
+        />
+        <div
+          class="text-h6 font-bold"
+          :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-8'"
+        >
+          Your cart is empty
+        </div>
+        <div
+          class="text-caption q-mt-sm"
+          :class="$q.dark.isActive ? 'text-grey-7' : 'text-grey-6'"
+        >
           Add some delicious items from our menu to get started.
         </div>
       </div>
@@ -45,13 +69,14 @@
               width="60px"
               height="60px"
               ratio="1"
-              class="rounded-borders glossy shadow-3"
+              class="rounded-borders glossy shadow-2"
             />
           </q-item-section>
 
           <q-item-section>
             <q-item-label
-              class="text-subtitle2 text-weight-bold text-white ellipsis-2-lines line-height-1"
+              class="text-subtitle2 text-weight-bold ellipsis-2-lines line-height-1"
+              :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
               style="font-size: 14px"
               >{{ item.name }}</q-item-label
             >
@@ -68,15 +93,18 @@
                 round
                 dense
                 unelevated
-                color="grey-9"
-                text-color="white"
+                :color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
+                :text-color="$q.dark.isActive ? 'white' : 'dark'"
                 icon="remove"
                 size="xs"
                 @click="updateQuantity(item.menu_item_id, -1, item.variant)"
               />
-              <span class="text-weight-bold text-white q-px-md font-mono" style="font-size: 15px">{{
-                item.quantity
-              }}</span>
+              <span
+                class="text-weight-bold q-px-md font-mono"
+                :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+                style="font-size: 15px"
+                >{{ item.quantity }}</span
+              >
               <q-btn
                 round
                 dense
@@ -95,13 +123,17 @@
               dense
               borderless
               placeholder="Add note (spicy, no onion...)"
-              class="q-mt-sm text-caption note-input bg-grey-10 text-grey-3 rounded-borders q-px-sm"
+              class="q-mt-sm text-caption note-input rounded-borders q-px-sm"
+              :class="$q.dark.isActive ? 'bg-grey-10 text-grey-3' : 'bg-grey-2 text-grey-9'"
               style="font-size: 11px"
             />
           </q-item-section>
 
           <q-item-section side top>
-            <div class="text-weight-bold text-white price-font">
+            <div
+              class="text-weight-bold price-font"
+              :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+            >
               LKR {{ Math.round(item.total_price).toLocaleString('en-LK') }}
             </div>
             <q-btn
@@ -120,10 +152,16 @@
     </q-scroll-area>
 
     <!-- Footer Summary & Checkout -->
-    <div class="q-pa-md bg-footer shadow-up border-top">
-      <div class="row justify-between q-mb-sm text-grey-4 text-subtitle2">
+    <div
+      class="q-pa-md cart-footer border-top shadow-up"
+      :class="$q.dark.isActive ? 'cart-footer--dark' : 'cart-footer--light'"
+    >
+      <div
+        class="row justify-between q-mb-sm text-subtitle2"
+        :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+      >
         <span>Subtotal ({{ cartItems.length }} items)</span>
-        <span class="price-font">LKR {{ Math.round(subtotal).toLocaleString('en-LK') }}</span>
+        <span class="price-font text-weight-bold">LKR {{ Math.round(subtotal).toLocaleString('en-LK') }}</span>
       </div>
       <div v-if="loyaltyDiscount > 0" class="row justify-between q-mb-sm text-warning font-bold">
         <span>Loyalty Rewards (Tier)</span>
@@ -131,9 +169,12 @@
           >- LKR {{ Math.round(loyaltyDiscount).toLocaleString('en-LK') }}</span
         >
       </div>
-      <div class="row justify-between q-mb-md text-h5 text-white font-black">
+      <div
+        class="row justify-between q-mb-md text-h5 font-black"
+        :class="$q.dark.isActive ? 'text-white' : 'text-slate-900'"
+      >
         <span>Total</span>
-        <span class="price-font">LKR {{ Math.round(total).toLocaleString('en-LK') }}</span>
+        <span class="price-font text-primary">LKR {{ Math.round(total).toLocaleString('en-LK') }}</span>
       </div>
 
       <q-btn
@@ -308,50 +349,55 @@ async function submitOrder() {
 </script>
 
 <style scoped>
-.bg-header {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(10px);
+.cart-root--dark {
+  background: #0f172a;
+  color: #f8fafc;
+}
+.cart-root--light {
+  background: #ffffff;
+  color: #0f172a;
 }
 
-.bg-footer {
-  background: rgba(15, 23, 42, 0.98);
-  backdrop-filter: blur(15px);
+.cart-header--dark {
+  background: rgba(11, 14, 20, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cart-header--light {
+  background: rgba(248, 250, 252, 0.98);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.border-bottom {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.cart-footer--dark {
+  background: rgba(11, 14, 20, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 }
-
-.border-top {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.cart-item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+.cart-footer--light {
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
 }
 
 .hover-white:hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.1);
 }
+.hover-dark:hover {
+  color: #0f172a !important;
+  background: rgba(0, 0, 0, 0.06);
+}
 
 .note-input :deep(.q-field__control) {
   min-height: 28px !important;
   height: 28px !important;
-  color: #94a3b8;
-}
-
-.shadow-up {
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
 }
 
 .touch-confirm-btn {
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4) !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: #ffffff !important;
 }
 
 .touch-confirm-btn:not(:disabled):active {
