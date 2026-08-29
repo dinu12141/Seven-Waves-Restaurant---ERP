@@ -173,7 +173,16 @@ export const useAuthStore = defineStore('auth', {
             this._clearUserData()
             if (typeof window !== 'undefined') {
               const current = window.location.pathname
-              if (current !== '/auth/login' && !current.startsWith('/touch')) {
+              const isPublicTableOrCustomer =
+                current === '/table-login' ||
+                current === '/loyalty' ||
+                current.startsWith('/touch') ||
+                current.startsWith('/table/') ||
+                current.startsWith('/customer/') ||
+                current.startsWith('/c/') ||
+                current.startsWith('/menu') ||
+                current.startsWith('/auth/')
+              if (current !== '/auth/login' && !isPublicTableOrCustomer) {
                 window.location.href = '/auth/login'
               }
             }

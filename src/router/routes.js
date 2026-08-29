@@ -535,6 +535,7 @@ const routes = [
   {
     path: '/menu',
     component: () => import('layouts/CustomerLayout.vue'),
+    meta: { requiresAuth: false },
     children: [
       { path: '', component: () => import('pages/CustomerMenuPage.vue') },
       { path: 'track/:orderId', component: () => import('pages/OrderTrackingPage.vue') },
