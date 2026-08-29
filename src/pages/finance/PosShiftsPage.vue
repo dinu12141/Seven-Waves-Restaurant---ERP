@@ -105,8 +105,61 @@
             {{ props.row.branches?.name || 'Unknown' }}
           </q-td>
         </template>
+
+        <!-- Action column with View Invoices, Print Z-Report, and Download -->
+        <template #body-cell-actions="props">
+          <q-td :props="props" class="text-center">
+            <div class="row items-center justify-center q-gutter-xs no-wrap">
+              <!-- View Shift Invoices Button -->
+              <q-btn
+                dense
+                unelevated
+                color="primary"
+                icon="receipt_long"
+                label="Invoices"
+                size="sm"
+                class="q-px-xs text-weight-bold"
+                @click="openShiftInvoices(props.row)"
+              >
+                <q-tooltip>View All Shift Invoices & Orders</q-tooltip>
+              </q-btn>
+
+              <!-- Print Shift Z-Report -->
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                color="amber-4"
+                icon="print"
+                @click="printShiftZReport(props.row)"
+              >
+                <q-tooltip>Print Shift Z-Report Receipt</q-tooltip>
+              </q-btn>
+
+              <!-- Download Shift Statement PDF -->
+              <q-btn
+                flat
+                round
+                dense
+                size="sm"
+                color="cyan-4"
+                icon="download"
+                @click="downloadShiftSummaryPdf(props.row)"
+              >
+                <q-tooltip>Download Shift Statement PDF</q-tooltip>
+              </q-btn>
+            </div>
+          </q-td>
+        </template>
       </q-table>
     </div>
+
+    <!-- Shift Invoices Dialog -->
+    <ShiftInvoicesDialog
+      v-model="showShiftInvoicesModal"
+      :shift="selectedShiftForInvoices"
+    />
   </q-page>
 </template>
 
@@ -115,6 +168,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useQuasar, exportFile } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import ShiftInvoicesDialog from 'src/components/pos/ShiftInvoicesDialog.vue'
+import { printService } from 'src/services/printService'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -122,6 +177,8 @@ import * as XLSX from 'xlsx'
 const $q = useQuasar()
 const loading = ref(false)
 const shifts = ref([])
+const showShiftInvoicesModal = ref(false)
+const selectedShiftForInvoices = ref(null)
 
 // Filters
 const filterStatus = ref(null)
@@ -148,7 +205,53 @@ const columns = [
   { name: 'expected_cash', label: 'Expected Cash', field: 'expected_cash', align: 'right', sortable: true, format: val => formatCurrency(val) },
   { name: 'counted_cash', label: 'Counted Cash', field: 'counted_cash', align: 'right', sortable: true, format: val => formatCurrency(val) },
   { name: 'variance', label: 'Variance', field: 'variance', align: 'right', sortable: true, format: val => formatCurrency(val) },
+  { name: 'actions', label: 'Actions', align: 'center' },
 ]
+
+function openShiftInvoices(row) {
+  selectedShiftForInvoices.value = row
+  showShiftInvoicesModal.value = true
+}
+
+function printShiftZReport(row) {
+  printService.printShiftSummary(row)
+}
+
+function downloadShiftSummaryPdf(row) {
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('SEVEN WAVES RESTAURANT - POS SHIFT STATEMENT', 14, 20)
+  
+  doc.setFontSize(10)
+  doc.text(`Branch: ${row.branches?.name || 'Main Branch'}`, 14, 28)
+  doc.text(`Terminal: ${row.terminal_id || 'POS-1'}`, 14, 34)
+  doc.text(`Cashier (Opened): ${row.opened_by_user?.full_name || row.profiles?.full_name || 'Staff'}`, 14, 40)
+  doc.text(`Opened At: ${formatDateOnly(row.opened_at)} ${formatTimeOnly(row.opened_at)}`, 14, 46)
+  doc.text(`Closed At: ${formatDateOnly(row.closed_at)} ${formatTimeOnly(row.closed_at)}`, 14, 52)
+  doc.text(`Status: ${(row.status || '').toUpperCase()}`, 14, 58)
+
+  const summaryData = [
+    ['Opening Cash Float', `LKR ${formatCurrency(row.opening_cash_float)}`],
+    ['Cash Sales Total', `LKR ${formatCurrency(row.cash_sales_total || 0)}`],
+    ['Card Sales Total', `LKR ${formatCurrency(row.card_sales_total || 0)}`],
+    ['QR / Online Sales Total', `LKR ${formatCurrency(row.qr_sales_total || 0)}`],
+    ['Bank Sales Total', `LKR ${formatCurrency(row.bank_sales_total || 0)}`],
+    ['Expected Cash in Drawer', `LKR ${formatCurrency(row.expected_cash || 0)}`],
+    ['Counted Cash in Drawer', `LKR ${formatCurrency(row.counted_cash || 0)}`],
+    ['Variance', `LKR ${formatCurrency(row.variance || 0)}`],
+  ]
+
+  autoTable(doc, {
+    startY: 65,
+    head: [['Description', 'Amount']],
+    body: summaryData,
+    theme: 'grid',
+    headStyles: { fillColor: [30, 41, 59] }
+  })
+
+  doc.save(`shift_${row.id?.substring(0, 8)}_statement.pdf`)
+  $q.notify({ type: 'positive', message: 'Shift statement downloaded' })
+}
 
 function formatCurrency(val) {
   if (val == null) return '-'
