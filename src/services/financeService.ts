@@ -849,35 +849,50 @@ export async function logFinanceAction(action: FinanceFilters) {
 // ═══════════════════════════════════════════════════════════════════
 // DASHBOARD KPIs
 // ═══════════════════════════════════════════════════════════════════
-export async function fetchDashboardKPIs(branchId?: any) {
+export async function fetchDashboardKPIs(branchId?: any, startDate?: string, endDate?: string) {
   const today = new Date()
   const offset = today.getTimezoneOffset() * 60000
   const localDate = new Date(today.getTime() - offset)
   const todayDateStr = localDate.toISOString().split('T')[0]
 
+  const startStr = startDate || todayDateStr
+  const endStr = endDate || todayDateStr
+
+  let ordersQuery = supabase.from('orders').select('total_amount')
+    .gte('created_at', startStr + 'T00:00:00')
+    .lte('created_at', endStr + 'T23:59:59')
+    .eq('payment_status', 'paid')
+
+  let recvVouchersQuery = supabase.from('finance_vouchers').select('amount')
+    .eq('voucher_type', 'received')
+    .not('received_from', 'ilike', 'POS Cash Transfer%')
+    .in('status', ['posted', 'approved'])
+    .gte('voucher_date', startStr)
+    .lte('voucher_date', endStr)
+
+  let payVouchersQuery = supabase.from('finance_vouchers').select('amount')
+    .eq('voucher_type', 'pay')
+    .in('status', ['posted', 'approved'])
+    .gte('voucher_date', startStr)
+    .lte('voucher_date', endStr)
+
+  let expQuery = supabase.from('expense_entries').select('amount')
+    .in('status', ['approved', 'paid'])
+    .gte('expense_date', startStr)
+    .lte('expense_date', endStr)
+
+  if (branchId) {
+    ordersQuery = ordersQuery.eq('branch_id', branchId)
+    recvVouchersQuery = recvVouchersQuery.eq('branch_id', branchId)
+    payVouchersQuery = payVouchersQuery.eq('branch_id', branchId)
+    expQuery = expQuery.eq('branch_id', branchId)
+  }
+
   const [ordersRes, recvVouchersRes, payVouchersRes, expRes, accountsRes, ledgersRes, receivableRes, payableRes, payrollRes, unpaidOrdersRes] = await Promise.all([
-    // Today POS paid orders revenue
-    supabase.from('orders').select('total_amount')
-      .gte('created_at', todayDateStr + 'T00:00:00')
-      .eq('payment_status', 'paid'),
-
-    // Today Received Vouchers (posted or approved) - Excluding POS Auto-Transfers to prevent double counting
-    supabase.from('finance_vouchers').select('amount')
-      .eq('voucher_type', 'received')
-      .not('received_from', 'ilike', 'POS Cash Transfer%')
-      .in('status', ['posted', 'approved'])
-      .gte('voucher_date', todayDateStr),
-
-    // Today Pay Vouchers (posted or approved)
-    supabase.from('finance_vouchers').select('amount')
-      .eq('voucher_type', 'pay')
-      .in('status', ['posted', 'approved'])
-      .gte('voucher_date', todayDateStr),
-
-    // Today Expense Entries (approved or paid)
-    supabase.from('expense_entries').select('amount')
-      .in('status', ['approved', 'paid'])
-      .gte('expense_date', todayDateStr),
+    ordersQuery,
+    recvVouchersQuery,
+    payVouchersQuery,
+    expQuery,
 
     // Real Bank & Cash Accounts balance (from finance_accounts)
     supabase.from('finance_accounts').select('current_balance').eq('is_active', true),
