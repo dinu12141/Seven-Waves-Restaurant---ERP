@@ -1,5 +1,5 @@
 // Seven Waves ERP — Notification Service (Centralized)
-import { supabase } from 'src/boot/supabase'
+import { supabase } from '../../boot/supabase'
 import type { Notification, RpcResult, UUID } from 'src/types/erp.types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 

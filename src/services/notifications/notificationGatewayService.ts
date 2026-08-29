@@ -12,7 +12,7 @@
  *  6. Automated Digest Templates (Midnight Sales, Reservations, Payslips, Low Stock)
  */
 
-import { supabase } from 'src/boot/supabase'
+import { supabase } from '../../boot/supabase'
 
 export interface GatewayConfig {
   whatsapp_provider: 'meta' | 'twilio' | 'direct'
