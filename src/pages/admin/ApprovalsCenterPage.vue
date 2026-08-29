@@ -57,6 +57,9 @@
         <q-tab name="finance" icon="receipt_long" label="Finance & Pay Vouchers">
           <q-badge v-if="voucherList.length" color="primary" floating>{{ voucherList.length }}</q-badge>
         </q-tab>
+        <q-tab name="amendments" icon="lock_open" label="Doc Amendments & Unlocks">
+          <q-badge v-if="amendmentList.length" color="teal" floating>{{ amendmentList.length }}</q-badge>
+        </q-tab>
         <q-tab name="hr" icon="badge" label="HR & Shift Requests">
           <q-badge v-if="hrTotalPending > 0" color="purple" floating>{{ hrTotalPending }}</q-badge>
         </q-tab>
@@ -234,7 +237,64 @@
           </q-table>
         </q-tab-panel>
 
-        <!-- ══ 4. HR REQUESTS & SHIFT CHANGES ══════════════════════════ -->
+        <!-- ══ 4. DOCUMENT AMENDMENTS & UNLOCK REQUESTS ══════════════ -->
+        <q-tab-panel name="amendments" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <div>
+              <div class="text-subtitle1 text-weight-bold row items-center">
+                <q-icon name="lock_open" color="teal" size="24px" class="q-mr-xs" />
+                Locked Document Amendment & Unlock Requests
+              </div>
+              <div class="text-caption text-grey">
+                Submitted GRN, GIN, AP Invoices, Vouchers, and POs require explicit Admin Approval before they can be edited or voided.
+              </div>
+            </div>
+          </div>
+          <q-table
+            :rows="amendmentList"
+            :columns="amendmentColumns"
+            row-key="id"
+            flat
+            bordered
+            :loading="loading"
+            no-data-label="No pending document amendment or unlock requests"
+          >
+            <template #body-cell-doc_type="props">
+              <q-td :props="props" align="center">
+                <q-badge :color="getDocTypeColor(props.value)">{{ props.value }}</q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-created_at="props">
+              <q-td :props="props">{{ new Date(props.value).toLocaleString() }}</q-td>
+            </template>
+            <template #body-cell-actions="props">
+              <q-td :props="props" align="center">
+                <div class="row q-gutter-xs justify-center">
+                  <q-btn
+                    unelevated
+                    dense
+                    size="sm"
+                    color="positive"
+                    icon="lock_open"
+                    label="Approve & Unlock"
+                    @click="handleApproveAmendment(props.row)"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    size="sm"
+                    color="negative"
+                    icon="close"
+                    label="Reject"
+                    @click="handleRejectAmendment(props.row)"
+                  />
+                </div>
+              </q-td>
+            </template>
+          </q-table>
+        </q-tab-panel>
+
+        <!-- ══ 5. HR REQUESTS & SHIFT CHANGES ══════════════════════════ -->
         <q-tab-panel name="hr" class="q-pa-md">
           <div class="row items-center justify-between q-mb-sm">
             <div class="text-subtitle1 text-weight-bold">Staff Requests (Shift Changes, Leaves, Advances, Loans, Claims)</div>
@@ -462,6 +522,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { approvePO } from 'src/services/procurementService'
+import {
+  fetchPendingAmendments,
+  approveDocumentAmendment,
+  rejectDocumentAmendment,
+} from 'src/services/amendmentService'
 
 const $q = useQuasar()
 
@@ -472,6 +537,7 @@ const loading = ref(false)
 const wastageList = ref([])
 const poList = ref([])
 const voucherList = ref([])
+const amendmentList = ref([])
 const hrShiftSwaps = ref([])
 const hrLeaves = ref([])
 const hrAdvances = ref([])
@@ -488,6 +554,7 @@ const kpiCards = computed(() => [
   { label: 'Wastage Docs', count: wastageList.value.length, icon: 'delete_sweep', color: 'negative', tab: 'wastage', bgClass: 'bg-red-1' },
   { label: 'Purchase Orders', count: poList.value.length, icon: 'shopping_cart', color: 'amber-9', tab: 'procurement', bgClass: 'bg-amber-1' },
   { label: 'Pay Vouchers', count: voucherList.value.length, icon: 'receipt_long', color: 'primary', tab: 'finance', bgClass: 'bg-blue-1' },
+  { label: 'Doc Amendments', count: amendmentList.value.length, icon: 'lock_open', color: 'teal', tab: 'amendments', bgClass: 'bg-teal-1' },
   { label: 'HR & Shifts', count: hrTotalPending.value, icon: 'badge', color: 'purple', tab: 'hr', bgClass: 'bg-purple-1' },
   { label: 'Permission Gates', count: pendingPermissions.value.length, icon: 'security', color: 'indigo', tab: 'permissions', bgClass: 'bg-indigo-1' },
   { label: 'Shift Variance', count: shiftVarianceList.value.length, icon: 'point_of_sale', color: 'deep-orange', tab: 'shifts', bgClass: 'bg-orange-1' },
@@ -533,6 +600,27 @@ const voucherColumns = [
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
+
+const amendmentColumns = [
+  { name: 'doc_number', label: 'Doc Number', field: 'doc_number', align: 'left', sortable: true },
+  { name: 'doc_type', label: 'Type', field: 'doc_type', align: 'center' },
+  { name: 'requested_by_name', label: 'Requested By', field: (r) => `${r.requested_by_name} (${r.requester_role})`, align: 'left' },
+  { name: 'reason', label: 'Reason / Justification', field: 'reason', align: 'left' },
+  { name: 'created_at', label: 'Requested At', field: 'created_at', align: 'left' },
+  { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
+]
+
+function getDocTypeColor(type) {
+  const map = {
+    GRN: 'orange-9',
+    GIN: 'blue-9',
+    AP_INV: 'purple-9',
+    VOUCHER: 'green-9',
+    PO: 'amber-9',
+    WASTAGE: 'red-9',
+  }
+  return map[type] || 'teal'
+}
 
 const hrShiftSwapColumns = [
   { name: 'shift_date', label: 'Shift Date', field: 'shift_date', align: 'left' },
@@ -600,10 +688,11 @@ const shiftVarianceColumns = [
 async function loadAllPending() {
   loading.value = true
   try {
-    const [wRes, poRes, vRes, ssRes, lRes, aRes, loRes, eRes, pRes, sRes] = await Promise.allSettled([
+    const [wRes, poRes, vRes, amendRes, ssRes, lRes, aRes, loRes, eRes, pRes, sRes] = await Promise.allSettled([
       supabase.from('inventory_documents').select('*, warehouses(name)').eq('doc_type', 'WASTAGE').in('status', ['draft', 'pending', 'pending_approval']),
       supabase.from('procurement_purchase_orders').select('*, suppliers(name)').eq('status', 'draft'),
       supabase.from('finance_vouchers').select('*').in('status', ['draft', 'pending']),
+      fetchPendingAmendments(),
       supabase.from('shift_swap_requests').select('*, employees(full_name), current_shift:shifts!current_shift_id(name), requested_shift:shifts!requested_shift_id(name)').eq('status', 'pending'),
       supabase.from('leave_requests').select('*, employees(full_name), leave_types(name)').eq('status', 'pending'),
       supabase.from('employee_advances').select('*, employees(full_name)').eq('status', 'pending'),
@@ -616,6 +705,7 @@ async function loadAllPending() {
     if (wRes.status === 'fulfilled') wastageList.value = wRes.value.data || []
     if (poRes.status === 'fulfilled') poList.value = poRes.value.data || []
     if (vRes.status === 'fulfilled') voucherList.value = vRes.value.data || []
+    if (amendRes.status === 'fulfilled') amendmentList.value = amendRes.value || []
     if (ssRes.status === 'fulfilled') hrShiftSwaps.value = ssRes.value.data || []
     if (lRes.status === 'fulfilled') hrLeaves.value = lRes.value.data || []
     if (aRes.status === 'fulfilled') hrAdvances.value = aRes.value.data || []
@@ -818,6 +908,60 @@ async function handleHRAction(type, id, status) {
 
 function signOffShift(row) {
   $q.notify({ type: 'positive', message: `Shift Variance for ${row.cashier_name || 'Cashier'} signed off` })
+}
+
+async function handleApproveAmendment(row) {
+  $q.dialog({
+    title: 'Approve & Unlock Document',
+    message: `Are you sure you want to unlock ${row.doc_type} "${row.doc_number}" for editing? This will return the document status to Draft.`,
+    prompt: {
+      model: '',
+      type: 'text',
+      label: 'Admin Authorization Note (Optional)',
+    },
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Approve & Unlock',
+      color: 'positive',
+    },
+  }).onOk(async (adminNotes) => {
+    try {
+      const res = await approveDocumentAmendment(row.id, row.doc_type, row.doc_id, adminNotes)
+      if (!res.success) throw new Error(res.error)
+      $q.notify({ type: 'positive', icon: 'lock_open', message: `Document ${row.doc_number} unlocked for editing!` })
+      loadAllPending()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: 'Failed to approve amendment: ' + err.message })
+    }
+  })
+}
+
+async function handleRejectAmendment(row) {
+  $q.dialog({
+    title: 'Reject Amendment Request',
+    message: `Provide rejection justification for ${row.doc_number}:`,
+    prompt: {
+      model: '',
+      type: 'text',
+      label: 'Rejection Reason',
+    },
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Reject Request',
+      color: 'negative',
+    },
+  }).onOk(async (notes) => {
+    try {
+      const res = await rejectDocumentAmendment(row.id, notes)
+      if (!res.success) throw new Error(res.error)
+      $q.notify({ type: 'warning', message: `Amendment request for ${row.doc_number} rejected.` })
+      loadAllPending()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: 'Failed to reject amendment: ' + err.message })
+    }
+  })
 }
 </script>
 

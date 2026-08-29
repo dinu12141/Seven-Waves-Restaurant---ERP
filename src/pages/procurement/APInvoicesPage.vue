@@ -255,6 +255,14 @@
               :loading="saving"
               @click="saveInvoice('posted')"
             />
+            <q-btn
+              v-if="form.status !== 'draft'"
+              outline
+              color="warning"
+              icon="lock_open"
+              label="Request Edit / Void Approval"
+              @click="openAmendmentRequest"
+            />
           </div>
         </q-card-actions>
       </q-card>
@@ -277,8 +285,11 @@ import {
 import { exportAPInvoicesToPDF, exportTableToExcel } from 'src/services/exportService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
+import { useAuthStore } from 'src/stores/auth'
+import { requestDocumentAmendment } from 'src/services/amendmentService'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEditing = ref(false)
@@ -641,4 +652,48 @@ async function saveInvoice(targetStatus) {
 }
 
 function printInvoice() {}
+
+function openAmendmentRequest() {
+  $q.dialog({
+    title: 'Request Edit / Void Authorization',
+    message: `This Invoice (${form.value.doc_number || ''}) is locked. Enter justification for Admin Approval:`,
+    prompt: {
+      model: '',
+      type: 'textarea',
+      label: 'Reason for modification / voiding',
+    },
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Submit for Admin Approval',
+      color: 'warning',
+    },
+  }).onOk(async (reason) => {
+    if (!reason?.trim()) {
+      $q.notify({ type: 'warning', message: 'Justification reason is required.' })
+      return
+    }
+    try {
+      const res = await requestDocumentAmendment({
+        docType: 'AP_INV',
+        docId: form.value.id || '',
+        docNumber: form.value.doc_number || 'INV',
+        branchId: authStore.currentBranch?.id,
+        requestedById: authStore.user?.id,
+        requestedByName: authStore.userDisplayName || 'Accountant',
+        requesterRole: authStore.roles?.[0] || 'Staff',
+        reason,
+      })
+      if (!res.success) throw new Error(res.error)
+      $q.notify({
+        type: 'positive',
+        icon: 'verified',
+        message: 'Amendment request submitted to Admin Approvals Center!',
+      })
+      dialogVisible.value = false
+    } catch (err) {
+      $q.notify({ type: 'negative', message: 'Failed to submit request: ' + err.message })
+    }
+  })
+}
 </script>
