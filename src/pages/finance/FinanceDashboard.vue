@@ -55,7 +55,7 @@
               size="sm"
               color="primary"
               label="View All"
-              @click="$router.push('/finance/journal-entries')"
+              @click="$router.push('/finance/pay-vouchers')"
             />
           </div>
           <div class="fin-panel__body q-pa-sm">
@@ -102,7 +102,7 @@
               size="sm"
               color="primary"
               label="Full Ledger"
-              @click="$router.push('/finance/general-ledger')"
+              @click="$router.push('/finance/ledgers')"
             />
           </div>
           <div class="fin-panel__body">

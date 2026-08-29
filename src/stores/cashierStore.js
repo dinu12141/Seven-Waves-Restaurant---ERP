@@ -339,6 +339,15 @@ export const useCashierStore = defineStore('cashier', () => {
 
       if (error) throw new Error(`Payment RPC failed: ${error.message}`)
 
+      // Real-time atomic BOM deduction: auto deduct recipe ingredients from kitchen inventory
+      try {
+        await supabase.rpc('atomic_bom_deduct_for_order', {
+          p_order_id: targetOrderId,
+        })
+      } catch (bomErr) {
+        console.warn('[CashierStore] BOM deduction note:', bomErr)
+      }
+
       // Update in-place so the order moves to the Paid tab instead of disappearing
       const idx = billingOrders.value.findIndex((o) => o.id === targetOrderId)
       if (idx !== -1) {

@@ -443,12 +443,19 @@ export async function fetchExpenseCategories() {
 }
 
 export async function fetchExpenses(filters: FinanceFilters = {}) {
-  const { data: payVouchers } = await supabase
+  let vQuery = supabase
     .from('finance_vouchers')
     .select('id, voucher_no, voucher_date, amount, status, pay_to, remark, narration, created_at')
     .eq('voucher_type', 'pay')
     .order('created_at', { ascending: false })
-    .limit(filters.limit || 8)
+
+  if (filters.status && filters.status !== 'All') vQuery = vQuery.eq('status', filters.status)
+  if (filters.dateFrom) vQuery = vQuery.gte('voucher_date', filters.dateFrom)
+  if (filters.dateTo) vQuery = vQuery.lte('voucher_date', filters.dateTo)
+  if (filters.limit) vQuery = vQuery.limit(filters.limit)
+  else vQuery = vQuery.limit(50)
+
+  const { data: payVouchers } = await vQuery
 
   if (payVouchers && payVouchers.length > 0) {
     const mapped = payVouchers.map((v: any) => ({
@@ -469,10 +476,11 @@ export async function fetchExpenses(filters: FinanceFilters = {}) {
 
   if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
   if (filters.branchId) query = query.eq('branch_id', filters.branchId)
-  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.status && filters.status !== 'All') query = query.eq('status', filters.status)
   if (filters.dateFrom) query = query.gte('expense_date', filters.dateFrom)
   if (filters.dateTo) query = query.lte('expense_date', filters.dateTo)
   if (filters.limit) query = query.limit(filters.limit)
+  else query = query.limit(50)
 
   const { data, error } = await query
   return { data, error }
