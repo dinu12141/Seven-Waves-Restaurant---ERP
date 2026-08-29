@@ -2,7 +2,7 @@
   <q-page class="q-pa-md">
     <PageHeader
       title="System Backup & Disaster Recovery"
-      subtitle="Full & modular database snapshots, SQL dumps, and automated disaster recovery"
+      subtitle="Full & modular database snapshots, SQL dumps, and Google Drive cloud synchronization"
       show-back
       back-route="/admin"
     />
@@ -14,8 +14,10 @@
           <q-card-section class="row items-center no-wrap">
             <q-avatar size="42px" color="primary" text-color="white" icon="cloud_sync" class="q-mr-md" />
             <div>
-              <div class="text-caption text-grey-5">Cloud Sync Status</div>
-              <div class="text-h6 text-weight-bold text-positive">Continuous PITR</div>
+              <div class="text-caption text-grey-5">Google Drive Sync</div>
+              <div class="text-h6 text-weight-bold" :class="driveConfig.is_enabled ? 'text-positive' : 'text-grey-5'">
+                {{ driveConfig.is_enabled ? 'Active / Connected' : 'Disabled' }}
+              </div>
             </div>
           </q-card-section>
         </q-card>
@@ -69,6 +71,7 @@
         class="text-grey-7 bg-grey-1 border-bottom"
       >
         <q-tab name="create" icon="download" label="1-Click Backup Export" />
+        <q-tab name="gdrive" icon="add_to_drive" label="Google Drive Cloud Sync" />
         <q-tab name="restore" icon="restore" label="Restore & Recovery" />
         <q-tab name="history" icon="history" label="Backup Audit History" />
         <q-tab name="schedules" icon="settings" label="Automated Schedules" />
@@ -186,7 +189,7 @@
             </div>
           </div>
 
-          <!-- Format Selection & Action Button -->
+          <!-- Format Selection & Action Buttons -->
           <div class="row items-center q-col-gutter-md">
             <div class="col-12 col-sm-auto">
               <div class="text-caption text-grey-5 q-mb-xs">Export Format</div>
@@ -203,14 +206,23 @@
               />
             </div>
 
-            <div class="col-12 col-sm-auto q-mt-md q-mt-sm-none">
+            <div class="col-12 col-sm-auto q-gutter-x-sm q-mt-md q-mt-sm-none">
               <q-btn
                 color="primary"
                 icon="cloud_download"
                 size="md"
-                label="Download Backup Now"
+                label="Download Backup"
                 :loading="generating"
-                @click="runBackup"
+                @click="runBackup('download')"
+              />
+
+              <q-btn
+                color="positive"
+                icon="add_to_drive"
+                size="md"
+                label="Sync to Google Drive"
+                :loading="uploadingDrive"
+                @click="runBackup('drive')"
               />
             </div>
           </div>
@@ -220,14 +232,134 @@
             <template v-slot:avatar>
               <q-icon name="check_circle" color="positive" size="28px" />
             </template>
-            <div class="text-weight-bold">Backup Generated Successfully!</div>
+            <div class="text-weight-bold">{{ lastResult.message || 'Backup Completed Successfully!' }}</div>
             <div class="text-caption text-grey-4 q-mt-xs">
               Filename: <code>{{ lastResult.filename }}</code> | Tables: {{ lastResult.tableCount }} | Records: {{ lastResult.recordCount }} | Size: {{ formatBytes(lastResult.sizeBytes) }}
+              <span v-if="lastResult.driveLink"> | <a :href="lastResult.driveLink" target="_blank" class="text-primary">Open in Google Drive ↗</a></span>
             </div>
           </q-banner>
         </q-tab-panel>
 
-        <!-- ── TAB 2: RESTORE & RECOVERY ─────────────────────────────── -->
+        <!-- ── TAB 2: GOOGLE DRIVE CLOUD SYNC ────────────────────────── -->
+        <q-tab-panel name="gdrive" class="q-pa-lg">
+          <div class="row items-center justify-between q-mb-md">
+            <div>
+              <div class="text-subtitle1 text-weight-bold row items-center">
+                <q-icon name="add_to_drive" color="positive" size="24px" class="q-mr-sm" />
+                Google Drive Cloud Backup Settings (ERPNext Standard)
+              </div>
+              <div class="text-caption text-grey-5">
+                Automatically push scheduled database snapshots and SQL dumps to your restaurant's Google Drive.
+              </div>
+            </div>
+            <q-btn
+              color="positive"
+              icon="save"
+              label="Save Drive Settings"
+              :loading="savingDrive"
+              @click="saveDriveSettings"
+            />
+          </div>
+
+          <div class="row q-col-gutter-lg">
+            <!-- Left: Settings Form -->
+            <div class="col-12 col-md-7">
+              <q-card flat bordered class="q-pa-md bg-grey-10">
+                <q-toggle
+                  v-model="driveConfig.is_enabled"
+                  label="Enable Google Drive Automated Cloud Backup"
+                  color="positive"
+                  class="q-mb-md"
+                />
+
+                <div class="text-subtitle2 q-mb-xs">Authentication Method</div>
+                <q-select
+                  v-model="driveConfig.auth_type"
+                  :options="[
+                    { label: 'Google Drive REST API (OAuth2 / Access Token)', value: 'oauth_token' },
+                    { label: 'Google Apps Script Webhook Relay (Zero-Expiry)', value: 'webhook_relay' },
+                  ]"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  class="q-mb-md"
+                />
+
+                <!-- OAuth Token Mode -->
+                <div v-if="driveConfig.auth_type === 'oauth_token'" class="q-gutter-sm">
+                  <q-input
+                    v-model="driveConfig.access_token"
+                    label="Google OAuth / Access Token"
+                    type="password"
+                    outlined
+                    dense
+                    hint="From Google Cloud Console / OAuth Playground"
+                  />
+                  <q-input
+                    v-model="driveConfig.folder_id"
+                    label="Google Drive Target Folder ID"
+                    outlined
+                    dense
+                    hint="e.g. 1AbCdEfGhIjKlMnOpQrStUvWxYz from your Drive folder URL"
+                  />
+                  <q-input
+                    v-model="driveConfig.folder_name"
+                    label="Target Folder Display Name"
+                    outlined
+                    dense
+                  />
+                </div>
+
+                <!-- Webhook Relay Mode -->
+                <div v-if="driveConfig.auth_type === 'webhook_relay'" class="q-gutter-sm">
+                  <q-input
+                    v-model="driveConfig.webhook_relay_url"
+                    label="Google Apps Script Webhook URL"
+                    outlined
+                    dense
+                    hint="https://script.google.com/macros/s/.../exec"
+                  />
+                  <q-input
+                    v-model="driveConfig.folder_id"
+                    label="Target Folder ID (Optional)"
+                    outlined
+                    dense
+                  />
+                </div>
+
+                <div class="row items-center q-mt-lg q-gutter-x-sm">
+                  <q-btn
+                    color="info"
+                    outline
+                    icon="network_check"
+                    label="Test Google Drive Connection"
+                    :loading="testingDrive"
+                    @click="runTestDrive"
+                  />
+                </div>
+              </q-card>
+            </div>
+
+            <!-- Right: Setup Instructions -->
+            <div class="col-12 col-md-5">
+              <q-card flat bordered class="q-pa-md bg-grey-10">
+                <div class="text-subtitle2 text-weight-bold q-mb-sm text-primary">
+                  <q-icon name="help_outline" class="q-mr-xs" /> Quick Setup Guide
+                </div>
+                <ol class="text-caption text-grey-4 q-pl-md q-gutter-y-xs">
+                  <li>Open your <strong>Google Drive</strong> and create a folder named <code>Seven Waves ERP Backups</code>.</li>
+                  <li>Open the folder and copy the <strong>Folder ID</strong> from the browser URL (the characters after <code>folders/</code>).</li>
+                  <li>Paste the <strong>Folder ID</strong> into the Target Folder ID field.</li>
+                  <li>Provide your <strong>Access Token</strong> or deploy the provided 1-minute <strong>Google Apps Script Webhook</strong>.</li>
+                  <li>Click <strong>"Test Google Drive Connection"</strong> to verify!</li>
+                </ol>
+              </q-card>
+            </div>
+          </div>
+        </q-tab-panel>
+
+        <!-- ── TAB 3: RESTORE & RECOVERY ─────────────────────────────── -->
         <q-tab-panel name="restore" class="q-pa-lg">
           <div class="text-subtitle1 text-weight-bold text-negative q-mb-xs">
             <q-icon name="warning" class="q-mr-sm" />
@@ -284,7 +416,7 @@
           />
         </q-tab-panel>
 
-        <!-- ── TAB 3: BACKUP HISTORY ─────────────────────────────────── -->
+        <!-- ── TAB 4: BACKUP HISTORY ─────────────────────────────────── -->
         <q-tab-panel name="history" class="q-pa-md">
           <div class="row items-center justify-between q-mb-md">
             <div class="text-subtitle1 text-weight-bold">Local Backup Audit Trail</div>
@@ -322,7 +454,7 @@
           </q-table>
         </q-tab-panel>
 
-        <!-- ── TAB 4: AUTOMATED SCHEDULES ────────────────────────────── -->
+        <!-- ── TAB 5: AUTOMATED SCHEDULES ────────────────────────────── -->
         <q-tab-panel name="schedules" class="q-pa-lg">
           <div class="text-subtitle1 text-weight-bold q-mb-sm">Automated Backup Settings (ERPNext Standard)</div>
           <div class="text-caption text-grey-5 q-mb-lg">
@@ -333,6 +465,12 @@
             <q-toggle
               v-model="autoDailyBackup"
               label="Auto-download daily database snapshot on Admin Login"
+              color="positive"
+            />
+            <q-separator />
+            <q-toggle
+              v-model="driveConfig.auto_upload_daily"
+              label="Auto-upload daily backup to Google Drive"
               color="positive"
             />
             <q-separator />
@@ -355,7 +493,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import PageHeader from 'components/common/PageHeader.vue'
 import { supabase } from 'src/boot/supabase'
@@ -364,6 +502,12 @@ import {
   getBackupHistory,
   validateBackupFile,
 } from 'src/services/backupService'
+import {
+  getGoogleDriveConfig,
+  saveGoogleDriveConfig,
+  uploadToGoogleDrive,
+  testGoogleDriveConnection,
+} from 'src/services/googleDriveService'
 
 const $q = useQuasar()
 
@@ -371,6 +515,9 @@ const activeTab = ref('create')
 const selectedScope = ref('full')
 const selectedFormat = ref('json')
 const generating = ref(false)
+const uploadingDrive = ref(false)
+const savingDrive = ref(false)
+const testingDrive = ref(false)
 const lastResult = ref(null)
 
 const restoreFile = ref(null)
@@ -380,6 +527,17 @@ const restoring = ref(false)
 const autoDailyBackup = ref(true)
 const cloudSyncEnabled = ref(true)
 const backupHistory = ref([])
+
+const driveConfig = reactive({
+  is_enabled: false,
+  auth_type: 'oauth_token',
+  access_token: '',
+  folder_id: '',
+  folder_name: 'Seven Waves ERP Backups',
+  webhook_relay_url: '',
+  auto_upload_daily: true,
+  retention_count: 14,
+})
 
 const historyColumns = [
   { name: 'timestamp', label: 'Generated At', field: 'timestamp', align: 'left', format: (v) => new Date(v).toLocaleString() },
@@ -408,33 +566,87 @@ function refreshHistory() {
   backupHistory.value = getBackupHistory()
 }
 
-async function runBackup() {
-  generating.value = true
+async function loadDriveSettings() {
+  const cfg = await getGoogleDriveConfig()
+  Object.assign(driveConfig, cfg)
+}
+
+async function saveDriveSettings() {
+  savingDrive.value = true
+  try {
+    const res = await saveGoogleDriveConfig(driveConfig)
+    if (!res.success) throw new Error(res.error)
+    $q.notify({ type: 'positive', message: 'Google Drive settings saved successfully!' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save Drive settings: ' + err.message })
+  } finally {
+    savingDrive.value = false
+  }
+}
+
+async function runTestDrive() {
+  testingDrive.value = true
+  try {
+    const res = await testGoogleDriveConnection()
+    if (!res.success) throw new Error(res.message)
+    $q.notify({ type: 'positive', icon: 'check_circle', message: res.message })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    testingDrive.value = false
+  }
+}
+
+async function runBackup(target = 'download') {
+  if (target === 'drive') uploadingDrive.value = true
+  else generating.value = true
   lastResult.value = null
+
   try {
     const result = await generateBackup({
       scope: selectedScope.value,
       format: selectedFormat.value,
     })
 
-    // Trigger browser file download
-    const url = URL.createObjectURL(result.blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = result.filename
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
+    if (target === 'download') {
+      // Trigger browser file download
+      const url = URL.createObjectURL(result.blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = result.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
 
-    lastResult.value = result
+      lastResult.value = { ...result, message: 'Backup downloaded successfully!' }
+      $q.notify({ type: 'positive', message: `Backup downloaded: ${result.filename}` })
+    } else {
+      // Upload directly to Google Drive
+      const driveUpload = await uploadToGoogleDrive({
+        blob: result.blob,
+        filename: result.filename,
+      })
+
+      if (!driveUpload.success) {
+        throw new Error(driveUpload.error || 'Failed to upload to Google Drive')
+      }
+
+      lastResult.value = {
+        ...result,
+        message: 'Backup uploaded to Google Drive successfully!',
+        driveLink: driveUpload.webViewLink,
+      }
+      $q.notify({ type: 'positive', icon: 'cloud_done', message: 'Uploaded to Google Drive successfully!' })
+    }
+
     refreshHistory()
-    $q.notify({ type: 'positive', message: `Backup downloaded: ${result.filename}` })
   } catch (err) {
     console.error('Backup failed:', err)
     $q.notify({ type: 'negative', message: 'Backup failed: ' + (err.message || err) })
   } finally {
     generating.value = false
+    uploadingDrive.value = false
   }
 }
 
@@ -497,6 +709,7 @@ async function executeRestore() {
 
 onMounted(() => {
   refreshHistory()
+  loadDriveSettings()
 })
 </script>
 
