@@ -71,6 +71,7 @@ CREATE TABLE restaurant_tables (
     capacity INTEGER DEFAULT 4,
     status TEXT DEFAULT 'available', -- available, occupied, reserved, maintenance
     created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(branch_id, table_number)
 );
 
