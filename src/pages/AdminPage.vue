@@ -85,6 +85,14 @@ const modules = ref([
     permission: 'admin:printers',
   },
   {
+    title: 'Notification Gateways',
+    description: 'Configure Meta WhatsApp, Twilio, and Resend Email APIs & automated triggers.',
+    icon: 'campaign',
+    color: 'positive',
+    to: '/admin/settings',
+    permission: 'admin:settings',
+  },
+  {
     title: 'System Settings',
     description: 'Global system configuration and module activation.',
     icon: 'settings',

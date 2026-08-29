@@ -1416,6 +1416,16 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Configuration',
   },
   {
+    label: 'Notification Gateways',
+    icon: 'campaign',
+    to: '/admin/settings',
+    roles: ['admin'],
+    permission: 'admin.settings.view',
+    moduleCode: 'ADMIN',
+    section: 'SYSTEM',
+    group: 'Configuration',
+  },
+  {
     label: 'Settings',
     icon: 'settings',
     to: '/admin/settings',
