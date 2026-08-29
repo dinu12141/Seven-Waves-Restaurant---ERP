@@ -88,6 +88,7 @@
         >
           <q-tab name="advances" label="Salary Advances" />
           <q-tab name="expenses" label="Expenses" />
+          <q-tab name="loans" label="Staff Loans & EMI Plans" icon="account_balance" />
         </q-tabs>
         <div class="q-gutter-sm">
           <q-btn
@@ -445,6 +446,11 @@
             </template>
           </q-table>
         </q-tab-panel>
+
+        <!-- ══ LOANS & EMI TAB ══════════════════════════════════════════ -->
+        <q-tab-panel name="loans" class="q-pa-none">
+          <LoansTab />
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
 
@@ -713,6 +719,7 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import { usePermission } from 'src/core/rbac/usePermission'
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
+import LoansTab from 'src/components/hr/LoansTab.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()

@@ -7,7 +7,21 @@
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Purchase Orders' }]"
     >
       <template #actions>
-        <q-btn unelevated no-caps icon="add" label="New PO" color="primary" @click="createNewPO" />
+        <div class="row q-gutter-sm">
+          <q-btn
+            unelevated
+            no-caps
+            icon="auto_awesome"
+            label="Auto-Reorder Low Stock"
+            color="amber-9"
+            text-color="dark"
+            class="text-weight-bold"
+            @click="openAutoReorderDialog"
+          >
+            <q-tooltip>Scan stock levels and auto-generate draft PO for low-stock items</q-tooltip>
+          </q-btn>
+          <q-btn unelevated no-caps icon="add" label="New PO" color="primary" @click="createNewPO" />
+        </div>
       </template>
     </ErpPageHeader>
 
@@ -118,6 +132,102 @@
         />
       </q-card>
     </q-dialog>
+
+    <!-- Auto-Reorder Low Stock Dialog (ERPNext standard) -->
+    <q-dialog v-model="autoReorderVisible" persistent>
+      <q-card style="width: 780px; max-width: 95vw" class="erp-dialog-card erp-border-radius">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center">
+            <q-avatar icon="auto_awesome" color="amber-9" text-color="dark" size="36px" class="q-mr-sm" />
+            <div>
+              <div class="text-h6 text-weight-bold">Auto-Reorder Low Stock</div>
+              <div class="text-caption text-grey">Generate draft purchase order for items below reorder level</div>
+            </div>
+          </div>
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="q-pa-md">
+          <div v-if="scanningLowStock" class="text-center q-pa-lg">
+            <q-spinner-dots color="primary" size="40px" />
+            <div class="text-caption text-grey q-mt-sm">Scanning stock levels across warehouses...</div>
+          </div>
+          <div v-else-if="lowStockItems.length === 0" class="text-center q-pa-lg text-grey">
+            <q-icon name="check_circle" size="48px" color="positive" />
+            <div class="text-subtitle1 text-weight-medium q-mt-sm">All Stock Levels Optimal</div>
+            <div class="text-caption">No items are currently below their configured reorder thresholds.</div>
+          </div>
+          <div v-else>
+            <div class="row q-col-gutter-sm items-center q-mb-md">
+              <div class="col-12 col-md-6">
+                <q-select
+                  outlined
+                  dense
+                  v-model="reorderSupplier"
+                  :options="supplierOptions"
+                  option-label="name"
+                  label="Target Supplier *"
+                  emit-value
+                  map-options
+                />
+              </div>
+              <div class="col-12 col-md-6 text-right">
+                <q-btn flat dense no-caps color="primary" label="Select All" @click="selectAllLowStock(true)" class="q-mr-sm" />
+                <q-btn flat dense no-caps color="grey-6" label="Clear All" @click="selectAllLowStock(false)" />
+              </div>
+            </div>
+
+            <q-table
+              :rows="lowStockItems"
+              :columns="lowStockCols"
+              row-key="id"
+              flat
+              bordered
+              dense
+              selection="multiple"
+              v-model:selected="selectedLowStock"
+              :pagination="{ rowsPerPage: 10 }"
+            >
+              <template #body-cell-current_stock="props">
+                <q-td :props="props" align="right">
+                  <q-badge color="negative">{{ props.value }} {{ props.row.uom_code || '' }}</q-badge>
+                </q-td>
+              </template>
+              <template #body-cell-reorder_level="props">
+                <q-td :props="props" align="right">
+                  <span class="text-weight-medium">{{ props.value }} {{ props.row.uom_code || '' }}</span>
+                </q-td>
+              </template>
+              <template #body-cell-suggested_qty="props">
+                <q-td :props="props" align="right">
+                  <q-input
+                    dense
+                    outlined
+                    type="number"
+                    v-model.number="props.row.suggested_qty"
+                    min="1"
+                    style="width: 90px; display: inline-block"
+                  />
+                </q-td>
+              </template>
+            </q-table>
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            unelevated
+            color="amber-9"
+            text-color="dark"
+            icon="receipt_long"
+            label="Create Draft PO"
+            :disable="selectedLowStock.length === 0"
+            @click="generatePOFromLowStock"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -125,6 +235,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails, closePO, listSupplierItems } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
@@ -143,6 +254,20 @@ const route = useRoute()
 const router = useRouter()
 const tab = ref('all')
 const loading = ref(false)
+
+// ── Auto-Reorder Low Stock (ERPNext Standard) ────────────────
+const autoReorderVisible = ref(false)
+const scanningLowStock = ref(false)
+const lowStockItems = ref([])
+const selectedLowStock = ref([])
+const reorderSupplier = ref(null)
+
+const lowStockCols = [
+  { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
+  { name: 'current_stock', label: 'Current Stock', field: 'current_stock', align: 'right', sortable: true },
+  { name: 'reorder_level', label: 'Reorder Level', field: 'reorder_level', align: 'right', sortable: true },
+  { name: 'suggested_qty', label: 'Order Qty', field: 'suggested_qty', align: 'right' },
+]
 const dialogVisible = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -562,5 +687,100 @@ function cancelPO() {
 
 function printPO() {
   $q.notify({ type: 'info', message: 'Print Logic invoked' })
+}
+
+// ── Auto-Reorder Methods (ERPNext Standard) ──────────────────
+async function openAutoReorderDialog() {
+  autoReorderVisible.value = true
+  scanningLowStock.value = true
+  selectedLowStock.value = []
+  reorderSupplier.value = null
+
+  try {
+    const { data: stockItems, error } = await supabase
+      .from('stock_items')
+      .select('id, name, reorder_level, min_order_qty, standard_cost, uom_id, uoms(code)')
+      .eq('is_active', true)
+      .gt('reorder_level', 0)
+
+    if (error) throw error
+
+    const { data: soh } = await supabase
+      .from('stock_on_hand')
+      .select('item_id, quantity')
+
+    const stockMap = new Map()
+    if (soh) {
+      for (const s of soh) {
+        const prev = stockMap.get(s.item_id) || 0
+        stockMap.set(s.item_id, prev + Number(s.quantity || 0))
+      }
+    }
+
+    const low = []
+    for (const item of (stockItems || [])) {
+      const current = stockMap.get(item.id) || 0
+      const reorderLvl = Number(item.reorder_level || 0)
+      if (current <= reorderLvl) {
+        const deficit = Math.max(reorderLvl * 2 - current, Number(item.min_order_qty || 10))
+        low.push({
+          id: item.id,
+          name: item.name,
+          current_stock: current,
+          reorder_level: reorderLvl,
+          suggested_qty: Math.ceil(deficit),
+          unit_price: Number(item.standard_cost || 0),
+          uom_id: item.uom_id,
+          uom_code: item.uoms?.code || 'Units',
+        })
+      }
+    }
+    lowStockItems.value = low
+    selectedLowStock.value = [...low]
+  } catch (err) {
+    console.error('Failed to scan low stock items:', err)
+    $q.notify({ type: 'negative', message: 'Failed to scan low stock items' })
+  } finally {
+    scanningLowStock.value = false
+  }
+}
+
+function selectAllLowStock(select) {
+  selectedLowStock.value = select ? [...lowStockItems.value] : []
+}
+
+function generatePOFromLowStock() {
+  if (!selectedLowStock.value.length) {
+    $q.notify({ type: 'warning', message: 'Please select at least one item' })
+    return
+  }
+
+  isEditing.value = false
+  form.value = JSON.parse(JSON.stringify(defaultForm))
+  if (reorderSupplier.value) {
+    form.value.supplier_id = reorderSupplier.value
+    form.value._supplier = supplierOptions.value.find(s => s.id === reorderSupplier.value) || null
+  }
+
+  form.value.lines = selectedLowStock.value.map((item, idx) => ({
+    line_number: idx + 1,
+    item_id: item.id,
+    item_name: item.name,
+    description: item.name,
+    uom_id: item.uom_id || null,
+    quantity: Number(item.suggested_qty) || 1,
+    unit_price: Number(item.unit_price) || 0,
+    discount_pct: 0,
+    tax_pct: 0,
+    line_total: (Number(item.suggested_qty) || 1) * (Number(item.unit_price) || 0),
+  }))
+
+  autoReorderVisible.value = false
+  dialogVisible.value = true
+  $q.notify({
+    type: 'positive',
+    icon: 'auto_awesome',
+    message: `Draft PO pre-filled with ${selectedLowStock.value.length} low-stock item(s)`
+  })
 }
 </script>
