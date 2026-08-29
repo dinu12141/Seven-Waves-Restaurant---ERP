@@ -645,16 +645,33 @@ async function runTestWhatsApp() {
   }
   testingWhatsApp.value = true
   try {
-    const res = await sendWhatsAppMessage({
-      to: gatewayConfig.owner_phone_number,
-      text: testWhatsAppText.value,
-    })
+    // 1. Save settings first
+    await saveGatewayConfig(gatewayConfig)
 
-    if (res.directUrl) {
+    // 2. Dispatch message with active form config
+    const res = await sendWhatsAppMessage(
+      {
+        to: gatewayConfig.owner_phone_number,
+        text: testWhatsAppText.value,
+      },
+      gatewayConfig
+    )
+
+    if (res.success && res.messageId) {
+      $q.notify({
+        type: 'positive',
+        icon: 'check_circle',
+        message: `WhatsApp message sent via Meta API! (ID: ${res.messageId})`,
+      })
+    } else if (res.directUrl) {
       window.open(res.directUrl, '_blank')
-      $q.notify({ type: 'info', icon: 'chat', message: 'Direct WhatsApp Web opened with test message' })
-    } else if (res.success) {
-      $q.notify({ type: 'positive', icon: 'check_circle', message: 'WhatsApp message sent successfully via API!' })
+      $q.notify({
+        type: 'info',
+        icon: 'chat',
+        message: res.error
+          ? `API note: ${res.error}. Opening WhatsApp Web...`
+          : 'Direct WhatsApp Web opened with test message',
+      })
     } else {
       throw new Error(res.error || 'Failed to send WhatsApp message')
     }

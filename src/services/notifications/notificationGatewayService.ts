@@ -135,12 +135,15 @@ export function getWhatsAppDirectUrl(phone: string, message: string): string {
 }
 
 /** Send WhatsApp Message via Meta Cloud API or Twilio API */
-export async function sendWhatsAppMessage(payload: {
-  to: string
-  text: string
-  templateName?: string
-}): Promise<{ success: boolean; directUrl?: string; error?: string; messageId?: string }> {
-  const config = await getGatewayConfig()
+export async function sendWhatsAppMessage(
+  payload: {
+    to: string
+    text: string
+    templateName?: string
+  },
+  overrideConfig?: GatewayConfig
+): Promise<{ success: boolean; directUrl?: string; error?: string; messageId?: string }> {
+  const config = overrideConfig || (await getGatewayConfig())
   const cleanPhone = formatWhatsAppPhone(payload.to)
 
   if (!cleanPhone) {
@@ -160,25 +163,63 @@ export async function sendWhatsAppMessage(payload: {
     }
 
     try {
-      const response = await fetch(
+      // First attempt: Text message
+      let reqBody: any = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'text',
+        text: { preview_url: true, body: payload.text },
+      }
+
+      // If template is specified or requested
+      if (payload.templateName) {
+        reqBody = {
+          messaging_product: 'whatsapp',
+          to: cleanPhone,
+          type: 'template',
+          template: { name: payload.templateName, language: { code: 'en_US' } },
+        }
+      }
+
+      let response = await fetch(
         `https://graph.facebook.com/v19.0/${config.meta_phone_number_id}/messages`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${config.meta_access_token}`,
+            'Authorization': `Bearer ${config.meta_access_token.trim()}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanPhone,
-            type: 'text',
-            text: { preview_url: true, body: payload.text },
-          }),
+          body: JSON.stringify(reqBody),
         }
       )
 
-      const result = await response.json()
+      let result = await response.json()
+
+      // If text message failed due to 24h conversation window, try with default 'hello_world' template
+      if (!response.ok && !payload.templateName) {
+        const errorMsg = result.error?.message || ''
+        if (errorMsg.includes('template') || errorMsg.includes('conversation') || result.error?.code === 131047) {
+          response = await fetch(
+            `https://graph.facebook.com/v19.0/${config.meta_phone_number_id}/messages`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${config.meta_access_token.trim()}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: cleanPhone,
+                type: 'template',
+                template: { name: 'hello_world', language: { code: 'en_US' } },
+              }),
+            }
+          )
+          result = await response.json()
+        }
+      }
+
       if (!response.ok) {
         throw new Error(result.error?.message || `Meta API Error (${response.status})`)
       }
