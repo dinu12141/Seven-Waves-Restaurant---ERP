@@ -219,6 +219,167 @@
         </div>
       </div>
     </div>
+
+    <!-- ══ NOTIFICATION GATEWAYS SECTION (WHATSAPP & EMAIL) ═════════ -->
+    <div class="q-mt-xl">
+      <div class="row items-center q-mb-md">
+        <q-icon name="campaign" size="28px" color="positive" class="q-mr-sm" />
+        <div class="text-h6">Notification Gateways (WhatsApp & Email APIs)</div>
+        <q-space />
+        <q-btn
+          color="positive"
+          label="Save Gateway Settings"
+          icon="save"
+          :loading="savingGateways"
+          @click="saveGateways"
+        />
+      </div>
+
+      <q-card flat bordered class="q-pa-none">
+        <q-tabs
+          v-model="gatewayTab"
+          dense
+          align="left"
+          active-color="primary"
+          indicator-color="primary"
+          class="text-grey-8 bg-grey-1 border-bottom"
+        >
+          <q-tab name="whatsapp" icon="chat" label="WhatsApp Gateway (Meta & Twilio)" />
+          <q-tab name="email" icon="email" label="Email Gateway (Resend & SMTP)" />
+          <q-tab name="automation" icon="schedule" label="Automated Alert Triggers" />
+        </q-tabs>
+
+        <q-tab-panels v-model="gatewayTab" animated>
+          <!-- WhatsApp Panel -->
+          <q-tab-panel name="whatsapp" class="q-pa-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle2 q-mb-sm text-weight-bold">WhatsApp Provider</div>
+                <q-select
+                  v-model="gatewayConfig.whatsapp_provider"
+                  :options="[
+                    { label: 'Meta Official WhatsApp Cloud API (Free 1000/mo)', value: 'meta' },
+                    { label: 'Twilio WhatsApp & SMS API', value: 'twilio' },
+                    { label: 'Direct Click-to-Chat (Zero-Cost / No API Key)', value: 'direct' },
+                  ]"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  class="q-mb-md"
+                />
+
+                <div v-if="gatewayConfig.whatsapp_provider === 'meta'" class="q-gutter-sm">
+                  <q-input v-model="gatewayConfig.meta_phone_number_id" label="Meta Phone Number ID" outlined dense hint="From Meta for Developers > WhatsApp > API Setup" />
+                  <q-input v-model="gatewayConfig.meta_access_token" label="Meta Permanent Access Token" type="password" outlined dense />
+                  <q-input v-model="gatewayConfig.meta_business_account_id" label="WhatsApp Business Account ID" outlined dense />
+                </div>
+
+                <div v-if="gatewayConfig.whatsapp_provider === 'twilio'" class="q-gutter-sm">
+                  <q-input v-model="gatewayConfig.twilio_account_sid" label="Twilio Account SID" outlined dense />
+                  <q-input v-model="gatewayConfig.twilio_auth_token" label="Twilio Auth Token" type="password" outlined dense />
+                  <q-input v-model="gatewayConfig.twilio_from_phone" label="Twilio Sender Phone / WhatsApp Number" outlined dense hint="e.g. +14155238886" />
+                </div>
+
+                <div v-if="gatewayConfig.whatsapp_provider === 'direct'" class="text-caption text-grey-7 q-pa-sm bg-grey-2 rounded-borders">
+                  <q-icon name="info" color="primary" size="18px" class="q-mr-xs" />
+                  Direct Click-to-Chat generates WhatsApp Web/App URLs directly without requiring API tokens.
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle2 q-mb-sm text-weight-bold">Test WhatsApp Dispatch</div>
+                <q-input v-model="gatewayConfig.owner_phone_number" label="Owner / Test Mobile Number" outlined dense hint="e.g. +94771234567" class="q-mb-sm" />
+                <q-input v-model="testWhatsAppText" label="Test Message Text" type="textarea" rows="3" outlined dense class="q-mb-md" />
+                <q-btn
+                  color="positive"
+                  icon="send"
+                  label="Send Test WhatsApp Message"
+                  :loading="testingWhatsApp"
+                  @click="runTestWhatsApp"
+                />
+              </div>
+            </div>
+          </q-tab-panel>
+
+          <!-- Email Panel -->
+          <q-tab-panel name="email" class="q-pa-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle2 q-mb-sm text-weight-bold">Email Provider</div>
+                <q-select
+                  v-model="gatewayConfig.email_provider"
+                  :options="[
+                    { label: 'Resend REST API (Recommended — Free 3000/mo)', value: 'resend' },
+                    { label: 'Standard SMTP (Gmail / Outlook / Zoho)', value: 'smtp' },
+                  ]"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  class="q-mb-md"
+                />
+
+                <div v-if="gatewayConfig.email_provider === 'resend'" class="q-gutter-sm">
+                  <q-input v-model="gatewayConfig.resend_api_key" label="Resend API Key" type="password" outlined dense hint="Starts with re_..." />
+                  <q-input v-model="gatewayConfig.email_from_address" label="From Email Address" outlined dense hint="e.g. billing@sevenwaves.lk" />
+                  <q-input v-model="gatewayConfig.email_from_name" label="From Name" outlined dense hint="e.g. Seven Waves Restaurant" />
+                </div>
+
+                <div v-if="gatewayConfig.email_provider === 'smtp'" class="q-gutter-sm">
+                  <q-input v-model="gatewayConfig.smtp_host" label="SMTP Host" outlined dense hint="e.g. smtp.gmail.com" />
+                  <q-input v-model.number="gatewayConfig.smtp_port" label="SMTP Port" type="number" outlined dense hint="587 for TLS, 465 for SSL" />
+                  <q-input v-model="gatewayConfig.smtp_user" label="SMTP Username / Email" outlined dense />
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="text-subtitle2 q-mb-sm text-weight-bold">Test Email Dispatch</div>
+                <q-input v-model="testEmailTo" label="Recipient Email Address" outlined dense class="q-mb-sm" />
+                <q-input v-model="testEmailSubject" label="Email Subject" outlined dense class="q-mb-sm" />
+                <q-btn
+                  color="primary"
+                  icon="send"
+                  label="Send Test Email"
+                  :loading="testingEmail"
+                  @click="runTestEmail"
+                />
+              </div>
+            </div>
+          </q-tab-panel>
+
+          <!-- Automation Panel -->
+          <q-tab-panel name="automation" class="q-pa-md">
+            <div class="text-subtitle1 text-weight-bold q-mb-sm">Automated Event Triggers (ERPNext Standard)</div>
+            <div class="q-gutter-sm">
+              <q-toggle
+                v-model="gatewayConfig.auto_midnight_sales_whatsapp"
+                label="Send Daily Midnight Sales Summary to Owner via WhatsApp (00:00)"
+                color="positive"
+              />
+              <q-separator />
+              <q-toggle
+                v-model="gatewayConfig.auto_low_stock_whatsapp"
+                label="Send Low Stock Reorder Alerts to Store Manager"
+                color="positive"
+              />
+              <q-separator />
+              <q-toggle
+                v-model="gatewayConfig.auto_reservation_whatsapp"
+                label="Send Table Reservation Confirmations to Customers via WhatsApp"
+                color="positive"
+              />
+              <q-separator />
+              <q-toggle
+                v-model="gatewayConfig.auto_payslip_email"
+                label="Auto-Email PDF Payslips to Staff upon Monthly Payroll Run"
+                color="positive"
+              />
+            </div>
+          </q-tab-panel>
+        </q-tab-panels>
+      </q-card>
+    </div>
   </q-page>
 </template>
 
@@ -229,10 +390,46 @@ import { useQuasar } from 'quasar'
 import { useModulesStore } from 'src/stores/modules'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
+import {
+  getGatewayConfig,
+  saveGatewayConfig,
+  sendWhatsAppMessage,
+  sendEmail,
+} from 'src/services/notifications/notificationGatewayService'
 
 const $q = useQuasar()
 const modulesStore = useModulesStore()
 const authStore = useAuthStore()
+
+// --- Notification Gateway State ---
+const gatewayTab = ref('whatsapp')
+const savingGateways = ref(false)
+const testingWhatsApp = ref(false)
+const testingEmail = ref(false)
+const testWhatsAppText = ref('Hello from Seven Waves ERP! Notification gateway is active.')
+const testEmailTo = ref('')
+const testEmailSubject = ref('Seven Waves ERP — Gateway Test Email')
+const gatewayConfig = reactive({
+  whatsapp_provider: 'direct',
+  meta_phone_number_id: '',
+  meta_access_token: '',
+  meta_business_account_id: '',
+  twilio_account_sid: '',
+  twilio_auth_token: '',
+  twilio_from_phone: '',
+  owner_phone_number: '+94770000000',
+  email_provider: 'resend',
+  resend_api_key: '',
+  email_from_address: 'notifications@sevenwaves.lk',
+  email_from_name: 'Seven Waves Restaurant',
+  smtp_host: 'smtp.gmail.com',
+  smtp_port: 587,
+  smtp_user: '',
+  auto_midnight_sales_whatsapp: true,
+  auto_low_stock_whatsapp: true,
+  auto_reservation_whatsapp: true,
+  auto_payslip_email: true,
+})
 
 // --- Module Toggles ---
 const localModules = ref([])
@@ -423,12 +620,90 @@ async function onLogoSelected(file) {
   }
 }
 
+async function loadGateways() {
+  const cfg = await getGatewayConfig()
+  Object.assign(gatewayConfig, cfg)
+}
+
+async function saveGateways() {
+  savingGateways.value = true
+  try {
+    const result = await saveGatewayConfig(gatewayConfig)
+    if (!result.success) throw new Error(result.error)
+    $q.notify({ type: 'positive', message: 'Notification gateway settings saved successfully' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save gateway settings: ' + err.message })
+  } finally {
+    savingGateways.value = false
+  }
+}
+
+async function runTestWhatsApp() {
+  if (!gatewayConfig.owner_phone_number) {
+    $q.notify({ type: 'warning', message: 'Please enter a test mobile number' })
+    return
+  }
+  testingWhatsApp.value = true
+  try {
+    const res = await sendWhatsAppMessage({
+      to: gatewayConfig.owner_phone_number,
+      text: testWhatsAppText.value,
+    })
+
+    if (res.directUrl) {
+      window.open(res.directUrl, '_blank')
+      $q.notify({ type: 'info', icon: 'chat', message: 'Direct WhatsApp Web opened with test message' })
+    } else if (res.success) {
+      $q.notify({ type: 'positive', icon: 'check_circle', message: 'WhatsApp message sent successfully via API!' })
+    } else {
+      throw new Error(res.error || 'Failed to send WhatsApp message')
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    testingWhatsApp.value = false
+  }
+}
+
+async function runTestEmail() {
+  if (!testEmailTo.value) {
+    $q.notify({ type: 'warning', message: 'Please enter a recipient email address' })
+    return
+  }
+  testingEmail.value = true
+  try {
+    const res = await sendEmail({
+      to: testEmailTo.value,
+      subject: testEmailSubject.value,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #0284c7;">🌊 Seven Waves Restaurant ERP</h2>
+          <p><strong>Notification Gateway Test Successful!</strong></p>
+          <p>Your transactional email gateway is configured and operating correctly.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <small style="color: #888;">Generated automatically by Seven Waves ERP.</small>
+        </div>
+      `,
+    })
+
+    if (res.success) {
+      $q.notify({ type: 'positive', icon: 'email', message: 'Test email dispatched successfully via Resend API!' })
+    } else {
+      throw new Error(res.error || 'Failed to send test email')
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    testingEmail.value = false
+  }
+}
+
 // Load modules and settings on mount
 onMounted(async () => {
   if (!modulesStore.loaded) {
     await modulesStore.fetchModules(companyId.value)
   }
-  await loadSettings()
+  await Promise.all([loadSettings(), loadGateways()])
 })
 </script>
 
