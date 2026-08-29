@@ -44,7 +44,7 @@ class SessionGuard {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        this.notifyExpired()
+        // No session active — do not notify expired (user may be on login or table ordering)
         return
       }
 

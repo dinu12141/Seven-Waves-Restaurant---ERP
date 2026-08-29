@@ -72,28 +72,38 @@ export default boot(({ app, router }) => {
   })
 
   sessionGuard.onExpired(() => {
-    // Tear down the local auth state so a stale/expired session can't linger.
+    if (typeof window === 'undefined') return
+
+    const currentPath = window.location.pathname
+    const isPublicRoute =
+      currentPath === '/auth/login' ||
+      currentPath === '/table-login' ||
+      currentPath === '/loyalty' ||
+      currentPath.startsWith('/touch') ||
+      currentPath.startsWith('/table/') ||
+      currentPath.startsWith('/customer/') ||
+      currentPath.startsWith('/c/') ||
+      currentPath.startsWith('/menu') ||
+      currentPath.startsWith('/auth')
+
+    // If on a public or table ordering page, do not force to staff login
+    if (isPublicRoute) return
+
     try {
       useAuthStore().signOut()
     } catch (err) {
       logger.warn('[Session] signOut on expiry failed', { error: String(err) })
     }
     
-    const isTouchRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/touch')
-    
-    if (isTouchRoute && typeof window !== 'undefined') {
-      window.localStorage.removeItem('tm_session_token')
-    }
-    
     Notify.create({
       type: 'negative',
-      message: isTouchRoute ? 'Your table session has expired. Please scan the QR code again.' : 'Your session has expired. Redirecting to login...',
+      message: 'Your session has expired. Redirecting to login...',
       icon: 'lock',
       position: 'top',
       timeout: 3000,
     })
     setTimeout(() => {
-      router.push(isTouchRoute ? '/touch' : '/auth/login')
+      router.push('/auth/login')
     }, 2000)
   })
 
