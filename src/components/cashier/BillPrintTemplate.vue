@@ -191,29 +191,35 @@ const tableDisplay = computed(() => {
 
 const kotNumber = computed(() => {
   const order = props.invoice.orders
-  if (!order) return '—'
+  if (!order) return props.invoice.kot_number || '—'
   // Try to get from order.kot_tickets
   if (order.kot_tickets?.length > 0) {
-    return order.kot_tickets.map((k) => k.kot_number).join(', ')
+    const valid = order.kot_tickets.map((k) => k.kot_number).filter(Boolean)
+    if (valid.length > 0) return valid.join(', ')
   }
+  if (props.invoice.kot_number) return props.invoice.kot_number
+  if (order.order_number) return `KOT-${order.order_number}`
   return '—'
 })
 
 const waiterName = computed(() => {
   const o = props.invoice.orders
-  return o?.assigned_waiter?.full_name || o?.waiter?.full_name || '-'
+  return o?.assigned_waiter?.full_name || o?.waiter?.full_name || props.invoice.waiter?.full_name || 'Staff'
 })
 
 const cashierNameDisplay = computed(() => {
   // 1. If we have a real invoice, check its stored cashier first
-  if (props.invoice.cashier?.full_name) return props.invoice.cashier.full_name
+  if (props.invoice.cashier?.full_name && props.invoice.cashier.full_name !== 'Cashier') return props.invoice.cashier.full_name
   if (props.invoice.profiles?.full_name) return props.invoice.profiles.full_name
 
   // 2. Use the passed prop if available (for simulated bills before payment)
-  if (props.cashierName) return props.cashierName
+  if (props.cashierName && props.cashierName !== 'Cashier') return props.cashierName
 
-  // 3. Fallback to owner of the order or generic string
-  return props.invoice.orders?.waiter?.full_name || 'Cashier'
+  // 3. Check order creator or assigned staff
+  if (props.invoice.orders?.creator?.full_name) return props.invoice.orders.creator.full_name
+  if (props.invoice.orders?.waiter?.full_name) return props.invoice.orders.waiter.full_name
+
+  return props.cashierName || 'System Cashier'
 })
 
 const invoiceDisplayNumber = computed(() => {

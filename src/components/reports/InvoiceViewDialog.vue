@@ -79,26 +79,32 @@ const formattedInvoiceForTemplate = computed(() => {
       notes: order.value.notes
   };
 
+  const currentCashier = cashierName.value || invoice.value?.cashier?.full_name || invoice.value?.profiles?.full_name || order.value?.creator?.full_name || 'Cashier';
+  const currentWaiter = waiterName.value || order.value?.waiter?.full_name || order.value?.assigned_waiter?.full_name || '—';
+
   return {
     ...simulatedInvoice,
     orders: order.value ? {
       ...order.value,
-      waiter: { full_name: waiterName.value },
+      waiter: { full_name: currentWaiter },
+      assigned_waiter: { full_name: currentWaiter },
+      kot_tickets: order.value.kot_tickets || [],
+      restaurant_tables: order.value.restaurant_tables || (order.value.table_number ? { table_number: order.value.table_number } : null),
     } : null,
     invoice_items: orderItems.value.map(item => ({
-      menu_item_name: item.menu_items?.name || 'Item',
+      menu_item_name: item.menu_items?.name || item.name || 'Item',
       quantity: item.quantity,
       unit_price: item.unit_price,
       total_price: item.total_price
     })),
-    cashier: { full_name: cashierName.value },
+    cashier: { full_name: currentCashier },
     payments: payments.value
   }
 })
 
 // Close handler
 watch(show, (val) => {
-  if (!val) emit('update:modelValue', false)
+  emit('update:modelValue', val)
 })
 
 // ── Main trigger: load data when dialog opens ──────────────
@@ -116,7 +122,6 @@ watch(() => props.modelValue, async (val) => {
   loading.value = true
 
   // Wait for Vue to settle ALL prop changes from parent
-  await nextTick()
   await nextTick()
 
   const invId = props.invoiceId
@@ -146,6 +151,8 @@ async function loadByInvoiceId(id) {
     .select(`
       *,
       branches ( name ),
+      cashier:cashier_id ( full_name ),
+      profiles:cashier_id ( full_name ),
       payments ( id, amount, payment_method, created_at, payment_methods ( name ) )
     `)
     .eq('id', id)
@@ -163,8 +170,15 @@ async function loadByInvoiceId(id) {
   invoice.value = data
   payments.value = data?.payments || []
 
+  if (data?.cashier?.full_name) {
+    cashierName.value = data.cashier.full_name
+  } else if (data?.profiles?.full_name) {
+    cashierName.value = data.profiles.full_name
+  } else if (data?.cashier_id) {
+    await loadCashierName(data.cashier_id)
+  }
+
   if (data?.order_id) await loadOrder(data.order_id)
-  if (data?.cashier_id) await loadCashierName(data.cashier_id)
 }
 
 async function loadByOrderId(ordId) {
@@ -176,6 +190,8 @@ async function loadByOrderId(ordId) {
     .select(`
       *,
       branches ( name ),
+      cashier:cashier_id ( full_name ),
+      profiles:cashier_id ( full_name ),
       payments ( id, amount, payment_method, created_at, payment_methods ( name ) )
     `)
     .eq('order_id', ordId)
@@ -188,7 +204,13 @@ async function loadByOrderId(ordId) {
   if (invArr && invArr.length > 0) {
     invoice.value = invArr[0]
     payments.value = invArr[0].payments || []
-    if (invArr[0].cashier_id) await loadCashierName(invArr[0].cashier_id)
+    if (invArr[0].cashier?.full_name) {
+      cashierName.value = invArr[0].cashier.full_name
+    } else if (invArr[0].profiles?.full_name) {
+      cashierName.value = invArr[0].profiles.full_name
+    } else if (invArr[0].cashier_id) {
+      await loadCashierName(invArr[0].cashier_id)
+    }
   }
 
   // Load order details (items etc.)
@@ -215,9 +237,11 @@ async function loadOrder(ordId) {
   const { data, error } = await supabase
     .from('orders')
     .select(`
-      id, order_number, order_type, status, payment_status, subtotal, tax_amount, discount_amount,
+      id, order_number, order_type, table_number, table_id, status, payment_status, subtotal, tax_amount, discount_amount,
       total_amount, delivery_charge, service_charge, created_at, notes,
       waiter:profiles!orders_waiter_id_fkey ( full_name ),
+      restaurant_tables ( table_number, section ),
+      kot_tickets ( id, kot_number, status, kitchen_id ),
       order_items ( id, quantity, unit_price, total_price, menu_items ( name ) )
     `)
     .eq('id', ordId)
@@ -231,19 +255,19 @@ async function loadOrder(ordId) {
   if (data) {
     order.value = data
     orderItems.value = data.order_items || []
-    waiterName.value = data.waiter?.full_name || ''
+    waiterName.value = data.waiter?.full_name || 'Staff'
   }
 }
 
-function loadCashierName(cashierId) {
-  return supabase
+async function loadCashierName(cashierId) {
+  const { data } = await supabase
     .from('profiles')
     .select('full_name')
     .eq('id', cashierId)
     .single()
-    .then(({ data }) => {
-      cashierName.value = data?.full_name || ''
-    })
+  if (data?.full_name) {
+    cashierName.value = data.full_name
+  }
 }
 
 function printInvoice() {
