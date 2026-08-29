@@ -1357,6 +1357,16 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'CRM',
   },
   {
+    label: 'Approvals Center',
+    icon: 'verified',
+    to: '/admin/approvals',
+    roles: ['admin', 'manager'],
+    permission: 'admin.system.view',
+    moduleCode: 'ADMIN',
+    section: 'SYSTEM',
+    group: 'Administration',
+  },
+  {
     label: 'Users',
     icon: 'manage_accounts',
     to: '/admin/users',

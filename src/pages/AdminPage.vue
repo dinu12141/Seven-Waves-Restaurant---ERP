@@ -53,6 +53,14 @@ const authStore = useAuthStore()
 
 const modules = ref([
   {
+    title: 'Approvals & Governance',
+    description: 'Approve Kitchen Wastage, Purchase Orders, Vouchers, and HR requests.',
+    icon: 'verified',
+    color: 'positive',
+    to: '/admin/approvals',
+    permission: 'admin:console',
+  },
+  {
     title: 'User Management',
     description: 'Manage staffs, waiters, and admin accounts.',
     icon: 'group',
