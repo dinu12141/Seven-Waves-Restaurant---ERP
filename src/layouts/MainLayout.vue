@@ -259,6 +259,8 @@ import NotificationPanel from 'components/common/NotificationPanel.vue'
 import NotificationToast from 'components/common/NotificationToast.vue'
 import GlobalSearch from 'components/common/GlobalSearch.vue'
 import OfflineBanner from 'components/common/OfflineBanner.vue'
+import { getGoogleDriveConfig, uploadToGoogleDrive } from 'src/services/googleDriveService'
+import { recordBackupHistory } from 'src/services/backupService'
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
@@ -468,9 +470,8 @@ watch(
   },
 )
 
-// Auto-download daily backup logic
+// Auto-download and auto-upload daily backup logic
 onMounted(async () => {
-  // We check if the user is an admin. If so, we check if today's backup has been auto-downloaded.
   if (authStore.userRoles?.includes('admin')) {
     const today = date.formatDate(Date.now(), 'YYYY-MM-DD')
     const lastDownloaded = localStorage.getItem('last_auto_backup_date')
@@ -478,27 +479,72 @@ onMounted(async () => {
       try {
         const { data, error } = await supabase.rpc('export_database')
         if (!error && data) {
+          const now = new Date()
+          const pad = (n) => n.toString().padStart(2, '0')
+          const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+          const filename = `erp_backup_auto_${dateStr}.json`
+
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+
+          // 1. Browser Local Download
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a')
           a.href = url
-          
-          const now = new Date()
-          const pad = (n) => n.toString().padStart(2, '0')
-          const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-          a.download = `erp_backup_auto_${dateStr}.json`
-          
+          a.download = filename
           document.body.appendChild(a)
           a.click()
-          
           window.URL.revokeObjectURL(url)
           document.body.removeChild(a)
-          
+
           localStorage.setItem('last_auto_backup_date', today)
-          $q.notify({ type: 'info', message: 'Daily system backup generated and downloaded automatically.' })
+
+          // Count tables and records
+          const tables = Object.keys(data)
+          let totalRecords = 0
+          for (const t of tables) {
+            if (Array.isArray(data[t])) totalRecords += data[t].length
+          }
+
+          // Record in Audit History
+          recordBackupHistory({
+            id: `${Date.now()}`,
+            filename,
+            scope: 'full',
+            format: 'json',
+            timestamp: now.toISOString(),
+            recordCount: totalRecords,
+            tableCount: tables.length,
+            fileSizeBytes: blob.size,
+            status: 'completed',
+          })
+
+          // 2. Google Drive Cloud Auto-Sync (if enabled)
+          const driveConfig = await getGoogleDriveConfig()
+          if (driveConfig.is_enabled && driveConfig.auto_upload_daily) {
+            try {
+              const driveUpload = await uploadToGoogleDrive({
+                blob,
+                filename,
+              })
+              if (driveUpload.success) {
+                $q.notify({
+                  type: 'positive',
+                  icon: 'cloud_done',
+                  message: 'Daily backup generated and synced to Google Drive automatically!',
+                })
+              }
+            } catch (driveErr) {
+              console.warn('[AutoBackup] Google Drive upload error:', driveErr)
+            }
+          } else {
+            $q.notify({
+              type: 'info',
+              icon: 'download_done',
+              message: 'Daily system backup generated and downloaded automatically.',
+            })
+          }
         }
       } catch (e) {
-        // Ignore errors silently on auto-download to avoid spamming the user
         console.warn('Auto-download backup skipped or failed:', e)
       }
     }
