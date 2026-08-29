@@ -5,10 +5,10 @@
       <div>
         <div class="text-h5 text-weight-bold row items-center">
           <q-icon name="verified" color="primary" size="32px" class="q-mr-sm" />
-          Approvals & Workflow Center
+          Approvals & Governance Center
         </div>
         <div class="text-caption text-grey-7">
-          Unified governance inbox for Kitchen Wastage, Procurement POs, Finance Vouchers, and HR requests
+          Unified governance inbox for Kitchen Wastage, Procurement POs, Finance Vouchers, Shift Changes, and Role Permissions
         </div>
       </div>
       <div class="row q-gutter-sm">
@@ -25,13 +25,13 @@
 
     <!-- Summary KPI Cards -->
     <div class="row q-col-gutter-md q-mb-lg items-stretch">
-      <div class="col-12 col-sm-6 col-md-2-4" v-for="k in kpiCards" :key="k.label">
+      <div class="col-12 col-sm-6 col-md-2" v-for="k in kpiCards" :key="k.label">
         <q-card flat bordered class="cursor-pointer" :class="k.bgClass" @click="activeTab = k.tab">
-          <q-card-section class="row items-center no-wrap">
-            <q-avatar :icon="k.icon" :color="k.color" text-color="white" size="42px" class="q-mr-md" />
+          <q-card-section class="row items-center no-wrap q-pa-sm">
+            <q-avatar :icon="k.icon" :color="k.color" text-color="white" size="38px" class="q-mr-sm" />
             <div>
-              <div class="text-h5 text-weight-bolder">{{ k.count }}</div>
-              <div class="text-caption text-weight-medium text-grey-8">{{ k.label }}</div>
+              <div class="text-h6 text-weight-bolder">{{ k.count }}</div>
+              <div class="text-caption text-weight-medium text-grey-8" style="font-size: 11px">{{ k.label }}</div>
             </div>
           </q-card-section>
         </q-card>
@@ -57,8 +57,11 @@
         <q-tab name="finance" icon="receipt_long" label="Finance & Pay Vouchers">
           <q-badge v-if="voucherList.length" color="primary" floating>{{ voucherList.length }}</q-badge>
         </q-tab>
-        <q-tab name="hr" icon="badge" label="HR & Staff Requests">
+        <q-tab name="hr" icon="badge" label="HR & Shift Requests">
           <q-badge v-if="hrTotalPending > 0" color="purple" floating>{{ hrTotalPending }}</q-badge>
+        </q-tab>
+        <q-tab name="permissions" icon="security" label="Role & Permission Gate">
+          <q-badge v-if="pendingPermissions.length" color="indigo" floating>{{ pendingPermissions.length }}</q-badge>
         </q-tab>
         <q-tab name="shifts" icon="point_of_sale" label="POS Shift Variance">
           <q-badge v-if="shiftVarianceList.length" color="deep-orange" floating>{{ shiftVarianceList.length }}</q-badge>
@@ -231,10 +234,10 @@
           </q-table>
         </q-tab-panel>
 
-        <!-- ══ 4. HR REQUESTS APPROVALS ════════════════════════════════ -->
+        <!-- ══ 4. HR REQUESTS & SHIFT CHANGES ══════════════════════════ -->
         <q-tab-panel name="hr" class="q-pa-md">
           <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle1 text-weight-bold">Staff Requests (Leaves, Advances, Loans, Expenses)</div>
+            <div class="text-subtitle1 text-weight-bold">Staff Requests (Shift Changes, Leaves, Advances, Loans, Claims)</div>
             <q-btn-toggle
               v-model="hrSubTab"
               dense
@@ -243,12 +246,38 @@
               unelevated
               toggle-color="primary"
               :options="[
+                { label: `Shift Changes (${hrShiftSwaps.length})`, value: 'shiftswaps' },
                 { label: `Leaves (${hrLeaves.length})`, value: 'leaves' },
                 { label: `Advances (${hrAdvances.length})`, value: 'advances' },
                 { label: `Loans (${hrLoans.length})`, value: 'loans' },
                 { label: `Claims (${hrExpenses.length})`, value: 'expenses' },
               ]"
             />
+          </div>
+
+          <!-- Shift Changes Table -->
+          <div v-if="hrSubTab === 'shiftswaps'">
+            <q-table
+              :rows="hrShiftSwaps"
+              :columns="hrShiftSwapColumns"
+              row-key="id"
+              flat
+              bordered
+              :loading="loading"
+              no-data-label="No pending shift change or swap requests"
+            >
+              <template #body-cell-shift_date="props">
+                <q-td :props="props">{{ formatDate(props.value) }}</q-td>
+              </template>
+              <template #body-cell-actions="props">
+                <q-td :props="props" align="center">
+                  <div class="row q-gutter-xs justify-center">
+                    <q-btn unelevated dense size="sm" color="positive" icon="check" label="Approve Swap" @click="approveShiftSwap(props.row)" />
+                    <q-btn flat dense size="sm" color="negative" icon="close" label="Reject" @click="rejectShiftSwap(props.row)" />
+                  </div>
+                </q-td>
+              </template>
+            </q-table>
           </div>
 
           <!-- Leaves Table -->
@@ -352,7 +381,40 @@
           </div>
         </q-tab-panel>
 
-        <!-- ══ 5. POS SHIFT VARIANCE REVIEW ════════════════════════════ -->
+        <!-- ══ 5. ROLE & PERMISSION ELEVATION GATE ══════════════════════ -->
+        <q-tab-panel name="permissions" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-sm">
+            <div>
+              <div class="text-subtitle1 text-weight-bold">Elevated Privilege & Permission Gate</div>
+              <div class="text-caption text-grey">HR or Supervisor granted extra privileges require explicit Admin Approval before taking effect</div>
+            </div>
+          </div>
+          <q-table
+            :rows="pendingPermissions"
+            :columns="permissionColumns"
+            row-key="id"
+            flat
+            bordered
+            :loading="loading"
+            no-data-label="No elevated permission requests awaiting admin approval"
+          >
+            <template #body-cell-permission="props">
+              <q-td :props="props">
+                <q-badge color="indigo-8">{{ props.value }}</q-badge>
+              </q-td>
+            </template>
+            <template #body-cell-actions="props">
+              <q-td :props="props" align="center">
+                <div class="row q-gutter-xs justify-center">
+                  <q-btn unelevated dense size="sm" color="positive" icon="check" label="Approve Access" @click="approvePermission(props.row)" />
+                  <q-btn flat dense size="sm" color="negative" icon="close" label="Deny Access" @click="denyPermission(props.row)" />
+                </div>
+              </q-td>
+            </template>
+          </q-table>
+        </q-tab-panel>
+
+        <!-- ══ 6. POS SHIFT VARIANCE REVIEW ════════════════════════════ -->
         <q-tab-panel name="shifts" class="q-pa-md">
           <div class="row items-center justify-between q-mb-sm">
             <div class="text-subtitle1 text-weight-bold">POS Cash Variance Audits (|Variance| > LKR 1,000)</div>
@@ -404,28 +466,31 @@ import { approvePO } from 'src/services/procurementService'
 const $q = useQuasar()
 
 const activeTab = ref('wastage')
-const hrSubTab = ref('leaves')
+const hrSubTab = ref('shiftswaps')
 const loading = ref(false)
 
 const wastageList = ref([])
 const poList = ref([])
 const voucherList = ref([])
+const hrShiftSwaps = ref([])
 const hrLeaves = ref([])
 const hrAdvances = ref([])
 const hrLoans = ref([])
 const hrExpenses = ref([])
+const pendingPermissions = ref([])
 const shiftVarianceList = ref([])
 
 const hrTotalPending = computed(() => {
-  return hrLeaves.value.length + hrAdvances.value.length + hrLoans.value.length + hrExpenses.value.length
+  return hrShiftSwaps.value.length + hrLeaves.value.length + hrAdvances.value.length + hrLoans.value.length + hrExpenses.value.length
 })
 
 const kpiCards = computed(() => [
   { label: 'Wastage Docs', count: wastageList.value.length, icon: 'delete_sweep', color: 'negative', tab: 'wastage', bgClass: 'bg-red-1' },
   { label: 'Purchase Orders', count: poList.value.length, icon: 'shopping_cart', color: 'amber-9', tab: 'procurement', bgClass: 'bg-amber-1' },
   { label: 'Pay Vouchers', count: voucherList.value.length, icon: 'receipt_long', color: 'primary', tab: 'finance', bgClass: 'bg-blue-1' },
-  { label: 'HR & Staff Requests', count: hrTotalPending.value, icon: 'badge', color: 'purple', tab: 'hr', bgClass: 'bg-purple-1' },
-  { label: 'Shift Discrepancies', count: shiftVarianceList.value.length, icon: 'point_of_sale', color: 'deep-orange', tab: 'shifts', bgClass: 'bg-orange-1' },
+  { label: 'HR & Shifts', count: hrTotalPending.value, icon: 'badge', color: 'purple', tab: 'hr', bgClass: 'bg-purple-1' },
+  { label: 'Permission Gates', count: pendingPermissions.value.length, icon: 'security', color: 'indigo', tab: 'permissions', bgClass: 'bg-indigo-1' },
+  { label: 'Shift Variance', count: shiftVarianceList.value.length, icon: 'point_of_sale', color: 'deep-orange', tab: 'shifts', bgClass: 'bg-orange-1' },
 ])
 
 // ── Formatting ───────────────────────────────────────────────
@@ -469,6 +534,15 @@ const voucherColumns = [
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
 
+const hrShiftSwapColumns = [
+  { name: 'shift_date', label: 'Shift Date', field: 'shift_date', align: 'left' },
+  { name: 'employee', label: 'Employee', field: (r) => r.employees?.full_name || 'Staff', align: 'left' },
+  { name: 'current_shift', label: 'Current Shift', field: (r) => r.current_shift?.name || 'Morning', align: 'left' },
+  { name: 'requested_shift', label: 'Target Shift', field: (r) => r.requested_shift?.name || 'Evening', align: 'left' },
+  { name: 'reason', label: 'Reason', field: 'reason', align: 'left' },
+  { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
+]
+
 const hrLeaveColumns = [
   { name: 'employee', label: 'Employee', field: (r) => r.employees?.full_name || '—', align: 'left' },
   { name: 'leave_type', label: 'Type', field: (r) => r.leave_types?.name || 'Leave', align: 'left' },
@@ -505,6 +579,14 @@ const hrExpenseColumns = [
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
 
+const permissionColumns = [
+  { name: 'user', label: 'Target User', field: (r) => r.user_email || r.user_name || 'Staff User', align: 'left' },
+  { name: 'role', label: 'Assigned Role', field: (r) => r.role || 'Cashier / Manager', align: 'left' },
+  { name: 'permission', label: 'Elevated Privilege', field: 'permission', align: 'left' },
+  { name: 'requested_by', label: 'Granted By', field: (r) => r.granted_by || 'HR / Manager', align: 'left' },
+  { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
+]
+
 const shiftVarianceColumns = [
   { name: 'created_at', label: 'Shift Date', field: 'created_at', align: 'left' },
   { name: 'cashier_name', label: 'Cashier', field: 'cashier_name', align: 'left' },
@@ -518,24 +600,28 @@ const shiftVarianceColumns = [
 async function loadAllPending() {
   loading.value = true
   try {
-    const [wRes, poRes, vRes, lRes, aRes, loRes, eRes, sRes] = await Promise.allSettled([
+    const [wRes, poRes, vRes, ssRes, lRes, aRes, loRes, eRes, pRes, sRes] = await Promise.allSettled([
       supabase.from('inventory_documents').select('*, warehouses(name)').eq('doc_type', 'WASTAGE').in('status', ['draft', 'pending', 'pending_approval']),
       supabase.from('procurement_purchase_orders').select('*, suppliers(name)').eq('status', 'draft'),
       supabase.from('finance_vouchers').select('*').in('status', ['draft', 'pending']),
+      supabase.from('shift_swap_requests').select('*, employees(full_name), current_shift:shifts!current_shift_id(name), requested_shift:shifts!requested_shift_id(name)').eq('status', 'pending'),
       supabase.from('leave_requests').select('*, employees(full_name), leave_types(name)').eq('status', 'pending'),
       supabase.from('employee_advances').select('*, employees(full_name)').eq('status', 'pending'),
       supabase.from('employee_loans').select('*, employees(full_name)').eq('status', 'pending'),
       supabase.from('employee_expenses').select('*, employees(full_name)').eq('status', 'pending'),
+      supabase.from('user_permissions').select('*').eq('is_active', false),
       supabase.from('pos_shifts').select('*').or('cash_variance.gt.1000,cash_variance.lt.-1000').order('created_at', { ascending: false }).limit(20),
     ])
 
     if (wRes.status === 'fulfilled') wastageList.value = wRes.value.data || []
     if (poRes.status === 'fulfilled') poList.value = poRes.value.data || []
     if (vRes.status === 'fulfilled') voucherList.value = vRes.value.data || []
+    if (ssRes.status === 'fulfilled') hrShiftSwaps.value = ssRes.value.data || []
     if (lRes.status === 'fulfilled') hrLeaves.value = lRes.value.data || []
     if (aRes.status === 'fulfilled') hrAdvances.value = aRes.value.data || []
     if (loRes.status === 'fulfilled') hrLoans.value = loRes.value.data || []
     if (eRes.status === 'fulfilled') hrExpenses.value = eRes.value.data || []
+    if (pRes.status === 'fulfilled') pendingPermissions.value = pRes.value.data || []
     if (sRes.status === 'fulfilled') shiftVarianceList.value = sRes.value.data || []
   } finally {
     loading.value = false
@@ -636,6 +722,75 @@ async function rejectVoucherItem(v) {
     loadAllPending()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to cancel voucher', caption: err.message })
+  }
+}
+
+async function approveShiftSwap(swap) {
+  try {
+    const { error } = await supabase
+      .from('shift_swap_requests')
+      .update({ status: 'approved', approved_at: new Date().toISOString() })
+      .eq('id', swap.id)
+
+    if (error) throw error
+
+    // Update assignment if shift_assignments ID exists
+    if (swap.assignment_id && swap.requested_shift_id) {
+      await supabase
+        .from('shift_assignments')
+        .update({ shift_id: swap.requested_shift_id })
+        .eq('id', swap.assignment_id)
+    }
+
+    $q.notify({ type: 'positive', message: 'Shift change approved and updated in roster' })
+    loadAllPending()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to approve shift swap', caption: err.message })
+  }
+}
+
+async function rejectShiftSwap(swap) {
+  try {
+    const { error } = await supabase
+      .from('shift_swap_requests')
+      .update({ status: 'rejected' })
+      .eq('id', swap.id)
+
+    if (error) throw error
+    $q.notify({ type: 'warning', message: 'Shift change request rejected' })
+    loadAllPending()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to reject shift swap', caption: err.message })
+  }
+}
+
+async function approvePermission(perm) {
+  try {
+    const { error } = await supabase
+      .from('user_permissions')
+      .update({ is_active: true, approved_at: new Date().toISOString() })
+      .eq('id', perm.id)
+
+    if (error) throw error
+    $q.notify({ type: 'positive', message: 'Elevated permission verified and activated' })
+    loadAllPending()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to approve permission', caption: err.message })
+  }
+}
+
+async function denyPermission(perm) {
+  try {
+    const { error } = await supabase
+      .from('user_permissions')
+      .delete()
+      .eq('id', perm.id)
+
+    if (error) throw error
+    $q.notify({ type: 'warning', message: 'Elevated permission access denied and revoked' })
+    loadAllPending()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to deny permission', caption: err.message })
   }
 }
 
