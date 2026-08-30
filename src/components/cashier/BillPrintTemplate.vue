@@ -146,6 +146,7 @@
 import { computed, ref } from 'vue'
 import logoImage from 'src/assets/seven-waves-logo-transparent.png'
 import { useOrderStore } from 'src/stores/orderStore'
+import { escposPrintService } from 'src/services/escposPrintService'
 
 const orderStore = useOrderStore()
 
@@ -378,6 +379,14 @@ function getLogoBase64() {
 async function printReceipt() {
   if (!billRoot.value) return
   
+  // Trigger cash drawer if cash was used or if auto-drawer is enabled in printer settings
+  const hasCash = (props.invoice.payments || []).some(
+    (p) => String(p.payment_methods?.name || p.method || '').toLowerCase().includes('cash')
+  )
+  if (hasCash || escposPrintService.getConfig().autoDrawer) {
+    escposPrintService.openCashDrawer()
+  }
+
   // Capture reference before await in case component unmounts (dialog closed)
   const rootElement = billRoot.value
 
@@ -401,7 +410,7 @@ async function printReceipt() {
       font-size: 11px; line-height: 1.3;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
-    .bill-print-wrap { width: 80mm; max-width: 80mm; padding: 2mm 3mm 8mm 3mm; overflow: hidden; }
+    .bill-print-wrap { width: 80mm; max-width: 80mm; padding: 2mm 3mm 12mm 3mm; overflow: hidden; page-break-inside: avoid; }
     .bill-header { text-align: center; margin-bottom: 4px; }
     .bill-logo { width: 30mm; height: auto; margin: 0 auto 2px; display: block; }
     .restaurant-name { font-size: 9px; font-weight: bold; text-transform: uppercase; margin-bottom: 1px; }
@@ -429,7 +438,7 @@ async function printReceipt() {
     .total-row { display: flex; justify-content: space-between; font-size: 10px; padding: 1px 0; }
     .total-row-bold { font-weight: bold; font-size: 11px; }
     .customer-info { margin: 4px 0; font-size: 10px; }
-    .bill-footer { text-align: center; font-size: 9px; color: #333; margin-top: 6px; line-height: 1.5; }
+    .bill-footer { text-align: center; font-size: 9px; color: #333; margin-top: 6px; padding-bottom: 8mm; line-height: 1.5; }
     .footer-thanks { font-weight: bold; font-size: 10px; margin-bottom: 2px; }
     .footer-web { font-size: 8px; color: #666; }
   `

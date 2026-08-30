@@ -1,13 +1,12 @@
 <template>
   <q-page class="q-pa-md">
-    <!-- Header -->
-    <div class="row items-center q-mb-md">
-      <div>
-        <div class="text-h5 text-weight-bold">Device Management</div>
-        <div class="text-caption text-grey">Manage printers, scanners, displays, and other hardware</div>
-      </div>
-      <q-space />
-      <q-btn color="primary" icon="add" label="Add Device" @click="showAddDialog = true" />
+    <!-- Unified Device Navigation Header -->
+    <DeviceNavHeader />
+
+    <!-- Actions Bar -->
+    <div class="row items-center justify-between q-mb-md">
+      <div class="text-subtitle1 text-weight-bold text-grey-8">Registered Hardware Overview</div>
+      <q-btn color="primary" icon="add" label="Add Device" no-caps @click="showAddDialog = true" />
     </div>
 
     <!-- Stats Cards -->
@@ -67,6 +66,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useDeviceStore } from '../stores/device.store'
 import DeviceHealthTable from '../components/DeviceHealthTable.vue'
 import DeviceAlertPanel from '../components/DeviceAlertPanel.vue'
+import DeviceNavHeader from '../components/DeviceNavHeader.vue'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
@@ -85,21 +85,25 @@ const newDevice = ref({
 })
 
 const deviceTypes = [
-  { label: 'Printer', value: 'printer' },
-  { label: 'Scanner', value: 'scanner' },
-  { label: 'Cash Drawer', value: 'cash_drawer' },
-  { label: 'Biometric', value: 'biometric' },
-  { label: 'KDS Display', value: 'kds_display' },
-  { label: 'POS Terminal', value: 'pos_terminal' },
-  { label: 'Tablet', value: 'tablet' },
-  { label: 'Kiosk', value: 'kiosk' },
+  { label: 'Thermal / KOT Printer', value: 'printer' },
+  { label: 'Barcode / QR Scanner', value: 'scanner' },
+  { label: 'Cash Drawer (RJ11 / USB)', value: 'cash_drawer' },
+  { label: 'Biometric Attendance Terminal', value: 'biometric' },
+  { label: 'Electronic Weighing Scale', value: 'scale' },
+  { label: 'Customer Display / Pole VFD', value: 'customer_display' },
+  { label: 'KDS Kitchen Display Screen', value: 'kds_display' },
+  { label: 'POS Terminal Station', value: 'pos_terminal' },
+  { label: 'Waiter Ordering Tablet', value: 'tablet' },
+  { label: 'Self-Ordering Kiosk', value: 'kiosk' },
 ]
 
 const connectionTypes = [
-  { label: 'USB', value: 'usb' },
-  { label: 'Network', value: 'network' },
-  { label: 'Bluetooth', value: 'bluetooth' },
-  { label: 'Serial', value: 'serial' },
+  { label: 'Network LAN / WiFi (TCP/IP)', value: 'network' },
+  { label: 'USB Direct / WebUSB', value: 'usb' },
+  { label: 'Serial COM (RS-232 / Virtual COM)', value: 'serial' },
+  { label: 'Bluetooth Wireless', value: 'bluetooth' },
+  { label: 'Cloud Webhook / ADMS Push', value: 'cloud' },
+  { label: 'HDMI / Secondary Display', value: 'hdmi' },
 ]
 
 const stats = computed(() => [

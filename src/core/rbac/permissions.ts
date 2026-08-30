@@ -3,7 +3,7 @@
 // Seven Waves ERP — Step 03A Infrastructure
 // ═══════════════════════════════════════════════════════════════════
 
-import type { UserRole } from 'src/stores/auth'
+import type { UserRole } from '../../stores/auth'
 
 /**
  * Permission format: {module}.{resource}.{action}
@@ -28,7 +28,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'pos.*', 'kitchen.*', 'inventory.*', 'finance.*',
     'procurement.*', 'hr.*', 'reports.*',
     'crm.*', 'delivery.*', 'audit.view', 'website.*',
-    'operations.*',
+    'operations.*', 'devices.*',
   ],
 
   finance: [
@@ -55,7 +55,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ],
 
   inventory: [
-    'inventory.*', 'procurement.dashboard.view', 'procurement.view',
+    'inventory.*', 'procurement.dashboard.view', 'procurement.view', 'procurement.po.view',
     'reports.inventory.*', 'reports.view',
   ],
 
@@ -65,7 +65,7 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ],
 
   hr: [
-    'hr.*', 'reports.hr.*', 'reports.view', 'finance.payroll.view',
+    'hr.*', 'reports.hr.*', 'reports.view', 'finance.payroll.view', 'devices.biometrics.*',
   ],
 
   delivery: [

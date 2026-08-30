@@ -118,6 +118,62 @@
               </div>
             </div>
 
+            <!-- Split Payment Section -->
+            <div class="pay-section" v-if="selectedMethod === 'split'">
+              <div class="pay-section-label">SPLIT PAYMENT BREAKDOWN</div>
+              <div class="split-pay-grid">
+                <div class="split-row">
+                  <div class="split-label"><q-icon name="payments" size="18px" class="q-mr-xs" color="positive" /> Cash</div>
+                  <input
+                    v-model.number="splitCashAmount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    class="split-input"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div class="split-row">
+                  <div class="split-label"><q-icon name="credit_card" size="18px" class="q-mr-xs" color="primary" /> Card</div>
+                  <input
+                    v-model.number="splitCardAmount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    class="split-input"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div class="split-row">
+                  <div class="split-label"><q-icon name="qr_code" size="18px" class="q-mr-xs" color="warning" /> QR / Online</div>
+                  <input
+                    v-model.number="splitQrAmount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    class="split-input"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <!-- Split Status -->
+              <div class="split-status-box q-mt-sm" :class="{ balanced: isSplitBalanced, shortage: !isSplitBalanced }">
+                <div class="row justify-between text-weight-bold">
+                  <span>Total Split: LKR {{ fmt(splitTotalSum) }}</span>
+                  <span v-if="isSplitBalanced" class="text-green"><q-icon name="check_circle" /> Balanced</span>
+                  <span v-else class="text-orange">Remaining: LKR {{ fmt(Math.max(0, effectiveTotalAmount - splitTotalSum)) }}</span>
+                </div>
+                <button
+                  v-if="!isSplitBalanced && effectiveTotalAmount - splitTotalSum > 0"
+                  class="btn-fill-remaining q-mt-xs"
+                  @click="fillRemainingToCard"
+                >
+                  Fill Balance to Card (+LKR {{ fmt(effectiveTotalAmount - splitTotalSum) }})
+                </button>
+              </div>
+            </div>
+
             <!-- Amount Input (for cash) -->
             <div class="pay-section" v-if="selectedMethod === 'cash'">
               <div class="pay-section-label">AMOUNT RECEIVED</div>
@@ -161,7 +217,7 @@
             </div>
 
             <!-- Card/Online — no amount input needed -->
-            <div class="pay-section" v-if="selectedMethod !== 'cash'">
+            <div class="pay-section" v-if="selectedMethod !== 'cash' && selectedMethod !== 'split'">
               <div class="card-total-display">
                 <div class="card-total-label">CHARGE AMOUNT</div>
                 <div class="card-total-value">LKR {{ fmt(effectiveTotalAmount) }}</div>
@@ -223,6 +279,7 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { useCashierStore } from 'src/stores/cashierStore'
 import { useShiftStore } from 'src/stores/shiftStore'
+import { escposPrintService } from 'src/services/escposPrintService'
 import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
 
 const props = defineProps({
@@ -268,9 +325,28 @@ const confirmedMethod = ref('')
 const printInvoice = ref(null) // real invoice after payment
 const isProcessing = ref(false)
 
+// Split payment breakdown
+const splitCashAmount = ref(0)
+const splitCardAmount = ref(0)
+const splitQrAmount = ref(0)
+
+const splitTotalSum = computed(() => {
+  return (Number(splitCashAmount.value) || 0) + (Number(splitCardAmount.value) || 0) + (Number(splitQrAmount.value) || 0)
+})
+
+const isSplitBalanced = computed(() => {
+  return Math.abs(splitTotalSum.value - effectiveTotalAmount.value) < 0.01
+})
+
+function fillRemainingToCard() {
+  const remaining = Math.max(0, effectiveTotalAmount.value - (Number(splitCashAmount.value) || 0) - (Number(splitQrAmount.value) || 0))
+  splitCardAmount.value = parseFloat(remaining.toFixed(2))
+}
+
 const paymentMethods = [
   { id: 'cash', label: 'CASH', icon: 'payments' },
   { id: 'card', label: 'CARD', icon: 'credit_card' },
+  { id: 'split', label: 'SPLIT', icon: 'call_split' },
   { id: 'other', label: 'OTHER', icon: 'more_horiz' },
 ]
 
@@ -523,6 +599,9 @@ const canConfirm = computed(() => {
   if (selectedMethod.value === 'cash') {
     return amountReceived.value >= effectiveTotalAmount.value
   }
+  if (selectedMethod.value === 'split') {
+    return isSplitBalanced.value
+  }
   return true
 })
 
@@ -569,8 +648,20 @@ function setAmount(val) {
 async function confirmPayment() {
   if (!canConfirm.value) return
 
-  const methodName =
-    selectedMethod.value === 'cash' ? 'Cash' : selectedMethod.value === 'card' ? 'Card' : 'Online'
+  // Trigger cash drawer pulse if cash was received
+  if (selectedMethod.value === 'cash' || (selectedMethod.value === 'split' && splitCashAmount.value > 0)) {
+    escposPrintService.openCashDrawer()
+  }
+
+  let methodName = 'Cash'
+  if (selectedMethod.value === 'card') {
+    methodName = 'Card'
+  } else if (selectedMethod.value === 'split') {
+    methodName = 'Split Payment'
+  } else if (selectedMethod.value === 'other') {
+    methodName = selectedSubMethod.value === 'qr' ? 'QR Pay' : selectedSubMethod.value === 'bank' ? 'Bank Transfer' : 'Credit'
+  }
+
   confirmedMethod.value = methodName
 
   if (isMergeMode.value) {
@@ -583,8 +674,13 @@ async function confirmPayment() {
     // ── MANUAL POS: emit to parent (POSPage handles via orderStore) ──
     emit('confirm', {
       method: selectedMethod.value,
-      amount: amountReceived.value,
-      change: Math.max(0, changeAmount.value),
+      amount: selectedMethod.value === 'split' ? effectiveTotalAmount.value : amountReceived.value,
+      change: selectedMethod.value === 'split' ? 0 : Math.max(0, changeAmount.value),
+      splitDetails: selectedMethod.value === 'split' ? {
+        cash: splitCashAmount.value,
+        card: splitCardAmount.value,
+        qr: splitQrAmount.value
+      } : null
     })
   }
 }
@@ -1153,6 +1249,72 @@ defineExpose({ markAsPaid, printBill })
   font-weight: 800;
   color: #fff;
   margin-top: 8px;
+}
+
+/* Split Payment */
+.split-pay-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.split-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+}
+.split-input {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+  width: 140px;
+  outline: none;
+}
+.split-input:focus {
+  border-color: #2563eb;
+}
+.split-status-box {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.split-status-box.balanced {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid #10b981;
+}
+.split-status-box.shortage {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid #f59e0b;
+}
+.btn-fill-remaining {
+  width: 100%;
+  padding: 6px 10px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-fill-remaining:hover {
+  background: #1d4ed8;
 }
 
 /* Confirm button */

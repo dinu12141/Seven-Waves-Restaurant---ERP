@@ -361,7 +361,7 @@
                   >WEBSITE</button>
                 </template>
 
-                <button class="abtn a-blue" @click="handleNewOrder">Order</button>
+                <button class="abtn a-blue" @click="handleNewOrder">New Order</button>
                 <button class="abtn a-blue" @click="handleOrderLookup">Order Lookup</button>
                 <button class="abtn a-blue" @click="handleClear">Clear</button>
             </div>
@@ -875,6 +875,7 @@ import CashMovementDialog from 'src/components/pos/CashMovementDialog.vue'
 import CloseShiftDialog from 'src/components/pos/CloseShiftDialog.vue'
 import ShiftSummaryDialog from 'src/components/pos/ShiftSummaryDialog.vue'
 import ManagerAuthDialog from 'src/components/pos/ManagerAuthDialog.vue'
+import { escposPrintService } from 'src/services/escposPrintService'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -2508,6 +2509,14 @@ function handleFunctionMenuAction(action) {
       break
     case 'shift_summary':
       showShiftSummary.value = true
+      break
+    case 'open_drawer':
+      escposPrintService.openCashDrawer()
+      Notify.create({ message: 'Cash Drawer Kick Command Sent', color: 'positive', icon: 'inbox', position: 'top' })
+      break
+    case 'test_print':
+      escposPrintService.printTestReceipt()
+      Notify.create({ message: 'Test Receipt Sent to Thermal Printer', caption: 'Cash drawer kick and auto-cut triggered', color: 'info', icon: 'print', position: 'top' })
       break
     case 'close_shift':
       showCloseShift.value = true

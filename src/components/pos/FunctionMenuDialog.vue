@@ -70,6 +70,22 @@
           </button>
 
           <button
+            class="fn-btn fn-purple"
+            @click="handleAction('open_drawer')"
+          >
+            <q-icon name="inbox" size="28px" />
+            <span>Open Drawer</span>
+          </button>
+
+          <button
+            class="fn-btn fn-blue"
+            @click="handleAction('test_print')"
+          >
+            <q-icon name="print" size="28px" />
+            <span>Test Print & Cut</span>
+          </button>
+
+          <button
             class="fn-btn fn-red"
             :class="{ 'fn-disabled': !shiftStore.hasActiveShift }"
             :disabled="!shiftStore.hasActiveShift"

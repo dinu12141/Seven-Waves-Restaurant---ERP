@@ -1,9 +1,11 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center q-mb-md">
-      <div class="text-h5 text-weight-bold">Biometric Devices</div>
-      <q-space />
-      <q-btn color="primary" icon="add" label="Add Device" @click="showAddDialog = true" />
+    <!-- Unified Device Navigation Header -->
+    <DeviceNavHeader />
+
+    <div class="row items-center justify-between q-mb-md">
+      <div class="text-subtitle1 text-weight-bold text-grey-8">Biometric Attendance Terminals</div>
+      <q-btn color="primary" icon="add" label="Add Device" no-caps @click="showAddDialog = true" />
     </div>
 
     <div class="row q-gutter-md q-mb-lg">
@@ -106,32 +108,146 @@
       </template>
     </q-table>
 
-    <!-- Add Device Dialog -->
-    <q-dialog v-model="showAddDialog">
-      <q-card style="min-width: 380px">
-        <q-card-section>
-          <div class="text-h6">Add Fingerprint Device</div>
-          <div class="text-caption text-grey">
-            Enter the IP address shown on the device (Main Menu → COMM. → Ethernet).
+    <!-- Add Device Dialog (Universal Biometric Setup) -->
+    <q-dialog v-model="showAddDialog" persistent>
+      <q-card style="min-width: 540px; max-width: 95vw;">
+        <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
+          <div class="row items-center">
+            <q-icon name="fingerprint" size="24px" class="q-mr-sm" />
+            <div class="text-h6 text-weight-bold">Register Attendance Machine</div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md q-gutter-sm">
+          <div class="text-caption text-grey-7 q-mb-xs">
+            Supports any brand worldwide (ZKTeco, Hikvision, Dahua, Suprema, Anviz, ADMS Cloud Push, USB Desktop).
+          </div>
+
+          <!-- Brand / Protocol Preset -->
+          <q-select
+            v-model="selectedBrandPreset"
+            label="Device Brand / Protocol Architecture *"
+            outlined
+            dense
+            :options="biometricBrandPresets"
+            emit-value
+            map-options
+            @update:model-value="onBrandPresetChange"
+            class="q-mb-sm"
+          >
+            <template #prepend>
+              <q-icon name="verified" color="primary" />
+            </template>
+          </q-select>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-7">
+              <q-input
+                v-model="newDevice.device_name"
+                label="Device Name / Location *"
+                outlined
+                dense
+                placeholder="e.g. Staff Entrance K45"
+              />
+            </div>
+            <div class="col-12 col-sm-5">
+              <q-select
+                v-model="newDevice.device_role"
+                label="Terminal Function"
+                outlined
+                dense
+                :options="[
+                  { label: 'Staff Clock In/Out', value: 'attendance' },
+                  { label: 'Kitchen Entry Check-in', value: 'kitchen' },
+                  { label: 'Manager Access Control', value: 'manager_access' },
+                  { label: 'All-Purpose Terminal', value: 'general' }
+                ]"
+                emit-value
+                map-options
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mt-xs">
+            <div class="col-12 col-sm-8">
+              <q-input
+                v-model="newDevice.ip_address"
+                label="IP Address / Host *"
+                outlined
+                dense
+                placeholder="e.g. 192.168.1.201"
+              >
+                <template #prepend>
+                  <q-icon name="lan" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-4">
+              <q-input
+                v-model.number="newDevice.port"
+                label="Port *"
+                type="number"
+                outlined
+                dense
+                placeholder="4370"
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mt-xs">
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model="newDevice.comm_key"
+                label="Comm Key / Password"
+                outlined
+                dense
+                placeholder="0 (Default)"
+                hint="Device communication password"
+              />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input
+                v-model="newDevice.serial_number"
+                label="Serial Number (Optional)"
+                outlined
+                dense
+                placeholder="e.g. CQZ918230041"
+              />
+            </div>
+          </div>
+
+          <!-- Connection Test Feedback -->
+          <div v-if="testResult" class="q-mt-sm q-pa-sm rounded-borders" :class="testResult.success ? 'bg-positive text-white' : 'bg-negative text-white'">
+            <div class="row items-center">
+              <q-icon :name="testResult.success ? 'check_circle' : 'error'" size="20px" class="q-mr-xs" />
+              <div class="text-weight-bold">{{ testResult.success ? 'Connection Successful!' : 'Connection Failed' }}</div>
+            </div>
+            <div class="text-caption" style="opacity: 0.9;">{{ testResult.message }}</div>
           </div>
         </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-input v-model="newDevice.device_name" label="Device Name" outlined dense
-            hint="e.g. Staff Entrance K45" />
-          <q-input v-model="newDevice.ip_address" label="IP Address" outlined dense
-            hint="e.g. 192.168.1.201" />
-          <q-input v-model.number="newDevice.port" label="Port" type="number" outlined dense
-            hint="Default 4370" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
+
+        <q-card-actions align="between" class="q-px-md q-pb-md">
           <q-btn
-            color="primary"
-            label="Add"
-            :loading="adding"
-            :disable="!newDevice.device_name || !newDevice.ip_address"
-            @click="addDevice"
+            outline
+            color="info"
+            icon="network_check"
+            label="Test Connection"
+            no-caps
+            :loading="testingConnection"
+            @click="testBiometricConnection"
           />
+          <div class="row q-gutter-sm">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn
+              color="primary"
+              label="Save Device"
+              no-caps
+              :loading="adding"
+              :disable="!newDevice.device_name || !newDevice.ip_address"
+              @click="addDevice"
+            />
+          </div>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -144,6 +260,7 @@ import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { useDeviceStore } from '../stores/device.store'
+import DeviceNavHeader from '../components/DeviceNavHeader.vue'
 import { ZKTecoClient, isDesktopAvailable } from '../services/zkteco.service'
 
 const $q = useQuasar()
@@ -164,7 +281,73 @@ const recentPunches = ref([])
 const branchId = ref(null)
 const companyId = ref(null)
 
-const newDevice = ref({ device_name: '', ip_address: '', port: 4370 })
+const selectedBrandPreset = ref('zkteco')
+const testingConnection = ref(false)
+const testResult = ref(null)
+
+const biometricBrandPresets = [
+  { label: 'ZKTeco / eSSL / Realtime / Biomax (UDP/TCP 4370)', value: 'zkteco', defaultPort: 4370 },
+  { label: 'Hikvision Face & Fingerprint Terminal (ISAPI HTTP 80/8000)', value: 'hikvision', defaultPort: 80 },
+  { label: 'Dahua Face Recognition & Fingerprint (TCP 37777 / HTTP 80)', value: 'dahua', defaultPort: 37777 },
+  { label: 'Suprema BioStar 2 FaceStation / BioStation (G-SDK 51211)', value: 'suprema', defaultPort: 51211 },
+  { label: 'Anviz CrossChex FacePass & EP300 (TCP 5010)', value: 'anviz', defaultPort: 5010 },
+  { label: 'Cloud ADMS / Webhook Push Protocol (HTTP Push)', value: 'cloud_adms', defaultPort: 80 },
+  { label: 'Desktop USB Optical Scanner (DigitalPersona / SecuGen / Mantra)', value: 'usb_desktop', defaultPort: 0 },
+  { label: 'Generic / Custom Attendance Terminal', value: 'custom', defaultPort: 4370 },
+]
+
+const newDevice = ref({
+  device_name: '',
+  ip_address: '',
+  port: 4370,
+  device_role: 'attendance',
+  comm_key: '0',
+  serial_number: '',
+})
+
+function onBrandPresetChange(val) {
+  const preset = biometricBrandPresets.find((p) => p.value === val)
+  if (preset) {
+    newDevice.value.port = preset.defaultPort
+    if (preset.value === 'usb_desktop') {
+      newDevice.value.ip_address = '127.0.0.1'
+    }
+  }
+}
+
+async function testBiometricConnection() {
+  if (!newDevice.value.ip_address) {
+    $q.notify({ type: 'warning', message: 'Please enter an IP address first' })
+    return
+  }
+  testingConnection.value = true
+  testResult.value = null
+  try {
+    const client = new ZKTecoClient({
+      ip: newDevice.value.ip_address,
+      port: newDevice.value.port || 4370,
+    })
+    const res = await client.getDeviceInfo()
+    if (res.success) {
+      testResult.value = {
+        success: true,
+        message: `Device responded successfully! Enrolled Users: ${res.userCounts || 0}, Stored Logs: ${res.logCounts || 0}`,
+      }
+    } else {
+      testResult.value = {
+        success: false,
+        message: res.error || 'Device ping timed out. Verify device is connected to LAN and IP is correct.',
+      }
+    }
+  } catch (err) {
+    testResult.value = {
+      success: false,
+      message: err?.message || 'Connection test failed',
+    }
+  } finally {
+    testingConnection.value = false
+  }
+}
 
 const stats = computed(() => [
   { label: 'Devices', value: deviceStore.biometricDevices.length, icon: 'fingerprint', color: 'primary' },

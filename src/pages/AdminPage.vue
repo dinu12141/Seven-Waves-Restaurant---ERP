@@ -81,7 +81,7 @@ const modules = ref([
     description: 'Configure receipt and kitchen printers for each branch.',
     icon: 'print',
     color: 'teal',
-    to: '/admin/printers',
+    to: '/devices/printers',
     permission: 'admin:printers',
   },
   {

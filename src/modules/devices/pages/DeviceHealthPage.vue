@@ -1,6 +1,9 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="text-h5 text-weight-bold q-mb-md">Device Health Monitoring</div>
+    <!-- Unified Device Navigation Header -->
+    <DeviceNavHeader />
+
+    <div class="text-subtitle1 text-weight-bold text-grey-8 q-mb-md">Device Health & Telemetry Diagnostics</div>
 
     <!-- Health Overview -->
     <div class="row q-gutter-md q-mb-lg">
@@ -44,6 +47,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDeviceStore } from '../stores/device.store'
 import DeviceHealthTable from '../components/DeviceHealthTable.vue'
 import DeviceAlertPanel from '../components/DeviceAlertPanel.vue'
+import DeviceNavHeader from '../components/DeviceNavHeader.vue'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()

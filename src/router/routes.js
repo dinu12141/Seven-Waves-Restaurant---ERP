@@ -273,8 +273,7 @@ const routes = [
       },
       {
         path: 'admin/printers',
-        component: () => import('pages/admin/PrintersPage.vue'),
-        meta: { roles: ['admin'], module: 'admin', permission: 'admin.printers.view' },
+        redirect: '/devices/printers',
       },
       {
         path: 'admin/settings',

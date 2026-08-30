@@ -283,8 +283,6 @@ import { useQuasar, exportFile } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { printService } from 'src/services/printService'
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

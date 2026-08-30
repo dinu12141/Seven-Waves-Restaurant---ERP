@@ -45,9 +45,13 @@
               <div
                 v-for="log in logs"
                 :key="log.id"
-                class="log-row"
+                class="log-row log-row--clickable"
                 :class="{ 'log-row--new': log._new }"
+                @click="openUserAudit(log)"
               >
+                <q-tooltip anchor="top middle" self="bottom middle" :offset="[0, 5]">
+                  Click to inspect user's working time and all activities performed
+                </q-tooltip>
                 <span class="log-time">{{ formatTime(log.logged_at) }}</span>
                 <span class="log-user">
                   <div class="log-user__name">{{ log.full_name || log.email?.split('@')[0] || '—' }}</div>
@@ -62,11 +66,13 @@
                   <div>{{ log.browser || '—' }}</div>
                   <div class="log-os">{{ log.os || '—' }}</div>
                 </span>
-                <span>
+                <span class="row items-center">
                   <q-badge
                     :color="log.status === 'success' ? 'green' : 'red'"
                     :label="log.status || 'success'"
+                    class="q-mr-xs"
                   />
+                  <q-icon name="chevron_right" color="grey-6" size="16px" />
                 </span>
               </div>
             </transition-group>
@@ -306,6 +312,226 @@
         </div>
       </div>
     </q-drawer>
+
+    <!-- ════════════════════════════════════════════════
+         User Activity & Work Session Audit Modal
+    ════════════════════════════════════════════════ -->
+    <q-dialog v-model="showUserAuditDialog" persistent max-width="1000px" style="width: 1000px;">
+      <q-card style="width: 1000px; max-width: 95vw; max-height: 90vh;" class="column">
+        <!-- Header -->
+        <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
+          <div class="row items-center">
+            <q-avatar size="36px" color="white" text-color="primary" class="q-mr-sm text-weight-bold">
+              {{ (selectedUserLog?.full_name || selectedUserLog?.email || 'U').charAt(0).toUpperCase() }}
+            </q-avatar>
+            <div>
+              <div class="text-h6 text-weight-bold row items-center">
+                {{ selectedUserLog?.full_name || selectedUserLog?.email?.split('@')[0] || 'User' }}
+                <q-badge :color="roleColor(selectedUserLog?.role)" :label="selectedUserLog?.role?.toUpperCase()" class="q-ml-sm" />
+              </div>
+              <div class="text-caption" style="opacity: 0.9;">
+                {{ selectedUserLog?.email }} • Logged in via {{ selectedUserLog?.device_type }} ({{ selectedUserLog?.browser }} on {{ selectedUserLog?.os }})
+              </div>
+            </div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <!-- Working Time & Session Duration Strip -->
+        <div class="bg-blue-1 border-bottom q-pa-md">
+          <div class="row q-col-gutter-md items-center">
+            <!-- Work Duration -->
+            <div class="col-12 col-sm-3">
+              <div class="bg-white q-pa-sm rounded-borders shadow-1 text-center">
+                <div class="text-caption text-grey-7 text-weight-medium">
+                  <q-icon name="timer" color="primary" class="q-mr-xs" />TOTAL WORK TIME
+                </div>
+                <div class="text-h6 text-weight-bolder text-primary">
+                  {{ userAuditStats.workDuration }}
+                </div>
+                <div class="text-caption text-grey-6">{{ userAuditStats.sessionStatus }}</div>
+              </div>
+            </div>
+
+            <!-- Login Window -->
+            <div class="col-12 col-sm-3">
+              <div class="bg-white q-pa-sm rounded-borders shadow-1 text-center">
+                <div class="text-caption text-grey-7 text-weight-medium">
+                  <q-icon name="login" color="green" class="q-mr-xs" />LOGIN TIME
+                </div>
+                <div class="text-subtitle2 text-weight-bold">
+                  {{ formatTime(selectedUserLog?.logged_at) }}
+                </div>
+                <div class="text-caption text-grey-6">Last Active: {{ formatTime(userAuditStats.lastActivityTime) }}</div>
+              </div>
+            </div>
+
+            <!-- Orders Processed -->
+            <div class="col-12 col-sm-3">
+              <div class="bg-white q-pa-sm rounded-borders shadow-1 text-center">
+                <div class="text-caption text-grey-7 text-weight-medium">
+                  <q-icon name="shopping_cart" color="orange-8" class="q-mr-xs" />ORDERS PUNCHED
+                </div>
+                <div class="text-h6 text-weight-bolder text-orange-9">
+                  {{ userAuditStats.orderCount }} Orders
+                </div>
+                <div class="text-caption text-grey-6">LKR {{ userAuditStats.totalSales.toLocaleString() }} Total</div>
+              </div>
+            </div>
+
+            <!-- Audit Actions -->
+            <div class="col-12 col-sm-3">
+              <div class="bg-white q-pa-sm rounded-borders shadow-1 text-center">
+                <div class="text-caption text-grey-7 text-weight-medium">
+                  <q-icon name="history" color="teal" class="q-mr-xs" />OPERATIONS LOGGED
+                </div>
+                <div class="text-h6 text-weight-bolder text-teal-9">
+                  {{ userAuditStats.actionCount }} Actions
+                </div>
+                <div class="text-caption text-grey-6">System Audit Trail</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <q-tabs
+          v-model="auditTab"
+          dense
+          align="left"
+          class="text-grey-8 bg-grey-2 border-bottom"
+          active-color="primary"
+          active-bg-color="white"
+          indicator-color="primary"
+        >
+          <q-tab name="timeline" icon="history" label="Detailed Audit Actions" />
+          <q-tab name="orders" icon="shopping_bag" :label="`POS Orders (${userOrders.length})`" />
+          <q-tab name="attendance" icon="fingerprint" :label="`Attendance Logs (${userAttendance.length})`" />
+        </q-tabs>
+
+        <!-- Tab Panels -->
+        <q-card-section class="col q-pa-none scroll">
+          <div v-if="auditLoading" class="row justify-center q-pa-xl">
+            <q-spinner color="primary" size="40px" />
+            <div class="q-ml-md text-grey-7">Loading comprehensive user audit records...</div>
+          </div>
+
+          <q-tab-panels v-else v-model="auditTab" animated class="bg-transparent">
+            <!-- Panel 1: Detailed Human-Readable Audit Actions -->
+            <q-tab-panel name="timeline" class="q-pa-md">
+              <div v-if="userActionLogs.length === 0" class="text-center text-grey q-pa-lg">
+                <q-icon name="assignment" size="36px" class="q-mb-sm" />
+                <div>No explicit system change records logged for this session.</div>
+              </div>
+              <q-timeline v-else color="primary" class="q-px-sm">
+                <q-timeline-entry
+                  v-for="action in userActionLogs"
+                  :key="action.id"
+                  :subtitle="formatTime(action.created_at)"
+                  :icon="getActionModule(action).icon"
+                  :color="getActionModule(action).color"
+                >
+                  <template #title>
+                    <div class="row items-center q-gutter-xs">
+                      <q-badge :color="getActionModule(action).color" :label="getActionModule(action).name" class="text-weight-bold" />
+                      <q-badge outline :color="action.action === 'DELETE' ? 'negative' : action.action === 'INSERT' ? 'positive' : 'info'" :label="action.action" />
+                    </div>
+                  </template>
+
+                  <!-- Human-Readable Summary Description -->
+                  <div class="text-subtitle2 text-weight-bolder text-grey-9 q-mt-xs">
+                    {{ getHumanActionDescription(action) }}
+                  </div>
+
+                  <!-- Key Modified Fields (Clean business badges) -->
+                  <div v-if="extractKeyChanges(action).length > 0" class="row q-gutter-xs q-mt-xs">
+                    <q-badge
+                      v-for="change in extractKeyChanges(action)"
+                      :key="change.label"
+                      color="blue-1"
+                      text-color="primary"
+                      class="q-pa-xs border-blue-2"
+                    >
+                      <span class="text-grey-8 q-mr-xs">{{ change.label }}:</span>
+                      <span v-if="change.from" class="text-strike text-grey-6 q-mr-xs">{{ change.from }}</span>
+                      <q-icon v-if="change.from" name="arrow_forward" size="12px" class="q-mr-xs text-primary" />
+                      <span class="text-weight-bold text-primary">{{ change.to }}</span>
+                    </q-badge>
+                  </div>
+                </q-timeline-entry>
+              </q-timeline>
+            </q-tab-panel>
+
+            <!-- Panel 2: POS Orders -->
+            <q-tab-panel name="orders" class="q-pa-md">
+              <div v-if="userOrders.length === 0" class="text-center text-grey q-pa-lg">
+                <q-icon name="receipt_long" size="36px" class="q-mb-sm" />
+                <div>No POS orders created by this user yet.</div>
+              </div>
+              <q-table
+                v-else
+                :rows="userOrders"
+                :columns="[
+                  { name: 'order_number', label: 'Order #', field: 'order_number', align: 'left' },
+                  { name: 'created_at', label: 'Time', field: 'created_at', format: formatTime, align: 'left' },
+                  { name: 'order_type', label: 'Type', field: 'order_type', align: 'center' },
+                  { name: 'table_number', label: 'Table / Room', field: 'table_number', align: 'center' },
+                  { name: 'total_amount', label: 'Total (LKR)', field: 'total_amount', format: v => `LKR ${Number(v || 0).toLocaleString()}`, align: 'right' },
+                  { name: 'status', label: 'Status', field: 'status', align: 'center' },
+                ]"
+                row-key="id"
+                flat
+                bordered
+                dense
+                :pagination="{ rowsPerPage: 15 }"
+              >
+                <template #body-cell-status="props">
+                  <q-td :props="props">
+                    <q-badge :color="props.row.status === 'completed' ? 'positive' : props.row.status === 'voided' ? 'negative' : 'warning'">
+                      {{ props.row.status }}
+                    </q-badge>
+                  </q-td>
+                </template>
+              </q-table>
+            </q-tab-panel>
+
+            <!-- Panel 3: Attendance Punches -->
+            <q-tab-panel name="attendance" class="q-pa-md">
+              <div v-if="userAttendance.length === 0" class="text-center text-grey q-pa-lg">
+                <q-icon name="fingerprint" size="36px" class="q-mb-sm" />
+                <div>No attendance punches found for this staff member.</div>
+              </div>
+              <q-table
+                v-else
+                :rows="userAttendance"
+                :columns="[
+                  { name: 'punch_time', label: 'Punch Time', field: 'punch_time', format: formatTime, align: 'left' },
+                  { name: 'punch_type', label: 'Type', field: 'punch_type', align: 'left' },
+                  { name: 'source', label: 'Terminal / Source', field: 'source', align: 'left' },
+                  { name: 'is_processed', label: 'Processed', field: 'is_processed', align: 'center' },
+                ]"
+                row-key="id"
+                flat
+                bordered
+                dense
+              >
+                <template #body-cell-punch_type="props">
+                  <q-td :props="props">
+                    <q-icon :name="props.row.punch_type === 'in' ? 'login' : 'logout'" size="16px" class="q-mr-xs" />
+                    {{ props.row.punch_type === 'in' ? 'Clock In' : 'Clock Out' }}
+                  </q-td>
+                </template>
+              </q-table>
+            </q-tab-panel>
+          </q-tab-panels>
+        </q-card-section>
+
+        <!-- Actions -->
+        <q-card-actions align="right" class="bg-grey-1 q-pa-sm border-top">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -518,6 +744,321 @@ async function loadKpis() {
   kpis.value[5].value = '1.4 GB'
 }
 
+// ── User Audit & Session Details ──────────────────────────────
+const showUserAuditDialog = ref(false)
+const auditLoading = ref(false)
+const selectedUserLog = ref(null)
+const auditTab = ref('timeline')
+const userActionLogs = ref([])
+const userOrders = ref([])
+const userAttendance = ref([])
+const userAuditStats = ref({
+  orderCount: 0,
+  totalSales: 0,
+  actionCount: 0,
+  workDuration: '—',
+  sessionStatus: 'Active Session',
+  loginTime: null,
+  lastActivityTime: null,
+})
+
+async function openUserAudit(log) {
+  selectedUserLog.value = log
+  showUserAuditDialog.value = true
+  auditLoading.value = true
+  userActionLogs.value = []
+  userOrders.value = []
+  userAttendance.value = []
+  auditTab.value = 'timeline'
+
+  try {
+    const userEmail = log.email
+    const loginTime = new Date(log.logged_at)
+
+    // 1. Resolve user ID from profiles
+    let userId = log.user_id
+    if (!userId && userEmail) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('email', userEmail)
+        .maybeSingle()
+      if (profile) userId = profile.id
+    }
+
+    // 2. Fetch audit actions for this user
+    let auditData = []
+    if (userId) {
+      const { data } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      auditData = data || []
+    }
+    userActionLogs.value = auditData
+
+    // 3. Fetch POS Orders created by this user
+    let orderData = []
+    if (userId) {
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id, order_number, total_amount, status, created_at, order_type, table_number')
+        .or(`created_by.eq.${userId},waiter_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      orderData = orders || []
+    }
+    userOrders.value = orderData
+
+    // 4. Fetch Attendance punches
+    if (userId || userEmail) {
+      const username = userEmail?.split('@')[0]
+      const { data: punches } = await supabase
+        .from('attendance_logs')
+        .select('*')
+        .or(`employee_id.eq.${userId || '00000000-0000-0000-0000-000000000000'},employee_code.eq.${username}`)
+        .order('punch_time', { ascending: false })
+        .limit(20)
+      userAttendance.value = punches || []
+    }
+
+    // 5. Calculate working duration & stats
+    const totalSales = orderData.reduce((acc, o) => acc + Number(o.total_amount || 0), 0)
+
+    const timestamps = [loginTime.getTime()]
+    if (auditData[0]?.created_at) timestamps.push(new Date(auditData[0].created_at).getTime())
+    if (orderData[0]?.created_at) timestamps.push(new Date(orderData[0].created_at).getTime())
+    if (log.logout_at) timestamps.push(new Date(log.logout_at).getTime())
+
+    const maxTime = Math.max(...timestamps)
+    const diffMs = Math.max(0, maxTime - loginTime.getTime())
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60))
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+
+    let workDurationStr = ''
+    if (hours > 0) {
+      workDurationStr = `${hours}h ${minutes}m`
+    } else if (minutes > 0) {
+      workDurationStr = `${minutes} mins`
+    } else {
+      workDurationStr = 'Active now'
+    }
+
+    const isToday = new Date().toDateString() === loginTime.toDateString()
+    const isRecent = Date.now() - loginTime.getTime() < 1000 * 60 * 60 * 12
+
+    userAuditStats.value = {
+      orderCount: orderData.length,
+      totalSales,
+      actionCount: auditData.length,
+      workDuration: workDurationStr,
+      sessionStatus: isToday && isRecent ? 'Active in System' : 'Session Completed',
+      loginTime: log.logged_at,
+      lastActivityTime: new Date(maxTime).toISOString(),
+    }
+  } catch (err) {
+    console.error('Failed to load user audit:', err)
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+function getActionModule(action) {
+  const table = (action.table_name || '').toLowerCase()
+  const act = (action.action || '').toLowerCase()
+  if (table.includes('order') || act.includes('order')) {
+    return { name: 'POS & Orders', icon: 'shopping_cart', color: 'primary' }
+  }
+  if (table.includes('payment') || table.includes('invoice') || act.includes('payment')) {
+    return { name: 'Billing & Payments', icon: 'payments', color: 'positive' }
+  }
+  if (table.includes('inventory') || table.includes('stock') || table.includes('item') || table.includes('waste')) {
+    return { name: 'Inventory & Stock', icon: 'inventory_2', color: 'amber-9' }
+  }
+  if (table.includes('recipe') || table.includes('bom') || table.includes('kot') || table.includes('kitchen')) {
+    return { name: 'Kitchen & KDS', icon: 'restaurant_menu', color: 'deep-orange' }
+  }
+  if (table.includes('employee') || table.includes('payroll') || table.includes('attendance') || table.includes('leave')) {
+    return { name: 'HR & Attendance', icon: 'people', color: 'purple' }
+  }
+  if (table.includes('table') || table.includes('reservation')) {
+    return { name: 'Table Management', icon: 'table_restaurant', color: 'teal' }
+  }
+  if (table.includes('supplier') || table.includes('purchase') || table.includes('po')) {
+    return { name: 'Procurement & GRN', icon: 'local_shipping', color: 'brown' }
+  }
+  if (table.includes('ledger') || table.includes('account') || table.includes('journal')) {
+    return { name: 'Finance & Ledger', icon: 'account_balance', color: 'indigo' }
+  }
+  if (table.includes('device') || table.includes('printer') || table.includes('scanner')) {
+    return { name: 'Device & Hardware', icon: 'print', color: 'cyan-9' }
+  }
+  return { name: 'System Operations', icon: 'tune', color: 'blue-grey' }
+}
+
+function getHumanActionDescription(action) {
+  const data = action.new_data || action.old_data || {}
+  const table = (action.table_name || '').toLowerCase()
+  const actType = (action.action || '').toUpperCase()
+
+  // 1. Orders
+  if (table === 'orders' || table === 'order_headers') {
+    const orderNum = data.order_number ? `#${data.order_number}` : ''
+    const total = data.total_amount ? `LKR ${Number(data.total_amount).toLocaleString()}` : ''
+    const status = data.status || ''
+
+    if (actType === 'INSERT') {
+      const type = data.order_type === 'dine_in' ? 'Dine-in' : data.order_type === 'takeaway' ? 'Takeaway' : 'Delivery'
+      const tableInfo = data.table_number ? ` (Table ${data.table_number})` : ''
+      return `Created new ${type} Order ${orderNum}${tableInfo} — Total: ${total || 'N/A'}`
+    }
+    if (actType === 'UPDATE') {
+      if (status === 'paid') {
+        const method = data.payment_method ? ` via ${data.payment_method.toUpperCase()}` : ''
+        return `Settled Order ${orderNum} — Payment Received: ${total}${method}`
+      }
+      if (status === 'voided') {
+        const reason = data.refund_reason || data.foc_reason || 'Manual void'
+        return `Voided Order ${orderNum} (Reason: ${reason})`
+      }
+      if (status === 'preparing') {
+        return `Dispatched Order ${orderNum} to Kitchen for Cooking`
+      }
+      if (status === 'ready') {
+        return `Marked Order ${orderNum} as Food Ready for Serving`
+      }
+      if (status === 'completed') {
+        return `Closed and Completed Order ${orderNum}`
+      }
+      return `Updated details for Order ${orderNum}`
+    }
+    if (actType === 'DELETE') {
+      return `Cancelled / Removed Order ${orderNum}`
+    }
+  }
+
+  // 2. Order Items / Cart
+  if (table === 'order_items') {
+    const item = data.item_name || data.name || 'Item'
+    const qty = data.quantity ? `${data.quantity}x ` : ''
+    if (actType === 'INSERT') return `Added ${qty}"${item}" to Order Cart`
+    if (actType === 'UPDATE') return `Modified ${qty}"${item}" in Order Cart`
+    if (actType === 'DELETE') return `Removed "${item}" from Order Cart`
+  }
+
+  // 3. KOT Tickets
+  if (table.includes('kot')) {
+    const kotNum = data.ticket_number || data.kot_number || ''
+    if (actType === 'INSERT') return `Sent Kitchen Ticket (KOT ${kotNum ? '#' + kotNum : ''}) to Kitchen Display`
+    if (actType === 'UPDATE') return `Updated Kitchen Ticket status (${data.status || 'Active'})`
+  }
+
+  // 4. Inventory Documents (BOM Deductions, GRN, Wastage)
+  if (table === 'inventory_documents' || table.includes('document')) {
+    const remarks = data.remarks || ''
+    const docType = (data.doc_type || '').toUpperCase()
+    if (docType === 'BOM_DEDUCT' || remarks.toLowerCase().includes('auto-deduction')) {
+      return `Auto-deducted Recipe Ingredients for ${remarks || 'Kitchen Order'}`
+    }
+    if (docType === 'GRN') {
+      return `Received Supplier Goods (GRN #${data.doc_number || ''}) into Inventory`
+    }
+    if (docType === 'WASTE') {
+      return `Recorded Stock Wastage Entry (${remarks || 'Damaged / Expired stock'})`
+    }
+    if (docType === 'ADJUST') {
+      return `Performed Physical Stock Adjustment (${remarks || 'Count reconciliation'})`
+    }
+    if (actType === 'INSERT') return `Recorded Inventory Document (${docType || 'Entry'})`
+    if (actType === 'UPDATE') return `Updated Inventory Document (${docType || 'Entry'})`
+    if (actType === 'DELETE') return `Voided Inventory Document (${docType || 'Entry'})`
+  }
+
+  // 5. Stock Items & Ingredients
+  if (table.includes('stock') || table.includes('inventory') || table.includes('item')) {
+    const itemName = data.name || data.item_name || data.ingredient_name || ''
+    const qty = data.quantity ?? data.stock_quantity ?? data.current_stock
+    const unit = data.unit || ''
+    if (actType === 'INSERT') return `Added new Item / Ingredient: "${itemName || 'Item'}"`
+    if (actType === 'UPDATE') return `Updated Stock for "${itemName || 'Item'}" ${qty !== undefined ? `➔ Level: ${qty} ${unit}` : ''}`
+    if (actType === 'DELETE') return `Removed Item "${itemName || 'Item'}" from Inventory`
+  }
+
+  // 6. Payments
+  if (table === 'payments' || table.includes('payment')) {
+    const amt = data.amount ? `LKR ${Number(data.amount).toLocaleString()}` : ''
+    const method = data.payment_method ? ` via ${data.payment_method.toUpperCase()}` : ''
+    return `${actType === 'INSERT' ? 'Processed' : 'Updated'} Payment of ${amt}${method}`
+  }
+
+  // 7. Shifts
+  if (table.includes('shift')) {
+    if (actType === 'INSERT') return `Opened POS Cashier Shift (Float: LKR ${Number(data.opening_float || 0).toLocaleString()})`
+    if (actType === 'UPDATE') return `Closed POS Cashier Shift (Cash Total: LKR ${Number(data.closing_cash || data.cash_sales || 0).toLocaleString()})`
+  }
+
+  // 8. Tables
+  if (table.includes('table')) {
+    const tableNo = data.table_number || data.name || ''
+    if (actType === 'INSERT') return `Created Table #${tableNo}`
+    if (actType === 'UPDATE') return `Updated Table #${tableNo} status (${data.status || 'Active'})`
+  }
+
+  // 9. Attendance
+  if (table.includes('attendance')) {
+    const punch = (data.punch_type || '').toLowerCase().includes('in') ? 'Clocked In' : 'Clocked Out'
+    return `${punch} via ${data.source || 'Biometric Device'}`
+  }
+
+  // 10. General Fallback
+  if (actType === 'INSERT') return `Created new record in ${action.table_name || 'System'}`
+  if (actType === 'UPDATE') return `Modified record in ${action.table_name || 'System'}`
+  if (actType === 'DELETE') return `Deleted record from ${action.table_name || 'System'}`
+  return `${actType} operation executed on ${action.table_name || 'System'}`
+}
+
+function extractKeyChanges(action) {
+  if (!action.new_data) return []
+  const oldData = action.old_data || {}
+  const newData = action.new_data
+  const changes = []
+
+  const relevantKeys = [
+    { key: 'status', label: 'Status' },
+    { key: 'payment_status', label: 'Payment Status' },
+    { key: 'payment_method', label: 'Payment Mode' },
+    { key: 'total_amount', label: 'Total Amount', format: (v) => `LKR ${Number(v).toLocaleString()}` },
+    { key: 'discount_amount', label: 'Discount', format: (v) => `LKR ${Number(v).toLocaleString()}` },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'stock_quantity', label: 'Stock Level' },
+    { key: 'is_active', label: 'Active', format: (v) => (v ? 'Yes' : 'No') },
+    { key: 'role', label: 'Role' },
+  ]
+
+  for (const item of relevantKeys) {
+    if (newData[item.key] !== undefined) {
+      const oldVal = oldData[item.key]
+      const newVal = newData[item.key]
+      if (oldVal !== undefined && oldVal !== newVal) {
+        changes.push({
+          label: item.label,
+          from: item.format ? item.format(oldVal) : String(oldVal),
+          to: item.format ? item.format(newVal) : String(newVal),
+        })
+      } else if (oldVal === undefined && newVal !== null && newVal !== '') {
+        changes.push({
+          label: item.label,
+          to: item.format ? item.format(newVal) : String(newVal),
+        })
+      }
+    }
+  }
+  return changes
+}
+
 onMounted(async () => {
   await Promise.all([loadLogs(), loadKpis()])
 })
@@ -676,6 +1217,15 @@ onMounted(async () => {
     border-bottom: 1px solid var(--erp-border-strong);
     padding: 6px 10px; border-radius: 0;
   }
+  &--clickable {
+    cursor: pointer;
+    &:hover {
+      background: var(--erp-bg-hover, rgba(59, 130, 246, 0.08)) !important;
+      transform: translateX(2px);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+  }
+
   &--new {
     background: var(--erp-primary-subtle);
     animation: pulse-in 0.4s ease;
