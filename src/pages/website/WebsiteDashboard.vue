@@ -53,6 +53,17 @@
               </div>
               <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
             </div>
+
+            <div class="wb-action-card" @click="openMenuBookQrModal">
+              <div class="wb-action-card__icon wb-action-card__icon--purple">
+                <q-icon name="qr_code_2" size="20px" />
+              </div>
+              <div class="wb-action-card__content">
+                <div class="wb-action-card__label">Menu Book QR Standee</div>
+                <div class="wb-action-card__desc">Generate & print table QR standees</div>
+              </div>
+              <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
+            </div>
           </div>
         </div>
       </div>
@@ -101,16 +112,92 @@
         </div>
       </div>
     </div>
+
+    <!-- Menu Book QR Modal -->
+    <q-dialog v-model="menuBookQrDialog">
+      <q-card style="min-width: 360px; max-width: 440px; border-radius: 16px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-weight-bold">
+            <q-icon name="menu_book" color="primary" class="q-mr-xs" />
+            Menu Book Table QR
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="text-center q-pt-sm">
+          <div class="text-caption text-grey-6 q-mb-md">
+            Permanent QR Code for dine-in tables. Whenever you update the menu PDF, this same QR code will continue to work!
+          </div>
+
+          <!-- Live QR Canvas -->
+          <div class="q-pa-md bg-white rounded-borders shadow-1 inline-block" style="border: 2px dashed #cbd5e1;">
+            <canvas ref="qrCanvasRef" style="display: block; max-width: 100%;"></canvas>
+          </div>
+
+          <!-- Configurable Target URL -->
+          <div class="q-mt-md text-left">
+            <q-input
+              v-model="menuBookUrl"
+              outlined
+              dense
+              label="Menu Book URL"
+              @update:model-value="generateQr"
+            >
+              <template #append>
+                <q-btn flat round dense icon="content_copy" @click="copyQrUrl">
+                  <q-tooltip>Copy Link</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="between" class="q-pa-md">
+          <q-btn
+            flat
+            no-caps
+            color="secondary"
+            icon="open_in_new"
+            label="Open Book"
+            :href="menuBookUrl"
+            target="_blank"
+          />
+          <div class="row q-gutter-sm">
+            <q-btn
+              color="primary"
+              no-caps
+              icon="download"
+              label="Download PNG"
+              @click="downloadQrPng"
+            />
+            <q-btn
+              color="amber-9"
+              no-caps
+              icon="print"
+              label="Print Standee"
+              @click="printStandee"
+            />
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
+
+const $q = useQuasar()
 
 const loading = ref(false)
 const $router = useRouter()
@@ -247,6 +334,146 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(timer)
 })
+// ─── Menu Book QR Standee Generator ──────────────────────────────────────
+const menuBookQrDialog = ref(false)
+const menuBookUrl = ref('https://sevenwavesrestaurant.com/menu-book')
+const qrCanvasRef = ref(null)
+
+const openMenuBookQrModal = async () => {
+  menuBookQrDialog.value = true
+  await nextTick()
+  generateQr()
+}
+
+const generateQr = async () => {
+  const canvas = qrCanvasRef.value
+  if (!canvas) return
+  try {
+    await QRCode.toCanvas(canvas, menuBookUrl.value, {
+      width: 250,
+      margin: 2,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff',
+      },
+    })
+  } catch (err) {
+    console.error('[MenuBookQR] Error generating QR:', err)
+  }
+}
+
+const copyQrUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(menuBookUrl.value)
+    $q.notify({ type: 'positive', message: 'URL copied to clipboard!' })
+  } catch {
+    $q.notify({ type: 'negative', message: 'Failed to copy URL' })
+  }
+}
+
+const downloadQrPng = () => {
+  const canvas = qrCanvasRef.value
+  if (!canvas) return
+  const url = canvas.toDataURL('image/png')
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'SevenWaves-MenuBook-QR.png'
+  a.click()
+  $q.notify({ type: 'positive', message: 'QR Code downloaded!' })
+}
+
+const printStandee = () => {
+  const canvas = qrCanvasRef.value
+  if (!canvas) return
+  const imgData = canvas.toDataURL('image/png')
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Seven Waves - Table Menu Standee</title>
+        <style>
+          @page { size: A5 portrait; margin: 15mm; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background: #fff;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+          }
+          .standee-card {
+            border: 3px solid #b45309;
+            border-radius: 20px;
+            padding: 30px 20px;
+            max-width: 380px;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          }
+          .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #b45309;
+            margin-bottom: 4px;
+          }
+          .sub-text {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #64748b;
+            margin-bottom: 24px;
+          }
+          .qr-img {
+            width: 220px;
+            height: 220px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            margin: 0 auto 20px;
+          }
+          .scan-badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+          }
+          .prompt {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 6px;
+          }
+          .url-hint {
+            font-size: 11px;
+            color: #94a3b8;
+            word-break: break-all;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="standee-card">
+          <div class="logo-text">SEVEN WAVES</div>
+          <div class="sub-text">Restaurant & Lounge</div>
+          <div class="scan-badge">📱 DINE-IN DIGITAL MENU</div>
+          <div><img src="${imgData}" class="qr-img" /></div>
+          <div class="prompt">Scan with Camera to View Menu Book</div>
+          <div class="url-hint">${menuBookUrl.value}</div>
+        </div>
+      </body>
+    </html>
+  `)
+  win.document.close()
+  win.focus()
+  setTimeout(() => {
+    win.print()
+  }, 350)
+}
 </script>
 
 <style scoped lang="scss">
@@ -346,6 +573,10 @@ onUnmounted(() => {
   &--orange {
     background: rgba(249, 115, 22, 0.12);
     color: #f97316;
+  }
+  &--purple {
+    background: rgba(168, 85, 247, 0.12);
+    color: #a855f7;
   }
   &--cyan {
     background: var(--erp-mod-website-subtle);
