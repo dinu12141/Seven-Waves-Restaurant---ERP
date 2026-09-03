@@ -336,7 +336,7 @@ onUnmounted(() => {
 })
 // ─── Menu Book QR Standee Generator ──────────────────────────────────────
 const menuBookQrDialog = ref(false)
-const menuBookUrl = ref('https://sevenwavesrestaurant.com/menu-book')
+const menuBookUrl = ref('https://sevenwaves.lk/menu-book')
 const qrCanvasRef = ref(null)
 
 const openMenuBookQrModal = async () => {
