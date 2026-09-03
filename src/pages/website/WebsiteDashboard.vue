@@ -54,7 +54,7 @@
               <q-icon name="chevron_right" size="18px" class="wb-action-card__arrow" />
             </div>
 
-            <div class="wb-action-card" @click="openMenuBookQrModal">
+            <div class="wb-action-card" @click="$router.push('/website-menu-qr')">
               <div class="wb-action-card__icon wb-action-card__icon--purple">
                 <q-icon name="qr_code_2" size="20px" />
               </div>

@@ -61,6 +61,11 @@ const routes = [
         meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.hall_bookings.view' },
       },
       {
+        path: 'website-menu-qr',
+        component: () => import('pages/website/WebsiteMenuQrPage.vue'),
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.orders.view' },
+      },
+      {
         path: 'cashier',
         component: () => import('pages/CashierPage.vue'),
         meta: { roles: ['admin', 'manager', 'cashier'], module: 'pos', permission: 'pos.payment.collect' },

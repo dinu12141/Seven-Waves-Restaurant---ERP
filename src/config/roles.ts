@@ -1306,6 +1306,16 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'WEBSITE',
     group: 'Website Management',
   },
+  {
+    label: 'Menu Book QR',
+    icon: 'qr_code_2',
+    to: '/website-menu-qr',
+    roles: ['admin', 'manager'],
+    permission: 'website.orders.view',
+    moduleCode: 'WEBSITE',
+    section: 'WEBSITE',
+    group: 'Website Management',
+  },
 
   // ─── SYSTEM ────────────────────────────────────────────────────────────────
   {
