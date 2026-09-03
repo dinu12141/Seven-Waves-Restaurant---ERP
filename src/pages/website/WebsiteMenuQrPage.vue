@@ -111,6 +111,7 @@ import { useQuasar } from 'quasar'
 import QRCode from 'qrcode'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 
+// Seven Waves Restaurant ERP — Menu Book QR Standee Generator
 const $q = useQuasar()
 const menuBookUrl = ref('https://sevenwaves.lk/menu-book')
 const qrCanvasRef = ref(null)
