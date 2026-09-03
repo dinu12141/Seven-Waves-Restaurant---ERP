@@ -312,7 +312,9 @@
                   dense
                   v-model="form.user_pic"
                   class="q-mt-xs"
-                  label="Choose File"
+                  label="Choose Image"
+                  accept="image/jpeg,image/png,image/webp"
+                  max-file-size="5242880"
                 >
                   <template v-slot:append>
                     <span
@@ -3973,6 +3975,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { validateFileSecurity, IMAGE_UPLOAD_OPTIONS, DOCUMENT_UPLOAD_OPTIONS } from 'src/utils/security'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as xlsx from 'xlsx'
@@ -4023,6 +4026,11 @@ async function compressToWebp(file, maxWidth = 400, quality = 0.80) {
 
 async function uploadEmployeePhoto(empId, file) {
   try {
+    const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+    if (!check.valid) {
+      $q.notify({ type: 'negative', message: check.error || 'Invalid photo file' })
+      return
+    }
     // Compress to WebP before uploading to save storage & egress
     const blob = await compressToWebp(file)
     const path = `${empId}/photo.webp`
@@ -4721,16 +4729,41 @@ const otRateDisplay = computed(() => {
 })
 
 const columns = [
-  { name: 'view_id', label: 'ID', align: 'left' },
-  { name: 'name', label: 'Name', align: 'left', field: 'full_name', sortable: true },
-  { name: 'mobile', label: 'Phone_NO', align: 'left', field: 'mobile', sortable: true },
-  { name: 'nic_number', label: 'NIC', align: 'left', field: 'nic_number', sortable: true },
-  { name: 'epf_no', label: 'EPF_No', align: 'left', field: 'epf_no', sortable: true },
+  { name: 'view_id', label: 'EMP_CODE', align: 'left', field: 'employee_code', sortable: true },
+  { name: 'name', label: 'FULL NAME', align: 'left', field: 'first_name', sortable: true },
+  { name: 'epf_no', label: 'EPF_NO', align: 'left', field: 'epf_no', sortable: true },
+  { name: 'nic_number', label: 'NIC_NO', align: 'left', field: 'nic_number', sortable: true },
+  {
+    name: 'hire_date',
+    label: 'JOIN DATE',
+    align: 'left',
+    field: (r) => (r.hire_date ? String(r.hire_date).slice(0, 10) : '—'),
+    sortable: true,
+  },
+  {
+    name: 'basic_salary',
+    label: 'BASIC SALARY',
+    align: 'right',
+    field: (r) => {
+      const ss = Array.isArray(r.salary_structures)
+        ? r.salary_structures.find((s) => s.is_current) || r.salary_structures[0]
+        : r.salary_structures
+      return ss?.basic_salary ? `LKR ${Number(ss.basic_salary).toLocaleString()}` : '—'
+    },
+    sortable: true,
+  },
   {
     name: 'designation',
-    label: 'Designation',
+    label: 'DESIGNATION',
     align: 'left',
     field: (r) => r.designations?.title || '—',
+    sortable: true,
+  },
+  {
+    name: 'department',
+    label: 'DEPARTMENT',
+    align: 'left',
+    field: (r) => r.departments?.name || '—',
     sortable: true,
   },
   { name: 'actions', label: 'Actions', align: 'center' },
@@ -4797,6 +4830,11 @@ async function uploadFormDocuments(empId) {
   for (const entry of toUpload) {
     try {
       const isImage = entry.file.type.startsWith('image/')
+      const check = validateFileSecurity(entry.file, isImage ? IMAGE_UPLOAD_OPTIONS : DOCUMENT_UPLOAD_OPTIONS)
+      if (!check.valid) {
+        errors.push(`${entry.doc_name}: ${check.error}`)
+        continue
+      }
       let fileToUpload = entry.file
       let pathExt = entry.file.name.split('.').pop()
       let mimeType = entry.file.type
@@ -5082,6 +5120,11 @@ async function uploadDocument() {
     if (!empId) throw new Error('Employee ID is missing')
 
     const file = uploadDocForm.file
+    const check = validateFileSecurity(file, DOCUMENT_UPLOAD_OPTIONS)
+    if (!check.valid) {
+      $q.notify({ type: 'negative', message: check.error || 'Invalid document file' })
+      return
+    }
     const ext = file.name.split('.').pop()
     const path = `${empId}/${uploadDocForm.doc_type}_${Date.now()}.${ext}`
 
@@ -5522,10 +5565,9 @@ async function loadEmployees() {
     if (!branchId) return
     const { data, error } = await supabase
       .from('employees')
-      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, nic_number, epf_no, departments(name), designations(title)')
+      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, nic_number, epf_no, hire_date, departments(name), designations(title), salary_structures(basic_salary, is_current)')
       .eq('branch_id', branchId)
-      .order('first_name')
-      .range(0, 49) // Paginate initial load to save egress
+      .order('employee_code')
     if (error) throw error
     employees.value = data || []
     stats.value.total = employees.value.length
@@ -5801,6 +5843,11 @@ function unsubscribeProfileRealtime() {
 
 function cleanEmployeePayload(rawPayload) {
   const payload = { ...rawPayload }
+
+  // Prototype pollution defense
+  delete payload['__proto__']
+  delete payload['constructor']
+  delete payload['prototype']
 
   // 1. Remove database-managed / read-only / generated / relational columns
   delete payload.id

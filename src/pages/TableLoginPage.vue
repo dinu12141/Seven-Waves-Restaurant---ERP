@@ -223,9 +223,21 @@ onMounted(async () => {
   }
 })
 
+// ── Rate limiting / Brute-force defense ─────────────────────────────────────────
+const failedAttempts = ref(0)
+const lockoutUntil = ref<number | null>(null)
+
 // ── Device-code login ──────────────────────────────────────────────────────────
 async function handleLogin() {
   if (!deviceCode.value.trim() || !pin.value) return
+
+  // Check lockout
+  if (lockoutUntil.value && Date.now() < lockoutUntil.value) {
+    const remaining = Math.ceil((lockoutUntil.value - Date.now()) / 1000)
+    errorMsg.value = `Too many failed attempts. Please wait ${remaining} seconds before trying again.`
+    return
+  }
+
   errorMsg.value = ''
   loading.value = true
 
@@ -233,9 +245,19 @@ async function handleLogin() {
     const result = await loginWithDeviceCode(deviceCode.value, pin.value)
 
     if (!result.success || !result.session_token) {
-      errorMsg.value = result.error ?? 'Login failed. Check your credentials.'
+      failedAttempts.value++
+      if (failedAttempts.value >= 5) {
+        lockoutUntil.value = Date.now() + 30 * 1000 // 30 second cooldown
+        errorMsg.value = 'Too many failed login attempts. Locked for 30 seconds.'
+      } else {
+        errorMsg.value = result.error ?? 'Login failed. Check your credentials.'
+      }
       return
     }
+
+    // Reset attempts on successful login
+    failedAttempts.value = 0
+    lockoutUntil.value = null
 
     if (rememberDevice.value) {
       session.rememberDeviceCode(deviceCode.value)

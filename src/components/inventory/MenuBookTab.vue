@@ -621,6 +621,7 @@ import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { supabase } from 'boot/supabase'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
+import { validateFileSecurity, IMAGE_UPLOAD_OPTIONS } from 'src/utils/security'
 import DataTable from 'components/common/DataTable.vue'
 
 const emit = defineEmits(['edit-item'])
@@ -940,6 +941,14 @@ function triggerBookAvatarUpload() {
 async function uploadBookAvatar(event) {
   const file = event.target.files?.[0]
   if (!file) return
+
+  const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+  if (!check.valid) {
+    $q.notify({ type: 'negative', message: check.error || 'Invalid file type or size' })
+    if (bookAvatarInputRef.value) bookAvatarInputRef.value.value = ''
+    return
+  }
+
   bookAvatarUploading.value = true
   try {
     // Compress to WebP before uploading

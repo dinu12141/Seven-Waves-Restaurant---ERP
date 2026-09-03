@@ -89,6 +89,7 @@
 import { ref } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { validateFileSecurity, IMAGE_UPLOAD_OPTIONS } from 'src/utils/security'
 
 const props = defineProps({
   modelValue: {
@@ -138,7 +139,15 @@ function openFilePicker() {
 
 function onFileChange(event) {
   const file = event.target.files?.[0]
-  if (file) processFile(file)
+  if (file) {
+    const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+    if (!check.valid) {
+      errorMsg.value = check.error || 'Invalid image file.'
+      event.target.value = ''
+      return
+    }
+    processFile(file)
+  }
   // Reset so the same file can be re-selected
   event.target.value = ''
 }
@@ -146,7 +155,12 @@ function onFileChange(event) {
 function onDrop(event) {
   isDragOver.value = false
   const file = event.dataTransfer.files?.[0]
-  if (file && file.type.startsWith('image/')) {
+  if (file) {
+    const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+    if (!check.valid) {
+      errorMsg.value = check.error || 'Please drop a valid image file.'
+      return
+    }
     processFile(file)
   } else {
     errorMsg.value = 'Please drop an image file.'
@@ -185,6 +199,12 @@ async function getCompressedBlob(file) {
 // ─── Upload pipeline ─────────────────────────────────────────────────────────
 
 async function processFile(file) {
+  const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+  if (!check.valid) {
+    errorMsg.value = check.error || 'Invalid file.'
+    return
+  }
+
   uploading.value = true
   errorMsg.value = ''
 

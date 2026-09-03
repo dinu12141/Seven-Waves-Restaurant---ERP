@@ -489,6 +489,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { validateFileSecurity, IMAGE_UPLOAD_OPTIONS } from 'src/utils/security'
 import DataTable from 'components/common/DataTable.vue'
 import ERPFormCard from 'components/erp/ERPFormCard.vue'
 import ERPFormSection from 'components/erp/ERPFormSection.vue'
@@ -723,6 +724,14 @@ function triggerImageUpload() {
 async function uploadImage(event) {
   const file = event.target.files?.[0]
   if (!file) return
+
+  const check = validateFileSecurity(file, IMAGE_UPLOAD_OPTIONS)
+  if (!check.valid) {
+    $q.notify({ type: 'negative', message: check.error || 'Invalid file type or size' })
+    if (imageInputRef.value) imageInputRef.value.value = ''
+    return
+  }
+
   imageUploading.value = true
   try {
     // Compress to WebP before uploading to save storage & egress

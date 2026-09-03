@@ -1,5 +1,6 @@
 // Seven Waves ERP — CRM & Loyalty Service
 import { supabase } from 'src/boot/supabase'
+import { sanitizePostgrestFilter } from 'src/utils/security'
 import type { Customer, LoyaltyAccount, RpcResult, UUID } from 'src/types/erp.types'
 
 export async function earnPoints(customerId: UUID, orderId: UUID, amountPaid: number): Promise<RpcResult> {
@@ -16,7 +17,12 @@ export async function redeemPoints(customerId: UUID, points: number, orderId?: U
 
 export async function getCustomers(branchId: UUID, search?: string): Promise<Customer[]> {
   let query = supabase.from('customers').select('*').eq('branch_id', branchId).is('deleted_at', null).order('first_name').limit(100)
-  if (search) query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
+  if (search) {
+    const cleanSearch = sanitizePostgrestFilter(search)
+    if (cleanSearch) {
+      query = query.or(`first_name.ilike.%${cleanSearch}%,last_name.ilike.%${cleanSearch}%,email.ilike.%${cleanSearch}%,phone.ilike.%${cleanSearch}%`)
+    }
+  }
   const { data } = await query
   return (data || []) as Customer[]
 }

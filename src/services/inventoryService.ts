@@ -18,6 +18,7 @@
 import { ref, type Ref } from 'vue'
 import { supabase } from '../boot/supabase'
 import { useAuthStore } from '../stores/auth'
+import { sanitizePostgrestFilter } from '../utils/security'
 
 /* -------------------------------------------------------
    Helpers — Lazy calls to useAuthStore() avoid calling
@@ -138,9 +139,12 @@ export function useDocumentList() {
       if (filters.dateFrom) query = query.gte('doc_date', filters.dateFrom)
       if (filters.dateTo) query = query.lte('doc_date', filters.dateTo)
       if (filters.search) {
-        query = query.or(
-          `doc_number.ilike.%${filters.search}%,reference_no.ilike.%${filters.search}%`,
-        )
+        const cleanSearch = sanitizePostgrestFilter(filters.search)
+        if (cleanSearch) {
+          query = query.or(
+            `doc_number.ilike.%${cleanSearch}%,reference_no.ilike.%${cleanSearch}%`,
+          )
+        }
       }
 
       const { data, error: err } = await query.limit(200)
@@ -974,8 +978,12 @@ export function useStockLedger() {
       if (filters.direction) query = query.eq('direction', filters.direction)
       if (filters.dateFrom) query = query.gte('posted_at', filters.dateFrom)
       if (filters.dateTo) query = query.lte('posted_at', filters.dateTo + 'T23:59:59')
-      if (filters.search)
-        query = query.or(`item_name.ilike.%${filters.search}%,doc_number.ilike.%${filters.search}%`)
+      if (filters.search) {
+        const cleanSearch = sanitizePostgrestFilter(filters.search)
+        if (cleanSearch) {
+          query = query.or(`item_name.ilike.%${cleanSearch}%,doc_number.ilike.%${cleanSearch}%`)
+        }
+      }
 
       const { data, error } = await query
       if (error) throw error
@@ -1613,9 +1621,12 @@ export async function fetchWastageEntries(filters: WastageFilters = {}) {
   if (filters.warehouseId) query = query.eq('warehouse_id', filters.warehouseId)
   if (filters.wastageCategory) query = query.eq('wastage_category', filters.wastageCategory)
   if (filters.search) {
-    query = query.or(
-      `item_name.ilike.%${filters.search}%,item_code.ilike.%${filters.search}%,doc_number.ilike.%${filters.search}%`,
-    )
+    const cleanSearch = sanitizePostgrestFilter(filters.search)
+    if (cleanSearch) {
+      query = query.or(
+        `item_name.ilike.%${cleanSearch}%,item_code.ilike.%${cleanSearch}%,doc_number.ilike.%${cleanSearch}%`,
+      )
+    }
   }
 
   const { data, error } = await query
