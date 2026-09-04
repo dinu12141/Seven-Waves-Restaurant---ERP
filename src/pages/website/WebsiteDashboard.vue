@@ -126,8 +126,12 @@
         </q-card-section>
 
         <q-card-section class="text-center q-pt-sm">
+          <div class="row items-center justify-center q-gutter-xs q-mb-xs">
+            <q-badge color="amber-9" text-color="black" label="2026 EDITION" class="text-weight-bold" />
+            <span class="text-caption text-weight-medium text-grey-8">21 Pages Updated</span>
+          </div>
           <div class="text-caption text-grey-6 q-mb-md">
-            Permanent QR Code for dine-in tables. Whenever you update the menu PDF, this same QR code will continue to work!
+            Permanent QR Code for dine-in tables. Points to your live 2026 menu book with continuous vertical scroll.
           </div>
 
           <!-- Live QR Canvas -->

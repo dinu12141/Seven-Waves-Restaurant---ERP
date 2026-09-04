@@ -7,7 +7,39 @@
       breadcrumbs="Website / Menu Book QR"
     />
 
-    <div class="max-w-4xl q-mx-auto q-mt-md">
+    <div class="max-w-5xl q-mx-auto q-mt-md">
+      <!-- Status Banner -->
+      <div class="q-mb-md row items-center justify-between q-pa-sm q-px-md rounded-borders bg-dark text-white border-amber">
+        <div class="row items-center q-gutter-sm">
+          <q-badge color="amber-9" text-color="black" label="2026 EDITION" class="text-weight-bold" />
+          <span class="text-body2 text-weight-medium">Official Menu Book (21 Pages) Synced & Active</span>
+        </div>
+        <div class="row items-center q-gutter-xs">
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="sm"
+            color="amber-4"
+            icon="open_in_new"
+            label="Open Live Menu"
+            :href="menuBookUrl"
+            target="_blank"
+          />
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="sm"
+            color="grey-4"
+            icon="download"
+            label="Download PDF"
+            href="/menu-book.pdf"
+            download="SevenWaves-Menu-Book-2026.pdf"
+          />
+        </div>
+      </div>
+
       <div class="row q-col-gutter-lg">
         <!-- Configuration & Controls -->
         <div class="col-12 col-md-6">
@@ -18,7 +50,7 @@
                 Standee Configuration
               </div>
               <p class="text-caption text-grey-6">
-                This QR code points to your live digital menu book. Print this table standee and place it on your dining tables.
+                This QR code points to your live digital menu book. Print this table standee and place it on your dining tables. Guests scan with any smartphone camera to scroll through all 21 pages.
               </p>
 
               <!-- Target URL Input -->
@@ -73,6 +105,14 @@
                   class="full-width q-mt-xs"
                 />
               </div>
+
+              <!-- Quick details info -->
+              <div class="q-mt-md q-pa-sm bg-grey-1 rounded-borders text-caption text-grey-7">
+                <div class="text-weight-bold q-mb-xs">📌 Information:</div>
+                <div>• Source: SevenWaves New Menu Book A4 2026.pdf</div>
+                <div>• Total Pages: 21 Pages (Cover to Back Cover)</div>
+                <div>• Viewing Mode: Continuous vertical scroll for mobile & desktop</div>
+              </div>
             </q-card-section>
           </q-card>
         </div>
@@ -101,6 +141,53 @@
           </div>
         </div>
       </div>
+
+      <!-- Live Menu Book Inspection Panel for Managers -->
+      <div class="q-mt-xl">
+        <q-card flat bordered class="qr-config-card">
+          <q-card-section class="row items-center justify-between">
+            <div class="text-subtitle1 text-weight-bold row items-center">
+              <q-icon name="menu_book" color="amber-9" class="q-mr-sm" size="22px" />
+              Live Menu Book Preview (All 21 Pages)
+            </div>
+            <q-btn
+              flat
+              dense
+              no-caps
+              :icon="showPages ? 'expand_less' : 'expand_more'"
+              :label="showPages ? 'Hide Pages' : 'Inspect Pages'"
+              @click="showPages = !showPages"
+            />
+          </q-card-section>
+
+          <q-slide-transition>
+            <div v-show="showPages">
+              <q-separator />
+              <q-card-section class="q-pa-md">
+                <div class="row q-col-gutter-md justify-center">
+                  <div
+                    v-for="pg in 21"
+                    :key="pg"
+                    class="col-12 col-sm-6 col-md-4 col-lg-3 text-center"
+                  >
+                    <q-card flat bordered class="q-pa-xs bg-grey-2">
+                      <div class="text-caption text-weight-bold q-py-xs text-grey-8">
+                        Page {{ pg }} of 21
+                      </div>
+                      <img
+                        :src="`/menu-book-pages/page-${pg}.webp`"
+                        :alt="`Menu Book Page ${pg}`"
+                        style="width: 100%; height: auto; border-radius: 8px; display: block;"
+                        loading="lazy"
+                      />
+                    </q-card>
+                  </div>
+                </div>
+              </q-card-section>
+            </div>
+          </q-slide-transition>
+        </q-card>
+      </div>
     </div>
   </q-page>
 </template>
@@ -115,6 +202,7 @@ import ERPToolbar from 'components/erp/ERPToolbar.vue'
 const $q = useQuasar()
 const menuBookUrl = ref('https://sevenwaves.lk/menu-book')
 const qrCanvasRef = ref(null)
+const showPages = ref(false)
 
 const generateQr = async () => {
   await nextTick()
@@ -253,8 +341,12 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-.max-w-4xl {
-  max-width: 900px;
+.border-amber {
+  border-left: 4px solid #f59e0b;
+}
+
+.max-w-5xl {
+  max-width: 1080px;
 }
 
 .qr-config-card {
