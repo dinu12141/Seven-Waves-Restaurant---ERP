@@ -21,6 +21,9 @@
             }}</span>
           </div>
 
+          <!-- AI Operations Watchdog (Real-time KOT & Sales Supervisor) -->
+          <AiOperationsWatchdogBadge />
+
           <!-- Kitchen Selector: only for admin/manager (not for locked kitchen users) -->
           <q-select
             v-if="store.kitchens.length > 1 && !store.isKitchenLocked"
@@ -278,6 +281,7 @@ import { useKitchenDisplayStore } from 'src/stores/kitchenDisplayStore'
 import { useAuthStore } from 'src/stores/auth'
 import KitchenTicketCard from 'src/components/kitchen/KitchenTicketCard.vue'
 import KotReceipt from 'src/components/common/KotReceipt.vue'
+import AiOperationsWatchdogBadge from 'src/modules/ai/components/AiOperationsWatchdogBadge.vue'
 
 const $q = useQuasar()
 const store = useKitchenDisplayStore()

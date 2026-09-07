@@ -380,6 +380,9 @@
             </q-btn>
           </q-page-sticky>
         </transition>
+
+        <!-- ── AI Chef Menu Assistant ──────────────────────────────── -->
+        <AiMenuAssistantModal :branch-id="session.branchId" @add-to-cart="addToCart" />
       </q-page>
     </q-page-container>
 
@@ -532,6 +535,7 @@ import { useTableSessionStore } from 'src/stores/tableSessionStore'
 import { useCustomerStore } from 'src/stores/customerStore'
 import { createOrderFromSession } from 'src/services/tableAuthService'
 import MenuItemCard from 'src/components/customer/MenuItemCard.vue'
+import AiMenuAssistantModal from 'src/components/touch-menu/AiMenuAssistantModal.vue'
 
 // ── Composables ────────────────────────────────────────────────────────────────
 const route = useRoute()

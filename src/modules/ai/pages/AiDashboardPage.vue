@@ -7,6 +7,7 @@
       back-route="/dashboard"
     >
       <template #actions>
+        <AiOperationsWatchdogBadge class="q-mr-sm" />
         <PermissionGate permission="ai.generate">
           <q-btn
             color="primary"
@@ -150,6 +151,7 @@ import PageHeader from 'components/common/PageHeader.vue'
 import PermissionGate from 'components/common/PermissionGate.vue'
 import AiInsightCard from '../components/AiInsightCard.vue'
 import AiRecommendationList from '../components/AiRecommendationList.vue'
+import AiOperationsWatchdogBadge from '../components/AiOperationsWatchdogBadge.vue'
 
 const $q = useQuasar()
 const aiStore = useAiStore()
