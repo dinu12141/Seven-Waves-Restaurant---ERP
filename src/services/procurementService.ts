@@ -16,6 +16,19 @@
 import { supabase } from '../boot/supabase'
 import { useAuthStore } from '../stores/auth'
 import { fetchDocumentById } from './inventoryService'
+import { stripHtml } from '../core/security/inputSanitizer'
+
+export function sanitizeDocNumber(docNumber?: string | null): string {
+  if (!docNumber) return ''
+  let sanitized = String(docNumber)
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+  sanitized = stripHtml(sanitized).trim().replace(/[\r\n\t]/g, '')
+  if (sanitized.length > 50) {
+    throw new Error('GRN / Bill Number cannot exceed 50 characters.')
+  }
+  return sanitized
+}
 
 // ─────────────────────────────────────────────
 // Types (mirrors DB schema)
@@ -988,24 +1001,28 @@ export async function createGRNFromPO(
 /**
  * Create a direct GRN (not from a PO).
  */
-export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>, lines: GRNLine[]) {
+export async function createGRN(header: Omit<GoodsReceipt, 'id'> & { doc_number?: string }, lines: GRNLine[]) {
   const { company_id, branch_id, user_id } = getContext()
 
   if (!lines || lines.length === 0) throw new Error('At least one line item is required.')
   if (!header.warehouse_id) throw new Error('Warehouse is required.')
 
-  const { data: docNum } = await supabase.rpc('generate_proc_doc_number', {
-    p_company_id: company_id,
-    p_branch_id: branch_id,
-    p_doc_type: 'GRN',
-  })
+  let finalDocNumber = header.doc_number ? sanitizeDocNumber(header.doc_number) : ''
+  if (!finalDocNumber) {
+    const { data: docNum } = await supabase.rpc('generate_proc_doc_number', {
+      p_company_id: company_id,
+      p_branch_id: branch_id,
+      p_doc_type: 'GRN',
+    })
+    finalDocNumber = docNum || `GRN-${Date.now()}`
+  }
 
   const { data: grn, error: grnErr } = await supabase
     .from('goods_receipts')
     .insert({
       company_id,
       branch_id,
-      doc_number: docNum || `GRN-${Date.now()}`,
+      doc_number: finalDocNumber,
       doc_date: header.doc_date,
       po_id: header.po_id || null,
       inventory_po_id: (header as any).inventory_po_id || null,
@@ -1074,15 +1091,23 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id' | 'doc_number'>,
 export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, lines: GRNLine[]) {
   const { user_id } = getContext()
 
+  const updatePayload: Record<string, any> = {
+    doc_date: header.doc_date,
+    warehouse_id: header.warehouse_id,
+    remarks: header.remarks,
+    updated_at: new Date().toISOString(),
+  }
+  if (header.doc_number !== undefined) {
+    const cleanDoc = sanitizeDocNumber(header.doc_number)
+    if (cleanDoc) {
+      updatePayload.doc_number = cleanDoc
+    }
+  }
+
   // Update header
   const { error: grnErr } = await supabase
     .from('goods_receipts')
-    .update({
-      doc_date: header.doc_date,
-      warehouse_id: header.warehouse_id,
-      remarks: header.remarks,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', grnId)
     .eq('status', 'draft')
 

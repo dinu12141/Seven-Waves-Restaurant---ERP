@@ -6,7 +6,9 @@
         <div class="text-h5 text-weight-bold row items-center q-gutter-x-sm">
           <q-icon :name="icon" size="sm" color="primary" />
           <span>{{ title }}</span>
-          <span class="text-grey-6 text-subtitle1">{{ docNumber || '(New)' }}</span>
+          <span v-if="!editableDocNumber" class="text-grey-6 text-subtitle1">{{ docNumber || '(New)' }}</span>
+          <span v-else-if="docNumber" class="text-grey-7 text-subtitle1 font-mono"># {{ docNumber }}</span>
+          <span v-else class="text-grey-5 text-subtitle2 text-weight-regular">(Enter Bill No)</span>
         </div>
         <q-chip :color="statusColor" text-color="white" class="text-uppercase text-weight-bold">
           {{ statusLabel }}
@@ -14,7 +16,34 @@
       </div>
 
       <!-- Fields Row -->
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-3" v-if="editableDocNumber">
+        <q-input
+          v-if="!readOnly"
+          :model-value="docNumber"
+          @update:model-value="$emit('update:docNumber', $event)"
+          :label="docNumberLabel"
+          placeholder="e.g. INV-10024"
+          outlined
+          dense
+          maxlength="50"
+          :rules="[
+            (val) => !!val?.trim() || 'GRN / Bill No is required',
+            (val) => (val || '').trim().length <= 50 || 'Max 50 characters allowed',
+            (val) => !/[<>]/.test(val) || 'Invalid characters (< or > not allowed)',
+          ]"
+        >
+          <template v-slot:prepend>
+            <q-icon name="receipt" color="primary" size="xs" />
+          </template>
+        </q-input>
+        <q-input v-else :model-value="docNumber" :label="docNumberLabel" outlined dense readonly>
+          <template v-slot:prepend>
+            <q-icon name="receipt" color="grey-6" size="xs" />
+          </template>
+        </q-input>
+      </div>
+
+      <div :class="editableDocNumber ? 'col-12 col-md-4' : 'col-12 col-md-4'">
         <q-select
           v-if="!readOnly"
           :model-value="supplier"
@@ -52,7 +81,7 @@
         </q-input>
       </div>
 
-      <div class="col-12 col-md-3">
+      <div :class="editableDocNumber ? 'col-12 col-md-2' : 'col-12 col-md-3'">
         <q-input
           :model-value="docDate"
           @update:model-value="$emit('update:docDate', $event)"
@@ -76,7 +105,7 @@
         />
       </div>
 
-      <div class="col-12 col-md-2" v-if="warehouseOptions">
+      <div :class="editableDocNumber ? 'col-12 col-md-3' : 'col-12 col-md-2'" v-if="warehouseOptions">
         <q-select
           v-if="!readOnly"
           :model-value="warehouse"
@@ -101,6 +130,8 @@ const props = defineProps({
   title: { type: String, required: true },
   icon: { type: String, required: true },
   docNumber: { type: String, required: false },
+  editableDocNumber: { type: Boolean, default: false },
+  docNumberLabel: { type: String, default: 'GRN / Bill No *' },
   status: { type: String, required: true },
   docDate: { type: String, required: true },
   expectedDate: { type: String, required: false },
@@ -112,7 +143,7 @@ const props = defineProps({
   showExpectedDate: { type: Boolean, required: false },
 })
 
-defineEmits(['update:supplier', 'update:docDate', 'update:expectedDate', 'update:warehouse'])
+defineEmits(['update:supplier', 'update:docDate', 'update:expectedDate', 'update:warehouse', 'update:docNumber'])
 
 const statusColor = computed(() => {
   switch (props.status) {

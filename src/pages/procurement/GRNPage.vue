@@ -84,6 +84,9 @@
             title="Goods Receipt"
             icon="inventory"
             :doc-number="form.doc_number"
+            @update:doc-number="form.doc_number = $event"
+            :editable-doc-number="true"
+            doc-number-label="GRN / Bill No *"
             :status="form.status"
             v-model:docDate="form.doc_date"
             v-model:supplier="form.supplier"
@@ -298,7 +301,7 @@ const grns = ref([])
 // Form
 const defaultForm = {
   id: '',
-  doc_number: 'NEW',
+  doc_number: '',
   supplier: null,
   supplier_id: '',
   warehouse: null,
@@ -572,6 +575,10 @@ async function saveGRN() {
     if (!form.value.id) {
       // New GRN — always supplier-direct, never linked to a PO.
       isNewGRN = true
+      if (!form.value.doc_number?.trim()) {
+        $q.notify({ type: 'warning', message: 'GRN / Bill Number is required' })
+        return
+      }
       if (!supplierId || !warehouseId) {
         $q.notify({ type: 'warning', message: 'Supplier and Warehouse are required' })
         return
@@ -594,6 +601,7 @@ async function saveGRN() {
 
       grn = await createGRN(
         {
+          doc_number: form.value.doc_number.trim(),
           supplier_id: supplierId,
           warehouse_id: warehouseId,
           doc_date: form.value.doc_date,
@@ -607,6 +615,10 @@ async function saveGRN() {
       )
     } else {
       // Existing draft GRN — update header and lines
+      if (!form.value.doc_number?.trim()) {
+        $q.notify({ type: 'warning', message: 'GRN / Bill Number cannot be empty' })
+        return
+      }
       const lines = form.value.lines.map((l, idx) => ({
         line_number: idx + 1,
         item_id: l.item_id,
@@ -620,6 +632,7 @@ async function saveGRN() {
       grn = await updateGRN(
         form.value.id,
         { 
+          doc_number: form.value.doc_number.trim(),
           doc_date: form.value.doc_date, 
           warehouse_id: warehouseId, 
           remarks: form.value.remarks,
@@ -648,7 +661,16 @@ async function saveGRN() {
     dialogVisible.value = false
     fetchGRNs()
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed to post GRN', caption: e.message })
+    console.error('Failed to save GRN:', e)
+    const errText = e?.message || ''
+    if (errText.includes('goods_receipts_company_id_doc_number_key') || errText.toLowerCase().includes('duplicate key')) {
+      $q.notify({
+        type: 'negative',
+        message: `GRN / Bill Number "${form.value.doc_number}" is already used. Please enter a unique bill number.`,
+      })
+    } else {
+      $q.notify({ type: 'negative', message: 'Failed to post GRN', caption: errText })
+    }
   } finally {
     saving.value = false
   }
