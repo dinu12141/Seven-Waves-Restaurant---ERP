@@ -99,6 +99,9 @@ export interface GRNLine {
   uom_id: string
   quantity: number
   unit_cost: number
+  discount_type?: 'percentage' | 'amount'
+  discount_value?: number
+  discount_amount?: number
   batch_no?: string
   expiry_date?: string
   warehouse_id?: string
@@ -842,10 +845,10 @@ export async function listGRNs(
   let query = supabase
     .from('goods_receipts')
     .select(
-      `id, doc_number, doc_date, status, total_amount, remarks,
-       supplier_id, suppliers(id, name, code),
+      `id, doc_number, doc_date, status, subtotal, discount_type, discount_value, discount_amount, tax_pct, tax_amount, total_amount, remarks,
+       supplier_id, suppliers(id, name, code, tax_id),
        po_id, purchase_orders(id, doc_number),
-       inventory_po_id, inventory_documents(id, doc_number),
+       inventory_po_id,
        warehouse_id, warehouses(id, name),
        posted_at, created_at`,
     )
@@ -870,12 +873,14 @@ export async function getGRNDetails(grnId: string) {
   const { data, error } = await supabase
     .from('goods_receipts')
     .select(
-      `*, suppliers(id, name, code),
-       purchase_orders(id, doc_number),
-       inventory_documents(id, doc_number),
-       warehouses(id, name),
+      `id, doc_number, doc_date, status, subtotal, discount_type, discount_value, discount_amount, tax_pct, tax_amount, total_amount, remarks,
+       supplier_id, suppliers(id, name, code, tax_id),
+       po_id, purchase_orders(id, doc_number),
+       inventory_po_id,
+       warehouse_id, warehouses(id, name),
+       posted_at, created_at,
        goods_receipt_lines(
-         *,
+         id, line_number, item_id, uom_id, quantity, unit_cost, line_total, batch_no, expiry_date, notes,
          items!goods_receipt_lines_item_id_fkey(id, name, code, purchase_uom_id),
          uom!goods_receipt_lines_uom_id_fkey(id, code, name)
        )`,
@@ -1037,45 +1042,61 @@ export async function createGRN(header: Omit<GoodsReceipt, 'id'> & { doc_number?
 
   if (grnErr) throw new Error(grnErr.message)
 
-  const linePayloads = lines.map((l, idx) => ({
-    grn_id: grn.id,
-    line_number: idx + 1,
-    po_line_id: l.po_line_id || null,
-    inventory_po_line_id: (l as any).inventory_po_line_id || null,
-    item_id: l.item_id,
-    description: l.description || null,
-    uom_id: l.uom_id,
-    quantity: l.quantity,
-    unit_cost: l.unit_cost ?? 0,
-    batch_no: l.batch_no || null,
-    expiry_date: l.expiry_date || null,
-    warehouse_id: l.warehouse_id || null,
-    notes: l.notes || null,
-  }))
+  const linePayloads = lines.map((l, idx) => {
+    let serializedNotes = l.notes || null
+    if (l.discount_value && Number(l.discount_value) > 0) {
+      serializedNotes = JSON.stringify({
+        __discount: true,
+        type: l.discount_type || 'percentage',
+        value: Number(l.discount_value) || 0,
+        amount: Number(l.discount_amount) || 0,
+        user_notes: l.notes || '',
+      })
+    }
+
+    return {
+      grn_id: grn.id,
+      line_number: idx + 1,
+      po_line_id: l.po_line_id || null,
+      inventory_po_line_id: (l as any).inventory_po_line_id || null,
+      item_id: l.item_id,
+      description: l.description || null,
+      uom_id: l.uom_id,
+      quantity: Math.max(0, Number(l.quantity) || 0),
+      unit_cost: Math.max(0, Number(l.unit_cost) || 0),
+      batch_no: l.batch_no || null,
+      expiry_date: l.expiry_date || null,
+      warehouse_id: l.warehouse_id || null,
+      notes: serializedNotes,
+    }
+  })
 
   const { error: linesErr } = await supabase.from('goods_receipt_lines').insert(linePayloads)
   if (linesErr) throw new Error(linesErr.message)
 
-  const subtotal = lines.reduce((s, l) => s + l.quantity * (l.unit_cost ?? 0), 0)
-  
+  const grossSubtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0)
+  const itemDiscountsTotal = lines.reduce((s, l) => s + (Number(l.discount_amount) || 0), 0)
+  const netLinesSubtotal = Math.max(0, grossSubtotal - itemDiscountsTotal)
+
   const discount_type = header.discount_type || 'percentage'
-  const discount_value = header.discount_value || 0
-  const discount_amount = discount_type === 'percentage' 
-    ? (subtotal * discount_value) / 100 
-    : discount_value
-    
-  const tax_pct = header.tax_pct || 0
-  const taxable_amount = subtotal - discount_amount
+  const discount_value = Math.max(0, Number(header.discount_value) || 0)
+  const billDiscount = discount_type === 'percentage'
+    ? (netLinesSubtotal * Math.min(100, discount_value)) / 100
+    : Math.min(netLinesSubtotal, discount_value)
+
+  const total_discount_amount = itemDiscountsTotal + billDiscount
+  const tax_pct = Math.min(100, Math.max(0, Number(header.tax_pct) || 0))
+  const taxable_amount = Math.max(0, netLinesSubtotal - billDiscount)
   const tax_amount = (taxable_amount * tax_pct) / 100
   const total_amount = taxable_amount + tax_amount
 
   await supabase
     .from('goods_receipts')
     .update({ 
-      subtotal, 
+      subtotal: grossSubtotal, 
       discount_type,
       discount_value,
-      discount_amount,
+      discount_amount: total_discount_amount,
       tax_pct,
       tax_amount,
       total_amount 
@@ -1117,46 +1138,62 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
   const { error: delErr } = await supabase.from('goods_receipt_lines').delete().eq('grn_id', grnId)
   if (delErr) throw new Error(delErr.message)
 
-  const linePayloads = lines.map((l, idx) => ({
-    grn_id: grnId,
-    line_number: idx + 1,
-    po_line_id: l.po_line_id || null,
-    inventory_po_line_id: (l as any).inventory_po_line_id || null,
-    item_id: l.item_id,
-    description: l.description || null,
-    uom_id: l.uom_id,
-    quantity: l.quantity,
-    unit_cost: l.unit_cost ?? 0,
-    batch_no: l.batch_no || null,
-    expiry_date: l.expiry_date || null,
-    warehouse_id: l.warehouse_id || null,
-    notes: l.notes || null,
-  }))
+  const linePayloads = lines.map((l, idx) => {
+    let serializedNotes = l.notes || null
+    if (l.discount_value && Number(l.discount_value) > 0) {
+      serializedNotes = JSON.stringify({
+        __discount: true,
+        type: l.discount_type || 'percentage',
+        value: Number(l.discount_value) || 0,
+        amount: Number(l.discount_amount) || 0,
+        user_notes: l.notes || '',
+      })
+    }
+
+    return {
+      grn_id: grnId,
+      line_number: idx + 1,
+      po_line_id: l.po_line_id || null,
+      inventory_po_line_id: (l as any).inventory_po_line_id || null,
+      item_id: l.item_id,
+      description: l.description || null,
+      uom_id: l.uom_id,
+      quantity: Math.max(0, Number(l.quantity) || 0),
+      unit_cost: Math.max(0, Number(l.unit_cost) || 0),
+      batch_no: l.batch_no || null,
+      expiry_date: l.expiry_date || null,
+      warehouse_id: l.warehouse_id || null,
+      notes: serializedNotes,
+    }
+  })
 
   const { error: linesErr } = await supabase.from('goods_receipt_lines').insert(linePayloads)
   if (linesErr) throw new Error(linesErr.message)
 
   // Update subtotal and calculate discount
-  const subtotal = lines.reduce((s, l) => s + l.quantity * (l.unit_cost ?? 0), 0)
+  const grossSubtotal = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0)
+  const itemDiscountsTotal = lines.reduce((s, l) => s + (Number(l.discount_amount) || 0), 0)
+  const netLinesSubtotal = Math.max(0, grossSubtotal - itemDiscountsTotal)
 
   const discount_type = header.discount_type || 'percentage'
-  const discount_value = header.discount_value || 0
-  const discount_amount = discount_type === 'percentage' 
-    ? (subtotal * discount_value) / 100 
-    : discount_value
-    
-  const tax_pct = header.tax_pct || 0
-  const taxable_amount = subtotal - discount_amount
+  const discount_value = Math.max(0, Number(header.discount_value) || 0)
+  const billDiscount = discount_type === 'percentage'
+    ? (netLinesSubtotal * Math.min(100, discount_value)) / 100
+    : Math.min(netLinesSubtotal, discount_value)
+
+  const total_discount_amount = itemDiscountsTotal + billDiscount
+  const tax_pct = Math.min(100, Math.max(0, Number(header.tax_pct) || 0))
+  const taxable_amount = Math.max(0, netLinesSubtotal - billDiscount)
   const tax_amount = (taxable_amount * tax_pct) / 100
   const total_amount = taxable_amount + tax_amount
 
   await supabase
     .from('goods_receipts')
     .update({ 
-      subtotal, 
+      subtotal: grossSubtotal, 
       discount_type,
       discount_value,
-      discount_amount,
+      discount_amount: total_discount_amount,
       tax_pct,
       tax_amount,
       total_amount 

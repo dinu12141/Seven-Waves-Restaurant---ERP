@@ -38,5 +38,8 @@ yarn-error.log*
 # Environment files — never commit secrets
 .env
 .env.*
-!.env.example
 .env.local*
+
+# Local database dumps and scratch files
+backups/
+scratch/

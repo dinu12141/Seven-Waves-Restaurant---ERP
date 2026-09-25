@@ -527,8 +527,10 @@ import {
   approveDocumentAmendment,
   rejectDocumentAmendment,
 } from 'src/services/amendmentService'
+import { useAuthStore } from 'src/stores/auth'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const activeTab = ref('wastage')
 const hrSubTab = ref('shiftswaps')
@@ -927,7 +929,10 @@ async function handleApproveAmendment(row) {
     },
   }).onOk(async (adminNotes) => {
     try {
-      const res = await approveDocumentAmendment(row.id, row.doc_type, row.doc_id, adminNotes)
+      const res = await approveDocumentAmendment(row.id, row.doc_type, row.doc_id, adminNotes, {
+        id: authStore.user?.id,
+        name: authStore.userDisplayName || 'Administrator',
+      })
       if (!res.success) throw new Error(res.error)
       $q.notify({ type: 'positive', icon: 'lock_open', message: `Document ${row.doc_number} unlocked for editing!` })
       loadAllPending()
@@ -954,7 +959,7 @@ async function handleRejectAmendment(row) {
     },
   }).onOk(async (notes) => {
     try {
-      const res = await rejectDocumentAmendment(row.id, notes)
+      const res = await rejectDocumentAmendment(row.id, notes, row.doc_type, row.doc_id)
       if (!res.success) throw new Error(res.error)
       $q.notify({ type: 'warning', message: `Amendment request for ${row.doc_number} rejected.` })
       loadAllPending()

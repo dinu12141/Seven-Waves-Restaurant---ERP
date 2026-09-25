@@ -80,6 +80,48 @@
         <q-separator />
 
         <q-card-section class="col scroll q-pa-md">
+          <!-- Status / Authorization Banners -->
+          <q-banner v-if="activeApproval && isAuthorizedEditor" rounded class="bg-positive text-white q-mb-md shadow-1">
+            <template v-slot:avatar>
+              <q-icon name="lock_open" color="white" />
+            </template>
+            <div class="text-weight-bold">Authorized for One-Time Edit</div>
+            <div class="text-caption">
+              Admin approved your modification request: "{{ activeApproval.admin_notes || activeApproval.reason || 'Approved' }}". 
+              You have single-use authorization to edit this GRN. Once you click "Save Changes & Lock", the document will be securely locked again.
+            </div>
+          </q-banner>
+
+          <q-banner v-else-if="activeApproval && !isAuthorizedEditor" rounded class="bg-amber-2 text-dark q-mb-md border-amber shadow-1">
+            <template v-slot:avatar>
+              <q-icon name="lock" color="warning" />
+            </template>
+            <div class="text-weight-bold">Locked (Authorized for {{ activeApproval.requested_by_name || 'Requester' }})</div>
+            <div class="text-caption">
+              Admin approved this GRN for <b>{{ activeApproval.requested_by_name }}</b> to make a single correction. Only {{ activeApproval.requested_by_name }} is authorized to edit it.
+            </div>
+          </q-banner>
+
+          <q-banner v-else-if="pendingApproval" rounded class="bg-blue-1 text-dark q-mb-md border-blue shadow-1">
+            <template v-slot:avatar>
+              <q-icon name="hourglass_top" color="primary" />
+            </template>
+            <div class="text-weight-bold">Admin Approval Pending</div>
+            <div class="text-caption">
+              An edit request was submitted by <b>{{ pendingApproval.requested_by_name }}</b> ("{{ pendingApproval.reason }}"). Awaiting review in the Admin Approvals Center.
+            </div>
+          </q-banner>
+
+          <q-banner v-else-if="form.status !== 'draft' && form.id" rounded class="bg-grey-2 text-grey-9 q-mb-md shadow-1">
+            <template v-slot:avatar>
+              <q-icon name="lock" color="grey-7" />
+            </template>
+            <div class="text-weight-bold">Document Locked (POSTED)</div>
+            <div class="text-caption">
+              This Goods Receipt is locked in the system. To make any corrections, submit a request for Admin Approval below.
+            </div>
+          </q-banner>
+
           <DocHeader
             title="Goods Receipt"
             icon="inventory"
@@ -93,7 +135,7 @@
             :supplier-options="supplierOptions"
             v-model:warehouse="form.warehouse"
             :warehouse-options="warehouseOptions"
-            :read-only="form.status !== 'draft'"
+            :read-only="!isAuthorizedEditor"
           />
 
           <q-separator class="q-my-md" />
@@ -101,13 +143,13 @@
           <DocLinesEditor
             :lines="form.lines"
             mode="GRN"
-            :read-only="form.status !== 'draft'"
+            :read-only="!isAuthorizedEditor"
             :item-options="itemOptions"
             :uom-options="uomOptions"
             title="Items Received"
-            allow-add
-            allow-edit-item
-            allow-edit-uom
+            :allow-add="isAuthorizedEditor"
+            :allow-edit-item="isAuthorizedEditor"
+            :allow-edit-uom="isAuthorizedEditor"
             @add-line="addLine"
             @remove-line="removeLine"
             @item-change="onItemChange"
@@ -118,15 +160,26 @@
           <div class="row justify-end q-mt-md">
             <div class="col-12 col-md-5">
               <div class="erp-card q-pa-md">
+                <!-- Subtotal (Gross before line discounts) -->
                 <div class="row justify-between items-center q-mb-sm">
                   <span style="font-size: 14px; color: var(--erp-text-secondary)">Subtotal</span>
                   <span style="font-size: 16px; font-weight: 500;">
-                    {{ formatCurrency(subtotalAmount) }}
+                    {{ formatCurrency(grossSubtotal) }}
                   </span>
                 </div>
+
+                <!-- Item Discounts (shown if any line has discount) -->
+                <div class="row justify-between items-center q-mb-sm text-negative" v-if="itemDiscountsTotal > 0">
+                  <span style="font-size: 14px;">Item Discounts</span>
+                  <span style="font-size: 16px; font-weight: 500;">
+                    - {{ formatCurrency(itemDiscountsTotal) }}
+                  </span>
+                </div>
+
+                <!-- Bill Discount (% or Fixed) -->
                 <div class="row justify-between items-center q-mb-sm q-col-gutter-sm">
                   <div class="col-auto row items-center">
-                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-sm">Discount</span>
+                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-sm">Bill Discount</span>
                     <q-btn-toggle
                       v-model="form.discount_type"
                       :options="[
@@ -138,7 +191,7 @@
                       unelevated
                       toggle-color="primary"
                       class="border"
-                      :disable="form.status !== 'draft'"
+                      :disable="!isAuthorizedEditor"
                     />
                   </div>
                   <div class="col-4">
@@ -150,11 +203,11 @@
                       min="0"
                       :max="form.discount_type === 'percentage' ? 100 : undefined"
                       input-class="text-right"
-                      :readonly="form.status !== 'draft'"
+                      :readonly="!isAuthorizedEditor"
                     />
                   </div>
                   <div class="col-auto text-right text-negative" style="font-size: 16px; font-weight: 500; min-width: 90px;">
-                    - {{ formatCurrency(discountAmount) }}
+                    - {{ formatCurrency(billDiscountAmount) }}
                   </div>
                 </div>
 
@@ -172,7 +225,7 @@
                       min="0"
                       max="100"
                       input-class="text-right"
-                      :readonly="form.status !== 'draft'"
+                      :readonly="!isAuthorizedEditor"
                     >
                       <template v-slot:append>
                         <span class="text-caption">%</span>
@@ -186,7 +239,7 @@
 
                 <q-separator class="q-my-sm" />
                 <div class="row justify-between items-center">
-                  <span style="font-size: 14px; color: var(--erp-text-secondary)">Total Amount</span>
+                  <span style="font-size: 15px; font-weight: 700; color: var(--erp-text-secondary)">Total Amount</span>
                   <span style="font-size: 18px; font-weight: 700; color: var(--erp-text-primary)">
                     {{ formatCurrency(totalAmount) }}
                   </span>
@@ -196,12 +249,12 @@
           </div>
         </q-card-section>
 
-        <!-- Action Bar — no Save Draft, only Post (and Close for posted GRNs) -->
+        <!-- Action Bar -->
         <q-separator />
         <q-card-actions class="q-pa-md row items-center justify-between">
           <div>
             <q-btn
-              v-if="form.status === 'draft'"
+              v-if="form.status === 'draft' || isAuthorizedEditor"
               flat
               label="Print"
               icon="print"
@@ -211,21 +264,29 @@
           <div class="row q-gutter-sm">
             <q-btn flat label="Close" @click="dialogVisible = false" />
             <q-btn
-              v-if="form.status === 'draft'"
+              v-if="isAuthorizedEditor"
               unelevated
               color="primary"
               icon="check"
-              label="Post GRN"
+              :label="activeApproval ? 'Save Changes & Lock' : 'Post GRN'"
               :loading="saving"
               @click="saveGRN"
             />
             <q-btn
-              v-if="form.status !== 'draft'"
+              v-if="!isAuthorizedEditor && !pendingApproval"
               outline
               color="warning"
               icon="lock_open"
               label="Request Edit / Void Approval"
               @click="openAmendmentRequest"
+            />
+            <q-btn
+              v-if="!isAuthorizedEditor && pendingApproval"
+              outline
+              color="grey-7"
+              icon="hourglass_top"
+              label="Approval Pending"
+              disable
             />
           </div>
         </q-card-actions>
@@ -255,7 +316,12 @@ import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import BaseDataGrid from 'components/common/BaseDataGrid.vue'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import { useAuthStore } from 'src/stores/auth'
-import { requestDocumentAmendment } from 'src/services/amendmentService'
+import {
+  requestDocumentAmendment,
+  getActiveApprovedAmendment,
+  getPendingAmendment,
+  consumeDocumentAmendment,
+} from 'src/services/amendmentService'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -267,6 +333,9 @@ const detailLoading = ref(false)
 const deleting = ref(false)
 const deleteConfirmVisible = ref(false)
 const deleteTarget = ref(null)
+
+const activeApproval = ref(null)
+const pendingApproval = ref(null)
 
 const grns = ref([])
   const supplierOptions = ref([])
@@ -318,29 +387,57 @@ const defaultForm = {
 }
 const form = ref({ ...defaultForm })
 
-const subtotalAmount = computed(() =>
-  (form.value.lines || []).reduce(
-    (acc, l) => acc + (l.line_total || l.quantity * (l.unit_cost || l.unit_price || 0)),
-    0,
-  )
+const grossSubtotal = computed(() =>
+  (form.value.lines || []).reduce((acc, l) => {
+    const qty = Number(l.quantity) || 0
+    const price = Number(l.unit_cost || l.unit_price) || 0
+    return acc + qty * price
+  }, 0)
 )
 
-const discountAmount = computed(() => {
-  const subtotal = subtotalAmount.value
-  const value = Number(form.value.discount_value) || 0
+const itemDiscountsTotal = computed(() =>
+  (form.value.lines || []).reduce((acc, l) => acc + (Number(l.discount_amount) || 0), 0)
+)
+
+const netLinesSubtotal = computed(() => Math.max(0, grossSubtotal.value - itemDiscountsTotal.value))
+
+const billDiscountAmount = computed(() => {
+  const base = netLinesSubtotal.value
+  const value = Math.max(0, Number(form.value.discount_value) || 0)
   if (form.value.discount_type === 'percentage') {
-    return (subtotal * value) / 100
+    return (base * Math.min(100, value)) / 100
   }
-  return value
+  return Math.min(base, value)
 })
 
+const totalDiscountAmount = computed(() => itemDiscountsTotal.value + billDiscountAmount.value)
+
 const taxAmount = computed(() => {
-  const taxable_amount = Math.max(0, subtotalAmount.value - discountAmount.value)
-  const pct = Number(form.value.tax_pct) || 0
+  const taxable_amount = Math.max(0, netLinesSubtotal.value - billDiscountAmount.value)
+  const pct = Math.min(100, Math.max(0, Number(form.value.tax_pct) || 0))
   return (taxable_amount * pct) / 100
 })
 
-const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value) + taxAmount.value)
+const totalAmount = computed(() => Math.max(0, netLinesSubtotal.value - billDiscountAmount.value) + taxAmount.value)
+
+// Strictly authorize edit access:
+// Only brand new documents, ordinary drafts, OR the user who requested the approved amendment can edit!
+const isAuthorizedEditor = computed(() => {
+  if (!form.value.id) return true
+
+  if (form.value.status === 'draft' && !activeApproval.value) {
+    return true
+  }
+
+  if (activeApproval.value) {
+    const currentUserId = authStore.user?.id
+    const isRequester = currentUserId && activeApproval.value.requested_by_id === currentUserId
+    const isAdmin = authStore.isAdmin || authStore.roles?.includes('admin') || authStore.roles?.includes('super_admin')
+    return Boolean(isRequester || isAdmin)
+  }
+
+  return false
+})
 
 // --- BaseDataGrid config ---
 const columns = [
@@ -442,8 +539,13 @@ function formatCurrency(val) {
   return `LKR\u00A0${(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+// In-memory cache for loaded GRN details so viewing previously opened GRNs is instantaneous
+const grnDetailsCache = new Map()
+
 function createNewGRN() {
   isEditing.value = false
+  activeApproval.value = null
+  pendingApproval.value = null
   form.value = { ...defaultForm, lines: [] }
   supplierPriceMap.value = {}
   dialogVisible.value = true
@@ -452,36 +554,104 @@ function createNewGRN() {
 // ── View / Edit GRN ────────────────────────────────────────────────────
 async function editGRN(row) {
   isEditing.value = true
+  activeApproval.value = getActiveApprovedAmendment('GRN', row.id, row.remarks)
+  pendingApproval.value = getPendingAmendment('GRN', row.id, row.remarks)
+
+  const supplierObj =
+    row.suppliers ||
+    (row.supplier_id ? supplierOptions.value.find((s) => s.id === row.supplier_id) || null : null)
+  const warehouseObj =
+    row.warehouses ||
+    (row.warehouse_id ? warehouseOptions.value.find((w) => w.id === row.warehouse_id) || null : null)
+
+  const cached = grnDetailsCache.get(row.id)
+
+  // 1. Immediately prefill form with everything already available on the row
+  // This makes doc number, date, supplier, warehouse, discount, and totals appear instantly
   form.value = {
     ...defaultForm,
     id: row.id,
     doc_number: row.doc_number,
-    status: row.status,
-    lines: [],
+    doc_date: row.doc_date || date.formatDate(Date.now(), 'YYYY-MM-DD'),
+    status: row.status || 'draft',
+    supplier: supplierObj,
+    supplier_id: row.supplier_id || '',
+    warehouse: warehouseObj,
+    warehouse_id: row.warehouse_id || '',
+    discount_type: row.discount_type || 'percentage',
+    discount_value: row.discount_value || 0,
+    tax_pct: row.tax_pct || 0,
+    tax_amount: row.tax_amount || 0,
+    total_amount: row.total_amount || 0,
+    remarks: row.remarks || '',
+    lines: cached ? cached.lines : [],
   }
-  detailLoading.value = true
+
   dialogVisible.value = true
+
+  // 2. If already in memory cache, avoid redundant network queries & loading spinner
+  if (cached) {
+    detailLoading.value = false
+    return
+  }
+
+  detailLoading.value = true
 
   try {
     const full = await getGRNDetails(row.id)
+    activeApproval.value = getActiveApprovedAmendment('GRN', full.id, full.remarks)
+    pendingApproval.value = getPendingAmendment('GRN', full.id, full.remarks)
 
-    // NOTE: getGRNDetails now returns goods_receipt_lines (not mapping_lines)
+    // NOTE: getGRNDetails returns goods_receipt_lines
     const rawLines = full.goods_receipt_lines || []
-    const lines = rawLines.map((l, idx) => ({
-      line_number: l.line_number || idx + 1,
-      item_id: l.item_id,
-      item_name: l.items?.name || l.item_name || '',
-      uom_id: l.uom_id,
-      uom_name: l.uom?.name || l.uom?.code || '',
-      quantity: l.quantity,
-      unit_cost: l.unit_cost || 0,
-      unit_price: l.unit_cost || 0,
-      line_total: l.line_total || l.quantity * (l.unit_cost || 0),
-      batch_no: l.batch_no || '',
-      expiry_date: l.expiry_date || '',
-    }))
+    const lines = rawLines.map((l, idx) => {
+      let discType = l.discount_type || 'percentage'
+      let discVal = Number(l.discount_value) || 0
+      let discAmt = Number(l.discount_amount) || 0
+      let userNotes = l.notes || ''
 
-    form.value = {
+      // Parse JSON discount metadata from notes if packed
+      if (l.notes && typeof l.notes === 'string' && l.notes.startsWith('{"__discount":true')) {
+        try {
+          const parsed = JSON.parse(l.notes)
+          discType = parsed.type || 'percentage'
+          discVal = Number(parsed.value) || 0
+          discAmt = Number(parsed.amount) || 0
+          userNotes = parsed.user_notes || ''
+        } catch {
+          // fallback
+        }
+      }
+
+      const qty = Number(l.quantity) || 0
+      const cost = Number(l.unit_cost || l.unit_price) || 0
+      const gross = qty * cost
+      if (discVal > 0 && discAmt === 0) {
+        discAmt = discType === 'percentage' ? (gross * Math.min(100, discVal)) / 100 : Math.min(gross, discVal)
+      }
+      const lineTotal = l.line_total != null ? (discAmt > 0 && l.line_total === gross ? gross - discAmt : l.line_total) : gross - discAmt
+
+      return {
+        id: l.id || `line-${l.line_number || idx + 1}`,
+        line_number: l.line_number || idx + 1,
+        item_id: l.item_id,
+        item_name: l.items?.name || l.item_name || '',
+        uom_id: l.uom_id,
+        uom_name: l.uom?.name || l.uom?.code || '',
+        quantity: qty,
+        unit_cost: cost,
+        unit_price: cost,
+        discount_type: discType,
+        discount_value: discVal,
+        discount_amount: discAmt,
+        line_total: lineTotal,
+        batch_no: l.batch_no || '',
+        expiry_date: l.expiry_date || '',
+        notes: userNotes,
+      }
+    })
+
+    const populated = {
       ...full,
       supplier:
         full.suppliers ||
@@ -500,6 +670,9 @@ async function editGRN(row) {
       total_amount: full.total_amount || 0,
       lines,
     }
+
+    form.value = populated
+    grnDetailsCache.set(row.id, { ...populated, lines })
   } catch (e) {
     console.error('Failed to load GRN details:', e)
     $q.notify({ type: 'negative', message: 'Could not load GRN details', caption: e.message })
@@ -520,6 +693,9 @@ function addLine() {
     quantity: 1,
     unit_cost: 0,
     unit_price: 0,
+    discount_type: 'percentage',
+    discount_value: 0,
+    discount_amount: 0,
     line_total: 0,
   })
 }
@@ -540,7 +716,20 @@ function onItemChange(line, item) {
   const suggestedPrice = supplierPriceMap.value[item.id]
   line.unit_cost = suggestedPrice != null ? suggestedPrice : 0
   line.unit_price = line.unit_cost
-  line.line_total = (line.quantity || 0) * line.unit_cost
+  
+  if (!line.discount_type) line.discount_type = 'percentage'
+  if (line.discount_value === undefined) line.discount_value = 0
+
+  const qty = Number(line.quantity) || 0
+  const gross = qty * line.unit_cost
+  let discAmt = 0
+  if (line.discount_type === 'percentage') {
+    discAmt = (gross * Math.min(100, Math.max(0, Number(line.discount_value) || 0))) / 100
+  } else {
+    discAmt = Math.min(gross, Math.max(0, Number(line.discount_value) || 0))
+  }
+  line.discount_amount = Math.round(discAmt * 100) / 100
+  line.line_total = Math.max(0, gross - line.discount_amount)
 }
 
 // Reload supplier price suggestions whenever the GRN's supplier changes
@@ -548,6 +737,12 @@ function onItemChange(line, item) {
 watch(
   () => form.value.supplier,
   (supplier) => {
+    // Only fetch supplier prices when creating a new GRN or editing a DRAFT GRN.
+    // Posted / view-only GRNs are read-only and do not need supplier pricing lookups.
+    if (form.value.status !== 'draft') {
+      supplierPriceMap.value = {}
+      return
+    }
     const supplierId = supplier?.id
     if (supplierId) {
       loadSupplierPrices(supplierId)
@@ -568,13 +763,11 @@ async function saveGRN() {
   saving.value = true
   try {
     let grn
-    let isNewGRN = false
     const supplierId = form.value.supplier?.id || form.value.supplier_id
     const warehouseId = form.value.warehouse?.id || form.value.warehouse_id
 
     if (!form.value.id) {
       // New GRN — always supplier-direct, never linked to a PO.
-      isNewGRN = true
       if (!form.value.doc_number?.trim()) {
         $q.notify({ type: 'warning', message: 'GRN / Bill Number is required' })
         return
@@ -592,8 +785,11 @@ async function saveGRN() {
         line_number: idx + 1,
         item_id: l.item_id,
         uom_id: l.uom_id,
-        quantity: l.quantity,
-        unit_cost: l.unit_cost || l.unit_price || 0,
+        quantity: Math.max(0, Number(l.quantity) || 0),
+        unit_cost: Math.max(0, Number(l.unit_cost || l.unit_price) || 0),
+        discount_type: l.discount_type || 'percentage',
+        discount_value: Math.max(0, Number(l.discount_value) || 0),
+        discount_amount: Math.max(0, Number(l.discount_amount) || 0),
         batch_no: l.batch_no || null,
         expiry_date: l.expiry_date || null,
         notes: l.notes || null,
@@ -608,11 +804,23 @@ async function saveGRN() {
           remarks: form.value.remarks,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
+          discount_amount: totalDiscountAmount.value,
+          subtotal: grossSubtotal.value,
           tax_pct: form.value.tax_pct,
           tax_amount: taxAmount.value,
+          total_amount: totalAmount.value,
         },
         lines,
       )
+
+      if (grn?.id) {
+        const res = await postGRN(grn.id)
+        if (!res.success) {
+          try { await deleteGRN(grn.id) } catch { /* ignore */ }
+          throw new Error(res.error || 'Failed to post GRN')
+        }
+        $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
+      }
     } else {
       // Existing draft GRN — update header and lines
       if (!form.value.doc_number?.trim()) {
@@ -623,8 +831,11 @@ async function saveGRN() {
         line_number: idx + 1,
         item_id: l.item_id,
         uom_id: l.uom_id,
-        quantity: l.quantity,
-        unit_cost: l.unit_cost || l.unit_price || 0,
+        quantity: Math.max(0, Number(l.quantity) || 0),
+        unit_cost: Math.max(0, Number(l.unit_cost || l.unit_price) || 0),
+        discount_type: l.discount_type || 'percentage',
+        discount_value: Math.max(0, Number(l.discount_value) || 0),
+        discount_amount: Math.max(0, Number(l.discount_amount) || 0),
         batch_no: l.batch_no || null,
         expiry_date: l.expiry_date || null,
         notes: l.notes || null,
@@ -638,27 +849,39 @@ async function saveGRN() {
           remarks: form.value.remarks,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
+          discount_amount: totalDiscountAmount.value,
+          subtotal: grossSubtotal.value,
           tax_pct: form.value.tax_pct,
           tax_amount: taxAmount.value,
+          total_amount: totalAmount.value,
         },
         lines,
       )
-    }
 
-    // Always post — GRNs should never remain in draft
-    if (grn?.id) {
-      const res = await postGRN(grn.id)
-      if (!res.success) {
-        // If posting fails on a newly created GRN, clean up the draft
-        if (isNewGRN) {
-          try { await deleteGRN(grn.id) } catch { /* ignore cleanup errors */ }
-        }
-        throw new Error(res.error || 'Failed to post GRN')
+      if (activeApproval.value) {
+        // One-time edit on an approved amendment:
+        // Consume authorization and lock document back to posted in Supabase
+        await consumeDocumentAmendment('GRN', form.value.id, activeApproval.value.id, {
+          consumed_by_id: authStore.user?.id,
+          consumed_by_name: authStore.userDisplayName || 'Staff',
+        })
+        activeApproval.value = null
+        $q.notify({
+          type: 'positive',
+          icon: 'verified',
+          message: 'GRN corrections saved! Document is now securely locked.',
+        })
+      } else if (grn?.id && form.value.status === 'draft') {
+        const res = await postGRN(grn.id)
+        if (!res.success) throw new Error(res.error || 'Failed to post GRN')
+        $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
+      } else {
+        $q.notify({ type: 'positive', message: 'GRN updated successfully' })
       }
-      $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
     }
 
     dialogVisible.value = false
+    grnDetailsCache.clear()
     fetchGRNs()
   } catch (e) {
     console.error('Failed to save GRN:', e)
@@ -669,7 +892,7 @@ async function saveGRN() {
         message: `GRN / Bill Number "${form.value.doc_number}" is already used. Please enter a unique bill number.`,
       })
     } else {
-      $q.notify({ type: 'negative', message: 'Failed to post GRN', caption: errText })
+      $q.notify({ type: 'negative', message: 'Failed to save GRN', caption: errText })
     }
   } finally {
     saving.value = false
@@ -698,6 +921,7 @@ async function doDeleteGRN() {
     })
     deleteConfirmVisible.value = false
     deleteTarget.value = null
+    grnDetailsCache.clear()
     fetchGRNs()
   } catch (e) {
     $q.notify({ type: 'negative', message: 'Delete Failed', caption: e.message })
@@ -740,12 +964,14 @@ function openAmendmentRequest() {
         reason,
       })
       if (!res.success) throw new Error(res.error)
+      pendingApproval.value = res.data
+      grnDetailsCache.clear()
       $q.notify({
         type: 'positive',
         icon: 'verified',
         message: 'Amendment request submitted to Admin Approvals Center!',
       })
-      dialogVisible.value = false
+      fetchGRNs()
     } catch (err) {
       $q.notify({ type: 'negative', message: 'Failed to submit request: ' + err.message })
     }

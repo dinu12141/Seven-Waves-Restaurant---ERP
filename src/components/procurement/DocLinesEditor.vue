@@ -107,17 +107,51 @@
           />
         </q-td>
 
-        <!-- Discount (Optional) -->
-        <q-td key="discount" :props="props" v-if="showDiscount">
-          <q-input
-            v-if="!readOnly"
-            v-model.number="props.row.discount"
-            type="number"
-            dense
-            borderless
-            input-class="text-right"
-          />
-          <span v-else>{{ props.row.discount }}%</span>
+        <!-- Discount Column (Percentage or Fixed Amount) -->
+        <q-td key="discount" :props="props" v-if="showDiscount" style="min-width: 160px">
+          <!-- Editable Mode -->
+          <div v-if="!readOnly" class="row items-center no-wrap q-gutter-x-xs justify-end">
+            <q-btn-toggle
+              v-model="props.row.discount_type"
+              :options="[
+                { label: '%', value: 'percentage' },
+                { label: 'Fix', value: 'amount' }
+              ]"
+              size="xs"
+              dense
+              unelevated
+              toggle-color="primary"
+              color="grey-3"
+              text-color="grey-8"
+              class="border text-weight-bold"
+              style="font-size: 10px"
+              @update:model-value="recalcLine(props.row)"
+            />
+            <q-input
+              v-model.number="props.row.discount_value"
+              type="number"
+              dense
+              borderless
+              style="width: 70px"
+              input-class="text-right text-weight-medium q-px-xs"
+              :min="0"
+              :max="props.row.discount_type === 'percentage' ? 100 : undefined"
+              @update:model-value="recalcLine(props.row)"
+            />
+          </div>
+
+          <!-- Readonly View -->
+          <div v-else class="text-right">
+            <span v-if="!props.row.discount_value || props.row.discount_value === 0" class="text-grey-5">-</span>
+            <div v-else>
+              <span class="text-weight-bold text-negative">
+                {{ props.row.discount_type === 'percentage' ? `${props.row.discount_value}%` : formatCurrency(props.row.discount_value) }}
+              </span>
+              <div v-if="props.row.discount_type === 'percentage' && props.row.discount_amount" class="text-caption text-grey-6" style="font-size: 11px">
+                -{{ formatCurrency(props.row.discount_amount) }}
+              </div>
+            </div>
+          </div>
         </q-td>
 
         <!-- Total -->
@@ -158,9 +192,37 @@ const props = defineProps({
 
 defineEmits(['add-line', 'remove-line', 'item-change', 'uom-change', 'price-change'])
 
-// Recalculate line total when quantity or price changes
+// Recalculate line total when quantity, price, or discount changes
 function recalcLine(row) {
-  row.line_total = (row.quantity || 0) * (row.unit_price || row.unit_cost || 0)
+  const qty = Number(row.quantity) || 0
+  const price = Number(row.unit_price ?? row.unit_cost ?? 0)
+  const gross = qty * price
+
+  if (!row.discount_type) {
+    row.discount_type = 'percentage'
+  }
+
+  // Support legacy 'discount' field from PO/Invoice
+  if (row.discount_value === undefined && row.discount !== undefined) {
+    row.discount_value = row.discount
+  }
+
+  const val = Math.max(0, Number(row.discount_value) || 0)
+  let discAmt = 0
+
+  if (row.discount_type === 'percentage') {
+    const clampedPct = Math.min(100, val)
+    discAmt = (gross * clampedPct) / 100
+    row.discount = clampedPct
+    row.discount_value = clampedPct
+  } else {
+    discAmt = Math.min(gross, val)
+    row.discount_value = discAmt
+    row.discount = gross > 0 ? (discAmt / gross) * 100 : 0
+  }
+
+  row.discount_amount = Math.round(discAmt * 100) / 100
+  row.line_total = Math.max(0, Math.round((gross - row.discount_amount) * 100) / 100)
 }
 
 // When user manually edits unit_price, sync unit_cost and recalculate total
@@ -176,7 +238,7 @@ const getUomName = (uomId) => {
 }
 
 const showPrice = computed(() => ['PO', 'GRN', 'INVOICE', 'RETURN'].includes(props.mode))
-const showDiscount = computed(() => ['PO', 'INVOICE'].includes(props.mode))
+const showDiscount = computed(() => ['PO', 'GRN', 'INVOICE'].includes(props.mode))
 
 // @ts-ignore
 const columns = computed(() => {
@@ -190,7 +252,7 @@ const columns = computed(() => {
     cols.push({ name: 'unit_price', label: 'Unit Price', align: 'right', field: 'unit_price' })
   }
   if (showDiscount.value) {
-    cols.push({ name: 'discount', label: 'Disc %', align: 'right', field: 'discount' })
+    cols.push({ name: 'discount', label: 'Discount', align: 'right', field: 'discount_value', minWidth: 160 })
   }
   cols.push({ name: 'line_total', label: 'Total', align: 'right', field: 'line_total' })
   if (!props.readOnly) {

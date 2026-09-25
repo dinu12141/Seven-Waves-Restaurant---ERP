@@ -958,6 +958,16 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Payroll',
   },
   {
+    label: 'Salary Configuration',
+    icon: 'tune',
+    to: '/hr/salary-config',
+    roles: ['admin', 'hr'],
+    permission: 'hr.payroll.view',
+    section: 'HR',
+    moduleCode: 'HR',
+    group: 'Payroll',
+  },
+  {
     label: 'Commission',
     icon: 'monetization_on',
     to: '/hr/commission',

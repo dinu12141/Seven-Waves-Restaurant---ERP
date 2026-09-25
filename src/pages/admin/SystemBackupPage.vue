@@ -71,6 +71,7 @@
         class="text-grey-7 bg-grey-1 border-bottom"
       >
         <q-tab name="create" icon="download" label="1-Click Backup Export" />
+        <q-tab name="cloud" icon="cloud" label="Supabase Cloud Snapshots" />
         <q-tab name="gdrive" icon="add_to_drive" label="Google Drive Cloud Sync" />
         <q-tab name="restore" icon="restore" label="Restore & Recovery" />
         <q-tab name="history" icon="history" label="Backup Audit History" />
@@ -217,6 +218,15 @@
               />
 
               <q-btn
+                color="teal-8"
+                icon="cloud_upload"
+                size="md"
+                label="Save to Cloud Storage"
+                :loading="uploadingCloud"
+                @click="runBackup('cloud')"
+              />
+
+              <q-btn
                 color="positive"
                 icon="add_to_drive"
                 size="md"
@@ -238,6 +248,52 @@
               <span v-if="lastResult.driveLink"> | <a :href="lastResult.driveLink" target="_blank" class="text-primary">Open in Google Drive ↗</a></span>
             </div>
           </q-banner>
+        </q-tab-panel>
+
+        <!-- ── TAB: SUPABASE CLOUD SNAPSHOTS ──────────────────────────── -->
+        <q-tab-panel name="cloud" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <div>
+              <div class="text-subtitle1 text-weight-bold">Supabase Cloud Snapshots (system-backups Bucket)</div>
+              <div class="text-caption text-grey-5">Daily automated snapshots and manual archives stored in private encrypted cloud storage.</div>
+            </div>
+            <div class="q-gutter-x-sm">
+              <q-btn flat dense icon="refresh" label="Refresh List" :loading="loadingCloud" @click="refreshCloudBackups" />
+            </div>
+          </div>
+
+          <q-table
+            flat
+            bordered
+            :rows="cloudBackups"
+            :columns="cloudColumns"
+            row-key="path"
+            dense
+            :loading="loadingCloud"
+            no-data-label="No snapshots found in Supabase storage bucket"
+          >
+            <template v-slot:body-cell-source="props">
+              <q-td :props="props">
+                <q-badge :color="props.value === 'automated' ? 'green-8' : 'blue-8'">
+                  {{ props.value?.toUpperCase() }}
+                </q-badge>
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-actions="props">
+              <q-td :props="props" align="right">
+                <q-btn
+                  size="sm"
+                  color="primary"
+                  icon="download"
+                  label="Download"
+                  dense
+                  class="q-px-sm"
+                  @click="downloadCloudFile(props.row.path, props.row.name)"
+                />
+              </q-td>
+            </template>
+          </q-table>
         </q-tab-panel>
 
         <!-- ── TAB 2: GOOGLE DRIVE CLOUD SYNC ────────────────────────── -->
@@ -501,6 +557,9 @@ import {
   generateBackup,
   getBackupHistory,
   validateBackupFile,
+  uploadBackupToCloudStorage,
+  listCloudBackups,
+  getCloudBackupDownloadUrl,
 } from 'src/services/backupService'
 import {
   getGoogleDriveConfig,
@@ -516,9 +575,13 @@ const selectedScope = ref('full')
 const selectedFormat = ref('json')
 const generating = ref(false)
 const uploadingDrive = ref(false)
+const uploadingCloud = ref(false)
 const savingDrive = ref(false)
 const testingDrive = ref(false)
 const lastResult = ref(null)
+
+const cloudBackups = ref([])
+const loadingCloud = ref(false)
 
 const restoreFile = ref(null)
 const validationInfo = ref(null)
@@ -549,6 +612,13 @@ const historyColumns = [
   { name: 'fileSizeBytes', label: 'File Size', field: 'fileSizeBytes', align: 'right' },
 ]
 
+const cloudColumns = [
+  { name: 'name', label: 'Snapshot Filename', field: 'name', align: 'left' },
+  { name: 'source', label: 'Type', field: 'source', align: 'center' },
+  { name: 'created_at', label: 'Created At', field: 'created_at', align: 'left', format: (v) => v ? new Date(v).toLocaleString() : '—' },
+  { name: 'actions', label: 'Download', field: 'actions', align: 'right' },
+]
+
 function getScopeColor(s) {
   const map = { full: 'primary', finance: 'green', pos: 'blue', inventory: 'orange', hr: 'purple' }
   return map[s] || 'grey'
@@ -564,6 +634,33 @@ function formatBytes(bytes) {
 
 function refreshHistory() {
   backupHistory.value = getBackupHistory()
+}
+
+async function refreshCloudBackups() {
+  loadingCloud.value = true
+  try {
+    cloudBackups.value = await listCloudBackups()
+  } catch (err) {
+    console.error('Failed to load cloud backups:', err)
+  } finally {
+    loadingCloud.value = false
+  }
+}
+
+async function downloadCloudFile(path, filename) {
+  try {
+    const url = await getCloudBackupDownloadUrl(path)
+    if (!url) throw new Error('Could not generate download link')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename || 'backup.json'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    $q.notify({ type: 'positive', message: `Downloading ${filename}...` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Download failed: ' + err.message })
+  }
 }
 
 async function loadDriveSettings() {
@@ -599,6 +696,7 @@ async function runTestDrive() {
 
 async function runBackup(target = 'download') {
   if (target === 'drive') uploadingDrive.value = true
+  else if (target === 'cloud') uploadingCloud.value = true
   else generating.value = true
   lastResult.value = null
 
@@ -621,6 +719,23 @@ async function runBackup(target = 'download') {
 
       lastResult.value = { ...result, message: 'Backup downloaded successfully!' }
       $q.notify({ type: 'positive', message: `Backup downloaded: ${result.filename}` })
+    } else if (target === 'cloud') {
+      const cloudUpload = await uploadBackupToCloudStorage({
+        blob: result.blob,
+        filename: result.filename,
+        folder: 'manual',
+      })
+
+      if (!cloudUpload.success) {
+        throw new Error(cloudUpload.error || 'Failed to upload to Cloud Storage')
+      }
+
+      lastResult.value = {
+        ...result,
+        message: 'Backup securely archived to Supabase Cloud Storage (system-backups)!',
+      }
+      $q.notify({ type: 'positive', icon: 'cloud_done', message: 'Saved to Supabase Cloud Storage!' })
+      refreshCloudBackups()
     } else {
       // Upload directly to Google Drive
       const driveUpload = await uploadToGoogleDrive({
@@ -647,6 +762,7 @@ async function runBackup(target = 'download') {
   } finally {
     generating.value = false
     uploadingDrive.value = false
+    uploadingCloud.value = false
   }
 }
 
@@ -688,7 +804,7 @@ async function executeRestore() {
   try {
     const text = await restoreFile.value.text()
     const parsed = JSON.parse(text)
-    const dump = parsed.data || parsed
+    const dump = parsed.tables || parsed.data || parsed
 
     const { error } = await supabase.rpc('restore_database', { dump_data: dump })
     if (error) throw error
@@ -709,6 +825,7 @@ async function executeRestore() {
 
 onMounted(() => {
   refreshHistory()
+  refreshCloudBackups()
   loadDriveSettings()
 })
 </script>

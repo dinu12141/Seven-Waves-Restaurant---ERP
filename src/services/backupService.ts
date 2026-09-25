@@ -251,7 +251,7 @@ export async function validateBackupFile(file: File): Promise<{
     return {
       isValid: true,
       scope: parsed.scope || 'full',
-      generatedAt: parsed.generated_at || 'Unknown',
+      generatedAt: parsed.generated_at || parsed.metadata?.created_at || 'Unknown',
       tableCount: tables.length,
       recordCount,
       tables,
@@ -260,3 +260,73 @@ export async function validateBackupFile(file: File): Promise<{
     return { isValid: false, error: 'Invalid JSON backup format: ' + err.message }
   }
 }
+
+/** Upload snapshot directly to Supabase private Storage bucket (system-backups) */
+export async function uploadBackupToCloudStorage(payload: {
+  blob: Blob
+  filename: string
+  folder?: string
+}): Promise<{ success: boolean; path?: string; error?: string }> {
+  try {
+    const targetFolder = payload.folder || 'automated'
+    const fullPath = `${targetFolder}/${payload.filename}`
+
+    const { data, error } = await supabase.storage
+      .from('system-backups')
+      .upload(fullPath, payload.blob, {
+        contentType: payload.filename.endsWith('.sql') ? 'application/sql' : 'application/json',
+        upsert: true,
+      })
+
+    if (error) throw error
+    return { success: true, path: data.path }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Storage upload failed' }
+  }
+}
+
+/** List all snapshots stored in the cloud storage bucket */
+export async function listCloudBackups(): Promise<Array<{
+  name: string
+  id: string
+  path: string
+  created_at: string
+  metadata?: any
+}>> {
+  try {
+    const { data: autoFiles } = await supabase.storage.from('system-backups').list('automated')
+    const { data: manualFiles } = await supabase.storage.from('system-backups').list('manual')
+
+    const list: any[] = []
+    if (autoFiles) {
+      autoFiles.filter(f => f.name !== '.emptyFolderPlaceholder').forEach(f => {
+        list.push({ ...f, path: `automated/${f.name}`, source: 'automated' })
+      })
+    }
+    if (manualFiles) {
+      manualFiles.filter(f => f.name !== '.emptyFolderPlaceholder').forEach(f => {
+        list.push({ ...f, path: `manual/${f.name}`, source: 'manual' })
+      })
+    }
+
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  } catch (e) {
+    console.warn('[BackupService] Could not list cloud backups:', e)
+    return []
+  }
+}
+
+/** Get signed download URL for a cloud backup file */
+export async function getCloudBackupDownloadUrl(filePath: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('system-backups')
+      .createSignedUrl(filePath, 3600)
+    if (error) throw error
+    return data.signedUrl
+  } catch (e) {
+    console.error('[BackupService] Error getting signed URL:', e)
+    return null
+  }
+}
+

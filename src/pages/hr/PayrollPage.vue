@@ -2719,44 +2719,77 @@ async function refreshPayslips() {
 // ── Build PDF Data Helper ───────────────────────────────────────────────────
 function populatePdfData(payslip, bd) {
   const findAmt = (arr, lbl) =>
-    arr.find((e) => e.label && e.label.toLowerCase().includes(lbl.toLowerCase()))?.amount || 0
+    (arr || []).find((e) => e.label && e.label.toLowerCase().includes(lbl.toLowerCase()))?.amount || 0
   const monthName = new Date(selectedRun.value?.period_start || new Date())
     .toLocaleString('en-US', { month: 'long' })
     .toUpperCase()
+
+  const basicAmt = Number(findAmt(bd?.earnings, 'basic') || payslip.basic_salary || 0)
+  const attendanceAmt = Number(findAmt(bd?.earnings, 'attendance') || 0)
+
+  // Sum allowances: housing + transport + meal + other + commission + shift
+  const housingAmt = Number(findAmt(bd?.earnings, 'housing') || payslip.housing_allowance || 0)
+  const transportAmt = Number(findAmt(bd?.earnings, 'transport') || payslip.transport_allowance || 0)
+  const mealAmt = Number(findAmt(bd?.earnings, 'meal') || payslip.meal_allowance || 0)
+  const otherAllowAmt = Number(findAmt(bd?.earnings, 'other allow') || payslip.other_allowances || 0)
+  const commissionAmt = Number(findAmt(bd?.earnings, 'commission') || payslip.commission_amount || 0)
+  const shiftAllowAmt = Number(findAmt(bd?.earnings, 'shift') || payslip.shift_allowance_amount || 0)
+  const totalVariable =
+    (housingAmt + transportAmt + mealAmt + otherAllowAmt + commissionAmt + shiftAllowAmt) ||
+    Number(payslip.total_allowances || 0)
+
+  const extraDayHrs =
+    payslip.holiday_ot_hours > 0 ? Number(payslip.holiday_ot_hours).toFixed(2) : '0.00'
+  const extraDayAmt = Number(findAmt(bd?.earnings, 'holiday') || payslip.holiday_ot_amount || 0)
+
+  const normalOtHrs =
+    payslip.normal_ot_hours > 0 ? Number(payslip.normal_ot_hours).toFixed(2) : '0.00'
+  const normalOtAmt = Number(findAmt(bd?.earnings, 'normal ot') || payslip.normal_ot_amount || 0)
+
+  const noPayD = bd?.days_absent != null ? Number(bd.days_absent) : Number(payslip.days_absent || 0)
+  const dailyRate = basicAmt > 0 ? basicAmt / 26.0 : Number(payslip.basic_salary || 0) / 26.0
+  const noPayAmt = Number(
+    findAmt(bd?.deductions, 'absent') ||
+    payslip.absent_deduction ||
+    (noPayD * dailyRate) ||
+    0
+  )
+
+  const grossVal = bd?.gross_salary ?? bd?.gross ?? payslip.gross_salary ?? 0
+  const totDedVal = bd?.total_deductions ?? payslip.total_deductions ?? 0
+  const netVal = bd?.net_salary ?? bd?.net ?? payslip.net_salary ?? 0
 
   pdfData.value = {
     year:
       String(selectedRun.value?.period_start || '').substring(0, 4) ||
       String(new Date().getFullYear()),
     month: monthName,
-    code: bd.code || payslip.employees?.employee_code || '-',
-    empName: bd.employee || payslip.employees?.full_name || '-',
-    designation: payslip.employees?.designation?.name || bd.designation || 'Staff',
-    basic: fmt(findAmt(bd.earnings, 'basic')),
-    fingerprintId: payslip.employees?.fingerprint_id || bd.code?.replace('EMP', '') || '-',
-    grossPay: fmt(findAmt(bd.earnings, 'basic')),
-    attendanceAllowance: fmt(findAmt(bd.earnings, 'attendance')),
-    variableAllowance: fmt(findAmt(bd.earnings, 'other') + findAmt(bd.earnings, 'commission')),
-    serviceCharge: fmt(findAmt(bd.earnings, 'service')),
+    code: bd?.code || payslip.employees?.employee_code || '-',
+    empName: bd?.employee || payslip.employees?.full_name || '-',
+    designation: payslip.employees?.designation?.name || bd?.designation || 'Staff',
+    basic: fmt(basicAmt),
+    fingerprintId: payslip.employees?.fingerprint_id || bd?.code?.replace('EMP', '') || '-',
+    grossPay: fmt(basicAmt),
+    attendanceAllowance: fmt(attendanceAmt),
+    variableAllowance: fmt(totalVariable),
+    serviceCharge: fmt(findAmt(bd?.earnings, 'service')),
 
-    extraDayHours:
-      payslip.holiday_ot_hours > 0 ? Number(payslip.holiday_ot_hours).toFixed(2) : '0.00',
-    extraDayAmount: fmt(findAmt(bd.earnings, 'holiday')),
-    normalOtHours:
-      payslip.normal_ot_hours > 0 ? Number(payslip.normal_ot_hours).toFixed(2) : '0.00',
-    normalOtAmount: fmt(findAmt(bd.earnings, 'normal ot')),
+    extraDayHours: extraDayHrs,
+    extraDayAmount: fmt(extraDayAmt),
+    normalOtHours: normalOtHrs,
+    normalOtAmount: fmt(normalOtAmt),
 
-    noPayDays: bd.days_absent ? Number(bd.days_absent).toFixed(2) : '0.00',
-    noPayAmount: fmt(findAmt(bd.deductions, 'absent')),
+    noPayDays: noPayD.toFixed(2),
+    noPayAmount: fmt(noPayAmt),
 
-    grossSalary: fmt(bd.gross_salary),
+    grossSalary: fmt(grossVal),
 
-    epfDeduction: fmt(findAmt(bd.deductions, 'epf')),
-    staffBill: fmt(findAmt(bd.deductions, 'staff bill')),
-    staffLoan: fmt(findAmt(bd.deductions, 'loan')),
-    salaryAdvance: fmt(findAmt(bd.deductions, 'advance')),
-    totalDeduction: fmt(bd.total_deductions),
-    netSalary: fmt(bd.net_salary),
+    epfDeduction: fmt(findAmt(bd?.deductions, 'epf') || payslip.epf_employee || 0),
+    staffBill: fmt(findAmt(bd?.deductions, 'staff bill') || 0),
+    staffLoan: fmt(findAmt(bd?.deductions, 'loan') || payslip.loan_deduction || 0),
+    salaryAdvance: fmt(findAmt(bd?.deductions, 'advance') || payslip.advance_deduction || 0),
+    totalDeduction: fmt(totDedVal),
+    netSalary: fmt(netVal),
   }
 }
 
@@ -2781,7 +2814,7 @@ async function viewBreakdown(payslip) {
 }
 
 // ── PDF / Email ───────────────────────────────────────────────────────────────
-async function downloadPayslipPDF(payslip) {
+async function generatePayslipPdfDoc(payslip) {
   let bd = null
   try {
     const { data, error } = await supabase.rpc('get_payslip_breakdown', {
@@ -2790,44 +2823,44 @@ async function downloadPayslipPDF(payslip) {
     if (error) throw error
     bd = data
   } catch (err) {
-    $q.notify({ type: 'negative', message: 'Could not load payslip data: ' + err.message })
-    return
+    console.error('Error fetching breakdown:', err)
   }
 
   populatePdfData(payslip, bd)
-
-  $q.loading.show({ message: 'Generating Payslip PDF...' })
-
   await nextTick()
-  // Wait a moment for vue to render the hidden node and the logo image to load
-  await new Promise((r) => setTimeout(r, 150))
+  await new Promise((r) => setTimeout(r, 200))
 
+  const el = document.getElementById('payslip-print-view')
+  if (!el) throw new Error('Payslip template element not found')
+
+  const canvas = await html2canvas(el, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+  })
+
+  const imgData = canvas.toDataURL('image/jpeg', 1.0)
+  const pdfWidth = 105
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [pdfWidth, pdfHeight],
+  })
+
+  pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)
+  const filename = `Payslip_${pdfData.value?.code || 'EMP'}_${pdfData.value?.month || 'PAYROLL'}.pdf`
+  const dataUri = pdf.output('datauristring')
+  const base64 = dataUri.includes(',') ? dataUri.split(',')[1] : dataUri
+
+  return { pdf, filename, base64 }
+}
+
+async function downloadPayslipPDF(payslip) {
+  $q.loading.show({ message: 'Generating Payslip PDF...' })
   try {
-    const el = document.getElementById('payslip-print-view')
-    if (!el) throw new Error('Template element not found')
-
-    const canvas = await html2canvas(el, {
-      scale: 3,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    })
-
-    const imgData = canvas.toDataURL('image/jpeg', 1.0)
-
-    // Calculate PDF dimensions to perfectly fit the generated canvas maintaining aspect ratio
-    // A standard thermal receipt is around 80mm. Let's make this 105mm wide.
-    const pdfWidth = 105
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [pdfWidth, pdfHeight],
-    })
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight)
-
-    const filename = `Payslip_${pdfData.value.code}_${pdfData.value.month}.pdf`
+    const { pdf, filename } = await generatePayslipPdfDoc(payslip)
     pdf.save(filename)
     $q.notify({ type: 'positive', message: `Payslip downloaded: ${filename}` })
   } catch (err) {
@@ -2846,20 +2879,27 @@ async function sendPayslipEmail(payslip) {
     return
   }
   sendingEmail.value = payslip.id
+  $q.loading.show({ message: `Generating PDF and emailing to ${empName}...` })
   try {
+    // Generate official payslip PDF base64
+    const { base64, filename } = await generatePayslipPdfDoc(payslip)
+
     const { error } = await supabase.functions.invoke('send-payslip', {
       body: {
         payslip_id: payslip.id,
         period_start: selectedRun.value?.period_start,
         period_end: selectedRun.value?.period_end,
+        pdf_base64: base64,
+        filename: filename,
       },
     })
     if (error) throw error
-    $q.notify({ type: 'positive', message: `Payslip sent to ${empEmail}` })
+    $q.notify({ type: 'positive', icon: 'mark_email_read', message: `Payslip PDF successfully emailed to ${empEmail}` })
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Email failed: ' + (err.message || 'Unknown error') })
   } finally {
     sendingEmail.value = null
+    $q.loading.hide()
   }
 }
 

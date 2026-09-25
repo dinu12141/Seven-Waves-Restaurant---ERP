@@ -175,6 +175,7 @@ const routes = [
           { path: 'employees', component: () => import('pages/hr/EmployeesPage.vue'), meta: { permission: 'hr.employees.view' } },
           { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue'), meta: { permission: 'hr.attendance.view' } },
           { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue'), meta: { permission: 'hr.payroll.view' } },
+          { path: 'salary-config', component: () => import('pages/hr/SalaryConfigPage.vue'), meta: { permission: 'hr.payroll.view' } },
           { path: 'commission', component: () => import('pages/hr/CommissionPage.vue'), meta: { permission: 'hr.commission.view' } },
           { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue'), meta: { permission: 'hr.audit.view' } },
 

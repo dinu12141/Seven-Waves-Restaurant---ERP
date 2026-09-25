@@ -8,7 +8,7 @@
 //   SUPABASE_URL              – automatically injected
 //   SUPABASE_SERVICE_ROLE_KEY – automatically injected
 //   RESEND_API_KEY            – your Resend.com API key
-//   FROM_EMAIL                – verified sender address (e.g. payroll@yourcompany.lk)
+//   FROM_EMAIL                – verified sender address (e.g. hr@sevenwaves.lk)
 //
 // Request body (JSON):
 //   { payslip_id: string, period_start?: string, period_end?: string }
@@ -215,7 +215,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendKey   = Deno.env.get('RESEND_API_KEY')
-    const fromEmail   = Deno.env.get('FROM_EMAIL') || 'payroll@restaurant-erp.local'
+    const fromEmail   = Deno.env.get('FROM_EMAIL') || 'Seven Waves HR <hr@sevenwaves.lk>'
 
     // ── Authorization: payroll is HR/finance-only ────────────────────────
     const denied = await requireRole(req, supabaseUrl, supabaseKey, ['admin', 'hr', 'finance', 'manager'])
@@ -285,11 +285,21 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const emailPayload = {
+    const emailPayload: Record<string, unknown> = {
       from: fromEmail,
       to:   [employeeEmail],
-      subject: `Your Payslip — ${period_start || 'Current Period'}`,
+      subject: `Official Payslip: ${bd.employee || payslip.employees?.full_name} — ${period_start || 'Current Period'}`,
       html,
+    }
+
+    // Attach PDF if provided in request
+    if (body.pdf_base64) {
+      emailPayload.attachments = [
+        {
+          filename: body.filename || `Payslip_${bd.code || payslip.employees?.employee_code || 'Employee'}.pdf`,
+          content: body.pdf_base64,
+        },
+      ]
     }
 
     const resendRes = await fetch('https://api.resend.com/emails', {

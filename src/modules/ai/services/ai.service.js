@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
+import { sendEmail } from 'src/services/notifications/notificationGatewayService'
 import {
   validateInsight,
   validateForecast,
@@ -1500,11 +1501,34 @@ export function buildWhatsAppClickToChatUrl(phone, text) {
 }
 
 /**
- * Dispatches the daily briefing to owner via WhatsApp/Email.
+ * Dispatches the daily briefing to owner via WhatsApp & Email (Resend).
  */
 export async function dispatchOwnerBriefing(branchId, reportDate = null, channel = 'all') {
   const briefingRes = await generateOwnerDailyBriefing(branchId, reportDate)
   if (!briefingRes.success) return briefingRes
+
+  const targetDate = briefingRes.data.report_date || new Date().toISOString().split('T')[0]
+  const ownerEmail = 'dinushahssh@gmail.com'
+
+  // Send real email via Resend
+  let emailSent = false
+  let emailError = null
+  if (channel === 'all' || channel === 'email') {
+    try {
+      const emailRes = await sendEmail({
+        to: ownerEmail,
+        subject: `🌊 Executive Daily Business Briefing & EOD Report — Seven Waves Restaurant (${targetDate})`,
+        html: briefingRes.data.html_email,
+      })
+      if (emailRes.success) {
+        emailSent = true
+      } else {
+        emailError = emailRes.error
+      }
+    } catch (err) {
+      emailError = err.message
+    }
+  }
 
   // Record sent status in database
   try {
@@ -1512,10 +1536,11 @@ export async function dispatchOwnerBriefing(branchId, reportDate = null, channel
       .from('owner_daily_briefings')
       .update({
         status: 'sent',
+        owner_email: ownerEmail,
         sent_at: new Date().toISOString(),
       })
       .eq('branch_id', branchId)
-      .eq('report_date', briefingRes.data.report_date)
+      .eq('report_date', targetDate)
   } catch (dbErr) {
     console.debug('[AI Service] owner_daily_briefings update status fallback:', dbErr)
   }
@@ -1524,8 +1549,13 @@ export async function dispatchOwnerBriefing(branchId, reportDate = null, channel
     success: true,
     channel,
     recipient_phone: '+94717462205',
+    recipient_email: ownerEmail,
+    email_sent: emailSent,
+    email_error: emailError,
     whatsapp_url: briefingRes.data.whatsapp_url,
-    message: 'Owner Daily Briefing successfully compiled and prepared for dispatch.',
+    message: emailSent
+      ? `Owner Daily Briefing successfully dispatched to ${ownerEmail} and prepared for WhatsApp.`
+      : 'Owner Daily Briefing prepared for WhatsApp.',
   }
 }
 
