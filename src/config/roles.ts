@@ -694,6 +694,16 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'FINANCE',
     group: 'ERP Accounting',
   },
+  {
+    label: 'Journal Entries (GL)',
+    icon: 'menu_book',
+    to: '/finance/journal-entries',
+    roles: ['admin', 'finance'],
+    permission: 'finance.journal.view',
+    section: 'FINANCE',
+    moduleCode: 'FINANCE',
+    group: 'ERP Accounting',
+  },
   // ── Voucher Management ──
   {
     label: 'Pay Vouchers',
@@ -1423,6 +1433,16 @@ export const NAV_ITEMS: NavItem[] = [
     to: '/admin/backup',
     roles: ['admin'],
     permission: 'admin.backup.manage',
+    moduleCode: 'ADMIN',
+    section: 'SYSTEM',
+    group: 'Administration',
+  },
+  {
+    label: 'Security Center',
+    icon: 'admin_panel_settings',
+    to: '/admin/security-center',
+    roles: ['admin'],
+    permission: 'admin.settings.view',
     moduleCode: 'ADMIN',
     section: 'SYSTEM',
     group: 'Administration',

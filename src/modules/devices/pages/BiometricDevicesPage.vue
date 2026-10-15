@@ -5,8 +5,73 @@
 
     <div class="row items-center justify-between q-mb-md">
       <div class="text-subtitle1 text-weight-bold text-grey-8">Biometric Attendance Terminals</div>
-      <q-btn color="primary" icon="add" label="Add Device" no-caps @click="showAddDialog = true" />
+      <div class="row q-gutter-sm">
+        <q-btn
+          color="indigo-8"
+          icon="cloud_sync"
+          label="Cloud ADMS Setup"
+          no-caps
+          unelevated
+          @click="showAdmsDialog = true"
+        />
+        <q-btn
+          color="teal-8"
+          icon="upload_file"
+          label="Import USB Log (1_attlog.dat)"
+          no-caps
+          unelevated
+          @click="showUsbImportDialog = true"
+        />
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Add Device"
+          no-caps
+          unelevated
+          @click="showAddDialog = true"
+        />
+      </div>
     </div>
+
+    <!-- Cloud ADMS Live Gateway Banner -->
+    <q-card flat bordered class="q-mb-md bg-grey-10 text-white">
+      <q-card-section class="row items-center justify-between q-py-sm">
+        <div class="row items-center">
+          <q-avatar color="indigo-9" text-color="white" icon="cloud_queue" size="38px" class="q-mr-md" />
+          <div>
+            <div class="text-subtitle2 text-weight-bold row items-center">
+              Cloud ADMS Biometric Gateway
+              <q-badge color="positive" class="q-ml-sm">ACTIVE / LISTENING</q-badge>
+            </div>
+            <div class="text-caption text-grey-4">
+              Real-time push protocol for ZKTeco terminals &bull; Endpoint: <code>{{ admsConfig.serverDomain }}</code> (Port 443)
+            </div>
+          </div>
+        </div>
+        <div class="row items-center q-gutter-xs q-mt-xs q-mt-sm-none">
+          <q-btn
+            outline
+            dense
+            color="info"
+            icon="network_check"
+            label="Test Cloud Endpoint"
+            no-caps
+            class="q-px-sm"
+            :loading="testingAdms"
+            @click="runAdmsHealthCheck"
+          />
+          <q-btn
+            dense
+            color="indigo-7"
+            icon="menu_book"
+            label="Machine Config Guide"
+            no-caps
+            class="q-px-sm"
+            @click="showAdmsDialog = true"
+          />
+        </div>
+      </q-card-section>
+    </q-card>
 
     <div class="row q-gutter-md q-mb-lg">
       <q-card flat bordered class="col-12 col-md-3" v-for="stat in stats" :key="stat.label">
@@ -251,6 +316,156 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- USB Log File Import Dialog (1_attlog.dat) -->
+    <q-dialog v-model="showUsbImportDialog" persistent>
+      <q-card style="min-width: 580px; max-width: 95vw;">
+        <q-card-section class="row items-center justify-between bg-teal-8 text-white q-py-sm">
+          <div class="row items-center">
+            <q-icon name="file_upload" size="24px" class="q-mr-sm" />
+            <div class="text-h6 text-weight-bold">Import Fingerprint Data from USB Flash Drive</div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <div class="text-caption text-grey-8 q-mb-md">
+            Plug any USB flash drive into your ZKTeco device, go to
+            <strong>Menu &rarr; Data Mgt. &rarr; Download Att. Log</strong>, and upload the generated
+            <code>1_attlog.dat</code>, <code>attlog.dat</code>, or <code>.csv</code> file here.
+            All historical fingerprint punches will be imported and attendance records recalculated instantly.
+          </div>
+
+          <q-file
+            v-model="usbFile"
+            label="Select 1_attlog.dat or CSV from USB"
+            outlined
+            dense
+            accept=".dat,.txt,.csv"
+            @update:model-value="onUsbFileSelected"
+          >
+            <template #prepend>
+              <q-icon name="attach_file" color="teal" />
+            </template>
+          </q-file>
+
+          <div v-if="parsingUsb" class="q-mt-md text-center">
+            <q-spinner color="teal" size="32px" />
+            <div class="text-caption text-grey-6 q-mt-xs">Parsing punch records...</div>
+          </div>
+
+          <div v-if="parsedUsbSummary" class="q-mt-md q-pa-md bg-grey-2 rounded-borders">
+            <div class="text-weight-bold text-teal-9 row items-center q-mb-xs">
+              <q-icon name="check_circle" size="20px" class="q-mr-xs" />
+              File Verified — Ready to Import
+            </div>
+            <div class="text-caption text-grey-9 q-gutter-y-xs">
+              <div><strong>Total Punches in File:</strong> {{ parsedUsbSummary.total }}</div>
+              <div><strong>Date Range:</strong> {{ parsedUsbSummary.startDate }} &mdash; {{ parsedUsbSummary.endDate }}</div>
+              <div><strong>Unique Employee PINs:</strong> {{ parsedUsbSummary.uniquePins }}</div>
+              <div class="text-grey-6">
+                <em>Duplicate punches are automatically skipped by database constraints.</em>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="between" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            color="teal-8"
+            label="Import All Punches Now"
+            icon="cloud_upload"
+            no-caps
+            :loading="importingUsb"
+            :disable="!parsedUsbPunches.length"
+            @click="executeUsbImport"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Cloud ADMS Setup Dialog -->
+    <q-dialog v-model="showAdmsDialog">
+      <q-card style="min-width: 600px; max-width: 95vw;">
+        <q-card-section class="row items-center justify-between bg-indigo-9 text-white q-py-sm">
+          <div class="row items-center">
+            <q-icon name="cloud_sync" size="24px" class="q-mr-sm" />
+            <div class="text-h6 text-weight-bold">ZKTeco Cloud ADMS Setup Guide</div>
+          </div>
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <div class="text-subtitle2 text-weight-bold q-mb-sm text-indigo-9">
+            Configure these parameters on your ZKTeco Terminal (Menu &rarr; Comm. &rarr; Cloud Server / ADMS):
+          </div>
+
+          <q-list bordered separator class="rounded-borders q-mb-md">
+            <q-item>
+              <q-item-section>
+                <q-item-label caption>Server Address / Domain</q-item-label>
+                <q-item-label class="text-weight-bold text-body1">{{ admsConfig.serverDomain }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense icon="content_copy" size="sm" @click="copyText(admsConfig.serverDomain, 'Server Domain copied!')">
+                  <q-tooltip>Copy</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+
+            <q-item>
+              <q-item-section>
+                <q-item-label caption>Server Port</q-item-label>
+                <q-item-label class="text-weight-bold text-body1">{{ admsConfig.serverPort }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense icon="content_copy" size="sm" @click="copyText(admsConfig.serverPort, 'Port copied!')">
+                  <q-tooltip>Copy</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+
+            <q-item>
+              <q-item-section>
+                <q-item-label caption>Enable Domain Name</q-item-label>
+                <q-item-label class="text-weight-bold text-body1">YES / On</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item>
+              <q-item-section>
+                <q-item-label caption>Web Server Path (if prompt appears)</q-item-label>
+                <q-item-label class="text-weight-bold text-caption ellipsis text-grey-8">{{ admsConfig.webPath }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense icon="content_copy" size="sm" @click="copyText(admsConfig.webPath, 'Path copied!')">
+                  <q-tooltip>Copy</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div class="text-subtitle2 text-weight-bold q-mb-xs">Step-by-Step Terminal Instructions:</div>
+          <ol class="text-caption text-grey-8 q-pl-md q-gutter-y-xs">
+            <li v-for="(inst, idx) in admsConfig.instructions" :key="idx">{{ inst }}</li>
+          </ol>
+        </q-card-section>
+
+        <q-card-actions align="between" class="q-px-md q-pb-md">
+          <q-btn
+            outline
+            color="info"
+            icon="network_check"
+            label="Test Cloud Endpoint"
+            no-caps
+            :loading="testingAdms"
+            @click="runAdmsHealthCheck"
+          />
+          <q-btn color="indigo" label="Done" v-close-popup no-caps />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -262,6 +477,12 @@ import { useAuthStore } from 'src/stores/auth'
 import { useDeviceStore } from '../stores/device.store'
 import DeviceNavHeader from '../components/DeviceNavHeader.vue'
 import { ZKTecoClient, isDesktopAvailable } from '../services/zkteco.service'
+import {
+  getAdmsConfig,
+  testCloudAdmsHealth,
+  parseUsbAttlogText,
+  importAttlogPunches,
+} from '../services/biometric.service'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -284,6 +505,17 @@ const companyId = ref(null)
 const selectedBrandPreset = ref('zkteco')
 const testingConnection = ref(false)
 const testResult = ref(null)
+
+const admsConfig = getAdmsConfig()
+const showAdmsDialog = ref(false)
+const testingAdms = ref(false)
+
+const showUsbImportDialog = ref(false)
+const usbFile = ref(null)
+const parsedUsbPunches = ref([])
+const parsedUsbSummary = ref(null)
+const parsingUsb = ref(false)
+const importingUsb = ref(false)
 
 const biometricBrandPresets = [
   { label: 'ZKTeco / eSSL / Realtime / Biomax (UDP/TCP 4370)', value: 'zkteco', defaultPort: 4370 },
@@ -482,6 +714,101 @@ async function checkDeviceInfo(device) {
     })
   } else {
     $q.notify({ type: 'negative', message: result.error || 'Could not reach device' })
+  }
+}
+
+function copyText(text, successMsg) {
+  navigator.clipboard?.writeText(String(text))
+  $q.notify({ type: 'positive', message: successMsg || 'Copied to clipboard!' })
+}
+
+async function runAdmsHealthCheck() {
+  testingAdms.value = true
+  try {
+    const res = await testCloudAdmsHealth()
+    if (res.success) {
+      $q.notify({
+        type: 'positive',
+        icon: 'check_circle',
+        message: 'Cloud ADMS Endpoint is ONLINE and ready to receive ZKTeco pushes!',
+      })
+    } else {
+      $q.notify({
+        type: 'warning',
+        icon: 'warning',
+        message: 'Cloud ADMS check: ' + (res.error || 'Server response delayed'),
+      })
+    }
+  } finally {
+    testingAdms.value = false
+  }
+}
+
+async function onUsbFileSelected(file) {
+  if (!file) {
+    parsedUsbPunches.value = []
+    parsedUsbSummary.value = null
+    return
+  }
+  parsingUsb.value = true
+  try {
+    const text = await file.text()
+    const list = parseUsbAttlogText(text)
+    parsedUsbPunches.value = list
+
+    if (list.length === 0) {
+      $q.notify({ type: 'warning', message: 'No valid attendance punch lines detected in this file.' })
+      parsedUsbSummary.value = null
+      return
+    }
+
+    const uniquePins = new Set(list.map((p) => p.pin)).size
+    parsedUsbSummary.value = {
+      total: list.length,
+      startDate: list[0]?.punchTime ? list[0].punchTime.slice(0, 10) : '—',
+      endDate: list[list.length - 1]?.punchTime ? list[list.length - 1].punchTime.slice(0, 10) : '—',
+      uniquePins,
+    }
+
+    $q.notify({ type: 'positive', message: `Parsed ${list.length} punches for ${uniquePins} employee(s)!` })
+  } catch (err) {
+    console.error('USB Parse Error:', err)
+    $q.notify({ type: 'negative', message: 'Failed to read file: ' + err.message })
+  } finally {
+    parsingUsb.value = false
+  }
+}
+
+async function executeUsbImport() {
+  if (!parsedUsbPunches.value.length) return
+  importingUsb.value = true
+  try {
+    const result = await importAttlogPunches({
+      punches: parsedUsbPunches.value,
+      companyId: companyId.value,
+      branchId: branchId.value,
+      deviceId: usbFile.value?.name || 'ZKTeco-USB-Import',
+    })
+
+    if (!result.success) throw new Error(result.error)
+
+    $q.notify({
+      type: 'positive',
+      icon: 'cloud_done',
+      message: `Successfully imported ${result.insertedCount} punches (${result.matchedCount} matched to employee master)!`,
+    })
+
+    showUsbImportDialog.value = false
+    usbFile.value = null
+    parsedUsbPunches.value = []
+    parsedUsbSummary.value = null
+
+    await loadPunches()
+  } catch (err) {
+    console.error('USB Import Error:', err)
+    $q.notify({ type: 'negative', message: 'Import failed: ' + err.message })
+  } finally {
+    importingUsb.value = false
   }
 }
 </script>

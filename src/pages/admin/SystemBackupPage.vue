@@ -53,7 +53,7 @@
             <q-avatar size="42px" color="warning" text-color="white" icon="security" class="q-mr-md" />
             <div>
               <div class="text-caption text-grey-5">Database Engine</div>
-              <div class="text-h6 text-weight-bold">PostgreSQL 15+</div>
+              <div class="text-h6 text-weight-bold">Enterprise Cloud DB</div>
             </div>
           </q-card-section>
         </q-card>
@@ -71,7 +71,7 @@
         class="text-grey-7 bg-grey-1 border-bottom"
       >
         <q-tab name="create" icon="download" label="1-Click Backup Export" />
-        <q-tab name="cloud" icon="cloud" label="Supabase Cloud Snapshots" />
+        <q-tab name="cloud" icon="cloud" label="Cloud Snapshots" />
         <q-tab name="gdrive" icon="add_to_drive" label="Google Drive Cloud Sync" />
         <q-tab name="restore" icon="restore" label="Restore & Recovery" />
         <q-tab name="history" icon="history" label="Backup Audit History" />
@@ -202,7 +202,7 @@
                 color="grey-9"
                 :options="[
                   { label: 'JSON Archive (.json)', value: 'json', icon: 'data_object' },
-                  { label: 'PostgreSQL SQL Script (.sql)', value: 'sql', icon: 'code' },
+                  { label: 'Standard SQL Script (.sql)', value: 'sql', icon: 'code' },
                 ]"
               />
             </div>
@@ -254,7 +254,7 @@
         <q-tab-panel name="cloud" class="q-pa-md">
           <div class="row items-center justify-between q-mb-md">
             <div>
-              <div class="text-subtitle1 text-weight-bold">Supabase Cloud Snapshots (system-backups Bucket)</div>
+              <div class="text-subtitle1 text-weight-bold">Cloud Snapshots (Encrypted Storage)</div>
               <div class="text-caption text-grey-5">Daily automated snapshots and manual archives stored in private encrypted cloud storage.</div>
             </div>
             <div class="q-gutter-x-sm">
@@ -270,7 +270,7 @@
             row-key="path"
             dense
             :loading="loadingCloud"
-            no-data-label="No snapshots found in Supabase storage bucket"
+            no-data-label="No snapshots found in cloud storage"
           >
             <template v-slot:body-cell-source="props">
               <q-td :props="props">
@@ -532,14 +532,14 @@
             <q-separator />
             <q-toggle
               v-model="cloudSyncEnabled"
-              label="Supabase Continuous Point-in-Time-Recovery (PITR) Enabled"
+              label="Continuous Point-in-Time-Recovery (PITR) Enabled"
               color="positive"
               disable
             />
             <q-separator />
             <div class="text-caption text-grey-5">
               <q-icon name="info" color="primary" class="q-mr-xs" />
-              Database tables are continuously replicated with Write-Ahead Logging (WAL) in AWS S3 storage for full Point-in-Time disaster recovery.
+              Database tables are continuously replicated with Write-Ahead Logging (WAL) in encrypted cloud storage for full Point-in-Time disaster recovery.
             </div>
           </div>
         </q-tab-panel>
@@ -732,9 +732,9 @@ async function runBackup(target = 'download') {
 
       lastResult.value = {
         ...result,
-        message: 'Backup securely archived to Supabase Cloud Storage (system-backups)!',
+        message: 'Backup securely archived to Cloud Storage!',
       }
-      $q.notify({ type: 'positive', icon: 'cloud_done', message: 'Saved to Supabase Cloud Storage!' })
+      $q.notify({ type: 'positive', icon: 'cloud_done', message: 'Saved to Cloud Storage!' })
       refreshCloudBackups()
     } else {
       // Upload directly to Google Drive

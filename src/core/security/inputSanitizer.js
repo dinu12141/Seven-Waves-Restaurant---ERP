@@ -266,3 +266,17 @@ export function securityScan(payload) {
 
   return { safe: issues.length === 0, issues }
 }
+
+/**
+ * Quick check if input contains any dangerous XSS, SQLi, or prompt injection pattern.
+ */
+export function containsDangerousPattern(input) {
+  if (typeof input !== 'string') return false
+  const xss = detectXSS(input)
+  if (!xss.safe) return true
+  const sqli = detectSQLInjection(input)
+  if (!sqli.safe) return true
+  const prompt = detectPromptInjection(input)
+  if (!prompt.safe) return true
+  return false
+}

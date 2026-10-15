@@ -102,9 +102,9 @@ export function recordBackupHistory(item: BackupHistoryItem) {
 /** Convert raw JSON table data into executable PostgreSQL SQL INSERT script */
 export function generateSqlDump(dumpData: Record<string, any[]>): string {
   const lines: string[] = []
-  lines.push('-- Seven Waves Restaurant ERP — PostgreSQL Backup Dump')
+  lines.push('-- Seven Waves Restaurant ERP — Database Backup Dump')
   lines.push(`-- Generated At: ${new Date().toISOString()}`)
-  lines.push('-- Compatibility: PostgreSQL 14+ / Supabase')
+  lines.push('-- Compatibility: Standard SQL / Relational Engine')
   lines.push('\nBEGIN;\n')
 
   for (const [tableName, rows] of Object.entries(dumpData)) {

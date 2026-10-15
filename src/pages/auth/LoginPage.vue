@@ -34,8 +34,8 @@
             <p class="welcome-sub">Sign in to manage your restaurant</p>
           </div>
 
-          <!-- Login Mode Toggle -->
-          <div class="login-mode-toggle">
+          <!-- Login Mode Toggle (hidden during MFA challenge) -->
+          <div v-if="!mfaChallengeRequired" class="login-mode-toggle">
             <button
               class="mode-btn"
               :class="{ active: loginMode === 'email' }"
@@ -69,7 +69,52 @@
             />
           </div>
 
-          <q-form @submit.prevent="handleLogin" class="login-form">
+          <!-- MFA 2FA Challenge Screen -->
+          <div v-if="mfaChallengeRequired" class="mfa-challenge-box q-pa-md q-mb-md rounded-borders bg-grey-1 shadow-sm">
+            <div class="row items-center q-mb-md">
+              <div class="bg-deep-purple text-white q-pa-xs rounded-borders q-mr-sm">
+                <q-icon name="verified_user" size="24px" />
+              </div>
+              <div>
+                <div class="text-subtitle1 text-weight-bold text-dark">Two-Factor Authentication</div>
+                <div class="text-caption text-grey-7">Enter the 6-digit code from your authenticator app</div>
+              </div>
+            </div>
+
+            <div class="field-group q-mb-md">
+              <label class="field-label">Security Code</label>
+              <div class="custom-input-wrapper focused">
+                <q-icon name="pin" size="18px" class="input-icon text-deep-purple" />
+                <input
+                  v-model="mfaCode"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="000000"
+                  class="custom-input text-center text-weight-bold text-h6 text-deep-purple"
+                  style="letter-spacing: 0.25em;"
+                  autofocus
+                  @keyup.enter="handleMfaVerify"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="submit-btn"
+              :disabled="mfaCode.length !== 6 || loading"
+              @click="handleMfaVerify"
+            >
+              <q-spinner-dots v-if="loading" size="20px" color="white" />
+              <span v-else>Verify &amp; Continue</span>
+            </button>
+
+            <div class="text-center q-mt-sm">
+              <q-btn flat dense no-caps color="grey-7" label="← Cancel &amp; return to login" size="sm" @click="cancelMfa" />
+            </div>
+          </div>
+
+          <q-form v-else @submit.prevent="handleLogin" class="login-form">
             <!-- EMAIL MODE -->
             <template v-if="loginMode === 'email'">
               <div class="field-group">
@@ -221,6 +266,8 @@ import { useAuthStore } from 'src/stores/auth'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 
+import { mfaService } from 'src/core/security/mfaService'
+
 const router = useRouter()
 const authStore = useAuthStore()
 const $q = useQuasar()
@@ -235,6 +282,11 @@ const errorMessage = ref('')
 const emailFocused = ref(false)
 const codeFocused = ref(false)
 const pwFocused = ref(false)
+
+// 2FA / MFA state
+const mfaChallengeRequired = ref(false)
+const mfaCode = ref('')
+const mfaFactorId = ref('')
 
 // Filter input to only allow digits
 function filterNumericOnly(e) {
@@ -280,11 +332,21 @@ const handleLogin = async () => {
       return
     }
 
+    // ── Check if Two-Factor Authentication (2FA) is enrolled ──
+    const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.data?.nextLevel === 'aal2' && aal?.data?.currentLevel !== 'aal2') {
+      const factors = await supabase.auth.mfa.listFactors()
+      const verifiedFactor = factors?.data?.totp?.find((f) => f.status === 'verified')
+      if (verifiedFactor) {
+        mfaFactorId.value = verifiedFactor.id
+        mfaChallengeRequired.value = true
+        loading.value = false
+        return
+      }
+    }
+
     // Role-based redirect using single source of truth defaultLandingPage
     const targetPath = authStore.defaultLandingPage || '/dashboard'
-    // Always clear the spinner — if the route guard bounces the target (e.g. a
-    // brief branch-context gap), navigation resolves without moving and the
-    // button would otherwise spin forever. Surface a message if we didn't move.
     try {
       await router.push(targetPath)
       if (router.currentRoute.value.path.startsWith('/auth')) {
@@ -299,6 +361,28 @@ const handleLogin = async () => {
     errorMessage.value = 'An unexpected error occurred. Please try again.'
     loading.value = false
   }
+}
+
+async function handleMfaVerify() {
+  if (!mfaFactorId.value || mfaCode.value.length !== 6) return
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    await mfaService.verifyLogin(mfaFactorId.value, mfaCode.value)
+    const targetPath = authStore.defaultLandingPage || '/dashboard'
+    await router.push(targetPath)
+  } catch {
+    errorMessage.value = 'Invalid 6-digit authentication code. Please check your app and try again.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function cancelMfa() {
+  mfaChallengeRequired.value = false
+  mfaCode.value = ''
+  mfaFactorId.value = ''
+  await authStore.signOut()
 }
 
 async function handleForgotPassword() {

@@ -145,9 +145,8 @@ const routes = [
           { path: 'reports', component: () => import('pages/finance/FinanceReportsPage.vue'), meta: { permission: 'finance.reports.view' } },
           { path: 'audit', component: () => import('pages/finance/FinanceAuditPage.vue'), meta: { permission: 'finance.audit.view' } },
 
-          // ── Backward-compatibility redirects (old paths → new ERP) ──
+          { path: 'journal-entries', component: () => import('src/modules/finance/pages/JournalEntriesPage.vue'), meta: { permission: 'finance.journal.view' } },
           { path: 'chart-of-accounts', redirect: '/finance/ledgers' },
-          { path: 'journal-entries', redirect: '/finance/pay-vouchers' },
           { path: 'general-ledger', redirect: '/finance/ledgers' },
           { path: 'trial-balance', redirect: '/finance/financial-statements' },
           { path: 'cash-bank', redirect: '/finance/cashbook' },
@@ -290,6 +289,11 @@ const routes = [
         path: 'admin/backup',
         component: () => import('pages/admin/SystemBackupPage.vue'),
         meta: { requiresAuth: true, roles: ['admin'], module: 'admin', permission: 'admin.backup.manage' },
+      },
+      {
+        path: 'admin/security-center',
+        component: () => import('pages/admin/SecurityCenterPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin'], module: 'admin', permission: 'admin.settings.view' },
       },
       {
         path: 'audit',

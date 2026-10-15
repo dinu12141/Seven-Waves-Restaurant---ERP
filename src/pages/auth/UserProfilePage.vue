@@ -56,7 +56,8 @@
 
       <!-- Right Column: Settings -->
       <div class="col-12 col-md-7">
-        <q-card flat bordered class="bg-white">
+        <!-- Password Settings -->
+        <q-card flat bordered class="bg-white q-mb-md">
           <q-card-section class="bg-grey-1 border-bottom">
             <div class="text-h6 flex items-center">
               <q-icon name="lock" class="q-mr-sm text-primary" />
@@ -104,17 +105,86 @@
             </q-form>
           </q-card-section>
         </q-card>
+
+        <!-- Two-Factor Authentication (2FA) Card -->
+        <q-card flat bordered class="bg-white">
+          <q-card-section class="bg-grey-1 border-bottom row items-center justify-between">
+            <div>
+              <div class="text-h6 flex items-center">
+                <q-icon name="verified_user" class="q-mr-sm text-deep-purple" />
+                Two-Factor Authentication (2FA)
+              </div>
+              <div class="text-caption text-grey-7">Protect your account with Google Authenticator (TOTP).</div>
+            </div>
+            <q-badge
+              :color="mfaStatus.enabled ? 'positive' : 'grey-6'"
+              text-color="white"
+              class="text-weight-bold q-px-sm"
+            >
+              {{ mfaStatus.enabled ? 'ENABLED' : 'DISABLED' }}
+            </q-badge>
+          </q-card-section>
+
+          <q-card-section class="q-pa-lg">
+            <div v-if="mfaStatus.enabled" class="row items-center justify-between">
+              <div>
+                <div class="text-subtitle2 text-weight-bold text-positive flex items-center">
+                  <q-icon name="check_circle" class="q-mr-xs" /> 2FA is Active
+                </div>
+                <div class="text-caption text-grey-7">
+                  Your account requires a 6-digit verification code from your authenticator app on every login.
+                </div>
+              </div>
+              <q-btn
+                flat
+                color="negative"
+                label="Disable 2FA"
+                icon="shield"
+                no-caps
+                @click="disableMfa"
+              />
+            </div>
+
+            <div v-else class="row items-center justify-between">
+              <div>
+                <div class="text-subtitle2 text-weight-bold text-dark">
+                  Two-Factor Authentication is currently disabled
+                </div>
+                <div class="text-caption text-grey-7">
+                  We strongly recommend enabling 2FA for all administrative and finance personnel.
+                </div>
+              </div>
+              <q-btn
+                unelevated
+                color="deep-purple"
+                label="Enable 2FA"
+                icon="add_moderator"
+                no-caps
+                class="text-weight-bold"
+                @click="showMfaModal = true"
+              />
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
+
+    <!-- MFA Enrollment Modal -->
+    <MfaEnrollmentDialog
+      v-model="showMfaModal"
+      @enrolled="checkMfaStatus"
+    />
   </q-page>
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
+import { mfaService } from 'src/core/security/mfaService'
+import MfaEnrollmentDialog from 'src/core/security/components/MfaEnrollmentDialog.vue'
 
 const authStore = useAuthStore()
 const $q = useQuasar()
@@ -164,6 +234,42 @@ const updatePassword = async () => {
     saving.value = false
   }
 }
+
+// ── MFA / 2FA Management ───────────────────────────────────────────────────
+const showMfaModal = ref(false)
+const mfaStatus = ref({
+  enabled: false,
+  factorId: null,
+  factorName: null,
+})
+
+async function checkMfaStatus() {
+  const status = await mfaService.getStatus()
+  mfaStatus.value = status
+}
+
+function disableMfa() {
+  $q.dialog({
+    title: 'Disable Two-Factor Authentication',
+    message: 'Are you sure you want to disable 2FA? Your account will only be protected by your password.',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Disable 2FA', color: 'negative', unelevated: true },
+  }).onOk(async () => {
+    if (!mfaStatus.value.factorId) return
+    try {
+      await mfaService.unenroll(mfaStatus.value.factorId)
+      $q.notify({ type: 'positive', message: 'Two-factor authentication disabled' })
+      await checkMfaStatus()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err.message || 'Failed to disable 2FA' })
+    }
+  })
+}
+
+onMounted(async () => {
+  await checkMfaStatus()
+})
 </script>
 
 <style scoped>

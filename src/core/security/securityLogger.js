@@ -109,6 +109,21 @@ async function escalateSecurityEvent(entry) {
     // Silent fail — audit write must never crash the app
   }
 
+  // Tertiary: Dispatch real-time alert via Telegram, Discord, and in-app banner
+  try {
+    import('./securityAlertService').then(({ securityAlertService }) => {
+      securityAlertService.dispatchAlert({
+        title: `${(entry.category || 'System').toUpperCase()} Security Event`,
+        message: entry.message,
+        severity: entry.severity,
+        category: entry.category,
+        metadata: entry.metadata,
+      }).catch(() => {})
+    }).catch(() => {})
+  } catch {
+    // Non-blocking alerting fail-safe
+  }
+
   // Secondary: localStorage as offline fallback display cache only (not a security record)
   try {
     if (typeof localStorage !== 'undefined') {
