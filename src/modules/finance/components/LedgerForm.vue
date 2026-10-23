@@ -65,7 +65,7 @@
 
             <!-- SECTION: Opening Balance -->
             <div class="fin-section">
-              <div class="fin-section__title"><q-icon name="payments" size="15px" class="q-mr-xs" />OPENING BALANCE</div>
+              <div class="fin-section__title"><q-icon name="payments" size="15px" class="q-mr-xs" />OPENING &amp; CURRENT BALANCE</div>
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-md-7">
                   <div class="fin-label">Opening Balance</div>
@@ -78,6 +78,20 @@
                   <q-select v-model="form.opening_balance_type" outlined dense :dark="$q.dark.isActive"
                     emit-value map-options :options="[{label:'Debit',value:'debit'},{label:'Credit',value:'credit'}]"
                     hide-bottom-space />
+                </div>
+                <div v-if="isEdit" class="col-12">
+                  <div class="fin-label">Current Balance (Live)</div>
+                  <q-input v-model.number="form.current_balance" outlined dense :dark="$q.dark.isActive"
+                    type="number" step="0.01" prefix="LKR" hide-bottom-space>
+                    <template #append>
+                      <q-badge :color="form.current_balance >= 0 ? 'green' : 'red'">
+                        {{ form.current_balance >= 0 ? 'Surplus / Active' : 'Deficit / Overdrawn' }}
+                      </q-badge>
+                    </template>
+                  </q-input>
+                  <div class="text-caption text-grey-7 q-mt-xs">
+                    Direct balance adjustment updates this ledger and its linked accounts in real time.
+                  </div>
                 </div>
               </div>
               <div class="fin-hint">
@@ -148,7 +162,7 @@ function genCode() {
 
 const defaultForm = () => ({
   ledger_name: '', ledger_code: '', ledger_type: '', ledger_nature: '', account_group: '',
-  opening_balance: 0, opening_balance_type: 'debit',
+  opening_balance: 0, opening_balance_type: 'debit', current_balance: 0,
   is_cashbook_ledger: false, is_bank_ledger: false, is_petty_cash_ledger: false,
   is_system_ledger: false, is_active: true,
 })

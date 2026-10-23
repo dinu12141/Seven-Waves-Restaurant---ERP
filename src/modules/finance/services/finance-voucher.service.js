@@ -179,26 +179,112 @@ export const financeVoucherService = {
     if (error) throw error
     if (!result?.success) throw new Error(result?.error || 'Failed to post voucher')
 
-    // Apply account balance delta for account_id and bank_id
+    // Double-entry balance updates for ledgers and accounts (if not already handled in DB RPC)
     const amt = Number(before.amount) || 0
-    const delta = before.voucher_type === 'pay' ? -amt : amt
-    if (amt > 0) {
-      const targetAccounts = new Set()
-      if (before.account_id) targetAccounts.add(before.account_id)
-      if (before.bank_id) targetAccounts.add(before.bank_id)
+    if (amt > 0 && !result.already_posted && !result.double_entry_v2) {
+      if (before.voucher_type === 'pay') {
+        // 1. Expense / Category Ledger (before.ledger_id):
+        // Note: post_finance_voucher RPC subtracted amt (v_delta = -amt).
+        // For an expense (e.g. Electricity), the expense incurred increases (+amt).
+        // To fix (current - amt) to (current + amt), we add 2 * amt:
+        if (before.ledger_id) {
+          const { data: catLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', before.ledger_id).single()
+          if (catLed) {
+            await supabase.from('finance_ledgers').update({
+              current_balance: Number(catLed.current_balance || 0) + (2 * amt),
+              updated_at: new Date().toISOString(),
+            }).eq('id', before.ledger_id)
+          }
 
-      if (targetAccounts.size === 0 && before.ledger_id) {
-        const { data: matchedAccs } = await supabase.from('finance_accounts').select('id').eq('ledger_id', before.ledger_id)
-        if (matchedAccs?.length) {
-          matchedAccs.forEach(a => targetAccounts.add(a.id))
+          // If there is an account in finance_accounts linked to this expense ledger, increase its balance (+amt)
+          const { data: catAccs } = await supabase.from('finance_accounts').select('id, current_balance').eq('ledger_id', before.ledger_id)
+          if (catAccs?.length) {
+            for (const ca of catAccs) {
+              await supabase.from('finance_accounts').update({
+                current_balance: Number(ca.current_balance || 0) + amt,
+                updated_at: new Date().toISOString(),
+              }).eq('id', ca.id)
+            }
+          }
+        }
+
+        // 2. Paying Cash / Bank Account (before.account_id or before.bank_id):
+        // Cash reduces (-amt)
+        const cashAccId = before.account_id || before.bank_id
+        if (cashAccId) {
+          const { data: payAcc } = await supabase.from('finance_accounts').select('id, current_balance, ledger_id').eq('id', cashAccId).single()
+          if (payAcc) {
+            // Deduct Cash Account (-amt)
+            await supabase.from('finance_accounts').update({
+              current_balance: Number(payAcc.current_balance || 0) - amt,
+              updated_at: new Date().toISOString(),
+            }).eq('id', payAcc.id)
+
+            // Deduct Cash Ledger in finance_ledgers (-amt)
+            if (payAcc.ledger_id) {
+              const { data: payLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', payAcc.ledger_id).single()
+              if (payLed) {
+                await supabase.from('finance_ledgers').update({
+                  current_balance: Number(payLed.current_balance || 0) - amt,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', payAcc.ledger_id)
+              }
+            }
+          }
+        }
+      } else {
+        // Received Voucher:
+        // 1. Cash / Bank Account receives money (+amt)
+        const cashAccId = before.account_id || before.bank_id
+        if (cashAccId) {
+          const { data: recAcc } = await supabase.from('finance_accounts').select('id, current_balance, ledger_id').eq('id', cashAccId).single()
+          if (recAcc) {
+            await supabase.from('finance_accounts').update({
+              current_balance: Number(recAcc.current_balance || 0) + amt,
+              updated_at: new Date().toISOString(),
+            }).eq('id', recAcc.id)
+
+            if (recAcc.ledger_id) {
+              const { data: recLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', recAcc.ledger_id).single()
+              if (recLed) {
+                await supabase.from('finance_ledgers').update({
+                  current_balance: Number(recLed.current_balance || 0) + amt,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', recAcc.ledger_id)
+              }
+            }
+          }
+        }
+
+        // 2. Category / Income Account (if any) linked to ledger
+        if (before.ledger_id) {
+          const { data: incAccs } = await supabase.from('finance_accounts').select('id, current_balance').eq('ledger_id', before.ledger_id)
+          if (incAccs?.length) {
+            for (const ia of incAccs) {
+              await supabase.from('finance_accounts').update({
+                current_balance: Number(ia.current_balance || 0) + amt,
+                updated_at: new Date().toISOString(),
+              }).eq('id', ia.id)
+            }
+          }
         }
       }
 
-      for (const accId of targetAccounts) {
-        const { data: acc } = await supabase.from('finance_accounts').select('current_balance').eq('id', accId).single()
-        if (acc) {
-          const newBal = Number(acc.current_balance || 0) + delta
-          await supabase.from('finance_accounts').update({ current_balance: newBal, updated_at: new Date().toISOString() }).eq('id', accId)
+      // 3. Multi-ledger lines (if any)
+      if (before.lines?.length) {
+        for (const line of before.lines) {
+          if (line.ledger_id) {
+            const lineDelta = (Number(line.debit_amount) || 0) - (Number(line.credit_amount) || 0)
+            if (lineDelta !== 0) {
+              const { data: lineLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', line.ledger_id).single()
+              if (lineLed) {
+                await supabase.from('finance_ledgers').update({
+                  current_balance: Number(lineLed.current_balance || 0) + lineDelta,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', line.ledger_id)
+              }
+            }
+          }
         }
       }
     }
@@ -228,23 +314,101 @@ export const financeVoucherService = {
 
     const after = await this.getById(id)
     if (!result.already_cancelled) {
-      // Apply inverse account balance delta if was posted
       const amt = Number(before.amount) || 0
-      const delta = before.voucher_type === 'pay' ? amt : -amt
       if (amt > 0 && before.status === 'posted') {
-        if (before.account_id) {
-          await supabase.rpc('increment_field', { table_name: 'finance_accounts', row_id: before.account_id, field_name: 'current_balance', increment_by: delta }).catch(() => {
-            supabase.from('finance_accounts').select('current_balance').eq('id', before.account_id).single().then(({ data }) => {
-              if (data) supabase.from('finance_accounts').update({ current_balance: Number(data.current_balance || 0) + delta }).eq('id', before.account_id)
-            })
-          })
+        if (before.voucher_type === 'pay') {
+          // Revert Expense Ledger: RPC added amt back, so we subtract (2 * amt) to revert:
+          if (before.ledger_id) {
+            const { data: catLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', before.ledger_id).single()
+            if (catLed) {
+              await supabase.from('finance_ledgers').update({
+                current_balance: Number(catLed.current_balance || 0) - (2 * amt),
+                updated_at: new Date().toISOString(),
+              }).eq('id', before.ledger_id)
+            }
+            const { data: catAccs } = await supabase.from('finance_accounts').select('id, current_balance').eq('ledger_id', before.ledger_id)
+            if (catAccs?.length) {
+              for (const ca of catAccs) {
+                await supabase.from('finance_accounts').update({
+                  current_balance: Number(ca.current_balance || 0) - amt,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', ca.id)
+              }
+            }
+          }
+
+          // Revert Cash Account & Linked Ledger (+amt)
+          const cashAccId = before.account_id || before.bank_id
+          if (cashAccId) {
+            const { data: payAcc } = await supabase.from('finance_accounts').select('id, current_balance, ledger_id').eq('id', cashAccId).single()
+            if (payAcc) {
+              await supabase.from('finance_accounts').update({
+                current_balance: Number(payAcc.current_balance || 0) + amt,
+                updated_at: new Date().toISOString(),
+              }).eq('id', payAcc.id)
+
+              if (payAcc.ledger_id) {
+                const { data: payLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', payAcc.ledger_id).single()
+                if (payLed) {
+                  await supabase.from('finance_ledgers').update({
+                    current_balance: Number(payLed.current_balance || 0) + amt,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', payAcc.ledger_id)
+                }
+              }
+            }
+          }
+        } else {
+          // Revert Received Voucher: Cash Account & Linked Ledger (-amt)
+          const cashAccId = before.account_id || before.bank_id
+          if (cashAccId) {
+            const { data: recAcc } = await supabase.from('finance_accounts').select('id, current_balance, ledger_id').eq('id', cashAccId).single()
+            if (recAcc) {
+              await supabase.from('finance_accounts').update({
+                current_balance: Number(recAcc.current_balance || 0) - amt,
+                updated_at: new Date().toISOString(),
+              }).eq('id', recAcc.id)
+
+              if (recAcc.ledger_id) {
+                const { data: recLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', recAcc.ledger_id).single()
+                if (recLed) {
+                  await supabase.from('finance_ledgers').update({
+                    current_balance: Number(recLed.current_balance || 0) - amt,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', recAcc.ledger_id)
+                }
+              }
+            }
+          }
+          if (before.ledger_id) {
+            const { data: incAccs } = await supabase.from('finance_accounts').select('id, current_balance').eq('ledger_id', before.ledger_id)
+            if (incAccs?.length) {
+              for (const ia of incAccs) {
+                await supabase.from('finance_accounts').update({
+                  current_balance: Number(ia.current_balance || 0) - amt,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', ia.id)
+              }
+            }
+          }
         }
-        if (before.bank_id && before.bank_id !== before.account_id) {
-          await supabase.rpc('increment_field', { table_name: 'finance_accounts', row_id: before.bank_id, field_name: 'current_balance', increment_by: delta }).catch(() => {
-            supabase.from('finance_accounts').select('current_balance').eq('id', before.bank_id).single().then(({ data }) => {
-              if (data) supabase.from('finance_accounts').update({ current_balance: Number(data.current_balance || 0) + delta }).eq('id', before.bank_id)
-            })
-          })
+
+        // 3. Multi-ledger lines (if any)
+        if (before.lines?.length) {
+          for (const line of before.lines) {
+            if (line.ledger_id) {
+              const lineDelta = (Number(line.debit_amount) || 0) - (Number(line.credit_amount) || 0)
+              if (lineDelta !== 0) {
+                const { data: lineLed } = await supabase.from('finance_ledgers').select('current_balance').eq('id', line.ledger_id).single()
+                if (lineLed) {
+                  await supabase.from('finance_ledgers').update({
+                    current_balance: Number(lineLed.current_balance || 0) - lineDelta,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', line.ledger_id)
+                }
+              }
+            }
+          }
         }
       }
       await logFinanceAudit('voucher_cancelled', 'finance_voucher', id, before, { ...after, cancel_reason: reason })

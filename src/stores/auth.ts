@@ -187,8 +187,10 @@ export const useAuthStore = defineStore('auth', {
               }
             }
           }
-          // For SIGNED_IN, we handle data fetching in signIn() directly
-          // The listener only handles external auth changes (e.g. token refresh)
+          // For SIGNED_IN, ensure realtime channels connect
+          if (event === 'SIGNED_IN' && session) {
+            this._subscribeRealtimeChannels()
+          }
           if (event === 'TOKEN_REFRESHED' && session) {
             // Silently refresh user data in background on token refresh
             this._backgroundFetchUserData()
@@ -222,6 +224,9 @@ export const useAuthStore = defineStore('auth', {
           } else {
             await this.fetchUserData()
           }
+
+          // Subscribing to realtime channels so realtime updates work immediately on page load
+          this._subscribeRealtimeChannels()
         }
       } catch (err) {
         console.error('[Auth] Init error:', err)
@@ -308,11 +313,18 @@ export const useAuthStore = defineStore('auth', {
 
     async _fetchProfile() {
       try {
-        const { data } = await supabase
+        const fetchPromise = supabase
           .from('profiles')
           .select('full_name, email, phone, avatar_url, is_active, kitchen_id')
           .eq('id', this.user?.id)
           .single()
+
+        // 2500ms timeout guard to avoid blocking app load
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 2500)
+        )
+
+        const { data } = (await Promise.race([fetchPromise, timeoutPromise])) as any
         this.profile = data
         // If profile is inactive, sign out and surface error
         if (data && data.is_active === false) {

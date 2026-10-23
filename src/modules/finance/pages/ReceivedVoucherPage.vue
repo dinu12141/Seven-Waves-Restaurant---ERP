@@ -16,12 +16,24 @@
       <template v-slot:body-cell-amount="p"><q-td :props="p" class="text-weight-bold text-green-8">LKR {{ Number(p.value).toLocaleString() }}</q-td></template>
       <template v-slot:body-cell-actions="p">
         <q-td :props="p">
-          <q-btn flat round size="sm" icon="send" color="orange" @click="submit(p.row.id)" v-if="p.row.status === 'draft'" />
-          <q-btn flat round size="sm" icon="check" color="green" @click="approve(p.row.id)" v-if="p.row.status === 'submitted'" />
-          <q-btn flat round size="sm" icon="publish" color="primary" @click="post(p.row.id)" v-if="p.row.status === 'approved'" />
+          <div class="row items-center justify-center q-gutter-x-xs no-wrap">
+            <q-btn flat round size="sm" icon="visibility" color="grey-7" @click="selectVoucher(p.row)">
+              <q-tooltip>View Details</q-tooltip>
+            </q-btn>
+            <q-btn flat round size="sm" icon="send" color="orange" @click="submit(p.row.id)" v-if="p.row.status === 'draft'">
+              <q-tooltip>Submit for Approval</q-tooltip>
+            </q-btn>
+            <q-btn flat round size="sm" icon="check" color="green" @click="approve(p.row.id)" v-if="p.row.status === 'submitted'">
+              <q-tooltip>Approve Voucher</q-tooltip>
+            </q-btn>
+            <q-btn flat round size="sm" icon="publish" color="primary" @click="post(p.row.id)" v-if="p.row.status === 'approved'">
+              <q-tooltip>Post to Books</q-tooltip>
+            </q-btn>
+          </div>
         </q-td>
       </template>
     </q-table>
+    <VoucherApprovalPanel v-if="selected" :voucher="selected" :loading="actionLoading" @approve="approve" @reject="reject" @post="post" class="q-mt-md" />
     <VoucherForm v-model="showForm" type="received" @saved="handleSave" />
   </q-page>
 </template>
@@ -33,10 +45,13 @@ import { useFinanceVoucherStore } from '../stores/finance-voucher.store'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
 import VoucherForm from '../components/VoucherForm.vue'
+import VoucherApprovalPanel from '../components/VoucherApprovalPanel.vue'
 
 const $q = useQuasar()
 const voucherStore = useFinanceVoucherStore()
 const showForm = ref(false)
+const selected = ref(null)
+const actionLoading = ref(false)
 
 function humanizeError(err) {
   const msg = err?.message || String(err || 'Unknown error')
@@ -58,12 +73,37 @@ const columns = [
 ]
 function statusColor(s) { return { draft: 'grey', submitted: 'orange', approved: 'blue', rejected: 'red', posted: 'green', cancelled: 'dark' }[s] || 'grey' }
 
+function selectVoucher(v) {
+  selected.value = v
+}
+
 async function handleSave() {
   await load()
 }
-async function submit(id) { try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
-async function approve(id) { try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
-async function post(id) { try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted!' }) } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) } }
+async function submit(id) {
+  actionLoading.value = true
+  try { await voucherStore.submitVoucher(id); $q.notify({ type: 'positive', message: 'Submitted' }); await load() }
+  catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
+  finally { actionLoading.value = false }
+}
+async function approve(id) {
+  actionLoading.value = true
+  try { await voucherStore.approveVoucher(id); $q.notify({ type: 'positive', message: 'Approved' }); await load() }
+  catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
+  finally { actionLoading.value = false }
+}
+async function reject({ id, reason }) {
+  actionLoading.value = true
+  try { await voucherStore.rejectVoucher(id, reason); $q.notify({ type: 'warning', message: 'Voucher rejected' }); await load() }
+  catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
+  finally { actionLoading.value = false }
+}
+async function post(id) {
+  actionLoading.value = true
+  try { await voucherStore.postVoucher(id); $q.notify({ type: 'positive', message: 'Posted to books!' }); await load() }
+  catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' }) }
+  finally { actionLoading.value = false }
+}
 
 async function load() { await voucherStore.fetchVouchers({ voucher_type: 'received', ...filters.value }) }
 onMounted(async () => { await useFinanceLedgerStore().fetchLedgers(); await useFinanceAccountStore().fetchAccounts(); await load() })

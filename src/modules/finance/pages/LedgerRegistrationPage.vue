@@ -54,11 +54,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'src/stores/auth'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
+import { useFinanceAccountStore } from '../stores/finance-account.store'
 import LedgerForm from '../components/LedgerForm.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
 const ledgerStore = useFinanceLedgerStore()
+const accountStore = useFinanceAccountStore()
 const showForm = ref(false)
 const isAdmin = computed(() => authStore.isAdmin)
 
@@ -103,6 +105,7 @@ async function handleSave(form) {
     editingLedger.value = null
     // Re-fetch so the list (balance etc.) reflects the saved row immediately.
     await loadLedgers()
+    accountStore.fetchAccounts().catch(() => {})
   } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
 }
 
@@ -137,6 +140,11 @@ async function deactivate(l) {
   })
 }
 
-async function loadLedgers() { await ledgerStore.fetchLedgers(filters.value) }
+async function loadLedgers() {
+  await Promise.all([
+    ledgerStore.fetchLedgers(filters.value),
+    accountStore.fetchAccounts().catch(() => {})
+  ])
+}
 onMounted(loadLedgers)
 </script>

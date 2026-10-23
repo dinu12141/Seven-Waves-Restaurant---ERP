@@ -24,6 +24,8 @@ node_modules
 /electron-main.cjs
 
 # Log files
+*.log
+*.tmp
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

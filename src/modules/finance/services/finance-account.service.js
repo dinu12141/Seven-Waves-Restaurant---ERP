@@ -58,22 +58,38 @@ export const financeAccountService = {
     // Strip the embedded join object (ledger:finance_ledgers(*)) that list() injects —
     // it is not a column and PostgREST would 400 on UPDATE if present.
     delete cleaned.ledger
+
+    const oldOpening = Number(old?.opening_balance) || 0
+    const newOpening = cleaned.opening_balance !== undefined ? (Number(cleaned.opening_balance) || 0) : oldOpening
+    const openingDelta = newOpening - oldOpening
+
+    let newCurrentBalance = Number(old?.current_balance) || 0
+    if (cleaned.current_balance !== undefined && Number(cleaned.current_balance) !== Number(old?.current_balance)) {
+      newCurrentBalance = Number(cleaned.current_balance) || 0
+    } else if (openingDelta !== 0) {
+      newCurrentBalance += openingDelta
+    }
+
     const payload = {
       ...cleaned,
+      current_balance: newCurrentBalance,
       updated_by: authStore.user?.id || null,
       updated_at: new Date().toISOString()
     }
-    // If the opening balance was edited and no posted movement has occurred yet
-    // (current == old opening), keep current_balance in step with the new opening.
-    if (
-      cleaned.opening_balance !== undefined &&
-      cleaned.current_balance === undefined &&
-      Number(old?.current_balance || 0) === Number(old?.opening_balance || 0)
-    ) {
-      payload.current_balance = Number(cleaned.opening_balance) || 0
-    }
+
     const { data, error } = await supabase.from('finance_accounts').update(payload).eq('id', id).select('*, ledger:finance_ledgers(*)').single()
     if (error) throw error
+
+    // Sync linked ledger in finance_ledgers
+    const ledgerId = cleaned.ledger_id || old?.ledger_id
+    if (ledgerId) {
+      await supabase.from('finance_ledgers').update({
+        opening_balance: newOpening,
+        current_balance: newCurrentBalance,
+        updated_at: new Date().toISOString()
+      }).eq('id', ledgerId)
+    }
+
     await logFinanceAudit('account_updated', 'finance_account', id, old, data)
     return data
   },

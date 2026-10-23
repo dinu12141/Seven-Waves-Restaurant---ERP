@@ -55,13 +55,46 @@ export const financeLedgerService = {
     const cleaned = { ...updates }
     delete cleaned._isEdit
     delete cleaned._id
+
+    // Opening balance delta
+    const oldSignedOpening = old?.opening_balance_type === 'credit'
+      ? -(Number(old?.opening_balance) || 0)
+      : (Number(old?.opening_balance) || 0)
+    const newOpening = cleaned.opening_balance !== undefined
+      ? (Number(cleaned.opening_balance) || 0)
+      : (Number(old?.opening_balance) || 0)
+    const newType = cleaned.opening_balance_type || old?.opening_balance_type || 'debit'
+    const newSignedOpening = newType === 'credit' ? -newOpening : newOpening
+    const openingDelta = newSignedOpening - oldSignedOpening
+
+    let newCurrentBalance = Number(old?.current_balance) || 0
+    if (cleaned.current_balance !== undefined && Number(cleaned.current_balance) !== Number(old?.current_balance)) {
+      newCurrentBalance = Number(cleaned.current_balance) || 0
+    } else if (openingDelta !== 0) {
+      newCurrentBalance += openingDelta
+    }
+
     const payload = {
       ...cleaned,
+      current_balance: newCurrentBalance,
       updated_by: authStore.user?.id || null,
       updated_at: new Date().toISOString()
     }
     const { data, error } = await supabase.from('finance_ledgers').update(payload).eq('id', id).select().single()
     if (error) throw error
+
+    // Sync any linked account in finance_accounts
+    const { data: linkedAccounts } = await supabase.from('finance_accounts').select('id, current_balance, opening_balance').eq('ledger_id', id)
+    if (linkedAccounts?.length) {
+      for (const la of linkedAccounts) {
+        await supabase.from('finance_accounts').update({
+          opening_balance: newOpening,
+          current_balance: newCurrentBalance,
+          updated_at: new Date().toISOString()
+        }).eq('id', la.id)
+      }
+    }
+
     await logFinanceAudit('ledger_updated', 'finance_ledger', id, old, data)
     return data
   },

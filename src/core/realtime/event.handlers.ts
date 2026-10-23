@@ -284,6 +284,40 @@ export function handleAuditEvent(payload: RealtimeEventPayload): void {
   }
 }
 
+// ─── Finance ────────────────────────────────────────────────────
+
+export function handleFinanceVoucherEvent(payload: RealtimeEventPayload): void {
+  logger.info('[RT:Finance] Voucher event', { event: payload.eventType })
+  import('../../modules/finance/stores/finance-voucher.store')
+    .then(({ useFinanceVoucherStore }) => {
+      try {
+        const store = useFinanceVoucherStore()
+        store.fetchVouchers()
+      } catch {
+        /* Store not mounted */
+      }
+    })
+    .catch(() => {
+      /* Module not loaded */
+    })
+}
+
+export function handleFinanceCashbookEvent(payload: RealtimeEventPayload): void {
+  logger.info('[RT:Finance] Cashbook event', { event: payload.eventType })
+  import('../../modules/finance/stores/finance-cashbook.store')
+    .then(({ useFinanceCashbookStore }) => {
+      try {
+        const store = useFinanceCashbookStore()
+        store.fetchEntries()
+      } catch {
+        /* Store not mounted */
+      }
+    })
+    .catch(() => {
+      /* Module not loaded */
+    })
+}
+
 // ─── Handler Map ────────────────────────────────────────────────
 
 /**
@@ -302,4 +336,6 @@ export const EVENT_HANDLER_MAP: Record<string, (payload: RealtimeEventPayload) =
   notifications: handleNotificationEvent,
   delivery_orders: handleDeliveryEvent,
   audit_logs: handleAuditEvent,
+  finance_vouchers: handleFinanceVoucherEvent,
+  finance_cashbook: handleFinanceCashbookEvent,
 }

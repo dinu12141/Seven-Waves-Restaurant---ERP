@@ -76,6 +76,16 @@ export default defineConfig((ctx) => {
         // Disable Vite's module runner transform (server-side module evaluation)
         viteConf.server.preTransformRequests = false
 
+        // Pre-bundle major vendor packages to speed up cold page loads
+        viteConf.optimizeDeps = viteConf.optimizeDeps || {}
+        viteConf.optimizeDeps.include = [
+          ...(viteConf.optimizeDeps.include || []),
+          '@supabase/supabase-js',
+          'pinia',
+          'vue-router',
+          'axios',
+        ]
+
         // ── Step 07: Production Bundle Optimization ──────────────────
         viteConf.build = viteConf.build || {}
         viteConf.build.chunkSizeWarningLimit = 800 // KB

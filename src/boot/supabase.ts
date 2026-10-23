@@ -18,6 +18,13 @@ function realtimeBackoff(tries: number) {
   return Math.min(Math.pow(2, tries) * 1000, 30000)
 }
 
+// Non-blocking in-memory lock: prevents the 5000ms navigator.locks hang on page load/HMR
+const customLock = typeof window !== 'undefined'
+  ? async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => {
+      return await fn()
+    }
+  : undefined
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // PKCE is the modern secure flow for all environments.
@@ -28,6 +35,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     // In Tauri, we handle the redirect via deep link, not URL detection
     detectSessionInUrl: !isTauri,
+    // Eliminates 5000ms Web Locks API stall on app launch / browser reload
+    lock: customLock,
   },
   realtime: {
     params: {

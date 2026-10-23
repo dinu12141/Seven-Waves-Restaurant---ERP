@@ -186,6 +186,32 @@ export const CHANNEL_REGISTRY: Record<string, ChannelDefinition> = {
     maxReconnectAttempts: 5,
     rejectStaleSeconds: 0,
   },
+
+  // ── Finance ──────────────────────────────────────────────────────
+  'finance_vouchers': {
+    key: 'finance-vouchers:{branchId}',
+    table: 'finance_vouchers',
+    event: '*',
+    module: 'finance',
+    permission: 'finance.view',
+    scope: 'branch',
+    filterColumn: 'branch_id',
+    reconnect: true,
+    maxReconnectAttempts: 0,
+    rejectStaleSeconds: 300,
+  },
+  'finance_cashbook': {
+    key: 'finance-cashbook:{branchId}',
+    table: 'finance_cashbook_entries',
+    event: '*',
+    module: 'finance',
+    permission: 'finance.view',
+    scope: 'branch',
+    filterColumn: 'branch_id',
+    reconnect: true,
+    maxReconnectAttempts: 0,
+    rejectStaleSeconds: 300,
+  },
 }
 
 /**

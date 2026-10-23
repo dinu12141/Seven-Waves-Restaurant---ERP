@@ -95,6 +95,20 @@
                   <q-select v-model="form.currency" outlined dense :dark="$q.dark.isActive"
                     :options="['LKR', 'USD', 'EUR', 'GBP', 'INR']" hide-bottom-space />
                 </div>
+                <div v-if="isEdit" class="col-12">
+                  <div class="fin-label">Current Balance (Live)</div>
+                  <q-input v-model.number="form.current_balance" outlined dense :dark="$q.dark.isActive"
+                    type="number" step="0.01" :prefix="form.currency || 'LKR'" hide-bottom-space>
+                    <template #append>
+                      <q-badge :color="form.current_balance >= 0 ? 'green' : 'red'">
+                        {{ form.current_balance >= 0 ? 'Active Funds' : 'Overdrawn' }}
+                      </q-badge>
+                    </template>
+                  </q-input>
+                  <div class="text-caption text-grey-7 q-mt-xs">
+                    Direct balance adjustment updates this account and its linked ledger in real time.
+                  </div>
+                </div>
                 <div class="col-12">
                   <q-toggle v-model="form.is_default" color="primary" label="Set as default account for this type" />
                 </div>
@@ -151,7 +165,7 @@ function filterLedgers(val, update) {
   })
 }
 
-const defaultForm = () => ({ account_type: 'cash', ledger_id: '', registered_name: '', account_number: '', bank_name: '', bank_branch: '', currency: 'LKR', opening_balance: 0, is_default: false })
+const defaultForm = () => ({ account_type: 'cash', ledger_id: '', registered_name: '', account_number: '', bank_name: '', bank_branch: '', currency: 'LKR', opening_balance: 0, current_balance: 0, is_default: false })
 const form = ref(defaultForm())
 
 watch(() => props.modelValue, v => { visible.value = v })

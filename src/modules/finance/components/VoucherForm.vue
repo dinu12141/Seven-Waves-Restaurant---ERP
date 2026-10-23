@@ -53,45 +53,45 @@
                     :rules="[v => !!v || 'Required']" hide-bottom-space />
                 </div>
                 <div class="col-12 col-md-6">
-                  <div class="fin-label">Ledger <span class="fin-req">*</span></div>
+                  <div class="fin-label">{{ isPay ? 'Expense / Category Ledger' : 'Income / Category Ledger' }} <span class="fin-req">*</span></div>
                   <q-select v-model="form.ledger_id" outlined dense :dark="$q.dark.isActive"
                     emit-value map-options :options="ledgerOptions" use-input @filter="filterLedgers"
-                    :rules="[v => !!v || 'Required']" hide-bottom-space>
+                    :rules="[v => !!v || 'Required']" hide-bottom-space
+                    :placeholder="isPay ? 'Select Expense or Category' : 'Select Income or Category'">
                     <template #no-option><q-item><q-item-section class="text-grey">Register a ledger first</q-item-section></q-item></template>
                   </q-select>
                 </div>
                 <div class="col-12">
-                  <div class="fin-label">Account <span class="fin-req">*</span></div>
+                  <div class="fin-label">{{ isPay ? 'Paid From (Cash / Bank Account)' : 'Deposit To (Cash / Bank Account)' }} <span class="fin-req">*</span></div>
                   <q-select v-model="form.account_id" outlined dense :dark="$q.dark.isActive"
-                    emit-value map-options :options="accountOptions"
-                    :rules="[v => !!v || 'Please select an Account (Cash/Bank)']" hide-bottom-space
-                    placeholder="Select Cash or Bank Account" />
+                    emit-value map-options :options="filteredAccountOptions"
+                    :rules="[v => !!v || (isPay ? 'Please select Paid From Account' : 'Please select Deposit Account')]" hide-bottom-space
+                    :placeholder="isPay ? 'Select Cash Drawer or Bank' : 'Select Receiving Cash or Bank'">
+                    <template #prepend>
+                      <q-icon :name="form.payment_method === 'cash' ? 'payments' : form.payment_method === 'petty_cash' ? 'savings' : 'account_balance'" size="18px" />
+                    </template>
+                  </q-select>
+                  <div class="text-caption text-grey-7 q-mt-xs">
+                    {{ isPay ? 'The monetary account from which funds will be deducted.' : 'The monetary account where money will be deposited.' }}
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- SECTION: Bank & Cheque (conditional) -->
-            <div v-if="needsBank || needsCheque" class="fin-section fin-section--accent">
-              <div class="fin-section__title"><q-icon name="account_balance" size="15px" class="q-mr-xs" />BANK &amp; CHEQUE</div>
+            <div v-if="needsCheque" class="fin-section fin-section--accent">
+              <div class="fin-section__title"><q-icon name="account_balance" size="15px" class="q-mr-xs" />CHEQUE DETAILS</div>
               <div class="row q-col-gutter-md">
-                <div v-if="needsBank" class="col-12">
-                  <div class="fin-label">Bank Account <span class="fin-req">*</span></div>
-                  <q-select v-model="form.bank_id" outlined dense :dark="$q.dark.isActive"
-                    emit-value map-options :options="bankAccountOptions"
-                    :rules="(needsBank) ? [v => !!v || 'Required for bank/cheque'] : []" hide-bottom-space />
+                <div class="col-12 col-md-6">
+                  <div class="fin-label">Cheque No <span class="fin-req">*</span></div>
+                  <q-input v-model="form.cheque_no" outlined dense :dark="$q.dark.isActive"
+                    :rules="needsCheque ? [v => !!v || 'Required'] : []" hide-bottom-space />
                 </div>
-                <template v-if="needsCheque">
-                  <div class="col-12 col-md-6">
-                    <div class="fin-label">Cheque No <span class="fin-req">*</span></div>
-                    <q-input v-model="form.cheque_no" outlined dense :dark="$q.dark.isActive"
-                      :rules="needsCheque ? [v => !!v || 'Required'] : []" hide-bottom-space />
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="fin-label">Cheque Date <span class="fin-req">*</span></div>
-                    <q-input v-model="form.cheque_date" outlined dense :dark="$q.dark.isActive"
-                      type="date" :rules="needsCheque ? [v => !!v || 'Required'] : []" hide-bottom-space />
-                  </div>
-                </template>
+                <div class="col-12 col-md-6">
+                  <div class="fin-label">Cheque Date <span class="fin-req">*</span></div>
+                  <q-input v-model="form.cheque_date" outlined dense :dark="$q.dark.isActive"
+                    type="date" :rules="needsCheque ? [v => !!v || 'Required'] : []" hide-bottom-space />
+                </div>
               </div>
             </div>
 
@@ -195,8 +195,47 @@ function filterLedgers(val, update) {
     ledgerOptions.value = !n ? allLedgers.value : allLedgers.value.filter(o => o.label.toLowerCase().includes(n))
   })
 }
-const accountOptions = computed(() => accountStore.activeAccounts.map(a => ({ label: a.registered_name, value: a.id })))
-const bankAccountOptions = computed(() => accountStore.bankAccounts.map(a => ({ label: `${a.bank_name || a.registered_name} — ${a.registered_name}`, value: a.id })))
+const filteredAccountOptions = computed(() => {
+  const method = form.value.payment_method
+  const all = accountStore.activeAccounts || []
+
+  if (method === 'petty_cash') {
+    const list = all.filter(a => a.account_type === 'petty_cash' || a.registered_name.toLowerCase().includes('petty'))
+    return list.map(a => ({ label: `${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
+  }
+
+  if (['bank', 'cheque', 'card', 'online_transfer'].includes(method)) {
+    const list = all.filter(a => a.account_type === 'bank' || a.bank_name || a.registered_name.toLowerCase().includes('bank') || ['commercial', 'peoples', 'hnb', 'ntb', 'ndb'].some(b => a.registered_name.toLowerCase().includes(b)))
+    return list.map(a => ({ label: `${a.bank_name || a.registered_name} — ${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
+  }
+
+  // Cash payment: real cash accounts / drawers
+  const list = all.filter(a => {
+    const n = a.registered_name.toLowerCase()
+    return (a.account_type === 'cash' || n.includes('cash') || n.includes('change fund')) && !n.includes('petty')
+  })
+  const finalList = list.length ? list : all.filter(a => a.account_type === 'cash')
+  return finalList.map(a => ({ label: `${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
+})
+
+// Auto-switch account selection when payment method changes
+watch(() => form.value.payment_method, () => {
+  if (filteredAccountOptions.value.length) {
+    const exists = filteredAccountOptions.value.some(o => o.value === form.value.account_id)
+    if (!exists) {
+      form.value.account_id = filteredAccountOptions.value[0].value
+    }
+  }
+  if (needsBank.value) {
+    form.value.bank_id = form.value.account_id
+  }
+})
+
+watch(() => form.value.account_id, (accId) => {
+  if (needsBank.value && accId) {
+    form.value.bank_id = accId
+  }
+})
 
 const totalDebit = computed(() => form.value.lines.reduce((s, l) => s + (Number(l.debit_amount) || 0), 0))
 const totalCredit = computed(() => form.value.lines.reduce((s, l) => s + (Number(l.credit_amount) || 0), 0))
@@ -209,9 +248,9 @@ watch(() => props.modelValue, v => {
   visible.value = v
   if (v) {
     form.value = defaultForm()
-    if (accountOptions.value.length) {
-      const def = accountStore.defaultAccount?.id || accountOptions.value[0].value
-      form.value.account_id = def
+    if (filteredAccountOptions.value.length) {
+      form.value.account_id = filteredAccountOptions.value[0].value
+      if (needsBank.value) form.value.bank_id = form.value.account_id
     }
   }
 })
@@ -221,6 +260,9 @@ function close() { visible.value = false }
 async function save() {
   saving.value = true
   try {
+    if (needsBank.value && !form.value.bank_id) {
+      form.value.bank_id = form.value.account_id
+    }
     let result
     if (isPay.value) {
       result = await voucherStore.createPayVoucher({ ...form.value, voucher_type: 'pay' })

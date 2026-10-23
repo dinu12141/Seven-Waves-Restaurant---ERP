@@ -76,6 +76,7 @@ async function handleSave(form) {
     editing.value = null
     // Re-fetch so the list (balance, bank, embeds) reflects the saved row immediately.
     await accountStore.fetchAccounts()
+    ledgerStore.fetchLedgers().catch(() => {})
   } catch (e) { $q.notify({ type: 'negative', message: humanizeError(e), position: 'top', timeout: 4000 }) }
 }
 
