@@ -308,7 +308,7 @@ export function handleFinanceCashbookEvent(payload: RealtimeEventPayload): void 
     .then(({ useFinanceCashbookStore }) => {
       try {
         const store = useFinanceCashbookStore()
-        store.fetchEntries()
+        store.fetchCashbook()
       } catch {
         /* Store not mounted */
       }
