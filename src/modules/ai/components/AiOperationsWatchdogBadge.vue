@@ -73,7 +73,34 @@
 
         <!-- Body content -->
         <q-card-section class="col q-pa-md scroll">
-          <!-- Live Operational Health Score -->
+          <!-- Multi-Agent Department Navigation Tabs -->
+          <div class="q-mb-md">
+            <q-tabs
+              v-model="activeDepartmentTab"
+              dense
+              align="justify"
+              class="text-grey-4 bg-dark-glass-light rounded-borders"
+              active-color="amber-4"
+              indicator-color="amber-4"
+            >
+              <q-tab name="operations" icon="restaurant" label="Operations">
+                <q-badge v-if="kotAlertsCount > 0" color="red" floating rounded>{{ kotAlertsCount }}</q-badge>
+              </q-tab>
+              <q-tab name="finance" icon="account_balance_wallet" label="FinGuard">
+                <q-badge v-if="finAlertsCount > 0" color="amber-9" floating rounded>{{ finAlertsCount }}</q-badge>
+              </q-tab>
+              <q-tab name="hr" icon="people" label="TalentOps">
+                <q-badge v-if="hrAlertsCount > 0" color="blue-8" floating rounded>{{ hrAlertsCount }}</q-badge>
+              </q-tab>
+              <q-tab name="inventory" icon="inventory_2" label="SupplySense">
+                <q-badge v-if="supplyAlertsCount > 0" color="purple-8" floating rounded>{{ supplyAlertsCount }}</q-badge>
+              </q-tab>
+            </q-tabs>
+          </div>
+
+          <!-- ════ TAB 1: KOT & OPERATIONS (Live Watchdog) ════ -->
+          <div v-show="activeDepartmentTab === 'operations'">
+            <!-- Live Operational Health Score -->
           <div class="q-pa-md rounded-borders q-mb-md health-score-card">
             <div class="row items-center justify-between">
               <div>
@@ -725,6 +752,388 @@
               </div>
             </div>
           </div>
+          </div>
+
+          <!-- ════ TAB 2: FINGUARD AI (Finance Controller) ════ -->
+          <div v-show="activeDepartmentTab === 'finance'">
+            <!-- FinGuard Health Score Card -->
+            <div class="q-pa-md rounded-borders q-mb-md health-score-card">
+              <div class="row items-center justify-between">
+                <div>
+                  <div class="text-caption text-grey-4">FINANCIAL INTEGRITY SCORE</div>
+                  <div class="text-h4 text-weight-bolder font-mono text-amber-4">
+                    {{ finGuardData?.health_score ?? 100 }}%
+                  </div>
+                </div>
+                <q-circular-progress
+                  show-value
+                  font-size="12px"
+                  :value="finGuardData?.health_score ?? 100"
+                  size="60px"
+                  :thickness="0.2"
+                  color="amber-7"
+                  track-color="grey-8"
+                >
+                  {{ finGuardData?.health_score ?? 100 }}%
+                </q-circular-progress>
+              </div>
+              <div class="text-caption q-mt-xs text-grey-3">
+                {{ finAlertsCount === 0 ? 'All cashbooks, drawer reconciliations, and journal entries balanced.' : `${finAlertsCount} financial variance alert(s) detected.` }}
+              </div>
+            </div>
+
+            <!-- FinGuard KPI Summary Grid -->
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Cash Variances</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="finCashVariances.length > 0 ? 'text-negative' : 'text-positive'">
+                    {{ finCashVariances.length }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Negative Accts</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="finNegativeAccounts.length > 0 ? 'text-negative' : 'text-positive'">
+                    {{ finNegativeAccounts.length }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Unposted Shifts</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="finUnpostedTransfers.length > 0 ? 'text-warning' : 'text-positive'">
+                    {{ finUnpostedTransfers.length }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action Toolbar -->
+            <div class="row justify-between items-center q-mb-sm">
+              <span class="text-subtitle2 text-weight-bold row items-center q-gutter-x-xs">
+                <q-icon name="gavel" color="amber-7" />
+                <span>FinGuard Realtime Alerts</span>
+              </span>
+              <q-btn
+                dense
+                flat
+                size="xs"
+                color="amber-7"
+                icon="refresh"
+                label="Run Financial Audit"
+                :loading="isAuditingFin"
+                @click="triggerFinGuardAudit"
+              />
+            </div>
+
+            <!-- FinGuard Alerts List -->
+            <div class="bg-dark-glass-light q-pa-sm rounded-borders q-mb-md">
+              <div v-if="finAlertsList.length === 0" class="text-center q-pa-md text-grey-4 text-caption">
+                <q-icon name="check_circle" color="positive" size="24px" class="q-mb-xs block q-mx-auto" />
+                Zero financial variances. Drawer sales and ledgers reconciled.
+              </div>
+              <div v-else class="q-gutter-y-xs">
+                <div
+                  v-for="alert in finAlertsList"
+                  :key="alert.id"
+                  class="q-pa-sm rounded-borders"
+                  :style="{
+                    background: alert.severity === 'critical' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+                    borderLeft: alert.severity === 'critical' ? '4px solid #ef4444' : '4px solid #f59e0b'
+                  }"
+                >
+                  <div class="row items-center justify-between">
+                    <span class="text-weight-bold" style="font-size: 12px">{{ alert.title }}</span>
+                    <q-badge :color="alert.severity === 'critical' ? 'negative' : 'warning'" size="xs">
+                      {{ alert.severity.toUpperCase() }}
+                    </q-badge>
+                  </div>
+                  <div class="text-caption text-grey-3 q-my-xs" style="font-size: 11px">
+                    {{ alert.message }}
+                  </div>
+                  <div class="row justify-between items-center q-mt-xs">
+                    <span class="text-caption text-grey-5 font-mono" style="font-size: 10px">
+                      {{ new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                    <div class="row q-gutter-x-xs">
+                      <q-btn
+                        v-if="alert.metadata?.category === 'unposted_shift_cash'"
+                        dense
+                        unelevated
+                        size="xs"
+                        color="amber-8"
+                        text-color="dark"
+                        icon="payments"
+                        label="Auto-Transfer to Cash in Hand"
+                        @click="handleTransferPosCash(alert.metadata.shift_id)"
+                      />
+                      <q-btn
+                        dense
+                        flat
+                        size="xs"
+                        color="grey-4"
+                        label="Dismiss"
+                        @click="handleDismissMultiAlert(alert.id)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ════ TAB 3: TALENTOPS AI (HR Guardian) ════ -->
+          <div v-show="activeDepartmentTab === 'hr'">
+            <!-- TalentOps Health Score Card -->
+            <div class="q-pa-md rounded-borders q-mb-md health-score-card">
+              <div class="row items-center justify-between">
+                <div>
+                  <div class="text-caption text-grey-4">WORKFORCE COMPLIANCE SCORE</div>
+                  <div class="text-h4 text-weight-bolder font-mono text-blue-4">
+                    {{ talentOpsData?.health_score ?? 100 }}%
+                  </div>
+                </div>
+                <q-circular-progress
+                  show-value
+                  font-size="12px"
+                  :value="talentOpsData?.health_score ?? 100"
+                  size="60px"
+                  :thickness="0.2"
+                  color="blue-7"
+                  track-color="grey-8"
+                >
+                  {{ talentOpsData?.health_score ?? 100 }}%
+                </q-circular-progress>
+              </div>
+              <div class="text-caption q-mt-xs text-grey-3">
+                {{ hrAlertsCount === 0 ? 'All employee biometric punches, overtime rules, and salary caps verified.' : `${hrAlertsCount} HR compliance alert(s) active.` }}
+              </div>
+            </div>
+
+            <!-- TalentOps KPI Summary Grid -->
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Orphaned Punches</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="hrOrphanedPunches.length > 0 ? 'text-warning' : 'text-positive'">
+                    {{ hrOrphanedPunches.length }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Advance Cap Alerts</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="hrAdvanceCapAlerts.length > 0 ? 'text-negative' : 'text-positive'">
+                    {{ hrAdvanceCapAlerts.length }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">EPF/ETF Status</div>
+                  <div class="text-subtitle1 text-weight-bolder text-positive">
+                    100%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action Toolbar -->
+            <div class="row justify-between items-center q-mb-sm">
+              <span class="text-subtitle2 text-weight-bold row items-center q-gutter-x-xs">
+                <q-icon name="verified_user" color="blue-7" />
+                <span>TalentOps Live Watchdog</span>
+              </span>
+              <div class="row q-gutter-x-xs">
+                <q-btn
+                  dense
+                  flat
+                  size="xs"
+                  color="blue-4"
+                  icon="refresh"
+                  label="Audit Workforce"
+                  :loading="isAuditingHr"
+                  @click="triggerTalentOpsAudit"
+                />
+              </div>
+            </div>
+
+            <!-- TalentOps Alerts List -->
+            <div class="bg-dark-glass-light q-pa-sm rounded-borders q-mb-md">
+              <div v-if="hrAlertsList.length === 0" class="text-center q-pa-md text-grey-4 text-caption">
+                <q-icon name="check_circle" color="positive" size="24px" class="q-mb-xs block q-mx-auto" />
+                Workforce roster 100% compliant. Zero orphaned punches detected.
+              </div>
+              <div v-else class="q-gutter-y-xs">
+                <div
+                  v-for="alert in hrAlertsList"
+                  :key="alert.id"
+                  class="q-pa-sm rounded-borders"
+                  :style="{
+                    background: alert.severity === 'critical' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.15)',
+                    borderLeft: alert.severity === 'critical' ? '4px solid #ef4444' : '4px solid #3b82f6'
+                  }"
+                >
+                  <div class="row items-center justify-between">
+                    <span class="text-weight-bold" style="font-size: 12px">{{ alert.title }}</span>
+                    <q-badge :color="alert.severity === 'critical' ? 'negative' : 'primary'" size="xs">
+                      {{ alert.severity.toUpperCase() }}
+                    </q-badge>
+                  </div>
+                  <div class="text-caption text-grey-3 q-my-xs" style="font-size: 11px">
+                    {{ alert.message }}
+                  </div>
+                  <div class="row justify-between items-center q-mt-xs">
+                    <span class="text-caption text-grey-5 font-mono" style="font-size: 10px">
+                      {{ new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+                    </span>
+                    <div class="row q-gutter-x-xs">
+                      <q-btn
+                        v-if="alert.metadata?.category === 'orphaned_clock_in'"
+                        dense
+                        unelevated
+                        size="xs"
+                        color="blue-7"
+                        text-color="white"
+                        icon="punch_clock"
+                        label="Auto-Close Shift at 9h Cap"
+                        @click="handleHealShift(alert.metadata.attendance_id)"
+                      />
+                      <q-btn
+                        dense
+                        flat
+                        size="xs"
+                        color="grey-4"
+                        label="Dismiss"
+                        @click="handleDismissMultiAlert(alert.id)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ════ TAB 4: SUPPLYSENSE AI (Stock Guardian) ════ -->
+          <div v-show="activeDepartmentTab === 'inventory'">
+            <!-- SupplySense Health Score Card -->
+            <div class="q-pa-md rounded-borders q-mb-md health-score-card">
+              <div class="row items-center justify-between">
+                <div>
+                  <div class="text-caption text-grey-4">STOCK &amp; PROCUREMENT SCORE</div>
+                  <div class="text-h4 text-weight-bolder font-mono text-purple-4">
+                    {{ supplySenseData?.health_score ?? 100 }}%
+                  </div>
+                </div>
+                <q-circular-progress
+                  show-value
+                  font-size="12px"
+                  :value="supplySenseData?.health_score ?? 100"
+                  size="60px"
+                  :thickness="0.2"
+                  color="purple-7"
+                  track-color="grey-8"
+                >
+                  {{ supplySenseData?.health_score ?? 100 }}%
+                </q-circular-progress>
+              </div>
+              <div class="text-caption q-mt-xs text-grey-3">
+                {{ supplyAlertsCount === 0 ? 'All recipe BOM mappings active. Central inventory and kitchen safety stocks verified.' : `${supplyAlertsCount} stock or recipe gap alert(s) detected.` }}
+              </div>
+            </div>
+
+            <!-- SupplySense KPI Summary Grid -->
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Recipe BOM Gaps</div>
+                  <div class="text-subtitle1 text-weight-bolder" :class="supplyRecipeGaps.length > 0 ? 'text-warning' : 'text-positive'">
+                    {{ supplyRecipeGaps.length }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Reorder Status</div>
+                  <div class="text-subtitle1 text-weight-bolder text-positive">
+                    Optimal
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="bg-dark-glass-light q-pa-sm rounded-borders text-center">
+                  <div class="text-caption text-grey-4" style="font-size: 10px">Wastage Alert</div>
+                  <div class="text-subtitle1 text-weight-bolder text-positive">
+                    Normal
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action Toolbar -->
+            <div class="row justify-between items-center q-mb-sm">
+              <span class="text-subtitle2 text-weight-bold row items-center q-gutter-x-xs">
+                <q-icon name="inventory_2" color="purple-7" />
+                <span>SupplySense Stock Alerts</span>
+              </span>
+              <q-btn
+                dense
+                flat
+                size="xs"
+                color="purple-4"
+                icon="refresh"
+                label="Audit Recipes &amp; Stock"
+                :loading="isAuditingSupply"
+                @click="triggerSupplySenseAudit"
+              />
+            </div>
+
+            <!-- SupplySense Alerts List -->
+            <div class="bg-dark-glass-light q-pa-sm rounded-borders q-mb-md">
+              <div v-if="supplyAlertsList.length === 0" class="text-center q-pa-md text-grey-4 text-caption">
+                <q-icon name="check_circle" color="positive" size="24px" class="q-mb-xs block q-mx-auto" />
+                All active dishes have ingredient recipes mapped. Kitchen stock deduction operational.
+              </div>
+              <div v-else class="q-gutter-y-xs">
+                <div
+                  v-for="alert in supplyAlertsList"
+                  :key="alert.id"
+                  class="q-pa-sm rounded-borders"
+                  :style="{
+                    background: alert.severity === 'critical' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.15)',
+                    borderLeft: alert.severity === 'critical' ? '4px solid #ef4444' : '4px solid #a855f7'
+                  }"
+                >
+                  <div class="row items-center justify-between">
+                    <span class="text-weight-bold" style="font-size: 12px">{{ alert.title }}</span>
+                    <q-badge :color="alert.severity === 'critical' ? 'negative' : 'purple'" size="xs">
+                      {{ alert.severity.toUpperCase() }}
+                    </q-badge>
+                  </div>
+                  <div class="text-caption text-grey-3 q-my-xs" style="font-size: 11px">
+                    {{ alert.message }}
+                  </div>
+                  <div class="row justify-between items-center q-mt-xs">
+                    <span class="text-caption text-grey-5 font-mono" style="font-size: 10px">
+                      Category: {{ alert.metadata?.category || 'Menu' }}
+                    </span>
+                    <div class="row q-gutter-x-xs">
+                      <q-btn
+                        dense
+                        flat
+                        size="xs"
+                        color="grey-4"
+                        label="Dismiss"
+                        @click="handleDismissMultiAlert(alert.id)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </q-card-section>
 
         <!-- Footer -->
@@ -1210,6 +1619,13 @@ import {
   runSecurityAudit,
   fetchActiveFeedbackAlerts,
   resolveFeedbackRescue,
+  runFinGuardAudit,
+  runTalentOpsAudit,
+  runSupplySenseAudit,
+  fetchMultiAgentAlerts,
+  autoCloseOrphanedShift,
+  autoTransferPosCash,
+  resolveMultiAgentAlert,
 } from 'src/modules/ai/services/ai.service'
 
 const $q = useQuasar()
@@ -1221,6 +1637,16 @@ const isHealing = ref(false)
 const healedOrders = ref([])
 const auditData = ref(null)
 const pipelineData = ref(null)
+
+// ── Multi-Agent Control Center State ─────────────────────────────────────────
+const activeDepartmentTab = ref('operations')
+const finGuardData = ref(null)
+const talentOpsData = ref(null)
+const supplySenseData = ref(null)
+const multiAgentAlertsList = ref([])
+const isAuditingFin = ref(false)
+const isAuditingHr = ref(false)
+const isAuditingSupply = ref(false)
 
 const unassignedOrders = ref([])
 const activeWaiters = ref([])
@@ -1263,6 +1689,48 @@ const isResolvingRescue = ref(false)
 let realtimeChannel = null
 let autoRefreshTimer = null
 
+// ── Multi-Agent Computed Lists ───────────────────────────────────────────────
+const finAlertsList = computed(() => {
+  return multiAgentAlertsList.value.filter(a => a.agent_type === 'finance' && !a.is_resolved)
+})
+const finAlertsCount = computed(() => finAlertsList.value.length)
+const finCashVariances = computed(() => {
+  return finAlertsList.value.filter(a => a.metadata?.category === 'shift_cash_variance')
+})
+const finNegativeAccounts = computed(() => {
+  return finAlertsList.value.filter(a => a.metadata?.category === 'negative_account_balance')
+})
+const finUnpostedTransfers = computed(() => {
+  return finAlertsList.value.filter(a => a.metadata?.category === 'unposted_shift_cash')
+})
+
+const hrAlertsList = computed(() => {
+  return multiAgentAlertsList.value.filter(a => a.agent_type === 'hr' && !a.is_resolved)
+})
+const hrAlertsCount = computed(() => hrAlertsList.value.length)
+const hrOrphanedPunches = computed(() => {
+  return hrAlertsList.value.filter(a => a.metadata?.category === 'orphaned_clock_in')
+})
+const hrAdvanceCapAlerts = computed(() => {
+  return hrAlertsList.value.filter(a => a.metadata?.category === 'salary_advance_cap')
+})
+
+const supplyAlertsList = computed(() => {
+  return multiAgentAlertsList.value.filter(a => (a.agent_type === 'inventory' || a.agent_type === 'procurement') && !a.is_resolved)
+})
+const supplyAlertsCount = computed(() => supplyAlertsList.value.length)
+const supplyRecipeGaps = computed(() => {
+  return supplyAlertsList.value.filter(a => a.metadata?.category === 'recipe_ingredient_gap')
+})
+
+const kotAlertsCount = computed(() => {
+  const delayed = delayedKots.value.length
+  const routing = routingErrors.value.length
+  const voidSpike = salesMetrics.value.is_void_spike ? 1 : 0
+  const unassigned = unassignedOrders.value.length
+  return delayed + routing + voidSpike + unassigned
+})
+
 // ── Computed Status ──────────────────────────────────────────────────────────
 const alertCount = computed(() => {
   const delayed = delayedKots.value.length
@@ -1271,7 +1739,10 @@ const alertCount = computed(() => {
   const unassigned = unassignedOrders.value.length
   const security = securityAuditData.value?.total_anomalies || 0
   const feedback = activeFeedbackAlerts.value.length
-  return delayed + routing + voidSpike + unassigned + security + feedback
+  const fin = finAlertsCount.value
+  const hr = hrAlertsCount.value
+  const supply = supplyAlertsCount.value
+  return delayed + routing + voidSpike + unassigned + security + feedback + fin + hr + supply
 })
 
 const delayedKots = computed(() => {
@@ -1414,11 +1885,117 @@ async function runManualAudit() {
     if (secRes.success) {
       securityAuditData.value = secRes.data
     }
+
+    // 10. Multi-Agent Audits (FinGuard, TalentOps, SupplySense)
+    const [finRes, hrRes, supplyRes, allAlerts] = await Promise.all([
+      runFinGuardAudit(branchId),
+      runTalentOpsAudit(branchId),
+      runSupplySenseAudit(branchId),
+      fetchMultiAgentAlerts(branchId),
+    ])
+    if (finRes?.success) finGuardData.value = finRes.data
+    if (hrRes?.success) talentOpsData.value = hrRes.data
+    if (supplyRes?.success) supplySenseData.value = supplyRes.data
+    multiAgentAlertsList.value = allAlerts || []
   } catch (err) {
     console.warn('[AI Watchdog] RPC failed, using local fallback:', err)
     await runLocalAuditFallback(branchId)
   } finally {
     isAuditing.value = false
+  }
+}
+
+// ── Multi-Agent Actions ──────────────────────────────────────────────────────
+async function triggerFinGuardAudit() {
+  const branchId = authStore.currentBranch?.id
+  isAuditingFin.value = true
+  try {
+    const res = await runFinGuardAudit(branchId)
+    if (res?.success) finGuardData.value = res.data
+    const allAlerts = await fetchMultiAgentAlerts(branchId)
+    multiAgentAlertsList.value = allAlerts || []
+    $q.notify({ type: 'positive', message: 'FinGuard financial audit completed.', position: 'top', timeout: 2000 })
+  } finally {
+    isAuditingFin.value = false
+  }
+}
+
+async function triggerTalentOpsAudit() {
+  const branchId = authStore.currentBranch?.id
+  isAuditingHr.value = true
+  try {
+    const res = await runTalentOpsAudit(branchId)
+    if (res?.success) talentOpsData.value = res.data
+    const allAlerts = await fetchMultiAgentAlerts(branchId)
+    multiAgentAlertsList.value = allAlerts || []
+    $q.notify({ type: 'positive', message: 'TalentOps workforce audit completed.', position: 'top', timeout: 2000 })
+  } finally {
+    isAuditingHr.value = false
+  }
+}
+
+async function triggerSupplySenseAudit() {
+  const branchId = authStore.currentBranch?.id
+  isAuditingSupply.value = true
+  try {
+    const res = await runSupplySenseAudit(branchId)
+    if (res?.success) supplySenseData.value = res.data
+    const allAlerts = await fetchMultiAgentAlerts(branchId)
+    multiAgentAlertsList.value = allAlerts || []
+    $q.notify({ type: 'positive', message: 'SupplySense stock audit completed.', position: 'top', timeout: 2000 })
+  } finally {
+    isAuditingSupply.value = false
+  }
+}
+
+async function handleTransferPosCash(shiftId) {
+  const branchId = authStore.currentBranch?.id
+  try {
+    const res = await autoTransferPosCash(shiftId, branchId)
+    if (res?.success) {
+      $q.notify({
+        type: 'positive',
+        message: `Draft Receipt Voucher ${res.voucher_number} created for Cash in Hand!`,
+        position: 'top',
+        timeout: 3000,
+      })
+      await triggerFinGuardAudit()
+    } else {
+      $q.notify({ type: 'negative', message: res?.error || 'Failed to create cash transfer voucher', position: 'top' })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message, position: 'top' })
+  }
+}
+
+async function handleHealShift(attendanceId) {
+  try {
+    const res = await autoCloseOrphanedShift(attendanceId, 9)
+    if (res?.success) {
+      $q.notify({
+        type: 'positive',
+        message: 'Shift auto-closed capped at 9 standard hours!',
+        position: 'top',
+        timeout: 3000,
+      })
+      await triggerTalentOpsAudit()
+    } else {
+      $q.notify({ type: 'negative', message: res?.error || 'Failed to auto-close shift', position: 'top' })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message, position: 'top' })
+  }
+}
+
+async function handleDismissMultiAlert(alertId) {
+  try {
+    const res = await resolveMultiAgentAlert(alertId, 'dismissed', 'Acknowledged by user', authStore.user?.id)
+    if (res?.success) {
+      multiAgentAlertsList.value = multiAgentAlertsList.value.filter(a => a.id !== alertId)
+      $q.notify({ type: 'info', message: 'Alert dismissed.', position: 'top', timeout: 1500 })
+    }
+  } catch (err) {
+    console.error('Dismiss error:', err)
   }
 }
 

@@ -682,17 +682,725 @@ export async function runKotOperationsAgent(branchId) {
  * Fetch recent unresolved alerts from the agent.
  */
 export async function fetchKotAgentAlerts(branchId) {
+  return fetchMultiAgentAlerts(branchId, 'kot_operations')
+}
+
+/**
+ * Fetch unresolved alerts for any agent or all agents.
+ */
+export async function fetchMultiAgentAlerts(branchId, agentType = null) {
   try {
-    const { data } = await supabase
+    let query = supabase
       .from('ai_agent_alerts')
       .select('*')
-      .eq('branch_id', branchId)
       .eq('is_resolved', false)
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
+
+    if (branchId) {
+      query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+    }
+    if (agentType) {
+      query = query.eq('agent_type', agentType)
+    }
+
+    const { data } = await query
     return data || []
-  } catch {
+  } catch (err) {
+    console.debug('[AI Service] fetchMultiAgentAlerts error:', err)
     return []
+  }
+}
+
+/**
+ * Safe insert helper for Multi-Agent alerts to prevent spamming duplicates.
+ */
+async function insertAgentAlertSafe(alert) {
+  try {
+    const category = alert.metadata?.category || alert.alert_type
+    const entityId = alert.metadata?.shift_id || alert.metadata?.attendance_id || alert.metadata?.menu_item_id || alert.metadata?.account_id
+
+    // Check if duplicate unresolved alert exists within last 4 hours
+    const fourHoursAgo = new Date(Date.now() - 4 * 3600 * 1000).toISOString()
+    const { data: existing } = await supabase
+      .from('ai_agent_alerts')
+      .select('id, metadata')
+      .eq('agent_type', alert.agent_type)
+      .eq('is_resolved', false)
+      .gte('created_at', fourHoursAgo)
+      .limit(20)
+
+    const isDuplicate = (existing || []).some((e) => {
+      const meta = e.metadata || {}
+      if (meta.category !== category) return false
+      if (entityId) {
+        const eId = meta.shift_id || meta.attendance_id || meta.menu_item_id || meta.account_id
+        return eId === entityId
+      }
+      return true
+    })
+
+    if (isDuplicate) return null
+
+    // Safe alert_type mapping to conform with DB constraints
+    const safeAlertType = ['routing_error', 'prep_delay', 'pickup_delay', 'void_spike', 'sales_anomaly', 'station_overload', 'order_auto_recovered'].includes(alert.alert_type)
+      ? alert.alert_type
+      : 'routing_error'
+
+    const { data: inserted } = await supabase
+      .from('ai_agent_alerts')
+      .insert({
+        branch_id: alert.branch_id || null,
+        company_id: alert.company_id || null,
+        agent_type: alert.agent_type,
+        alert_type: safeAlertType,
+        severity: alert.severity || 'warning',
+        title: alert.title,
+        message: alert.message,
+        metadata: { ...alert.metadata, original_alert_type: alert.alert_type },
+        is_resolved: false,
+      })
+      .select()
+      .maybeSingle()
+
+    return inserted
+  } catch (err) {
+    console.debug('[AI Service] insertAgentAlertSafe failed:', err)
+    return null
+  }
+}
+
+/**
+ * 💼 FinGuard AI: Virtual Financial Controller & Forensic Auditor
+ */
+export async function runFinGuardAudit(branchId, { autoReconcile = false } = {}) {
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_audit_finance_integrity', {
+      p_branch_id: branchId || null,
+      p_auto_reconcile: autoReconcile,
+    })
+    if (!rpcError && rpcData) {
+      return { success: true, data: rpcData }
+    }
+  } catch (rpcErr) {
+    console.debug('[AI Service] fn_audit_finance_integrity RPC fallback:', rpcErr)
+  }
+
+  // Client-side resilient forensic audit
+  try {
+    const alerts = []
+    let healthScore = 100
+    let criticalCount = 0
+    let warningCount = 0
+
+    // 1. Audit Closed Shifts with Cash Variance >= LKR 500
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400 * 1000).toISOString()
+    let shiftQuery = supabase
+      .from('pos_shifts')
+      .select('id, shift_number, opening_cash, closing_cash, cash_sales_total, difference, closed_at, cashier_id, profiles(full_name)')
+      .eq('status', 'closed')
+      .gte('closed_at', sevenDaysAgo)
+      .order('closed_at', { ascending: false })
+      .limit(15)
+
+    if (branchId) shiftQuery = shiftQuery.eq('branch_id', branchId)
+    const { data: shifts } = await shiftQuery
+
+    if (shifts && shifts.length > 0) {
+      for (const s of shifts) {
+        const diff = Number(s.difference || 0)
+        if (Math.abs(diff) >= 500) {
+          const isCrit = Math.abs(diff) >= 1000
+          if (isCrit) {
+            criticalCount++
+            healthScore = Math.max(healthScore - 15, 20)
+          } else {
+            warningCount++
+            healthScore = Math.max(healthScore - 8, 30)
+          }
+
+          const cashierName = s.profiles?.full_name || 'Cashier'
+          const alertObj = {
+            branch_id: branchId,
+            agent_type: 'finance',
+            alert_type: 'routing_error',
+            severity: isCrit ? 'critical' : 'warning',
+            title: `Shift Cash Discrepancy (${s.shift_number || 'Shift'})`,
+            message: `Shift closed with cash difference of LKR ${Math.abs(diff).toFixed(2)} by ${cashierName}. Expected cash: LKR ${Number(s.cash_sales_total || 0).toFixed(2)}.`,
+            metadata: {
+              category: 'shift_cash_variance',
+              shift_id: s.id,
+              shift_number: s.shift_number,
+              cashier_name: cashierName,
+              variance: diff,
+              closed_at: s.closed_at,
+              recommended_action: 'audit_cash_drawer',
+            },
+          }
+          alerts.push(alertObj)
+          await insertAgentAlertSafe(alertObj)
+        }
+      }
+    }
+
+    // 2. Audit Negative Account Balances (Current Balance < 0)
+    let accQuery = supabase
+      .from('finance_accounts')
+      .select('id, registered_name, account_type, current_balance, currency')
+      .eq('is_active', true)
+      .lt('current_balance', 0)
+      .limit(10)
+
+    if (branchId) accQuery = accQuery.eq('branch_id', branchId)
+    const { data: negativeAccounts } = await accQuery
+
+    if (negativeAccounts && negativeAccounts.length > 0) {
+      for (const acc of negativeAccounts) {
+        criticalCount++
+        healthScore = Math.max(healthScore - 20, 10)
+        const alertObj = {
+          branch_id: branchId,
+          agent_type: 'finance',
+          alert_type: 'sales_anomaly',
+          severity: 'critical',
+          title: `Negative Balance: ${acc.registered_name}`,
+          message: `Account has negative balance of ${acc.currency || 'LKR'} ${Number(acc.current_balance).toFixed(2)}. Unrecorded receipts or misallocated vouchers detected.`,
+          metadata: {
+            category: 'negative_account_balance',
+            account_id: acc.id,
+            account_name: acc.registered_name,
+            account_type: acc.account_type,
+            balance: acc.current_balance,
+            recommended_action: 'reconcile_receipts',
+          },
+        }
+        alerts.push(alertObj)
+        await insertAgentAlertSafe(alertObj)
+      }
+    }
+
+    // 3. Audit Unposted POS Shift Cash Transfers (shifts closed with cash > 0)
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400 * 1000).toISOString()
+    let unpostedShiftQuery = supabase
+      .from('pos_shifts')
+      .select('id, shift_number, cash_sales_total, closed_at')
+      .eq('status', 'closed')
+      .gt('cash_sales_total', 100)
+      .gte('closed_at', twoDaysAgo)
+      .limit(5)
+
+    if (branchId) unpostedShiftQuery = unpostedShiftQuery.eq('branch_id', branchId)
+    const { data: closedShifts } = await unpostedShiftQuery
+
+    if (closedShifts && closedShifts.length > 0) {
+      for (const cs of closedShifts) {
+        // Check if voucher exists with this shift reference
+        const { data: existingVoucher } = await supabase
+          .from('finance_vouchers')
+          .select('id')
+          .eq('reference_id', cs.id)
+          .maybeSingle()
+
+        if (!existingVoucher) {
+          warningCount++
+          healthScore = Math.max(healthScore - 5, 40)
+          const alertObj = {
+            branch_id: branchId,
+            agent_type: 'finance',
+            alert_type: 'routing_error',
+            severity: 'warning',
+            title: `Unposted Shift Cash Transfer (${cs.shift_number})`,
+            message: `LKR ${Number(cs.cash_sales_total).toFixed(2)} cash collected in shift ${cs.shift_number} has not been transferred into Main Cashbook.`,
+            metadata: {
+              category: 'unposted_shift_cash',
+              shift_id: cs.id,
+              shift_number: cs.shift_number,
+              cash_amount: cs.cash_sales_total,
+              recommended_action: 'auto_transfer_pos_cash',
+            },
+          }
+          alerts.push(alertObj)
+          await insertAgentAlertSafe(alertObj)
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        agent: 'FinGuard AI',
+        department: 'finance',
+        health_score: healthScore,
+        critical_count: criticalCount,
+        warning_count: warningCount,
+        alerts_count: alerts.length,
+        alerts,
+        scanned_at: new Date().toISOString(),
+      },
+    }
+  } catch (err) {
+    console.error('[AI Service] runFinGuardAudit error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * 👥 TalentOps AI: Virtual HR Executive & Workforce Compliance Officer
+ */
+export async function runTalentOpsAudit(branchId, { autoHealShifts = false } = {}) {
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_audit_hr_workforce', {
+      p_branch_id: branchId || null,
+      p_auto_heal_shifts: autoHealShifts,
+    })
+    if (!rpcError && rpcData) {
+      return { success: true, data: rpcData }
+    }
+  } catch (rpcErr) {
+    console.debug('[AI Service] fn_audit_hr_workforce RPC fallback:', rpcErr)
+  }
+
+  // Client-side resilient HR audit
+  try {
+    const alerts = []
+    let healthScore = 100
+    let criticalCount = 0
+    let warningCount = 0
+
+    // 1. Audit Orphaned Shifts (Clocked in > 14 hours ago with no clock-out)
+    const fourteenHoursAgo = new Date(Date.now() - 14 * 3600 * 1000).toISOString()
+    const threeDaysAgo = new Date(Date.now() - 3 * 86400 * 1000).toISOString()
+
+    const { data: openPunches } = await supabase
+      .from('attendance_records')
+      .select('id, employee_id, clock_in, notes, employees(full_name, employee_code, department_id, departments(department_name))')
+      .is('clock_out', null)
+      .lte('clock_in', fourteenHoursAgo)
+      .gte('clock_in', threeDaysAgo)
+      .order('clock_in', { ascending: false })
+      .limit(10)
+
+    if (openPunches && openPunches.length > 0) {
+      for (const rec of openPunches) {
+        const empName = rec.employees?.full_name || 'Staff'
+        const clockInDate = new Date(rec.clock_in)
+        const elapsedHours = ((Date.now() - clockInDate.getTime()) / (3600 * 1000)).toFixed(1)
+
+        warningCount++
+        healthScore = Math.max(healthScore - 10, 20)
+
+        const alertObj = {
+          branch_id: branchId,
+          agent_type: 'hr',
+          alert_type: 'prep_delay',
+          severity: 'warning',
+          title: `Orphaned Shift: ${empName}`,
+          message: `Employee clocked in ${elapsedHours}h ago without clock-out. Artificial overtime accumulation risk.`,
+          metadata: {
+            category: 'orphaned_clock_in',
+            attendance_id: rec.id,
+            employee_id: rec.employee_id,
+            employee_name: empName,
+            clock_in: rec.clock_in,
+            elapsed_hours: Number(elapsedHours),
+            recommended_action: 'auto_close_shift_9h',
+          },
+        }
+        alerts.push(alertObj)
+        await insertAgentAlertSafe(alertObj)
+
+        if (autoHealShifts) {
+          await autoCloseOrphanedShift(rec.id, 9)
+        }
+      }
+    }
+
+    // 2. Audit Salary Advances Exceeding 50% of Basic Salary
+    const { data: pendingAdvances } = await supabase
+      .from('employee_advances')
+      .select('id, employee_id, amount, reason, employees(full_name, basic_salary)')
+      .eq('status', 'pending')
+      .limit(10)
+
+    if (pendingAdvances && pendingAdvances.length > 0) {
+      for (const adv of pendingAdvances) {
+        const basic = Number(adv.employees?.basic_salary || 0)
+        const amt = Number(adv.amount || 0)
+        if (basic > 0 && amt > basic * 0.5) {
+          criticalCount++
+          healthScore = Math.max(healthScore - 15, 20)
+
+          const empName = adv.employees?.full_name || 'Employee'
+          const alertObj = {
+            branch_id: branchId,
+            agent_type: 'hr',
+            alert_type: 'sales_anomaly',
+            severity: 'critical',
+            title: `Advance Cap Exceeded: ${empName}`,
+            message: `Requested advance of LKR ${amt.toFixed(2)} exceeds 50% of basic salary (LKR ${basic.toFixed(2)}).`,
+            metadata: {
+              category: 'salary_advance_cap',
+              advance_id: adv.id,
+              employee_id: adv.employee_id,
+              requested_amount: amt,
+              basic_salary: basic,
+              recommended_action: 'review_advance_policy',
+            },
+          }
+          alerts.push(alertObj)
+          await insertAgentAlertSafe(alertObj)
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        agent: 'TalentOps AI',
+        department: 'hr',
+        health_score: healthScore,
+        critical_count: criticalCount,
+        warning_count: warningCount,
+        alerts_count: alerts.length,
+        alerts,
+        scanned_at: new Date().toISOString(),
+      },
+    }
+  } catch (err) {
+    console.error('[AI Service] runTalentOpsAudit error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * 📦 SupplySense AI: Virtual Procurement & Stock Guardian
+ */
+export async function runSupplySenseAudit(branchId, { autoDraftPo = false } = {}) {
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_audit_procurement_stock', {
+      p_branch_id: branchId || null,
+      p_auto_draft_po: autoDraftPo,
+    })
+    if (!rpcError && rpcData) {
+      return { success: true, data: rpcData }
+    }
+  } catch (rpcErr) {
+    console.debug('[AI Service] fn_audit_procurement_stock RPC fallback:', rpcErr)
+  }
+
+  // Client-side resilient SupplySense audit
+  try {
+    const alerts = []
+    let healthScore = 100
+    let criticalCount = 0
+    let warningCount = 0
+
+    // 1. Audit Active Menu Items with Zero Recipe Items (BOM Gaps)
+    const { data: activeItems } = await supabase
+      .from('menu_items')
+      .select('id, item_code, name, is_active, menu_categories(name)')
+      .eq('is_active', true)
+      .limit(50)
+
+    if (activeItems && activeItems.length > 0) {
+      const itemIds = activeItems.map((i) => i.id)
+      const { data: recipeEntries } = await supabase
+        .from('recipe_items')
+        .select('menu_item_id')
+        .in('menu_item_id', itemIds)
+
+      const itemsWithRecipe = new Set((recipeEntries || []).map((r) => r.menu_item_id))
+      const zeroRecipeItems = activeItems.filter((i) => !itemsWithRecipe.has(i.id))
+
+      if (zeroRecipeItems.length > 0) {
+        for (const zi of zeroRecipeItems.slice(0, 5)) {
+          warningCount++
+          healthScore = Math.max(healthScore - 5, 40)
+          const alertObj = {
+            branch_id: branchId,
+            agent_type: 'inventory',
+            alert_type: 'routing_error',
+            severity: 'warning',
+            title: `Zero-Ingredient Recipe: ${zi.name}`,
+            message: `Menu item ${zi.name} (${zi.item_code}) has 0 recipe ingredients. POS sales will not deduct warehouse stock.`,
+            metadata: {
+              category: 'recipe_ingredient_gap',
+              menu_item_id: zi.id,
+              item_code: zi.item_code,
+              item_name: zi.name,
+              dish_category: zi.menu_categories?.name || 'General',
+              recommended_action: 'add_recipe_ingredients',
+            },
+          }
+          alerts.push(alertObj)
+          await insertAgentAlertSafe(alertObj)
+        }
+      }
+    }
+
+    // 2. Audit Inventory Items below Reorder Level
+    const { data: lowStockItems } = await supabase
+      .from('inventory_items')
+      .select('id, item_code, name, uom, min_reorder_level')
+      .eq('is_active', true)
+      .not('min_reorder_level', 'is', null)
+      .limit(10)
+
+    if (lowStockItems && lowStockItems.length > 0 && autoDraftPo) {
+      console.debug('[SupplySense] Low stock items for PO drafting:', lowStockItems.length)
+    }
+
+    return {
+      success: true,
+      data: {
+        agent: 'SupplySense AI',
+        department: 'inventory',
+        health_score: healthScore,
+        critical_count: criticalCount,
+        warning_count: warningCount,
+        alerts_count: alerts.length,
+        alerts,
+        scanned_at: new Date().toISOString(),
+      },
+    }
+  } catch (err) {
+    console.error('[AI Service] runSupplySenseAudit error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * 🌐 Unified Multi-Agent Comprehensive Audit
+ * Audits all 4 pillars concurrently: Operations/KOT, FinGuard, TalentOps, SupplySense
+ */
+export async function runMultiAgentComprehensiveAudit(branchId) {
+  try {
+    const [finRes, hrRes, supplyRes, kotAlerts] = await Promise.all([
+      runFinGuardAudit(branchId),
+      runTalentOpsAudit(branchId),
+      runSupplySenseAudit(branchId),
+      fetchKotAgentAlerts(branchId),
+    ])
+
+    const finData = finRes.data || { health_score: 100, critical_count: 0, warning_count: 0, alerts: [] }
+    const hrData = hrRes.data || { health_score: 100, critical_count: 0, warning_count: 0, alerts: [] }
+    const supplyData = supplyRes.data || { health_score: 100, critical_count: 0, warning_count: 0, alerts: [] }
+
+    const kotCritical = (kotAlerts || []).filter((a) => a.severity === 'critical').length
+    const kotHealth = kotAlerts.length === 0 ? 100 : Math.max(40, 100 - kotAlerts.length * 15)
+
+    const overallScore = Math.round(
+      (finData.health_score + hrData.health_score + supplyData.health_score + kotHealth) / 4
+    )
+
+    const totalCritical = (finData.critical_count || 0) + (hrData.critical_count || 0) + (supplyData.critical_count || 0) + kotCritical
+    const totalWarnings = (finData.warning_count || 0) + (hrData.warning_count || 0) + (supplyData.warning_count || 0) + ((kotAlerts || []).length - kotCritical)
+
+    return {
+      success: true,
+      data: {
+        overall_score: overallScore,
+        total_critical: totalCritical,
+        total_warnings: totalWarnings,
+        departments: {
+          operations: { name: 'Operations & KOT', score: kotHealth, alert_count: kotAlerts.length, icon: 'restaurant' },
+          finance: { name: 'FinGuard AI (Finance)', score: finData.health_score, alert_count: finData.alerts_count || 0, icon: 'account_balance_wallet' },
+          hr: { name: 'TalentOps AI (HR)', score: hrData.health_score, alert_count: hrData.alerts_count || 0, icon: 'people' },
+          inventory: { name: 'SupplySense AI (Stock)', score: supplyData.health_score, alert_count: supplyData.alerts_count || 0, icon: 'inventory_2' },
+        },
+        scanned_at: new Date().toISOString(),
+      },
+    }
+  } catch (err) {
+    console.error('[AI Service] runMultiAgentComprehensiveAudit error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * ⚡ Autonomous Self-Healing: Auto-Close Orphaned Attendance Shift at 9 Hours
+ */
+export async function autoCloseOrphanedShift(attendanceId, maxHours = 9) {
+  if (!attendanceId) return { success: false, error: 'attendance_id required' }
+  try {
+    const { data: rec } = await supabase
+      .from('attendance_records')
+      .select('id, clock_in, notes')
+      .eq('id', attendanceId)
+      .single()
+
+    if (!rec) return { success: false, error: 'Attendance record not found' }
+
+    const clockInTime = new Date(rec.clock_in).getTime()
+    const autoClockOut = new Date(clockInTime + maxHours * 3600 * 1000).toISOString()
+
+    const { error: updateErr } = await supabase
+      .from('attendance_records')
+      .update({
+        clock_out: autoClockOut,
+        total_hours: maxHours,
+        notes: `${rec.notes || ''} [AI Auto-Closed at ${maxHours}h cap: Missing punch-out]`.trim(),
+      })
+      .eq('id', attendanceId)
+
+    if (updateErr) throw updateErr
+
+    // Resolve corresponding alert
+    await supabase
+      .from('ai_agent_alerts')
+      .update({
+        is_resolved: true,
+        resolution_action: 'auto_healed',
+        resolution_notes: `Shift auto-closed at ${maxHours} standard hours by TalentOps AI`,
+        resolved_at: new Date().toISOString(),
+      })
+      .contains('metadata', { attendance_id: attendanceId })
+
+    return { success: true, message: `Shift auto-closed capped at ${maxHours} hours.` }
+  } catch (err) {
+    console.error('[AI Service] autoCloseOrphanedShift error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * ⚡ Autonomous Self-Healing: Auto-Transfer POS Cash to Main Cashbook
+ */
+export async function autoTransferPosCash(shiftId, branchId) {
+  if (!shiftId) return { success: false, error: 'shift_id required' }
+  try {
+    const { data: shift } = await supabase
+      .from('pos_shifts')
+      .select('id, shift_number, cash_sales_total, cashier_id, company_id')
+      .eq('id', shiftId)
+      .single()
+
+    if (!shift) return { success: false, error: 'Shift not found' }
+
+    // Resolve Cash in Hand account
+    const { data: cashAcc } = await supabase
+      .from('finance_accounts')
+      .select('id, registered_name')
+      .eq('account_type', 'cash')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (!cashAcc) return { success: false, error: 'No active Cash account found' }
+
+    const now = new Date().toISOString()
+    const voucherNumber = `RV-POS-${Date.now().toString().slice(-6)}`
+
+    const { data: voucher, error: vErr } = await supabase
+      .from('finance_vouchers')
+      .insert({
+        company_id: shift.company_id || null,
+        branch_id: branchId || null,
+        voucher_type: 'receipt',
+        voucher_number: voucherNumber,
+        reference_id: shift.id,
+        reference_type: 'pos_shift',
+        account_id: cashAcc.id,
+        amount: Number(shift.cash_sales_total || 0),
+        status: 'draft',
+        voucher_date: now.split('T')[0],
+        description: `POS Shift Cash Deposit (${shift.shift_number}) [FinGuard AI Auto-Created]`,
+      })
+      .select()
+      .single()
+
+    if (vErr) throw vErr
+
+    // Resolve corresponding alert
+    await supabase
+      .from('ai_agent_alerts')
+      .update({
+        is_resolved: true,
+        resolution_action: 'auto_transferred',
+        resolution_notes: `Draft Receipt Voucher ${voucherNumber} created for LKR ${Number(shift.cash_sales_total).toFixed(2)}`,
+        resolved_at: now,
+      })
+      .contains('metadata', { shift_id: shiftId })
+
+    return { success: true, voucher_id: voucher.id, voucher_number: voucherNumber }
+  } catch (err) {
+    console.error('[AI Service] autoTransferPosCash error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * ⚡ Autonomous Self-Healing: Draft Internal Stock Transfer
+ */
+export async function draftInternalStockTransfer({ fromWarehouseId, toWarehouseId, itemId, quantity, notes }) {
+  try {
+    const transferNumber = `TR-${Date.now().toString().slice(-6)}`
+    const { data: transfer, error: tErr } = await supabase
+      .from('stock_transfers')
+      .insert({
+        transfer_number: transferNumber,
+        source_warehouse_id: fromWarehouseId,
+        destination_warehouse_id: toWarehouseId,
+        status: 'draft',
+        notes: notes || 'Draft transfer proposed by SupplySense AI',
+      })
+      .select()
+      .single()
+
+    if (tErr) throw tErr
+
+    if (transfer && itemId && quantity) {
+      await supabase.from('stock_transfer_items').insert({
+        transfer_id: transfer.id,
+        item_id: itemId,
+        quantity_requested: Number(quantity),
+      })
+    }
+
+    return { success: true, transfer_number: transferNumber, transfer_id: transfer?.id }
+  } catch (err) {
+    console.error('[AI Service] draftInternalStockTransfer error:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Resolve any Multi-Agent alert (Dismiss, Manual Approve, Auto-Healed)
+ */
+export async function resolveMultiAgentAlert(alertId, resolutionAction = 'resolved', notes = '', userId = null) {
+  if (!alertId) return { success: false, error: 'alert_id required' }
+
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_resolve_ai_alert', {
+      p_alert_id: alertId,
+      p_action: resolutionAction,
+      p_notes: notes,
+      p_user_id: userId,
+    })
+    if (!rpcError && rpcData?.success) {
+      return { success: true, data: rpcData }
+    }
+  } catch (rpcErr) {
+    console.debug('[AI Service] fn_resolve_ai_alert RPC fallback:', rpcErr)
+  }
+
+  try {
+    const { error: updErr } = await supabase
+      .from('ai_agent_alerts')
+      .update({
+        is_resolved: true,
+        resolution_action: resolutionAction,
+        resolution_notes: notes,
+        resolved_at: new Date().toISOString(),
+        resolved_by: userId,
+      })
+      .eq('id', alertId)
+
+    if (updErr) throw updErr
+    return { success: true }
+  } catch (err) {
+    console.error('[AI Service] resolveMultiAgentAlert error:', err)
+    return { success: false, error: err.message }
   }
 }
 

@@ -25,6 +25,15 @@ import {
   fetchDailyReports,
   fetchDailyReportById,
   fetchDailyReportByDate,
+  runFinGuardAudit,
+  runTalentOpsAudit,
+  runSupplySenseAudit,
+  runMultiAgentComprehensiveAudit,
+  fetchMultiAgentAlerts,
+  autoCloseOrphanedShift,
+  autoTransferPosCash,
+  draftInternalStockTransfer,
+  resolveMultiAgentAlert,
 } from '../services/ai.service'
 
 export const useAiStore = defineStore('ai', () => {
@@ -33,6 +42,14 @@ export const useAiStore = defineStore('ai', () => {
   const recommendations = ref([])
   const anomalies = ref([])
   const forecasts = ref([])
+  const multiAgentScores = ref({
+    overall: 100,
+    operations: 100,
+    finance: 100,
+    hr: 100,
+    inventory: 100,
+  })
+  const multiAgentAlerts = ref([])
   const systemAudits = ref([])
   const dailyReports = ref([])
   const currentReport = ref(null)
@@ -395,12 +412,93 @@ export const useAiStore = defineStore('ai', () => {
     return data
   }
 
+  // ── Multi-Agent System Actions (FinGuard, TalentOps, SupplySense) ─────────
+  async function loadMultiAgentAlerts(branchId, agentType = null) {
+    const alerts = await fetchMultiAgentAlerts(branchId, agentType)
+    multiAgentAlerts.value = alerts
+    return alerts
+  }
+
+  async function runAllMultiAgentAudits(branchId) {
+    loading.value.audit = true
+    try {
+      const res = await runMultiAgentComprehensiveAudit(branchId)
+      if (res?.success && res?.data) {
+        multiAgentScores.value = {
+          overall: res.data.overall_score || 100,
+          operations: res.data.departments?.operations?.score || 100,
+          finance: res.data.departments?.finance?.score || 100,
+          hr: res.data.departments?.hr?.score || 100,
+          inventory: res.data.departments?.inventory?.score || 100,
+        }
+      }
+      await loadMultiAgentAlerts(branchId)
+      return res
+    } finally {
+      loading.value.audit = false
+    }
+  }
+
+  async function runSingleAgentAudit(agentType, branchId, options = {}) {
+    loading.value.audit = true
+    try {
+      let res
+      if (agentType === 'finance') res = await runFinGuardAudit(branchId, options)
+      else if (agentType === 'hr') res = await runTalentOpsAudit(branchId, options)
+      else if (agentType === 'inventory' || agentType === 'procurement') res = await runSupplySenseAudit(branchId, options)
+
+      if (res?.success && res?.data) {
+        if (agentType === 'finance') multiAgentScores.value.finance = res.data.health_score
+        else if (agentType === 'hr') multiAgentScores.value.hr = res.data.health_score
+        else multiAgentScores.value.inventory = res.data.health_score
+      }
+      await loadMultiAgentAlerts(branchId)
+      return res
+    } finally {
+      loading.value.audit = false
+    }
+  }
+
+  async function healShiftAction(attendanceId, maxHours = 9) {
+    const res = await autoCloseOrphanedShift(attendanceId, maxHours)
+    if (res?.success) {
+      multiAgentAlerts.value = multiAgentAlerts.value.filter(
+        (a) => a.metadata?.attendance_id !== attendanceId
+      )
+    }
+    return res
+  }
+
+  async function transferCashAction(shiftId, branchId) {
+    const res = await autoTransferPosCash(shiftId, branchId)
+    if (res?.success) {
+      multiAgentAlerts.value = multiAgentAlerts.value.filter(
+        (a) => a.metadata?.shift_id !== shiftId
+      )
+    }
+    return res
+  }
+
+  async function draftTransferAction(payload) {
+    return await draftInternalStockTransfer(payload)
+  }
+
+  async function resolveAlertAction(alertId, action = 'resolved', notes = '', userId = null) {
+    const res = await resolveMultiAgentAlert(alertId, action, notes, userId)
+    if (res?.success) {
+      multiAgentAlerts.value = multiAgentAlerts.value.filter((a) => a.id !== alertId)
+    }
+    return res
+  }
+
   return {
     // State
     insights,
     recommendations,
     anomalies,
     forecasts,
+    multiAgentScores,
+    multiAgentAlerts,
     systemAudits,
     dailyReports,
     currentReport,
@@ -439,5 +537,12 @@ export const useAiStore = defineStore('ai', () => {
     loadDailyReports,
     loadReportDetail,
     loadTodayReport,
+    loadMultiAgentAlerts,
+    runAllMultiAgentAudits,
+    runSingleAgentAudit,
+    healShiftAction,
+    transferCashAction,
+    draftTransferAction,
+    resolveAlertAction,
   }
 })
