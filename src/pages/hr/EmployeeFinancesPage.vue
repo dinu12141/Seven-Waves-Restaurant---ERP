@@ -567,6 +567,7 @@
             @click="saveAdvance"
           />
         </q-card-actions>
+      </q-card>
     </q-dialog>
 
     <!-- ══ APPROVE & DISBURSE ADVANCE DIALOG ═════════════════════════════ -->
