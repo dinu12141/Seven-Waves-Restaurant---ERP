@@ -179,7 +179,7 @@
               </div>
               <div class="acm-panel-sub">Select roles to auto-assign default module permissions</div>
               <div class="acm-roles-grid">
-                <div v-for="role in allRoles" :key="role.id">
+                <div v-for="role in assignableRoles" :key="role.id">
                   <q-item tag="label" v-ripple dense class="acm-role-label rounded-borders">
                     <q-item-section avatar>
                       <q-checkbox
@@ -338,10 +338,15 @@ const form = reactive({
 
 const isAdmin = (user) => {
   return (
-    user.user_roles?.some((ur) => ur.roles.name === 'admin') ||
+    user.email === 'admin@sevenwaves.lk' ||
+    user.user_roles?.some((ur) => ur.roles?.name === 'admin' || ur.roles?.name === 'super_admin') ||
     user.user_permissions?.some((up) => up.permission_code === 'admin.view')
   )
 }
+
+const assignableRoles = computed(() => {
+  return allRoles.value.filter((r) => r.name !== 'admin' && r.name !== 'super_admin')
+})
 
 // ─── Role-Permission Matrix ────────────────────────────────────────────────
 const matrixModules = [
@@ -366,7 +371,6 @@ const matrixRoles = [
   { key: 'finance', label: 'Finance Officer', caption: 'accounts & payroll' },
   { key: 'hr', label: 'HR Manager', caption: 'staff & shifts' },
   { key: 'manager', label: 'Branch Manager', caption: 'broad operational access' },
-  { key: 'admin', label: 'Console Admin', caption: 'full system control' },
 ]
 
 const defaultRoleModuleMap = {
@@ -554,9 +558,11 @@ function toggleSection(section, val) {
 }
 
 const filteredUsers = computed(() => {
-  if (!search.value) return users.value
+  // Exclude Admin from standard permission management table to prevent unauthorized modification or deletion
+  let list = users.value.filter((u) => !isAdmin(u) && u.email !== 'admin@sevenwaves.lk')
+  if (!search.value) return list
   const s = search.value.toLowerCase()
-  return users.value.filter(
+  return list.filter(
     (u) => u.full_name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s),
   )
 })
@@ -613,6 +619,7 @@ const fetchData = async () => {
         )
       `,
       )
+      .is('deleted_at', null)
       .order('full_name')
 
     if (usersError) throw usersError
@@ -635,6 +642,15 @@ const fetchData = async () => {
 }
 
 const editUserAccess = (user) => {
+  if (isAdmin(user) || user.email === 'admin@sevenwaves.lk') {
+    $q.notify({
+      type: 'warning',
+      icon: 'lock',
+      message: 'System Administrator access is protected and cannot be modified here.',
+    })
+    return
+  }
+
   selectedUser.value = user
   form.roleIds = user.user_roles?.map((ur) => ur.role_id) || []
 
@@ -669,6 +685,22 @@ const editUserAccess = (user) => {
 
 const saveUserAccess = async () => {
   if (!selectedUser.value) return
+
+  if (isAdmin(selectedUser.value) || selectedUser.value.email === 'admin@sevenwaves.lk') {
+    $q.notify({
+      type: 'negative',
+      icon: 'lock',
+      message: 'System Administrator account is protected and cannot be modified.',
+    })
+    dialogVisible.value = false
+    return
+  }
+
+  // Ensure admin role cannot be assigned through this UI
+  const adminRoleIds = allRoles.value
+    .filter((r) => r.name === 'admin' || r.name === 'super_admin')
+    .map((r) => r.id)
+  form.roleIds = form.roleIds.filter((id) => !adminRoleIds.includes(id))
 
   saving.value = true
   try {

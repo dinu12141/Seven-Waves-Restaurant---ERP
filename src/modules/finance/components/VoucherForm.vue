@@ -206,7 +206,14 @@ const filteredAccountOptions = computed(() => {
 
   if (['bank', 'cheque', 'card', 'online_transfer'].includes(method)) {
     const list = all.filter(a => a.account_type === 'bank' || a.bank_name || a.registered_name.toLowerCase().includes('bank') || ['commercial', 'peoples', 'hnb', 'ntb', 'ndb'].some(b => a.registered_name.toLowerCase().includes(b)))
-    return list.map(a => ({ label: `${a.bank_name || a.registered_name} — ${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
+    return list.map(a => {
+      const bName = a.bank_name ? `${a.bank_name} — ` : ''
+      const accNum = a.account_number ? ` (${a.account_number})` : ''
+      return {
+        label: `${bName}${a.registered_name}${accNum} [Bank] (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`,
+        value: a.id,
+      }
+    })
   }
 
   // Cash payment: real cash accounts / drawers
@@ -215,7 +222,10 @@ const filteredAccountOptions = computed(() => {
     return (a.account_type === 'cash' || n.includes('cash') || n.includes('change fund')) && !n.includes('petty')
   })
   const finalList = list.length ? list : all.filter(a => a.account_type === 'cash')
-  return finalList.map(a => ({ label: `${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
+  return finalList.map(a => ({
+    label: `${a.registered_name} [Cash] (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`,
+    value: a.id,
+  }))
 })
 
 // Auto-switch account selection when payment method changes

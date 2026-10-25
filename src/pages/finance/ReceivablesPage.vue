@@ -372,10 +372,16 @@ async function loadData() {
   loading.value = true
 
   const { data: banks } = await supabase
-    .from('bank_accounts')
-    .select('name, bank_name, account_number')
+    .from('finance_accounts')
+    .select('registered_name, bank_name, account_number')
+    .eq('account_type', 'bank')
     .eq('is_active', true)
-  companyBankAccounts.value = banks || []
+    .is('deleted_at', null)
+  companyBankAccounts.value = (banks || []).map(b => ({
+    name: b.registered_name,
+    bank_name: b.bank_name,
+    account_number: b.account_number
+  }))
 
   const [recvRes, agingRes] = await Promise.all([fetchReceivables(), fetchReceivableAging()])
   receivables.value = recvRes.data || []

@@ -105,26 +105,29 @@
         <template #body-cell-actions="props">
           <q-td :props="props">
             <div class="um-actions">
-              <PermissionGate permission="admin.users.edit">
-                <q-btn flat round size="sm" icon="edit" class="um-action-btn um-action-btn--edit"
-                  @click="editUser(props.row)">
-                  <q-tooltip>Edit User</q-tooltip>
-                </q-btn>
-              </PermissionGate>
-              <PermissionGate permission="admin.users.manage">
-                <q-btn flat round size="sm"
-                  :icon="props.row.is_active ? 'block' : 'check_circle'"
-                  :class="props.row.is_active ? 'um-action-btn um-action-btn--danger' : 'um-action-btn um-action-btn--success'"
-                  @click="toggleUserStatus(props.row)">
-                  <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
-                </q-btn>
-              </PermissionGate>
-              <PermissionGate permission="admin.users.manage">
-                <q-btn flat round size="sm" icon="delete" class="um-action-btn um-action-btn--danger"
-                  @click="deleteUser(props.row)">
-                  <q-tooltip>Delete User</q-tooltip>
-                </q-btn>
-              </PermissionGate>
+              <template v-if="!isAdminUser(props.row)">
+                <PermissionGate permission="admin.users.edit">
+                  <q-btn flat round size="sm" icon="edit" class="um-action-btn um-action-btn--edit"
+                    @click="editUser(props.row)">
+                    <q-tooltip>Edit User</q-tooltip>
+                  </q-btn>
+                </PermissionGate>
+                <PermissionGate permission="admin.users.manage">
+                  <q-btn flat round size="sm"
+                    :icon="props.row.is_active ? 'block' : 'check_circle'"
+                    :class="props.row.is_active ? 'um-action-btn um-action-btn--danger' : 'um-action-btn um-action-btn--success'"
+                    @click="toggleUserStatus(props.row)">
+                    <q-tooltip>{{ props.row.is_active ? 'Deactivate' : 'Activate' }}</q-tooltip>
+                  </q-btn>
+                  <q-btn flat round size="sm" icon="delete" class="um-action-btn um-action-btn--danger"
+                    @click="deleteUser(props.row)">
+                    <q-tooltip>Delete User</q-tooltip>
+                  </q-btn>
+                </PermissionGate>
+              </template>
+              <span v-else class="text-caption text-amber-8 q-px-xs row items-center">
+                <q-icon name="lock" size="13px" class="q-mr-xs" />Protected
+              </span>
             </div>
           </q-td>
         </template>
@@ -439,11 +442,24 @@ onMounted(async () => {
   await fetchRoles()
 })
 
+const isAdminUser = (user) => {
+  if (!user) return false
+  return (
+    user.email === 'admin@sevenwaves.lk' ||
+    user._role?.toLowerCase() === 'admin' ||
+    user._role?.toLowerCase() === 'super_admin' ||
+    user.user_roles?.some((ur) => ur.roles?.name === 'admin' || ur.roles?.name === 'super_admin')
+  )
+}
+
 const fetchRoles = async () => {
   try {
     const { data, error } = await supabase.from('roles').select('id, name').order('name')
     if (error) throw error
-    rolesList.value = data || []
+    // Filter out admin and super_admin so HR / standard users cannot assign admin privileges
+    rolesList.value = (data || []).filter(
+      (r) => r.name !== 'admin' && r.name !== 'super_admin',
+    )
   } catch (err) {
     console.error('Error fetching roles:', err)
   }
@@ -548,6 +564,14 @@ const autoGenerateCode = async () => {
 }
 
 const editUser = (user) => {
+  if (isAdminUser(user)) {
+    $q.notify({
+      type: 'warning',
+      icon: 'lock',
+      message: 'System Administrator profile is protected and cannot be edited by standard users.',
+    })
+    return
+  }
   isEditing.value = true
   Object.assign(form, user)
   dialogVisible.value = true
@@ -631,6 +655,15 @@ const saveUser = async () => {
 }
 
 const toggleUserStatus = (user) => {
+  if (isAdminUser(user)) {
+    $q.notify({
+      type: 'negative',
+      icon: 'shield',
+      message: 'System Administrator account is protected and cannot be deactivated.',
+    })
+    return
+  }
+
   const isCurrentlyActive = user.is_active
   const actionText = isCurrentlyActive ? 'deactivate' : 'activate'
   const actionPast = isCurrentlyActive ? 'deactivated' : 'activated'
@@ -673,6 +706,14 @@ const toggleUserStatus = (user) => {
 }
 
 const deleteUser = (user) => {
+  if (isAdminUser(user)) {
+    $q.notify({
+      type: 'negative',
+      icon: 'shield',
+      message: 'System Administrator account is protected and cannot be deleted.',
+    })
+    return
+  }
   $q.dialog({
     title: 'Delete User',
     message: `Are you sure you want to delete <strong>${user.full_name || user.email}</strong>?<br><br>

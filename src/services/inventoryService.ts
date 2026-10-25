@@ -53,6 +53,7 @@ function isUuid(v: unknown): v is string {
 
 export interface DocumentFilters {
   docType?: string
+  docTypes?: string[]
   status?: string
   warehouseId?: string
   dateFrom?: string
@@ -133,7 +134,11 @@ export function useDocumentList() {
         .order('doc_date', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (filters.docType) query = query.eq('doc_type', filters.docType)
+      if (filters.docTypes && filters.docTypes.length > 0) {
+        query = query.in('doc_type', filters.docTypes)
+      } else if (filters.docType) {
+        query = query.eq('doc_type', filters.docType)
+      }
       if (filters.status) query = query.eq('status', filters.status)
       if (filters.warehouseId) query = query.eq('warehouse_id', filters.warehouseId)
       if (filters.dateFrom) query = query.gte('doc_date', filters.dateFrom)
@@ -1646,7 +1651,7 @@ export async function fetchWastageStats(dateFrom?: string, dateTo?: string) {
     .from('inventory_ledger')
     .select('quantity, total_cost')
     .eq('company_id', companyId)
-    .eq('doc_type', 'WASTAGE')
+    .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
     .eq('direction', 'OUT')
 
   if (dateFrom) periodQuery = periodQuery.gte('posted_at', dateFrom + 'T00:00:00')
@@ -1657,7 +1662,7 @@ export async function fetchWastageStats(dateFrom?: string, dateTo?: string) {
     .from('inventory_ledger')
     .select('quantity, total_cost')
     .eq('company_id', companyId)
-    .eq('doc_type', 'WASTAGE')
+    .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
     .eq('direction', 'OUT')
     .gte('posted_at', today + 'T00:00:00')
 
@@ -1747,7 +1752,7 @@ export async function createWastageDocument(
   wastageCategory: string,
   items: Array<{
     item_id: string
-    uom_id: string
+    uom_id?: string
     quantity: number
     unit_cost: number
     wastage_reason: string
@@ -1761,31 +1766,31 @@ export async function createWastageDocument(
 
   if (!companyId || !branchId) throw new Error('No company/branch context.')
 
-  // 1. Generate doc number
+  // 1. Generate doc number for ADJUSTMENT
   const { data: docNumber, error: seqErr } = await supabase.rpc('generate_inv_doc_number', {
     p_company_id: companyId,
-    p_doc_type: 'WASTAGE',
+    p_doc_type: 'ADJUSTMENT',
   })
   if (seqErr) throw seqErr
 
-  // 2. Calculate totals
+  // 2. Calculate totals (negative qty for wastage deduction)
   const totalQty = items.reduce((s, l) => s + (l.quantity || 0), 0)
   const totalCost = items.reduce((s, l) => s + (l.quantity || 0) * (l.unit_cost || 0), 0)
 
-  // 3. Insert header
+  // 3. Insert header with doc_type: 'ADJUSTMENT' (allowed by database constraint)
+  const fullRemarks = `[Wastage - ${wastageCategory}] ${remarks || ''}`.trim()
   const { data: doc, error: err1 } = await supabase
     .from('inventory_documents')
     .insert({
       company_id: companyId,
       branch_id: branchId,
-      doc_type: 'WASTAGE',
+      doc_type: 'ADJUSTMENT',
       doc_number: docNumber,
       doc_date: new Date().toISOString().split('T')[0],
       warehouse_id: warehouseId,
-      wastage_category: wastageCategory,
-      remarks: remarks || null,
+      remarks: fullRemarks,
       status: 'draft',
-      total_qty: totalQty,
+      total_qty: -Math.abs(totalQty),
       total_cost: totalCost,
       created_by: userId || null,
       posting_date: new Date().toISOString().split('T')[0],
@@ -1797,17 +1802,23 @@ export async function createWastageDocument(
     .single()
   if (err1) throw err1
 
-  // 4. Insert lines with wastage_reason
+  // 4. Resolve UOM if not provided and insert lines with negative quantity
   if (items.length > 0) {
+    const itemIds = items.filter(l => !l.uom_id).map(l => l.item_id)
+    const uomMap: Record<string, string> = {}
+    if (itemIds.length > 0) {
+      const { data: itms } = await supabase.from('items').select('id, inventory_uom_id').in('id', itemIds)
+      itms?.forEach((i: any) => { if (i.inventory_uom_id) uomMap[i.id] = i.inventory_uom_id })
+    }
+
     const rows = items.map((l, idx) => ({
       document_id: doc.id,
       line_number: idx + 1,
       item_id: l.item_id,
-      uom_id: l.uom_id,
-      quantity: l.quantity,
+      uom_id: l.uom_id || uomMap[l.item_id] || null,
+      quantity: -Math.abs(l.quantity), // negative quantity so ADJUSTMENT decreases stock
       unit_cost: l.unit_cost || 0,
-      wastage_reason: l.wastage_reason || 'other',
-      notes: l.notes || null,
+      notes: `[${l.wastage_reason || 'other'}] ${l.notes || ''}`.trim(),
     }))
     const { error: err2 } = await supabase.from('inventory_document_lines').insert(rows)
     if (err2) throw err2
@@ -1827,7 +1838,7 @@ export async function fetchDailyWastageTrend(days: number = 30) {
     .from('inventory_ledger')
     .select('quantity, total_cost, posted_at')
     .eq('company_id', companyId)
-    .eq('doc_type', 'WASTAGE')
+    .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
     .eq('direction', 'OUT')
     .gte('posted_at', fromDate)
     .order('posted_at')

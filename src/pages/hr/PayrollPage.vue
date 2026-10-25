@@ -1906,24 +1906,55 @@ const cashBankAccounts = computed(() =>
     .filter((a) => a.account_type === 'Asset' && a.is_active)
     .map((a) => ({ label: `${a.code} — ${a.name}`, value: a.id })),
 )
-// Bank accounts = Asset accounts with "Bank" in name
+// Bank accounts = Bank accounts from finance_accounts
 const bankAccounts = computed(() =>
   financeAccounts.value
     .filter(
-      (a) => a.account_type === 'Asset' && a.is_active && a.name.toLowerCase().includes('bank'),
+      (a) =>
+        a.account_type === 'bank' ||
+        (a.account_type === 'Asset' && a.is_active && a.name?.toLowerCase().includes('bank')),
     )
-    .map((a) => ({ label: `${a.code} — ${a.name}`, value: a.id })),
+    .map((a) => {
+      const bName = a.bank_name ? `${a.bank_name} — ` : ''
+      const accNum = a.account_number ? ` (${a.account_number})` : ''
+      const bal = a.current_balance !== undefined ? ` — LKR ${fmt(a.current_balance)}` : ''
+      return {
+        label: `${bName}${a.registered_name || a.name}${accNum}${bal}`,
+        value: a.id,
+      }
+    }),
 )
-// Cash accounts = Asset accounts with "Cash" in name
+// Cash accounts = Cash accounts from finance_accounts
 const cashAccounts = computed(() =>
   financeAccounts.value
     .filter(
       (a) =>
-        a.account_type === 'Asset' &&
-        a.is_active &&
-        (a.name.toLowerCase().includes('cash') || a.name.toLowerCase().includes('petty')),
+        a.account_type === 'cash' ||
+        (a.account_type === 'Asset' &&
+          a.is_active &&
+          (a.name?.toLowerCase().includes('cash') || a.name?.toLowerCase().includes('petty'))),
     )
-    .map((a) => ({ label: `${a.code} — ${a.name}`, value: a.id })),
+    .map((a) => {
+      const bal = a.current_balance !== undefined ? ` — LKR ${fmt(a.current_balance)}` : ''
+      return {
+        label: `${a.registered_name || a.name} (Cash Account)${bal}`,
+        value: a.id,
+      }
+    }),
+)
+
+watch(
+  () => postFinanceForm.payment_method,
+  (method) => {
+    const isCash = method === 'cash'
+    const targetList = isCash ? cashAccounts.value : bankAccounts.value
+    if (targetList.length > 0) {
+      const stillValid = targetList.some((a) => a.value === postFinanceForm.cash_bank_acc)
+      if (!stillValid) {
+        postFinanceForm.cash_bank_acc = targetList[0].value
+      }
+    }
+  },
 )
 const loadingAccounts = ref(false)
 
@@ -2638,6 +2669,15 @@ async function loadAccounts() {
   if (financeAccounts.value.length) return
   loadingAccounts.value = true
   try {
+    const { data: realAccounts, error: rErr } = await supabase
+      .from('finance_accounts')
+      .select('id, registered_name, account_type, account_number, current_balance, ledger_id')
+      .order('registered_name')
+    if (!rErr && realAccounts && realAccounts.length > 0) {
+      financeAccounts.value = realAccounts
+      return
+    }
+
     const { data } = await supabase
       .from('chart_of_accounts')
       .select('id, code, name, account_type, is_active')
@@ -2656,25 +2696,47 @@ async function confirmPostToFinance() {
     return
   }
 
-  // Auto-resolve accounts using codes
-  const expAcc = financeAccounts.value.find((a) => a.code === '5100')?.id
-  const payAcc = financeAccounts.value.find((a) => a.code === '2200')?.id
-  const epfExp = financeAccounts.value.find((a) => a.code === '5130')?.id
-  const etfExp = financeAccounts.value.find((a) => a.code === '5140')?.id
-  const epfPay = financeAccounts.value.find((a) => a.code === '2210')?.id
-  const etfPay = financeAccounts.value.find((a) => a.code === '2220')?.id
-
-  if (!expAcc || !payAcc) {
-    $q.notify({
-      type: 'warning',
-      message: 'Standard Payroll accounts (5100, 2200) not found in Chart of Accounts!',
-    })
-    return
-  }
-
   if (!selectedRun.value) return
   postingFinance.value = true
   try {
+    // 1. Prefer modern post_payroll_to_finance_v2 (linked to finance_ledgers & finance_cashbook_entries)
+    const { data: res, error: rpcErr } = await supabase.rpc('post_payroll_to_finance_v2', {
+      p_payroll_run_id: selectedRun.value.id,
+      p_cash_bank_account_id: f.cash_bank_acc,
+      p_payment_method: f.payment_method,
+      p_posted_by: authStore.user?.id,
+    })
+
+    if (!rpcErr && res && res.success !== false) {
+      $q.notify({
+        type: 'positive',
+        icon: 'account_balance',
+        message: `✅ Payroll posted to Finance! Ledgers & Cashbook updated, payslips marked PAID.`,
+        timeout: 4000,
+      })
+      showPostFinanceDialog.value = false
+      showPayslips.value = false
+      await loadRuns()
+      return
+    }
+
+    // 2. Fallback to legacy post_payroll_to_finance if v2 RPC is not yet migrated in Supabase
+    const expAcc = financeAccounts.value.find((a) => a.code === '5100')?.id
+    const payAcc = financeAccounts.value.find((a) => a.code === '2200')?.id
+    const epfExp = financeAccounts.value.find((a) => a.code === '5130')?.id
+    const etfExp = financeAccounts.value.find((a) => a.code === '5140')?.id
+    const epfPay = financeAccounts.value.find((a) => a.code === '2210')?.id
+    const etfPay = financeAccounts.value.find((a) => a.code === '2220')?.id
+
+    if (!expAcc || !payAcc) {
+      if (rpcErr) throw rpcErr
+      $q.notify({
+        type: 'warning',
+        message: 'Standard Payroll accounts not found. Please run Migration #129 in Supabase.',
+      })
+      return
+    }
+
     const { error } = await supabase.rpc('post_payroll_to_finance', {
       p_payroll_run_id: selectedRun.value.id,
       p_salary_expense_acc: expAcc,
@@ -2687,7 +2749,7 @@ async function confirmPostToFinance() {
       p_payment_method: f.payment_method,
       p_posted_by: authStore.user?.id,
     })
-    if (error) throw error
+    if (error) throw (rpcErr || error)
     $q.notify({
       type: 'positive',
       icon: 'account_balance',

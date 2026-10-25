@@ -244,9 +244,9 @@
                     icon="check_circle"
                     color="green"
                     size="sm"
-                    @click="updateStatus('advances', props.row.id, 'approved')"
+                    @click="openApproveAdvance(props.row)"
                   >
-                    <q-tooltip>Approve</q-tooltip>
+                    <q-tooltip>Approve & Disburse</q-tooltip>
                   </q-btn>
                   <q-btn
                     flat
@@ -567,6 +567,64 @@
             @click="saveAdvance"
           />
         </q-card-actions>
+    </q-dialog>
+
+    <!-- ══ APPROVE & DISBURSE ADVANCE DIALOG ═════════════════════════════ -->
+    <q-dialog v-model="showApproveAdvDialog" persistent>
+      <q-card style="min-width: 440px" :class="[$q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']">
+        <q-card-section class="row items-center bg-teal text-white">
+          <q-icon name="payments" size="24px" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-bold">Approve & Disburse Salary Advance</div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-md q-gutter-sm">
+          <div class="text-body2">
+            <strong>Employee:</strong> {{ selectedAdvTarget?.employees?.full_name || selectedAdvTarget?.employees?.first_name }}
+          </div>
+          <div class="text-body2">
+            <strong>Amount:</strong> <span class="text-weight-bolder text-green">{{ formatCurrency(selectedAdvTarget?.amount || 0) }}</span>
+          </div>
+          <div class="text-caption text-grey-5" v-if="selectedAdvTarget?.reason">
+            <strong>Reason:</strong> {{ selectedAdvTarget.reason }}
+          </div>
+          <q-separator class="q-my-sm" />
+          <div>
+            <div class="text-caption text-weight-bold q-mb-xs">
+              Disburse from Cash/Bank Account (Optional):
+            </div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="disburseAccount"
+              :options="disburseAccountOptions"
+              emit-value
+              map-options
+              clearable
+              placeholder="Select account to record immediate payout"
+            />
+            <div class="text-caption text-grey-5 q-mt-xs">
+              <span v-if="disburseAccount">
+                💵 Will DEBIT Staff Receivable (1004) and CREDIT the selected account immediately.
+              </span>
+              <span v-else>
+                ℹ️ Leave empty to approve as an HR deduction only (no immediate finance transaction).
+              </span>
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup color="grey" no-caps />
+          <q-btn
+            unelevated
+            label="Confirm Approval"
+            color="positive"
+            no-caps
+            :loading="approvingAdv"
+            @click="confirmApproveAdvance"
+          />
+        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -762,6 +820,22 @@ const expForm = reactive({
 
 const showAdvanceDialog = ref(false)
 const showExpenseDialog = ref(false)
+const showApproveAdvDialog = ref(false)
+const selectedAdvTarget = ref(null)
+const disburseAccount = ref(null)
+const approvingAdv = ref(false)
+const financeAccountsList = ref([])
+
+const disburseAccountOptions = computed(() => {
+  return financeAccountsList.value.map((a) => {
+    const typeLabel = a.account_type === 'cash' ? 'Cash Account' : (a.bank_name || 'Bank')
+    const accNum = a.account_number ? ` (${a.account_number})` : ''
+    return {
+      label: `${a.registered_name}${accNum} [${typeLabel}] — LKR ${formatCurrency(a.current_balance)}`,
+      value: a.id,
+    }
+  })
+})
 
 const employeeOptions = computed(() => {
   return allEmployees.value.map((e) => ({
@@ -1005,6 +1079,64 @@ async function saveExpense() {
     })
   } finally {
     saving.value = false
+  }
+}
+
+// Advance Approval & Disbursement Handlers
+
+async function openApproveAdvance(row) {
+  selectedAdvTarget.value = row
+  disburseAccount.value = null
+  showApproveAdvDialog.value = true
+
+  try {
+    const { data } = await supabase
+      .from('finance_accounts')
+      .select('id, registered_name, bank_name, account_number, account_type, current_balance, ledger_id')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('registered_name')
+    financeAccountsList.value = data || []
+
+    const def = financeAccountsList.value.find((a) => a.is_default || a.account_type === 'cash')
+    if (def) {
+      disburseAccount.value = def.id
+    }
+  } catch (e) {
+    console.error('Failed to load finance accounts', e)
+  }
+}
+
+async function confirmApproveAdvance() {
+  if (!selectedAdvTarget.value) return
+  approvingAdv.value = true
+  try {
+    if (disburseAccount.value) {
+      const { data: res, error: rpcErr } = await supabase.rpc('disburse_employee_advance', {
+        p_advance_id: selectedAdvTarget.value.id,
+        p_cash_bank_account_id: disburseAccount.value,
+        p_disbursed_by: authStore.user?.id,
+      })
+
+      if (!rpcErr && res && res.success !== false) {
+        $q.notify({
+          type: 'positive',
+          icon: 'payments',
+          message: `Advance approved & ${formatCurrency(selectedAdvTarget.value.amount || 0)} disbursed from finance account!`,
+        })
+        showApproveAdvDialog.value = false
+        await loadData()
+        return
+      }
+    }
+
+    // Default approval (payroll deduction only or fallback)
+    await updateStatus('advances', selectedAdvTarget.value.id, 'approved')
+    showApproveAdvDialog.value = false
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message })
+  } finally {
+    approvingAdv.value = false
   }
 }
 

@@ -266,16 +266,27 @@ export const useShiftStore = defineStore('posShift', () => {
             const { financeVoucherService } = await import('src/modules/finance/services/finance-voucher.service')
             
             // 1. Find the default Cash Account
-            const { data: accounts } = await supabase.from('finance_accounts').select('id, ledger_id').eq('is_default', true).limit(1)
-            let accountId = accounts?.[0]?.id
-            let ledgerId = accounts?.[0]?.ledger_id
+            const { data: cashAccs } = await supabase
+              .from('finance_accounts')
+              .select('id, ledger_id')
+              .eq('account_type', 'cash')
+              .eq('is_active', true)
+              .is('deleted_at', null)
+              .order('is_default', { ascending: false })
+              .limit(1)
 
-            // Fallback to first available if no default is set
-            if (!accountId || !ledgerId) {
-              const { data: anyAccount } = await supabase.from('finance_accounts').select('id, ledger_id').limit(1)
-              accountId = anyAccount?.[0]?.id
-              ledgerId = anyAccount?.[0]?.ledger_id
-            }
+            const accountId = cashAccs?.[0]?.id
+
+            // Find Sales Revenue ledger (code 5000 or any income ledger)
+            const { data: revLedgers } = await supabase
+              .from('finance_ledgers')
+              .select('id')
+              .eq('ledger_code', '5000')
+              .eq('is_active', true)
+              .is('deleted_at', null)
+              .limit(1)
+
+            const ledgerId = revLedgers?.[0]?.id || cashAccs?.[0]?.ledger_id
 
             if (accountId && ledgerId) {
               // 2. Create the Received Voucher

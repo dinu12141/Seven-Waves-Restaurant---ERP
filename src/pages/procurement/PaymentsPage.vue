@@ -129,23 +129,22 @@
                   </template>
                 </q-select>
 
-                <!-- Bank Account (shows only for bank/cheque/card methods) -->
+                <!-- Bank / Cash Account (dynamically shows based on payment method) -->
                 <q-select
-                  v-if="requiresBankAccount"
                   v-model="form.bank_account_code"
-                  :options="bankAccountOptions"
+                  :options="payingAccountOptions"
                   option-value="code"
                   option-label="name"
                   emit-value
                   map-options
-                  label="Bank Account *"
+                  :label="isCashMethod ? 'Cash Account *' : 'Bank Account *'"
                   outlined
                   dense
                   :readonly="form.status !== 'draft'"
                   clearable
                 >
                   <template v-slot:prepend>
-                    <q-icon name="account_balance" color="grey-6" />
+                    <q-icon :name="isCashMethod ? 'payments' : 'account_balance'" color="grey-6" />
                   </template>
                 </q-select>
 
@@ -342,6 +341,7 @@ import {
   getOpenInvoicesForSupplier,
   listSuppliers,
 } from 'src/services/procurementService'
+import { supabase } from 'src/boot/supabase'
 
 const $q = useQuasar()
 const loading = ref(false)
@@ -402,9 +402,11 @@ const columns = [
 ]
 
 
+const financeAccounts = ref([])
+
 onMounted(async () => {
   loading.value = true
-  await Promise.all([fetchPayments(), fetchSuppliers()])
+  await Promise.all([fetchPayments(), fetchSuppliers(), fetchFinanceAccounts()])
   loading.value = false
 })
 
@@ -415,28 +417,70 @@ async function fetchPayments() {
     console.error('Failed to load payments:', e)
   }
 }
+
 async function fetchSuppliers() {
   supplierOptions.value = await listSuppliers()
 }
 
-// Bank accounts available for payment selection
-const bankAccountOptions = [
-  { code: '1010', name: 'Bank Account - Main' },
-  { code: '1011', name: 'Bank Account - HNB (Payroll)' },
-  { code: '1012', name: 'Bank Account - Commercial Bank' },
-  { code: '1013', name: 'Bank Account - Sampath Bank' },
-  { code: '1014', name: 'Bank Account - BOC' },
-]
+async function fetchFinanceAccounts() {
+  try {
+    const { data } = await supabase
+      .from('finance_accounts')
+      .select('id, registered_name, bank_name, account_number, account_type, current_balance')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('registered_name')
+    financeAccounts.value = data || []
+    
+    // Default account if not selected
+    if (!form.value.bank_account_code && payingAccountOptions.value.length > 0) {
+      form.value.bank_account_code = payingAccountOptions.value[0].code
+    }
+  } catch (e) {
+    console.error('Failed to load finance accounts:', e)
+  }
+}
 
-// Show bank account selector only for bank-type methods
-const requiresBankAccount = computed(() => {
+// Method type helpers
+const isCashMethod = computed(() => {
   const m = (form.value.payment_method || '').toLowerCase()
-  return m.includes('bank') || m.includes('cheque') || m.includes('card')
+  return m.includes('cash')
+})
+
+// Dynamically filter accounts: Cash accounts when Cash/Petty Cash is picked, Bank accounts when Bank/Cheque/Card is picked
+const payingAccountOptions = computed(() => {
+  const isCash = isCashMethod.value
+  const isPetty = (form.value.payment_method || '').toLowerCase().includes('petty')
+
+  const list = financeAccounts.value.filter((a) => {
+    if (isPetty) {
+      return a.account_type === 'petty_cash' || a.registered_name.toLowerCase().includes('petty')
+    }
+    if (isCash) {
+      return a.account_type === 'cash'
+    }
+    return a.account_type === 'bank'
+  })
+
+  return list.map((a) => {
+    const typeLabel = a.account_type === 'cash' ? 'Cash Account' : (a.bank_name || 'Bank')
+    const accNum = a.account_number ? ` (${a.account_number})` : ''
+    return {
+      code: a.account_number || a.registered_name,
+      name: `${a.registered_name}${accNum} [${typeLabel}] — LKR ${Number(a.current_balance || 0).toLocaleString()}`,
+      id: a.id,
+    }
+  })
 })
 
 function onPaymentMethodChange() {
-  // Reset bank_account_code when switching to cash/petty cash
-  if (!requiresBankAccount.value) {
+  const opts = payingAccountOptions.value
+  if (opts.length > 0) {
+    const stillValid = opts.some((o) => o.code === form.value.bank_account_code)
+    if (!stillValid) {
+      form.value.bank_account_code = opts[0].code
+    }
+  } else {
     form.value.bank_account_code = null
   }
 }
@@ -607,11 +651,12 @@ async function savePayment(targetStatus) {
       return
     }
 
-    // Validate bank account selected for bank-type methods
-    const pm = form.value.payment_method || 'Cash'
-    const needsBank = pm.toLowerCase().includes('bank') || pm.toLowerCase().includes('cheque') || pm.toLowerCase().includes('card')
-    if (needsBank && !form.value.bank_account_code) {
-      $q.notify({ type: 'warning', message: 'Please select the Bank Account used for this payment' })
+    // Validate paying account selected
+    if (!form.value.bank_account_code) {
+      $q.notify({
+        type: 'warning',
+        message: `Please select the ${isCashMethod.value ? 'Cash' : 'Bank'} Account used for this payment`,
+      })
       return
     }
 

@@ -396,9 +396,9 @@ export async function fetchReceivableAging() {
 export async function fetchApInvoices(filters: FinanceFilters = {}) {
   let query = supabase
     .from('ap_invoices')
-    .select('*, suppliers(name)')
+    .select('*, suppliers(id, name, code, bank_name, bank_branch, bank_account_number, bank_account_name)')
     .not('status', 'in', '("cancelled","paid")')
-    .order('created_at', { ascending: false })
+    .order('doc_date', { ascending: false })
 
   if (filters.limit) query = query.limit(filters.limit)
   const { data, error } = await query
@@ -406,26 +406,43 @@ export async function fetchApInvoices(filters: FinanceFilters = {}) {
 }
 
 export async function fetchPayableAging() {
-  const { data } = await fetchApInvoices();
-  const now = new Date().getTime();
+  const { data, error } = await fetchApInvoices()
+  if (error) return { data: [], error }
 
-  const res = (data || []).map(r => {
-    const docDate = new Date(r.invoice_date || r.created_at).getTime();
-    const days = Math.floor((now - docDate) / (1000 * 3600 * 24));
-    let bucket = 'CURRENT';
-    if (days >= 1 && days <= 30) bucket = '1_30_DAYS';
-    else if (days >= 31 && days <= 60) bucket = '31_60_DAYS';
-    else if (days >= 61 && days <= 90) bucket = '61_90_DAYS';
-    else if (days > 90) bucket = 'OVER_90_DAYS';
+  const now = new Date().getTime()
+
+  const res = (data || []).map((r: any) => {
+    const rawDate = r.doc_date || r.invoice_date || r.created_at
+    const docDate = new Date(rawDate).getTime()
+    const days = Math.floor((now - docDate) / (1000 * 3600 * 24))
+
+    let bucket = 'current'
+    if (days >= 1 && days <= 30) bucket = '1-30 days'
+    else if (days >= 31 && days <= 60) bucket = '31-60 days'
+    else if (days >= 61 && days <= 90) bucket = '61-90 days'
+    else if (days > 90) bucket = '90+ days'
+
+    const total = Number(r.total_amount || 0)
+    const paid = Number(r.paid_amount || 0)
+    const balance = Number(r.balance_due !== undefined && r.balance_due !== null ? r.balance_due : total - paid)
 
     return {
       id: r.id,
       supplier_id: r.supplier_id,
-      supplier_name: r.suppliers?.name,
-      balance: r.balance_due,
-      aging_bucket: bucket
+      supplier_name: r.suppliers?.name || 'Unknown Supplier',
+      bank_name: r.suppliers?.bank_name || '',
+      bank_account_number: r.suppliers?.bank_account_number || '',
+      entry_type: 'INVOICE',
+      doc_number: r.doc_number,
+      doc_date: r.doc_date || r.created_at?.slice(0, 10),
+      due_date: r.due_date || '-',
+      credit: total, // Total amount billed
+      debit: paid,   // Amount already paid
+      balance: balance, // Outstanding payable amount
+      aging_bucket: bucket,
+      status: r.status,
     }
-  });
+  })
 
   return { data: res, error: null }
 }

@@ -126,7 +126,7 @@
         <q-card-section class="col scroll q-pa-md">
           <!-- Header Fields -->
           <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <q-input
                 v-model="form.doc_date"
                 label="Issue Date *"
@@ -137,7 +137,7 @@
                 :rules="[v => !!v || 'Required']"
               />
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <q-select
                 v-model="form.warehouse"
                 :options="warehouseOptions"
@@ -150,7 +150,7 @@
                 :rules="[v => !!v || 'Required']"
               />
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <q-select
                 v-model="form.issue_purpose"
                 :options="issuePurposes"
@@ -159,6 +159,20 @@
                 dense
                 :readonly="form.status !== 'draft'"
                 :rules="[v => !!v || 'Required']"
+              />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-select
+                v-model="form.target_warehouse"
+                :options="targetWarehouseOptions"
+                option-label="name"
+                option-value="id"
+                label="To Store / Kitchen"
+                outlined
+                dense
+                clearable
+                :readonly="form.status !== 'draft'"
+                :hint="form.target_warehouse ? 'Stock transfers into this store' : 'Optional (empty = direct consumption)'"
               />
             </div>
             <div class="col-12">
@@ -374,6 +388,7 @@ const emptyForm = () => ({
   doc_number: 'NEW',
   doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
   warehouse: null,
+  target_warehouse: null,
   issue_purpose: null,
   remarks: '',
   status: 'draft',
@@ -387,6 +402,10 @@ const totalCost = computed(() =>
 
 // ── Options ──────────────────────────────────────────────────────────────────
 const warehouseOptions = computed(() => warehouses.value)
+const targetWarehouseOptions = computed(() => {
+  const currentId = form.value.warehouse?.id || form.value.warehouse
+  return warehouses.value.filter(w => w.id !== currentId)
+})
 const itemOptions      = ref([])
 
 // ── Filtered GINs ────────────────────────────────────────────────────────────
@@ -403,9 +422,15 @@ const filteredGins = computed(() => {
 
 // ── Table Columns ─────────────────────────────────────────────────────────────
 const columns = [
-  { name: 'doc_number', label: 'GIN #',     field: 'doc_number',  align: 'left',   sortable: true, classes: 'text-weight-medium' },
+  { name: 'doc_number', label: 'Doc #',     field: 'doc_number',  align: 'left',   sortable: true, classes: 'text-weight-medium' },
   { name: 'doc_date',   label: 'Date',       field: 'doc_date',    align: 'left',   sortable: true },
-  { name: 'warehouse_name', label: 'Warehouse', field: 'warehouse_name', align: 'left' },
+  {
+    name: 'warehouse_name',
+    label: 'Warehouse / Store',
+    field: 'warehouse_name',
+    align: 'left',
+    format: (val, row) => row.target_warehouse_name ? `${val} → ${row.target_warehouse_name}` : (val || '-')
+  },
   { name: 'remarks',    label: 'Purpose',    field: 'remarks',     align: 'left' },
   { name: 'total_qty',  label: 'Total Qty',  field: 'total_qty',   align: 'right',  sortable: true,
     format: v => Number(v || 0).toFixed(2) },
@@ -503,12 +528,14 @@ async function openView(row) {
   try {
     const doc = await fetchDocumentById(row.id)
     const warehouseObj = warehouses.value.find(w => w.id === doc.header.warehouse_id) || null
+    const targetWhObj  = warehouses.value.find(w => w.id === doc.header.target_warehouse_id) || null
 
     form.value = {
       id:            doc.header.id,
       doc_number:    doc.header.doc_number,
       doc_date:      doc.header.doc_date,
       warehouse:     warehouseObj,
+      target_warehouse: targetWhObj,
       issue_purpose: doc.header.remarks?.startsWith('Purpose: ')
         ? doc.header.remarks.replace('Purpose: ', '').split(' | ')[0]
         : null,
@@ -566,14 +593,19 @@ async function saveAndPost() {
 
   saving.value = true
   try {
+    const targetWhId = form.value.target_warehouse?.id || form.value.target_warehouse || null
+    const isTransfer = !!targetWhId
+    const docType = isTransfer ? 'TRANSFER' : 'GIN'
+
     const remarks = form.value.issue_purpose
       + (form.value.remarks ? ` — ${form.value.remarks}` : '')
 
     const doc = await createDocument(
       {
-        doc_type:     'GIN',
-        doc_date:     form.value.doc_date,
-        warehouse_id: warehouseId,
+        doc_type:            docType,
+        doc_date:            form.value.doc_date,
+        warehouse_id:        warehouseId,
+        target_warehouse_id: targetWhId,
         remarks,
       },
       form.value.lines.map((l, idx) => ({
@@ -586,11 +618,16 @@ async function saveAndPost() {
     )
 
     await postDocument(doc.id)
-    $q.notify({ type: 'positive', message: `GIN ${doc.doc_number} posted — stock updated.` })
+    $q.notify({
+      type: 'positive',
+      message: isTransfer
+        ? `Transfer ${doc.doc_number} posted — stock moved to ${form.value.target_warehouse?.name || 'target store'}.`
+        : `GIN ${doc.doc_number} posted — stock deducted.`,
+    })
     dialogVisible.value = false
     await fetchGins()
   } catch (e) {
-    $q.notify({ type: 'negative', message: 'Failed to post GIN', caption: e.message })
+    $q.notify({ type: 'negative', message: 'Failed to post GIN / Transfer', caption: e.message })
   } finally {
     saving.value = false
   }
@@ -620,7 +657,7 @@ async function doDelete() {
 
 // ── Mount ─────────────────────────────────────────────────────────────────────
 async function fetchGins() {
-  await listDocuments({ docType: 'GIN' })
+  await listDocuments({ docTypes: ['GIN', 'TRANSFER'] })
 }
 
 onMounted(async () => {
