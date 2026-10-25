@@ -246,8 +246,7 @@ export const financeStatementsService = {
 
     const totalAssets = totalNonCurrentAssets + totalCurrentAssets
 
-    // 3. EQUITY
-    // Net profit from P&L for current period
+    // 3. EQUITY (Stated Capital, Director Drawings, Retained Earnings from P&L)
     const pl = await this.generateProfitLoss(filters)
 
     const statedCapitalLedger = all.find(l => l.ledger_code === '3100')
@@ -260,7 +259,7 @@ export const financeStatementsService = {
     const equityItems = [
       { code: '3100', name: 'Stated Capital', amount: statedCapital },
       { code: '3101', name: 'Director Drawings', amount: directorDrawings },
-      { code: '', name: 'Net Profit / (Loss) for the Period', amount: netProfitCurrent },
+      { code: '', name: 'Retained Earnings / Net Profit for the Period', amount: netProfitCurrent },
     ]
     const totalEquity = statedCapital + directorDrawings + netProfitCurrent
 
