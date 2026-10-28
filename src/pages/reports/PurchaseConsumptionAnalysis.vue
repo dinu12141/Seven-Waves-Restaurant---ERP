@@ -68,10 +68,12 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtPercent } from 'src/services/reportService'
+import { fmtPercent, applyBranchSecurity } from 'src/services/reportService'
 const loading = ref(false),
   rows = ref([])
 const columns = [
@@ -96,13 +98,24 @@ const kpiData = computed(() => [
     color: 'green',
   },
 ])
+const PURCHASE_TYPES = ['GRN', 'PUR_RET']
+const CONSUMPTION_TYPES = ['BOM_DEDUCT', 'GIN', 'GIN_ISSUE', 'WASTAGE']
+
 async function loadData(filters = {}) {
   loading.value = true
   try {
-    let query = supabase.from('inventory_ledger').select('quantity,direction,items(name)')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.limit(5000)
+    // Only real purchases (GRN in, purchase returns out) vs real consumption
+    // (BOM deductions, goods issues, wastage). Transfers / adjustments / opening
+    // balances are internal movements and previously inflated both sides.
+    let query = supabase
+      .from('inventory_ledger')
+      .select('quantity,direction,doc_type,items(name)')
+      .in('doc_type', [...PURCHASE_TYPES, ...CONSUMPTION_TYPES])
+    if (filters.dateFrom) query = query.gte('posted_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', dayEndExclusiveISO(filters.dateTo))
+    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    query = applyBranchSecurity(query)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
     const iMap = {}
     ;(data || []).forEach((r) => {
@@ -110,8 +123,11 @@ async function loadData(filters = {}) {
       if (!name) return
       if (!iMap[name]) iMap[name] = { item: name, purchased: 0, consumed: 0 }
       const qty = Number(r.quantity || 0)
-      if (r.direction === 'IN') iMap[name].purchased += qty
-      else iMap[name].consumed += qty
+      if (PURCHASE_TYPES.includes(r.doc_type)) {
+        iMap[name].purchased += r.direction === 'IN' ? qty : -qty
+      } else {
+        iMap[name].consumed += r.direction === 'OUT' ? qty : -qty
+      }
     })
     rows.value = Object.values(iMap)
       .map((i) => ({
@@ -122,6 +138,7 @@ async function loadData(filters = {}) {
       .sort((a, b) => a.variance - b.variance)
   } catch (e) {
     console.error('[PurchaseConsumption]', e)
+    Notify.create({ type: 'negative', message: 'Failed to load report: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

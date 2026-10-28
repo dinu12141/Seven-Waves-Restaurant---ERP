@@ -38,6 +38,9 @@
                       <q-item><q-item-section class="text-grey">No ledgers — register a ledger first</q-item-section></q-item>
                     </template>
                   </q-select>
+                  <div v-if="selectedLedger && selectedLedger.ledger_type !== 'asset'" class="text-caption text-warning q-mt-xs">
+                    Warning: ledger is typed as "{{ selectedLedger.ledger_type }}" instead of "asset". Cash and bank accounts must be linked to asset ledgers.
+                  </div>
                 </div>
               </div>
             </div>
@@ -86,9 +89,9 @@
               <div class="fin-section__title"><q-icon name="payments" size="15px" class="q-mr-xs" />FINANCIALS</div>
               <div class="row q-col-gutter-md">
                 <div class="col-12 col-md-6">
-                  <div class="fin-label">Opening Balance</div>
-                  <q-input v-model.number="form.opening_balance" outlined dense :dark="$q.dark.isActive"
-                    type="number" step="0.01" :prefix="form.currency || 'LKR'" hide-bottom-space />
+                  <div class="fin-label">Opening Balance (from ledger)</div>
+                  <q-input :model-value="selectedLedger ? formatDrCr(signedOpening(selectedLedger)) : '—'" outlined dense readonly
+                    :dark="$q.dark.isActive" :prefix="form.currency || 'LKR'" hide-bottom-space />
                 </div>
                 <div class="col-12 col-md-6">
                   <div class="fin-label">Currency</div>
@@ -96,18 +99,19 @@
                     :options="['LKR', 'USD', 'EUR', 'GBP', 'INR']" hide-bottom-space />
                 </div>
                 <div v-if="isEdit" class="col-12">
-                  <div class="fin-label">Current Balance (Live)</div>
-                  <q-input v-model.number="form.current_balance" outlined dense :dark="$q.dark.isActive"
-                    type="number" step="0.01" :prefix="form.currency || 'LKR'" hide-bottom-space>
-                    <template #append>
-                      <q-badge :color="form.current_balance >= 0 ? 'green' : 'red'">
-                        {{ form.current_balance >= 0 ? 'Active Funds' : 'Overdrawn' }}
-                      </q-badge>
-                    </template>
-                  </q-input>
-                  <div class="text-caption text-grey-7 q-mt-xs">
-                    Direct balance adjustment updates this account and its linked ledger in real time.
-                  </div>
+                  <div class="fin-label">Current Balance (GL — read only)</div>
+                  <q-input :model-value="glLabel" outlined dense readonly :dark="$q.dark.isActive"
+                    :prefix="form.currency || 'LKR'" hide-bottom-space />
+                </div>
+                <div class="col-12 text-caption text-grey-7">
+                  The account mirrors its ledger: set the opening balance on Ledger Registration (keeping openings Dr = Cr);
+                  the balance moves only through vouchers, receipts and journals.
+                </div>
+                <div v-if="linkIssue" class="col-12">
+                  <q-banner dense rounded class="bg-amber-1 text-brown-9">
+                    <template #avatar><q-icon name="link_off" color="amber-9" /></template>
+                    {{ linkIssue }}
+                  </q-banner>
                 </div>
                 <div class="col-12">
                   <q-toggle v-model="form.is_default" color="primary" label="Set as default account for this type" />
@@ -132,9 +136,15 @@
 import { ref, watch, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
+import { ACCOUNT_LEDGER_TYPES, accountLinkIssue, formatDrCr, signedOpening } from '../services/finance-ledger-integrity'
 
 const $q = useQuasar()
-const props = defineProps({ modelValue: Boolean, account: { type: Object, default: null } })
+const props = defineProps({
+  modelValue: Boolean,
+  account: { type: Object, default: null },
+  // All registered accounts (to block linking two accounts to one ledger)
+  accounts: { type: Array, default: () => [] },
+})
 const emit = defineEmits(['update:modelValue', 'saved'])
 const ledgerStore = useFinanceLedgerStore()
 
@@ -155,7 +165,31 @@ function typeIcon(t) {
 
 const isBank = computed(() => form.value.account_type === 'bank')
 
-const allLedgers = computed(() => ledgerStore.activeLedgers.map(l => ({ label: `${l.ledger_code} — ${l.ledger_name}`, value: l.id })))
+// Cash / bank / wallet accounts must sit on an asset ledger that no other
+// account uses (the account balance IS the ledger balance). The current link is
+// always listed so a legacy wrong link stays visible (flagged below).
+const takenLedgerIds = computed(() => new Set(
+  (props.accounts || []).filter(a => a.id !== props.account?.id && !a.deleted_at && a.ledger_id).map(a => a.ledger_id),
+))
+const allLedgers = computed(() => ledgerStore.activeLedgers
+  .filter(l => ACCOUNT_LEDGER_TYPES.includes(l.ledger_type) || l.id === props.account?.ledger_id)
+  .map(l => ({
+    label: `${l.ledger_code} — ${l.ledger_name}${l.ledger_type !== 'asset' ? ` (${String(l.ledger_type || '').toUpperCase()})` : ''}${takenLedgerIds.value.has(l.id) ? ' (already linked)' : ''}`,
+    value: l.id,
+    type: l.ledger_type,
+    disable: takenLedgerIds.value.has(l.id),
+  })))
+const selectedLedger = computed(() =>
+  ledgerStore.ledgers.find(l => l.id === form.value.ledger_id) ||
+  (props.account?.ledger?.id === form.value.ledger_id ? props.account.ledger : null))
+const linkIssue = computed(() => {
+  if (!form.value.ledger_id) return ''
+  return accountLinkIssue({ id: props.account?.id, ledger_id: form.value.ledger_id }, selectedLedger.value, props.accounts || []) || ''
+})
+const glLabel = computed(() => {
+  const v = props.account?.gl_balance ?? props.account?.current_balance
+  return v === null || v === undefined ? '—' : formatDrCr(v)
+})
 const ledgerOptions = ref([])
 watch(allLedgers, v => { ledgerOptions.value = v }, { immediate: true })
 function filterLedgers(val, update) {
@@ -173,7 +207,17 @@ watch(visible, v => emit('update:modelValue', v))
 watch(() => props.account, a => { isEdit.value = !!a; form.value = a ? { ...defaultForm(), ...a } : defaultForm() }, { immediate: true })
 
 function close() { visible.value = false }
-async function save() { saving.value = true; try { emit('saved', { ...form.value, _isEdit: isEdit.value, _id: props.account?.id }); close() } finally { saving.value = false } }
+async function save() {
+  saving.value = true
+  try {
+    // Balances mirror the ledger and are never sent from the form.
+    const payload = { ...form.value, _isEdit: isEdit.value, _id: props.account?.id }
+    delete payload.opening_balance
+    delete payload.current_balance
+    emit('saved', payload)
+    close()
+  } finally { saving.value = false }
+}
 </script>
 
 <style scoped lang="scss">

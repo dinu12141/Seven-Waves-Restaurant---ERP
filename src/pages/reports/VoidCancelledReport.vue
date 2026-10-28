@@ -105,6 +105,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
@@ -175,11 +176,11 @@ async function loadData(filters = {}) {
       query = query.or('status.in.(cancelled,void),foc_reason.not.is.null')
     }
     
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(1000)
+    const { data, error } = await fetchAllRows(query.order('created_at', { ascending: false }).order('id'))
     if (error) throw error
     rows.value = (data || []).map((r) => {
       const invs = Array.isArray(r.invoices) ? r.invoices : r.invoices ? [r.invoices] : []

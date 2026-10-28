@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import StatCard from 'components/common/StatCard.vue'
 import StockAlertCard from 'components/inventory/StockAlertCard.vue'
 import { useAuthStore } from 'src/stores/auth'
@@ -137,10 +137,11 @@ watch(
   },
   { immediate: true },
 )
+// (A separate onMounted refresh used to load everything twice on open —
+// the immediate watcher above already covers the mount.)
 
-onMounted(() => {
-  if (authStore.currentBranch?.company_id) refreshAll()
-})
+// Keep the per-warehouse cards in sync with realtime stock updates.
+watch(stockOnHand, () => buildWarehouseSummary())
 
 async function refreshAll() {
   // Fetch stock + stats in parallel
@@ -172,7 +173,7 @@ function buildWarehouseSummary() {
       }
     }
     grouped[whId].item_count++
-    grouped[whId].total_value += row.total_value || 0
+    grouped[whId].total_value += Number(row.total_value || 0)
     if (row.stock_status === 'low_stock' || row.stock_status === 'out_of_stock') {
       grouped[whId].low_stock++
     }

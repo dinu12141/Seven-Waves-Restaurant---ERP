@@ -120,6 +120,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, applyBranchSecurity } from 'src/services/reportService'
@@ -232,10 +233,10 @@ async function loadData(filters = {}) {
       .order('created_at', { foreignTable: 'orders', ascending: false })
 
     if (currentFilters.value.dateFrom) {
-      query = query.gte('orders.created_at', currentFilters.value.dateFrom + 'T00:00:00')
+      query = query.gte('orders.created_at', dayStartISO(currentFilters.value.dateFrom))
     }
     if (currentFilters.value.dateTo) {
-      query = query.lte('orders.created_at', currentFilters.value.dateTo + 'T23:59:59')
+      query = query.lt('orders.created_at', dayEndExclusiveISO(currentFilters.value.dateTo))
     }
     if (currentFilters.value.branch) {
       query = query.eq('orders.branch_id', currentFilters.value.branch)
@@ -243,7 +244,7 @@ async function loadData(filters = {}) {
 
     query = applyBranchSecurity(query, 'orders.branch_id')
 
-    const { data, error } = await query.limit(1000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     rows.value = (data || []).map((r) => ({

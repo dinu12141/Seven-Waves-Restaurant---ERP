@@ -83,21 +83,13 @@ describe('financeChequeService.create', () => {
     expect(audit).not.toHaveBeenCalled()
   })
 
-  // Known gaps (QA finding): create() does no client-side validation, so these
-  // reach the DB as-is. Pinned here so a future validation fix flips them.
-  it('KNOWN GAP: missing cheque_no is sent as the string "undefined"', async () => {
-    m.queue('finance_cheques', { data: { id: 'x' } })
-    await financeChequeService.create({ bank_account_id: 'b', amount: 10 })
-    expect((call(m.on('finance_cheques')[0], 'insert')?.args[0] as any).cheque_no).toBe('undefined')
-  })
-
-  it('KNOWN GAP: non-positive / non-numeric amounts are not rejected', async () => {
-    m.queue('finance_cheques', { data: { id: 'x' } }, { data: { id: 'y' } })
-    await financeChequeService.create({ bank_account_id: 'b', cheque_no: '1', amount: -50 })
-    await financeChequeService.create({ bank_account_id: 'b', cheque_no: '2', amount: 'abc' })
-    const [a, b] = m.on('finance_cheques').map((q) => (call(q, 'insert')?.args[0] as any).amount)
-    expect(a).toBe(-50)
-    expect(b).toBeNaN()
+  it('rejects missing cheque_no, non-positive/non-numeric amounts and non-planned status', async () => {
+    await expect(financeChequeService.create({ bank_account_id: 'b', amount: 10 })).rejects.toThrow('Cheque number is required')
+    await expect(financeChequeService.create({ bank_account_id: 'b', cheque_no: '1', amount: -50 })).rejects.toThrow('greater than zero')
+    await expect(financeChequeService.create({ bank_account_id: 'b', cheque_no: '2', amount: 'abc' })).rejects.toThrow('greater than zero')
+    await expect(financeChequeService.create({ cheque_no: '2', amount: 5 })).rejects.toThrow('Bank account is required')
+    await expect(financeChequeService.create({ bank_account_id: 'b', cheque_no: '3', amount: 5, status: 'issued' })).rejects.toThrow('Only planned')
+    expect(m.on('finance_cheques').length).toBe(0)
   })
 })
 
@@ -118,6 +110,49 @@ describe('financeChequeService.updateStatus', () => {
       'cheque_cleared', 'finance_cheque', 'c1',
       { id: 'c1', status: 'issued' }, { id: 'c1', status: 'cleared' },
     )
+  })
+})
+
+describe('financeChequeService transition guards', () => {
+  it('refuses to cancel an issued cheque linked to a supplier payment (GL would not be reversed)', async () => {
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'issued', supplier_payment_id: 'sp1' } })
+    await expect(financeChequeService.cancel('c1', 'oops')).rejects.toThrow('supplier payment')
+    expect(m.on('finance_cheques').some((q) => call(q, 'update'))).toBe(false)
+  })
+
+  it('refuses to cancel an issued cheque linked to a voucher', async () => {
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'issued', voucher_id: 'v1' } })
+    await expect(financeChequeService.cancel('c1', 'oops')).rejects.toThrow('voucher')
+  })
+
+  it('cancels an unlinked planned cheque, guarded on the current status', async () => {
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'planned' } }, { data: { id: 'c1', status: 'cancelled' } })
+    await financeChequeService.cancel('c1', 'not needed')
+    const q = m.on('finance_cheques')[1]
+    expect(call(q, 'update')?.args[0]).toMatchObject({ status: 'cancelled', cancelled_reason: 'not needed' })
+    expect(calls(q, 'eq').map((c: any) => c.args)).toContainEqual(['status', 'planned'])
+  })
+
+  it('only issued cheques can be cleared, and not before the cheque date', async () => {
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'planned' } })
+    await expect(financeChequeService.markCleared('c1', '2026-10-20')).rejects.toThrow('Only issued')
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'issued', cheque_date: '2026-10-25' } })
+    await expect(financeChequeService.markCleared('c1', '2026-10-20')).rejects.toThrow('before the cheque date')
+  })
+
+  it('does not allow setting issued/bounced directly', async () => {
+    m.queue('finance_cheques', { data: { id: 'c1', status: 'planned' } })
+    await expect(financeChequeService.updateStatus('c1', 'issued')).rejects.toThrow('cannot be set directly')
+  })
+})
+
+describe('financeChequeService.list', () => {
+  it('pages through more than 1000 rows', async () => {
+    const page1 = Array.from({ length: 1000 }, (_, i) => ({ id: `a${i}` }))
+    m.queue('finance_cheques', { data: page1 }, { data: [{ id: 'last' }] })
+    const rows = await financeChequeService.list({ status: 'issued' })
+    expect(rows.length).toBe(1001)
+    expect(call(m.on('finance_cheques')[1], 'range')?.args).toEqual([1000, 1999])
   })
 })
 

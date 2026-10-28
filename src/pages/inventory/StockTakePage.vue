@@ -190,6 +190,7 @@ import { useQuasar, date } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { fetchAllPaged, chunk } from 'src/services/inventory/inventoryHelpers'
 import {
   useWarehouseList,
   createDocument,
@@ -252,37 +253,51 @@ async function loadCountSheet() {
     const companyId = authStore.currentBranch?.company_id ?? authStore.profile?.company_id
     if (!companyId) throw new Error('No company context')
 
-    // Query v_stock_on_hand for the selected warehouse — it has item_name, item_code, uom_code
-    const { data, error } = await supabase
-      .from('v_stock_on_hand')
-      .select('item_id, item_code, item_name, uom_code, qty_on_hand, warehouse_id')
-      .eq('warehouse_id', selectedWarehouse.value)
-      .eq('company_id', companyId)
-      .order('item_name')
+    // Query v_stock_on_hand for the selected warehouse — it has item_name, item_code, uom_code.
+    // Paged past the 1000-row PostgREST cap.
+    const wh = selectedWarehouse.value
+    const data = await fetchAllPaged(() =>
+      supabase
+        .from('v_stock_on_hand')
+        .select('item_id, item_code, item_name, uom_code, qty_on_hand, total_value, warehouse_id')
+        .eq('warehouse_id', wh)
+        .eq('company_id', companyId)
+        .order('item_name')
+        .order('item_id'),
+    )
 
-    if (error) throw error
-
-    // Also fetch inventory_uom_id from items for document lines
-    const itemIds = (data || []).map(r => r.item_id)
-    let uomMap = {}
-    if (itemIds.length) {
-      const { data: itemRows } = await supabase
+    // Also fetch inventory_uom_id + avg_cost from items for document lines.
+    // Chunked: one `.in()` with hundreds of UUIDs overflows the URL length.
+    const itemIds = data.map(r => r.item_id)
+    const itemMap = {}
+    for (const ids of chunk(itemIds, 150)) {
+      const { data: itemRows, error: itemErr } = await supabase
         .from('items')
-        .select('id, inventory_uom_id')
-        .in('id', itemIds)
-      ;(itemRows || []).forEach(i => { uomMap[i.id] = i.inventory_uom_id })
+        .select('id, inventory_uom_id, avg_cost')
+        .in('id', ids)
+      if (itemErr) throw itemErr
+      ;(itemRows || []).forEach(i => { itemMap[i.id] = i })
     }
 
-    countLines.value = (data || []).map(row => ({
-      item_id:      row.item_id,
-      item_name:    row.item_name,
-      item_code:    row.item_code,
-      uom_code:     row.uom_code,
-      uom_id:       uomMap[row.item_id] || null,
-      system_qty:   Number(row.qty_on_hand) || 0,
-      physical_qty: Number(row.qty_on_hand) || 0,
-      variance:     0,
-    }))
+    countLines.value = data.map(row => {
+      const qty = Number(row.qty_on_hand) || 0
+      // Value variances at the warehouse's carrying cost (total_value / qty),
+      // falling back to the item's moving average cost.
+      const unitCost = qty > 0 && Number(row.total_value) > 0
+        ? Number(row.total_value) / qty
+        : Number(itemMap[row.item_id]?.avg_cost) || 0
+      return {
+        item_id:      row.item_id,
+        item_name:    row.item_name,
+        item_code:    row.item_code,
+        uom_code:     row.uom_code,
+        uom_id:       itemMap[row.item_id]?.inventory_uom_id || null,
+        unit_cost:    unitCost,
+        system_qty:   qty,
+        physical_qty: qty,
+        variance:     0,
+      }
+    })
   } catch (e) {
     console.error('[StockTakePage] loadCountSheet', e)
     $q.notify({ type: 'negative', message: 'Failed to load count sheet: ' + e.message })
@@ -299,13 +314,33 @@ async function postCount() {
     return
   }
 
+  const confirmed = await new Promise((resolve) => {
+    $q.dialog({
+      title: 'Post stock take?',
+      message:
+        `${variantLines.length} item(s) will be adjusted to the counted quantity ` +
+        `(${negativeCount.value} short, ${positiveCount.value} over). This updates stock immediately.`,
+      cancel: true,
+      persistent: true,
+      ok: { label: 'Post Count', color: 'primary', unelevated: true },
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false))
+  })
+  if (!confirmed) return
+
   posting.value = true
+  let createdDoc = null
   try {
     const docLines = variantLines.map(row => ({
       item_id:      row.item_id,
       uom_id:       row.uom_id,
       quantity:     Number(row.physical_qty) || 0,
-      unit_cost:    0,
+      // Was hard-coded 0: the posting trigger values the variance at
+      // line.unit_cost, so shrinkage removed qty but not value (inflating avg
+      // cost) and surpluses entered at zero cost.
+      unit_cost:    Number(row.unit_cost) || 0,
       system_qty:   row.system_qty,
       counted_qty:  row.physical_qty,
       variance_qty: row.variance,
@@ -319,6 +354,7 @@ async function postCount() {
     }
 
     const doc = await createDocument(header, docLines)
+    createdDoc = doc
     await postDocument(doc.id)
 
     $q.notify({
@@ -330,7 +366,14 @@ async function postCount() {
     await Promise.all([loadCountSheet(), fetchHistory()])
   } catch (e) {
     console.error('[StockTakePage] postCount', e)
-    $q.notify({ type: 'negative', message: 'Posting failed: ' + e.message })
+    $q.notify({
+      type: 'negative',
+      message: 'Posting failed: ' + e.message,
+      caption: createdDoc
+        ? `Draft ${createdDoc.doc_number} was saved — post or delete it in Inventory → Documents.`
+        : undefined,
+      timeout: createdDoc ? 8000 : 5000,
+    })
   } finally {
     posting.value = false
   }

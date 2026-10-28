@@ -170,7 +170,9 @@
             <div class="col-6">
               <q-input
                 v-model.number="form.avg_cost"
-                label="Avg Cost / Unit"
+                :label="isEdit ? 'Avg Cost / Unit (system)' : 'Opening Avg Cost / Unit'"
+                :readonly="isEdit"
+                :hint="isEdit ? 'Maintained by GRN / stock postings' : undefined"
                 type="number"
                 outlined
                 dense
@@ -319,6 +321,10 @@ async function saveItem() {
     }
 
     if (isEdit.value) {
+      // avg_cost is the moving-average cost maintained by stock postings;
+      // overwriting it by hand desynchronised item cost from stock_on_hand
+      // valuation (and recipe costing). Never send it on edit.
+      delete payload.avg_cost
       await updateItem(form.value.id, payload)
       $q.notify({ type: 'positive', message: 'Item updated successfully.' })
     } else {

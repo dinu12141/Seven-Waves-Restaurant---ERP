@@ -1,12 +1,52 @@
 <template>
   <q-page class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Purchase Returns</div>
-      <q-btn color="negative" icon="add" label="New Return" @click="createNewReturn" />
+      <div>
+        <div class="text-h5 text-weight-bold">Purchase Returns</div>
+        <div class="text-caption text-grey">Return received goods to suppliers (reduces stock and supplier balance on post)</div>
+      </div>
+      <q-btn unelevated color="negative" icon="add" label="New Return" @click="createNewReturn" />
     </div>
 
+    <!-- Filter Bar -->
+    <q-card flat bordered class="q-mb-md">
+      <q-card-section class="q-py-sm">
+        <div class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-input v-model="listFilter.search" outlined dense clearable debounce="200" label="Search Return # / GRN / Supplier">
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select v-model="listFilter.supplier_id" :options="supplierOptions" option-value="id" option-label="name" emit-value map-options outlined dense clearable label="Supplier (All)" />
+          </div>
+          <div class="col-6 col-md-2">
+            <q-select v-model="listFilter.status" :options="returnStatusOptions" emit-value map-options outlined dense clearable label="Status (All)" />
+          </div>
+          <div class="col-6 col-md-2">
+            <q-input v-model="listFilter.from_date" type="date" outlined dense label="From" stack-label />
+          </div>
+          <div class="col-6 col-md-1">
+            <q-input v-model="listFilter.to_date" type="date" outlined dense label="To" stack-label />
+          </div>
+          <div class="col-6 col-md-1 text-right">
+            <q-btn flat dense icon="restart_alt" label="Reset" no-caps @click="resetListFilter" />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <!-- Returns List -->
-    <q-table :rows="returns" :columns="columns" row-key="id" :loading="loading" flat bordered>
+    <q-table
+      :rows="visibleReturns"
+      :columns="columns"
+      row-key="id"
+      :loading="loading"
+      flat
+      bordered
+      :rows-per-page-options="[15, 25, 50, 100, 0]"
+      no-data-label="No purchase returns match these filters"
+    >
       <template v-slot:body-cell-status="props">
         <q-td :props="props" align="center">
           <q-chip
@@ -46,7 +86,8 @@
           <!-- Selection Mode (Only for New) -->
           <div
             v-if="!isEditing && !form.base_doc && !form.lines.length"
-            class="row q-col-gutter-md q-mb-md bg-grey-1 q-pa-sm rounded-borders"
+            class="row q-col-gutter-md q-mb-md q-pa-sm rounded-borders"
+            :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
           >
             <div class="col-12 text-subtitle2">Create From:</div>
             <div class="col-12 row q-gutter-md">
@@ -116,7 +157,7 @@
           <!-- Totals -->
           <div class="row justify-end q-mt-md">
             <div class="col-12 col-md-4">
-              <q-card flat bordered class="q-pa-md bg-grey-1">
+              <q-card flat bordered class="q-pa-md">
                 <div class="row justify-between text-h6 text-negative">
                   <div>Total Refund/Credit</div>
                   <div>{{ formatCurrency(totalAmount) }}</div>
@@ -146,7 +187,10 @@ import {
   createReturn,
   updateReturn,
   postReturn,
-  createReturnFromGRN,
+  getGRNDetails,
+  getReturnDetails,
+  filterProcRows,
+  validateReturnLines,
   listSuppliers,
   listGRNs,
   listItems,
@@ -189,6 +233,26 @@ const defaultForm = {
 }
 const form = ref({ ...defaultForm })
 
+// List filters - exact status match, YYYY-MM-DD string dates (no TZ shift).
+const emptyListFilter = () => ({ search: '', supplier_id: null, status: null, from_date: '', to_date: '' })
+const listFilter = ref(emptyListFilter())
+const returnStatusOptions = [
+  { label: 'Draft', value: 'draft' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Cancelled', value: 'cancelled' },
+]
+const visibleReturns = computed(() =>
+  filterProcRows(returns.value, listFilter.value, [
+    (r) => r.doc_number,
+    (r) => r.suppliers?.name,
+    (r) => r.goods_receipts?.doc_number,
+    (r) => r.return_reason,
+  ]),
+)
+function resetListFilter() {
+  listFilter.value = emptyListFilter()
+}
+
 const columns = [
   { name: 'doc_number', label: 'Return #', field: 'doc_number', align: 'left', sortable: true },
   {
@@ -196,12 +260,21 @@ const columns = [
     label: 'Date',
     field: 'doc_date',
     align: 'left',
+    sortable: true,
     format: (val) => date.formatDate(val, 'DD/MM/YYYY'),
   },
   {
     name: 'supplier',
     label: 'Supplier',
-    field: (row) => row.supplier?.name || '-',
+    // API returns the nested `suppliers` relation (was `supplier` -> always '-')
+    field: (row) => row.suppliers?.name || row.supplier?.name || '-',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'grn',
+    label: 'GRN Ref',
+    field: (row) => row.goods_receipts?.doc_number || '-',
     align: 'left',
   },
   {
@@ -209,9 +282,11 @@ const columns = [
     label: 'Amount',
     field: 'total_amount',
     align: 'right',
+    sortable: true,
+    sort: (a, b) => Number(a) - Number(b),
     format: (val) => formatCurrency(val),
   },
-  { name: 'status', label: 'Status', field: 'status', align: 'center' },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'right' },
 ]
 
@@ -222,7 +297,12 @@ onMounted(async () => {
 })
 
 async function fetchReturns() {
-  returns.value = await listReturns()
+  try {
+    returns.value = await listReturns()
+  } catch (e) {
+    console.error('Failed to load purchase returns:', e)
+    $q.notify({ type: 'negative', message: 'Failed to load purchase returns', caption: e?.message })
+  }
 }
 async function fetchSuppliers() {
   supplierOptions.value = await listSuppliers()
@@ -244,19 +324,32 @@ async function loadGRNs(supplier) {
 
 async function loadFromGRN() {
   if (!selectedGRN.value) return
-  form.value.supplier = selectedSupplier.value || undefined
-  form.value.base_doc_id = selectedGRN.value.id
+  // listGRNs() returns no lines - fetch the GRN with its lines (previously the
+  // editor came up empty and the FULL GRN was silently returned on save).
+  let grn
+  try {
+    grn = await getGRNDetails(selectedGRN.value.id)
+  } catch (e) {
+    $q.notify({ type: 'negative', message: 'Failed to load GRN lines', caption: e?.message })
+    return
+  }
+  form.value.supplier = selectedSupplier.value || grn.suppliers || undefined
+  form.value.warehouse =
+    warehouseOptions.value.find((w) => w.id === grn.warehouse_id) || grn.warehouses || undefined
+  form.value.base_doc_id = grn.id
   form.value.base_doc_type = 'GRN'
 
-  const lines = selectedGRN.value.lines || []
-  form.value.lines = lines.map((l) => ({
-    line_number: l.line_number,
+  form.value.lines = (grn.goods_receipt_lines || []).map((l, idx) => ({
+    line_number: l.line_number || idx + 1,
     item_id: l.item_id,
-    item_name: l.item_name,
+    item_name: l.items?.name || l.item_id,
     uom_id: l.uom_id,
-    uom_name: l.uom_name,
-    quantity: l.quantity, // Default to return full qty? Maybe 1?
-    unit_price: l.unit_cost || l.unit_price || 0,
+    uom_name: l.uom?.name || l.uom?.code || '',
+    quantity: Number(l.quantity) || 0, // user may reduce; 0 = do not return this line
+    max_qty: Number(l.quantity) || 0,
+    unit_price: Number(l.unit_cost) || 0,
+    unit_cost: Number(l.unit_cost) || 0,
+    batch_no: l.batch_no || null,
     base_line_id: l.id,
   }))
 
@@ -284,16 +377,53 @@ function statusColor(status) {
 
 function createNewReturn() {
   isEditing.value = false
-  form.value = JSON.parse(JSON.stringify(defaultForm))
+  form.value = { ...JSON.parse(JSON.stringify(defaultForm)), doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD') }
   createMode.value = 'grn'
   selectedSupplier.value = null
   selectedGRN.value = null
   dialogVisible.value = true
 }
 
-function editReturn(row) {
+async function editReturn(row) {
+  // The list row has no lines / supplier / warehouse objects - load the full
+  // doc, otherwise saving a draft sent zero lines and no warehouse.
+  let ret
+  try {
+    ret = await getReturnDetails(row.id)
+  } catch (e) {
+    $q.notify({ type: 'negative', message: 'Failed to load return', caption: e?.message })
+    return
+  }
   isEditing.value = true
-  form.value = JSON.parse(JSON.stringify(row))
+  createMode.value = ret.grn_id ? 'grn' : 'direct'
+  form.value = {
+    ...JSON.parse(JSON.stringify(defaultForm)),
+    id: ret.id,
+    doc_number: ret.doc_number,
+    doc_date: ret.doc_date,
+    status: ret.status,
+    return_reason: ret.return_reason,
+    total_amount: ret.total_amount,
+    base_doc_id: ret.grn_id || null,
+    base_doc_type: ret.grn_id ? 'GRN' : null,
+    supplier: supplierOptions.value.find((s) => s.id === ret.supplier_id) || ret.suppliers || undefined,
+    warehouse: warehouseOptions.value.find((w) => w.id === ret.warehouse_id) || undefined,
+    lines: (ret.purchase_return_lines || [])
+      .slice()
+      .sort((a, b) => (a.line_number || 0) - (b.line_number || 0))
+      .map((l, idx) => ({
+        line_number: l.line_number || idx + 1,
+        item_id: l.item_id,
+        item_name: l.items?.name || l.item_id,
+        uom_id: l.uom_id,
+        uom_name: l.uom?.name || l.uom?.code || '',
+        quantity: Number(l.quantity) || 0,
+        unit_price: Number(l.unit_cost) || 0,
+        unit_cost: Number(l.unit_cost) || 0,
+        batch_no: l.batch_no || null,
+        grn_line_id: l.grn_line_id || null,
+      })),
+  }
   dialogVisible.value = true
 }
 
@@ -325,7 +455,14 @@ async function saveReturn(targetStatus) {
     const supplierId = form.value.supplier?.id
     const warehouseId = form.value.warehouse?.id
 
-    const lines = form.value.lines.map((l, idx) => ({
+    const lineError = validateReturnLines(form.value.lines)
+    if (lineError) {
+      $q.notify({ type: 'warning', message: lineError })
+      return
+    }
+    const keptLines = form.value.lines.filter((l) => Number(l.quantity) > 0)
+
+    const lines = keptLines.map((l, idx) => ({
       line_number: idx + 1,
       item_id: l.item_id,
       uom_id: l.uom_id,
@@ -347,12 +484,22 @@ async function saveReturn(targetStatus) {
         lines,
       )
     } else if (form.value.base_doc_id) {
-      // From GRN
-      ret = await createReturnFromGRN(form.value.base_doc_id, {
-        doc_date: form.value.doc_date,
-        warehouse_id: warehouseId,
-        return_reason: form.value.return_reason,
-      })
+      // From GRN - save the quantities the user actually entered (previously
+      // createReturnFromGRN copied the FULL GRN qty and ignored edits).
+      if (!supplierId || !warehouseId) {
+        $q.notify({ type: 'warning', message: 'Supplier and Warehouse required' })
+        return
+      }
+      ret = await createReturn(
+        {
+          supplier_id: supplierId,
+          warehouse_id: warehouseId,
+          grn_id: form.value.base_doc_id,
+          doc_date: form.value.doc_date,
+          return_reason: form.value.return_reason,
+        },
+        lines,
+      )
     } else {
       // Direct
       if (!supplierId || !warehouseId) {
@@ -387,6 +534,15 @@ async function saveReturn(targetStatus) {
   }
 }
 
-function cancelReturn() {}
-function printReturn() {}
+function cancelReturn() {
+  // No cancel/reverse RPC exists for posted purchase returns yet (audit backlog).
+  $q.notify({
+    type: 'info',
+    message: 'Posted returns cannot be cancelled here',
+    caption: 'Ask Finance to raise an adjusting entry for the supplier balance.',
+  })
+}
+function printReturn() {
+  window.print()
+}
 </script>

@@ -89,10 +89,12 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtLKR, fmtDate } from 'src/services/reportService'
+import { fmtLKR, fmtDate, applyBranchSecurity } from 'src/services/reportService'
 
 const loading = ref(false)
 const rows = ref([])
@@ -119,33 +121,36 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('inventory_ledger')
-      .select('id,created_at,quantity,unit_cost,notes,items(name),inventory_documents(doc_type)')
+      .select(
+        'id,posted_at,quantity,unit_cost,total_cost,doc_type,doc_number,items(name),inventory_documents!inventory_ledger_document_id_fkey(wastage_category,remarks)',
+      )
       .eq('direction', 'OUT')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
+      // Wastage = WASTAGE documents only. Stock-count shrinkage and adjustments
+      // belong in the Variance / Adjustment reports (previously double-reported here).
+      .eq('doc_type', 'WASTAGE')
+    if (filters.dateFrom) query = query.gte('posted_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', dayEndExclusiveISO(filters.dateTo))
+    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    query = applyBranchSecurity(query)
+    const { data, error } = await fetchAllRows(query.order('posted_at', { ascending: false }).order('id'))
     if (error) throw error
-    rows.value = (data || [])
-      .filter((r) => {
-        const dt = r.inventory_documents?.doc_type
-        return dt === 'ADJUSTMENT' || dt === 'WASTAGE' || dt === 'STOCK_COUNT'
-      })
-      .map((r) => {
+    rows.value = (data || []).map((r) => {
         const qty = Number(r.quantity || 0)
         const uc = Number(r.unit_cost || 0)
         return {
           id: r.id,
-          date: r.created_at,
+          date: r.posted_at,
           item_name: r.items?.name || '—',
           quantity: qty,
           unit_cost: uc,
-          total_loss: qty * uc,
-          doc_type: r.inventory_documents?.doc_type || 'Wastage',
-          notes: r.notes,
+          total_loss: Number(r.total_cost ?? qty * uc),
+          doc_type: r.inventory_documents?.wastage_category || r.doc_number || 'Wastage',
+          notes: r.inventory_documents?.remarks || '',
         }
       })
   } catch (e) {
     console.error('[Wastage]', e)
+    Notify.create({ type: 'negative', message: 'Failed to load report: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

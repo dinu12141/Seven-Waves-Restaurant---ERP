@@ -257,8 +257,8 @@
                   />
                 </div>
                 <!-- CREDIT part → registered customer required (pos_split_pay, #145 §9).
-                     Merged table bills still pay via merge_table_orders_and_pay (single method). -->
-                <div v-if="!isMergeMode" class="split-row">
+                     Merged table bills pay via pos_merge_pay (#147), which accepts the same tenders. -->
+                <div class="split-row">
                   <div class="split-label"><q-icon name="person" size="18px" class="q-mr-xs" color="amber" /> Credit (Account)</div>
                   <input
                     v-model.number="splitCreditAmount"
@@ -472,7 +472,7 @@ const splitDetails = computed(() => ({
   card: Number(splitCardAmount.value) || 0,
   qr: Number(splitQrAmount.value) || 0,
   bank: Number(splitBankAmount.value) || 0,
-  credit: isMergeMode.value ? 0 : Number(splitCreditAmount.value) || 0,
+  credit: Number(splitCreditAmount.value) || 0,
 }))
 
 const splitTotalSum = computed(() => tendersTotal(splitDetailsToLines(splitDetails.value)))
@@ -1041,19 +1041,42 @@ async function processMergedPayment(methodName) {
   const orderNums = props.mergedOrders.map((o) => '#' + o.order_number).join(', ')
 
   try {
-    const { data, error } = await supabase.rpc('merge_table_orders_and_pay', {
+    // pos_merge_pay (#147) stores the tenders per merged order (so card / QR /
+    // credit / split reach the right GL account — merge_table_orders_and_pay
+    // alone left every merged bill booked as cash) and records the shift
+    // payment per tender itself.
+    let tenderLines
+    if (selectedMethod.value === 'split') {
+      tenderLines = splitDetailsToLines(splitDetails.value)
+    } else {
+      const single =
+        selectedMethod.value === 'cash'
+          ? 'cash'
+          : selectedMethod.value === 'card'
+            ? ['visa', 'master'].includes(selectedSubMethod.value) ? selectedSubMethod.value : 'card'
+            : selectedSubMethod.value === 'qr'
+              ? 'qr'
+              : selectedSubMethod.value === 'bank'
+                ? 'bank'
+                : 'credit'
+      tenderLines = [{ method: single, amount: effectiveTotalAmount.value }]
+    }
+    const { tenders, errors } = normalizeTenders(tenderLines)
+    if (errors.length) throw new Error(errors.join('; '))
+
+    const { data, error } = await supabase.rpc('pos_merge_pay', {
       p_order_ids: orderIds,
-      p_payment_method: methodName,
-      p_amount_paid: effectiveTotalAmount.value,
+      p_tenders: tenders,
+      p_shift_id: shiftStore.shiftId || null,
+      p_customer_id: needsCreditCustomer.value ? creditCustomer.value?.id || null : null,
     })
 
-    if (error) throw new Error(error.message)
-    if (!data?.success) throw new Error(data?.error || 'Merge payment failed')
-
-    // Record payment in the active shift
-    if (shiftStore.hasActiveShift) {
-      shiftStore.recordPayment(orderIds[0], methodName.toLowerCase(), effectiveTotalAmount.value)
+    if (error) {
+      if (error.code === 'PGRST202') throw new Error('Apply supabase/finance_fixes_147.sql (pos_merge_pay) first.')
+      throw new Error(error.message)
     }
+    if (!data?.success) throw new Error(data?.error || 'Merge payment failed')
+    if (shiftStore.hasActiveShift) await shiftStore.refreshShiftTotals()
 
     isPaid.value = true
 

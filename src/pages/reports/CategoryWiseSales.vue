@@ -5,6 +5,7 @@
     :kpis="kpiData"
     :export-columns="exportCols"
     :export-rows="displayedItems"
+    :show-kitchen-filter="true"
     @filter-change="loadData"
     @refresh="loadData"
   >
@@ -263,7 +264,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { fmtLKR, fmtPercent, applyBranchSecurity } from 'src/services/reportService'
 
@@ -520,14 +523,18 @@ async function loadData(filters = {}) {
         orders!inner ( created_at, branch_id, status, subtotal, total_amount, discount_amount )
       `,
       )
-      .neq('orders.status', 'cancelled')
+      .not('orders.status', 'in', '(cancelled,void,voided)')
+      // Cancelled / voided lines are not sales
+      .neq('status', 'cancelled')
+      .is('void_reason', null)
 
-    if (filters.dateFrom) query = query.gte('orders.created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('orders.created_at', filters.dateTo + 'T23:59:59')
+    if (filters.kitchen) query = query.eq('kitchen_id', filters.kitchen)
+    if (filters.dateFrom) query = query.gte('orders.created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('orders.created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('orders.branch_id', filters.branch)
     query = applyBranchSecurity(query, 'orders.branch_id')
 
-    const { data, error } = await query.limit(10000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     const itemMap = {}
@@ -581,6 +588,8 @@ async function loadData(filters = {}) {
     })
   } catch (err) {
     console.error('[CategoryWiseSales]', err)
+    rawItems.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load Category Wise Sales: ' + (err?.message || err) })
   } finally {
     loading.value = false
   }

@@ -19,6 +19,7 @@
       :rows="grns"
       :loading="loading"
       :actions="gridActions"
+      :filters="gridFilters"
       storage-key="grn-list"
       search-placeholder="Search by GRN#, supplier..."
       no-data-label="No goods receipts found"
@@ -484,10 +485,45 @@ const columns = [
   { name: 'status', label: 'Status', field: 'status', type: 'status', align: 'center', width: 110 },
 ]
 
+// Delete: drafts for anyone with page access; a POSTED GRN (stock + AP bill
+// already booked) only for admins. The server (delete_grn) must enforce this too.
+const isAdminUser = computed(() =>
+  Boolean(authStore.isAdmin || authStore.roles?.includes('admin') || authStore.roles?.includes('super_admin')),
+)
 const gridActions = [
   { event: 'view', icon: 'visibility', label: 'View' },
-  { event: 'delete', icon: 'delete', label: 'Delete', danger: true },
+  {
+    event: 'delete',
+    icon: 'delete',
+    label: 'Delete',
+    danger: true,
+    show: (row) => row.status === 'draft' || (row.status === 'posted' && isAdminUser.value),
+  },
 ]
+
+const gridFilters = computed(() => [
+  { field: 'doc_date', label: 'GRN Date', type: 'date-range' },
+  {
+    field: 'status',
+    label: 'Status',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      { label: 'Draft', value: 'draft' },
+      { label: 'Posted', value: 'posted' },
+      { label: 'Cancelled', value: 'cancelled' },
+    ],
+  },
+  {
+    field: 'supplier_id',
+    label: 'Supplier',
+    type: 'select',
+    options: [
+      { label: 'All', value: '' },
+      ...supplierOptions.value.map((s) => ({ label: s.name, value: s.id })),
+    ],
+  },
+])
 
 onMounted(async () => {
   loading.value = true
@@ -500,6 +536,7 @@ async function fetchGRNs() {
     grns.value = await listGRNs()
   } catch (e) {
     console.error('Failed to load GRNs:', e)
+    $q.notify({ type: 'negative', message: 'Failed to load goods receipts', caption: e?.message })
   }
 }
 async function fetchSuppliers() {

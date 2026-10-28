@@ -155,8 +155,8 @@
 
         <!-- Bottom Row (Total) -->
         <template v-slot:bottom-row>
-          <q-tr class="bg-grey-2 text-weight-bold" v-if="rows.length > 0">
-            <q-td colspan="5" class="text-right">TOTAL PAID AMOUNT:</q-td>
+          <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'" v-if="rows.length > 0">
+            <q-td colspan="5" class="text-right">TOTAL PAID AMOUNT (posted only):</q-td>
             <q-td class="text-left">{{ formatCurrency(totalAmount) }}</q-td>
             <q-td colspan="2"></q-td>
           </q-tr>
@@ -178,7 +178,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { date as qDate } from 'quasar'
-import { getSupplierPaymentsReport, listSuppliers } from 'src/services/procurementService'
+import { getSupplierPaymentsReport, listSuppliers, sumPostedPayments } from 'src/services/procurementService'
 import {
   exportPaymentReceiptToPDF,
   exportSupplierPaymentReportToPDF,
@@ -211,9 +211,9 @@ const taxStatusOptions = [
 
 const initialPagination = { sortBy: 'doc_date', descending: true, rowsPerPage: 20 }
 
-const totalAmount = computed(() =>
-  rows.value.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0),
-)
+// "Total paid" counts POSTED payments only — draft/cancelled rows are listed
+// for reference but must not inflate the paid figure.
+const totalAmount = computed(() => sumPostedPayments(rows.value))
 
 const columns = [
   { name: 'doc_date', align: 'left', label: 'Date', field: 'doc_date', sortable: true },

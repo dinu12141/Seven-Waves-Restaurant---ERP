@@ -8,7 +8,8 @@
         dense
         v-model="search"
         placeholder="Search items..."
-        style="min-width: 250px"
+        clearable
+        style="min-width: 220px"
       >
         <template #prepend><q-icon name="search" /></template>
       </q-input>
@@ -41,10 +42,28 @@
 
       <q-space />
 
+      <q-btn
+        v-if="search || warehouseFilter || statusFilter"
+        flat
+        dense
+        no-caps
+        color="grey-6"
+        icon="filter_alt_off"
+        label="Reset"
+        @click="resetFilters"
+      />
       <q-btn outline color="grey-5" icon="refresh" round dense @click="fetchStockOnHand">
         <q-tooltip>Refresh Stock</q-tooltip>
       </q-btn>
     </div>
+
+    <q-banner v-if="error" dense rounded class="bg-negative text-white q-mb-md">
+      <template #avatar><q-icon name="error_outline" /></template>
+      Could not load stock levels: {{ error }}
+      <template #action>
+        <q-btn flat dense no-caps label="Retry" @click="fetchStockOnHand" />
+      </template>
+    </q-banner>
 
     <!-- Stock Table -->
     <q-card
@@ -56,7 +75,7 @@
         <q-table
           :rows="filteredStock"
           :columns="columns"
-          row-key="id"
+          :row-key="stockRowKey"
           :dark="$q.dark.isActive"
           flat
           dense
@@ -127,7 +146,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStockDashboard, useWarehouseList } from 'src/services/inventoryService'
 
-const { stockOnHand, loading, fetchStockOnHand } = useStockDashboard()
+const { stockOnHand, loading, error, fetchStockOnHand } = useStockDashboard()
+
+// v_stock_on_hand has no `id` column — key on item × warehouse.
+const stockRowKey = (r) => `${r.warehouse_id}:${r.item_id}`
+
+function resetFilters() {
+  search.value = ''
+  warehouseFilter.value = null
+  statusFilter.value = null
+}
 const { warehouses, listWarehouses } = useWarehouseList()
 
 const search = ref('')

@@ -600,7 +600,7 @@ async function deleteDept(dept) {
   $q.dialog({
     title: 'Delete Department',
     message: msg,
-    dark: true,
+    dark: $q.dark.isActive,
     cancel: { flat: true, noCaps: true, color: 'grey-5' },
     ok: { unelevated: true, noCaps: true, color: 'red-6', label: 'Delete' },
   }).onOk(async () => {
@@ -680,7 +680,7 @@ async function deleteDesig(desig) {
   $q.dialog({
     title: 'Delete Designation',
     message: `Delete "${desig.title}"?`,
-    dark: true,
+    dark: $q.dark.isActive,
     cancel: { flat: true, noCaps: true, color: 'grey-5' },
     ok: { unelevated: true, noCaps: true, color: 'red-6', label: 'Delete' },
   }).onOk(async () => {

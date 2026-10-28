@@ -187,7 +187,8 @@ const filteredOrders = computed(() => {
     } else if (filterBy.value === 'takeaway') {
       orders = orders.filter(o => o.order_type === 'takeaway')
     } else if (filterBy.value === 'delivery') {
-      orders = orders.filter(o => o.order_type === 'delivery')
+      // include website_delivery orders as well
+      orders = orders.filter(o => o.order_type === 'delivery' || o.order_type === 'website_delivery')
     } else if (filterBy.value === 'drive_in') {
       orders = orders.filter(o => o.order_type === 'drive_in')
     } else if (filterBy.value === 'kiosk') {
@@ -302,7 +303,10 @@ function getAttendBy(order) {
 function formatTime(isoStr) {
   if (!isoStr) return ''
   const d = new Date(isoStr)
-  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+  const hm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+  // Queue spans 7 days — prefix the day for anything not from today
+  if (d.toDateString() === new Date().toDateString()) return hm
+  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')} ${hm}`
 }
 
 // ── NAVIGATION & SCROLLING ──

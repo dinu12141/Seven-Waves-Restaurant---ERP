@@ -439,7 +439,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
-import { getSupplierSummaryReport } from 'src/services/procurementService'
+import { getSupplierSummaryReport, localDateKey } from 'src/services/procurementService'
 import { exportTableToExcel, exportTableToPDF, printTableAsPDF } from 'src/services/exportService'
 
 const $q = useQuasar()
@@ -512,7 +512,7 @@ function filterSuppliers(val, update) {
 const statementSupplier = ref(null)
 const today = new Date()
 const firstOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
-const todayStr = today.toISOString().split('T')[0]
+const todayStr = localDateKey(today) // local date (UTC+5:30 safe)
 const statementFrom = ref(firstOfMonth)
 const statementTo = ref(todayStr)
 const loadingStatement = ref(false)

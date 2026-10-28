@@ -253,6 +253,7 @@ import { useQuasar, date } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import { useUIStore } from 'stores/ui'
 import { getFilteredNavItems } from 'src/config/roles'
+import { evaluateRouteAccess } from 'src/core/rbac/routeAccess'
 import { useModulesStore } from 'src/stores/modules'
 import { supabase } from 'src/boot/supabase'
 import NotificationPanel from 'components/common/NotificationPanel.vue'
@@ -354,6 +355,17 @@ const userInitials = computed(() => {
 /**
  * Dynamically filter navigation items based on user roles AND enabled modules.
  */
+function isNavTargetAccessible(to) {
+  if (!to || authStore.isAdmin) return true
+  try {
+    const resolved = router.resolve(to)
+    return evaluateRouteAccess(authStore.roles || [], authStore.permissions || [], resolved.matched, resolved.path)
+      .allowed
+  } catch {
+    return true
+  }
+}
+
 const filteredMenuItems = computed(() => {
   const roleFiltered = getFilteredNavItems(authStore.roles || [], authStore.permissions || [])
 
@@ -363,6 +375,10 @@ const filteredMenuItems = computed(() => {
         if (!item.moduleCode) return true
         return modulesStore.isModuleEnabled(item.moduleCode)
       })
+      // Hide links the router guard would bounce (role allowed by the nav
+      // config but denied by route permission/module/legacy ACL) — keeps the
+      // sidebar in lock-step with src/boot/auth.ts instead of showing dead links.
+      .filter((item) => isNavTargetAccessible(item.to))
       .map((item) => {
         if (item.children) {
           return {

@@ -162,14 +162,14 @@ describe('Finance Re-Architecture: Service Files', () => {
     expect(src).toContain("rpc('post_finance_voucher'")
   })
 
-  it('voucher service creates cashbook entries on post', () => {
+  it('voucher service leaves cashbook legs and cheques to the post RPC (#134c)', () => {
+    // GL legs and the cheque are written by post_finance_voucher only; the old
+    // client helpers that inserted finance_cashbook_entries / finance_cheques
+    // directly were removed.
     const src = fs.readFileSync(path.join(servicesDir, 'finance-voucher.service.js'), 'utf-8')
-    expect(src).toContain('_createCashbookEntry')
-  })
-
-  it('voucher service creates cheques for cheque payments', () => {
-    const src = fs.readFileSync(path.join(servicesDir, 'finance-voucher.service.js'), 'utf-8')
-    expect(src).toContain('_createChequeFromVoucher')
+    expect(src).not.toMatch(/from\('finance_cashbook_entries'\)/)
+    expect(src).not.toMatch(/from\('finance_cheques'\)/)
+    expect(src).toContain("rpc('post_finance_voucher'")
   })
 
   it('voucher service enforces immutability of posted vouchers', () => {

@@ -102,6 +102,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { businessDateStr, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToPDF, printTableAsPDF } from 'src/services/exportService'
@@ -192,10 +193,10 @@ async function loadData(filters = {}) {
       query = query.eq('company_id', companyId)
     }
 
-    if (filters.dateFrom) query = query.gte('posted_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('posted_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('posted_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', dayEndExclusiveISO(filters.dateTo))
 
-    const { data, error } = await query.limit(5000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     // Pivot data by item and warehouse
@@ -318,7 +319,7 @@ function exportCSV() {
     .join('\n')
 
   const content = headerRows.join('\n') + '\n' + csvHeader + '\n' + csvBody
-  const dateStr = new Date().toISOString().slice(0, 10)
+  const dateStr = businessDateStr()
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -443,7 +444,7 @@ async function exportExcel() {
 
   // ── Write & Download ──
   const buffer = await wb.xlsx.writeBuffer()
-  const dateStr = new Date().toISOString().slice(0, 10)
+  const dateStr = businessDateStr()
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })

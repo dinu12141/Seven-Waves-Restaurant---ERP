@@ -1,478 +1,355 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
-      title="Run Payroll"
-      breadcrumbs="Finance / Payroll / Run Payroll"
-      showRefresh
-      @refresh="loadEmployees"
+    <FinancePageHeader
+      icon="playlist_add_check"
+      subtitle="Approve payroll runs and post salary, EPF and ETF to the GL"
+      title="Post Payroll to GL"
+      breadcrumbs="Finance / Payroll / Post to GL"
+      show-refresh
+      @refresh="loadRuns"
     />
 
-    <!-- Step 1: Configure Period -->
-    <div class="fin-panel q-mb-md">
-      <div class="fin-panel__header">
-        <span class="fin-panel__title">1. Configure Payroll Period</span>
-      </div>
-      <div class="fin-panel__body q-pa-md">
-        <div class="row q-col-gutter-md fin-form">
-          <div class="col-12 col-sm-4">
-            <q-input
-              v-model="cycleName"
-              label="Cycle Name *"
-              dense
-              dark
-              outlined
-              placeholder="e.g. March 2026"
-            />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-input v-model="periodStart" label="Period Start *" type="date" dense dark outlined />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-input v-model="periodEnd" label="Period End *" type="date" dense dark outlined />
-          </div>
-        </div>
-      </div>
+    <!--
+      Payroll is calculated and approved in HR (HR → Payroll: process → approve →
+      release holds). Finance books approved runs to the General Ledger here via
+      post_payroll_to_finance_v2 — the only posting path that writes
+      finance_cashbook_entries + finance_ledgers. Nothing is calculated or
+      journalised on the client.
+    -->
+    <q-banner dense class="fin-panel q-mb-md text-grey-6" rounded>
+      <template #avatar><q-icon name="info" color="blue-4" /></template>
+      Payroll is processed and approved in <b>HR → Payroll</b>. Posting a run books every released
+      payslip to the GL: Dr Salaries (7000), EPF 12% (7003), ETF 3% (7004) · Cr EPF/ETF payable
+      (2003/2004), staff recoveries (1004), welfare (2008), other deductions (2009) and the paying
+      cash/bank account (net pay). Held payslips stay unposted until released.
+    </q-banner>
+
+    <div class="fin-filters q-mb-md">
+      <q-btn-toggle
+        v-model="statusFilter"
+        dense
+        no-caps
+        toggle-color="blue-8"
+        color="grey-9"
+        text-color="grey-4"
+        :options="[
+          { label: 'To post', value: 'to_post' },
+          { label: 'All runs', value: 'all' },
+        ]"
+      />
     </div>
 
-    <!-- Step 2: Preview Calculations -->
-    <div class="fin-panel q-mb-md">
+    <div class="fin-panel">
       <div class="fin-panel__header">
-        <span class="fin-panel__title"
-          >2. Employee Payroll Preview ({{ employees.length }} employees)</span
-        >
-        <q-btn
-          flat
-          dense
-          size="sm"
-          label="Calculate All"
-          icon="calculate"
-          color="blue-5"
-          @click="calculatePayroll"
-          :loading="calculating"
-        />
+        <span class="fin-panel__title">Payroll Runs ({{ visibleRuns.length }})</span>
       </div>
       <q-table
-        :rows="payrollPreview"
-        :columns="previewCols"
+        :rows="visibleRuns"
+        :columns="runCols"
         row-key="id"
         flat
-        dark
         dense
-        :rows-per-page-options="[0]"
-        hide-bottom
+        :rows-per-page-options="[10, 25, 50, 0]"
         class="fin-table"
         :loading="loading"
-        no-data-label="Load employees first"
+        :no-data-label="
+          statusFilter === 'to_post'
+            ? 'No approved payroll runs are waiting to be posted'
+            : 'No payroll runs'
+        "
       >
-        <template #body-cell-net="props">
-          <q-td :props="props"
-            ><span class="text-green-4 text-weight-bold">{{
-              fmt(props.row.net_salary)
-            }}</span></q-td
-          >
-        </template>
-        <template #body-cell-details="props">
+        <template #body-cell-status="props">
           <q-td :props="props">
-            <q-btn flat dense icon="info" size="sm" color="grey-5" @click="viewBreakdown(props.row)"
-              ><q-tooltip>View Breakdown</q-tooltip></q-btn
+            <span :class="runStatusClass(props.row.status)">{{ props.row.status }}</span>
+          </q-td>
+        </template>
+        <template #body-cell-gl="props">
+          <q-td :props="props">
+            <span :class="glStatusClass(props.row.gl_status)">{{ glStatusLabel(props.row.gl_status) }}</span>
+            <div class="text-caption text-grey-6">
+              {{ props.row.slip_summary.posted }} posted · {{ props.row.slip_summary.pending }} pending
+              <span v-if="props.row.slip_summary.held"> · {{ props.row.slip_summary.held }} held</span>
+            </div>
+          </q-td>
+        </template>
+        <template #body-cell-actions="props">
+          <q-td :props="props">
+            <q-btn
+              v-if="canPost && canPostRun(props.row, props.row.slip_summary)"
+              unelevated
+              dense
+              no-caps
+              size="sm"
+              color="green-8"
+              icon="account_balance"
+              label="Post to GL"
+              @click="openPostDialog(props.row)"
+            />
+            <q-btn
+              flat
+              dense
+              size="sm"
+              icon="people"
+              color="blue-4"
+              :to="{ path: '/finance/payroll/payslips', query: { cycle: props.row.id } }"
+              ><q-tooltip>View payslips</q-tooltip></q-btn
             >
           </q-td>
         </template>
       </q-table>
-      <div class="fin-summary-row">
-        <div>
-          <span class="fin-summary-row__label">Total Gross: </span
-          ><span class="fin-summary-row__value">{{ fmt(totalGross) }}</span>
-        </div>
-        <div>
-          <span class="fin-summary-row__label">Total Deductions: </span
-          ><span class="fin-summary-row__value text-red-4">{{ fmt(totalDeductions) }}</span>
-        </div>
-        <div>
-          <span class="fin-summary-row__label">Total Net: </span
-          ><span class="fin-summary-row__value text-green-4">{{ fmt(totalNet) }}</span>
-        </div>
-      </div>
     </div>
 
-    <!-- Step 3: Confirm & Post -->
-    <div class="fin-panel">
-      <div class="fin-panel__header">
-        <span class="fin-panel__title">3. Confirm & Post Payroll</span>
-      </div>
-      <div class="fin-panel__body q-pa-md">
-        <div class="row q-col-gutter-md items-center justify-center">
-          <div class="col-auto">
-            <q-btn
-              unelevated
-              label="Confirm & Create Payroll"
-              icon="check_circle"
-              color="green-8"
-              size="md"
-              :disable="payrollPreview.length === 0 || !cycleName"
-              @click="confirmPayroll"
-              :loading="posting"
-            />
-          </div>
-          <div class="col-auto" v-if="createdCycleId">
-            <q-btn
-              unelevated
-              label="Post to Finance Journal"
-              icon="book"
-              color="blue-8"
-              size="md"
-              @click="postToJournal"
-              :loading="postingJournal"
-              :disable="journalPosted"
-            />
-          </div>
-        </div>
-        <div v-if="createdCycleId" class="text-center q-mt-md">
-          <span class="fin-badge fin-badge--success">Payroll cycle created</span>
-          <span v-if="journalPosted" class="fin-badge fin-badge--info q-ml-sm"
-            >Posted to Journal</span
-          >
-        </div>
-      </div>
-    </div>
-
-    <!-- Breakdown Dialog -->
-    <q-dialog v-model="showBreakdown" class="fin-dialog">
-      <q-card dark style="min-width: 500px; background: #161b22; border: 1px solid #30363d">
+    <!-- Post dialog -->
+    <q-dialog v-model="showPostDialog" class="fin-dialog">
+      <q-card style="width: 460px; max-width: 95vw; background: var(--erp-bg-card); border: 1px solid var(--erp-border)">
         <q-card-section>
-          <div class="text-subtitle1 text-weight-bold text-white">
-            {{ selectedEmployee?.employee_name }} — Payroll Breakdown
+          <div class="text-subtitle1 text-weight-bold">
+            Post {{ target?.cycle_name }} to the General Ledger
           </div>
-          <div class="text-caption text-grey-5">{{ selectedEmployee?.employee_code }}</div>
+          <div class="text-caption text-grey-5">
+            {{ target?.period_start }} → {{ target?.period_end }}
+            <span v-if="target?.branch_name"> · {{ target.branch_name }}</span>
+          </div>
         </q-card-section>
-        <q-card-section>
-          <div class="text-caption text-grey-5 q-mb-xs">Earnings</div>
-          <q-list dense dark>
-            <q-item class="fin-activity-item"
-              ><q-item-section>Basic Salary</q-item-section
-              ><q-item-section side class="text-green-4"
-                >+{{ fmt(selectedEmployee?.basic_salary) }}</q-item-section
-              ></q-item
-            >
-            <q-item
-              v-for="item in selectedEmployee?.allowance_details || []"
-              :key="'a' + item.name"
-              class="fin-activity-item"
-            >
-              <q-item-section>{{ item.name }}</q-item-section
-              ><q-item-section side class="text-green-4">+{{ fmt(item.amount) }}</q-item-section>
-            </q-item>
-            <q-item
-              v-for="item in selectedEmployee?.addition_details || []"
-              :key="'ad' + item.description"
-              class="fin-activity-item"
-            >
-              <q-item-section
-                >{{ item.description }}
-                <span class="text-caption text-grey-5"
-                  >({{ item.addition_type }})</span
-                ></q-item-section
-              >
-              <q-item-section side class="text-green-4">+{{ fmt(item.amount) }}</q-item-section>
-            </q-item>
-          </q-list>
-          <q-separator dark class="q-my-sm" />
-          <div class="text-caption text-grey-5 q-mb-xs">Deductions</div>
-          <q-list dense dark>
-            <q-item
-              v-for="item in selectedEmployee?.deduction_details || []"
-              :key="'d' + item.description"
-              class="fin-activity-item"
-            >
-              <q-item-section
-                >{{ item.description }}
-                <span class="text-caption text-grey-5"
-                  >({{ item.deduction_type }})</span
-                ></q-item-section
-              >
-              <q-item-section side class="text-red-4">-{{ fmt(item.amount) }}</q-item-section>
-            </q-item>
-            <q-item v-if="!selectedEmployee?.deduction_details?.length" class="fin-activity-item"
-              ><q-item-section class="text-grey-5">No deductions</q-item-section></q-item
-            >
-          </q-list>
-          <q-separator dark class="q-my-sm" />
-          <div class="row q-mt-sm">
-            <div class="col-6">
-              <span class="text-grey-5">Gross:</span>
-              <span class="text-white text-weight-bold">{{
-                fmt(selectedEmployee?.gross_salary)
-              }}</span>
-            </div>
+        <q-card-section v-if="target" class="q-pt-none">
+          <div class="row q-col-gutter-sm text-caption">
+            <div class="col-6 text-grey-5">Payslips to post</div>
+            <div class="col-6 text-right">{{ target.slip_summary.pending }}</div>
+            <div class="col-6 text-grey-5">Gross salaries</div>
+            <div class="col-6 text-right">{{ fmt(target.slip_summary.pendingGross) }}</div>
+            <div class="col-6 text-grey-5">EPF (employee 8% + employer 12%)</div>
             <div class="col-6 text-right">
-              <span class="text-grey-5">Net:</span>
-              <span class="text-green-4 text-h6">{{ fmt(selectedEmployee?.net_salary) }}</span>
+              {{ fmt(target.slip_summary.pendingEpfEmployee + target.slip_summary.pendingEpfEmployer) }}
+            </div>
+            <div class="col-6 text-grey-5">ETF (employer 3%)</div>
+            <div class="col-6 text-right">{{ fmt(target.slip_summary.pendingEtf) }}</div>
+            <div class="col-6 text-grey-5 text-weight-bold">Net pay (cash/bank credit)</div>
+            <div class="col-6 text-right text-green-4 text-weight-bold">
+              {{ fmt(target.slip_summary.pendingNet) }}
             </div>
           </div>
+          <div v-if="target.slip_summary.held" class="text-caption text-amber-5 q-mt-sm">
+            {{ target.slip_summary.held }} held payslip(s) ({{ fmt(target.slip_summary.heldNet) }}) will
+            not be posted. Release them in HR → Payroll and post again.
+          </div>
         </q-card-section>
-        <q-card-actions align="right"
-          ><q-btn flat label="Close" color="grey-5" v-close-popup
-        /></q-card-actions>
+        <q-card-section class="fin-form q-pt-none">
+          <q-select
+            v-model="postForm.payment_method"
+            :options="paymentMethods"
+            emit-value
+            map-options
+            label="Payment method *"
+            dense
+            outlined
+            class="q-mb-sm"
+          />
+          <q-select
+            v-model="postForm.account_id"
+            :options="accountOptions"
+            emit-value
+            map-options
+            label="Paid from (Cash / Bank account) *"
+            dense
+            outlined
+            :loading="loadingAccounts"
+          >
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.label }}</q-item-label>
+                  <q-item-label caption>Balance {{ fmt(scope.opt.balance) }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <div
+            v-if="selectedAccount && target && selectedAccount.balance < target.slip_summary.pendingNet"
+            class="text-caption text-amber-5 q-mt-xs"
+          >
+            The selected account balance ({{ fmt(selectedAccount.balance) }}) is below the net pay.
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
+          <q-btn
+            unelevated
+            label="Post to GL"
+            icon="account_balance"
+            color="green-8"
+            :loading="posting"
+            :disable="!postForm.account_id"
+            @click="confirmPost"
+          />
+        </q-card-actions>
       </q-card>
     </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Notify } from 'quasar'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
+import { useAuthStore } from 'stores/auth'
 import {
-  fetchEmployeeSalaryStructures,
-  createPayrollCycle,
-  createPayrollRecords,
-  createPayrollLineItems,
-  fetchEmployeeDeductions,
-  fetchEmployeeAdditions,
-  postPayrollToJournal,
-} from 'src/services/financeService'
+  financePayrollService,
+  canPostRun,
+  payingAccountOptions,
+} from 'src/modules/finance/services/finance-payroll.service'
 
+const authStore = useAuthStore()
 const loading = ref(false)
-const calculating = ref(false)
+const runs = ref([])
+const statusFilter = ref('to_post')
+const showPostDialog = ref(false)
+const target = ref(null)
 const posting = ref(false)
-const postingJournal = ref(false)
-const employees = ref([])
-const payrollPreview = ref([])
-const createdCycleId = ref(null)
-const journalPosted = ref(false)
-const showBreakdown = ref(false)
-const selectedEmployee = ref(null)
+const accounts = ref([])
+const loadingAccounts = ref(false)
+const postForm = ref({ payment_method: 'bank_transfer', account_id: null })
 
-const now = new Date()
-const cycleName = ref(`${now.toLocaleString('en', { month: 'long' })} ${now.getFullYear()}`)
-const periodStart = ref(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
-const periodEnd = ref(
-  new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+const paymentMethods = [
+  { label: 'Bank transfer', value: 'bank_transfer' },
+  { label: 'Cash', value: 'cash' },
+  { label: 'Cheque', value: 'cheque' },
+]
+
+// post_payroll_to_finance_v2 only accepts admin / hr / finance.
+const canPost = computed(() =>
+  ['admin', 'hr', 'finance'].some((r) => (authStore.roles || []).includes(r)),
 )
 
-const totalGross = computed(() => payrollPreview.value.reduce((s, r) => s + r.gross_salary, 0))
-const totalDeductions = computed(() =>
-  payrollPreview.value.reduce((s, r) => s + r.total_deductions, 0),
+const visibleRuns = computed(() =>
+  statusFilter.value === 'to_post'
+    ? runs.value.filter((r) => canPostRun(r, r.slip_summary))
+    : runs.value,
 )
-const totalNet = computed(() => payrollPreview.value.reduce((s, r) => s + r.net_salary, 0))
+const accountOptions = computed(() =>
+  payingAccountOptions(accounts.value, postForm.value.payment_method),
+)
+const selectedAccount = computed(() =>
+  accountOptions.value.find((a) => a.value === postForm.value.account_id),
+)
 
-const previewCols = [
-  { name: 'code', label: 'Code', field: 'employee_code', align: 'left', style: 'width: 80px' },
-  { name: 'name', label: 'Employee', field: 'employee_name', align: 'left' },
-  { name: 'basic', label: 'Basic', field: 'basic_salary', align: 'right', format: (v) => fmt(v) },
-  {
-    name: 'allowances',
-    label: 'Allowances',
-    field: 'total_allowances',
-    align: 'right',
-    format: (v) => fmt(v),
+watch(
+  () => postForm.value.payment_method,
+  () => {
+    if (!accountOptions.value.some((a) => a.value === postForm.value.account_id))
+      postForm.value.account_id = null
   },
+)
+
+const runCols = [
+  { name: 'cycle_name', label: 'Run', field: 'cycle_name', align: 'left' },
   {
-    name: 'additions',
-    label: 'Additions',
-    field: 'total_additions',
-    align: 'right',
-    format: (v) => fmt(v),
+    name: 'period',
+    label: 'Period',
+    field: (r) => `${r.period_start} → ${r.period_end}`,
+    align: 'left',
   },
-  { name: 'gross', label: 'Gross', field: 'gross_salary', align: 'right', format: (v) => fmt(v) },
-  {
-    name: 'deductions',
-    label: 'Deductions',
-    field: 'total_deductions',
-    align: 'right',
-    format: (v) => fmt(v),
-    style: 'color: #f87171',
-  },
-  { name: 'net', label: 'Net Salary', field: 'net_salary', align: 'right' },
-  { name: 'details', label: '', align: 'center', style: 'width: 40px' },
+  { name: 'branch', label: 'Branch', field: 'branch_name', align: 'left' },
+  { name: 'employees', label: 'Slips', field: (r) => r.slip_summary.count, align: 'center' },
+  { name: 'gross', label: 'Gross', field: 'total_gross', align: 'right', format: (v) => fmt(v) },
+  { name: 'net', label: 'Net', field: 'total_net', align: 'right', format: (v) => fmt(v) },
+  { name: 'status', label: 'Run Status', field: 'status', align: 'center' },
+  { name: 'gl', label: 'GL Posting', field: 'gl_status', align: 'left' },
+  { name: 'actions', label: '', align: 'right', style: 'width: 150px' },
 ]
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })
-}
-function viewBreakdown(row) {
-  selectedEmployee.value = row
-  showBreakdown.value = true
-}
-
-async function loadEmployees() {
-  loading.value = true
-  const { data } = await fetchEmployeeSalaryStructures()
-  employees.value = data || []
-  loading.value = false
-}
-
-async function calculatePayroll() {
-  calculating.value = true
-  // Fetch deductions and additions for all employees
-  const [dedRes, addRes] = await Promise.all([fetchEmployeeDeductions(), fetchEmployeeAdditions()])
-  const allDeductions = dedRes.data || []
-  const allAdditions = addRes.data || []
-
-  payrollPreview.value = employees.value.map((emp) => {
-    const salary = emp.salary_structures?.[0]
-    const basic = Number(salary?.basic_salary || 0)
-    const empAllowances = emp.employee_allowances || []
-    const allowanceTotal = empAllowances.reduce((s, a) => s + Number(a.amount || 0), 0)
-    const allowanceDetails = empAllowances.map((a) => ({
-      name: a.salary_allowance_types?.name || 'Allowance',
-      amount: Number(a.amount || 0),
-    }))
-
-    // Real deductions from salary_deductions table
-    const empDeductions = allDeductions.filter(
-      (d) =>
-        d.employee_id === emp.id &&
-        d.start_date <= periodEnd.value &&
-        (!d.end_date || d.end_date >= periodStart.value),
-    )
-    const deductionTotal = empDeductions.reduce((s, d) => s + Number(d.amount || 0), 0)
-
-    // Real additions from salary_additions table
-    const empAdditions = allAdditions.filter(
-      (a) =>
-        a.employee_id === emp.id &&
-        a.start_date <= periodEnd.value &&
-        (!a.end_date || a.end_date >= periodStart.value),
-    )
-    const additionTotal = empAdditions.reduce((s, a) => s + Number(a.amount || 0), 0)
-
-    const gross = basic + allowanceTotal + additionTotal
-    const net = gross - deductionTotal
-
-    return {
-      id: emp.id,
-      employee_code: emp.employee_code,
-      employee_name: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-      employee_id: emp.id,
-      basic_salary: basic,
-      total_allowances: allowanceTotal,
-      total_additions: additionTotal,
-      gross_salary: gross,
-      total_deductions: deductionTotal,
-      overtime_amount: 0,
-      commission: 0,
-      net_salary: net,
-      allowance_details: allowanceDetails,
-      deduction_details: empDeductions,
-      addition_details: empAdditions,
-    }
+  return Number(v || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })
-  calculating.value = false
+}
+function runStatusClass(s) {
+  const m = {
+    draft: 'fin-badge fin-badge--muted',
+    processing: 'fin-badge fin-badge--warning',
+    processed: 'fin-badge fin-badge--info',
+    approved: 'fin-badge fin-badge--info',
+    paid: 'fin-badge fin-badge--success',
+    cancelled: 'fin-badge fin-badge--danger',
+  }
+  return m[s] || 'fin-badge fin-badge--muted'
+}
+function glStatusLabel(s) {
+  return (
+    {
+      not_approved: 'Awaiting HR approval',
+      nothing: 'Nothing to post',
+      pending: 'Not posted',
+      partial: 'Partly posted',
+      posted: 'Posted',
+    }[s] || s
+  )
+}
+function glStatusClass(s) {
+  return (
+    {
+      pending: 'fin-badge fin-badge--warning',
+      partial: 'fin-badge fin-badge--warning',
+      posted: 'fin-badge fin-badge--success',
+    }[s] || 'fin-badge fin-badge--muted'
+  )
 }
 
-async function confirmPayroll() {
-  if (!cycleName.value || !periodStart.value || !periodEnd.value) {
-    Notify.create({ type: 'warning', message: 'Configure period first' })
-    return
+async function loadRuns() {
+  loading.value = true
+  try {
+    runs.value = await financePayrollService.listRuns()
+  } catch (e) {
+    Notify.create({ type: 'negative', message: `Could not load payroll runs: ${e.message || e}` })
+  } finally {
+    loading.value = false
   }
+}
+
+async function openPostDialog(run) {
+  target.value = run
+  postForm.value = { payment_method: 'bank_transfer', account_id: null }
+  showPostDialog.value = true
+  if (accounts.value.length) return
+  loadingAccounts.value = true
+  try {
+    accounts.value = await financePayrollService.fetchPayingAccounts()
+  } catch (e) {
+    Notify.create({ type: 'negative', message: `Could not load finance accounts: ${e.message || e}` })
+  } finally {
+    loadingAccounts.value = false
+  }
+}
+
+async function confirmPost() {
+  if (!target.value) return
   posting.value = true
   try {
-    const { data: cycle, error: cycErr } = await createPayrollCycle({
-      cycle_name: cycleName.value,
-      period_start: periodStart.value,
-      period_end: periodEnd.value,
-      total_gross: totalGross.value,
-      total_deductions: totalDeductions.value,
-      total_net: totalNet.value,
-      total_employees: payrollPreview.value.length,
-      status: 'confirmed',
-      processed_at: new Date().toISOString(),
+    const res = await financePayrollService.postRunToFinance({
+      runId: target.value.id,
+      accountId: postForm.value.account_id,
+      paymentMethod: postForm.value.payment_method,
     })
-    if (cycErr) throw cycErr
-    createdCycleId.value = cycle.id
-
-    // Insert payroll records
-    const records = payrollPreview.value.map((r) => ({
-      cycle_id: cycle.id,
-      employee_id: r.employee_id,
-      basic_salary: r.basic_salary,
-      total_allowances: r.total_allowances,
-      total_deductions: r.total_deductions,
-      overtime_amount: r.overtime_amount,
-      commission: r.commission,
-      gross_salary: r.gross_salary,
-      net_salary: r.net_salary,
-    }))
-    const { data: createdRecords, error: recErr } = await createPayrollRecords(records)
-    if (recErr) throw recErr
-
-    // Insert line items for each record (allowances + deductions)
-    const lineItems = []
-    for (let i = 0; i < payrollPreview.value.length; i++) {
-      const preview = payrollPreview.value[i]
-      const record = createdRecords[i]
-      if (!record) continue
-
-      // Allowance line items
-      for (const a of preview.allowance_details || []) {
-        lineItems.push({
-          record_id: record.id,
-          line_type: 'allowance',
-          description: a.name,
-          amount: a.amount,
-        })
-      }
-      // Addition line items
-      for (const a of preview.addition_details || []) {
-        lineItems.push({
-          record_id: record.id,
-          line_type: 'allowance',
-          description: `Addition: ${a.description}`,
-          amount: Number(a.amount || 0),
-        })
-      }
-      // Deduction line items
-      for (const d of preview.deduction_details || []) {
-        lineItems.push({
-          record_id: record.id,
-          line_type: 'deduction',
-          description: d.description,
-          amount: Number(d.amount || 0),
-        })
-      }
-    }
-    if (lineItems.length > 0) await createPayrollLineItems(lineItems)
-
+    const remaining = Number(res?.slips_remaining || 0)
     Notify.create({
       type: 'positive',
-      message: `Payroll cycle created with ${records.length} employees`,
+      icon: 'account_balance',
+      timeout: 5000,
+      message:
+        `Posted ${res?.slips_paid ?? ''} payslip(s) to the GL — net ${fmt(res?.total_net)}, ` +
+        `EPF ${fmt(res?.total_epf)}, ETF ${fmt(res?.total_etf)}.` +
+        (remaining > 0 ? ` ${remaining} held/unposted payslip(s) remain.` : ''),
     })
+    showPostDialog.value = false
+    await loadRuns()
   } catch (e) {
-    Notify.create({ type: 'negative', message: e.message || 'Failed to create payroll' })
+    Notify.create({ type: 'negative', multiLine: true, message: e.message || String(e) })
   } finally {
     posting.value = false
   }
 }
 
-async function postToJournal() {
-  if (!createdCycleId.value) return
-  postingJournal.value = true
-  try {
-    const { error } = await postPayrollToJournal(createdCycleId.value, {
-      cycle_name: cycleName.value,
-      period_end: periodEnd.value,
-      total_gross: totalGross.value,
-      total_deductions: totalDeductions.value,
-      total_net: totalNet.value,
-    })
-    if (error) throw error
-    journalPosted.value = true
-    Notify.create({
-      type: 'positive',
-      message: 'Payroll posted to Finance Journal (Dr: Salary Expense, Cr: Bank/Payable)',
-    })
-  } catch (e) {
-    Notify.create({ type: 'negative', message: e.message || 'Failed to post journal' })
-  } finally {
-    postingJournal.value = false
-  }
-}
-
-onMounted(() => {
-  loadEmployees()
-})
+onMounted(loadRuns)
 </script>
 
 <style scoped lang="scss">

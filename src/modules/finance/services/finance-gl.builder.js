@@ -90,9 +90,9 @@ export function docRefFromRow(sourceType, row) {
  *
  * @param {Array} entries   finance_cashbook_entries rows
  * @param {Object} opts
- * @param {Map|Object} opts.ledgers   id → { ledger_code, ledger_name }
- * @param {Map|Object} opts.accounts  id → { registered_name, account_number }
- * @param {Map|Object} opts.docRefs   `${source_type}|${source_id}` → doc number
+ * @param {Map|Object} [opts.ledgers]   id → { ledger_code, ledger_name }
+ * @param {Map|Object} [opts.accounts]  id → { registered_name, account_number }
+ * @param {Map|Object} [opts.docRefs]   `${source_type}|${source_id}` → doc number
  * @returns {Array} postings sorted newest first
  */
 export function buildGlPostings(entries = [], opts = {}) {

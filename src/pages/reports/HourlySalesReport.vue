@@ -85,6 +85,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { businessHour, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent, applyBranchSecurity } from 'src/services/reportService'
@@ -136,12 +137,12 @@ async function loadData(filters = {}) {
       .select('created_at, total_amount, status')
       .neq('status', 'cancelled')
 
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
 
-    const { data, error } = await query.limit(5000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     // Aggregate by hour
@@ -150,7 +151,7 @@ async function loadData(filters = {}) {
 
     let grandTotal = 0
     ;(data || []).forEach((bill) => {
-      const h = new Date(bill.created_at).getHours()
+      const h = businessHour(bill.created_at)
       hourMap[h].order_count++
       hourMap[h].total_amount += Number(bill.total_amount || 0)
       grandTotal += Number(bill.total_amount || 0)

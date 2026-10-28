@@ -3,6 +3,7 @@
     title="Group Summary"
     subtitle="Department Summary — Sales broken down by menu category groups"
     :kpis="kpiData"
+    :show-kitchen-filter="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -117,7 +118,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
@@ -223,8 +226,8 @@ async function loadData(filters = {}) {
         )
       `)
 
-    if (filters.dateFrom) query = query.gte('orders.created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('orders.created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('orders.created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('orders.created_at', dayEndExclusiveISO(filters.dateTo))
 
     if (filters.branch) {
       query = query.eq('orders.branch_id', filters.branch)
@@ -233,9 +236,15 @@ async function loadData(filters = {}) {
       if (branchId) query = query.eq('orders.branch_id', branchId)
     }
 
-    query = query.not('status', 'eq', 'cancelled')
+    if (filters.kitchen) query = query.eq('kitchen_id', filters.kitchen)
 
-    const { data, error } = await query.limit(10000)
+    // Exclude cancelled/voided lines and cancelled orders server-side
+    query = query
+      .not('status', 'eq', 'cancelled')
+      .is('void_reason', null)
+      .not('orders.status', 'in', '(cancelled,void,voided)')
+
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     // Process into per-category aggregations
@@ -262,6 +271,8 @@ async function loadData(filters = {}) {
     rawItems.value = items
   } catch (err) {
     console.error('[GroupSummary] Error:', err)
+    rawItems.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load Group Summary: ' + (err?.message || err) })
   } finally {
     loading.value = false
   }

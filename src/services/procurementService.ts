@@ -416,8 +416,9 @@ export async function getSupplierBalance(supplierId: string) {
   if (supplierRes.error) throw new Error(supplierRes.error.message)
 
   const ledger = ledgerRes.data ?? []
-  const totalDebit = ledger.reduce((s: number, r: any) => s + (r.debit || 0), 0)
-  const totalCredit = ledger.reduce((s: number, r: any) => s + (r.credit || 0), 0)
+  if (ledgerRes.error) throw new Error(ledgerRes.error.message)
+  const totalDebit = ledger.reduce((s: number, r: any) => s + (Number(r.debit) || 0), 0)
+  const totalCredit = ledger.reduce((s: number, r: any) => s + (Number(r.credit) || 0), 0)
 
   return {
     supplier: supplierRes.data,
@@ -531,6 +532,101 @@ export async function deleteSupplierItem(id: string) {
 }
 
 // ─────────────────────────────────────────────
+// List helpers (audit 2026-10-28): pagination past the PostgREST 1000-row cap,
+// Sri Lanka–safe local dates, and shared client-side list filtering.
+// ─────────────────────────────────────────────
+
+export const PROC_PAGE_SIZE = 1000
+
+/**
+ * Runs `build()` page by page (`.range`) until a short page comes back, so
+ * lists never silently truncate at the PostgREST max-rows cap (1000).
+ * `build` must return a FRESH query each call with a deterministic order.
+ */
+export async function fetchAllProcRows<T = any>(build: () => any, pageSize = PROC_PAGE_SIZE): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await build().range(from, from + pageSize - 1)
+    if (error) throw new Error(error.message || String(error))
+    const page = (data || []) as T[]
+    rows.push(...page)
+    if (page.length < pageSize) return rows
+  }
+}
+
+/** Local calendar date (YYYY-MM-DD). Never use toISOString() for this: in
+ *  Sri Lanka (UTC+5:30) it returns YESTERDAY between 00:00 and 05:30. */
+export function localDateKey(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Bills that still owe money (any non-final status with a balance). */
+export const UNPAID_AP_INVOICE_STATUSES = ['draft', 'approved', 'posted', 'partial_paid'] as const
+
+export interface ProcListFilter {
+  search?: string | null
+  status?: string | null
+  supplier_id?: string | null
+  from_date?: string | null
+  to_date?: string | null
+}
+
+/**
+ * Client-side filter for procurement document lists. Dates are compared as
+ * YYYY-MM-DD strings (no Date parsing → no timezone shift); status is an
+ * exact match (so 'paid' never matches 'partial_paid'); search matches the
+ * given text fields case-insensitively.
+ */
+export function filterProcRows<T extends Record<string, any>>(
+  rows: T[],
+  f: ProcListFilter,
+  searchFields: Array<(row: T) => unknown>,
+): T[] {
+  const q = (f.search || '').trim().toLowerCase()
+  return rows.filter((row) => {
+    if (f.status && row.status !== f.status) return false
+    if (f.supplier_id && row.supplier_id !== f.supplier_id) return false
+    const d = String(row.doc_date || '').slice(0, 10)
+    if (f.from_date && (!d || d < f.from_date)) return false
+    if (f.to_date && (!d || d > f.to_date)) return false
+    if (q && !searchFields.some((fn) => String(fn(row) ?? '').toLowerCase().includes(q))) return false
+    return true
+  })
+}
+
+/**
+ * Purchase-return line check before save. Returns an error message or null.
+ * Lines with qty 0 are dropped by the caller (= "don't return this line");
+ * `max_qty` (received qty, set when loaded from a GRN) caps each line.
+ * The server (validate_return_qty_vs_grn) remains the authority.
+ */
+export function validateReturnLines(
+  lines: Array<{ quantity?: unknown; max_qty?: unknown; item_name?: string; item_id?: string | null }>,
+): string | null {
+  for (const l of lines || []) {
+    const qty = Number(l.quantity)
+    if (!Number.isFinite(qty) || qty < 0) return `Invalid return qty for ${l.item_name || 'an item'}`
+    if (l.max_qty != null && qty > Number(l.max_qty) + 1e-9) {
+      return `Return qty for ${l.item_name || 'an item'} exceeds the received qty (${Number(l.max_qty)})`
+    }
+    if (qty > 0 && !l.item_id) return 'Every returned line needs an item'
+  }
+  if (!(lines || []).some((l) => Number(l.quantity) > 0)) return 'Enter a return quantity for at least one line'
+  return null
+}
+
+/** Sum of POSTED payments only — drafts/cancelled never count as "paid". */
+export function sumPostedPayments(rows: Array<{ status?: string | null; total_amount?: unknown }>): number {
+  const cents = rows
+    .filter((r) => r.status === 'posted')
+    .reduce((s, r) => s + Math.round((Number(r.total_amount) || 0) * 100), 0)
+  return cents / 100
+}
+
+// ─────────────────────────────────────────────
 // ════════════════════════════════════════
 // SECTION 2: PURCHASE ORDERS
 // ════════════════════════════════════════
@@ -542,30 +638,31 @@ export async function deleteSupplierItem(id: string) {
 export async function listPO(filters: POFilterOptions = {}): Promise<PurchaseOrder[]> {
   const { company_id, branch_id } = getContext()
 
-  let query = supabase
-    .from('purchase_orders')
-    .select(
-      `id, doc_number, doc_date, expected_date:delivery_date, status,
-       supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, tax_id),
-       payment_term_id, warehouse_id,
-       subtotal, discount_amount, tax_amount, total_amount,
-       remarks, created_at, approved_at, closed_at`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .order('doc_date', { ascending: false })
+  const build = () => {
+    let query = supabase
+      .from('purchase_orders')
+      .select(
+        `id, doc_number, doc_date, expected_date:delivery_date, status,
+         supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, tax_id),
+         payment_term_id, warehouse_id,
+         subtotal, discount_amount, tax_amount, total_amount,
+         remarks, created_at, approved_at, closed_at`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
 
-  if (filters.status) query = query.eq('status', filters.status)
-  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
-  
-  if (filters.taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
-  if (filters.taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
+    if (filters.status) query = query.eq('status', filters.status)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return (data ?? []) as unknown as PurchaseOrder[]
+    if (filters.taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
+    if (filters.taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
+
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  }
+
+  return (await fetchAllProcRows(build)) as unknown as PurchaseOrder[]
 }
 
 /**
@@ -863,28 +960,28 @@ export async function listGRNs(
   filters: { status?: string; supplier_id?: string; from_date?: string; to_date?: string } = {},
 ) {
   const { company_id, branch_id } = getContext()
-  let query = supabase
-    .from('goods_receipts')
-    .select(
-      `id, doc_number, doc_date, status, subtotal, discount_type, discount_value, discount_amount, tax_pct, tax_amount, total_amount, remarks,
-       supplier_id, suppliers(id, name, code, tax_id),
-       po_id, purchase_orders(id, doc_number),
-       inventory_po_id,
-       warehouse_id, warehouses(id, name),
-       posted_at, created_at`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .order('doc_date', { ascending: false })
+  const build = () => {
+    let query = supabase
+      .from('goods_receipts')
+      .select(
+        `id, doc_number, doc_date, status, subtotal, discount_type, discount_value, discount_amount, tax_pct, tax_amount, total_amount, remarks,
+         supplier_id, suppliers(id, name, code, tax_id),
+         po_id, purchase_orders(id, doc_number),
+         inventory_po_id,
+         warehouse_id, warehouses(id, name),
+         posted_at, created_at`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
 
-  if (filters.status) query = query.eq('status', filters.status)
-  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+    if (filters.status) query = query.eq('status', filters.status)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return data ?? []
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  }
+  return fetchAllProcRows(build)
 }
 
 /**
@@ -1270,37 +1367,37 @@ export function printGRN(grnId: string) {
 export async function listInvoices(filters: InvoiceFilterOptions = {}) {
   const { company_id, branch_id } = getContext()
 
-  let query = supabase
-    .from('ap_invoices')
-    .select(
-      `id, doc_number, supplier_inv_no, doc_date, due_date, status,
-       total_amount, paid_amount, balance_due, currency,
-       supplier_id, suppliers(id, name, code),
-       grn_id, goods_receipts(id, doc_number),
-       po_id, purchase_orders(id, doc_number),
-       inventory_po_id,
-       inventory_grn_id,
-       posted_at, created_at`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .order('doc_date', { ascending: false })
+  const build = () => {
+    let query = supabase
+      .from('ap_invoices')
+      .select(
+        `id, doc_number, supplier_inv_no, doc_date, due_date, status,
+         total_amount, paid_amount, balance_due, currency,
+         supplier_id, suppliers(id, name, code),
+         grn_id, goods_receipts(id, doc_number),
+         po_id, purchase_orders(id, doc_number),
+         inventory_po_id,
+         inventory_grn_id,
+         posted_at, created_at`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
 
-  if (filters.status) {
-    if (filters.status === 'UNPAID') {
-      // Unpaid invoices are posted or draft with balance_due > 0.
-      query = query.in('status', ['draft', 'posted']).gt('balance_due', 0)
-    } else {
-      query = query.eq('status', filters.status)
+    if (filters.status) {
+      if (filters.status === 'UNPAID') {
+        // Unpaid = any open bill (incl. partial_paid / approved) with balance_due > 0.
+        query = query.in('status', [...UNPAID_AP_INVOICE_STATUSES]).gt('balance_due', 0)
+      } else {
+        query = query.eq('status', filters.status)
+      }
     }
-  }
-  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return data ?? []
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  }
+  return fetchAllProcRows(build)
 }
 
 /**
@@ -1901,29 +1998,29 @@ export async function listPayments(
 ) {
   const { company_id, branch_id } = getContext()
 
-  let query = supabase
-    .from('supplier_payments')
-    .select(
-      `id, doc_number, doc_date, status, total_amount, payment_method,
-       supplier_id, suppliers(id, name, code),
-       cheque_no, reference_no, remarks, posted_at, created_at,
-       supplier_payment_allocations(
-         id, amount,
-         ap_invoices(id, doc_number, doc_date, total_amount, paid_amount, balance_due)
-       )`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .order('doc_date', { ascending: false })
+  const build = () => {
+    let query = supabase
+      .from('supplier_payments')
+      .select(
+        `id, doc_number, doc_date, status, total_amount, payment_method,
+         supplier_id, suppliers(id, name, code),
+         cheque_no, reference_no, remarks, posted_at, created_at,
+         supplier_payment_allocations(
+           id, amount,
+           ap_invoices(id, doc_number, doc_date, total_amount, paid_amount, balance_due)
+         )`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
 
-  if (filters.status) query = query.eq('status', filters.status)
-  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+    if (filters.status) query = query.eq('status', filters.status)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return data ?? []
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  }
+  return fetchAllProcRows(build)
 }
 
 
@@ -1976,8 +2073,9 @@ export async function createPayment(header: Omit<SupplierPayment, 'id' | 'doc_nu
  * invoice paid_amount/status) is done by the post_supplier_payment DB trigger
  * (#128). The cheque register (finance_cheques) is synced server-side by
  * Finance's trigger (#134) — the client never writes finance_cheques, which is
- * admin/finance-only under RLS (#124). cheque_id / bank_account_id /
- * supplier_name are accepted for UI compatibility and not sent anywhere.
+ * admin/finance-only under RLS (#124). bank_account_id (finance_accounts.id)
+ * and cheque_id (a planned cheque) are sent to the RPC (#147); supplier_name
+ * is display-only.
  *
  * Once the RPC succeeds the payment EXISTS: any follow-up problem (stamping the
  * PDC cheque date) is returned as `warning` with success=true, so the caller
@@ -2015,6 +2113,9 @@ export async function createAndPostPayment(
     p_allocations: allocations,
     p_post_now: post,
     p_bank_account_code: header.bank_account_code || null,
+    // #147: exact paying account (no name guessing) + planned cheque (Cheque Plan)
+    p_bank_account_id: header.bank_account_id || null,
+    p_cheque_id: header.cheque_id || null,
   })
 
   if (error) return { success: false, error: error.message }
@@ -2135,27 +2236,27 @@ export async function listReturns(
 ) {
   const { company_id, branch_id } = getContext()
 
-  let query = supabase
-    .from('purchase_returns')
-    .select(
-      `id, doc_number, doc_date, status, total_amount, return_reason,
-       supplier_id, suppliers(id, name, code),
-       grn_id, goods_receipts(id, doc_number),
-       warehouse_id, warehouses(id, name),
-       posted_at, created_at`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .order('doc_date', { ascending: false })
+  const build = () => {
+    let query = supabase
+      .from('purchase_returns')
+      .select(
+        `id, doc_number, doc_date, status, total_amount, return_reason,
+         supplier_id, suppliers(id, name, code),
+         grn_id, goods_receipts(id, doc_number),
+         warehouse_id, warehouses(id, name),
+         posted_at, created_at`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
 
-  if (filters.status) query = query.eq('status', filters.status)
-  if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+    if (filters.status) query = query.eq('status', filters.status)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
 
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-  return data ?? []
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  }
+  return fetchAllProcRows(build)
 }
 
 /**
@@ -2494,19 +2595,20 @@ export async function listUoms() {
  */
 export async function getSupplierStatement(supplierId: string, fromDate: string, toDate: string) {
   const { company_id } = getContext()
-  const { data, error } = await supabase
-    .from('ap_ledger')
-    .select('id, entry_type, doc_number, doc_date, due_date, debit, credit, description, posted_at')
-    .eq('company_id', company_id)
-    .eq('supplier_id', supplierId)
-    .gte('doc_date', fromDate)
-    .lte('doc_date', toDate)
-    .order('doc_date', { ascending: true })
-
-  if (error) throw new Error(error.message)
-  const rows = data ?? []
-  const totalDebit = rows.reduce((s: number, r: any) => s + (r.debit || 0), 0)
-  const totalCredit = rows.reduce((s: number, r: any) => s + (r.credit || 0), 0)
+  const rows: any[] = await fetchAllProcRows(() =>
+    supabase
+      .from('ap_ledger')
+      .select('id, entry_type, doc_number, doc_date, due_date, debit, credit, description, posted_at')
+      .eq('company_id', company_id)
+      .eq('supplier_id', supplierId)
+      .gte('doc_date', fromDate)
+      .lte('doc_date', toDate)
+      .order('doc_date', { ascending: true })
+      .order('id', { ascending: true }),
+  )
+  // Number(): numeric columns may arrive as strings — never string-concatenate.
+  const totalDebit = rows.reduce((s: number, r: any) => s + (Number(r.debit) || 0), 0)
+  const totalCredit = rows.reduce((s: number, r: any) => s + (Number(r.credit) || 0), 0)
   return { rows, totalDebit, totalCredit, balance: totalCredit - totalDebit }
 }
 
@@ -2515,23 +2617,25 @@ export async function getSupplierStatement(supplierId: string, fromDate: string,
  */
 export async function getAPAging() {
   const { company_id } = getContext()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
 
-  const { data, error } = await supabase
-    .from('ap_invoices')
-    .select(
-      `id, doc_number, doc_date, due_date, total_amount, paid_amount, balance_due,
-       supplier_id, suppliers(id, name)`,
-    )
-    .eq('company_id', company_id)
-    .in('status', ['posted', 'partial_paid'])
-    .order('due_date', { ascending: true })
+  const data: any[] = await fetchAllProcRows(() =>
+    supabase
+      .from('ap_invoices')
+      .select(
+        `id, doc_number, doc_date, due_date, total_amount, paid_amount, balance_due,
+         supplier_id, suppliers(id, name)`,
+      )
+      .eq('company_id', company_id)
+      .in('status', ['posted', 'partial_paid'])
+      .order('due_date', { ascending: true })
+      .order('id', { ascending: true }),
+  )
 
-  if (error) throw new Error(error.message)
-
-  const rows = (data ?? []).map((inv: any) => {
+  const rows = data.map((inv: any) => {
+    // Both sides are YYYY-MM-DD parsed as UTC midnight → exact whole days.
     const daysOverdue = inv.due_date
-      ? Math.floor((new Date(today).getTime() - new Date(inv.due_date).getTime()) / 86_400_000)
+      ? Math.round((Date.parse(today) - Date.parse(String(inv.due_date).slice(0, 10))) / 86_400_000)
       : 0
     return {
       ...inv,
@@ -2563,19 +2667,19 @@ export async function getSupplierSummaryReport(
   filters: { from_date?: string; to_date?: string } = {},
 ) {
   const { company_id } = getContext()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey()
 
-  let query = supabase
-    .from('ap_invoices')
-    .select('id, supplier_id, total_amount, paid_amount, balance_due, due_date, status, suppliers(id, name)')
-    .eq('company_id', company_id)
-    .neq('status', 'cancelled')
+  const data: any[] = await fetchAllProcRows(() => {
+    let query = supabase
+      .from('ap_invoices')
+      .select('id, supplier_id, total_amount, paid_amount, balance_due, due_date, status, suppliers(id, name)')
+      .eq('company_id', company_id)
+      .neq('status', 'cancelled')
 
-  if (filters.from_date) query = query.gte('doc_date', filters.from_date)
-  if (filters.to_date) query = query.lte('doc_date', filters.to_date)
-
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+    return query.order('id', { ascending: true })
+  })
 
   const bySupplier = new Map<string, {
     supplier_id: string
@@ -2770,30 +2874,28 @@ export async function approveInvoice(
 export async function getSupplierPaymentsReport(startDate: string, endDate: string, supplierId?: string, taxStatus?: string | null) {
   const { company_id, branch_id } = getContext()
 
-  let query = supabase
-    .from('supplier_payments')
-    .select(
-      `*, suppliers${taxStatus ? '!inner' : ''}(id, name, code, tax_id),
-       supplier_payment_allocations(
-         id, amount,
-         ap_invoices(id, doc_number, total_amount, balance_due)
-       )`,
-    )
-    .eq('company_id', company_id)
-    .eq('branch_id', branch_id)
-    .gte('doc_date', startDate)
-    .lte('doc_date', endDate)
-    .order('doc_date', { ascending: false })
+  return fetchAllProcRows(() => {
+    let query = supabase
+      .from('supplier_payments')
+      .select(
+        `*, suppliers${taxStatus ? '!inner' : ''}(id, name, code, tax_id),
+         supplier_payment_allocations(
+           id, amount,
+           ap_invoices(id, doc_number, total_amount, balance_due)
+         )`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
+      .gte('doc_date', startDate)
+      .lte('doc_date', endDate)
 
-  if (supplierId) {
-    query = query.eq('supplier_id', supplierId)
-  }
-  
-  if (taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
-  if (taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId)
+    }
 
+    if (taxStatus === 'TAX') query = query.not('suppliers.tax_id', 'is', null)
+    if (taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
 
-  const { data, error } = await query
-  if (error) throw error
-  return data
+    return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  })
 }

@@ -576,7 +576,14 @@ function subscribeToActiveOrders() {
     .channel('customer-active-orders-' + Date.now())
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'orders' },
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        // Server-side filter: a guest device must only receive ITS OWN orders,
+        // never every order row in the company (PII / revenue leak).
+        filter: `id=in.(${session.activeOrders.slice(0, 100).join(',')})`,
+      },
       async (payload) => {
         const updatedOrder = payload.new
         if (!updatedOrder) return
@@ -690,11 +697,12 @@ async function loadTableMeta() {
 async function loadMenu() {
   loading.value = true
   try {
-    const { data: subCatData } = await supabase
+    const { data: subCatData, error: subCatError } = await supabase
       .from('menu_sub_categories')
-      .select('*, categories(name, icon)')
+      .select('*, categories(name)')
       .eq('is_active', true)
       .order('sort_order')
+    if (subCatError) console.warn('[Menu] sub-category load failed:', subCatError.message)
 
     if (subCatData) {
       categories.value = [

@@ -501,6 +501,7 @@ import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 import {
   postFinalSettlementToFinance,
@@ -528,7 +529,7 @@ const interviewNotes = ref('')
 
 const form = reactive({
   employee_id: null,
-  resignation_date: new Date().toISOString().split('T')[0],
+  resignation_date: localYmd(),
   last_working_day: '',
   reason: '',
   reason_category: 'personal',
@@ -576,18 +577,28 @@ function stColor(s) {
 }
 
 async function loadResignations() {
-  loading.value = true
   const branchId = authStore.currentBranch?.id
-  let q = supabase
-    .from('employee_resignations')
-    .select('*, employees(full_name, employee_code)')
-    .eq('branch_id', branchId)
-    .order('resignation_date', { ascending: false })
-  if (statusFilter.value !== 'All')
-    q = q.eq('status', statusFilter.value.toLowerCase().replace(/ /g, '_'))
-  const { data } = await q
-  resignations.value = data || []
-  loading.value = false
+  if (!branchId) {
+    resignations.value = []
+    return
+  }
+  loading.value = true
+  try {
+    let q = supabase
+      .from('employee_resignations')
+      .select('*, employees(full_name, employee_code)')
+      .eq('branch_id', branchId)
+      .order('resignation_date', { ascending: false })
+    if (statusFilter.value !== 'All')
+      q = q.eq('status', statusFilter.value.toLowerCase().replace(/ /g, '_'))
+    const { data, error } = await q
+    if (error) throw error
+    resignations.value = data || []
+  } catch (err) {
+    $q.notify({ type: 'negative', message: `Failed to load resignations: ${err.message}` })
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadHelpers() {
@@ -607,7 +618,7 @@ async function loadHelpers() {
 function openForm() {
   Object.assign(form, {
     employee_id: null,
-    resignation_date: new Date().toISOString().split('T')[0],
+    resignation_date: localYmd(),
     last_working_day: '',
     reason: '',
     reason_category: 'personal',
@@ -620,14 +631,21 @@ async function submitResign() {
     $q.notify({ type: 'warning', message: 'Fill required fields' })
     return
   }
+  if (form.last_working_day && form.last_working_day < form.resignation_date) {
+    $q.notify({ type: 'warning', message: 'Last working day cannot be before the resignation date' })
+    return
+  }
   saving.value = true
   try {
-    await supabase.from('employee_resignations').insert({
+    const { error } = await supabase.from('employee_resignations').insert({
       company_id: authStore.currentBranch?.company_id,
       branch_id: authStore.currentBranch?.id,
       ...form,
+      // '' is not a valid DATE — send NULL when the optional field is blank.
+      last_working_day: form.last_working_day || null,
       created_by: authStore.user?.id,
     })
+    if (error) throw error
     $q.notify({ type: 'positive', message: 'Resignation submitted' })
     showForm.value = false
     loadResignations()
@@ -644,7 +662,8 @@ function viewResign(row) {
 }
 
 async function updateStatus(row, status) {
-  await supabase.from('employee_resignations').update({ status }).eq('id', row.id)
+  const { error } = await supabase.from('employee_resignations').update({ status }).eq('id', row.id)
+  if (error) $q.notify({ type: 'negative', message: `Status not updated: ${error.message}` })
   loadResignations()
 }
 
@@ -657,7 +676,11 @@ function scheduleInterview(row) {
 }
 
 async function confirmInterview() {
-  await supabase
+  if (!interviewDate.value) {
+    $q.notify({ type: 'warning', message: 'Select an interview date' })
+    return
+  }
+  const { error } = await supabase
     .from('employee_resignations')
     .update({
       status: 'interview_scheduled',
@@ -666,6 +689,10 @@ async function confirmInterview() {
       interview_notes: interviewNotes.value,
     })
     .eq('id', selectedRow.value.id)
+  if (error) {
+    $q.notify({ type: 'negative', message: `Interview not scheduled: ${error.message}` })
+    return
+  }
   showInterview.value = false
   loadResignations()
 }
@@ -676,7 +703,7 @@ async function approveResign(row) {
     message: `Approve ${row.employees?.full_name}'s resignation? This will deactivate the employee.`,
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async () => {
     const { error } = await supabase
       .from('employee_resignations')
@@ -794,7 +821,7 @@ async function paySettlement() {
     },
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async (accountId) => {
     payingSettlement.value = true
     try {
@@ -949,7 +976,7 @@ function downloadSettlementPDF() {
     align: 'center',
   })
 
-  const filename = `F&F_${s.employee_code || 'emp'}_${new Date().toISOString().split('T')[0]}.pdf`
+  const filename = `F&F_${s.employee_code || 'emp'}_${localYmd()}.pdf`
   doc.save(filename)
   $q.notify({ type: 'positive', message: 'Settlement PDF downloaded' })
 }

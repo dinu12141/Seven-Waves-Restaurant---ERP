@@ -16,9 +16,12 @@ export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
   const draftVouchers = computed(() => vouchers.value.filter(v => v.status === 'draft'))
   const postedVouchers = computed(() => vouchers.value.filter(v => v.status === 'posted'))
 
-  async function fetchVouchers(filters = {}) {
+  // Realtime calls fetchVouchers() without arguments — keep the page's filters.
+  let lastFilters = {}
+  async function fetchVouchers(filters) {
+    if (filters) lastFilters = { ...filters }
     loading.value = true; error.value = null
-    try { vouchers.value = await financeVoucherService.list(filters) }
+    try { vouchers.value = await financeVoucherService.list(lastFilters) }
     catch (e) { error.value = e.message }
     finally { loading.value = false }
   }
@@ -48,8 +51,18 @@ export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
     return result
   }
 
-  async function approveVoucher(id) {
-    const result = await financeVoucherService.approveVoucher(id)
+  async function approveVoucher(id, autoPost = true) {
+    let result
+    try {
+      result = await financeVoucherService.approveVoucher(id, autoPost)
+    } catch (e) {
+      // Approved but the post failed: the voucher is now 'approved' — show that.
+      if (e?.approved) {
+        approvalQueue.value = approvalQueue.value.filter(v => v.id !== id)
+        financeVoucherService.getById(id).then(v => _replaceVoucher(id, v)).catch(() => {})
+      }
+      throw e
+    }
     _replaceVoucher(id, result)
     approvalQueue.value = approvalQueue.value.filter(v => v.id !== id)
     useFinanceAccountStore().fetchAccounts().catch(() => {})
@@ -80,10 +93,16 @@ export const useFinanceVoucherStore = defineStore('financeVoucher', () => {
     return result
   }
 
+  async function updateVoucher(id, data) {
+    const result = await financeVoucherService.updateVoucher(id, data)
+    _replaceVoucher(id, result)
+    return result
+  }
+
   function _replaceVoucher(id, data) {
     const idx = vouchers.value.findIndex(v => v.id === id)
     if (idx !== -1) vouchers.value[idx] = { ...vouchers.value[idx], ...data }
   }
 
-  return { vouchers, approvalQueue, loading, error, selectedVoucher, payVouchers, receivedVouchers, draftVouchers, postedVouchers, fetchVouchers, fetchApprovalQueue, createPayVoucher, createReceivedVoucher, submitVoucher, approveVoucher, rejectVoucher, postVoucher, cancelVoucher }
+  return { vouchers, approvalQueue, loading, error, selectedVoucher, payVouchers, receivedVouchers, draftVouchers, postedVouchers, fetchVouchers, fetchApprovalQueue, createPayVoucher, createReceivedVoucher, submitVoucher, approveVoucher, rejectVoucher, postVoucher, cancelVoucher, updateVoucher }
 })

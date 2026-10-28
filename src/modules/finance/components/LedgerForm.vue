@@ -28,7 +28,7 @@
                 <div class="col-12 col-md-5">
                   <div class="fin-label">Ledger Code <span class="fin-req">*</span></div>
                   <q-input v-model="form.ledger_code" outlined dense :dark="$q.dark.isActive"
-                    placeholder="e.g. 1000" :rules="[v => !!v || 'Required']" hide-bottom-space>
+                    placeholder="e.g. 1000" :rules="[v => !!String(v || '').trim() || 'Required', v => !codeTaken(v) || 'Code already used']" hide-bottom-space>
                     <template #append>
                       <q-btn flat dense round size="sm" icon="auto_awesome" color="primary" @click="genCode">
                         <q-tooltip>Auto-generate</q-tooltip>
@@ -56,10 +56,22 @@
                     :rules="[v => !!v || 'Required']" hide-bottom-space />
                 </div>
                 <div class="col-12">
-                  <div class="fin-label">Account Group</div>
-                  <q-input v-model="form.account_group" outlined dense :dark="$q.dark.isActive"
-                    placeholder="e.g. Current Assets" hide-bottom-space />
+                  <div class="fin-label">Account Group <span class="fin-req">*</span></div>
+                  <q-select v-model="form.account_group" outlined dense :dark="$q.dark.isActive"
+                    :options="groupOptions" use-input fill-input hide-selected input-debounce="0"
+                    new-value-mode="add-unique" clearable
+                    :placeholder="form.ledger_type ? 'Statement group' : 'Choose a type first'"
+                    :rules="[v => !!String(v || '').trim() || 'Required — decides where the ledger shows on the statements']"
+                    hide-bottom-space />
                 </div>
+              </div>
+              <div v-if="classificationIssue" class="fin-warn q-mt-sm">
+                <q-icon name="report_problem" size="16px" class="q-mr-xs" />
+                {{ classificationIssue.message }}
+              </div>
+              <div v-if="typeChangeWarning" class="fin-warn q-mt-sm">
+                <q-icon name="swap_horiz" size="16px" class="q-mr-xs" />
+                {{ typeChangeWarning }}
               </div>
             </div>
 
@@ -80,23 +92,25 @@
                     hide-bottom-space />
                 </div>
                 <div v-if="isEdit" class="col-12">
-                  <div class="fin-label">Current Balance (Live)</div>
-                  <q-input v-model.number="form.current_balance" outlined dense :dark="$q.dark.isActive"
-                    type="number" step="0.01" prefix="LKR" hide-bottom-space>
-                    <template #append>
-                      <q-badge :color="form.current_balance >= 0 ? 'green' : 'red'">
-                        {{ form.current_balance >= 0 ? 'Surplus / Active' : 'Deficit / Overdrawn' }}
-                      </q-badge>
-                    </template>
-                  </q-input>
+                  <div class="fin-label">Current Balance (GL — read only)</div>
+                  <q-input :model-value="glBalanceLabel" outlined dense readonly :dark="$q.dark.isActive" prefix="LKR" hide-bottom-space />
                   <div class="text-caption text-grey-7 q-mt-xs">
-                    Direct balance adjustment updates this ledger and its linked accounts in real time.
+                    Opening ± all GL postings. Balances change only through vouchers / journals, never by editing the ledger.
                   </div>
                 </div>
               </div>
+              <div v-if="openingCheck" class="q-mt-sm" :class="openingCheck.ok ? 'fin-hint' : 'fin-warn'">
+                <q-icon :name="openingCheck.ok ? 'check_circle' : 'balance'" size="16px" class="q-mr-xs" />
+                <span v-if="openingCheck.ok">Company openings balance (Dr = Cr) with this ledger's opening.</span>
+                <span v-else>
+                  With this opening, company openings are Dr {{ money(openingCheck.debit) }} / Cr {{ money(openingCheck.credit) }}
+                  — difference {{ formatDrCr(openingCheck.difference) }}{{ openingCheck.before !== null ? ` (currently ${formatDrCr(openingCheck.before)})` : '' }}.
+                  Openings must balance Dr = Cr; the statements show any difference as suspense.
+                </span>
+              </div>
               <div class="fin-hint">
                 <q-icon name="info" size="14px" class="q-mr-xs" />
-                Credit-nature opening balances (liabilities, income, equity) are stored as negative.
+                Enter the opening as a positive amount and pick Debit or Credit. Credit openings (liabilities, income, equity) count as negative.
               </div>
             </div>
 
@@ -125,11 +139,54 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { financeLedgerService } from '../services/finance-ledger.service'
+import {
+  accountGroupOptions,
+  formatDrCr,
+  ledgerClassificationIssue,
+  openingBalanceDifference,
+} from '../services/finance-ledger-integrity'
 
 const $q = useQuasar()
-const props = defineProps({ modelValue: Boolean, ledger: { type: Object, default: null } })
+const props = defineProps({
+  modelValue: Boolean,
+  ledger: { type: Object, default: null },
+  // Other ledgers (for the duplicate-code check)
+  ledgers: { type: Array, default: () => [] },
+})
+
+const money = (v) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const groupOptions = computed(() => accountGroupOptions(form.value.ledger_type || null))
+const classificationIssue = computed(() =>
+  form.value.ledger_type ? ledgerClassificationIssue(form.value) : null,
+)
+const typeChangeWarning = computed(() => {
+  const l = props.ledger
+  if (!l || !l.gl_entry_count || l.ledger_type === form.value.ledger_type) return ''
+  return `This ledger has ${l.gl_entry_count} GL posting(s). Changing its type from ${l.ledger_type} to ${form.value.ledger_type} moves all of them to another statement section.`
+})
+const glBalanceLabel = computed(() => (props.ledger?.gl_balance !== undefined ? formatDrCr(props.ledger.gl_balance) : formatDrCr(props.ledger?.current_balance)))
+
+function codeTaken(code) {
+  const c = String(code || '').trim()
+  if (!c) return false
+  return (props.ledgers || []).some((l) => l.id !== props.ledger?.id && String(l.ledger_code || '').trim() === c)
+}
+
+// Company-wide opening Dr = Cr check, live while the opening is edited.
+const openingRows = ref(null)
+async function loadOpenings() {
+  try { openingRows.value = await financeLedgerService.listOpenings() } catch { openingRows.value = null }
+}
+const openingCheck = computed(() => {
+  if (!openingRows.value) return null
+  const excludeId = props.ledger?.id || null
+  const after = openingBalanceDifference(openingRows.value, { excludeId, override: form.value })
+  const before = openingBalanceDifference(openingRows.value).difference
+  return { ...after, before: isEdit.value ? before : null, ok: Math.abs(after.difference) < 0.005 }
+})
 const emit = defineEmits(['update:modelValue', 'saved'])
 
 const visible = ref(props.modelValue)
@@ -157,7 +214,9 @@ function onTypeChange(t) {
   }
 }
 function genCode() {
-  form.value.ledger_code = String(Math.floor(1000 + Math.random() * 8999))
+  let code
+  do { code = String(Math.floor(1000 + Math.random() * 8999)) } while (codeTaken(code))
+  form.value.ledger_code = code
 }
 
 const defaultForm = () => ({
@@ -168,7 +227,7 @@ const defaultForm = () => ({
 })
 const form = ref(defaultForm())
 
-watch(() => props.modelValue, v => { visible.value = v })
+watch(() => props.modelValue, v => { visible.value = v; if (v) loadOpenings() }, { immediate: true })
 watch(visible, v => emit('update:modelValue', v))
 watch(() => props.ledger, l => {
   isEdit.value = !!l
@@ -180,7 +239,10 @@ function close() { visible.value = false }
 async function save() {
   saving.value = true
   try {
-    emit('saved', { ...form.value, _isEdit: isEdit.value, _id: props.ledger?.id })
+    // The live balance is derived from the GL — never sent from the form.
+    const payload = { ...form.value, _isEdit: isEdit.value, _id: props.ledger?.id }
+    delete payload.current_balance
+    emit('saved', payload)
     close()
   } finally { saving.value = false }
 }
@@ -227,6 +289,12 @@ async function save() {
   background: rgba(37,99,235,0.06); border: 1px solid rgba(37,99,235,0.15);
   border-radius: 8px; padding: 8px 10px;
   .q-icon { color: #2563eb; }
+}
+.fin-warn {
+  display: flex; align-items: flex-start; margin-top: 10px;
+  font-size: 0.75rem; color: #92400e;
+  background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 8px; padding: 8px 10px;
 }
 .fin-flag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 

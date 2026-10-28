@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="groups"
+      subtitle="Monthly payroll totals and employee payslips"
       title="Payroll Overview"
       breadcrumbs="Finance / Payroll / Overview"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     />
 
@@ -17,7 +18,7 @@
           </div>
           <div class="fin-kpi-card__body">
             <div class="fin-kpi-card__label">Total Employees</div>
-            <div class="fin-kpi-card__value">{{ employeeData.length }}</div>
+            <div class="fin-kpi-card__value">{{ activeEmployees }}</div>
           </div>
         </div>
       </div>
@@ -67,7 +68,6 @@
         :columns="cycleCols"
         row-key="id"
         flat
-        dark
         dense
         :rows-per-page-options="[10, 20]"
         class="fin-table"
@@ -97,11 +97,11 @@
 
     <!-- ── Employee Payslips Dialog ── -->
     <q-dialog v-model="showPayslipsDialog" maximized>
-      <q-card class="bg-grey-10 text-white">
+      <q-card class="fin-surface">
         <q-card-section class="row items-center q-pb-none">
           <div>
             <div class="text-h6 text-weight-bold">Employee Payslips</div>
-            <div class="text-caption text-grey-4">
+            <div class="text-caption text-grey-6">
               {{ selectedCycle?.cycle_name }} &nbsp;|&nbsp; {{ selectedCycle?.period_start }} →
               {{ selectedCycle?.period_end }} &nbsp;|&nbsp;
               <span :class="cycleStatusClass(selectedCycle?.status)">{{
@@ -116,26 +116,26 @@
         <!-- Summary row -->
         <q-card-section class="row q-col-gutter-md q-py-sm">
           <div class="col-auto">
-            <div class="text-caption text-grey-4">Employees</div>
+            <div class="text-caption text-grey-6">Employees</div>
             <div class="text-h6">{{ payslipRows.length }}</div>
           </div>
           <div class="col-auto">
-            <div class="text-caption text-grey-4">Total Gross</div>
+            <div class="text-caption text-grey-6">Total Gross</div>
             <div class="text-h6 text-green-4">{{ fmt(selectedCycle?.total_gross) }}</div>
           </div>
           <div class="col-auto">
-            <div class="text-caption text-grey-4">Total Deductions</div>
+            <div class="text-caption text-grey-6">Total Deductions</div>
             <div class="text-h6 text-red-4">{{ fmt(selectedCycle?.total_deductions) }}</div>
           </div>
           <div class="col-auto">
-            <div class="text-caption text-grey-4">Total Net</div>
-            <div class="text-h6 text-white text-weight-bold">
+            <div class="text-caption text-grey-6">Total Net</div>
+            <div class="text-h6 text-weight-bold">
               {{ fmt(selectedCycle?.total_net) }}
             </div>
           </div>
         </q-card-section>
 
-        <q-separator dark />
+        <q-separator />
 
         <q-card-section class="q-pa-none">
           <q-table
@@ -143,7 +143,6 @@
             :columns="payslipCols"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[20, 50, 0]"
             :loading="payslipLoading"
@@ -159,8 +158,8 @@
             </template>
             <template #body-cell-payment_status="props">
               <q-td :props="props">
-                <span :class="payStatusClass(props.row.payment_status)">
-                  {{ props.row.payment_status || 'pending' }}
+                <span :class="payStatusClass(props.row.finance_posted_at ? 'paid' : props.row.is_held ? 'held' : 'pending')">
+                  {{ props.row.finance_posted_at ? 'paid · in GL' : props.row.is_held ? 'held' : 'pending GL' }}
                 </span>
               </q-td>
             </template>
@@ -188,9 +187,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import { supabase } from 'src/boot/supabase'
-import { fetchPayrollCycles, fetchEmployeeSalaryStructures } from 'src/services/financeService'
+import { fetchEmployeeSalaryStructures } from 'src/services/financeService'
+import { financePayrollService } from 'src/modules/finance/services/finance-payroll.service'
 
 const loading = ref(false)
 const cycles = ref([])
@@ -203,13 +203,19 @@ const payslipRows = ref([])
 const payslipLoading = ref(false)
 
 const latestCycle = computed(() => cycles.value[0] || null)
+const activeEmployees = computed(
+  () =>
+    employeeData.value.filter(
+      (e) => !['terminated', 'resigned', 'inactive'].includes(String(e.employment_status || '').toLowerCase()),
+    ).length,
+)
 const ytdTotal = computed(() => {
   const year = new Date().getFullYear().toString()
   return cycles.value
     .filter(
       (c) =>
         (c.period_start || '').startsWith(year) &&
-        ['posted', 'confirmed', 'paid', 'approved'].includes(c.status),
+        ['paid', 'approved'].includes(c.status),
     )
     .reduce((s, c) => s + Number(c.total_net || 0), 0)
 })
@@ -251,6 +257,12 @@ const cycleCols = [
     format: (v) => fmt(v),
   },
   { name: 'status', label: 'Status', field: 'status', align: 'center', style: 'width: 100px' },
+  {
+    name: 'gl',
+    label: 'GL',
+    field: (r) => `${r.slip_summary?.posted || 0}/${r.slip_summary?.count || 0} posted`,
+    align: 'center',
+  },
   { name: 'actions', label: '', align: 'center', style: 'width: 50px' },
 ]
 
@@ -307,13 +319,18 @@ function payStatusClass(s) {
 
 async function loadData() {
   loading.value = true
-  const [cycRes, empRes] = await Promise.all([
-    fetchPayrollCycles(),
-    fetchEmployeeSalaryStructures(),
-  ])
-  cycles.value = cycRes.data || []
-  employeeData.value = empRes.data || []
-  loading.value = false
+  try {
+    const [runs, empRes] = await Promise.all([
+      financePayrollService.listRuns(),
+      fetchEmployeeSalaryStructures(),
+    ])
+    cycles.value = runs
+    employeeData.value = empRes.data || []
+  } catch (e) {
+    console.error('[PayrollOverview]', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function openPayslipsDialog(cycle) {
@@ -329,7 +346,7 @@ async function openPayslipsDialog(cycle) {
       id, basic_salary, total_allowances, gross_salary,
       epf_employee, epf_employer, etf_employer,
       total_deductions, net_salary,
-      payment_method, payment_status, paid_at,
+      payment_method, payment_status, paid_at, is_held, finance_posted_at,
       advance_deduction, loan_deduction, other_deductions,
       employees(first_name, last_name, employee_code, designations(title), departments(name))
     `,

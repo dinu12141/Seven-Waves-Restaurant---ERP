@@ -8,15 +8,44 @@
       <q-btn unelevated color="primary" icon="add" label="New Payment" @click="createNewPayment" />
     </div>
 
+    <!-- Filter Bar (client-side over all loaded payments) -->
+    <q-card flat bordered class="q-mb-md">
+      <q-card-section class="q-py-sm">
+        <div class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-input v-model="listFilter.search" outlined dense clearable debounce="200" label="Search Payment # / Cheque / Ref / Supplier">
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select v-model="listFilter.supplier_id" :options="supplierOptions" option-value="id" option-label="name" emit-value map-options outlined dense clearable label="Supplier (All)" />
+          </div>
+          <div class="col-6 col-md-2">
+            <q-select v-model="listFilter.status" :options="paymentStatusOptions" emit-value map-options outlined dense clearable label="Status (All)" />
+          </div>
+          <div class="col-6 col-md-2">
+            <q-input v-model="listFilter.from_date" type="date" outlined dense label="From" stack-label />
+          </div>
+          <div class="col-6 col-md-1">
+            <q-input v-model="listFilter.to_date" type="date" outlined dense label="To" stack-label />
+          </div>
+          <div class="col-6 col-md-1 text-right">
+            <q-btn flat dense icon="restart_alt" label="Reset" no-caps @click="resetListFilter" />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <!-- Payments List -->
     <q-table
-      :rows="payments"
+      :rows="visiblePayments"
       :columns="columns"
       row-key="id"
       :loading="loading"
       flat
       bordered
-      :rows-per-page-options="[15, 25, 50]"
+      :rows-per-page-options="[15, 25, 50, 100, 0]"
+      no-data-label="No supplier payments match these filters"
     >
       <template v-slot:body-cell-status="props">
         <q-td :props="props" align="center">
@@ -183,7 +212,7 @@
                 </q-select>
 
                 <!-- Cheque options when Cheque method is selected -->
-                <div v-if="(form.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm bg-grey-2 rounded-borders q-gutter-xs">
+                <div v-if="(form.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm rounded-borders q-gutter-xs" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
                   <div class="row items-center justify-between q-mb-xs">
                     <span class="text-caption text-weight-bold text-primary">Cheque Selection Mode</span>
                     <div class="row q-gutter-sm">
@@ -489,6 +518,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {
+  filterProcRows,
   listPayments,
   createAndPostPayment,
   allocatePayment,
@@ -513,6 +543,28 @@ const saving = ref(false)
 
 const payments = ref([])
 const supplierOptions = ref([])
+
+// List filters (search / supplier / status / date) — exact status match and
+// YYYY-MM-DD string date comparison (no timezone shift).
+const emptyListFilter = () => ({ search: '', supplier_id: null, status: null, from_date: '', to_date: '' })
+const listFilter = ref(emptyListFilter())
+const paymentStatusOptions = [
+  { label: 'Draft', value: 'draft' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Cancelled', value: 'cancelled' },
+]
+const visiblePayments = computed(() =>
+  filterProcRows(payments.value, listFilter.value, [
+    (r) => r.doc_number,
+    (r) => r.suppliers?.name,
+    (r) => r.cheque_no,
+    (r) => r.reference_no,
+    (r) => r.remarks,
+  ]),
+)
+function resetListFilter() {
+  listFilter.value = emptyListFilter()
+}
 const openInvoices = ref([])
 const loadingInvoices = ref(false)
 /** { count, total } of the supplier's draft/approved bills (not payable yet) */
@@ -553,6 +605,7 @@ const columns = [
     label: 'Date',
     field: 'doc_date',
     align: 'left',
+    sortable: true,
     format: (val) => date.formatDate(val, 'DD/MM/YYYY'),
   },
   {
@@ -560,12 +613,15 @@ const columns = [
     label: 'Supplier',
     field: (row) => row.suppliers?.name || '-',
     align: 'left',
+    sortable: true,
   },
   {
     name: 'amount',
     label: 'Amount',
     field: 'total_amount',
     align: 'right',
+    sortable: true,
+    sort: (a, b) => Number(a) - Number(b),
     format: (val) => formatCurrency(val),
   },
   {
@@ -574,7 +630,7 @@ const columns = [
     field: (row) => (row.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     align: 'left',
   },
-  { name: 'status', label: 'Status', field: 'status', align: 'center' },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
   { name: 'actions', label: '', field: 'actions', align: 'right', width: 60 },
 ]
 
@@ -634,6 +690,7 @@ async function fetchPayments() {
     payments.value = await listPayments()
   } catch (e) {
     console.error('Failed to load payments:', e)
+    $q.notify({ type: 'negative', message: 'Failed to load supplier payments', caption: e?.message })
   }
 }
 

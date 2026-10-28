@@ -2,17 +2,31 @@
   <div class="q-pa-md">
     <!-- Filters -->
     <div class="row q-col-gutter-sm q-mb-md items-center">
-      <div class="col-12 col-sm-12 col-md-4 col-lg-3">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
         <q-input
           :dark="$q.dark.isActive"
           outlined
           dense
           v-model="search"
-          placeholder="Search item or doc #..."
+          placeholder="Item, code or doc #..."
           clearable
+          debounce="400"
         >
           <template #prepend><q-icon name="search" /></template>
         </q-input>
+      </div>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+        <q-select
+          :dark="$q.dark.isActive"
+          outlined
+          dense
+          v-model="warehouseFilter"
+          :options="warehouseOptions"
+          label="Warehouse"
+          emit-value
+          map-options
+          clearable
+        />
       </div>
       <div class="col-12 col-sm-6 col-md-4 col-lg-2">
         <q-select
@@ -27,7 +41,7 @@
           clearable
         />
       </div>
-      <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+      <div class="col-12 col-sm-6 col-md-4 col-lg-1">
         <q-select
           :dark="$q.dark.isActive"
           outlined
@@ -62,12 +76,36 @@
           clearable
         />
       </div>
-      <div class="col-12 col-sm-12 col-md-12 col-lg-1 row justify-end items-center">
+      <div class="col-12 col-sm-12 col-md-12 col-lg-1 row justify-end items-center q-gutter-xs">
+        <q-btn
+          v-if="hasActiveFilters"
+          flat
+          round
+          dense
+          color="grey-6"
+          icon="filter_alt_off"
+          @click="resetFilters"
+        >
+          <q-tooltip>Reset filters</q-tooltip>
+        </q-btn>
         <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
           <q-tooltip>Refresh</q-tooltip>
         </q-btn>
       </div>
     </div>
+
+    <q-banner v-if="error" dense rounded class="bg-negative text-white q-mb-md">
+      <template #avatar><q-icon name="error_outline" /></template>
+      Could not load the stock ledger: {{ error }}
+      <template #action>
+        <q-btn flat dense no-caps label="Retry" @click="reload" />
+      </template>
+    </q-banner>
+    <q-banner v-else-if="truncated" dense rounded class="bg-warning text-dark q-mb-md">
+      <template #avatar><q-icon name="info" /></template>
+      Showing the latest {{ entries.length }} movements only — narrow the date range,
+      warehouse or search to see older entries.
+    </q-banner>
 
     <!-- Ledger Table (Read Only) -->
     <q-card
@@ -92,8 +130,7 @@
           class="bg-transparent"
           table-header-class="text-grey-5 text-uppercase"
           :loading="loading"
-          :filter="search"
-          :rows-per-page-options="[15, 30, 50]"
+          :rows-per-page-options="[15, 30, 50, 100]"
         >
           <!-- Direction badge -->
           <template #body-cell-direction="props">
@@ -151,15 +188,42 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
-import { useStockLedger } from 'src/services/inventoryService'
+import { useStockLedger, useWarehouseList } from 'src/services/inventoryService'
 
-const { entries, loading, fetchLedger } = useStockLedger()
+const { entries, loading, error, truncated, fetchLedger } = useStockLedger()
+const { warehouses, listWarehouses } = useWarehouseList()
 
 const search = ref('')
 const docTypeFilter = ref('')
 const directionFilter = ref('')
+const warehouseFilter = ref(null)
 const dateFrom = ref('')
 const dateTo = ref('')
+
+const warehouseOptions = computed(() =>
+  warehouses.value.map((w) => ({ label: w.name, value: w.id })),
+)
+
+const hasActiveFilters = computed(
+  () =>
+    !!(
+      search.value ||
+      docTypeFilter.value ||
+      directionFilter.value ||
+      warehouseFilter.value ||
+      dateFrom.value ||
+      dateTo.value
+    ),
+)
+
+function resetFilters() {
+  search.value = ''
+  docTypeFilter.value = ''
+  directionFilter.value = ''
+  warehouseFilter.value = null
+  dateFrom.value = ''
+  dateTo.value = ''
+}
 
 const docTypeOptions = [
   { label: 'All Types', value: '' },
@@ -169,6 +233,7 @@ const docTypeOptions = [
   { label: 'Adjustment', value: 'ADJUSTMENT' },
   { label: 'Stock Count', value: 'STOCK_COUNT' },
   { label: 'BOM Deduct', value: 'BOM_DEDUCT' },
+  { label: 'Opening Stock', value: 'OPENING' },
 ]
 
 const directionOptions = [
@@ -181,8 +246,11 @@ function buildFilters() {
   return {
     docType: docTypeFilter.value || undefined,
     direction: directionFilter.value || undefined,
+    warehouseId: warehouseFilter.value || undefined,
     dateFrom: dateFrom.value || undefined,
     dateTo: dateTo.value || undefined,
+    // Server-side (item name/code, doc #) so it also finds movements older
+    // than the row limit; the input is debounced.
     search: search.value || undefined,
   }
 }
@@ -191,9 +259,12 @@ async function reload() {
   await fetchLedger(buildFilters())
 }
 
-onMounted(() => reload())
+onMounted(() => {
+  reload()
+  listWarehouses()
+})
 
-watch([docTypeFilter, directionFilter, dateFrom, dateTo], () => reload())
+watch([docTypeFilter, directionFilter, warehouseFilter, dateFrom, dateTo, search], () => reload())
 
 const columns = [
   {

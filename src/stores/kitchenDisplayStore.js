@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { kitchenStartKot, kitchenMarkReady } from 'src/services/kotDispatchService'
+import { localDateKey, localDayStartISO, kdsActiveSinceISO } from 'src/services/pos/posHelpers'
 
 /**
  * Kitchen Display Store
@@ -30,7 +31,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
   // Subscriptions
   let kotChannel = null
   let timerInterval = null
-  let currentDay = new Date().toISOString().split('T')[0] // tracks current date for midnight auto-clear
+  let currentDay = localDateKey() // tracks LOCAL date for midnight auto-clear (toISOString is UTC → flipped at 05:30 in LK)
 
   // ── Getters ────────────────────────────────────────────────
   const newTickets = computed(() =>
@@ -126,7 +127,9 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
     if (!selectedKitchenId.value) return
 
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
-    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+    const todayStart = localDayStartISO()
+    // Active tickets may straddle midnight — keep them visible (see kdsActiveSinceISO)
+    const activeSince = kdsActiveSinceISO()
 
     const selectFields = `
       id,
@@ -168,7 +171,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
       .select(selectFields)
       .in('status', ['created', 'pending', 'accepted', 'preparing'])
       .is('completed_at', null)
-      .gte('created_at', todayStart)
+      .gte('created_at', activeSince)
       .order('created_at', { ascending: true })
 
     // Query 2: ALL ready tickets created TODAY — stay visible entire day
@@ -383,10 +386,19 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
     if (error || !data) return
 
-    // Today filter — all tickets (including ready) must be from today
-    const todayStart = new Date().setHours(0, 0, 0, 0)
+    // Ready tickets: today only. Active ones: allowed to straddle midnight.
+    // (a ticket already on screen may move to Ready even if fired before midnight)
+    const onScreen = tickets.value.some((t) => t.id === data.id)
+    const sinceMs =
+      data.status === 'ready' && !onScreen
+        ? new Date(localDayStartISO()).getTime()
+        : new Date(kdsActiveSinceISO()).getTime()
     const ticketDate = new Date(data.created_at).getTime()
-    if (ticketDate < todayStart) return
+    if (ticketDate < sinceMs) {
+      // e.g. a pre-midnight ticket just marked ready — drop it rather than leave it stale
+      tickets.value = tickets.value.filter((t) => t.id !== data.id)
+      return
+    }
 
     // 🔒 KITCHEN GUARD — Only add/update if it belongs to OUR kitchen
     const isCashierDisplay = selectedKitchen.value?.name?.trim().toUpperCase() === 'CASHIER'
@@ -720,7 +732,7 @@ export const useKitchenDisplayStore = defineStore('kitchenDisplay', () => {
 
       // Midnight auto-clear: when the day changes, re-fetch tickets
       // so yesterday's ready tickets are no longer shown
-      const nowDay = new Date().toISOString().split('T')[0]
+      const nowDay = localDateKey()
       if (nowDay !== currentDay) {
         console.log('[KDS] Day changed from %s to %s — clearing stale ready tickets', currentDay, nowDay)
         currentDay = nowDay

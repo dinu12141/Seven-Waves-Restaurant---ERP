@@ -159,26 +159,37 @@ function statusColor(status) {
 }
 
 function getCompanyId() {
-  return authStore.currentBranch?.company_id || null
+  return authStore.currentBranch?.company_id || authStore.profile?.company_id || authStore.company?.id || null
 }
 
 async function loadPeriods() {
   loading.value = true
   try {
     const companyId = getCompanyId()
-    if (!companyId) return
-
-    const { data, error } = await supabase
+    // fiscal_periods.locked_by has no FK, so an embedded join fails (PGRST200)
+    // and the list came back empty — read the names separately.
+    let q = supabase
       .from('fiscal_periods')
-      .select('*, locked_user:locked_by(email)')
-      .eq('company_id', companyId)
+      .select('*')
       .order('period_start', { ascending: true })
 
+    if (companyId) {
+      q = q.or(`company_id.eq.${companyId},company_id.is.null`)
+    }
+
+    const { data, error } = await q
     if (error) throw error
+
+    const userIds = [...new Set((data || []).flatMap(p => [p.locked_by, p.closed_by]).filter(Boolean))]
+    const names = {}
+    if (userIds.length) {
+      const { data: users } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds)
+      for (const u of users || []) names[u.id] = u.full_name || u.email
+    }
 
     periods.value = (data || []).map(p => ({
       ...p,
-      locked_by_name: p.locked_user?.email || null,
+      locked_by_name: names[p.locked_by] || names[p.closed_by] || null,
     }))
   } catch (e) {
     $q.notify({ type: 'negative', message: `Failed to load periods: ${e.message}` })
@@ -190,7 +201,11 @@ async function loadPeriods() {
 async function generatePeriods() {
   generating.value = true
   try {
-    const companyId = getCompanyId()
+    let companyId = getCompanyId()
+    if (!companyId) {
+      const { data: comp } = await supabase.from('companies').select('id').limit(1).single()
+      companyId = comp?.id || null
+    }
     if (!companyId) {
       $q.notify({ type: 'negative', message: 'Company not found' })
       return

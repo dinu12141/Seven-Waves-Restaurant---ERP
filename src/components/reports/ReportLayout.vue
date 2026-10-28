@@ -142,11 +142,28 @@
             </div>
           </div>
 
-          <!-- Kitchen -->
-          <div class="report-filter-group">
-            <label class="report-filter-label">Kitchen</label>
+          <!-- Branch (admins only — non-admins are locked to their branch by applyBranchSecurity) -->
+          <div v-if="branchSelectOptions.length > 2" class="report-filter-group">
+            <label class="report-filter-label">Branch</label>
             <q-select
               v-model="filters.branch"
+              :options="branchSelectOptions"
+              dense
+              outlined
+              emit-value
+              map-options
+              clearable
+              placeholder="All Branches"
+              class="report-filter-input"
+              @update:model-value="onFilterChange"
+            />
+          </div>
+
+          <!-- Kitchen (emitted as filters.kitchen — NOT a branch id) -->
+          <div v-if="showKitchenFilter" class="report-filter-group">
+            <label class="report-filter-label">Kitchen</label>
+            <q-select
+              v-model="filters.kitchen"
               :options="branchOptions"
               dense
               outlined
@@ -214,12 +231,23 @@
       </template>
       <template v-if="appliedFilters.branch">
         <span class="report-filter-chip">
-          Branch: {{ appliedFilters.branch }}
+          Branch: {{ selectedBranchName }}
           <q-icon
             name="close"
             size="12px"
             class="cursor-pointer q-ml-xs"
             @click="clearBranchFilter"
+          />
+        </span>
+      </template>
+      <template v-if="appliedFilters.kitchen">
+        <span class="report-filter-chip">
+          Kitchen: {{ selectedKitchenName }}
+          <q-icon
+            name="close"
+            size="12px"
+            class="cursor-pointer q-ml-xs"
+            @click="clearKitchenFilter"
           />
         </span>
       </template>
@@ -286,6 +314,7 @@ import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
 import { exportTableToPDF } from 'src/services/exportService'
 import ExcelJS from 'exceljs'
+import { businessDateStr, addDays, monthStart, monthEnd, dayOfWeek } from 'src/services/reportFilters'
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -296,6 +325,8 @@ const props = defineProps({
   hideSapHeader: { type: Boolean, default: false },
   exportColumns: { type: Array, default: null },
   exportRows: { type: Array, default: null },
+  // Kitchen filter only makes sense for item/KOT-level reports that read filters.kitchen
+  showKitchenFilter: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -314,19 +345,39 @@ const advancedOpen = ref(false)
 const activePreset = ref('Today')
 const appliedFilters = ref(null)
 
-const today = new Date()
-const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-const thirtyDaysAgo = new Date(today)
-thirtyDaysAgo.setDate(today.getDate() - 30)
+// Business-local (Asia/Colombo) calendar day, evaluated on every call so a page
+// left open past midnight (or used between 00:00–05:30) never reports "yesterday".
+const todayStr = () => businessDateStr()
 
 const filters = ref({
-  dateFrom: today.toISOString().slice(0, 10),
-  dateTo: today.toISOString().slice(0, 10),
+  dateFrom: todayStr(),
+  dateTo: todayStr(),
   branch: null,
+  kitchen: null,
 })
 
 // ── SAP Header computed values ──────────────────────────────────────
-const branchLabel = computed(() => authStore.currentBranch?.name || 'All Branches')
+const branchSelectOptions = computed(() => {
+  if (!authStore.isAdmin) return []
+  const opts = [{ label: 'All Branches', value: null }]
+  for (const ub of authStore.branches || []) {
+    const b = ub?.branches
+    if (b?.id && !opts.some((o) => o.value === b.id)) opts.push({ label: b.name, value: b.id })
+  }
+  return opts
+})
+const selectedBranchName = computed(() => {
+  const id = (appliedFilters.value || filters.value)?.branch
+  return branchSelectOptions.value.find((o) => o.value === id)?.label || id || ''
+})
+const selectedKitchenName = computed(() => {
+  const id = (appliedFilters.value || filters.value)?.kitchen
+  return branchOptions.value.find((o) => o.value === id)?.label || id || ''
+})
+const branchLabel = computed(() => {
+  if ((appliedFilters.value || filters.value)?.branch) return selectedBranchName.value
+  return authStore.isAdmin ? 'All Branches' : authStore.currentBranch?.name || 'All Branches'
+})
 const reportDateLabel = computed(() => {
   const f = appliedFilters.value || filters.value
   if (f.dateFrom && f.dateTo) {
@@ -391,73 +442,19 @@ async function loadBranches() {
 }
 
 const datePresets = [
-  {
-    label: 'Today',
-    from: () => today.toISOString().slice(0, 10),
-    to: () => today.toISOString().slice(0, 10),
-  },
-  {
-    label: 'Yesterday',
-    from: () => {
-      const d = new Date(today)
-      d.setDate(d.getDate() - 1)
-      return d.toISOString().slice(0, 10)
-    },
-    to: () => {
-      const d = new Date(today)
-      d.setDate(d.getDate() - 1)
-      return d.toISOString().slice(0, 10)
-    },
-  },
+  { label: 'Today', from: () => todayStr(), to: () => todayStr() },
+  { label: 'Yesterday', from: () => addDays(todayStr(), -1), to: () => addDays(todayStr(), -1) },
   {
     label: 'This Week',
-    from: () => {
-      const d = new Date(today)
-      d.setDate(d.getDate() - d.getDay())
-      return d.toISOString().slice(0, 10)
-    },
-    to: () => today.toISOString().slice(0, 10),
+    from: () => addDays(todayStr(), -dayOfWeek(todayStr())),
+    to: () => todayStr(),
   },
-  {
-    label: 'Last 30 Days',
-    from: () => thirtyDaysAgo.toISOString().slice(0, 10),
-    to: () => today.toISOString().slice(0, 10),
-  },
-  {
-    label: 'This Month',
-    from: () => firstOfMonth.toISOString().slice(0, 10),
-    to: () => today.toISOString().slice(0, 10),
-  },
-  {
-    label: 'Last Month',
-    from: () => {
-      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-      return d.toISOString().slice(0, 10)
-    },
-    to: () => {
-      const d = new Date(today.getFullYear(), today.getMonth(), 0)
-      return d.toISOString().slice(0, 10)
-    },
-  },
-  {
-    label: 'Last 3 Months',
-    from: () => {
-      const d = new Date(today)
-      d.setMonth(d.getMonth() - 3)
-      return d.toISOString().slice(0, 10)
-    },
-    to: () => today.toISOString().slice(0, 10),
-  },
-  {
-    label: 'This Year',
-    from: () => `${today.getFullYear()}-01-01`,
-    to: () => today.toISOString().slice(0, 10),
-  },
-  {
-    label: 'All Time',
-    from: () => '2020-01-01',
-    to: () => today.toISOString().slice(0, 10),
-  },
+  { label: 'Last 30 Days', from: () => addDays(todayStr(), -30), to: () => todayStr() },
+  { label: 'This Month', from: () => monthStart(todayStr()), to: () => todayStr() },
+  { label: 'Last Month', from: () => monthStart(todayStr(), -1), to: () => monthEnd(todayStr(), -1) },
+  { label: 'Last 3 Months', from: () => addDays(todayStr(), -91), to: () => todayStr() },
+  { label: 'This Year', from: () => `${todayStr().slice(0, 4)}-01-01`, to: () => todayStr() },
+  { label: 'All Time', from: () => '2020-01-01', to: () => todayStr() },
 ]
 
 const activeFilterCount = computed(() => {
@@ -465,6 +462,7 @@ const activeFilterCount = computed(() => {
   let count = 0
   if (appliedFilters.value.dateFrom || appliedFilters.value.dateTo) count++
   if (appliedFilters.value.branch) count++
+  if (appliedFilters.value.kitchen) count++
   return count
 })
 
@@ -484,26 +482,39 @@ function applyFilters() {
   filtersOpen.value = false
 }
 
+// Reset returns to the same default the page opens with (Today), keeping any
+// page-specific extra filter keys but clearing their values.
 function clearFilters() {
-  filters.value = {
-    dateFrom: thirtyDaysAgo.toISOString().slice(0, 10),
-    dateTo: today.toISOString().slice(0, 10),
-    branch: null,
-  }
-  appliedFilters.value = null
-  activePreset.value = 'Last 30 Days'
-  emit('filter-change', filters.value)
+  const extra = Object.fromEntries(
+    Object.keys(filters.value)
+      .filter((k) => !['dateFrom', 'dateTo', 'branch', 'kitchen'].includes(k))
+      .map((k) => [k, null]),
+  )
+  filters.value = { ...extra, dateFrom: todayStr(), dateTo: todayStr(), branch: null, kitchen: null }
+  appliedFilters.value = { ...filters.value }
+  activePreset.value = 'Today'
+  emit('filter-change', appliedFilters.value)
+}
+
+// Removing a chip must actually re-run the report (previously it only mutated the
+// chip state, leaving stale data on screen).
+function reapply(patch) {
+  filters.value = { ...filters.value, ...patch }
+  appliedFilters.value = { ...(appliedFilters.value || {}), ...patch }
+  emit('filter-change', appliedFilters.value)
 }
 
 function clearDateFilter() {
-  if (appliedFilters.value) {
-    appliedFilters.value.dateFrom = null
-    appliedFilters.value.dateTo = null
-  }
+  activePreset.value = ''
+  reapply({ dateFrom: null, dateTo: null })
 }
 
 function clearBranchFilter() {
-  if (appliedFilters.value) appliedFilters.value.branch = null
+  reapply({ branch: null })
+}
+
+function clearKitchenFilter() {
+  reapply({ kitchen: null })
 }
 
 function formatDate(d) {
@@ -518,7 +529,7 @@ function formatDate(d) {
 // ── Build subtitle for exports ──────────────────────────────────────
 function getExportSubtitle() {
   const f = appliedFilters.value || filters.value
-  const branch = authStore.currentBranch?.name || 'All Branches'
+  const branch = branchLabel.value
   if (f.dateFrom && f.dateTo) {
     const from = new Date(f.dateFrom).toLocaleDateString('en-GB')
     const to = new Date(f.dateTo).toLocaleDateString('en-GB')
@@ -541,7 +552,7 @@ function handlePrint() {
     page.setAttribute('data-print-date', `${dateStr} ${timeStr}`)
   }
   const origTitle = document.title
-  const dateStr = new Date().toISOString().slice(0, 10)
+  const dateStr = todayStr()
   document.title = `${props.title.replace(/\s+/g, '_')}_${dateStr}`
 
   // ── Force all rows visible for print ───────────────────────────────
@@ -648,7 +659,7 @@ async function handleExportPDF() {
       yOffset += usableH
     }
 
-    const fileDate = new Date().toISOString().slice(0, 10)
+    const fileDate = todayStr()
     pdf.save(`${props.title.replace(/\s+/g, '_')}_${fileDate}.pdf`)
   } catch (err) {
     console.error('[ReportLayout] PDF export error:', err)
@@ -736,7 +747,7 @@ async function handleExportExcel() {
 
     // Write & Download
     const buffer = await wb.xlsx.writeBuffer()
-    const dateStr = new Date().toISOString().slice(0, 10)
+    const dateStr = todayStr()
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
@@ -755,12 +766,15 @@ async function handleExportExcel() {
 }
 
 // ── SAP Toolbar actions ─────────────────────────────────────────────
+function currentFilters() {
+  return { ...(appliedFilters.value || filters.value) }
+}
+
 function handleRefresh() {
-  emit('refresh')
-  // Also re-apply current filters to trigger a data reload
-  if (appliedFilters.value) {
-    emit('filter-change', appliedFilters.value)
-  }
+  // Single reload with the CURRENT filters. Pages bind @refresh="loadData", so the
+  // filters must be passed — a bare emit('refresh') called loadData(undefined) and
+  // silently reloaded the report UNFILTERED (all branches, all dates).
+  emit('refresh', currentFilters())
 }
 
 const isFullscreen = ref(false)
@@ -805,7 +819,7 @@ onMounted(() => {
   // Silently auto-refresh report data in background
   if (props.autoRefreshInterval > 0) {
     autoRefreshTimer = setInterval(() => {
-      emit('refresh')
+      emit('refresh', currentFilters())
     }, props.autoRefreshInterval)
   }
 })

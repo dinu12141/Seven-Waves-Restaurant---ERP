@@ -1,7 +1,7 @@
 <template>
   <ReportLayout
     title="Revenue Summary"
-    subtitle="Daily/weekly revenue trends and growth analysis"
+    subtitle="Settled (paid) sales by business day, net of refunds"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"
@@ -95,7 +95,9 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { businessDateOf, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent, fmtDate, applyBranchSecurity } from 'src/services/reportService'
@@ -138,25 +140,29 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('orders')
-      .select('created_at,subtotal,discount_amount,tax_amount,total_amount,status')
+      // Recognise revenue only for SETTLED orders. Previously every non-cancelled order
+      // (pending, accepted, preparing, unpaid credit…) was counted as revenue.
+      .select('created_at,subtotal,discount_amount,tax_amount,total_amount,refund_amount,status,payment_status')
+      .in('payment_status', ['paid', 'refunded'])
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.order('created_at').limit(5000)
+    const { data, error } = await fetchAllRows(query.order('created_at').order('id'))
     if (error) throw error
     const dMap = {}
     ;(data || []).forEach((b) => {
-      const d = b.created_at?.slice(0, 10)
+      const d = b.created_at ? businessDateOf(b.created_at) : null
       if (!d) return
       if (!dMap[d]) dMap[d] = { date: d, orders: 0, gross: 0, discount: 0, tax: 0, net: 0 }
       dMap[d].orders++
       dMap[d].gross += Number(b.subtotal || 0)
       dMap[d].discount += Number(b.discount_amount || 0)
       dMap[d].tax += Number(b.tax_amount || 0)
-      dMap[d].net += Number(b.total_amount || 0)
+      // Net of refunds (orders.refund_amount is set by process_refund)
+      dMap[d].net += Number(b.total_amount || 0) - Number(b.refund_amount || 0)
     })
     const sorted = Object.values(dMap).sort((a, b) => a.date.localeCompare(b.date))
     rows.value = sorted.map((d, i) => ({
@@ -168,6 +174,8 @@ async function loadData(filters = {}) {
     }))
   } catch (e) {
     console.error('[Revenue]', e)
+    rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load revenue summary: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

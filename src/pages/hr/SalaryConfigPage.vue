@@ -390,6 +390,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 
 const $q = useQuasar()
@@ -413,7 +414,7 @@ const allowanceTypeOptions = ref([])
 const newAllowance = reactive({
   type: null,
   amount: null,
-  effective_from: new Date().toISOString().split('T')[0],
+  effective_from: localYmd(),
 })
 
 const totalCustomAllowances = computed(() => {
@@ -564,7 +565,7 @@ function openAddCustomAllowance() {
   }
   newAllowance.type = null
   newAllowance.amount = null
-  newAllowance.effective_from = new Date().toISOString().split('T')[0]
+  newAllowance.effective_from = localYmd()
   showCustomAllowanceDialog.value = true
 }
 
@@ -631,7 +632,7 @@ async function saveCustomAllowance() {
       employee_id: form.employee_id,
       allowance_type_id: typeId,
       amount: Number(newAllowance.amount),
-      effective_from: newAllowance.effective_from || new Date().toISOString().split('T')[0],
+      effective_from: newAllowance.effective_from || localYmd(),
       is_active: true,
     })
     if (insErr) throw insErr
@@ -720,7 +721,7 @@ async function save() {
     delete payload.id
     payload.company_id = authStore.currentBranch?.company_id
     payload.is_current = true
-    payload.effective_from = new Date().toISOString().split('T')[0]
+    payload.effective_from = localYmd()
     payload.salary_type = 'monthly'
     if (id) {
       const { error } = await supabase.from('salary_structures').update(payload).eq('id', id)

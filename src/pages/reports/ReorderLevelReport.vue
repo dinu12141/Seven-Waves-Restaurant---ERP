@@ -74,6 +74,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { getCompanyId } from 'src/services/reportService'
@@ -119,7 +120,7 @@ async function loadData() {
       .eq('is_active', true)
       .gt('reorder_level', 0)
     if (companyId) query = query.eq('company_id', companyId)
-    const { data, error } = await query.limit(2000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
     rows.value = (data || [])
       .filter((r) => Number(r.current_stock || 0) <= Number(r.reorder_level || 0))

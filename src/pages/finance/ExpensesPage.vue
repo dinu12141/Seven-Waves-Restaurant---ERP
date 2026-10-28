@@ -1,67 +1,63 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="money_off"
+      subtitle="Expense ledger movements from the General Ledger"
       title="Expense Management"
       breadcrumbs="Finance / Expenses & Tax / Expenses"
-      showRefresh
+      show-refresh
+      :loading="loading"
       @refresh="loadData"
-      primaryAction
-      primaryActionLabel="New Expense"
-      @primary-action="showDialog = true"
-    />
+    >
+      <template #actions>
+        <q-btn
+          v-if="canRecord"
+          unelevated
+          no-caps
+          color="primary"
+          icon="add"
+          label="New Expense (Pay Voucher)"
+          @click="newExpense"
+        />
+      </template>
+    </FinancePageHeader>
 
-    <div class="fin-filters q-mb-md">
-      <div class="row no-wrap items-center q-gutter-sm">
-        <q-select
-          v-model="filterCategory"
-          :options="categoryOptions"
-          label="Category"
-          dense
-          :dark="$q.dark.isActive"
-          outlined
-          style="width: 200px; flex-shrink: 0;"
-          clearable
-          emit-value
-          map-options
-          @update:model-value="loadData"
-        />
-        <q-select
-          v-model="filterStatus"
-          :options="['All', 'pending', 'approved', 'rejected', 'posted']"
-          label="Status"
-          dense
-          :dark="$q.dark.isActive"
-          outlined
-          style="width: 155px; flex-shrink: 0;"
-          clearable
-          @update:model-value="loadData"
-        />
-        <q-input
-          v-model="dateFrom"
-          prefix="From:"
-          type="date"
-          dense
-          :dark="$q.dark.isActive"
-          outlined
-          style="width: 185px; flex-shrink: 0;"
-          @update:model-value="loadData"
-        />
-        <q-input
-          v-model="dateTo"
-          prefix="To:"
-          type="date"
-          dense
-          :dark="$q.dark.isActive"
-          outlined
-          style="width: 175px; flex-shrink: 0;"
-          @update:model-value="loadData"
-        />
-        <q-btn flat dense round icon="filter_list_off" color="grey-5" size="sm" @click="resetFilters">
-          <q-tooltip>Reset Filters</q-tooltip>
-        </q-btn>
-      </div>
+    <!-- Expenses are GL movements: they are recorded with a Pay Voucher, which posts Dr expense / Cr cash-bank. -->
+    <div class="text-caption text-grey-6 q-mb-sm">
+      <q-icon name="info" size="14px" />
+      Figures are read from the General Ledger (movements on expense ledgers). Record a new expense with a
+      <strong>Pay Voucher</strong> so it is approved and posted to the GL.
     </div>
+
+    <FinanceFilterBar
+      v-model:from="dateFrom"
+      v-model:to="dateTo"
+      persist-key="expenses"
+      @change="loadData"
+      @reset="resetFilters"
+    >
+      <q-select
+        v-model="filterLedger"
+        :options="ledgerSelectOptions"
+        label="Expense ledger"
+        dense
+        outlined
+        style="width: 260px"
+        clearable
+        emit-value
+        map-options
+        use-input
+        input-debounce="0"
+        @filter="onLedgerFilter"
+        @update:model-value="loadData"
+      />
+      <q-toggle v-model="includeCostOfSales" label="Include Cost of Sales" dense @update:model-value="loadData" />
+      <template #actions>
+        <FinanceExportMenu :columns="columns" :rows="report.rows" title="Expense GL Entries" :subtitle="rangeLabel(dateFrom, dateTo)" filename="expenses" />
+      </template>
+    </FinanceFilterBar>
+
+    <q-banner v-if="loadError" dense class="bg-negative text-white q-mb-md">{{ loadError }}</q-banner>
 
     <!-- Summary Cards -->
     <div class="row q-col-gutter-md q-mb-md">
@@ -71,253 +67,184 @@
             <q-icon name="money_off" size="18px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Total Expenses</div>
-            <div class="fin-kpi-card__value">{{ fmt(totalExpenses) }}</div>
+            <div class="fin-kpi-card__label">Net Expenses (period)</div>
+            <div class="fin-kpi-card__value">{{ fmt(report.total) }}</div>
           </div>
         </div>
       </div>
       <div class="col-12 col-sm-4">
         <div class="fin-kpi-card fin-kpi-card--amber">
           <div class="fin-kpi-card__icon">
-            <q-icon name="pending" size="18px" color="white" />
+            <q-icon name="undo" size="18px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Pending Approval</div>
-            <div class="fin-kpi-card__value">{{ pendingCount }}</div>
+            <div class="fin-kpi-card__label">Reversals / Credits</div>
+            <div class="fin-kpi-card__value">{{ fmt(report.totalCredit) }}</div>
           </div>
         </div>
       </div>
       <div class="col-12 col-sm-4">
         <div class="fin-kpi-card fin-kpi-card--green">
           <div class="fin-kpi-card__icon">
-            <q-icon name="check_circle" size="18px" color="white" />
+            <q-icon name="list_alt" size="18px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Approved</div>
-            <div class="fin-kpi-card__value">{{ approvedCount }}</div>
+            <div class="fin-kpi-card__label">GL Entries</div>
+            <div class="fin-kpi-card__value">{{ report.rows.length }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="fin-panel">
+    <!-- By ledger -->
+    <div class="fin-panel q-mb-md">
       <div class="fin-panel__header">
-        <span class="fin-panel__title">Expense Entries ({{ expenses.length }})</span>
+        <span class="fin-panel__title">By Expense Ledger ({{ report.byLedger.length }})</span>
       </div>
       <q-table
-        :rows="expenses"
+        :rows="report.byLedger"
+        :columns="ledgerColumns"
+        row-key="ledger_id"
+        flat
+        :dark="$q.dark.isActive"
+        dense
+        :rows-per-page-options="[10, 25, 0]"
+        class="fin-table"
+        :loading="loading"
+        no-data-label="No expense postings in this period"
+        @row-click="(_e, row) => selectLedger(row.ledger_id)"
+      />
+    </div>
+
+    <!-- Register -->
+    <div class="fin-panel">
+      <div class="fin-panel__header">
+        <span class="fin-panel__title">Expense GL Entries ({{ report.rows.length }})</span>
+      </div>
+      <q-table
+        :rows="report.rows"
         :columns="columns"
         row-key="id"
         flat
         :dark="$q.dark.isActive"
         dense
-        :rows-per-page-options="[20, 50]"
+        :rows-per-page-options="[25, 50, 100]"
         class="fin-table"
         :loading="loading"
         no-data-label="No expense entries"
       >
-        <template #body-cell-status="props">
+        <template #body-cell-source="props">
           <q-td :props="props">
-            <span :class="statusBadge(props.row.status)">{{ props.row.status }}</span>
-          </q-td>
-        </template>
-        <template #body-cell-actions="props">
-          <q-td :props="props">
-            <q-btn
-              v-if="props.row.status === 'pending'"
-              flat
-              dense
-              icon="check"
-              size="sm"
-              color="green-5"
-              @click="approve(props.row.id)"
-              ><q-tooltip>Approve</q-tooltip></q-btn
-            >
+            <span class="fin-badge fin-badge--info">{{ sourceLabel(props.row.source_type) }}</span>
           </q-td>
         </template>
       </q-table>
     </div>
-
-    <!-- New Expense Dialog -->
-    <q-dialog v-model="showDialog" class="fin-dialog">
-      <q-card :dark="$q.dark.isActive" style="min-width: 480px;" class="fin-dialog-card">
-        <q-card-section>
-          <div class="text-subtitle1 text-weight-bold">New Expense Entry</div>
-        </q-card-section>
-        <q-card-section class="q-gutter-sm fin-form">
-          <q-select
-            v-model="form.category_id"
-            :options="categoryOptions"
-            label="Category *"
-            dense
-            :dark="$q.dark.isActive"
-            outlined
-            emit-value
-            map-options
-            option-value="id"
-            option-label="name"
-          />
-          <q-input
-            v-model.number="form.amount"
-            label="Amount *"
-            type="number"
-            dense
-            :dark="$q.dark.isActive"
-            outlined
-          />
-          <q-input v-model="form.expense_date" label="Date" type="date" dense :dark="$q.dark.isActive" outlined />
-          <q-input v-model="form.description" label="Description" dense :dark="$q.dark.isActive" outlined />
-          <q-input v-model="form.reference" label="Reference" dense :dark="$q.dark.isActive" outlined />
-          <q-select
-            v-model="form.payment_method"
-            :options="['cash', 'card', 'bank_transfer', 'cheque']"
-            label="Payment Method"
-            dense
-            :dark="$q.dark.isActive"
-            outlined
-            emit-value
-          />
-        </q-card-section>
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Cancel" color="grey-5" v-close-popup />
-          <q-btn unelevated label="Submit" color="blue-8" @click="saveExpense" :loading="saving" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Notify } from 'quasar'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import {
-  fetchExpenses,
-  fetchExpenseCategories,
-  createExpense,
-  approveExpense,
-} from 'src/services/financeService'
+import { useRouter } from 'vue-router'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
+import { usePermission } from 'src/core/rbac/usePermission'
+import FinanceFilterBar from 'src/modules/finance/components/FinanceFilterBar.vue'
+import FinanceExportMenu from 'src/modules/finance/components/FinanceExportMenu.vue'
+import { useSelectFilter } from 'src/modules/finance/composables/useSelectFilter'
+import { todayLK, rangeLabel, monthStart as monthStartOf } from 'src/modules/finance/utils/finance-dates'
+import { fetchExpenseReport } from 'src/services/finance/glReports'
+
+const router = useRouter()
+const { can } = usePermission()
+const canRecord = computed(() => can('finance.pay_vouchers.view'))
+
+// Sri Lanka local dates (not browser / UTC)
+const isoDay = () => todayLK()
+const monthStart = () => monthStartOf(todayLK())
 
 const loading = ref(false)
-const saving = ref(false)
-const expenses = ref([])
-const categories = ref([])
-const showDialog = ref(false)
-const filterCategory = ref(null)
-const filterStatus = ref(null)
-const dateFrom = ref('')
-const dateTo = ref('')
-const form = ref({
-  category_id: '',
-  amount: 0,
-  expense_date: new Date().toISOString().split('T')[0],
-  description: '',
-  reference: '',
-  payment_method: 'cash',
-})
+const loadError = ref('')
+const ledgers = ref([])
+const report = ref({ rows: [], byLedger: [], total: 0, totalDebit: 0, totalCredit: 0 })
+const filterLedger = ref(null)
+const includeCostOfSales = ref(false)
+const dateFrom = ref(monthStart())
+const dateTo = ref(isoDay())
 
-const categoryOptions = computed(() =>
-  categories.value.map((c) => ({ id: c.id, name: c.name, label: c.name, value: c.id })),
+const ledgerOptions = computed(() =>
+  ledgers.value
+    .filter((l) => includeCostOfSales.value || l.account_group !== 'Cost of Sales')
+    .map((l) => ({ value: l.id, label: `${l.ledger_code || ''} ${l.ledger_name || ''}`.trim() })),
 )
-const totalExpenses = computed(() => expenses.value.reduce((s, e) => s + Number(e.amount || 0), 0))
-const pendingCount = computed(() => expenses.value.filter((e) => e.status === 'pending').length)
-const approvedCount = computed(() => expenses.value.filter((e) => e.status === 'approved').length)
+const { options: ledgerSelectOptions, onFilter: onLedgerFilter } = useSelectFilter(ledgerOptions)
+
+const ledgerColumns = [
+  { name: 'code', label: 'Code', field: 'ledger_code', align: 'left', sortable: true, style: 'width: 90px' },
+  { name: 'name', label: 'Ledger', field: 'ledger_name', align: 'left', sortable: true },
+  { name: 'group', label: 'Group', field: 'account_group', align: 'left' },
+  { name: 'count', label: 'Entries', field: 'count', align: 'right' },
+  { name: 'debit', label: 'Debits', field: 'debit', align: 'right', format: (v) => fmt(v) },
+  { name: 'credit', label: 'Credits', field: 'credit', align: 'right', format: (v) => fmt(v) },
+  { name: 'net', label: 'Net Expense', field: 'net', align: 'right', sortable: true, format: (v) => fmt(v) },
+]
 
 const columns = [
+  { name: 'date', label: 'Date', field: 'entry_date', align: 'left', sortable: true, style: 'width: 100px' },
   {
-    name: 'date',
-    label: 'Date',
-    field: 'expense_date',
+    name: 'ledger',
+    label: 'Expense Ledger',
+    field: (r) => `${r.ledger_code} ${r.ledger_name}`.trim(),
     align: 'left',
     sortable: true,
-    style: 'width: 100px',
-  },
-  {
-    name: 'category',
-    label: 'Category',
-    field: (row) => row.expense_categories?.name || '-',
-    align: 'left',
   },
   { name: 'description', label: 'Description', field: 'description', align: 'left' },
-  {
-    name: 'payment_method',
-    label: 'Payment',
-    field: 'payment_method',
-    align: 'center',
-    style: 'width: 100px',
-  },
-  {
-    name: 'amount',
-    label: 'Amount',
-    field: 'amount',
-    align: 'right',
-    format: (v) => fmt(v),
-    style: 'width: 120px',
-  },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', style: 'width: 100px' },
-  { name: 'actions', label: '', align: 'center', style: 'width: 50px' },
+  { name: 'source', label: 'Source', field: 'source_type', align: 'center', style: 'width: 120px' },
+  { name: 'debit', label: 'Debit', field: 'debit', align: 'right', format: (v) => (v ? fmt(v) : ''), style: 'width: 120px' },
+  { name: 'credit', label: 'Credit', field: 'credit', align: 'right', format: (v) => (v ? fmt(v) : ''), style: 'width: 120px' },
 ]
 
 function fmt(v) {
-  return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })
-}
-function statusBadge(s) {
-  const m = {
-    pending: 'fin-badge fin-badge--warning',
-    approved: 'fin-badge fin-badge--success',
-    rejected: 'fin-badge fin-badge--danger',
-    posted: 'fin-badge fin-badge--info',
-  }
-  return m[s] || 'fin-badge fin-badge--muted'
+  return Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function resetFilters() {
-  filterCategory.value = null
-  filterStatus.value = null
-  dateFrom.value = ''
-  dateTo.value = ''
+function sourceLabel(s) {
+  if (!s) return 'Manual'
+  return String(s).replace(/_/g, ' ')
+}
+
+function newExpense() {
+  router.push('/finance/pay-vouchers')
+}
+
+function selectLedger(id) {
+  filterLedger.value = id
   loadData()
 }
 
-async function approve(id) {
-  const { error } = await approveExpense(id, null)
-  if (error) Notify.create({ type: 'negative', message: error.message })
-  else {
-    Notify.create({ type: 'positive', message: 'Expense approved' })
-    loadData()
-  }
-}
-
-async function saveExpense() {
-  if (!form.value.category_id || !form.value.amount) {
-    Notify.create({ type: 'warning', message: 'Category and Amount required' })
-    return
-  }
-  saving.value = true
-  const { error } = await createExpense(form.value)
-  if (error) Notify.create({ type: 'negative', message: error.message })
-  else {
-    Notify.create({ type: 'positive', message: 'Expense submitted' })
-    showDialog.value = false
-    loadData()
-  }
-  saving.value = false
+// Dates + reload are handled by FinanceFilterBar (reset → change).
+function resetFilters() {
+  filterLedger.value = null
+  includeCostOfSales.value = false
 }
 
 async function loadData() {
   loading.value = true
-  const [expRes, catRes] = await Promise.all([
-    fetchExpenses({
-      categoryId: filterCategory.value,
-      status: filterStatus.value !== 'All' ? filterStatus.value : undefined,
-      dateFrom: dateFrom.value || undefined,
-      dateTo: dateTo.value || undefined,
-    }),
-    fetchExpenseCategories(),
-  ])
-  expenses.value = expRes.data || []
-  categories.value = catRes.data || []
-  loading.value = false
+  loadError.value = ''
+  try {
+    const res = await fetchExpenseReport({
+      ledgerId: filterLedger.value,
+      includeCostOfSales: includeCostOfSales.value,
+      dateFrom: dateFrom.value || null,
+      dateTo: dateTo.value || null,
+    })
+    ledgers.value = res.ledgers
+    report.value = res
+  } catch (e) {
+    loadError.value = `Could not load expenses: ${e?.message || e}`
+    report.value = { rows: [], byLedger: [], total: 0, totalDebit: 0, totalCredit: 0 }
+  } finally {
+    loading.value = false
+  }
 }
 onMounted(loadData)
 </script>

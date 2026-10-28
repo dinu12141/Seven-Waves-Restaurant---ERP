@@ -398,7 +398,10 @@ const gridFilters = computed(() => [
     options: [
       { label: 'All', value: '' },
       { label: 'Draft', value: 'draft' },
+      { label: 'Pending Approval', value: 'pending_approval' },
+      { label: 'Approved', value: 'approved' },
       { label: 'Open', value: 'open' },
+      { label: 'Partially Received', value: 'partial' },
       { label: 'Closed', value: 'closed' },
       { label: 'Cancelled', value: 'cancelled' },
     ],
@@ -428,8 +431,12 @@ const gridFilters = computed(() => [
 const tabOptions = [
   { label: 'All', value: 'all' },
   { label: 'Draft', value: 'draft' },
+  { label: 'Pending Approval', value: 'pending_approval' },
+  { label: 'Approved', value: 'approved' },
   { label: 'Open', value: 'open' },
+  { label: 'Partial', value: 'partial' },
   { label: 'Closed', value: 'closed' },
+  { label: 'Cancelled', value: 'cancelled' },
 ]
 
 function tabCount(tabVal) {
@@ -472,6 +479,7 @@ async function fetchPOs() {
   } catch (e) {
     console.error('Failed to fetch POs:', e)
     purchaseOrders.value = []
+    $q.notify({ type: 'negative', message: 'Failed to load purchase orders', caption: e?.message })
   }
 }
 
@@ -643,7 +651,7 @@ async function savePO(targetStatus) {
   try {
     const headPayload = {
       supplier_id: supplierId,
-      doc_date: form.value.doc_date || new Date().toISOString().slice(0, 10),
+      doc_date: form.value.doc_date || date.formatDate(Date.now(), 'YYYY-MM-DD'), // local date (UTC+5:30 safe)
       expected_date: form.value.expected_date || undefined,
       warehouse_id: (form.value.warehouse_id && typeof form.value.warehouse_id === 'string' && form.value.warehouse_id.trim()) ? form.value.warehouse_id.trim() : undefined,
       currency: form.value.currency || 'LKR',

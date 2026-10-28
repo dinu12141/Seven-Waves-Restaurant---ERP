@@ -73,6 +73,18 @@
             no-caps
           />
           <q-btn
+            flat
+            dense
+            icon="description"
+            color="teal-8"
+            size="sm"
+            @click="openEpfEtfReportForRun(props.row)"
+            label="EPF/ETF Report"
+            no-caps
+          >
+            <q-tooltip>EPF (8% + 12%) & ETF (3%) Statutory Remittance Report</q-tooltip>
+          </q-btn>
+          <q-btn
             v-if="props.row.status === 'processed'"
             flat
             dense
@@ -183,6 +195,18 @@
             class="q-ml-sm text-caption"
           />
           <q-space />
+          <!-- ✅ EPF & ETF STATUTORY REPORT -->
+          <q-btn
+            unelevated
+            no-caps
+            color="teal-8"
+            icon="description"
+            label="EPF & ETF Report"
+            class="q-mr-sm"
+            @click="openEpfEtfReport"
+          >
+            <q-tooltip>View & Export Statutory EPF (8% + 12%) and ETF (3%) Remittance Report</q-tooltip>
+          </q-btn>
           <!-- ✅ BULK PAYMENT EXPORT — visible for paid runs -->
           <q-btn
             v-if="selectedRun?.status === 'paid'"
@@ -999,6 +1023,182 @@
               <q-icon name="info" size="48px" color="grey" />
               <div class="text-grey q-mt-md">No paid payslips found for this run.</div>
             </div>
+          </div>
+        </q-scroll-area>
+      </q-card>
+    </q-dialog>
+
+    <!-- ══ EPF & ETF Statutory Remittance Dialog (maximized) ══ -->
+    <q-dialog v-model="showEpfEtfDialog" maximized>
+      <q-card :class="[$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-grey-1 text-dark']">
+        <!-- Header Bar -->
+        <q-bar
+          :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white']"
+          style="border-bottom: 3px solid #00897b; height: 56px; padding: 0 16px"
+        >
+          <q-icon name="description" color="teal" size="22px" />
+          <div
+            class="q-ml-sm text-weight-bold"
+            :class="$q.dark.isActive ? 'text-white' : 'text-dark'"
+            style="font-size: 15px"
+          >
+            EPF &amp; ETF Statutory Remittance Report (Form C Return) &bull; {{ selectedRun?.period_start }} to {{ selectedRun?.period_end }}
+          </div>
+          <q-badge color="teal" class="q-ml-sm text-caption">STATUTORY COMPLIANCE</q-badge>
+          <q-space />
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="positive"
+            icon="download"
+            label="Download Excel"
+            class="q-mr-sm q-px-sm"
+            @click="exportEpfEtfExcel"
+          >
+            <q-tooltip>Download Official Form C Excel Spreadsheet</q-tooltip>
+          </q-btn>
+          <q-btn
+            unelevated
+            dense
+            no-caps
+            color="red-7"
+            icon="picture_as_pdf"
+            label="Download PDF"
+            class="q-mr-sm q-px-sm"
+            @click="exportEpfEtfPdf"
+          >
+            <q-tooltip>Export Printable Statutory Return PDF</q-tooltip>
+          </q-btn>
+          <q-btn dense flat icon="close" @click="showEpfEtfDialog = false" />
+        </q-bar>
+
+        <q-scroll-area style="height: calc(100vh - 56px)">
+          <div class="q-pa-md">
+            <!-- 6 Statutory KPI Cards -->
+            <div class="row q-col-gutter-md q-mb-md items-stretch">
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--green">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="payments" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">EPF Earnings (Basic)</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.basic) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--amber">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="person" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">Employee EPF 8%</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.epf8) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--blue">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="apartment" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">Employer EPF 12%</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.epf12) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--purple">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="account_balance" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">Total EPF (20%)</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.epf20) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--cyan">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="savings" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">Employer ETF (3%)</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.etf3) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+
+              <div class="col-12 col-sm-6 col-md-2">
+                <q-card flat class="hr-kpi-card hr-kpi-card--red">
+                  <q-card-section class="hr-kpi-inner">
+                    <div class="hr-kpi-icon"><q-icon name="price_check" size="18px" color="white" /></div>
+                    <div style="flex: 1">
+                      <div class="hr-kpi-label">Grand Total (23%)</div>
+                      <div class="hr-kpi-value" style="font-size: 14px">LKR {{ fmt(epfTotals.grandTotal) }}</div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+
+            <!-- Filter & Search Toolbar -->
+            <q-card flat bordered class="q-mb-md" :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white']">
+              <q-card-section class="q-pa-sm row items-center justify-between">
+                <div class="row items-center q-gutter-sm">
+                  <q-icon name="info" color="teal" size="sm" />
+                  <div class="text-caption text-grey-7">
+                    Sri Lanka Employees' Provident Fund (EPF) Act No. 15 of 1958 &amp; Employees' Trust Fund (ETF) Act No. 46 of 1980 Remittance Schedule.
+                  </div>
+                </div>
+                <div style="min-width: 300px">
+                  <q-input
+                    :dark="$q.dark.isActive"
+                    dense
+                    outlined
+                    v-model="epfSearch"
+                    placeholder="Search by Employee, EPF No, NIC…"
+                    clearable
+                  >
+                    <template #prepend><q-icon name="search" size="xs" /></template>
+                  </q-input>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- Statutory Breakdown Table -->
+            <q-table
+              :dark="$q.dark.isActive"
+              flat
+              bordered
+              dense
+              :rows="filteredEpfPayslips"
+              :columns="epfColumns"
+              row-key="id"
+              :pagination="{ rowsPerPage: 30 }"
+              :class="[$q.dark.isActive ? 'bg-dark' : 'bg-white', 'text-body2']"
+              table-header-class="text-weight-bold text-uppercase"
+            >
+              <template #bottom-row>
+                <q-tr class="text-weight-bold bg-teal-1 text-dark" style="font-size: 13px">
+                  <q-td colspan="4" class="text-right">TOTAL ({{ filteredEpfPayslips.length }} Employees):</q-td>
+                  <q-td class="text-right">LKR {{ fmt(epfTotals.basic) }}</q-td>
+                  <q-td class="text-right text-teal-9">LKR {{ fmt(epfTotals.epf8) }}</q-td>
+                  <q-td class="text-right text-indigo-9">LKR {{ fmt(epfTotals.epf12) }}</q-td>
+                  <q-td class="text-right text-purple-9">LKR {{ fmt(epfTotals.epf20) }}</q-td>
+                  <q-td class="text-right text-cyan-9">LKR {{ fmt(epfTotals.etf3) }}</q-td>
+                  <q-td class="text-right text-deep-orange-9">LKR {{ fmt(epfTotals.grandTotal) }}</q-td>
+                </q-tr>
+              </template>
+            </q-table>
           </div>
         </q-scroll-area>
       </q-card>
@@ -1843,6 +2043,7 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { localYmd } from 'src/services/hr/hrDates'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -1881,7 +2082,7 @@ const showMarkPaidDialog = ref(false)
 const markPaidTarget = ref(null)
 const paidMethod = ref('Bank Transfer')
 const paidReference = ref('')
-const paidDate = ref(new Date().toISOString().slice(0, 10))
+const paidDate = ref(localYmd())
 const paidAccountId = ref(null) // ← which finance account cash goes from
 const markPaidSaving = ref(false)
 
@@ -2433,6 +2634,291 @@ const payslipColumns = [
   { name: 'actions', label: 'Actions', align: 'center', field: 'id' },
 ]
 
+// ── EPF & ETF Statutory Remittance Report ──────────────────────────────────
+const showEpfEtfDialog = ref(false)
+const epfSearch = ref('')
+
+const epfColumns = [
+  { name: 'index', label: '#', align: 'center', field: 'index', style: 'width: 45px' },
+  {
+    name: 'epf_no',
+    label: 'EPF Number',
+    align: 'left',
+    field: (r) => r.employees?.epf_no || r.employees?.employee_code || '—',
+    sortable: true,
+  },
+  {
+    name: 'nic',
+    label: 'NIC Number',
+    align: 'left',
+    field: (r) => r.employees?.nic_number || '—',
+    sortable: true,
+  },
+  {
+    name: 'employee',
+    label: 'Employee Name',
+    align: 'left',
+    field: (r) => r.employees?.full_name,
+    sortable: true,
+  },
+  {
+    name: 'basic',
+    label: 'Basic Salary (LKR)',
+    align: 'right',
+    field: 'basic_salary',
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+  {
+    name: 'epf_8',
+    label: 'Employee EPF (8%)',
+    align: 'right',
+    field: 'epf_employee',
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+  {
+    name: 'epf_12',
+    label: 'Employer EPF (12%)',
+    align: 'right',
+    field: 'epf_employer',
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+  {
+    name: 'epf_20',
+    label: 'Total EPF (20%)',
+    align: 'right',
+    field: (r) => Number(r.epf_employee || 0) + Number(r.epf_employer || 0),
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+  {
+    name: 'etf_3',
+    label: 'Employer ETF (3%)',
+    align: 'right',
+    field: 'etf_employer',
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+  {
+    name: 'grand_total',
+    label: 'Total Remittance (23%)',
+    align: 'right',
+    field: (r) =>
+      Number(r.epf_employee || 0) + Number(r.epf_employer || 0) + Number(r.etf_employer || 0),
+    format: (v) => fmt(v),
+    sortable: true,
+  },
+]
+
+function openEpfEtfReport() {
+  epfSearch.value = ''
+  showEpfEtfDialog.value = true
+}
+
+async function openEpfEtfReportForRun(run) {
+  await viewRun(run)
+  openEpfEtfReport()
+}
+
+const filteredEpfPayslips = computed(() => {
+  let list = payslips.value || []
+  const term = epfSearch.value?.trim().toLowerCase()
+  if (term) {
+    list = list.filter(
+      (r) =>
+        r.employees?.full_name?.toLowerCase().includes(term) ||
+        r.employees?.employee_code?.toLowerCase().includes(term) ||
+        r.employees?.epf_no?.toLowerCase().includes(term) ||
+        r.employees?.nic_number?.toLowerCase().includes(term),
+    )
+  }
+  return list.map((r, i) => ({ ...r, index: i + 1 }))
+})
+
+const epfTotals = computed(() => {
+  const list = filteredEpfPayslips.value || []
+  let basic = 0,
+    epf8 = 0,
+    epf12 = 0,
+    etf3 = 0
+  for (const r of list) {
+    basic += Number(r.basic_salary || 0)
+    epf8 += Number(r.epf_employee || 0)
+    epf12 += Number(r.epf_employer || 0)
+    etf3 += Number(r.etf_employer || 0)
+  }
+  const epf20 = epf8 + epf12
+  const grandTotal = epf20 + etf3
+  return { basic, epf8, epf12, epf20, etf3, grandTotal }
+})
+
+function exportEpfEtfExcel() {
+  if (!filteredEpfPayslips.value || filteredEpfPayslips.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No payslip records to export.' })
+    return
+  }
+
+  const rows = filteredEpfPayslips.value.map((r, i) => {
+    const epf8 = Number(r.epf_employee || 0)
+    const epf12 = Number(r.epf_employer || 0)
+    const epf20 = epf8 + epf12
+    const etf3 = Number(r.etf_employer || 0)
+    const total23 = epf20 + etf3
+    return {
+      '#': i + 1,
+      'EPF No': r.employees?.epf_no || r.employees?.employee_code || '',
+      'NIC Number': r.employees?.nic_number || '',
+      'Employee Code': r.employees?.employee_code || '',
+      'Employee Name': r.employees?.full_name || '',
+      'Basic Salary (LKR)': Number(r.basic_salary || 0),
+      'Employee EPF 8% (LKR)': epf8,
+      'Employer EPF 12% (LKR)': epf12,
+      'Total EPF 20% (LKR)': epf20,
+      'Employer ETF 3% (LKR)': etf3,
+      'Total Remittance 23% (LKR)': total23,
+    }
+  })
+
+  // Append Total Row
+  rows.push({
+    '#': 'TOTAL',
+    'EPF No': '',
+    'NIC Number': '',
+    'Employee Code': '',
+    'Employee Name': `${filteredEpfPayslips.value.length} Staff`,
+    'Basic Salary (LKR)': epfTotals.value.basic,
+    'Employee EPF 8% (LKR)': epfTotals.value.epf8,
+    'Employer EPF 12% (LKR)': epfTotals.value.epf12,
+    'Total EPF 20% (LKR)': epfTotals.value.epf20,
+    'Employer ETF 3% (LKR)': epfTotals.value.etf3,
+    'Total Remittance 23% (LKR)': epfTotals.value.grandTotal,
+  })
+
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'EPF_ETF_Return')
+  const fileName = `EPF_ETF_Statutory_Report_${selectedRun.value?.period_start || 'month'}.xlsx`
+  XLSX.writeFile(wb, fileName)
+  $q.notify({ type: 'positive', message: 'EPF & ETF Excel report exported successfully!' })
+}
+
+function exportEpfEtfPdf() {
+  if (!filteredEpfPayslips.value || filteredEpfPayslips.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'No payslip records to export.' })
+    return
+  }
+
+  const doc = new jsPDF('l', 'mm', 'a4')
+  const periodStr = `${selectedRun.value?.period_start || ''} to ${selectedRun.value?.period_end || ''}`
+
+  doc.setFontSize(14)
+  doc.setTextColor(0, 105, 92)
+  doc.text('SEVEN WAVES RESTAURANT — EPF & ETF STATUTORY CONTRIBUTION RETURN', 14, 14)
+
+  doc.setFontSize(9)
+  doc.setTextColor(80)
+  doc.text(
+    `Contribution Period: ${periodStr}  |  Generated: ${new Date().toLocaleDateString()}  |  Total Staff: ${filteredEpfPayslips.value.length}`,
+    14,
+    20,
+  )
+
+  const head = [
+    [
+      '#',
+      'EPF No',
+      'NIC No',
+      'Code',
+      'Employee Name',
+      'Basic Salary',
+      'EPF 8% (Emp)',
+      'EPF 12% (Empr)',
+      'Total EPF 20%',
+      'ETF 3% (Empr)',
+      'Total (23%)',
+    ],
+  ]
+
+  const body = filteredEpfPayslips.value.map((r, i) => {
+    const epf8 = Number(r.epf_employee || 0)
+    const epf12 = Number(r.epf_employer || 0)
+    const epf20 = epf8 + epf12
+    const etf3 = Number(r.etf_employer || 0)
+    const total23 = epf20 + etf3
+    return [
+      i + 1,
+      r.employees?.epf_no || r.employees?.employee_code || '—',
+      r.employees?.nic_number || '—',
+      r.employees?.employee_code || '—',
+      r.employees?.full_name || '—',
+      fmt(r.basic_salary),
+      fmt(epf8),
+      fmt(epf12),
+      fmt(epf20),
+      fmt(etf3),
+      fmt(total23),
+    ]
+  })
+
+  const foot = [
+    [
+      'TOTAL',
+      '',
+      '',
+      '',
+      `${filteredEpfPayslips.value.length} Staff`,
+      fmt(epfTotals.value.basic),
+      fmt(epfTotals.value.epf8),
+      fmt(epfTotals.value.epf12),
+      fmt(epfTotals.value.epf20),
+      fmt(epfTotals.value.etf3),
+      fmt(epfTotals.value.grandTotal),
+    ],
+  ]
+
+  autoTable(doc, {
+    startY: 24,
+    head,
+    body,
+    foot,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 121, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: [224, 242, 241], textColor: [0, 77, 64], fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7.5 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'left', cellWidth: 22 },
+      2: { halign: 'left', cellWidth: 24 },
+      3: { halign: 'left', cellWidth: 20 },
+      4: { halign: 'left', cellWidth: 46 },
+      5: { halign: 'right', cellWidth: 27 },
+      6: { halign: 'right', cellWidth: 27 },
+      7: { halign: 'right', cellWidth: 27 },
+      8: { halign: 'right', cellWidth: 27 },
+      9: { halign: 'right', cellWidth: 25 },
+      10: { halign: 'right', cellWidth: 28 },
+    },
+  })
+
+  const finalY = (doc.lastAutoTable?.finalY || 160) + 12
+  if (finalY < 195) {
+    doc.setFontSize(8)
+    doc.setTextColor(60)
+    doc.text('Prepared By: ___________________', 20, finalY)
+    doc.text('Checked By: ___________________', 115, finalY)
+    doc.text('Approved By: ___________________', 210, finalY)
+    doc.text('(HR Manager)', 20, finalY + 5)
+    doc.text('(Chief Accountant)', 115, finalY + 5)
+    doc.text('(Managing Director)', 210, finalY + 5)
+  }
+
+  const fileName = `EPF_ETF_Statutory_Report_${selectedRun.value?.period_start || 'month'}.pdf`
+  doc.save(fileName)
+  $q.notify({ type: 'positive', message: 'EPF & ETF PDF report downloaded successfully!' })
+}
+
 // ── Status colors ─────────────────────────────────────────────────────────────
 function runStatusColor(s) {
   return (
@@ -2452,24 +2938,47 @@ function psStatusColor(s) {
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadRuns() {
-  loading.value = true
   const branchId = authStore.currentBranch?.id
-  let q = supabase
-    .from('payroll_runs')
-    .select('*')
-    .eq('branch_id', branchId)
-    .order('period_start', { ascending: false })
-  if (statusFilter.value !== 'All') q = q.eq('status', statusFilter.value.toLowerCase())
-  const { data } = await q
-  runs.value = data || []
-  loading.value = false
+  if (!branchId) {
+    runs.value = []
+    return
+  }
+  loading.value = true
+  try {
+    let q = supabase
+      .from('payroll_runs')
+      .select('*')
+      .eq('branch_id', branchId)
+      .order('period_start', { ascending: false })
+    if (statusFilter.value !== 'All') q = q.eq('status', statusFilter.value.toLowerCase())
+    const { data, error } = await q
+    if (error) throw error
+    runs.value = data || []
+  } catch (err) {
+    $q.notify({ type: 'negative', message: `Failed to load payroll runs: ${err.message}` })
+  } finally {
+    loading.value = false
+  }
 }
 
-async function runPayroll() {
+function runPayroll() {
   if (!payrollMonth.value) {
     $q.notify({ type: 'warning', message: 'Select a month' })
     return
   }
+  const existing = runs.value.find((r) => String(r.period_start).startsWith(payrollMonth.value))
+  $q.dialog({
+    title: existing ? 'Re-process Payroll?' : 'Process Payroll',
+    message: existing
+      ? `A ${existing.status} run already exists for ${payrollMonth.value}. Re-processing recalculates every payslip (manual hold/paid flags on payslips will be lost). Continue?`
+      : `Process payroll for ${payrollMonth.value} (${authStore.currentBranch?.name || 'current branch'})?`,
+    cancel: true,
+    persistent: true,
+    ok: { label: existing ? 'Re-process' : 'Process', color: 'amber-8', textColor: 'dark', unelevated: true, noCaps: true },
+  }).onOk(() => doRunPayroll())
+}
+
+async function doRunPayroll() {
   processing.value = true
   try {
     const { data, error } = await supabase.rpc('process_monthly_payroll', {
@@ -2494,13 +3003,17 @@ async function viewRun(run) {
   psEmpFilter.value = ''
   psBankFilter.value = 'All Banks'
   psPaidFilter.value = 'all'
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', run.id)
     .order('net_salary', { ascending: false })
+  if (error) {
+    $q.notify({ type: 'negative', message: `Failed to load payslips: ${error.message}` })
+    return
+  }
   payslips.value = data || []
   showPayslips.value = true
 }
@@ -2603,7 +3116,7 @@ async function openPostFinanceForRun(run) {
   const { data } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', run.id)
     .order('net_salary', { ascending: false })
@@ -2618,7 +3131,7 @@ function openMarkPaidDialog(payslip) {
   markPaidTarget.value = payslip
   paidMethod.value = 'Bank Transfer'
   paidReference.value = ''
-  paidDate.value = new Date().toISOString().slice(0, 10)
+  paidDate.value = localYmd()
   showMarkPaidDialog.value = true
 }
 
@@ -2707,12 +3220,13 @@ async function confirmPostToFinance() {
   if (!selectedRun.value) return
   postingFinance.value = true
   try {
-    // 1. post_payroll_to_finance_v2 (finance_ledgers + cashbook + journal, migration #129)
-    const { data: res, error: rpcErr } = await supabase.rpc('post_payroll_to_finance_v2', {
+    // 1. fn_post_payroll_run (#146) → post_payroll_to_finance_v2 (#129): GL legs
+    //    dated on the run's period end, held slips skipped.
+    const { data: res, error: rpcErr } = await supabase.rpc('fn_post_payroll_run', {
       p_payroll_run_id: selectedRun.value.id,
       p_cash_bank_account_id: f.cash_bank_acc,
       p_payment_method: f.payment_method,
-      p_posted_by: authStore.user?.id,
+      p_posting_date: null,
     })
 
     if (!rpcErr) {
@@ -2740,52 +3254,10 @@ async function confirmPostToFinance() {
     // must be shown — falling back to the legacy RPC here could double-post.
     if (!isMissingRpcError(rpcErr)) throw rpcErr
 
-    // 2. v2 not deployed yet → legacy post_payroll_to_finance (chart_of_accounts ids)
-    const { data: coa, error: coaErr } = await supabase
-      .from('chart_of_accounts')
-      .select('id, code')
-      .eq('is_active', true)
-    if (coaErr) throw coaErr
-    const byCode = (code) => (coa || []).find((a) => a.code === code)?.id
-    const expAcc = byCode('5100')
-    const payAcc = byCode('2200')
-    const epfExp = byCode('5130')
-    const etfExp = byCode('5140')
-    const epfPay = byCode('2210')
-    const etfPay = byCode('2220')
-    const cashBankCoa = byCode(f.payment_method === 'cash' ? '1000' : '1010')
-
-    if (!expAcc || !payAcc || !cashBankCoa) {
-      $q.notify({
-        type: 'warning',
-        message:
-          'post_payroll_to_finance_v2 is not deployed and legacy payroll accounts were not found. Please run Migration #129 in Supabase.',
-      })
-      return
-    }
-
-    const { error } = await supabase.rpc('post_payroll_to_finance', {
-      p_payroll_run_id: selectedRun.value.id,
-      p_salary_expense_acc: expAcc,
-      p_epf_expense_acc: epfExp || expAcc,
-      p_etf_expense_acc: etfExp || expAcc,
-      p_salary_payable_acc: payAcc,
-      p_epf_payable_acc: epfPay || payAcc,
-      p_etf_payable_acc: etfPay || payAcc,
-      p_cash_bank_acc: cashBankCoa,
-      p_payment_method: f.payment_method,
-      p_posted_by: authStore.user?.id,
-    })
-    if (error) throw error
-    $q.notify({
-      type: 'positive',
-      icon: 'account_balance',
-      message: `Payroll posted to Finance (legacy)! All pending payslips marked as PAID.`,
-      timeout: 4000,
-    })
-    showPostFinanceDialog.value = false
-    showPayslips.value = false
-    await loadRuns()
+    // v2 (#129, wrapped by #146 fn_post_payroll_run) is the only GL posting
+    // path. The legacy post_payroll_to_finance wrote an unbalanced journal on
+    // the old chart of accounts and must never be used as a fallback.
+    throw new Error('Payroll GL posting is not deployed — apply supabase/finance_data_fixes_146.sql (and #129).')
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || String(err), multiLine: true })
   } finally {
@@ -2798,7 +3270,7 @@ async function refreshPayslips() {
   const { data } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', selectedRun.value.id)
     .order('net_salary', { ascending: false })
@@ -2993,6 +3465,12 @@ async function sendPayslipEmail(payslip) {
 }
 
 watch(statusFilter, () => loadRuns())
+watch(
+  () => authStore.currentBranch?.id,
+  (id, prev) => {
+    if (id && id !== prev) loadRuns()
+  },
+)
 onMounted(() => loadRuns())
 </script>
 

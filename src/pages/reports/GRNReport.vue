@@ -153,6 +153,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtDate } from 'src/services/reportService'
@@ -277,7 +278,7 @@ async function loadData(filters = {}) {
     if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
     if (filters.item_id) query = query.eq('goods_receipt_lines.item_id', filters.item_id)
 
-    const { data, error } = await query.limit(1000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     rows.value = (data || []).map((r) => {

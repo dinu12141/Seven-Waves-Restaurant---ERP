@@ -4,8 +4,6 @@
       moduleName="inventory"
       title="Inventory Management"
       breadcrumbs="Supply Chain / Inventory"
-      showSearch
-      showBranchSelector
       showExport
       primaryAction
       primaryActionLabel="New Document"
@@ -109,6 +107,7 @@ import { useQuasar } from 'quasar'
 import { usePermission } from 'src/core/rbac/usePermission'
 import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import { resolveInventoryTab, invBusinessDate } from 'src/services/inventory/inventoryHelpers'
 import DashboardTab from 'components/inventory/DashboardTab.vue'
 import ItemsTab from 'components/inventory/ItemsTab.vue'
 import WarehousesTab from 'components/inventory/WarehousesTab.vue'
@@ -138,11 +137,18 @@ const prefillItemId = ref(null)
 watch(
   () => route.query.tab,
   (newTab) => {
-    if (newTab) {
-      tab.value = newTab
-    } else {
-      tab.value = 'dashboard'
+    // Only known tabs the user may see — the route gates the page as a whole,
+    // per-tab permissions live in config/roles.ts NAV_ITEMS. Unknown tabs used
+    // to render an empty card.
+    const { tab: resolved, denied } = resolveInventoryTab(newTab || 'dashboard', can)
+    if (denied) {
+      $q.notify({
+        type: 'negative',
+        message: 'Access Denied',
+        caption: 'You do not have permission to view this section',
+      })
     }
+    tab.value = resolved
   },
   { immediate: true },
 )
@@ -199,7 +205,7 @@ function handleExport(format) {
   }
 
   const cleanTitleForFile = reportTitle.replace(/ /g, '_').toLowerCase()
-  const filename = `${cleanTitleForFile}_${new Date().toISOString().slice(0, 10)}`
+  const filename = `${cleanTitleForFile}_${invBusinessDate()}`
 
   if (format === 'csv') {
     exportTableToCSV(columns, rows, filename)

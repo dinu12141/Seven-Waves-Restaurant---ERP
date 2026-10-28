@@ -68,6 +68,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { localDateKey } from 'src/services/procurementService'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
@@ -105,7 +106,7 @@ function last7DateStrings() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    dates.push(d.toISOString().split('T')[0])
+    dates.push(localDateKey(d)) // local date — toISOString() is UTC (yesterday before 05:30 in LK)
   }
   return dates
 }
@@ -139,7 +140,7 @@ const fetchData = async () => {
     const companyId = authStore.currentBranch?.company_id
     if (!companyId) return
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const dates = last7DateStrings()
     const weekStart = dates[0]
 
@@ -154,12 +155,12 @@ const fetchData = async () => {
       weekPORes,
       weekGRNRes,
     ] = await Promise.all([
-      // KPI 1 — Pending POs (status = 'open' or 'approved')
+      // KPI 1 — Pending POs (awaiting approval or delivery, incl. partially received)
       supabase
         .from('purchase_orders')
         .select('id', { count: 'exact', head: true })
         .eq('company_id', companyId)
-        .in('status', ['open', 'approved']),
+        .in('status', ['pending_approval', 'open', 'approved', 'partial']),
 
       // KPI 2 — Active suppliers
       supabase

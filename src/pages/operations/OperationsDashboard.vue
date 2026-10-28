@@ -251,8 +251,18 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, defineComponent, h } from 'vue'
-import { date } from 'quasar'
+import { date, QIcon, QBtn, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { useAuthStore } from 'src/stores/auth'
+import { localDateKey, localDayStartISO } from 'src/services/pos/posHelpers'
+
+const authStore = useAuthStore()
+const $q = useQuasar()
+// Scope every query to the selected branch (admins with no branch selected see all).
+const branchId = () => authStore.currentBranch?.id || null
+const scoped = (q, col = 'branch_id') => (branchId() ? q.eq(col, branchId()) : q)
+// Kitchen statuses that count as "in queue" (KDS also uses 'created').
+const KOT_QUEUE = ['created', 'pending', 'accepted', 'preparing']
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
@@ -289,13 +299,14 @@ async function openDrawer(key) {
   drawerData.value = {}
   drawerLoading.value = true
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey() // Sri Lanka local day, not UTC
+  const dayStart = localDayStartISO()
 
   try {
     if (key === 'active_orders') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('orders')
-        .select('id, order_number, status, total_amount, created_at, order_type, restaurant_tables(table_number)')
+        .select('id, order_number, status, total_amount, created_at, order_type, restaurant_tables(table_number)'))
         .not('status', 'in', '(completed,cancelled,paid)')
         .order('created_at', { ascending: false })
         .limit(30)
@@ -305,9 +316,9 @@ async function openDrawer(key) {
     }
 
     else if (key === 'pending_waiter') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('orders')
-        .select('id, order_number, status, total_amount, created_at, order_type, restaurant_tables(table_number)')
+        .select('id, order_number, status, total_amount, created_at, order_type, restaurant_tables(table_number)'))
         .eq('status', 'pending_waiter')
         .order('created_at', { ascending: false })
         .limit(30)
@@ -317,10 +328,10 @@ async function openDrawer(key) {
     }
 
     else if (key === 'kitchen_queue') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('kot_tickets')
-        .select('id, kot_number, status, created_at, kitchen_id, order_id, kitchens(name), orders(order_number)')
-        .in('status', ['pending', 'accepted', 'preparing'])
+        .select('id, kot_number, status, created_at, kitchen_id, order_id, kitchens(name), orders!inner(order_number, branch_id)'), 'orders.branch_id')
+        .in('status', KOT_QUEUE)
         .order('created_at', { ascending: false })
         .limit(30)
       drawerData.value = {
@@ -333,9 +344,9 @@ async function openDrawer(key) {
     }
 
     else if (key === 'cashier_activity') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('v_rpt_cashier_shift')
-        .select('*')
+        .select('*'))
         .eq('shift_date', today)
         .order('total_sales', { ascending: false })
       const totalSales = (data || []).reduce((s, r) => s + Number(r.total_sales || 0), 0)
@@ -344,9 +355,9 @@ async function openDrawer(key) {
     }
 
     else if (key === 'table_occupancy') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('restaurant_tables')
-        .select('id, table_number, section, capacity, status')
+        .select('id, table_number, section, capacity, status'))
         .order('table_number')
       const occupied  = (data || []).filter(t => t.status === 'occupied').length
       const available = (data || []).filter(t => t.status === 'available').length
@@ -355,11 +366,11 @@ async function openDrawer(key) {
     }
 
     else if (key === 'completed_today') {
-      const { data } = await supabase
+      const { data } = await scoped(supabase
         .from('orders')
-        .select('id, order_number, status, total_amount, updated_at, order_type, restaurant_tables(table_number)')
+        .select('id, order_number, status, total_amount, updated_at, order_type, restaurant_tables(table_number)'))
         .in('status', ['completed', 'paid'])
-        .gte('updated_at', today)
+        .gte('updated_at', dayStart)
         .order('updated_at', { ascending: false })
         .limit(50)
       const revenue = (data || []).reduce((s, r) => s + Number(r.total_amount || 0), 0)
@@ -379,63 +390,64 @@ async function openDrawer(key) {
 const fetchData = async () => {
   loading.value = true
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey() // Sri Lanka local day, not UTC
+    const dayStart = localDayStartISO()
 
     // Active orders
-    const { count: activeCount } = await supabase
+    const { count: activeCount } = await scoped(supabase
       .from('orders')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true }))
       .not('status', 'in', '(completed,cancelled,paid)')
     kpis.value[0].value = String(activeCount || 0)
 
     // Pending waiter
-    const { count: waiterCount } = await supabase
+    const { count: waiterCount } = await scoped(supabase
       .from('orders')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true }))
       .eq('status', 'pending_waiter')
     kpis.value[1].value = String(waiterCount || 0)
 
     // Kitchen queue
-    const { count: kitchenCount } = await supabase
+    const { count: kitchenCount } = await scoped(supabase
       .from('kot_tickets')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['pending', 'accepted', 'preparing'])
+      .select('id, orders!inner(branch_id)', { count: 'exact', head: true }), 'orders.branch_id')
+      .in('status', KOT_QUEUE)
     kpis.value[2].value = String(kitchenCount || 0)
 
     // Cashier activity today
-    const { data: cashierData } = await supabase
+    const { data: cashierData } = await scoped(supabase
       .from('v_rpt_cashier_shift')
-      .select('total_sales')
+      .select('total_sales'))
       .eq('shift_date', today)
     const totalSales = (cashierData || []).reduce((s, r) => s + Number(r.total_sales || 0), 0)
     kpis.value[3].value = 'LKR ' + totalSales.toLocaleString()
 
     // Table occupancy
-    const { data: tables } = await supabase
+    const { data: tables } = await scoped(supabase
       .from('restaurant_tables')
-      .select('status')
+      .select('status'))
     const totalTables    = (tables || []).length
     const occupiedTables = (tables || []).filter(t => t.status === 'occupied').length
     kpis.value[4].value = totalTables ? `${Math.round((occupiedTables / totalTables) * 100)}%` : '0%'
 
     // Completed today
-    const { count: completedCount } = await supabase
+    const { count: completedCount } = await scoped(supabase
       .from('orders')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true }))
       .in('status', ['completed', 'paid'])
-      .gte('updated_at', today)
+      .gte('updated_at', dayStart)
     kpis.value[5].value = String(completedCount || 0)
 
     // Pending actions panel (waiter + kitchen)
-    const { data: pwOrders } = await supabase
+    const { data: pwOrders } = await scoped(supabase
       .from('orders')
-      .select('id, order_number, restaurant_tables(table_number)')
+      .select('id, order_number, restaurant_tables(table_number)'))
       .eq('status', 'pending_waiter')
       .limit(5)
 
-    const { data: ktOrders } = await supabase
+    const { data: ktOrders } = await scoped(supabase
       .from('kot_tickets')
-      .select('id, kot_number, orders(order_number)')
+      .select('id, kot_number, orders!inner(order_number, branch_id)'), 'orders.branch_id')
       .in('status', ['pending', 'accepted'])
       .limit(5)
 
@@ -457,16 +469,17 @@ const fetchData = async () => {
     ]
 
     // Order status chart
-    const statuses = ['pending', 'placed', 'preparing', 'ready', 'served']
+    // Real order lifecycle statuses ('placed' does not exist in this schema)
+    const statuses = ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced']
     const counts = await Promise.all(statuses.map(s =>
-      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', s).then(r => r.count || 0)
+      scoped(supabase.from('orders').select('id', { count: 'exact', head: true })).eq('status', s).then(r => r.count || 0)
     ))
     orderSeries.value = [{ name: 'Orders', data: counts }]
     orderOptions.value = {
       chart: { type: 'bar', toolbar: { show: false }, background: 'transparent' },
-      theme: { mode: 'dark' },
+      theme: { mode: $q.dark.isActive ? 'dark' : 'light' },
       xaxis: {
-        categories: ['Pending', 'Placed', 'Preparing', 'Ready', 'Served'],
+        categories: ['Awaiting Waiter', 'Accepted', 'Preparing', 'Ready', 'Served', 'Billed'],
         labels: { style: { colors: '#9ca3af' } },
       },
       yaxis: { labels: { style: { colors: '#9ca3af' } } },
@@ -477,6 +490,7 @@ const fetchData = async () => {
     }
   } catch (e) {
     console.error('[OpsDashboard]', e)
+    $q.notify({ type: 'negative', message: 'Failed to load operations data', caption: e?.message })
   } finally {
     loading.value = false
   }
@@ -493,14 +507,14 @@ function timeAgo(ts) {
 }
 
 function statusColor(s) {
-  const map = { pending:'grey', placed:'blue', preparing:'orange', ready:'positive', served:'teal', pending_waiter:'amber' }
+  const map = { pending:'grey', accepted:'blue', preparing:'orange', ready:'positive', served:'teal', invoiced:'purple', pending_waiter:'amber' }
   return map[s] || 'grey'
 }
 function fmtStatus(s) {
   return (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 function kotColor(s) {
-  const map = { pending:'grey', accepted:'blue', preparing:'orange', served:'positive' }
+  const map = { created:'grey', pending:'grey', accepted:'blue', preparing:'orange', ready:'positive', served:'positive' }
   return map[s] || 'grey'
 }
 
@@ -514,11 +528,11 @@ const DrawerHeader = defineComponent({
     }, [
       h('div', { class: 'drawer-header__left' }, [
         h('div', { class: 'drawer-header__icon' }, [
-          h('q-icon', { name: props.icon, size: '22px', color: 'white' }),
+          h(QIcon, { name: props.icon, size: '22px', color: 'white' }),
         ]),
         h('div', { class: 'drawer-header__title' }, props.title),
       ]),
-      h('q-btn', { flat: true, round: true, icon: 'close', color: 'white', onClick: () => emit('close') }),
+      h(QBtn, { flat: true, round: true, icon: 'close', color: 'white', 'aria-label': 'Close', onClick: () => emit('close') }),
     ])
   },
 })

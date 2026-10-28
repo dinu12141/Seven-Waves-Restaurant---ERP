@@ -1412,10 +1412,16 @@
 
         <!-- Tab 2: HTML Email Preview -->
         <div v-else class="q-pa-xs">
-          <div
-            class="q-pa-xs rounded-borders"
-            style="max-height: 380px; overflow-y: auto;"
-            v-html="ownerBriefingData?.html_email"
+          <!-- AI-generated HTML is untrusted (prompt-injectable via order notes,
+               item names, etc.) — render it in a fully sandboxed iframe (no
+               scripts, no same-origin access to the ERP session) instead of v-html. -->
+          <iframe
+            class="rounded-borders"
+            style="width: 100%; height: 380px; border: 0; background: #fff;"
+            sandbox=""
+            referrerpolicy="no-referrer"
+            title="Owner briefing email preview"
+            :srcdoc="ownerBriefingData?.html_email || ''"
           />
         </div>
 

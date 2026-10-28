@@ -100,6 +100,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent } from 'src/services/reportService'
@@ -157,9 +158,9 @@ async function loadData(filters = {}) {
     `,
       )
       .neq('status', 'cancelled')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.limit(5000)
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     // Kitchens to exclude (same as filter dropdown)

@@ -79,6 +79,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtDateTime } from 'src/services/reportService'
@@ -135,9 +136,9 @@ async function loadData(filters = {}) {
       .select(
         'id,created_at,delivered_at,status,delivery_address,orders(order_number,total_amount,branch_id),profiles(full_name)',
       )
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
+    const { data, error } = await fetchAllRows(query.order('created_at', { ascending: false }).order('id'))
     if (error) throw error
     rows.value = (data || []).map((r) => {
       const created = new Date(r.created_at)

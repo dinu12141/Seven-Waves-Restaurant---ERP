@@ -28,6 +28,7 @@ import {
   receivableBalance,
   sumAmounts,
 } from 'src/services/finance/arAllocation'
+import { financeDashboardService } from 'src/modules/finance/services/finance-dashboard.service'
 
 const MODULE = 'finance'
 
@@ -400,19 +401,103 @@ export async function fetchReceivableAging() {
 export const AP_PAYABLE_STATUSES = ['posted', 'partial_paid'] as const
 export const AP_UNPOSTED_STATUSES = ['draft', 'approved'] as const
 
-export async function fetchApInvoices(filters: FinanceFilters = {}) {
-  let query = supabase
-    .from('ap_invoices')
-    .select('*, suppliers(id, name, code, bank_name, bank_branch, bank_account_number, bank_account_name)')
-    .in('status', [...AP_PAYABLE_STATUSES])
-    .gt('balance_due', 0)
-    // Oldest first, deterministic for several bills on the same day
-    .order('doc_date', { ascending: true })
-    .order('doc_number', { ascending: true })
+export const AP_PAGE_SIZE = 1000
 
-  if (filters.limit) query = query.limit(filters.limit)
-  const { data, error } = await query
-  return { data, error }
+export async function fetchApInvoices(filters: FinanceFilters = {}) {
+  const build = () =>
+    supabase
+      .from('ap_invoices')
+      .select('*, suppliers(id, name, code, bank_name, bank_branch, bank_account_number, bank_account_name)')
+      .in('status', [...AP_PAYABLE_STATUSES])
+      .gt('balance_due', 0)
+      // Oldest first, deterministic for several bills on the same day
+      .order('doc_date', { ascending: true })
+      .order('doc_number', { ascending: true })
+      .order('id', { ascending: true })
+
+  if (filters.limit) {
+    const { data, error } = await build().limit(filters.limit)
+    return { data, error }
+  }
+  // PostgREST caps a response at 1000 rows: read every page so aging and the
+  // AP control never silently drop the newest bills.
+  const rows: any[] = []
+  for (let from = 0; ; from += AP_PAGE_SIZE) {
+    const { data, error } = await build().range(from, from + AP_PAGE_SIZE - 1)
+    if (error) return { data: rows, error }
+    const page = (data || []) as any[]
+    rows.push(...page)
+    if (page.length < AP_PAGE_SIZE) break
+  }
+  return { data: rows, error: null }
+}
+
+export interface ApControl {
+  open_bills_total: number
+  open_bills_count: number
+  suppliers_balance_total: number
+  /** GL 2000 balance shown as a positive liability (credit balance). */
+  ledger_balance: number
+  ledger_found: boolean
+  difference: number
+  reconciled: boolean
+}
+
+const toCents = (v: unknown) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 100) : 0
+}
+
+/**
+ * Pure: compare the AP sub-ledger (open posted bills and suppliers.balance)
+ * with control ledger 2000. finance_ledgers.current_balance is stored Dr-positive,
+ * so a credit (liability) balance comes back negative and is flipped here.
+ */
+export function computeApControl(
+  ledgerRows: { current_balance?: unknown }[],
+  openBills: { balance_due?: unknown; total_amount?: unknown; paid_amount?: unknown }[],
+  suppliers: { balance?: unknown }[],
+): ApControl {
+  const ledgerCents = -ledgerRows.reduce((s, l) => s + toCents(l.current_balance), 0)
+  let billCents = 0
+  let count = 0
+  for (const b of openBills) {
+    const bal =
+      b.balance_due !== undefined && b.balance_due !== null
+        ? toCents(b.balance_due)
+        : toCents(b.total_amount) - toCents(b.paid_amount)
+    if (bal <= 0) continue
+    billCents += bal
+    count++
+  }
+  const supplierCents = suppliers.reduce((s, r) => s + toCents(r.balance), 0)
+  const diff = billCents - ledgerCents
+  return {
+    open_bills_total: billCents / 100,
+    open_bills_count: count,
+    suppliers_balance_total: supplierCents / 100,
+    ledger_balance: ledgerCents / 100,
+    ledger_found: ledgerRows.length > 0,
+    difference: diff / 100,
+    reconciled: ledgerRows.length > 0 && diff === 0 && supplierCents === billCents,
+  }
+}
+
+/** AP control: open posted bills vs Σ suppliers.balance vs GL 2000. */
+export async function fetchApControl(
+  openBills?: { balance_due?: unknown }[],
+): Promise<{ data: ApControl | null; error: unknown }> {
+  const [bills, ledRes, supRes] = await Promise.all([
+    openBills ? Promise.resolve({ data: openBills, error: null }) : fetchApInvoices(),
+    supabase.from('finance_ledgers').select('id, current_balance').eq('ledger_code', '2000').is('deleted_at', null),
+    supabase.from('suppliers').select('id, balance').neq('balance', 0),
+  ])
+  const error = bills.error || ledRes.error || supRes.error
+  if (error) return { data: null, error }
+  return {
+    data: computeApControl((ledRes.data || []) as any[], (bills.data || []) as any[], (supRes.data || []) as any[]),
+    error: null,
+  }
 }
 
 /**
@@ -443,18 +528,13 @@ export async function fetchPayableAging() {
   const { data, error } = await fetchApInvoices()
   if (error) return { data: [], error }
 
-  const now = new Date().getTime()
+  const today = localIsoDay()
 
   const res = (data || []).map((r: any) => {
-    const rawDate = r.doc_date || r.invoice_date || r.created_at
-    const docDate = new Date(rawDate).getTime()
-    const days = Math.floor((now - docDate) / (1000 * 3600 * 24))
-
-    let bucket = 'current'
-    if (days >= 1 && days <= 30) bucket = '1-30 days'
-    else if (days >= 31 && days <= 60) bucket = '31-60 days'
-    else if (days >= 61 && days <= 90) bucket = '61-90 days'
-    else if (days > 90) bucket = '90+ days'
+    // Aging is by days PAST DUE (a bill inside its credit terms is "current");
+    // bills without a due date age from their document date.
+    const days = apDaysPastDue(r.due_date || r.doc_date || r.created_at, today)
+    const bucket = apAgingBucket(days)
 
     const total = Number(r.total_amount || 0)
     const paid = Number(r.paid_amount || 0)
@@ -474,11 +554,34 @@ export async function fetchPayableAging() {
       debit: paid,   // Amount already paid
       balance: balance, // Outstanding payable amount
       aging_bucket: bucket,
+      days_past_due: days,
       status: r.status,
     }
   })
 
   return { data: res, error: null }
+}
+
+function localIsoDay(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** Whole days between two calendar dates (YYYY-MM-DD…), timezone-free. */
+export function apDaysPastDue(date: string | null | undefined, today: string = localIsoDay()): number {
+  if (!date) return 0
+  const a = Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10))
+  const b = Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1, +today.slice(8, 10))
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0
+  return Math.round((b - a) / 86_400_000)
+}
+
+export function apAgingBucket(daysPastDue: number): string {
+  if (daysPastDue <= 0) return 'current'
+  if (daysPastDue <= 30) return '1-30 days'
+  if (daysPastDue <= 60) return '31-60 days'
+  if (daysPastDue <= 90) return '61-90 days'
+  return '90+ days'
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -791,6 +894,15 @@ export async function fetchPayrollPayments(cycleId: string) {
  *  Cr: Bank Account (1010) = total_net
  */
 export async function postPayrollToJournal(cycleId: string, cycle: Record<string, unknown>) {
+  // DISABLED: wrote legacy journal_entries/journal_lines only (never the GL of
+  // record) and could double-book payroll next to post_payroll_to_finance_v2.
+  // Use financePayrollService.postRunToFinance (finance-payroll.service.js).
+  if (cycleId || cycle) {
+    return {
+      data: null,
+      error: new Error('postPayrollToJournal is retired — post payroll via post_payroll_to_finance_v2 (Finance → Payroll → Post to GL).'),
+    }
+  }
   // Create journal entry header
   const { data: je, error: jeErr } = await supabase
     .from('journal_entries')
@@ -901,101 +1013,25 @@ export async function logFinanceAction(action: FinanceFilters) {
 // DASHBOARD KPIs
 // ═══════════════════════════════════════════════════════════════════
 export async function fetchDashboardKPIs(branchId?: any, startDate?: string, endDate?: string) {
-  const today = new Date()
-  const offset = today.getTimezoneOffset() * 60000
-  const localDate = new Date(today.getTime() - offset)
-  const todayDateStr = localDate.toISOString().split('T')[0]
-
-  const startStr = startDate || todayDateStr
-  const endStr = endDate || todayDateStr
-
-  let ordersQuery = supabase.from('orders').select('total_amount')
-    .gte('created_at', startStr + 'T00:00:00')
-    .lte('created_at', endStr + 'T23:59:59')
-    .eq('payment_status', 'paid')
-
-  let recvVouchersQuery = supabase.from('finance_vouchers').select('amount')
-    .eq('voucher_type', 'received')
-    .not('received_from', 'ilike', 'POS Cash Transfer%')
-    .in('status', ['posted', 'approved'])
-    .gte('voucher_date', startStr)
-    .lte('voucher_date', endStr)
-
-  let payVouchersQuery = supabase.from('finance_vouchers').select('amount')
-    .eq('voucher_type', 'pay')
-    .in('status', ['posted', 'approved'])
-    .gte('voucher_date', startStr)
-    .lte('voucher_date', endStr)
-
-  let expQuery = supabase.from('expense_entries').select('amount')
-    .in('status', ['approved', 'paid'])
-    .gte('expense_date', startStr)
-    .lte('expense_date', endStr)
-
-  if (branchId) {
-    ordersQuery = ordersQuery.eq('branch_id', branchId)
-    recvVouchersQuery = recvVouchersQuery.eq('branch_id', branchId)
-    payVouchersQuery = payVouchersQuery.eq('branch_id', branchId)
-    expQuery = expQuery.eq('branch_id', branchId)
-  }
-
-  const [ordersRes, recvVouchersRes, payVouchersRes, expRes, accountsRes, ledgersRes, receivableRes, payableRes, payrollRes] = await Promise.all([
-    ordersQuery,
-    recvVouchersQuery,
-    payVouchersQuery,
-    expQuery,
-
-    // Real Bank & Cash Accounts balance (from finance_accounts)
-    supabase.from('finance_accounts').select('current_balance').eq('is_active', true),
-
-    // Real Ledgers balance (from finance_ledgers)
-    supabase.from('finance_ledgers').select('current_balance, ledger_type').eq('is_active', true),
-
-    // Outstanding receivables: the AR sub-ledger only (#144) — unpaid orders are open bills, not AR
-    supabase.from('customer_receivables').select('balance, total_amount, paid_amount, status').in('status', [...AR_OPEN_STATUSES]),
-
-    // Outstanding payables (AP invoices) — include ALL non-cancelled statuses
-    supabase.from('ap_invoices').select('balance_due, status')
-      .not('status', 'in', '("cancelled","paid")'),
-
-    // Latest payroll
-    supabase.from('payroll_cycles').select('total_net, status').order('period_end', { ascending: false }).limit(1),
-  ])
-
-  // Calculate Today Revenue = POS Paid Orders + Received Vouchers
-  const posRevenue = (ordersRes.data || []).reduce((s: any, o: any) => s + Number(o.total_amount || 0), 0)
-  const voucherRevenue = (recvVouchersRes.data || []).reduce((s: any, v: any) => s + Number(v.amount || 0), 0)
-  const todayRevenue = posRevenue + voucherRevenue
-
-  // Calculate Today Expenses = Pay Vouchers + Expense Entries
-  const voucherExpenses = (payVouchersRes.data || []).reduce((s: any, v: any) => s + Number(v.amount || 0), 0)
-  const otherExpenses = (expRes.data || []).reduce((s: any, e: any) => s + Number(e.amount || 0), 0)
-  const todayExpenses = voucherExpenses + otherExpenses
-
-  // Calculate Bank & Cash Balance = Sum of active finance_accounts current_balance
-  let bankBalance = (accountsRes.data || []).reduce((s: any, a: any) => s + Number(a.current_balance || 0), 0)
-  if (!accountsRes.data?.length && ledgersRes.data?.length) {
-    bankBalance = ledgersRes.data
-      .filter((l: any) => l.ledger_type === 'asset')
-      .reduce((s: any, l: any) => s + Number(l.current_balance || 0), 0)
-  }
-
-  // AR = open balance of the customer_receivables sub-ledger (same source as Finance → Receivables)
-  const outstandingAR = sumAmounts((receivableRes.data || []).map((r: any) => receivableBalance(r)))
-
-  // AP = sum of balance_due from all non-cancelled/non-paid AP invoices
-  const outstandingAP = (payableRes.data || []).reduce((s: any, p: any) => s + Number(p.balance_due || 0), 0)
-
-  const payrollDue = payrollRes.data?.[0]?.status !== 'posted' ? Number(payrollRes.data?.[0]?.total_net || 0) : 0
-
+  // GL-based (finance_cashbook_entries): revenue / expenses / profit are the
+  // income & expense ledger movements of the period — the same figures as the
+  // Statement of Profit or Loss. Cash & bank = GL balance of the ledgers behind
+  // the active finance_accounts. AR / AP / payroll come from their sub-ledgers.
+  const today = localIsoDate(new Date())
+  const res: any = await financeDashboardService.load({
+    branchId: branchId || null,
+    kpiFrom: startDate || today,
+    kpiTo: endDate || today,
+  })
   return {
-    todayRevenue,
-    todayExpenses,
-    bankBalance,
-    outstandingAR,
-    outstandingAP,
-    payrollDue,
-    netProfit: todayRevenue - todayExpenses,
+    todayRevenue: res.revenue,
+    todayExpenses: res.expenses,
+    bankBalance: res.cashAndBank,
+    outstandingAR: res.outstandingAR ?? 0,
+    outstandingAP: res.outstandingAP ?? 0,
+    payrollDue: res.payrollDue ?? 0,
+    netProfit: res.netProfit,
+    warnings: res.warnings as string[],
   }
 }
 

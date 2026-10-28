@@ -65,9 +65,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtDate, applyBranchSecurity } from 'src/services/reportService'
+import { fmtDate } from 'src/services/reportService'
 
 const loading = ref(false)
 const rows = ref([])
@@ -104,22 +105,20 @@ const kpiData = computed(() => [
 async function loadData(filters = {}) {
   loading.value = true
   try {
-    let query = supabase.from('reservations').select('*')
+    let query = supabase.from('website_reservations').select('*')
     if (filters.dateFrom) query = query.gte('reservation_date', filters.dateFrom)
     if (filters.dateTo) query = query.lte('reservation_date', filters.dateTo)
-    if (filters.branch) query = query.eq('branch_id', filters.branch)
-    query = applyBranchSecurity(query)
-    const { data, error } = await query.order('reservation_date', { ascending: false }).limit(500)
+    const { data, error } = await fetchAllRows(query.order('reservation_date', { ascending: false }).order('id'))
     if (error) throw error
     rows.value = (data || []).map((r) => ({
       id: r.id,
       date: r.reservation_date,
       time: r.reservation_time || '—',
-      name: r.guest_name || r.customer_name || '—',
-      guests: r.guest_count || r.party_size || 0,
-      table_no: r.table_number,
+      name: r.name || r.guest_name || '—',
+      guests: r.guests || r.guest_count || 0,
+      table_no: r.occasion || '—',
       status: r.status || 'pending',
-      phone: r.phone || r.contact_number || '—',
+      phone: r.phone || '—',
     }))
   } catch (e) {
     console.error('[Reservation]', e)

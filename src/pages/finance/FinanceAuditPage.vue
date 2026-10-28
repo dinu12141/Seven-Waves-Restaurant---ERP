@@ -1,64 +1,67 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="fact_check"
+      subtitle="Who changed what in Finance — vouchers, journals, ledgers and periods"
       title="Finance Audit Log"
       breadcrumbs="Finance / Reports & Audit / Audit Log"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     />
 
-    <div class="fin-filters q-mb-md">
+    <FinanceFilterBar
+      v-model:from="dateFrom"
+      v-model:to="dateTo"
+      v-model:search="search"
+      show-search
+      search-placeholder="Search user, action, description"
+      :presets="['today', 'last_30', 'this_month', 'last_month', 'this_fy']"
+      default-preset="last_30"
+      persist-key="finance-audit"
+      @change="onFilterChange"
+      @reset="resetFilters"
+    >
       <q-select
         v-model="filterEntity"
-        :options="entityTypes"
-        label="Entity Type"
+        :options="entityOptions"
+        label="Entity type"
         dense
-        dark
         outlined
-        style="min-width: 180px"
+        style="min-width: 200px"
         clearable
+        emit-value
+        map-options
+        @update:model-value="loadData"
       />
-      <q-input
-        v-model="dateFrom"
-        label="From"
-        type="date"
-        dense
-        dark
-        outlined
-        style="min-width: 150px"
-      />
-      <q-input
-        v-model="dateTo"
-        label="To"
-        type="date"
-        dense
-        dark
-        outlined
-        style="min-width: 150px"
-      />
-      <q-btn flat dense icon="filter_list_off" color="grey-5" @click="resetFilters" />
-    </div>
+      <template #actions>
+        <FinanceExportMenu
+          :columns="exportColumns"
+          :rows="filteredLogs"
+          title="Finance Audit Log"
+          :subtitle="rangeLabel(dateFrom, dateTo)"
+          filename="finance_audit_log"
+        />
+      </template>
+    </FinanceFilterBar>
 
     <div class="fin-panel">
       <div class="fin-panel__header">
-        <span class="fin-panel__title">Audit Trail ({{ logs.length }})</span>
+        <span class="fin-panel__title">Audit Trail ({{ filteredLogs.length }})</span>
       </div>
       <q-table
-        :rows="logs"
+        :rows="filteredLogs"
         :columns="columns"
         row-key="id"
         flat
-        dark
         dense
-        :rows-per-page-options="[25, 50]"
+        :rows-per-page-options="[25, 50, 100, 0]"
         class="fin-table"
         :loading="loading"
         no-data-label="No audit entries"
       >
         <template #body-cell-action="props">
           <q-td :props="props">
-            <span :class="actionClass(props.row.action)">{{ props.row.action }}</span>
+            <span :class="actionClass(props.row.action)">{{ humanize(props.row.action) }}</span>
           </q-td>
         </template>
         <template #body-cell-details="props">
@@ -80,31 +83,31 @@
 
     <!-- Detail Dialog -->
     <q-dialog v-model="showDialog" class="fin-dialog">
-      <q-card dark style="min-width: 500px; background: #161b22; border: 1px solid #30363d">
+      <q-card style="width: 500px; max-width: 95vw; background: var(--erp-bg-card); border: 1px solid var(--erp-border)">
         <q-card-section>
-          <div class="text-subtitle1 text-weight-bold text-white">Audit Detail</div>
+          <div class="text-subtitle1 text-weight-bold">Audit Detail</div>
           <div class="text-caption text-grey-5 q-mt-xs">{{ selectedLog?.description }}</div>
         </q-card-section>
         <q-card-section>
           <div class="row q-col-gutter-md">
             <div class="col" v-if="selectedLog?.old_values">
               <div class="text-caption text-red-4 q-mb-xs">Old Values</div>
-              <q-markup-table dense dark flat bordered class="bg-transparent" separator="horizontal">
+              <q-markup-table dense flat bordered class="bg-transparent" separator="horizontal">
                 <tbody>
                   <tr v-for="(val, key) in selectedLog.old_values" :key="key">
                     <td class="text-grey-5" style="width: 40%; font-size: 11px">{{ formatAuditKey(key) }}</td>
-                    <td class="text-white text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
+                    <td class=" text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
                   </tr>
                 </tbody>
               </q-markup-table>
             </div>
             <div class="col" v-if="selectedLog?.new_values">
               <div class="text-caption text-green-4 q-mb-xs">New Values</div>
-              <q-markup-table dense dark flat bordered class="bg-transparent" separator="horizontal">
+              <q-markup-table dense flat bordered class="bg-transparent" separator="horizontal">
                 <tbody>
                   <tr v-for="(val, key) in selectedLog.new_values" :key="key">
                     <td class="text-grey-5" style="width: 40%; font-size: 11px">{{ formatAuditKey(key) }}</td>
-                    <td class="text-white text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
+                    <td class=" text-right" style="font-size: 11px; white-space: normal; word-break: break-all;">{{ formatAuditValue(val) }}</td>
                   </tr>
                 </tbody>
               </q-markup-table>
@@ -120,27 +123,39 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import { fetchFinanceAuditLogs } from 'src/services/financeService'
+import { ref, computed, onMounted } from 'vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
+import FinanceFilterBar from 'src/modules/finance/components/FinanceFilterBar.vue'
+import FinanceExportMenu from 'src/modules/finance/components/FinanceExportMenu.vue'
+import { presetRange, rangeLabel } from 'src/modules/finance/utils/finance-dates'
+import { Notify } from 'quasar'
+import {
+  financeAuditService,
+  actionKind,
+} from 'src/modules/finance/services/finance-audit.service'
 
 const loading = ref(false)
 const logs = ref([])
 const filterEntity = ref(null)
-const dateFrom = ref('')
-const dateTo = ref('')
+// Bounded by default (last 30 days, Sri Lanka time) so the log never loads unbounded history.
+const defaultRange = () => presetRange('last_30')
+const dateFrom = ref(defaultRange().from)
+const dateTo = ref(defaultRange().to)
+const search = ref('')
 const showDialog = ref(false)
 const selectedLog = ref(null)
+// entity_type values actually written by logFinanceAudit + payroll postings
 const entityTypes = [
+  'finance_voucher',
+  'finance_ledger',
+  'finance_account',
+  'finance_cheque',
+  'bank_reconciliation',
   'journal_entry',
-  'expense',
-  'payment',
-  'payroll',
-  'bank_account',
-  'tax',
-  'account',
-  'invoice',
+  'payroll_run',
 ]
+const humanize = (v) => (v ? String(v).replace(/_/g, ' ').replace(/\bw/g, (c) => c.toUpperCase()) : '-')
+const entityOptions = entityTypes.map((v) => ({ value: v, label: humanize(v) }))
 
 const columns = [
   {
@@ -155,14 +170,16 @@ const columns = [
   {
     name: 'user',
     label: 'User',
-    field: (row) => row.profiles?.full_name || row.profiles?.email || '-',
+    field: 'user_name',
     align: 'left',
   },
-  { name: 'action', label: 'Action', field: 'action', align: 'center', style: 'width: 100px' },
+  { name: 'action', label: 'Action', field: 'action', align: 'center', style: 'width: 140px' },
+  { name: 'source', label: 'Source', field: 'source', align: 'center', style: 'width: 80px' },
   {
     name: 'entity_type',
     label: 'Entity',
     field: 'entity_type',
+    format: (v) => humanize(v),
     align: 'left',
     style: 'width: 120px',
   },
@@ -171,22 +188,34 @@ const columns = [
 ]
 
 function actionClass(a) {
-  const m = {
-    create: 'fin-badge fin-badge--success',
-    update: 'fin-badge fin-badge--info',
-    delete: 'fin-badge fin-badge--danger',
-    reverse: 'fin-badge fin-badge--warning',
-    approve: 'fin-badge fin-badge--success',
-    post: 'fin-badge fin-badge--info',
-  }
-  return m[a] || 'fin-badge fin-badge--muted'
+  return `fin-badge fin-badge--${actionKind(a)}`
 }
 
+// Client-side search over the loaded window (dates/entity are server-side).
+const filteredLogs = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return logs.value
+  return logs.value.filter((r) =>
+    [r.user_name, r.action, r.entity_type, r.description, r.source]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(q),
+  )
+})
+const exportColumns = computed(() => columns.filter((c) => c.name !== 'details'))
+
+let lastRange = ''
+// Search is local; only re-query when the date range changed.
+function onFilterChange({ from, to }) {
+  const key = `${from}|${to}`
+  if (key !== lastRange) loadData()
+}
+
+// Dates/search are reset by FinanceFilterBar (it then emits change).
 function resetFilters() {
   filterEntity.value = null
-  dateFrom.value = ''
-  dateTo.value = ''
-  loadData()
+  lastRange = '' // force the reload that follows the bar's change event
 }
 function showDetail(row) {
   selectedLog.value = row
@@ -210,13 +239,21 @@ function formatAuditKey(key) {
 
 async function loadData() {
   loading.value = true
-  const { data } = await fetchFinanceAuditLogs({
-    entityType: filterEntity.value || undefined,
-    dateFrom: dateFrom.value || undefined,
-    dateTo: dateTo.value || undefined,
-  })
-  logs.value = data || []
-  loading.value = false
+  lastRange = `${dateFrom.value}|${dateTo.value}`
+  try {
+    const { rows, warnings } = await financeAuditService.fetchLogs({
+      entityType: filterEntity.value || undefined,
+      dateFrom: dateFrom.value || undefined,
+      dateTo: dateTo.value || undefined,
+    })
+    logs.value = rows
+    if (warnings.length) console.warn('[FinanceAudit]', warnings)
+  } catch (e) {
+    logs.value = []
+    Notify.create({ type: 'negative', message: `Could not load audit log: ${e?.message || e}` })
+  } finally {
+    loading.value = false
+  }
 }
 onMounted(loadData)
 </script>

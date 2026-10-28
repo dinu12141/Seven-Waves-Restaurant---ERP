@@ -1,8 +1,7 @@
 import { boot } from 'quasar/wrappers'
 import { watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import { canAccessRoute } from '../config/roles'
-import { hasPermission, hasModuleAccess } from '../core/rbac/permissions'
+import { evaluateRouteAccess, getRequiredRoleSets } from '../core/rbac/routeAccess'
 
 // ── Branch Access Guard ────────────────────────────────────────────────────
 /**
@@ -173,11 +172,7 @@ export default boot(async ({ router }) => {
       }
       // 1. Collect ALL role requirement sets across matched records.
       // A parent's roles AND a child's roles must both be satisfied.
-      const requiredRoleSets = to.matched
-        .filter((r) => Array.isArray(r.meta.roles) && r.meta.roles.length)
-        .map((r) => r.meta.roles as string[])
-
-      let passesRoleCheck = true
+      const requiredRoleSets = getRequiredRoleSets(to.matched)
 
       if (requiredRoleSets.length > 0) {
         // C7 — Never trust cached roles for privileged routes.
@@ -197,13 +192,11 @@ export default boot(async ({ router }) => {
             return { path: '/auth/login', query: { redirect: to.fullPath } }
           }
         }
-
-        // User must satisfy every set (at least one role from each).
-        passesRoleCheck = requiredRoleSets.every((set) =>
-          set.some((role) => authStore.roles.includes(role as import('../stores/auth').UserRole)),
-        )
       }
 
+      // 2-4. Role sets + meta.permission / meta.module + legacy ACL, evaluated
+      // by the shared evaluateRouteAccess() (src/core/rbac/routeAccess.ts) so
+      // the sidebar can apply the exact same decision. Notes on semantics:
       // 2. Check meta.permission / meta.module via centralized RBAC. These
       // also serve as a SUBSTITUTE for a missing role: if an admin explicitly
       // granted this user a custom permission (via /admin/roles →
@@ -213,35 +206,10 @@ export default boot(async ({ router }) => {
       // with no matching role did NOTHING for any route with meta.roles set
       // (i.e. almost every module route) — the admin's "grant access to a
       // specific section" UI was silently non-functional.
-      const requiredPermission = to.matched
-        .map((r) => r.meta.permission as string | undefined)
-        .filter(Boolean)
-        .pop()
-      const requiredModule = to.matched
-        .map((r) => r.meta.module as string | undefined)
-        .filter(Boolean)
-        .pop()
-
-      const passesPermissionCheck =
-        !requiredPermission ||
-        hasPermission(authStore.roles, requiredPermission, authStore.permissions || [])
-      const passesModuleCheck =
-        !requiredModule || hasModuleAccess(authStore.roles, requiredModule, authStore.permissions || [])
-      const hasCustomGrant = (requiredPermission || requiredModule) ? (passesPermissionCheck && passesModuleCheck) : false
-
-      if (!passesRoleCheck && !hasCustomGrant) {
-        return denyTo()
-      }
-      if (passesRoleCheck && (!passesPermissionCheck || !passesModuleCheck)) {
-        return denyTo()
-      }
-
-      // 4. Check centralized config (legacy route ACL table) — skipped when
-      // the role check failed but a custom permission grant let the user in
-      // above (this legacy check only understands roles + colon-format codes,
-      // so it would otherwise re-deny a dot-format custom grant that just
-      // correctly passed steps 1-3).
-      if (passesRoleCheck && !canAccessRoute(authStore.roles, to.path, authStore.permissions)) {
+      // 4. Legacy route ACL (canAccessRoute) is skipped when the role check
+      // failed but a custom permission grant let the user in.
+      const access = evaluateRouteAccess(authStore.roles, authStore.permissions || [], to.matched, to.path)
+      if (!access.allowed) {
         return denyTo()
       }
     }

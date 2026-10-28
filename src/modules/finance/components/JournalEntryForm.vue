@@ -257,6 +257,7 @@
 </template>
 
 <script setup>
+import { todayLK } from 'src/modules/finance/utils/finance-dates'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
@@ -286,7 +287,7 @@ const defaultLines = () => [
 ]
 
 const form = ref({
-  doc_date: new Date().toISOString().slice(0, 10),
+  doc_date: todayLK(),
   reference_type: 'manual',
   reference_id: '',
   description: '',
@@ -397,7 +398,7 @@ watch(
     visible.value = val
     if (val) {
       form.value = {
-        doc_date: new Date().toISOString().slice(0, 10),
+        doc_date: todayLK(),
         reference_type: 'manual',
         reference_id: '',
         description: '',

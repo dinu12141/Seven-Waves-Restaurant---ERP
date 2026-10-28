@@ -86,7 +86,7 @@
             <q-tooltip>Mark Bounced</q-tooltip>
           </q-btn>
           <q-btn
-            v-if="['planned', 'issued'].includes(p.row.status)"
+            v-if="canCancel(p.row)"
             flat
             round
             size="sm"
@@ -167,7 +167,7 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-2">
+        <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="Cancel" color="grey-7" v-close-popup no-caps />
           <q-btn
             unelevated
@@ -201,7 +201,8 @@
       <q-card style="min-width: 350px">
         <q-card-section class="text-h6">Mark Cheque {{ bounceTarget?.cheque_no }} Bounced</q-card-section>
         <q-card-section class="text-caption text-grey-7">
-          This reverses the ledger, cashbook, and account balance effect of the voucher this cheque was issued for.
+          <span v-if="bounceTarget?.supplier_payment_id">This cancels the linked supplier payment, which reverses its AP, bank and supplier balance postings.</span>
+          <span v-else>This reverses the ledger, cashbook, and account balance effect of the voucher this cheque was issued for.</span>
         </q-card-section>
         <q-card-section>
           <q-input v-model="bounceReason" outlined label="Reason *" type="textarea" rows="2" />
@@ -216,6 +217,7 @@
 </template>
 
 <script setup>
+import { todayLK } from 'src/modules/finance/utils/finance-dates'
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFinanceChequeStore } from '../stores/finance-cheque.store'
@@ -245,7 +247,7 @@ const bankAccountOptions = ref([])
 const createForm = reactive({
   bank_account_id: null,
   cheque_no: '',
-  cheque_date: new Date().toISOString().split('T')[0],
+  cheque_date: todayLK(),
   amount: null,
   issued_to: '',
 })
@@ -263,9 +265,23 @@ const columns = [
   { name: 'issued_to', label: 'Issued To', field: 'issued_to', align: 'left' },
   { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true },
   { name: 'status', label: 'Status', field: 'status', align: 'center' },
+  { name: 'linked', label: 'Linked To', field: (r) => linkedDoc(r), align: 'left' },
   { name: 'bank_name', label: 'Bank', field: (r) => r.bank_account?.bank_name || r.bank_account?.registered_name || '—', align: 'left' },
   { name: 'actions', label: 'Actions', field: 'actions', align: 'center' },
 ]
+
+// Issued cheques linked to a posted supplier payment / voucher carry a GL bank
+// leg: they must be voided through that document (or bounced), never by a
+// plain status flip. See assertChequeTransition in finance-cheque.service.
+function canCancel(row) {
+  return ['planned', 'stale'].includes(row.status) && !row.supplier_payment_id && !row.voucher_id
+}
+
+function linkedDoc(r) {
+  if (r.supplier_payment_id) return `Supplier payment ${r.supplier_payment?.doc_number || ''}`.trim()
+  if (r.voucher_id) return `Voucher ${r.voucher?.voucher_no || ''}`.trim()
+  return '—'
+}
 
 function chequeColor(s) {
   return {
@@ -279,11 +295,14 @@ function chequeColor(s) {
 }
 
 async function loadBankAccounts() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('finance_accounts')
     .select('id, registered_name, bank_name, account_number')
     .eq('account_type', 'bank')
     .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('registered_name')
+  if (error) $q.notify({ type: 'negative', message: humanizeError(error), position: 'top' })
   if (data) {
     bankAccountOptions.value = data.map((a) => ({
       label: `${a.registered_name} (${a.bank_name || 'Bank'} - ${a.account_number || ''})`,
@@ -295,7 +314,7 @@ async function loadBankAccounts() {
 function openCreateDialog() {
   createForm.bank_account_id = bankAccountOptions.value[0]?.value || null
   createForm.cheque_no = ''
-  createForm.cheque_date = new Date().toISOString().split('T')[0]
+  createForm.cheque_date = todayLK()
   createForm.amount = null
   createForm.issued_to = ''
   createDialog.value = true
@@ -339,6 +358,7 @@ async function clear(id) {
   try {
     await chequeStore.markCleared(id)
     $q.notify({ type: 'positive', message: 'Cheque marked cleared' })
+    await load()
   } catch (e) {
     $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
   }
@@ -355,6 +375,7 @@ async function doBounce() {
     await chequeStore.markBounced(bounceTarget.value.id, bounceReason.value)
     bounceDialog.value = false
     $q.notify({ type: 'warning', message: 'Cheque marked bounced — ledger and cashbook reversed' })
+    await load()
   } catch (e) {
     $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
   }
@@ -371,6 +392,7 @@ async function doCancel() {
     await chequeStore.cancel(cancelTarget.value.id, cancelReason.value)
     cancelDialog.value = false
     $q.notify({ type: 'info', message: 'Cheque cancelled' })
+    await load()
   } catch (e) {
     $q.notify({ type: 'negative', message: humanizeError(e), position: 'top' })
   }
@@ -378,6 +400,7 @@ async function doCancel() {
 
 async function load() {
   await chequeStore.fetchCheques(filters.value)
+  if (chequeStore.error) $q.notify({ type: 'negative', message: chequeStore.error, position: 'top' })
 }
 
 onMounted(async () => {

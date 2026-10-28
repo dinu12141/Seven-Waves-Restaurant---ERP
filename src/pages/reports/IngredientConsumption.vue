@@ -80,10 +80,12 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtLKR } from 'src/services/reportService'
+import { fmtLKR, applyBranchSecurity } from 'src/services/reportService'
 const loading = ref(false),
   rows = ref([])
 const columns = [
@@ -114,17 +116,20 @@ async function loadData(filters = {}) {
     let query = supabase
       .from('inventory_ledger')
       .select(
-        'id,quantity,unit_cost,items(name,item_categories(name)),inventory_documents(doc_type)',
+        'id,quantity,unit_cost,total_cost,doc_type,items(name,item_categories(name))',
       )
       .eq('direction', 'OUT')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.limit(2000)
+      // doc_type is denormalised on inventory_ledger; filter server-side.
+      .in('doc_type', ['BOM_DEDUCT', 'GIN', 'GIN_ISSUE'])
+    // inventory_ledger has no created_at — posted_at is the movement timestamp.
+    if (filters.dateFrom) query = query.gte('posted_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', dayEndExclusiveISO(filters.dateTo))
+    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    query = applyBranchSecurity(query)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
     const iMap = {}
-    ;(data || [])
-      .filter((r) => ['BOM_DEDUCT', 'GIN', 'KOT'].includes(r.inventory_documents?.doc_type))
-      .forEach((r) => {
+    ;(data || []).forEach((r) => {
         const name = r.items?.name || 'Unknown'
         if (!iMap[name])
           iMap[name] = {
@@ -136,11 +141,15 @@ async function loadData(filters = {}) {
           }
         const qty = Number(r.quantity || 0)
         iMap[name].qty_consumed += qty
-        iMap[name].total_cost += qty * Number(r.unit_cost || 0)
+        iMap[name].total_cost += Number(r.total_cost ?? qty * Number(r.unit_cost || 0))
       })
-    rows.value = Object.values(iMap).sort((a, b) => b.total_cost - a.total_cost)
+    // unit_cost shown is the weighted average over the period, not the first row's cost
+    rows.value = Object.values(iMap)
+      .map((i) => ({ ...i, unit_cost: i.qty_consumed ? i.total_cost / i.qty_consumed : i.unit_cost }))
+      .sort((a, b) => b.total_cost - a.total_cost)
   } catch (e) {
     console.error('[IngredientConsumption]', e)
+    Notify.create({ type: 'negative', message: 'Failed to load report: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

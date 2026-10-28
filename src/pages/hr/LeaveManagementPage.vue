@@ -335,7 +335,7 @@
                     icon="check_circle"
                     color="green"
                     size="sm"
-                    @click="approveRequest(props.row)"
+                    @click="confirmApprove(props.row)"
                   >
                     <q-tooltip>Approve</q-tooltip>
                   </q-btn>
@@ -352,6 +352,7 @@
                   </q-btn>
                 </template>
                 <q-btn
+                  v-if="props.row.status !== 'approved'"
                   flat
                   dense
                   round
@@ -1013,6 +1014,7 @@ import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -1213,17 +1215,20 @@ async function loadRequests() {
   try {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
-    const { data, error } = await supabase
-      .from('leave_requests')
-      .select(
-        '*, employees(id, full_name, first_name, employee_code), leave_types(id, name, is_paid)',
-      )
-      .eq('branch_id', branchId)
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    requests.value = data || []
+    // Page past PostgREST's 1000-row cap (history grows every month).
+    requests.value = await fetchAllRows(() =>
+      supabase
+        .from('leave_requests')
+        .select(
+          '*, employees(id, full_name, first_name, employee_code), leave_types(id, name, is_paid)',
+        )
+        .eq('branch_id', branchId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true }),
+    )
   } catch (err) {
     console.error('[Leave] loadRequests:', err.message)
+    $q.notify({ type: 'negative', message: `Failed to load leave requests: ${err.message}` })
   } finally {
     loadingRequests.value = false
   }
@@ -1348,6 +1353,18 @@ async function saveLeaveRequest() {
   }
 }
 
+function confirmApprove(req) {
+  $q.dialog({
+    title: 'Approve Leave',
+    message: `Approve ${req.total_days} day(s) of ${req.leave_types?.name || 'leave'} for ${
+      req.employees?.full_name || 'this employee'
+    } (${req.start_date} → ${req.end_date})? Attendance rows will be written automatically.`,
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Approve', color: 'positive', unelevated: true, noCaps: true },
+  }).onOk(() => approveRequest(req))
+}
+
 async function approveRequest(req) {
   try {
     // Column-only status update on leave_requests — trg_leave_apply_attendance
@@ -1357,7 +1374,9 @@ async function approveRequest(req) {
     // fn_calc_leave_no_pay_split, honoring the combined-across-leave-types
     // monthly paid cap. This code no longer needs (and must not attempt) any
     // attendance-row logic of its own.
-    const { error } = await supabase
+    // Only flip a still-pending request: a double click / second approver must
+    // not increment leave_balances.used_days twice.
+    const { data: flipped, error } = await supabase
       .from('leave_requests')
       .update({
         status: 'approved',
@@ -1365,7 +1384,14 @@ async function approveRequest(req) {
         approved_at: new Date().toISOString(),
       })
       .eq('id', req.id)
+      .eq('status', 'pending')
+      .select('id')
     if (error) throw error
+    if (!flipped || flipped.length === 0) {
+      $q.notify({ type: 'warning', message: 'This request was already processed.' })
+      loadRequests()
+      return
+    }
 
     // Leave balance used_days bookkeeping — tracks the leave TYPE's own
     // annual entitlement (a separate concern from the monthly no-pay cap,
@@ -1448,7 +1474,7 @@ async function deleteRequest(req) {
     title: 'Delete Request',
     message: 'Delete this leave request?',
     cancel: true,
-    dark: true,
+    dark: $q.dark.isActive,
     color: 'negative',
   }).onOk(async () => {
     try {
@@ -1547,7 +1573,7 @@ async function deleteLeaveType(type) {
     title: 'Delete Leave Type',
     message: `Delete "${type.name}"? This cannot be undone.`,
     cancel: true,
-    dark: true,
+    dark: $q.dark.isActive,
     color: 'negative',
   }).onOk(async () => {
     try {

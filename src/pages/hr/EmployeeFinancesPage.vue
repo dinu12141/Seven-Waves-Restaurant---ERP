@@ -776,6 +776,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 import { usePermission } from 'src/core/rbac/usePermission'
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
@@ -804,7 +805,7 @@ const advFilter = reactive({ status: '', employee: null, month: '' })
 const expFilter = reactive({ status: '', employee: null, month: '' })
 
 // Default current date
-const getTodayDate = () => new Date().toISOString().split('T')[0]
+const getTodayDate = () => localYmd()
 
 const advForm = reactive({
   employee_id: null,
@@ -1191,7 +1192,7 @@ async function deleteRecord(type, id, status = 'pending') {
     message: 'Are you sure you want to delete this record?',
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async () => {
     try {
       const table = type === 'advances' ? 'employee_advances' : 'employee_expenses'

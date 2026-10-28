@@ -7,6 +7,7 @@
 
 import { supabase } from 'src/boot/supabase'
 import { sendEmail } from 'src/services/notifications/notificationGatewayService'
+import { businessDateStr, dayStartISO } from 'src/services/reportFilters'
 import {
   validateInsight,
   validateForecast,
@@ -29,10 +30,10 @@ async function invokeAi(action, payload) {
     
     if (action === 'system_audit' || action === 'eod_report') {
       const branchId = payload.branch_id
-      const dateStr = action === 'eod_report' ? payload.report_date : (payload.date_from ? payload.date_from.split('T')[0] : new Date().toISOString().split('T')[0])
+      const dateStr = action === 'eod_report' ? payload.report_date : (payload.date_from ? payload.date_from.split('T')[0] : businessDateStr())
       
-      const startOfDay = new Date(dateStr + 'T00:00:00Z').toISOString()
-      const endOfDay = new Date(dateStr + 'T23:59:59.999Z').toISOString()
+      const startOfDay = dayStartISO(dateStr)
+      const endOfDay = new Date(dateStr + 'T23:59:59.999+05:30').toISOString()
 
       // Fetch required data from DB directly to avoid RPC issues
       const { data: branch } = await supabase.from('branches').select('company_id').eq('id', branchId).single()
@@ -521,7 +522,7 @@ export async function getAiDashboardSummary(branchId) {
 export async function runSystemAudit(branchId, dateFrom, dateTo) {
   return invokeAi('system_audit', {
     branch_id: branchId,
-    date_from: dateFrom || new Date().toISOString().split('T')[0] + 'T00:00:00Z',
+    date_from: dateFrom || businessDateStr() + 'T00:00:00+05:30',
     date_to: dateTo || new Date().toISOString(),
   })
 }
@@ -532,7 +533,7 @@ export async function runSystemAudit(branchId, dateFrom, dateTo) {
 export async function generateEodReport(branchId, reportDate, userId) {
   return invokeAi('eod_report', {
     branch_id: branchId,
-    report_date: reportDate || new Date().toISOString().split('T')[0],
+    report_date: reportDate || businessDateStr(),
     report_type: 'end_of_day',
     user_id: userId || null,
   })
@@ -1250,7 +1251,6 @@ export async function autoCloseOrphanedShift(attendanceId, maxHours = 9) {
       .from('ai_agent_alerts')
       .update({
         is_resolved: true,
-        resolution_action: 'auto_healed',
         resolution_notes: `Shift auto-closed at ${maxHours} standard hours by TalentOps AI`,
         resolved_at: new Date().toISOString(),
       })
@@ -1316,7 +1316,6 @@ export async function autoTransferPosCash(shiftId, branchId) {
       .from('ai_agent_alerts')
       .update({
         is_resolved: true,
-        resolution_action: 'auto_transferred',
         resolution_notes: `Draft Receipt Voucher ${voucherNumber} created for LKR ${Number(shift.cash_sales_total).toFixed(2)}`,
         resolved_at: now,
       })
@@ -1389,8 +1388,8 @@ export async function resolveMultiAgentAlert(alertId, resolutionAction = 'resolv
       .from('ai_agent_alerts')
       .update({
         is_resolved: true,
-        resolution_action: resolutionAction,
-        resolution_notes: notes,
+        // ai_agent_alerts has no resolution_action column — keep the action in the notes
+        resolution_notes: resolutionAction ? `[${resolutionAction}] ${notes || ''}`.trim() : notes,
         resolved_at: new Date().toISOString(),
         resolved_by: userId,
       })
@@ -2058,7 +2057,7 @@ export async function generateWaiterOfTheMonthReport(branchId, year = null, mont
 export async function generateOwnerDailyBriefing(branchId, reportDate = null, ownerPhone = '+94717462205', ownerEmail = null) {
   if (!branchId) return { success: false, error: 'Branch ID required' }
 
-  const targetDate = reportDate || new Date().toISOString().split('T')[0]
+  const targetDate = reportDate || businessDateStr()
 
   try {
     const { data, error } = await supabase.rpc('fn_generate_owner_daily_briefing', {
@@ -2083,8 +2082,8 @@ export async function generateOwnerDailyBriefing(branchId, reportDate = null, ow
 
   // Resilient fallback generation
   try {
-    const startOfDay = new Date(targetDate + 'T00:00:00Z').toISOString()
-    const endOfDay = new Date(targetDate + 'T23:59:59.999Z').toISOString()
+    const startOfDay = dayStartISO(targetDate)
+    const endOfDay = new Date(targetDate + 'T23:59:59.999+05:30').toISOString()
 
     const { data: branch } = await supabase.from('branches').select('name').eq('id', branchId).maybeSingle()
     const branchName = branch?.name || 'Seven Waves Restaurant'
@@ -2215,7 +2214,7 @@ export async function dispatchOwnerBriefing(branchId, reportDate = null, channel
   const briefingRes = await generateOwnerDailyBriefing(branchId, reportDate)
   if (!briefingRes.success) return briefingRes
 
-  const targetDate = briefingRes.data.report_date || new Date().toISOString().split('T')[0]
+  const targetDate = briefingRes.data.report_date || businessDateStr()
   const ownerEmail = 'dinushahssh@gmail.com'
 
   // Send real email via Resend
@@ -2273,7 +2272,7 @@ export async function dispatchOwnerBriefing(branchId, reportDate = null, channel
  */
 export async function generateKitchenPrepPlan(branchId, planDate = null) {
   if (!branchId) return { success: false, error: 'Branch ID required' }
-  const targetDate = planDate || new Date().toISOString().split('T')[0]
+  const targetDate = planDate || businessDateStr()
 
   try {
     const { data, error } = await supabase.rpc('fn_generate_kitchen_demand_forecast', {
@@ -2390,7 +2389,7 @@ export async function runSecurityAudit(branchId) {
     const anomalyCount = lateVoids.length + discSpikes.length
 
     const waText = `🛡️ *SEVEN WAVES — LOSS PREVENTION & THEFT ALERT*
-📍 *Branch:* Seven Waves Restaurant | 📅 *Date:* ${new Date().toISOString().split('T')[0]}
+📍 *Branch:* Seven Waves Restaurant | 📅 *Date:* ${businessDateStr()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ *SECURITY SCAN SUMMARY*

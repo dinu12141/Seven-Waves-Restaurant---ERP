@@ -374,7 +374,14 @@ export const useOrderStore = defineStore('posOrder', () => {
       // ── Step 4: Loyalty reward (best-effort — do not fail payment) ─────────
       const customerId = selectedCustomer.value?.id || selectedCustomer.value?.customer_id
       if (customerId) {
-        await supabase.rpc('rpc_apply_loyalty_reward', { p_order_id: order.id }).catch(() => {})
+        // PostgrestBuilder is only PromiseLike (no .catch) — chaining .catch threw a
+        // TypeError AFTER the payment succeeded, surfacing a false "payment failed".
+        try {
+          const { error: loyaltyErr } = await supabase.rpc('rpc_apply_loyalty_reward', { p_order_id: order.id })
+          if (loyaltyErr) console.warn('[OrderStore] loyalty reward skipped:', loyaltyErr.message)
+        } catch (e) {
+          console.warn('[OrderStore] loyalty reward skipped:', e)
+        }
       }
 
       // ── Step 5: Success ──────────────────────────────────────────────────

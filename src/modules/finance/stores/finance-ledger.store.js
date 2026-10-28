@@ -31,6 +31,16 @@ export const useFinanceLedgerStore = defineStore('financeLedger', () => {
     finally { loading.value = false }
   }
 
+  // Same list, annotated with the GL balance (signed opening + Σ Dr − Cr),
+  // stored-balance drift and statement-classification issues.
+  async function fetchLedgersWithGl(filters = {}) {
+    loading.value = true
+    error.value = null
+    try { ledgers.value = await financeLedgerService.listWithGl(filters) }
+    catch (e) { error.value = e.message }
+    finally { loading.value = false }
+  }
+
   async function createLedger(data) {
     const result = await financeLedgerService.create(data)
     ledgers.value.unshift(result)
@@ -55,11 +65,18 @@ export const useFinanceLedgerStore = defineStore('financeLedger', () => {
     if (idx !== -1) ledgers.value[idx].is_active = false
   }
 
+  async function activateLedger(id) {
+    const result = await financeLedgerService.activate(id)
+    const idx = ledgers.value.findIndex(l => l.id === id)
+    if (idx !== -1) ledgers.value[idx].is_active = true
+    return result
+  }
+
   async function deleteLedger(id) {
     await financeLedgerService.remove(id)
     ledgers.value = ledgers.value.filter(l => l.id !== id)
     return true
   }
 
-  return { ledgers, loading, error, selectedLedger, activeLedgers, cashbookLedgers, bankLedgers, pettyCashLedgers, ledgersByType, fetchLedgers, createLedger, updateLedger, deactivateLedger, deleteLedger }
+  return { ledgers, loading, error, selectedLedger, activeLedgers, cashbookLedgers, bankLedgers, pettyCashLedgers, ledgersByType, fetchLedgers, fetchLedgersWithGl, createLedger, updateLedger, deactivateLedger, activateLedger, deleteLedger }
 })

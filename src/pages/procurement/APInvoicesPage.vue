@@ -16,11 +16,16 @@
     <q-card class="q-mb-md flat-card" flat bordered>
       <q-card-section>
         <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-sm-6 col-md-2">
             <q-input outlined v-model="filters.startDate" label="Start Date" type="date" dense />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-sm-6 col-md-2">
             <q-input outlined v-model="filters.endDate" label="End Date" type="date" dense />
+          </div>
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-input outlined dense v-model="searchText" label="Search Inv # / Supplier Inv # / GRN" clearable debounce="200">
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
           </div>
           <div class="col-12 col-md-2">
             <q-select outlined dense v-model="filters.supplier_id" :options="supplierOptions" option-value="id" option-label="name" label="Supplier (All)" emit-value map-options clearable />
@@ -28,8 +33,9 @@
           <div class="col-12 col-md-2">
             <q-select outlined dense v-model="filters.status" :options="statusOptions" option-value="value" option-label="label" label="Status" emit-value map-options clearable />
           </div>
-          <div class="col-12 col-md-2 row justify-end">
-            <q-btn color="primary" icon="search" label="Generate" class="full-width" @click="fetchInvoices" :loading="loading" />
+          <div class="col-12 col-md-2 row no-wrap q-gutter-x-sm justify-end">
+            <q-btn color="primary" icon="search" label="Generate" class="col" @click="fetchInvoices" :loading="loading" />
+            <q-btn flat dense icon="restart_alt" @click="resetFilters" :disable="loading"><q-tooltip>Reset filters</q-tooltip></q-btn>
           </div>
         </div>
       </q-card-section>
@@ -37,13 +43,14 @@
 
     <!-- Invoice List -->
     <q-table
-      :rows="invoices"
+      :rows="visibleInvoices"
       :columns="columns"
       row-key="id"
       :loading="loading"
       flat
       bordered
-      :rows-per-page-options="[15, 25, 50]"
+      :rows-per-page-options="[15, 25, 50, 100, 0]"
+      no-data-label="No supplier bills match these filters"
     >
       <template v-slot:body-cell-status="props">
         <q-td :props="props" align="center">
@@ -71,7 +78,7 @@
         </q-td>
       </template>
       <template v-slot:bottom-row>
-        <q-tr class="bg-grey-2 text-weight-bold" v-if="invoices.length > 0">
+        <q-tr class="text-weight-bold ap-total-row" v-if="visibleInvoices.length > 0">
           <q-td colspan="4" class="text-right">
             {{ filters.status === 'paid' ? 'TOTAL PAID AMOUNT:' : (filters.status === 'UNPAID' || filters.status === 'draft' ? 'TOTAL BALANCE DUE:' : 'TOTAL INVOICE AMOUNT:') }}
           </q-td>
@@ -274,6 +281,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {
+  filterProcRows,
   listInvoices,
   createInvoice,
   updateInvoice,
@@ -312,11 +320,36 @@ const filters = ref({
 
 const statusOptions = [
   { label: 'All Invoices', value: null },
-  { label: 'Unpaid (Posted/Draft)', value: 'UNPAID' },
+  { label: 'Unpaid (any open balance)', value: 'UNPAID' },
   { label: 'Draft', value: 'draft' },
+  { label: 'Approved', value: 'approved' },
+  { label: 'Posted', value: 'posted' },
+  { label: 'Partially Paid', value: 'partial_paid' },
   { label: 'Paid', value: 'paid' },
   { label: 'Cancelled', value: 'cancelled' },
 ]
+
+// Client-side text search over the loaded (server-filtered) bills.
+const searchText = ref('')
+const visibleInvoices = computed(() =>
+  filterProcRows(invoices.value, { search: searchText.value }, [
+    (r) => r.doc_number,
+    (r) => r.supplier_inv_no,
+    (r) => r.goods_receipts?.doc_number,
+    (r) => r.suppliers?.name,
+  ]),
+)
+
+function resetFilters() {
+  filters.value = {
+    startDate: date.formatDate(Date.now(), 'YYYY-MM-01'),
+    endDate: date.formatDate(Date.now(), 'YYYY-MM-DD'),
+    supplier_id: null,
+    status: null,
+  }
+  searchText.value = ''
+  fetchInvoices()
+}
 
 // Form
 const defaultForm = {
@@ -351,6 +384,7 @@ const columns = [
     label: 'Date',
     field: 'doc_date',
     align: 'left',
+    sortable: true,
     format: (val) => date.formatDate(val, 'DD/MM/YYYY'),
   },
   {
@@ -359,6 +393,7 @@ const columns = [
     // ✅ Fixed: API returns nested `suppliers` object, not `supplier`
     field: (row) => row.suppliers?.name || row.supplier_name || '-',
     align: 'left',
+    sortable: true,
   },
   {
     name: 'grn_ref',
@@ -371,6 +406,8 @@ const columns = [
     label: 'Amount',
     field: 'total_amount',
     align: 'right',
+    sortable: true,
+    sort: (a, b) => Number(a) - Number(b),
     format: (val) => formatCurrency(val),
   },
   {
@@ -378,9 +415,11 @@ const columns = [
     label: 'Balance Due',
     field: 'balance_due',
     align: 'right',
-    format: (val) => (val > 0 ? formatCurrency(val) : '-'),
+    sortable: true,
+    sort: (a, b) => Number(a) - Number(b),
+    format: (val) => (Number(val) > 0 ? formatCurrency(Number(val)) : '-'),
   },
-  { name: 'status', label: 'Status', field: 'status', align: 'center', width: 110 },
+  { name: 'status', label: 'Status', field: 'status', align: 'center', width: 110, sortable: true },
   { name: 'actions', label: '', field: 'actions', align: 'right', width: 60 },
 ]
 
@@ -401,6 +440,7 @@ async function fetchInvoices() {
     })
   } catch (e) {
     console.error('Failed to load invoices:', e)
+    $q.notify({ type: 'negative', message: 'Failed to load supplier bills', caption: e?.message })
   } finally {
     loading.value = false
   }
@@ -424,16 +464,16 @@ const totalAmount = computed(() => {
 
 const computedTotalAmount = computed(() => {
   if (filters.value.status === 'paid') {
-    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || parseFloat(row.total_amount) || 0), 0)
+    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || parseFloat(row.total_amount) || 0), 0)
   } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
-    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.balance_due) || 0), 0)
+    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.balance_due) || 0), 0)
   } else {
-    return invoices.value.reduce((acc, row) => acc + (parseFloat(row.total_amount) || 0), 0)
+    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.total_amount) || 0), 0)
   }
 })
 
 function formatCurrency(val) {
-  return `LKR\u00A0${(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `LKR\u00A0${(Number(val) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function statusColor(status) {
@@ -449,7 +489,7 @@ async function handleExportPDF() {
   try {
     const supplierName = supplierOptions.value.find((s) => s.id === filters.value.supplier_id)?.name
     const statusLabel = statusOptions.find(s => s.value === filters.value.status)?.label
-    await exportAPInvoicesToPDF(invoices.value, {
+    await exportAPInvoicesToPDF(visibleInvoices.value, {
       startDate: filters.value.startDate,
       endDate: filters.value.endDate,
       supplierName,
@@ -465,7 +505,7 @@ async function handleExportPDF() {
 
 function handleExportExcel() {
   const exportCols = columns.filter((c) => c.name !== 'actions')
-  const dataToExport = [...invoices.value]
+  const dataToExport = [...visibleInvoices.value]
   
   // Add total row for Excel
   let totalLabel = 'TOTAL AMOUNT'
@@ -697,3 +737,12 @@ function openAmendmentRequest() {
   })
 }
 </script>
+
+<style scoped>
+.ap-total-row {
+  background: rgba(0, 0, 0, 0.04);
+}
+.body--dark .ap-total-row {
+  background: rgba(255, 255, 255, 0.06);
+}
+</style>

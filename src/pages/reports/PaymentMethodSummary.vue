@@ -94,6 +94,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent, applyBranchSecurity } from 'src/services/reportService'
@@ -150,11 +151,11 @@ async function loadData(filters = {}) {
       .select('total_amount,status,invoices(payments(amount,payment_methods(name)))')
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.limit(5000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
     const pMap = {}
     let gt = 0

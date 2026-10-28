@@ -40,6 +40,18 @@
             label="Filter by Status"
           />
         </div>
+        <div class="col-12 col-md-2">
+          <q-select
+            dense
+            outlined
+            v-model="periodFilter"
+            :options="periodOptions"
+            emit-value
+            map-options
+            label="Period"
+            @update:model-value="loadOrders"
+          />
+        </div>
         <div class="col-auto">
           <q-btn flat round dense icon="refresh" class="wo-refresh-btn" :loading="loading" @click="loadOrders">
             <q-tooltip>Refresh</q-tooltip>
@@ -440,6 +452,7 @@ import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
 import { usePermission } from 'src/core/rbac/usePermission'
 import { processRefund } from 'src/services/paymentService'
+import { periodStartISO, fetchAllPages, matchesOrderStatus } from 'src/services/pos/posHelpers'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -449,6 +462,16 @@ const loading = ref(false)
 const orders = ref([])
 const search = ref('')
 const statusFilter = ref('all')
+// Bounded window: loading every website order ever (with items) hit the
+// PostgREST 1000-row cap and got slower every day.
+const periodFilter = ref('30d')
+const periodOptions = [
+  { label: 'Today', value: 'today' },
+  { label: 'Last 7 days', value: '7d' },
+  { label: 'Last 30 days', value: '30d' },
+  { label: 'Last 90 days', value: '90d' },
+  { label: 'All time', value: 'all' },
+]
 const showDetail = ref(false)
 const selectedOrder = ref(null)
 const isLive = ref(false)
@@ -495,7 +518,8 @@ const columns = [
 const filteredOrders = computed(() => {
   let result = orders.value
   if (statusFilter.value !== 'all') {
-    result = result.filter((o) => o.status === statusFilter.value)
+    // 'refunded' / 'pending_payment' live on payment_status, not status
+    result = result.filter((o) => matchesOrderStatus(o, statusFilter.value))
   }
   if (search.value) {
     const q = search.value.toLowerCase()
@@ -504,7 +528,8 @@ const filteredOrders = computed(() => {
         (o.customer_name || '').toLowerCase().includes(q) ||
         (o.delivery_address || '').toLowerCase().includes(q) ||
         String(o.order_number).includes(q) ||
-        (o.customer_phone || '').includes(q),
+        (o.customer_phone || '').includes(q) ||
+        (o.delivery?.rider?.full_name || '').toLowerCase().includes(q),
     )
   }
   return result
@@ -541,7 +566,9 @@ async function loadOrders() {
     const branchId = authStore.currentBranch?.id
     if (!branchId) return
 
-    const { data, error } = await supabase
+    const since = periodStartISO(periodFilter.value)
+    const data = await fetchAllPages((from, to) => {
+      let q = supabase
       .from('orders')
       .select(
         `
@@ -563,9 +590,9 @@ async function loadOrders() {
       )
       .eq('branch_id', branchId)
       .eq('order_source', 'website')
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
+      if (since) q = q.gte('created_at', since)
+      return q.order('created_at', { ascending: false }).range(from, to)
+    })
 
     // Flatten delivery array (it's 1:many but we expect 1:1)
     orders.value = (data || []).map((o) => ({
@@ -703,6 +730,12 @@ async function refundOrder(order) {
   })
 }
 
+// Coalesce bursts of realtime events into one reload
+let reloadTimer = null
+function scheduleReload() {
+  clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(loadOrders, 400)
+}
 function subscribeRealtime() {
   const branchId = authStore.currentBranch?.id
   if (!branchId) return
@@ -712,8 +745,11 @@ function subscribeRealtime() {
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'orders', filter: `branch_id=eq.${branchId}` },
-      () => {
-        loadOrders()
+      (payload) => {
+        // Ignore dine-in/POS traffic on the same branch — only website orders matter here
+        const row = payload.new?.order_source ? payload.new : payload.old
+        if (row?.order_source && row.order_source !== 'website') return
+        scheduleReload()
       },
     )
     .on(
@@ -724,9 +760,7 @@ function subscribeRealtime() {
         table: 'delivery_assignments',
         filter: `branch_id=eq.${branchId}`,
       },
-      () => {
-        loadOrders()
-      },
+      () => scheduleReload(),
     )
     .subscribe((status) => {
       isLive.value = status === 'SUBSCRIBED'
@@ -830,6 +864,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTimeout(reloadTimer)
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel)
   }

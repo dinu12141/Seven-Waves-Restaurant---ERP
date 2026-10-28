@@ -5,8 +5,24 @@
 import { supabase } from 'src/boot/supabase'
 import { logFinanceAudit } from './finance-ledger.service'
 import { useAuthStore } from 'src/stores/auth'
+import { fetchAllPages } from './finance-statements.service'
 
 const cleanUuid = (val) => (typeof val === 'string' && val.trim() !== '' ? val : null)
+const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100
+
+// finance_bank_reconciliation_lines.source_type CHECK:
+// cheque | voucher | deposit | bank_charge | interest | manual_bank_entry
+function glSourceToLineType(glSourceType, isInflow) {
+  if (isInflow) return 'deposit'
+  if (glSourceType === 'voucher') return 'voucher'
+  return 'manual_bank_entry'
+}
+
+function lineTypeForAdjustment(type, isDebit) {
+  if (type === 'card_settlement') return 'deposit'
+  if (['bank_charge', 'interest', 'deposit', 'manual_bank_entry'].includes(type)) return type
+  return isDebit ? 'manual_bank_entry' : 'deposit'
+}
 
 export const financeBankReconciliationService = {
   // ── List Reconciliations ──────────────────────────────────────────────────
@@ -68,6 +84,9 @@ export const financeBankReconciliationService = {
     if (!recon.reconciliation_month) throw new Error('Reconciliation month (YYYY-MM) is required.')
     if (!recon.statement_start_date) throw new Error('Statement start date is required.')
     if (!recon.statement_end_date) throw new Error('Statement end date is required.')
+    if (recon.statement_end_date < recon.statement_start_date) {
+      throw new Error('Statement end date cannot be before the start date.')
+    }
 
     const opening = Math.round((Number(recon.opening_bank_balance) || 0) * 100) / 100
     const closing = Math.round((Number(recon.closing_bank_balance) || 0) * 100) / 100
@@ -123,139 +142,125 @@ export const financeBankReconciliationService = {
   },
 
   // ── Auto-Fetch & Populate System Transactions into Reconciliation Lines ──
+  // Source of truth is the GL: every finance_cashbook_entries leg posted to
+  // this bank account (account_id = bank account AND ledger_id = the account's
+  // ledger). Vouchers / cheques / supplier payments / manual journals all post
+  // such a leg, so pulling them separately (as the old code did) counted the
+  // same movement two or three times. Cheques only enrich the description and
+  // pre-match legs whose cheque has cleared within the statement period.
   async fetchAndPopulateTransactions(reconId) {
     const recon = await this.getById(reconId)
     if (!recon) throw new Error('Reconciliation not found.')
-    if (recon.status === 'locked') throw new Error('Reconciliation is locked.')
+    if (['approved', 'locked'].includes(recon.status)) throw new Error(`Reconciliation is ${recon.status}.`)
 
     const bankAccountId = recon.bank_account_id
     const startDate = recon.statement_start_date
     const endDate = recon.statement_end_date
 
-    // Existing lines to prevent duplicate inserts
-    const existingLines = recon.lines || []
-    const existingSourceIds = new Set(existingLines.map((l) => l.source_id).filter(Boolean))
-
-    const newLines = []
-
-    // 1. Fetch Vouchers (Pay & Received vouchers associated with this bank account)
-    const { data: vouchers, error: vErr } = await supabase
-      .from('finance_vouchers')
-      .select('*')
-      .or(`account_id.eq.${bankAccountId},bank_id.eq.${bankAccountId}`)
-      .gte('voucher_date', startDate)
-      .lte('voucher_date', endDate)
-      .is('deleted_at', null)
-
-    if (vErr) console.warn('[BankReconciliation] Error fetching vouchers:', vErr)
-
-    if (vouchers && vouchers.length > 0) {
-      for (const v of vouchers) {
-        if (existingSourceIds.has(v.id)) continue
-
-        const amount = Math.round((Number(v.amount) || 0) * 100) / 100
-        if (amount <= 0) continue
-
-        const isPayment = v.voucher_type === 'pay'
-        const party = v.pay_to || v.received_from || ''
-        const memo = v.narration || v.remark || ''
-        const desc = `[${v.voucher_no}] ${party}${memo ? ' — ' + memo : ''}`.trim()
-        const isCheque = Boolean(v.cheque_id)
-
-        newLines.push({
-          reconciliation_id: reconId,
-          source_type: isCheque ? 'cheque' : isPayment ? 'voucher' : 'deposit',
-          source_id: v.id,
-          transaction_date: v.voucher_date,
-          description: desc,
-          debit_amount: isPayment ? amount : 0, // Outflow (debit on bank statement)
-          credit_amount: isPayment ? 0 : amount, // Inflow (credit on bank statement)
-          is_matched: false,
-        })
-        existingSourceIds.add(v.id)
-      }
+    let ledgerId = recon.bank_account?.ledger_id || null
+    if (!ledgerId) {
+      const { data: acc, error: accErr } = await supabase
+        .from('finance_accounts')
+        .select('id, ledger_id')
+        .eq('id', bankAccountId)
+        .single()
+      if (accErr) throw accErr
+      ledgerId = acc?.ledger_id || null
+    }
+    if (!ledgerId) {
+      throw new Error('This bank account is not linked to a GL ledger — link it in Bank & Cash Accounts first.')
     }
 
-    // 2. Fetch Cheques from finance_cheques
+    const legs = await fetchAllPages(() =>
+      supabase
+        .from('finance_cashbook_entries')
+        .select('id, source_type, source_id, entry_date, description, debit_amount, credit_amount')
+        .eq('account_id', bankAccountId)
+        .eq('ledger_id', ledgerId)
+        .gte('entry_date', startDate)
+        .lte('entry_date', endDate)
+        .order('entry_date', { ascending: true })
+        .order('id', { ascending: true }),
+    )
+
+    // Cheques on this account, keyed by the document whose GL leg they back.
     const { data: cheques, error: cErr } = await supabase
       .from('finance_cheques')
-      .select('*')
+      .select('id, cheque_no, issued_to, status, cleared_date, voucher_id, supplier_payment_id')
       .eq('bank_account_id', bankAccountId)
-      .gte('cheque_date', startDate)
-      .lte('cheque_date', endDate)
+      .in('status', ['issued', 'cleared', 'bounced'])
+    if (cErr) throw cErr
+    const chequeBySource = new Map()
+    for (const c of cheques || []) {
+      if (c.voucher_id) chequeBySource.set(c.voucher_id, c)
+      if (c.supplier_payment_id) chequeBySource.set(c.supplier_payment_id, c)
+    }
 
-    if (cErr) console.warn('[BankReconciliation] Error fetching cheques:', cErr)
-
-    if (cheques && cheques.length > 0) {
-      for (const chq of cheques) {
-        // Skip if voucher already represented this
-        if (chq.voucher_id && existingSourceIds.has(chq.voucher_id)) continue
-        if (existingSourceIds.has(chq.id)) continue
-
-        const amount = Math.round((Number(chq.amount) || 0) * 100) / 100
-        if (amount <= 0) continue
-
-        newLines.push({
-          reconciliation_id: reconId,
-          source_type: 'cheque',
-          source_id: chq.id,
-          transaction_date: chq.cheque_date,
-          description: `[Cheque #${chq.cheque_no}] ${chq.issued_to || ''}`.trim(),
-          debit_amount: amount,
-          credit_amount: 0,
-          is_matched: chq.status === 'cleared',
-        })
-        existingSourceIds.add(chq.id)
+    const existingLines = recon.lines || []
+    const lineSourceIds = new Set(existingLines.map((l) => l.source_id).filter(Boolean))
+    const legIds = new Set(legs.map((l) => l.id))
+    // Lines created by the pre-GL engine point at a voucher / cheque id rather
+    // than at a cashbook leg; skip the original leg of those documents so they
+    // are not added twice (reversal legs are still pulled in).
+    const legacyIds = new Set([...lineSourceIds].filter((id) => !legIds.has(id)))
+    for (const c of cheques || []) {
+      if (legacyIds.has(c.id)) {
+        if (c.voucher_id) legacyIds.add(c.voucher_id)
+        if (c.supplier_payment_id) legacyIds.add(c.supplier_payment_id)
       }
     }
 
-    // 3. Fetch Non-Voucher Cashbook Entries for this bank account (e.g. transfers, manual adjustments)
-    const { data: cashbookEntries, error: cbErr } = await supabase
-      .from('finance_cashbook_entries')
-      .select('*')
-      .eq('account_id', bankAccountId)
-      .gte('entry_date', startDate)
-      .lte('entry_date', endDate)
+    const newLines = []
+    for (const leg of legs) {
+      if (lineSourceIds.has(leg.id)) continue
+      const isReversal = /^REVERSAL/i.test(leg.description || '')
+      if (!isReversal && leg.source_id && legacyIds.has(leg.source_id)) continue
 
-    if (cbErr) console.warn('[BankReconciliation] Error fetching cashbook entries:', cbErr)
+      const dr = round2(leg.debit_amount)
+      const cr = round2(leg.credit_amount)
+      if (dr <= 0 && cr <= 0) continue
 
-    if (cashbookEntries && cashbookEntries.length > 0) {
-      for (const cb of cashbookEntries) {
-        if (cb.source_id && existingSourceIds.has(cb.source_id)) continue
-        if (existingSourceIds.has(cb.id)) continue
+      const chq = leg.source_id ? chequeBySource.get(leg.source_id) : null
+      const clearedInPeriod = Boolean(
+        chq && !isReversal && chq.status === 'cleared' && chq.cleared_date && chq.cleared_date <= endDate,
+      )
+      const desc = chq
+        ? `[Cheque #${chq.cheque_no}] ${leg.description || chq.issued_to || ''}`
+        : `[${leg.source_type || 'GL'}] ${leg.description || 'Bank transaction'}`
 
-        const dr = Math.round((Number(cb.debit_amount) || 0) * 100) / 100
-        const cr = Math.round((Number(cb.credit_amount) || 0) * 100) / 100
-        if (dr <= 0 && cr <= 0) continue
-
-        // Cashbook debit is cash IN (credit on bank statement)
-        // Cashbook credit is cash OUT (debit on bank statement)
-        newLines.push({
-          reconciliation_id: reconId,
-          source_type: dr > 0 ? 'deposit' : 'manual_bank_entry',
-          source_id: cb.id,
-          transaction_date: cb.entry_date,
-          description: `[Cashbook] ${cb.description || 'Bank transaction'}`.trim(),
-          debit_amount: cr, // payment
-          credit_amount: dr, // deposit
-          is_matched: false,
-        })
-        existingSourceIds.add(cb.id)
-      }
+      // Ledger debit = money into the bank (credit on the bank statement).
+      newLines.push({
+        reconciliation_id: reconId,
+        source_type: chq && !isReversal ? 'cheque' : glSourceToLineType(leg.source_type, dr > 0),
+        source_id: leg.id,
+        transaction_date: leg.entry_date,
+        description: desc.trim(),
+        debit_amount: cr,
+        credit_amount: dr,
+        is_matched: clearedInPeriod,
+        matched_at: clearedInPeriod ? new Date().toISOString() : null,
+        note: clearedInPeriod ? `Cheque cleared ${chq.cleared_date}` : null,
+      })
+      lineSourceIds.add(leg.id)
     }
 
-    // Insert any new lines
     if (newLines.length > 0) {
       const { error: insErr } = await supabase.from('finance_bank_reconciliation_lines').insert(newLines)
       if (insErr) throw insErr
     }
 
-    // Recalculate difference and update reconciliation state
     await this.recalculateDifference(reconId)
     return this.getById(reconId)
   },
 
-  // ── Add Manual Adjustment (Bank Charge, Interest, Fee) ───────────────────
+  // ── Add Statement Adjustment (Bank Charge, Interest, Card Settlement…) ──
+  // Every adjustment is a real GL posting made atomically by the existing
+  // fn_fin_post_manual_journal RPC (balanced, admin/finance only). The bank
+  // ledger leg carries the bank account_id so it lands in this account's
+  // cashbook; the reconciliation line then points at that cashbook leg.
+  //   bank_charge / manual_bank_entry (outflow): Dr contra / Cr bank
+  //   interest / deposit (inflow):               Dr bank   / Cr contra
+  //   card_settlement (inflow, contra = 1021):   Dr bank (net) + Dr fee ledger / Cr 1021 (gross)
   async addAdjustment(reconId, adjustment) {
     const user = (await supabase.auth.getUser()).data?.user
     const recon = await this.getById(reconId)
@@ -268,24 +273,88 @@ export const financeBankReconciliationService = {
     if (!adjustment.description || !adjustment.description.trim()) {
       throw new Error('Description is required.')
     }
-    const amount = Math.round((Number(adjustment.amount) || 0) * 100) / 100
+    const amount = round2(adjustment.amount)
     if (amount <= 0) throw new Error('Amount must be greater than zero.')
+    if (!adjustment.contra_ledger_id) {
+      throw new Error('Select the GL ledger to post the other side of this adjustment to.')
+    }
 
-    const direction = adjustment.direction || 'debit' // 'debit' = bank charge/payment, 'credit' = interest/deposit
-    const isDebit = direction === 'debit'
+    const bankLedgerId = recon.bank_account?.ledger_id
+    if (!bankLedgerId) throw new Error('This bank account is not linked to a GL ledger.')
+    if (adjustment.contra_ledger_id === bankLedgerId) {
+      throw new Error('The contra ledger cannot be the bank ledger itself.')
+    }
+
+    const type = adjustment.source_type || 'bank_charge'
+    const isCardSettlement = type === 'card_settlement'
+    const isDebit = isCardSettlement ? false : (adjustment.direction || 'debit') === 'debit'
+    const fee = isCardSettlement ? round2(adjustment.fee_amount) : 0
+    if (fee < 0) throw new Error('Fee cannot be negative.')
+    if (fee > 0 && !adjustment.fee_ledger_id) throw new Error('Select the ledger for the settlement fee / commission.')
+    if (fee >= amount && fee > 0) throw new Error('Fee must be less than the gross settlement amount.')
+
+    const description = adjustment.description.trim()
+    const memo = adjustment.note?.trim() || null
+    const bankLeg = (dr, cr) => ({
+      ledger_id: bankLedgerId,
+      account_id: recon.bank_account_id,
+      dr_amount: dr,
+      cr_amount: cr,
+      memo,
+    })
+    let lines
+    let bankNet
+    if (isCardSettlement) {
+      bankNet = round2(amount - fee)
+      lines = [bankLeg(bankNet, 0)]
+      if (fee > 0) lines.push({ ledger_id: adjustment.fee_ledger_id, dr_amount: fee, cr_amount: 0, memo: 'Settlement fee' })
+      lines.push({ ledger_id: adjustment.contra_ledger_id, dr_amount: 0, cr_amount: amount, memo })
+    } else {
+      bankNet = amount
+      lines = isDebit
+        ? [{ ledger_id: adjustment.contra_ledger_id, dr_amount: amount, cr_amount: 0, memo }, bankLeg(0, amount)]
+        : [bankLeg(amount, 0), { ledger_id: adjustment.contra_ledger_id, dr_amount: 0, cr_amount: amount, memo }]
+    }
+
+    const branchId =
+      cleanUuid(recon.branch_id) ||
+      cleanUuid(recon.bank_account?.branch_id) ||
+      cleanUuid(useAuthStore().currentBranch?.id)
+    const { data: res, error: rpcErr } = await supabase.rpc('fn_fin_post_manual_journal', {
+      p_doc_date: adjustment.transaction_date,
+      p_description: `Bank reconciliation ${recon.reconciliation_month}: ${description}`,
+      p_reference: memo,
+      p_branch_id: branchId,
+      p_lines: lines,
+    })
+    if (rpcErr) throw rpcErr
+    if (!res?.success || !res.journal_id) {
+      throw new Error(res?.error || 'Failed to post the adjustment to the General Ledger.')
+    }
+
+    // Point the reconciliation line at the bank-ledger cashbook leg so a later
+    // sync recognises it and does not add it a second time.
+    const { data: leg } = await supabase
+      .from('finance_cashbook_entries')
+      .select('id')
+      .eq('source_type', 'manual_adjustment')
+      .eq('source_id', res.journal_id)
+      .eq('account_id', recon.bank_account_id)
+      .limit(1)
+      .maybeSingle()
 
     const payload = {
       reconciliation_id: reconId,
-      source_type: adjustment.source_type || (isDebit ? 'bank_charge' : 'interest'),
-      source_id: null,
+      source_type: lineTypeForAdjustment(type, isDebit),
+      source_id: leg?.id || res.journal_id,
       transaction_date: adjustment.transaction_date,
-      description: adjustment.description.trim(),
-      debit_amount: isDebit ? amount : 0,
-      credit_amount: isDebit ? 0 : amount,
-      is_matched: true, // Manual adjustments from statement are pre-matched
+      description: isCardSettlement ? `[Card settlement] ${description}` : description,
+      debit_amount: isDebit ? bankNet : 0,
+      credit_amount: isDebit ? 0 : bankNet,
+      is_matched: true, // Entered from the bank statement, so already cleared
       matched_by: user?.id || null,
       matched_at: new Date().toISOString(),
-      note: adjustment.note || 'Entered directly from bank statement',
+      note: memo || `GL journal ${res.journal_id}`,
     }
 
     const { data: line, error } = await supabase
@@ -297,13 +366,17 @@ export const financeBankReconciliationService = {
     if (error) throw error
 
     await this.recalculateDifference(reconId)
-    await logFinanceAudit('reconciliation_adjustment_added', 'bank_reconciliation', reconId, null, line)
+    await logFinanceAudit('reconciliation_adjustment_added', 'bank_reconciliation', reconId, null, {
+      ...line,
+      journal_id: res.journal_id,
+    })
     return line
   },
 
   // ── Toggle Line Match ────────────────────────────────────────────────────
   async toggleMatch(lineId, isMatched) {
     const user = (await supabase.auth.getUser()).data?.user
+    await this.assertLineEditable(lineId)
 
     const updatePayload = {
       is_matched: Boolean(isMatched),
@@ -354,12 +427,14 @@ export const financeBankReconciliationService = {
   },
 
   // ── Delete Manual Line ───────────────────────────────────────────────────
+  // Only source-less lines (legacy pre-GL manual entries) can be deleted: a
+  // GL-backed line is re-pulled on sync, and a posted adjustment must be
+  // reversed from the Journal page so the GL stays correct.
   async deleteLine(lineId) {
-    const { data: line } = await supabase
-      .from('finance_bank_reconciliation_lines')
-      .select('id, reconciliation_id')
-      .eq('id', lineId)
-      .single()
+    const line = await this.assertLineEditable(lineId)
+    if (line.source_id) {
+      throw new Error('This line is backed by a General Ledger posting. Reverse the journal instead of deleting the line.')
+    }
 
     const { error } = await supabase
       .from('finance_bank_reconciliation_lines')
@@ -372,6 +447,20 @@ export const financeBankReconciliationService = {
       await this.recalculateDifference(line.reconciliation_id)
     }
     return true
+  },
+
+  async assertLineEditable(lineId) {
+    const { data: line, error } = await supabase
+      .from('finance_bank_reconciliation_lines')
+      .select('id, reconciliation_id, source_id, reconciliation:finance_bank_reconciliations(status)')
+      .eq('id', lineId)
+      .single()
+    if (error) throw error
+    const status = line?.reconciliation?.status
+    if (status === 'approved' || status === 'locked') {
+      throw new Error(`Cannot modify lines on an ${status} reconciliation.`)
+    }
+    return line
   },
 
   // ── Recalculate Difference & Auto-Transition Status ───────────────────────

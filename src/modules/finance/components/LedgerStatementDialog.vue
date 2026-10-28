@@ -109,7 +109,7 @@
 
           <!-- Phone: card list -->
           <q-list v-else separator dense>
-            <q-item class="bg-grey-2">
+            <q-item class="bg-grey-2 text-grey-10">
               <q-item-section>Balance b/f</q-item-section>
               <q-item-section side class="text-weight-bold">{{ formatDrCr(statement.opening) }}</q-item-section>
             </q-item>
@@ -128,7 +128,7 @@
             <q-item v-if="!statement.rows.length">
               <q-item-section class="text-grey-6 text-italic">No entries in this period</q-item-section>
             </q-item>
-            <q-item class="bg-grey-2">
+            <q-item class="bg-grey-2 text-grey-10">
               <q-item-section>Totals</q-item-section>
               <q-item-section side>Dr {{ money(statement.totals.debit) }} / Cr {{ money(statement.totals.credit) }}</q-item-section>
             </q-item>

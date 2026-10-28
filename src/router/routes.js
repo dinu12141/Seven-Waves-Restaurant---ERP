@@ -63,7 +63,7 @@ const routes = [
       {
         path: 'website-menu-qr',
         component: () => import('pages/website/WebsiteMenuQrPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.orders.view' },
+        meta: { roles: ['admin', 'manager'], module: 'website', permission: 'website.menu_qr.view' },
       },
       {
         path: 'cashier',
@@ -324,7 +324,7 @@ const routes = [
       {
         path: 'admin/loyalty/earning-rules',
         component: () => import('pages/admin/EarningRulesPage.vue'),
-        meta: { roles: ['admin', 'manager'], module: 'crm', permission: 'crm.loyalty.view' },
+        meta: { roles: ['admin', 'manager'], module: 'crm', permission: 'crm.loyalty.manage' },
       },
       {
         path: 'operations/tables',
@@ -618,7 +618,12 @@ const routes = [
 
     component: () => import('layouts/AuthLayout.vue'),
     meta: { requiresAuth: false },
-    children: [{ path: 'login', component: () => import('pages/auth/LoginPage.vue') }],
+    children: [
+      { path: 'login', component: () => import('pages/auth/LoginPage.vue') },
+      // Target of supabase.auth.resetPasswordForEmail() in LoginPage — previously
+      // missing, so every "Forgot password" email link landed on the 404 page.
+      { path: 'reset-password', component: () => import('pages/auth/ResetPasswordPage.vue') },
+    ],
   },
   {
     path: '/unauthorized',

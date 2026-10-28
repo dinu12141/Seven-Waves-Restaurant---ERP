@@ -66,6 +66,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'src/stores/auth'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
@@ -121,7 +122,7 @@ function last7DateStrings() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    dates.push(d.toISOString().split('T')[0])
+    dates.push(localYmd(d))
   }
   return dates
 }
@@ -132,7 +133,7 @@ const fetchData = async () => {
     const companyId = authStore.currentBranch?.company_id
     if (!companyId) return
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = localYmd()
 
     const [
       totalEmpRes,

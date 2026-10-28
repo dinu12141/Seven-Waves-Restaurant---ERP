@@ -78,6 +78,10 @@
           <q-select
             v-model="filters.branch"
             :options="branchOptions"
+            option-value="id"
+            option-label="name"
+            emit-value
+            map-options
             label="Branch"
             dense
             outlined
@@ -93,7 +97,9 @@
           <q-select
             v-model="filters.source"
             :options="sourceOptions"
-            label="Source"
+            emit-value
+            map-options
+            label="Order Type"
             dense
             outlined
             :dark="$q.dark.isActive"
@@ -192,7 +198,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useOrderStore } from 'src/stores/orders'
 import { useAuthStore } from 'src/stores/auth'
 import { useRealtime } from 'src/composables/useRealtime'
@@ -266,10 +272,14 @@ const listFilters = [
     type: 'select',
     options: [
       { label: 'All', value: '' },
+      { label: 'Awaiting Waiter', value: 'pending_waiter' },
       { label: 'Pending', value: 'pending' },
+      { label: 'Accepted', value: 'accepted' },
       { label: 'Preparing', value: 'preparing' },
       { label: 'Ready', value: 'ready' },
       { label: 'Served', value: 'served' },
+      { label: 'Billed', value: 'invoiced' },
+      { label: 'Paid', value: 'paid' },
     ],
   },
   {
@@ -281,6 +291,8 @@ const listFilters = [
       { label: 'Dine In', value: 'dine_in' },
       { label: 'Takeaway', value: 'takeaway' },
       { label: 'Delivery', value: 'delivery' },
+      { label: 'Website Delivery', value: 'website_delivery' },
+      { label: 'Drive In', value: 'drive_in' },
     ],
   },
   { field: 'created_at', label: 'Date', type: 'date-range' },
@@ -308,7 +320,7 @@ const allProcessedOrders = computed(() => {
 
 // --- State ---
 const filters = ref({
-  branch: 'All',
+  branch: authStore.currentBranch?.id || null, // branch id the board is loaded for
   source: 'All',
   kitchen: null, // null = All kitchens
   search: '',
@@ -324,17 +336,33 @@ const detailsOpen = ref(false)
 const selectedOrderId = ref(null)
 const detailsInitialTab = ref('details')
 
-const branchOptions = computed(() => {
-  const branches = authStore.branches.map((b) => b.branches?.name).filter(Boolean)
-  return ['All', ...branches]
-})
+// Branch selector actually reloads the board (it used to be a no-op filter).
+const branchOptions = computed(() =>
+  (authStore.availableBranches || []).map((b) => ({ id: b.id, name: b.name })),
+)
+watch(
+  () => filters.value.branch,
+  (id, prev) => {
+    if (id && id !== prev) orderStore.fetchInitialOrders(id)
+  },
+)
 
-const sourceOptions = ['All', 'dine_in', 'takeaway', 'delivery', 'online']
+// order_type values used across POS / waiter / website flows
+const sourceOptions = [
+  { label: 'All', value: 'All' },
+  { label: 'Dine In', value: 'dine_in' },
+  { label: 'Takeaway', value: 'takeaway' },
+  { label: 'Delivery', value: 'delivery' },
+  { label: 'Website Delivery', value: 'website_delivery' },
+  { label: 'Drive In', value: 'drive_in' },
+]
 
 // --- Lifecycle ---
 onMounted(async () => {
-  if (authStore.currentBranch) {
-    await orderStore.fetchInitialOrders(authStore.currentBranch.id)
+  if (filters.value.branch) {
+    await orderStore.fetchInitialOrders(filters.value.branch)
+  } else if (authStore.currentBranch) {
+    filters.value.branch = authStore.currentBranch.id // watcher loads the board
   }
 
   // Subscribe to Realtime changes
@@ -342,6 +370,10 @@ onMounted(async () => {
 
   tables.forEach((table) => {
     subscribe(`${table}-channel`, { table }, (payload) => {
+      // The channel is not branch-filtered: drop other branches' orders so they
+      // don't leak onto this board (RLS lets admins/managers see them all).
+      const row = payload.new || payload.old
+      if (table === 'orders' && row?.branch_id && filters.value.branch && row.branch_id !== filters.value.branch) return
       orderStore.handleRealtimeEvent(table, payload.eventType, payload.new, payload.old)
     })
   })

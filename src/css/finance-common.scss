@@ -236,7 +236,7 @@
   background: var(--erp-bg-card);
   border: 1px solid var(--erp-border-strong);
   border-radius: 10px;
-  min-width: 500px;
+  min-width: min(500px, 95vw);
 }
 
 /* ─── Summary Row ───────────────────────────────────────────────── */
@@ -257,4 +257,61 @@
   color: var(--erp-text-primary);
   font-size: 14px;
   font-weight: 700;
+}
+
+/* ─── Theme-aware surfaces (replace hard-coded bg-grey-10 / #161b22) ─ */
+.fin-surface {
+  background: var(--erp-bg-card) !important;
+  color: var(--erp-text-primary);
+  border: 1px solid var(--erp-border);
+}
+.fin-surface-2 {
+  background: var(--erp-bg-main) !important;
+  color: var(--erp-text-primary);
+}
+
+/* ─── Money / numbers ───────────────────────────────────────────── */
+.fin-money,
+.fin-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fin-money--dr {
+  color: var(--erp-danger);
+}
+.fin-money--cr {
+  color: var(--erp-success);
+}
+
+/* ─── Sticky-header tables: add class "fin-table--sticky" + a height ─ */
+.fin-table--sticky {
+  max-height: 70vh;
+  thead tr th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--erp-bg-main) !important;
+  }
+}
+
+/* ─── Totals row (bottom-row slot) ──────────────────────────────── */
+.fin-totals-row td {
+  font-weight: 700 !important;
+  background: var(--erp-bg-stripe) !important;
+  border-top: 2px solid var(--erp-border) !important;
+}
+
+/* ─── Phone widths ──────────────────────────────────────────────── */
+@media (max-width: 599px) {
+  .finance-page {
+    padding: 8px !important;
+  }
+  .fin-filters .row {
+    flex-wrap: wrap;
+  }
+  .fin-filters .q-field {
+    flex: 1 1 140px;
+    width: auto !important;
+  }
 }

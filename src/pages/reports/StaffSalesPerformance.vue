@@ -80,7 +80,9 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent, applyBranchSecurity } from 'src/services/reportService'
@@ -113,19 +115,34 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('orders')
-      .select('total_amount,status,waiter:profiles!orders_waiter_id_fkey(full_name)')
+      .select('total_amount,status,waiter_id,assigned_waiter_id')
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.limit(5000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
+    // Attribute to the waiter who ACCEPTED the order (assigned_waiter_id — set by
+    // accept_order_as_waiter), falling back to the legacy waiter_id. Grouping by the
+    // orders_waiter_id_fkey join alone dropped every inbox-accepted order into "Unknown".
+    const ids = [
+      ...new Set((data || []).map((b) => b.assigned_waiter_id || b.waiter_id).filter(Boolean)),
+    ]
+    const names = {}
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id,full_name')
+        .in('id', ids.slice(i, i + 200))
+      for (const pr of profs || []) names[pr.id] = pr.full_name
+    }
     const sMap = {}
     let gt = 0
     ;(data || []).forEach((b) => {
-      const n = b.waiter?.full_name || 'Unknown'
+      const id = b.assigned_waiter_id || b.waiter_id
+      const n = id ? names[id] || 'Unknown' : 'Unassigned'
       if (!sMap[n]) sMap[n] = { staff: n, orders: 0, total: 0 }
       sMap[n].orders++
       sMap[n].total += Number(b.total_amount || 0)
@@ -140,6 +157,8 @@ async function loadData(filters = {}) {
       .sort((a, b) => b.total - a.total)
   } catch (e) {
     console.error('[StaffPerformance]', e)
+    rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load staff performance: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

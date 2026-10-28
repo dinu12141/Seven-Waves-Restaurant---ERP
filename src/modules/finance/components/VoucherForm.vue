@@ -7,8 +7,8 @@
           <q-icon :name="isPay ? 'payments' : 'receipt_long'" size="20px" />
         </div>
         <div class="fin-drawer__header-text">
-          <div class="fin-drawer__title">{{ isPay ? 'Pay Voucher' : 'Received Voucher' }}</div>
-          <div class="fin-drawer__sub">{{ isPay ? 'Record a payment out' : 'Record money received' }}</div>
+          <div class="fin-drawer__title">{{ isEdit ? `Edit ${voucher.voucher_no}` : (isPay ? 'Pay Voucher' : 'Received Voucher') }}</div>
+          <div class="fin-drawer__sub">{{ isEdit ? 'Saving returns the voucher to draft' : (isPay ? 'Record a payment out' : 'Record money received') }}</div>
         </div>
         <q-btn flat round dense icon="close" class="fin-drawer__close" @click="close" />
       </div>
@@ -56,7 +56,7 @@
                   <div class="fin-label">{{ isPay ? 'Expense / Category Ledger' : 'Income / Category Ledger' }} <span class="fin-req">*</span></div>
                   <q-select v-model="form.ledger_id" outlined dense :dark="$q.dark.isActive"
                     emit-value map-options :options="ledgerOptions" use-input @filter="filterLedgers"
-                    :rules="[v => !!v || 'Required']" hide-bottom-space
+                    :rules="[v => !!v || 'Required', v => !cashLedgerId || v !== cashLedgerId || 'Cannot be the cash / bank account ledger']" hide-bottom-space
                     :placeholder="isPay ? 'Select Expense or Category' : 'Select Income or Category'">
                     <template #no-option><q-item><q-item-section class="text-grey">Register a ledger first</q-item-section></q-item></template>
                   </q-select>
@@ -78,6 +78,12 @@
               </div>
             </div>
 
+            <div v-if="accountWithoutLedger" class="text-negative text-caption q-mb-md">
+              <q-icon name="warning" /> The selected account has no linked ledger — it cannot be posted. Link it to a ledger under Accounts first.
+            </div>
+            <div v-if="needsCheque" class="text-caption text-grey-7 q-mb-sm">
+              The cheque register entry is created when the voucher is posted (numbered CHQ-&lt;voucher no&gt;); the cheque no/date below are kept in the narration.
+            </div>
             <!-- SECTION: Bank & Cheque (conditional) -->
             <div v-if="needsCheque" class="fin-section fin-section--accent">
               <div class="fin-section__title"><q-icon name="account_balance" size="15px" class="q-mr-xs" />CHEQUE DETAILS</div>
@@ -143,7 +149,7 @@
         <div class="fin-drawer__footer">
           <q-btn flat no-caps label="Cancel" color="grey-7" @click="close" />
           <q-btn type="submit" unelevated no-caps :color="isPay ? 'red-8' : 'green-8'"
-            :label="isPay ? 'Save Pay Voucher' : 'Save Received Voucher'" :loading="saving" icon="save" />
+            :label="isEdit ? 'Save Changes' : (isPay ? 'Save Pay Voucher' : 'Save Received Voucher')" :loading="saving" icon="save" />
         </div>
       </q-form>
     </q-card>
@@ -156,9 +162,10 @@ import { useQuasar } from 'quasar'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
 import { useFinanceVoucherStore } from '../stores/finance-voucher.store'
+import { validateVoucherDraft, localToday } from '../services/finance-voucher.service'
 
 const $q = useQuasar()
-const props = defineProps({ modelValue: Boolean, type: { type: String, default: 'pay' } })
+const props = defineProps({ modelValue: Boolean, type: { type: String, default: 'pay' }, voucher: { type: Object, default: null } })
 const emit = defineEmits(['update:modelValue', 'saved'])
 
 const ledgerStore = useFinanceLedgerStore()
@@ -168,12 +175,13 @@ const voucherStore = useFinanceVoucherStore()
 const visible = ref(props.modelValue)
 const saving = ref(false)
 
-const isPay = computed(() => props.type === 'pay')
+const isPay = computed(() => (props.voucher?.voucher_type || props.type) === 'pay')
+const isEdit = computed(() => !!props.voucher?.id)
 const needsBank = computed(() => form.value.payment_method === 'bank' || form.value.payment_method === 'cheque')
 const needsCheque = computed(() => form.value.payment_method === 'cheque')
 
 const defaultForm = () => ({
-  voucher_date: new Date().toISOString().split('T')[0],
+  voucher_date: localToday(),
   pay_to: '', received_from: '', amount: null,
   payment_method: 'cash', ledger_id: null, account_id: null, bank_id: null,
   cheque_no: '', cheque_date: '', remark: '', narration: '', lines: [],
@@ -186,7 +194,14 @@ const paymentMethodOptions = [
   { label: 'Online Transfer', value: 'online_transfer' }, { label: 'Petty Cash', value: 'petty_cash' },
 ]
 
-const allLedgers = computed(() => ledgerStore.activeLedgers.map(l => ({ label: `${l.ledger_code} — ${l.ledger_name}`, value: l.id })))
+const nameOf = (a) => String(a?.registered_name || '').toLowerCase()
+const selectedAccount = computed(() => (accountStore.accounts || []).find(a => a.id === (form.value.account_id || form.value.bank_id)) || null)
+const cashLedgerId = computed(() => selectedAccount.value?.ledger_id || null)
+const accountWithoutLedger = computed(() => !!selectedAccount.value && !selectedAccount.value.ledger_id)
+// The category side can never be the paying / receiving account's own ledger.
+const allLedgers = computed(() => ledgerStore.activeLedgers
+  .filter(l => l.id !== cashLedgerId.value)
+  .map(l => ({ label: `${l.ledger_code} — ${l.ledger_name}`, value: l.id })))
 const ledgerOptions = ref([])
 watch(allLedgers, v => { ledgerOptions.value = v }, { immediate: true })
 function filterLedgers(val, update) {
@@ -200,12 +215,12 @@ const filteredAccountOptions = computed(() => {
   const all = accountStore.activeAccounts || []
 
   if (method === 'petty_cash') {
-    const list = all.filter(a => a.account_type === 'petty_cash' || a.registered_name.toLowerCase().includes('petty'))
+    const list = all.filter(a => a.account_type === 'petty_cash' || nameOf(a).includes('petty'))
     return list.map(a => ({ label: `${a.registered_name} (Bal: LKR ${Number(a.current_balance || 0).toLocaleString()})`, value: a.id }))
   }
 
   if (['bank', 'cheque', 'card', 'online_transfer'].includes(method)) {
-    const list = all.filter(a => a.account_type === 'bank' || a.bank_name || a.registered_name.toLowerCase().includes('bank') || ['commercial', 'peoples', 'hnb', 'ntb', 'ndb'].some(b => a.registered_name.toLowerCase().includes(b)))
+    const list = all.filter(a => a.account_type === 'bank' || a.bank_name || nameOf(a).includes('bank') || ['commercial', 'peoples', 'hnb', 'ntb', 'ndb'].some(b => nameOf(a).includes(b)))
     return list.map(a => {
       const bName = a.bank_name ? `${a.bank_name} — ` : ''
       const accNum = a.account_number ? ` (${a.account_number})` : ''
@@ -218,7 +233,7 @@ const filteredAccountOptions = computed(() => {
 
   // Cash payment: real cash accounts / drawers
   const list = all.filter(a => {
-    const n = a.registered_name.toLowerCase()
+    const n = nameOf(a)
     return (a.account_type === 'cash' || n.includes('cash') || n.includes('change fund')) && !n.includes('petty')
   })
   const finalList = list.length ? list : all.filter(a => a.account_type === 'cash')
@@ -256,7 +271,24 @@ function removeLine(idx) { form.value.lines.splice(idx, 1) }
 
 watch(() => props.modelValue, v => {
   visible.value = v
-  if (v) {
+  if (v && props.voucher?.id) {
+    const src = props.voucher
+    form.value = {
+      ...defaultForm(),
+      voucher_date: src.voucher_date || localToday(),
+      pay_to: src.pay_to || '', received_from: src.received_from || '',
+      amount: Number(src.amount) || null,
+      payment_method: src.payment_method || 'cash',
+      ledger_id: src.ledger_id || null, account_id: src.account_id || src.bank_id || null, bank_id: src.bank_id || null,
+      remark: src.remark || '', narration: src.narration || '',
+      lines: (src.lines || []).map(l => ({ ledger_id: l.ledger_id, description: l.description || '', debit_amount: Number(l.debit_amount) || 0, credit_amount: Number(l.credit_amount) || 0, idx: l.id || Math.random() })),
+    }
+    // Cheque no/date are voucher columns since #147 (older vouchers: narration).
+    if (form.value.payment_method === 'cheque') {
+      form.value.cheque_no = src.cheque_no || /Cheque No (\S+)/.exec(src.narration || '')?.[1] || ''
+      form.value.cheque_date = src.cheque_date || ''
+    }
+  } else if (v) {
     form.value = defaultForm()
     if (filteredAccountOptions.value.length) {
       form.value.account_id = filteredAccountOptions.value[0].value
@@ -273,15 +305,24 @@ async function save() {
     if (needsBank.value && !form.value.bank_id) {
       form.value.bank_id = form.value.account_id
     }
+    if (!needsBank.value) form.value.bank_id = null
+    const voucherType = isPay.value ? 'pay' : 'received'
+    const errors = validateVoucherDraft({ ...form.value, voucher_type: voucherType }, selectedAccount.value ? { id: selectedAccount.value.id, ledger_id: selectedAccount.value.ledger_id } : undefined)
+    if (errors.length) {
+      $q.notify({ type: 'negative', message: errors.join(' '), position: 'top', timeout: 6000 })
+      return
+    }
     let result
-    if (isPay.value) {
+    if (isEdit.value) {
+      result = await voucherStore.updateVoucher(props.voucher.id, { ...form.value })
+    } else if (isPay.value) {
       result = await voucherStore.createPayVoucher({ ...form.value, voucher_type: 'pay' })
     } else {
       result = await voucherStore.createReceivedVoucher({ ...form.value, voucher_type: 'received' })
     }
     $q.notify({
       type: 'positive',
-      message: `${isPay.value ? 'Pay' : 'Received'} voucher created — Voucher # ${result?.voucher_no ?? ''}`,
+      message: `${isPay.value ? 'Pay' : 'Received'} voucher ${isEdit.value ? 'updated' : 'created'} — Voucher # ${result?.voucher_no ?? ''}`,
       position: 'top',
     })
     emit('saved', result)

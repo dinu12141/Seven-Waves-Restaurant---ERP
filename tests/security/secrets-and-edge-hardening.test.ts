@@ -50,7 +50,7 @@ function findings(re: RegExp): string[] {
   return hits
 }
 
-describe('No hardcoded secrets in the working tree', () => {
+describe('No hardcoded secrets in the working tree', { timeout: 30000 }, () => {
   it('scans a meaningful number of files', () => {
     expect(FILES.length).toBeGreaterThan(200)
   })

@@ -20,6 +20,14 @@ export const useFinanceAccountStore = defineStore('financeAccount', () => {
     finally { loading.value = false }
   }
 
+  // Same list, annotated with the linked ledger's GL balance and link problems.
+  async function fetchAccountsWithGl(filters = {}) {
+    loading.value = true; error.value = null
+    try { accounts.value = await financeAccountService.listWithGl(filters) }
+    catch (e) { error.value = e.message }
+    finally { loading.value = false }
+  }
+
   async function createAccount(data) {
     const result = await financeAccountService.create(data)
     accounts.value.unshift(result)
@@ -44,5 +52,5 @@ export const useFinanceAccountStore = defineStore('financeAccount', () => {
     return true
   }
 
-  return { accounts, loading, error, activeAccounts, bankAccounts, cashAccounts, pettyCashAccounts, defaultAccount, fetchAccounts, createAccount, updateAccount, deleteAccount }
+  return { accounts, loading, error, activeAccounts, bankAccounts, cashAccounts, pettyCashAccounts, defaultAccount, fetchAccounts, fetchAccountsWithGl, createAccount, updateAccount, deleteAccount }
 })

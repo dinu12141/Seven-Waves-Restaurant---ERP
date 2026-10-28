@@ -266,13 +266,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Notify, Loading, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useOrderStore } from 'src/stores/orderStore'
 import { useAuthStore } from 'src/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const store = useOrderStore()
 const authStore = useAuthStore()
 const $q = useQuasar()
@@ -395,6 +396,9 @@ async function fetchMenuItems() {
 
 onMounted(() => {
   store.clearCart() // Fresh order
+  // Pre-select the table when opened from Waiter Tables (?table=12)
+  const qTable = parseInt(String(route.query.table || '').replace(/\D/g, ''), 10)
+  if (qTable > 0) selectTableNum(qTable)
   fetchMenuItems()
 })
 

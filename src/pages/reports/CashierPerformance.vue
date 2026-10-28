@@ -73,7 +73,9 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, applyBranchSecurity } from 'src/services/reportService'
@@ -123,48 +125,61 @@ const kpiData = computed(() => [
 async function loadData(filters = {}) {
   loading.value = true
   try {
+    // Cashier = who collected the money (invoices.cashier_id → payments.cashier_id →
+    // payments.received_by). Previously this grouped by orders.waiter_id (waiters,
+    // not cashiers) and bucketed the whole bill under the FIRST payment method only.
     let query = supabase
       .from('orders')
       .select(
-        'total_amount,status,waiter:profiles!orders_waiter_id_fkey(full_name),invoices(payments(amount,payment_methods(name)))',
+        'id,status,invoices(cashier_id,payments(amount,payment_method,cashier_id,received_by,voided,payment_methods(name)))',
       )
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.limit(5000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
+    const asArr = (v) => (Array.isArray(v) ? v : v ? [v] : [])
     const cMap = {}
-    ;(data || []).forEach((b) => {
-      const n = b.waiter?.full_name || 'Unknown'
-      if (!cMap[n])
-        cMap[n] = { cashier: n, transactions: 0, total: 0, cash_collected: 0, card_collected: 0 }
-      const amt = Number(b.total_amount || 0)
-      cMap[n].transactions++
-      cMap[n].total += amt
-      // Extract payment method from invoices→payments chain
-      let pm = ''
-      const invs = Array.isArray(b.invoices) ? b.invoices : b.invoices ? [b.invoices] : []
-      for (const inv of invs) {
-        const pays = Array.isArray(inv.payments) ? inv.payments : inv.payments ? [inv.payments] : []
-        for (const p of pays) {
-          if (p.payment_methods?.name) {
-            pm = p.payment_methods.name.toLowerCase()
-            break
+    for (const o of data || []) {
+      const seen = new Set()
+      for (const inv of asArr(o.invoices)) {
+        for (const p of asArr(inv.payments)) {
+          if (p.voided) continue
+          const amt = Number(p.amount || 0)
+          if (!amt) continue
+          const cid = inv.cashier_id || p.cashier_id || p.received_by || 'unassigned'
+          if (!cMap[cid])
+            cMap[cid] = { id: cid, transactions: 0, total: 0, cash_collected: 0, card_collected: 0 }
+          const c = cMap[cid]
+          if (!seen.has(cid)) {
+            c.transactions++
+            seen.add(cid)
           }
+          c.total += amt
+          const pm = String(p.payment_methods?.name || p.payment_method || '').toLowerCase()
+          if (pm.includes('cash')) c.cash_collected += amt
+          else if (/card|visa|master|amex/.test(pm)) c.card_collected += amt
         }
-        if (pm) break
       }
-      if (pm.includes('cash')) cMap[n].cash_collected += amt
-      else if (pm.includes('card')) cMap[n].card_collected += amt
-    })
+    }
+    const ids = Object.keys(cMap).filter((k) => k !== 'unassigned')
+    const names = {}
+    if (ids.length) {
+      const { data: profs } = await supabase.from('profiles').select('id,full_name').in('id', ids)
+      for (const pr of profs || []) names[pr.id] = pr.full_name
+    }
+    for (const c of Object.values(cMap))
+      c.cashier = c.id === 'unassigned' ? 'Unassigned' : names[c.id] || 'Unknown'
     rows.value = Object.values(cMap)
       .map((c) => ({ ...c, avg_txn: c.transactions > 0 ? c.total / c.transactions : 0 }))
       .sort((a, b) => b.total - a.total)
   } catch (e) {
     console.error('[CashierPerf]', e)
+    rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load cashier performance: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

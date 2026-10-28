@@ -1,7 +1,7 @@
 <template>
   <ReportLayout
     title="Expense Summary"
-    subtitle="Expense tracking and analysis by category"
+    subtitle="Posted pay vouchers by expense ledger"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"
@@ -68,10 +68,12 @@
 </template>
 <script setup>
 import { ref } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { businessDateOf, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtLKR, fmtDate } from 'src/services/reportService'
+import { fmtLKR, fmtDate, applyBranchSecurity } from 'src/services/reportService'
 const loading = ref(false),
   rows = ref([])
 const columns = [
@@ -85,24 +87,55 @@ const columns = [
 async function loadData(filters = {}) {
   loading.value = true
   try {
+    // Expenses = POSTED pay vouchers only (drafts/submitted/approved-but-unposted and
+    // cancelled vouchers are not in the GL). Category = the voucher's expense ledger.
     let query = supabase
-      .from('expenses')
-      .select('id,created_at,category,description,amount,approved_by,profiles(full_name)')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
+      .from('finance_vouchers')
+      .select(
+        'id, voucher_no, voucher_date, amount, pay_to, remark, narration, status, ledger_id, posted_by, approved_by, created_at, branch_id',
+      )
+      .eq('voucher_type', 'pay')
+      .eq('status', 'posted')
+      .is('deleted_at', null)
+
+    if (filters.dateFrom) query = query.gte('voucher_date', filters.dateFrom)
+    if (filters.dateTo) query = query.lte('voucher_date', filters.dateTo)
+    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    query = applyBranchSecurity(query)
+
+    const { data, error } = await fetchAllRows(
+      query.order('voucher_date', { ascending: false }).order('id'),
+    )
     if (error) throw error
+
+    const ledgerIds = [...new Set((data || []).map((r) => r.ledger_id).filter(Boolean))]
+    const userIds = [
+      ...new Set((data || []).map((r) => r.approved_by || r.posted_by).filter(Boolean)),
+    ]
+    const [ledgersRes, usersRes] = await Promise.all([
+      ledgerIds.length
+        ? supabase.from('finance_ledgers').select('id, ledger_name').in('id', ledgerIds)
+        : Promise.resolve({ data: [] }),
+      userIds.length
+        ? supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : Promise.resolve({ data: [] }),
+    ])
+    const ledgerName = Object.fromEntries((ledgersRes.data || []).map((l) => [l.id, l.ledger_name]))
+    const userName = Object.fromEntries((usersRes.data || []).map((u) => [u.id, u.full_name]))
+
     rows.value = (data || []).map((r) => ({
       id: r.id,
-      date: r.created_at,
-      category: r.category || 'General',
-      description: r.description || '—',
+      date: r.voucher_date || (r.created_at ? businessDateOf(r.created_at) : null),
+      category: ledgerName[r.ledger_id] || r.pay_to || 'General Expense',
+      description:
+        [r.voucher_no, r.pay_to, r.remark || r.narration].filter(Boolean).join(' — ') || '—',
       amount: Number(r.amount || 0),
-      approved_by: r.profiles?.full_name || '—',
+      approved_by: userName[r.approved_by || r.posted_by] || 'Posted',
     }))
   } catch (e) {
     console.error('[Expenses]', e)
     rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load expenses: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

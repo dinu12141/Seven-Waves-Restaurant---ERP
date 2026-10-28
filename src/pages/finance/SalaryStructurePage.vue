@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="account_tree"
+      subtitle="Basic salary, allowances, deductions and additions per employee"
       title="Salary Structure"
       breadcrumbs="Finance / Payroll / Salary Structure"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     />
 
@@ -15,7 +16,6 @@
         :options="employeeOptions"
         label="Select Employee"
         dense
-        dark
         outlined
         style="min-width: 340px"
         use-input
@@ -42,16 +42,16 @@
         <div class="fin-panel q-mb-md">
           <div class="fin-panel__header"><span class="fin-panel__title">Employee Info</span></div>
           <div class="fin-panel__body q-pa-md">
-            <div class="text-h6 text-white q-mb-xs">
+            <div class="text-h6 q-mb-xs">
               {{ employee.first_name }} {{ employee.last_name }}
             </div>
             <div class="text-caption text-grey-5">
               {{ employee.employee_code }} · {{ employee.designations?.title || '-' }}
             </div>
             <div class="text-caption text-grey-5">{{ employee.departments?.name || '-' }}</div>
-            <q-separator dark class="q-my-md" />
+            <q-separator class="q-my-md" />
             <div class="text-caption text-grey-5">Salary Method</div>
-            <div class="text-white q-mb-sm">
+            <div class=" q-mb-sm">
               {{ salaryStructure?.salary_method || 'basic_salary' }}
             </div>
             <div class="text-caption text-grey-5">Basic Salary</div>
@@ -68,7 +68,7 @@
             <div class="row q-col-gutter-sm">
               <div class="col-6">
                 <div class="text-caption text-grey-5">Basic</div>
-                <div class="text-white">{{ fmt(salaryStructure?.basic_salary || 0) }}</div>
+                <div class="">{{ fmt(salaryStructure?.basic_salary || 0) }}</div>
               </div>
               <div class="col-6">
                 <div class="text-caption text-grey-5">Allowances</div>
@@ -79,14 +79,14 @@
                 <div class="text-green-4">+{{ fmt(totalAdditions) }}</div>
               </div>
               <div class="col-6">
-                <div class="text-caption text-grey-5">Deductions</div>
+                <div class="text-caption text-grey-5">Deductions (incl. EPF 8%)</div>
                 <div class="text-red-4">-{{ fmt(totalDeductions) }}</div>
               </div>
             </div>
-            <q-separator dark class="q-my-sm" />
+            <q-separator class="q-my-sm" />
             <div class="text-right">
               <div class="text-caption text-grey-5">Projected Gross</div>
-              <div class="text-white text-weight-bold">{{ fmt(projectedGross) }}</div>
+              <div class=" text-weight-bold">{{ fmt(projectedGross) }}</div>
             </div>
             <div class="text-right q-mt-xs">
               <div class="text-caption text-grey-5">Projected Net</div>
@@ -117,7 +117,6 @@
             :columns="allowanceCols"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[0]"
             hide-bottom
@@ -164,7 +163,6 @@
             :columns="additionCols"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[0]"
             hide-bottom
@@ -200,7 +198,6 @@
             :columns="deductionCols"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[0]"
             hide-bottom
@@ -237,15 +234,14 @@
 
     <!-- Add Allowance Dialog -->
     <q-dialog v-model="showAllowanceDialog" class="fin-dialog">
-      <q-card dark style="min-width: 420px; background: #161b22; border: 1px solid #30363d">
-        <q-card-section><div class="text-subtitle1 text-white">Add Allowance</div></q-card-section>
+      <q-card style="width: 420px; max-width: 95vw; background: var(--erp-bg-card); border: 1px solid var(--erp-border)">
+        <q-card-section><div class="text-subtitle1">Add Allowance</div></q-card-section>
         <q-card-section class="fin-form">
           <q-select
             v-model="newAllowance.allowance_type_id"
             :options="allowanceTypeOptions"
             label="Allowance Type *"
             dense
-            dark
             outlined
             emit-value
             map-options
@@ -258,7 +254,6 @@
             label="Monthly Amount *"
             type="number"
             dense
-            dark
             outlined
             prefix="LKR"
             class="q-mb-sm"
@@ -268,7 +263,6 @@
             label="Effective From"
             type="date"
             dense
-            dark
             outlined
           />
         </q-card-section>
@@ -287,14 +281,13 @@
 
     <!-- Add Deduction Dialog -->
     <q-dialog v-model="showDeductionDialog" class="fin-dialog">
-      <q-card dark style="min-width: 420px; background: #161b22; border: 1px solid #30363d">
-        <q-card-section><div class="text-subtitle1 text-white">Add Deduction</div></q-card-section>
+      <q-card style="width: 420px; max-width: 95vw; background: var(--erp-bg-card); border: 1px solid var(--erp-border)">
+        <q-card-section><div class="text-subtitle1">Add Deduction</div></q-card-section>
         <q-card-section class="fin-form">
           <q-input
             v-model="newDeduction.description"
             label="Description *"
             dense
-            dark
             outlined
             class="q-mb-sm"
           />
@@ -303,7 +296,6 @@
             label="Amount *"
             type="number"
             dense
-            dark
             outlined
             prefix="LKR"
             class="q-mb-sm"
@@ -313,7 +305,6 @@
             :options="deductionTypes"
             label="Type"
             dense
-            dark
             outlined
             class="q-mb-sm"
           />
@@ -324,7 +315,6 @@
                 label="Start"
                 type="date"
                 dense
-                dark
                 outlined
               />
             </div>
@@ -334,7 +324,6 @@
                 label="End"
                 type="date"
                 dense
-                dark
                 outlined
               />
             </div>
@@ -342,7 +331,6 @@
           <q-toggle
             v-model="newDeduction.is_recurring"
             label="Recurring monthly"
-            dark
             class="q-mt-sm"
           />
         </q-card-section>
@@ -361,16 +349,15 @@
 
     <!-- Add Addition Dialog -->
     <q-dialog v-model="showAdditionDialog" class="fin-dialog">
-      <q-card dark style="min-width: 420px; background: #161b22; border: 1px solid #30363d">
+      <q-card style="width: 420px; max-width: 95vw; background: var(--erp-bg-card); border: 1px solid var(--erp-border)">
         <q-card-section
-          ><div class="text-subtitle1 text-white">Add Salary Addition</div></q-card-section
+          ><div class="text-subtitle1">Add Salary Addition</div></q-card-section
         >
         <q-card-section class="fin-form">
           <q-input
             v-model="newAddition.description"
             label="Description *"
             dense
-            dark
             outlined
             class="q-mb-sm"
           />
@@ -379,7 +366,6 @@
             label="Amount *"
             type="number"
             dense
-            dark
             outlined
             prefix="LKR"
             class="q-mb-sm"
@@ -389,7 +375,6 @@
             :options="additionTypes"
             label="Type"
             dense
-            dark
             outlined
             class="q-mb-sm"
           />
@@ -400,12 +385,11 @@
                 label="Start"
                 type="date"
                 dense
-                dark
                 outlined
               />
             </div>
             <div class="col-6">
-              <q-input v-model="newAddition.end_date" label="End" type="date" dense dark outlined />
+              <q-input v-model="newAddition.end_date" label="End" type="date" dense outlined />
             </div>
           </div>
         </q-card-section>
@@ -425,9 +409,10 @@
 </template>
 
 <script setup>
+import { todayLK } from 'src/modules/finance/utils/finance-dates'
 import { ref, computed, onMounted } from 'vue'
 import { Notify } from 'quasar'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import { supabase } from 'src/boot/supabase'
 import {
   fetchEmployeeDeductions,
@@ -439,6 +424,10 @@ import {
   deleteSalaryDeduction,
   createSalaryAddition,
 } from 'src/services/financeService'
+import {
+  projectMonthlySalary,
+  monthBounds,
+} from 'src/modules/finance/services/finance-payroll.service'
 
 const allEmployees = ref([])
 const selectedEmployee = ref(null)
@@ -455,13 +444,13 @@ const showAdditionDialog = ref(false)
 const newAllowance = ref({
   allowance_type_id: null,
   amount: 0,
-  effective_from: new Date().toISOString().split('T')[0],
+  effective_from: todayLK(),
 })
 const newDeduction = ref({
   description: '',
   amount: 0,
   deduction_type: 'emergency',
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: todayLK(),
   end_date: null,
   is_recurring: false,
 })
@@ -469,7 +458,7 @@ const newAddition = ref({
   description: '',
   amount: 0,
   addition_type: 'temporary',
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: todayLK(),
   end_date: null,
 })
 
@@ -478,20 +467,24 @@ const additionTypes = ['temporary', 'permanent', 'bonus', 'arrears', 'advance_re
 
 const employeeOptions = ref([])
 
-const totalAllowances = computed(() =>
-  allowances.value.reduce((s, a) => s + Number(a.amount || 0), 0),
-)
-const totalDeductions = computed(() =>
-  deductions.value.reduce((s, d) => s + Number(d.amount || 0), 0),
-)
-const totalAdditions = computed(() =>
-  additions.value.reduce((s, a) => s + Number(a.amount || 0), 0),
-)
-const projectedGross = computed(
-  () =>
-    Number(salaryStructure.value?.basic_salary || 0) + totalAllowances.value + totalAdditions.value,
-)
-const projectedNet = computed(() => projectedGross.value - totalDeductions.value)
+// Projection for the current month, mirroring process_monthly_payroll (#135):
+// structure allowances + active allowances/additions/deductions in range + EPF 8%.
+const projection = computed(() => {
+  const { start, end } = monthBounds()
+  return projectMonthlySalary({
+    structure: salaryStructure.value,
+    allowances: allowances.value,
+    additions: additions.value,
+    deductions: deductions.value,
+    periodStart: start,
+    periodEnd: end,
+  })
+})
+const totalAllowances = computed(() => projection.value.allowances)
+const totalDeductions = computed(() => projection.value.totalDeductions)
+const totalAdditions = computed(() => projection.value.additions)
+const projectedGross = computed(() => projection.value.gross)
+const projectedNet = computed(() => projection.value.net)
 
 const allowanceCols = [
   { name: 'type', label: 'Type', field: 'allowance_type_id', align: 'left' },
@@ -570,7 +563,7 @@ async function loadEmployeeDetails() {
   const { data: empData, error: empErr } = await supabase
     .from('employees')
     .select(
-      'id, first_name, last_name, employee_code, employment_status, designations(title), departments(name)',
+      'id, company_id, branch_id, first_name, last_name, employee_code, employment_status, designations(title), departments(name)',
     )
     .eq('id', selectedEmployee.value)
     .single()
@@ -594,7 +587,6 @@ async function loadEmployeeDetails() {
       .limit(1)
       .single()
     salaryStructure.value = salData || null
-    console.log('[SalaryStructure] Loaded salary:', salData)
   } catch {
     // No is_current record — try getting the latest record by effective_from
     try {
@@ -606,9 +598,7 @@ async function loadEmployeeDetails() {
         .limit(1)
         .single()
       salaryStructure.value = fallback || null
-      console.log('[SalaryStructure] Fallback salary:', fallback)
     } catch {
-      console.log('[SalaryStructure] No salary structure found for employee')
       salaryStructure.value = null
     }
   }
@@ -619,6 +609,7 @@ async function loadEmployeeDetails() {
       .from('employee_allowances')
       .select('*, salary_allowance_types(name, code)')
       .eq('employee_id', selectedEmployee.value)
+      .eq('is_active', true)
     allowances.value = allData || []
   } catch {
     allowances.value = []
@@ -633,8 +624,16 @@ async function loadEmployeeDetails() {
   additions.value = addRes.data || []
 }
 
+function hasCompany() {
+  if (employee.value?.company_id) return true
+  Notify.create({ type: 'negative', message: 'Employee has no company assigned — fix the employee record first.' })
+  return false
+}
+
 async function saveAllowance() {
+  if (!hasCompany()) return
   const { error } = await createEmployeeAllowance({
+    company_id: employee.value?.company_id,
     employee_id: selectedEmployee.value,
     allowance_type_id: newAllowance.value.allowance_type_id,
     amount: newAllowance.value.amount,
@@ -649,13 +648,16 @@ async function saveAllowance() {
   newAllowance.value = {
     allowance_type_id: null,
     amount: 0,
-    effective_from: new Date().toISOString().split('T')[0],
+    effective_from: todayLK(),
   }
   await loadEmployeeDetails()
 }
 
 async function saveDeduction() {
+  if (!hasCompany()) return
   const { error } = await createSalaryDeduction({
+    company_id: employee.value?.company_id,
+    branch_id: employee.value?.branch_id,
     employee_id: selectedEmployee.value,
     description: newDeduction.value.description,
     amount: newDeduction.value.amount,
@@ -674,7 +676,7 @@ async function saveDeduction() {
     description: '',
     amount: 0,
     deduction_type: 'emergency',
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: todayLK(),
     end_date: null,
     is_recurring: false,
   }
@@ -682,7 +684,10 @@ async function saveDeduction() {
 }
 
 async function saveAddition() {
+  if (!hasCompany()) return
   const { error } = await createSalaryAddition({
+    company_id: employee.value?.company_id,
+    branch_id: employee.value?.branch_id,
     employee_id: selectedEmployee.value,
     description: newAddition.value.description,
     amount: newAddition.value.amount,
@@ -700,20 +705,36 @@ async function saveAddition() {
     description: '',
     amount: 0,
     addition_type: 'temporary',
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: todayLK(),
     end_date: null,
   }
   await loadEmployeeDetails()
 }
 
 async function removeAllowance(id) {
-  await deleteEmployeeAllowance(id)
+  const { error } = await deleteEmployeeAllowance(id)
+  if (error) {
+    Notify.create({ type: 'negative', message: error.message })
+    return
+  }
   Notify.create({ type: 'info', message: 'Allowance removed' })
   await loadEmployeeDetails()
 }
 
 async function removeDeduction(id) {
-  await deleteSalaryDeduction(id)
+  const ded = deductions.value.find((d) => d.id === id)
+  if (ded?.is_applied) {
+    Notify.create({
+      type: 'warning',
+      message: 'This deduction was already applied in a payroll run — end-date it instead of deleting.',
+    })
+    return
+  }
+  const { error } = await deleteSalaryDeduction(id)
+  if (error) {
+    Notify.create({ type: 'negative', message: error.message })
+    return
+  }
   Notify.create({ type: 'info', message: 'Deduction removed' })
   await loadEmployeeDetails()
 }

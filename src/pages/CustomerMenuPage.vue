@@ -199,12 +199,13 @@ async function fetchMenu() {
   loading.value = true
   try {
     // 1. Fetch Sub-Categories instead of Main Categories
-    const { data: subCatData } = await supabase
+    const { data: subCatData, error: subCatError } = await supabase
       .from('menu_sub_categories')
-      .select('*, categories(name, icon)')
+      .select('*, categories(name)')
       .eq('company_id', store.companyId)
       .eq('is_active', true)
       .order('sort_order')
+    if (subCatError) console.warn('[Menu] sub-category load failed:', subCatError.message)
 
     if (subCatData) {
       categories.value = [

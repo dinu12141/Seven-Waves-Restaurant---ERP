@@ -195,8 +195,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Notify } from 'quasar'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 
@@ -236,7 +238,7 @@ async function loadFilterOptions() {
     if (cats && cats.length) {
       categoryOptions.value = [
         { label: 'All Categories', value: null },
-        ...cats.map((c) => ({ label: c.name, value: c.name })),
+        ...cats.map((c) => ({ label: c.name, value: c.id })),
       ]
     }
   } catch (e) {
@@ -368,6 +370,10 @@ async function onFilterChange(filters) {
 async function loadData() {
   loading.value = true
   try {
+    // Category filter: restrict to orders containing at least one item of the category
+    // (was rendered in the UI but never applied).
+    const catId = extraFilters.value.category
+    const catEmbed = catId ? ', order_items!inner ( menu_items!inner ( category_id ) )' : ''
     let query = supabase
       .from('orders')
       .select(
@@ -393,20 +399,21 @@ async function loadData() {
             amount,
             payment_methods (name)
           )
-        )
+        )${catEmbed}
       `,
       )
       .order('created_at', { ascending: false })
 
     if (currentFilters.value.dateFrom) {
-      query = query.gte('created_at', currentFilters.value.dateFrom + 'T00:00:00')
+      query = query.gte('created_at', dayStartISO(currentFilters.value.dateFrom))
     }
     if (currentFilters.value.dateTo) {
-      query = query.lte('created_at', currentFilters.value.dateTo + 'T23:59:59')
+      query = query.lt('created_at', dayEndExclusiveISO(currentFilters.value.dateTo))
     }
     if (currentFilters.value.branch) {
       query = query.eq('branch_id', currentFilters.value.branch)
     }
+    if (catId) query = query.eq('order_items.menu_items.category_id', catId)
 
     if (extraFilters.value.status === 'all') {
       // Fetch all statuses
@@ -423,7 +430,7 @@ async function loadData() {
       if (branchId) query = query.eq('branch_id', branchId)
     }
 
-    const { data, error } = await query.limit(1000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     rows.value = (data || [])
@@ -485,6 +492,8 @@ async function loadData() {
       .filter(Boolean)
   } catch (err) {
     console.error('[SalesReport] Error:', err)
+    rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load Sales Report: ' + (err?.message || err) })
   } finally {
     loading.value = false
   }

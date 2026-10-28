@@ -191,6 +191,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { businessDateStr, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
+import { applyBranchSecurity } from 'src/services/reportService'
+import { Notify } from 'quasar'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
 import { exportTableToCSV } from 'src/services/exportService'
@@ -310,7 +313,7 @@ const flatRows = computed(() => {
 
     billSeq++
     const items = order.order_items || []
-    const isVoid = order.status === 'cancelled' || order.status === 'void'
+    const isVoid = ['cancelled', 'void', 'voided'].includes(order.status)
     const orderTimeIn = fmtTime(order.created_at)
     const paymentTime = extractPaymentTime(order) || orderTimeIn
     
@@ -348,7 +351,8 @@ const flatRows = computed(() => {
       const menuItem = item.menu_items || {}
       const itemId = menuItem.id || item.menu_item_id || ''
       const shortCode = typeof itemId === 'string' ? itemId.slice(0, 6).toUpperCase() : ''
-      const isItemVoid = isVoid || item.status === 'cancelled' || item.status === 'void'
+      const isItemVoid =
+        isVoid || ['cancelled', 'void', 'voided'].includes(item.status) || !!item.void_reason
       const qty = Number(item.quantity || 0)
 
       billSubDisc += itemDisc
@@ -516,7 +520,8 @@ const grandTotals = computed(() => {
     sales = 0,
     qty = 0
   for (const r of flatRows.value) {
-    if (r.__type === 'item') {
+    // Voided / cancelled lines are shown (audit trail) but must not inflate sales totals
+    if (r.__type === 'item' && r.void_marked !== 'V') {
       disc += Number(r.disc_amt || 0)
       tax += Number(r.tax_amt || 0)
       sales += Number(r.sales_price || 0)
@@ -602,9 +607,11 @@ async function loadData(filters = {}) {
       .order('created_at', { ascending: true })
 
     // Date filters
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
+    // Security: non-admins are locked to their current branch
+    query = applyBranchSecurity(query)
 
     // Order type filter
     if (extraFilters.value.orderType !== 'all') {
@@ -614,7 +621,8 @@ async function loadData(filters = {}) {
     // Bill status filter
     const bs = extraFilters.value.billStatus
     if (bs === 'void') {
-      query = query.in('status', ['void'])
+      // orders.status has no 'void' value in the live CHECK set; accept both legacy spellings
+      query = query.in('status', ['void', 'voided'])
     } else if (bs === 'cancelled') {
       query = query.in('status', ['cancelled'])
     } else if (bs === 'discounted') {
@@ -625,13 +633,12 @@ async function loadData(filters = {}) {
       query = query.not('foc_reason', 'is', null)
     }
 
-    const { data, error } = await query.limit(2000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) {
       console.error('[ElectronicJournal] Supabase error:', error)
       throw error
     }
 
-    console.log('[ElectronicJournal] Orders returned:', data?.length || 0)
     rawOrders.value = data || []
 
     // ── Batch-load cashier names (cashier_id is a plain UUID on invoices, no FK) ──
@@ -654,6 +661,8 @@ async function loadData(filters = {}) {
 
   } catch (err) {
     console.error('[ElectronicJournal] Error:', err)
+    rawOrders.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load Electronic Journal: ' + (err?.message || err) })
   } finally {
     loading.value = false
   }
@@ -739,7 +748,7 @@ async function exportExcel() {
   // ── Row 3: Meta info ───────────────────────────────────
   const f = currentFilters.value
   const dateRange =
-    f.dateFrom && f.dateTo ? `${f.dateFrom} to ${f.dateTo}` : new Date().toISOString().slice(0, 10)
+    f.dateFrom && f.dateTo ? `${f.dateFrom} to ${f.dateTo}` : businessDateStr()
   ws.mergeCells(3, 1, 3, TOTAL_COLS)
   const metaCell = ws.getCell('A3')
   metaCell.value = `Location: ${branchName.value}   |   Date: ${dateRange}   |   Generated: ${new Date().toLocaleString()}`
@@ -911,7 +920,7 @@ async function exportExcel() {
   })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  const dateStr = new Date().toISOString().slice(0, 10)
+  const dateStr = businessDateStr()
   a.href = url
   a.download = `Electronic_Journal_${dateStr}.xlsx`
   a.click()

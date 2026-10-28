@@ -9,6 +9,7 @@
  */
 
 import { useAuthStore } from 'src/stores/auth'
+import { dayStartISO, dayEndExclusiveISO } from 'src/services/reportFilters'
 
 // ── Currency & Number Formatters ──────────────────────────────────────
 export function fmtLKR(val) {
@@ -60,17 +61,20 @@ export function fmtTime(dt) {
  * Applies common report filters to a Supabase query.
  * @param {object} query - Supabase query builder
  * @param {object} filters - { dateFrom, dateTo, branch, ... }
- * @param {object} opts - { dateField: 'created_at', branchField: 'branch_id' }
+ * @param {object} opts - { dateField: 'created_at', branchField: 'branch_id', dateOnly: false }
+ *   Date bounds are Asia/Colombo business days (see reportFilters.ts).
  */
 export function applyFilters(query, filters = {}, opts = {}) {
   const dateField = opts.dateField || 'created_at'
   const branchField = opts.branchField || 'branch_id'
 
   if (filters.dateFrom) {
-    query = query.gte(dateField, filters.dateFrom + 'T00:00:00')
+    query = query.gte(dateField, opts.dateOnly ? filters.dateFrom : dayStartISO(filters.dateFrom))
   }
   if (filters.dateTo) {
-    query = query.lte(dateField, filters.dateTo + 'T23:59:59')
+    query = opts.dateOnly
+      ? query.lte(dateField, filters.dateTo)
+      : query.lt(dateField, dayEndExclusiveISO(filters.dateTo))
   }
   if (filters.branch) {
     query = query.eq(branchField, filters.branch)
@@ -248,13 +252,6 @@ export const REPORT_GROUPS = [
         description: 'Track available vs unavailable items marked by waiters',
       },
       {
-        id: 'item-availability',
-        label: 'Item Availability',
-        icon: 'inventory_2',
-        route: '/reports/item-availability',
-        description: 'Track available vs unavailable items marked by waiters during KOT',
-      },
-      {
         id: 'delivery-performance',
         label: 'Delivery Performance',
         icon: 'local_shipping',
@@ -310,6 +307,20 @@ export const REPORT_GROUPS = [
         icon: 'shelves',
         route: '/reports/stock-on-hand',
         description: 'Current stock levels per item',
+      },
+      {
+        id: 'inventory-ledger',
+        label: 'Inventory Ledger',
+        icon: 'menu_book',
+        route: '/reports/inventory',
+        description: 'Stock movements (in/out) per item and warehouse',
+      },
+      {
+        id: 'kot-deduction-log',
+        label: 'KOT Deduction Log',
+        icon: 'receipt',
+        route: '/reports/kot-deduction-log',
+        description: 'BOM stock deductions triggered by KOTs',
       },
       {
         id: 'wastage',

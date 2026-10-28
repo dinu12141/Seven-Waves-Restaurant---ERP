@@ -157,7 +157,7 @@ async function loadData(filters = {}) {
     let query = supabase.from('v_rpt_item_wise_sale').select('*').eq('company_id', companyId)
 
     if (filters.dateFrom) query = query.gte('sale_date', filters.dateFrom)
-    if (filters.dateTo) query = query.lte('sale_date', filters.dateTo + 'T23:59:59')
+    if (filters.dateTo) query = query.lte('sale_date', filters.dateTo)
     if (filters.branch) query = query.eq('branch_id', filters.branch)
 
     const { data, error } = await query

@@ -97,6 +97,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/reportFilters'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
@@ -182,7 +183,7 @@ async function loadData(filters = {}) {
     // Users can filter using the Status dropdown instead.
     // Date filters only apply when user explicitly sets them via filter panel.
 
-    const { data, error } = await query.limit(1000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     rows.value = (data || []).map((r) => ({

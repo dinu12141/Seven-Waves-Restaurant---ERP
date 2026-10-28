@@ -422,7 +422,7 @@ async function loadShiftInvoices() {
         total,
         grand_total,
         payment_status,
-        payment_mode,
+        payment_type,
         created_at,
         orders:order_id (
           id,
@@ -442,11 +442,14 @@ async function loadShiftInvoices() {
     }
 
     const { data: invData, error: invError } = await query
+    if (invError) console.warn('[ShiftInvoicesDialog] invoice query failed, using shift payments:', invError.message)
 
     if (!invError && invData && invData.length > 0) {
       invoices.value = invData.map(inv => ({
         ...inv,
-        payment_method: inv.payment_mode || inv.orders?.payment_method || 'cash'
+        // invoices has no payment_mode column (selecting it 400'd the whole query
+        // and forced the REC-xxxx fallback) — use the order's tender method.
+        payment_method: inv.orders?.payment_method || inv.payment_type || 'cash'
       }))
     } else {
       // Fallback: check pos_shift_payments if invoices table was empty

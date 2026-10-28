@@ -104,6 +104,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from 'src/boot/supabase'
+import { businessDateStr, dayEndExclusiveISO, dayStartISO } from 'src/services/reportFilters'
 import { useAuthStore } from 'src/stores/auth'
 import { REPORT_GROUPS, ALL_REPORTS, fmtLKR, fmtNumber } from 'src/services/reportService'
 
@@ -150,12 +151,12 @@ function navigateToGroup(group) {
 onMounted(async () => {
   // Fetch today's summary KPIs from orders
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = businessDateStr()
     let query = supabase
       .from('orders')
       .select('total_amount, status')
-      .gte('created_at', today + 'T00:00:00')
-      .lte('created_at', today + 'T23:59:59')
+      .gte('created_at', dayStartISO(today))
+      .lt('created_at', dayEndExclusiveISO(today))
 
     // Branch security
     if (!authStore.isAdmin) {

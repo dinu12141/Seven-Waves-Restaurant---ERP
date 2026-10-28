@@ -76,10 +76,12 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtLKR, fmtDate } from 'src/services/reportService'
+import { fmtLKR, fmtDate, applyBranchSecurity } from 'src/services/reportService'
 const loading = ref(false),
   rows = ref([])
 const columns = [
@@ -98,7 +100,7 @@ const columns = [
   { name: 'notes', label: 'Notes', field: 'notes', align: 'left' },
 ]
 const kpiData = computed(() => [
-  { label: 'Adjustments', value: rows.value.length, icon: 'troubleshoot', color: 'blue' },
+  { label: 'Variance Lines', value: rows.value.length, icon: 'troubleshoot', color: 'blue' },
   {
     label: 'Losses',
     value: rows.value.filter((r) => r.variance < 0).length,
@@ -121,35 +123,49 @@ const kpiData = computed(() => [
 async function loadData(filters = {}) {
   loading.value = true
   try {
+    // Physical-vs-system variance comes from STOCK_COUNT document lines, which store
+    // system_qty / counted_qty / variance_qty at count time. The previous version read
+    // inventory_ledger.created_at / notes and items.current_stock — none of which exist —
+    // so the query always failed.
     let query = supabase
-      .from('inventory_ledger')
+      .from('inventory_document_lines')
       .select(
-        'id,created_at,quantity,direction,unit_cost,notes,items(name,current_stock),inventory_documents(doc_type)',
+        'id,system_qty,counted_qty,variance_qty,unit_cost,line_total,notes,items(name),inventory_documents!inner(doc_type,doc_number,doc_date,status,branch_id,remarks)',
       )
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
+      .eq('inventory_documents.doc_type', 'STOCK_COUNT')
+      .neq('inventory_documents.status', 'draft')
+      .neq('inventory_documents.status', 'cancelled')
+    // doc_date is a DATE column — compare plain dates.
+    if (filters.dateFrom) query = query.gte('inventory_documents.doc_date', filters.dateFrom)
+    if (filters.dateTo) query = query.lte('inventory_documents.doc_date', filters.dateTo)
+    if (filters.branch) query = query.eq('inventory_documents.branch_id', filters.branch)
+    query = applyBranchSecurity(query, 'inventory_documents.branch_id')
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
     rows.value = (data || [])
-      .filter((r) => ['STOCK_COUNT', 'ADJUSTMENT'].includes(r.inventory_documents?.doc_type))
       .map((r) => {
-        const qty = Number(r.quantity || 0)
-        const isIn = r.direction === 'IN'
-        const variance = isIn ? qty : -qty
+        const sys = Number(r.system_qty || 0)
+        const counted = Number(r.counted_qty ?? sys)
+        const variance = r.variance_qty != null ? Number(r.variance_qty) : counted - sys
         const uc = Number(r.unit_cost || 0)
         return {
           id: r.id,
-          date: r.created_at,
+          date: r.inventory_documents?.doc_date,
           item_name: r.items?.name || '—',
-          system_qty: Number(r.items?.current_stock || 0),
-          physical_qty: Number(r.items?.current_stock || 0) + variance,
+          system_qty: sys,
+          physical_qty: counted,
           variance,
           value_impact: variance * uc,
-          notes: r.notes,
+          notes: [r.inventory_documents?.doc_number, r.notes || r.inventory_documents?.remarks]
+            .filter(Boolean)
+            .join(' — '),
         }
       })
+      .filter((r) => r.variance !== 0)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
   } catch (e) {
     console.error('[Variance]', e)
+    Notify.create({ type: 'negative', message: 'Failed to load report: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

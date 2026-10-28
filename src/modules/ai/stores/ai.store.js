@@ -2,6 +2,7 @@
 // SEVEN WAVES ERP — AI Pinia Store
 // ═══════════════════════════════════════════════════════════════════════════════
 
+import { businessDateStr } from 'src/services/reportFilters'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
@@ -403,7 +404,7 @@ export const useAiStore = defineStore('ai', () => {
   }
 
   async function loadTodayReport(branchId) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = businessDateStr()
     const data = await fetchDailyReportByDate(branchId, today)
     if (data) {
       currentReport.value = data

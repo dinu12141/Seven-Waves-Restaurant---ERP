@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="request_quote"
+      subtitle="Supplier bills, ageing and payments"
       title="Accounts Payable"
       breadcrumbs="Finance / Receivables & Payables / AP"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     >
       <template #actions>
@@ -13,7 +14,6 @@
           placeholder="Search supplier or bill..."
           outlined
           dense
-          dark
           color="primary"
           clearable
           style="min-width: 220px"
@@ -30,7 +30,6 @@
           label="Filter by Bank"
           outlined
           dense
-          dark
           color="primary"
           style="min-width: 180px"
           emit-value
@@ -55,7 +54,7 @@
           no-caps
         />
       </template>
-    </ERPToolbar>
+    </FinancePageHeader>
 
     <!-- ══ KPI AGING CARDS ══════════════════════════════════════════════ -->
     <div class="row q-col-gutter-md q-mb-md">
@@ -72,11 +71,50 @@
       </div>
     </div>
 
+    <!-- ══ GL CONTROL BANNER (sub-ledger vs 2000) ══════════════════════ -->
+    <div v-if="apControl" class="fin-panel q-mb-md ap-control" :class="{ 'ap-control--warn': !apControl.reconciled }">
+      <div class="row items-center q-col-gutter-md">
+        <div class="col-12 col-md-auto row items-center no-wrap">
+          <q-icon
+            :name="apControl.reconciled ? 'verified' : 'warning'"
+            size="26px"
+            :color="apControl.reconciled ? 'positive' : 'amber'"
+          />
+          <span class="text-weight-bold q-ml-sm">AP control (ledger 2000)</span>
+        </div>
+        <div class="col-6 col-md">
+          <div class="text-caption text-grey-5">Open posted bills ({{ apControl.open_bills_count }})</div>
+          <div class="text-weight-bold">LKR {{ fmt(apControl.open_bills_total) }}</div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="text-caption text-grey-5">Σ Supplier balances</div>
+          <div class="text-weight-bold">LKR {{ fmt(apControl.suppliers_balance_total) }}</div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="text-caption text-grey-5">GL 2000 Accounts Payable (Cr)</div>
+          <div class="text-weight-bold">LKR {{ fmt(apControl.ledger_balance) }}</div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="text-caption text-grey-5">Difference (bills − GL)</div>
+          <div class="text-weight-bolder" :class="apControl.reconciled ? 'text-positive' : 'text-negative'">
+            LKR {{ fmt(apControl.difference) }}
+          </div>
+        </div>
+      </div>
+      <div v-if="!apControl.reconciled" class="text-caption text-amber-4 q-mt-sm">
+        <template v-if="!apControl.ledger_found">Ledger 2000 Accounts Payable was not found in the chart of accounts.</template>
+        <template v-else>
+          The AP sub-ledger and GL 2000 do not agree. Check manual journals / vouchers posted to 2000, or bills and
+          payments changed outside Procurement.
+        </template>
+      </div>
+    </div>
+
     <!-- ══ AP LEDGER ENTRIES TABLE ═════════════════════════════════════ -->
     <div class="fin-panel">
       <div class="fin-panel__header row items-center justify-between">
         <span class="fin-panel__title">AP Ledger Entries ({{ filteredPayables.length }})</span>
-        <div class="text-caption text-grey-4">
+        <div class="text-caption text-grey-6">
           Click any <strong class="text-primary">Bill #</strong> to view items or make payment
         </div>
       </div>
@@ -134,7 +172,6 @@
         selection="multiple"
         v-model:selected="selectedRows"
         flat
-        dark
         dense
         :rows-per-page-options="[20, 50, 100]"
         :pagination="{ sortBy: 'doc_date', descending: true, rowsPerPage: 20 }"
@@ -245,10 +282,10 @@
             <div class="col-12 col-md-6">
               <div class="text-caption text-grey-5">Supplier</div>
               <div class="text-weight-bold text-subtitle2">{{ selectedInvoice?.suppliers?.name }}</div>
-              <div class="text-caption text-grey-4" v-if="selectedInvoice?.suppliers?.bank_name">
+              <div class="text-caption text-grey-6" v-if="selectedInvoice?.suppliers?.bank_name">
                 🏦 {{ selectedInvoice.suppliers.bank_name }} — {{ selectedInvoice.suppliers.bank_account_number || '-' }}
               </div>
-              <div class="text-caption text-grey-4" v-if="selectedInvoice?.suppliers?.phone">
+              <div class="text-caption text-grey-6" v-if="selectedInvoice?.suppliers?.phone">
                 📞 {{ selectedInvoice.suppliers.phone }}
               </div>
             </div>
@@ -273,14 +310,13 @@
           <q-separator class="q-my-sm" />
 
           <!-- Invoice Lines Table -->
-          <div class="text-caption text-weight-bold text-uppercase q-mb-xs text-grey-4">Items / Goods Received</div>
+          <div class="text-caption text-weight-bold text-uppercase q-mb-xs text-grey-6">Items / Goods Received</div>
           <q-table
             :rows="invoiceLines"
             :columns="lineColumns"
             row-key="id"
             flat
             dense
-            dark
             :loading="loadingLines"
             :pagination="{ rowsPerPage: 10 }"
             class="fin-table q-mb-md"
@@ -291,11 +327,11 @@
           <div class="row justify-end q-mt-sm">
             <div style="min-width: 280px" class="q-gutter-xs">
               <div class="row justify-between text-body2">
-                <span class="text-grey-4">Total Billed:</span>
+                <span class="text-grey-6">Total Billed:</span>
                 <span class="text-weight-bold">LKR {{ fmt(selectedInvoice?.total_amount) }}</span>
               </div>
               <div class="row justify-between text-body2">
-                <span class="text-grey-4">Amount Paid:</span>
+                <span class="text-grey-6">Amount Paid:</span>
                 <span class="text-weight-bold text-green">LKR {{ fmt(selectedInvoice?.paid_amount) }}</span>
               </div>
               <q-separator class="q-my-xs" />
@@ -307,7 +343,7 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-9">
+        <q-card-actions align="right" class="q-pa-md fin-surface-2">
           <q-btn flat label="Close" color="grey-4" v-close-popup no-caps />
           <q-btn
             v-if="isPayableBill(selectedInvoice)"
@@ -336,7 +372,7 @@
 
         <q-card-section class="q-pa-md q-gutter-md">
           <!-- Supplier banner -->
-          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'fin-surface-2' : 'bg-grey-2'">
             <div class="row justify-between items-center q-col-gutter-sm">
               <div>
                 <div class="text-caption text-grey-6">Supplier / Payee</div>
@@ -449,7 +485,7 @@
           </div>
 
           <!-- Allocation summary -->
-          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'fin-surface-2' : 'bg-grey-2'">
             <div class="row q-col-gutter-sm text-center">
               <div class="col-6 col-sm-3">
                 <div class="text-caption text-grey-6">Bills selected</div>
@@ -493,7 +529,7 @@
           <div class="row q-col-gutter-sm">
             <div class="col-6">
               <div class="text-caption text-weight-bold q-mb-xs">Payment Date *</div>
-              <q-input v-model="payForm.doc_date" type="date" outlined dense dark />
+              <q-input v-model="payForm.doc_date" type="date" outlined dense />
             </div>
             <div class="col-6">
               <div class="text-caption text-weight-bold q-mb-xs">Payment Method *</div>
@@ -502,7 +538,6 @@
                 :options="['Cheque', 'Bank Transfer', 'Cash']"
                 outlined
                 dense
-                dark
               />
             </div>
           </div>
@@ -517,7 +552,6 @@
               :options="payingAccountOptions"
               outlined
               dense
-              dark
               emit-value
               map-options
               :placeholder="(payForm.payment_method || '').toLowerCase().includes('cash') ? 'Select cash drawer / account' : 'Select bank account'"
@@ -532,12 +566,12 @@
           </div>
 
           <!-- CHEQUE PAYMENT SPECIAL CONTROLS -->
-          <div v-if="(payForm.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm bg-grey-9 rounded-borders q-gutter-xs">
+          <div v-if="(payForm.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm fin-surface-2 rounded-borders q-gutter-xs">
             <div class="row items-center justify-between q-mb-xs">
               <span class="text-caption text-weight-bold text-indigo-3">Cheque Selection Mode</span>
               <div class="row q-gutter-sm">
-                <q-radio v-model="payForm.cheque_source" val="planned" label="Select Planned Cheque" dense dark />
-                <q-radio v-model="payForm.cheque_source" val="new" label="Enter New Cheque" dense dark />
+                <q-radio v-model="payForm.cheque_source" val="planned" label="Select Planned Cheque" dense />
+                <q-radio v-model="payForm.cheque_source" val="new" label="Enter New Cheque" dense />
               </div>
             </div>
 
@@ -549,7 +583,6 @@
                 :options="plannedChequeOptions"
                 outlined
                 dense
-                dark
                 emit-value
                 map-options
                 placeholder="Choose available planned cheque"
@@ -572,13 +605,12 @@
                   placeholder="e.g. 578427"
                   outlined
                   dense
-                  dark
                   :readonly="payForm.cheque_source === 'planned' && !!payForm.selected_planned_cheque"
                 />
               </div>
               <div class="col-6">
                 <div class="text-caption text-weight-bold q-mb-xs">Cheque Date * (PDC Support)</div>
-                <q-input v-model="payForm.cheque_date" type="date" outlined dense dark />
+                <q-input v-model="payForm.cheque_date" type="date" outlined dense />
               </div>
             </div>
           </div>
@@ -586,17 +618,17 @@
           <!-- Non-Cheque Reference -->
           <div v-else>
             <div class="text-caption text-weight-bold q-mb-xs">Reference Number</div>
-            <q-input v-model="payForm.reference" placeholder="e.g. TRF-99210" outlined dense dark />
+            <q-input v-model="payForm.reference" placeholder="e.g. TRF-99210" outlined dense />
           </div>
 
           <!-- Remarks -->
           <div>
             <div class="text-caption text-weight-bold q-mb-xs">Remarks</div>
-            <q-input v-model="payForm.remarks" placeholder="Optional notes" outlined dense dark />
+            <q-input v-model="payForm.remarks" placeholder="Optional notes" outlined dense />
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+        <q-card-actions align="right" class="q-pa-md" :class="$q.dark.isActive ? 'fin-surface-2' : 'bg-grey-2'">
           <q-btn flat label="Cancel" color="grey-6" v-close-popup no-caps />
           <q-btn
             unelevated
@@ -615,9 +647,10 @@
 </template>
 
 <script setup>
+import { todayLK } from 'src/modules/finance/utils/finance-dates'
 import { ref, computed, reactive, watch, onMounted } from 'vue'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import { fetchPayableAging, fetchUnpostedApSummary } from 'src/services/financeService'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
+import { fetchPayableAging, fetchUnpostedApSummary, fetchApControl } from 'src/services/financeService'
 import {
   createAndPostPayment,
   isPayableBill,
@@ -638,6 +671,7 @@ const loading = ref(false)
 const payables = ref([])
 /** Draft/approved bills — not payable until posted, so not listed. */
 const unpostedAp = ref({ count: 0, total: 0 })
+const apControl = ref(null)
 const companyBankAccounts = ref([])
 const financeAccounts = ref([])
 
@@ -724,14 +758,14 @@ const plannedChequeOptions = computed(() => {
 
 const payForm = reactive({
   amount: 0,
-  doc_date: new Date().toISOString().split('T')[0],
+  doc_date: todayLK(),
   payment_method: 'Cheque',
   bank_account_id: null,
   reference: '',
   remarks: '',
   cheque_source: 'planned',
   selected_planned_cheque: null,
-  cheque_date: new Date().toISOString().split('T')[0],
+  cheque_date: todayLK(),
   cheque_id: null,
 })
 
@@ -981,7 +1015,7 @@ function bucketClass(b) {
 
 const currentDateStr = computed(() => {
   const now = new Date()
-  return now.toISOString().split('T')[0].replace(/-/g, '/')
+  return todayLK(now).replace(/-/g, '/')
 })
 
 const currentMonthLabel = computed(() => {
@@ -1099,13 +1133,13 @@ async function openPaymentFor(targets) {
 
 async function initPaymentForm() {
   payForm.amount = allocatedTotal()
-  payForm.doc_date = new Date().toISOString().split('T')[0]
+  payForm.doc_date = todayLK()
   payForm.payment_method = 'Cheque'
   payForm.cheque_source = 'planned'
   payForm.selected_planned_cheque = null
   payForm.cheque_id = null
   payForm.reference = ''
-  payForm.cheque_date = new Date().toISOString().split('T')[0]
+  payForm.cheque_date = todayLK()
   lastAutoRemarks = autoRemarks()
   payForm.remarks = lastAutoRemarks
 
@@ -1200,6 +1234,7 @@ async function submitSupplierPayment() {
       message: `✅ Payment ${res.doc_number || ''} recorded successfully! Bill balance reduced and bank account updated.`,
       timeout: 4500,
     })
+    if (res.warning) $q.notify({ type: 'warning', message: res.warning, timeout: 8000 })
 
     showPayDialog.value = false
     showInvoiceDialog.value = false
@@ -1465,9 +1500,16 @@ async function loadData() {
     }))
 
   // 2. Load payables aging list
-  const [{ data }, unposted] = await Promise.all([fetchPayableAging(), fetchUnpostedApSummary()])
+  const [{ data, error: agingError }, unposted] = await Promise.all([fetchPayableAging(), fetchUnpostedApSummary()])
+  if (agingError) $q.notify({ type: 'negative', message: `Could not load payables: ${agingError.message || agingError}` })
   payables.value = data || []
   unpostedAp.value = unposted.error ? { count: 0, total: 0 } : { count: unposted.count, total: unposted.total }
+
+  // 3. AP control: open bills vs suppliers.balance vs GL 2000 (reuses the bills just loaded)
+  const ctrl = agingError
+    ? { data: null }
+    : await fetchApControl((data || []).map((p) => ({ balance_due: p.balance })))
+  apControl.value = ctrl.data
   loading.value = false
 }
 
@@ -1478,6 +1520,13 @@ onMounted(() => {
 
 <style scoped lang="scss">
 @import 'src/css/finance-common.scss';
+
+.ap-control {
+  border-left: 4px solid var(--q-positive);
+}
+.ap-control--warn {
+  border-left-color: var(--q-warning);
+}
 
 .pay-lines-wrap {
   max-height: 300px;

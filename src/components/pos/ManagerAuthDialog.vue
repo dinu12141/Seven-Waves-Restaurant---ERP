@@ -68,6 +68,7 @@
 import { ref } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { roleNamesFromUserRoles, hasManagerAuthority } from 'src/services/pos/posHelpers'
 
 const props = defineProps({
   actionName: {
@@ -150,13 +151,12 @@ async function verifyManager() {
     // 2. Verify Role (admin or manager)
     const { data: roles, error: rolesError } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('roles(name)') // user_roles has role_id, not a `role` column
       .eq('user_id', userId)
 
     if (rolesError) throw rolesError
 
-    const hasManagerRole = roles?.some(r => r.role === 'manager' || r.role === 'admin')
-    if (!hasManagerRole) {
+    if (!hasManagerAuthority(roleNamesFromUserRoles(roles))) {
       throw new Error('User does not have Manager privileges')
     }
 
@@ -196,7 +196,8 @@ async function verifyManager() {
 
 <style scoped>
 .manager-auth-dialog {
-  min-width: 450px;
+  width: 450px;
+  max-width: 95vw;
   border-radius: 16px;
   background: #1a1d24;
   border: 1px solid rgba(255, 255, 255, 0.1);

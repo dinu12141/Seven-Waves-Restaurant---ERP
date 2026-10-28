@@ -450,6 +450,10 @@
 
           <!-- Menu items list -->
           <q-card-section class="q-pt-none add-items-scroll">
+            <div v-if="!filteredMenuItems.length" class="text-center text-grey-6 q-py-xl">
+              <q-icon name="restaurant_menu" size="40px" class="q-mb-sm" />
+              <div>No menu items available</div>
+            </div>
             <div
               v-for="item in filteredMenuItems"
               :key="item.id"
@@ -527,6 +531,7 @@ import { supabase } from 'src/boot/supabase'
 import { useQuasar } from 'quasar'
 import { useAuthStore } from 'stores/auth'
 import KotReceipt from 'src/components/common/KotReceipt.vue'
+import { normalizeAddableMenu } from 'src/services/pos/posHelpers'
 
 const route = useRoute()
 const router = useRouter()
@@ -613,18 +618,40 @@ async function openAddItemsDialog() {
   menuLoading.value = true
   showAddItemsDialog.value = true
   try {
+    // menu_items has no branch_id — branch menus come from the default
+    // menu_book (same source as WaiterPOSPage), falling back to all items.
     const branchId = authStore.currentBranch?.id
-    if (!branchId) return
-    const { data } = await supabase
-      .from('menu_items')
-      .select('id, name, base_price, kitchen_id, categories ( name )')
-      .eq('branch_id', branchId)
-      .eq('is_available', true)
-      .order('name', { ascending: true })
-    menuItems.value = (data || []).map((m) => ({
-      ...m,
-      category_name: m.categories?.name || 'Other',
-    }))
+    let items = []
+    if (branchId) {
+      const { data: book } = await supabase
+        .from('menu_books')
+        .select('id')
+        .eq('branch_id', branchId)
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .limit(1)
+        .maybeSingle()
+      if (book) {
+        const { data: bookItems, error: bookErr } = await supabase
+          .from('menu_book_items')
+          .select('override_price, menu_items ( id, name, base_price, kitchen_id, is_available, categories ( name ) )')
+          .eq('menu_book_id', book.id)
+          .eq('is_available', true)
+        if (!bookErr) items = normalizeAddableMenu(bookItems, true)
+      }
+    }
+    if (!items.length) {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('id, name, base_price, kitchen_id, is_available, categories ( name )')
+        .eq('is_available', true)
+        .order('name', { ascending: true })
+      if (error) throw error
+      items = normalizeAddableMenu(data, false)
+    }
+    menuItems.value = items
+  } catch (e) {
+    $q.notify({ type: 'negative', message: 'Could not load menu: ' + (e?.message || e), position: 'top' })
   } finally {
     menuLoading.value = false
   }

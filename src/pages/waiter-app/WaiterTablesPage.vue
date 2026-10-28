@@ -165,10 +165,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { groupOrdersByTable } from 'src/services/pos/posHelpers'
 
 const authStore = useAuthStore()
+const $q = useQuasar()
 const router = useRouter()
 const loading = ref(false)
 const tables = ref([])
@@ -186,28 +189,31 @@ async function loadTables() {
   loading.value = true
   try {
     // Fetch tables (include section for filter feature)
-    const { data: tablesData } = await supabase
+    const { data: tablesData, error: tablesErr } = await supabase
       .from('restaurant_tables')
       .select('id, table_number, capacity, status, section')
       .eq('branch_id', branchId)
+      .or('is_active.is.null,is_active.eq.true') // hide deactivated tables
       .order('table_number', { ascending: true })
+    if (tablesErr) throw tablesErr
 
     // Fetch active orders to determine occupancy
-    const { data: orders } = await supabase
+    const { data: orders, error: ordersErr } = await supabase
       .from('orders')
-      .select('id, table_id, status, total_amount')
+      .select('id, table_id, table_number, order_type, status, total_amount')
       .eq('branch_id', branchId)
       .in('status', ['pending_waiter', 'accepted', 'preparing', 'ready', 'served', 'invoiced'])
-      .not('table_id', 'is', null)
+      .or('table_id.not.is.null,table_number.not.is.null')
+    if (ordersErr) throw ordersErr
 
-    const ordersByTable = {}
-    ;(orders || []).forEach((o) => {
-      if (!ordersByTable[o.table_id]) ordersByTable[o.table_id] = []
-      ordersByTable[o.table_id].push(o)
-    })
+    // Match by table_id OR table_number (POS orders only set table_number)
+    const ordersByTable = groupOrdersByTable(
+      tablesData || [],
+      (orders || []).filter((o) => o.table_id || !o.order_type || o.order_type === 'dine_in'),
+    )
 
     tables.value = (tablesData || []).map((t) => {
-      const tableOrders = ordersByTable[t.id] || []
+      const tableOrders = ordersByTable.get(t.id) || []
       const runningBill = tableOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0)
       const hasBilling = tableOrders.some((o) => o.status === 'invoiced')
       return {
@@ -221,6 +227,7 @@ async function loadTables() {
     })
   } catch (err) {
     console.error('[WaiterTables] Load error:', err)
+    $q.notify({ type: 'negative', message: 'Could not load tables', caption: err?.message, position: 'top' })
   } finally {
     loading.value = false
   }
@@ -288,14 +295,16 @@ function toggleExpanded(id) {
   expandedTable.value = expandedTable.value === id ? null : id
 }
 
+// Stay inside the waiter PWA: '/pos' is the desktop MainLayout POS (it ignores
+// table_id and drops the waiter out of the standalone app).
 function newOrder(table) {
-  // Navigate to POS with table context
-  router.push(`/pos?table_id=${table.id}&table_number=${encodeURIComponent(table.table_number)}`)
+  router.push({ path: '/waiter-app/pos', query: { table: formatTableNumber(table.table_number) } })
 }
 
 function addItems(table) {
   if (table.tableOrders.length) {
-    router.push(`/pos?table_id=${table.id}&order_id=${table.tableOrders[0].id}`)
+    // MyOrdersPage owns the "Add Items" flow for an existing order
+    router.push({ path: '/waiter-app/orders', query: { highlight: table.tableOrders[0].id } })
   }
 }
 

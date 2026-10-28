@@ -153,7 +153,7 @@
 
           <!-- 4. Calculated System Cleared Balance -->
           <div class="col-12 col-sm-6 col-md-2">
-            <q-card flat bordered class="recon-kpi bg-purple-1">
+            <q-card flat bordered class="recon-kpi bg-purple-1 text-purple-10">
               <div class="text-caption text-deep-purple text-uppercase text-weight-bold">Calculated Balance</div>
               <div class="text-h6 text-weight-bold text-deep-purple q-mt-xs">
                 LKR {{ fmt(recon?.system_balance) }}
@@ -355,6 +355,7 @@
         v-model="showAdjustmentDialog"
         :saving="reconStore.saving"
         :default-date="recon?.statement_end_date"
+        :bank-ledger-id="recon?.bank_account?.ledger_id || null"
         @save="onAddAdjustment"
       />
 
@@ -518,6 +519,9 @@ async function onToggleLine(lineId, isMatched) {
   try {
     await reconStore.toggleMatch(lineId, isMatched)
   } catch (err) {
+    // q-toggle already flipped the row locally — put it back.
+    const row = (recon.value?.lines || []).find((l) => l.id === lineId)
+    if (row) row.is_matched = !isMatched
     $q.notify({ type: 'negative', message: err.message || 'Failed to update line status' })
   }
 }
@@ -536,7 +540,7 @@ async function onAddAdjustment(adj) {
   if (!recon.value?.id) return
   try {
     await reconStore.addAdjustment(recon.value.id, adj)
-    $q.notify({ type: 'positive', message: 'Adjustment added successfully' })
+    $q.notify({ type: 'positive', message: 'Adjustment posted to the General Ledger and added as a cleared line' })
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'Failed to add adjustment' })
   }

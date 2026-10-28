@@ -449,8 +449,8 @@ describe('legacy financeService receivables', () => {
     })
     const kpi = await fetchDashboardKPIs()
     expect(kpi.outstandingAR).toBe(100.2)
-    // only the paid-orders revenue query touches orders — no unpaid-orders AR query
-    expect(m.on('orders')).toHaveLength(1)
-    expect(calls(m.on('orders')[0], 'eq').map((c) => c.args)).toContainEqual(['payment_status', 'paid'])
+    // revenue comes from the GL now — orders are never read (no unpaid-orders AR query either)
+    expect(m.on('orders')).toHaveLength(0)
+    expect(m.on('finance_cashbook_entries').length).toBeGreaterThan(0)
   })
 })

@@ -5,7 +5,7 @@
     <div class="row items-end q-mb-md q-gutter-x-sm q-gutter-y-md">
       <div class="col-auto">
         <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
-          Select Date
+          From Date
         </div>
         <q-input
           :dark="$q.dark.isActive"
@@ -13,7 +13,22 @@
           outlined
           v-model="filterDate"
           type="date"
-          style="width: 150px"
+          style="width: 145px"
+          @update:model-value="loadAttendance"
+        />
+      </div>
+      <div class="col-auto">
+        <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+          To Date (Optional)
+        </div>
+        <q-input
+          :dark="$q.dark.isActive"
+          dense
+          outlined
+          v-model="filterEndDate"
+          type="date"
+          clearable
+          style="width: 145px"
           @update:model-value="loadAttendance"
         />
       </div>
@@ -77,6 +92,9 @@
           >
             <q-tooltip>Refresh</q-tooltip>
           </q-btn>
+          <q-btn flat icon="filter_alt_off" @click="resetFilters" no-caps style="height: 40px">
+            <q-tooltip>Reset filters to today</q-tooltip>
+          </q-btn>
           <q-btn
             color="amber-8"
             text-color="dark"
@@ -88,6 +106,7 @@
             style="height: 40px"
           />
           <q-btn
+            v-if="canManageAttendance"
             color="deep-orange"
             icon="person_off"
             label="Mark Absentees"
@@ -974,6 +993,7 @@ import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as xlsx from 'xlsx'
+import { localYmd, enumerateYmd, fetchAllRows } from 'src/services/hr/hrDates'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -986,7 +1006,8 @@ const saving = ref(false)
 const markingAbsentees = ref(false)
 const records = ref([])
 const search = ref('')
-const filterDate = ref(new Date().toISOString().split('T')[0])
+const filterDate = ref(localYmd())
+const filterEndDate = ref('')
 const filterDepartment = ref(null)
 const filterEmployee = ref(null)
 
@@ -1099,25 +1120,44 @@ async function loadAttendance() {
   try {
     const branchId = authStore.currentBranch?.id
 
-    let query = supabase
-      .from('attendance_records')
-      .select('*, employees!inner(full_name, employee_code, department_id)')
-      .eq('branch_id', branchId)
-
-    if (filterDate.value) {
-      query = query.eq('attendance_date', filterDate.value)
+    if (!branchId) {
+      records.value = []
+      return
     }
-    if (filterDepartment.value) {
-      query = query.eq('employees.department_id', filterDepartment.value)
-    }
-    if (filterEmployee.value) {
-      query = query.eq('employee_id', filterEmployee.value)
+    // Swap a reversed range instead of silently returning nothing.
+    if (filterDate.value && filterEndDate.value && filterEndDate.value < filterDate.value) {
+      const tmp = filterDate.value
+      filterDate.value = filterEndDate.value
+      filterEndDate.value = tmp
     }
 
-    const { data, error } = await query.order('clock_in', { ascending: true })
-    if (error) throw error
+    const build = () => {
+      let query = supabase
+        .from('attendance_records')
+        .select('*, employees!inner(full_name, employee_code, department_id)')
+        .eq('branch_id', branchId)
 
-    records.value = data || []
+      if (filterDate.value && filterEndDate.value) {
+        query = query
+          .gte('attendance_date', filterDate.value)
+          .lte('attendance_date', filterEndDate.value)
+      } else if (filterDate.value) {
+        query = query.eq('attendance_date', filterDate.value)
+      }
+      if (filterDepartment.value) {
+        query = query.eq('employees.department_id', filterDepartment.value)
+      }
+      if (filterEmployee.value) {
+        query = query.eq('employee_id', filterEmployee.value)
+      }
+      return query
+        .order('attendance_date', { ascending: false })
+        .order('clock_in', { ascending: true })
+        .order('id', { ascending: true })
+    }
+
+    // Date ranges can exceed PostgREST's 1000-row cap — page through all rows.
+    records.value = await fetchAllRows(build)
     stats.present = records.value.filter((r) => r.status === 'present').length
     stats.absent = records.value.filter((r) => r.status === 'absent').length
     stats.late = records.value.filter((r) => r.status === 'late').length
@@ -1493,14 +1533,9 @@ const bulkColumns = [
 const bulkSaveCount = computed(() => bulkRows.value.filter((r) => r.status !== 'skip').length)
 
 function enumerateDates(start, end) {
-  const dates = []
-  const d = new Date(`${start}T00:00:00`)
-  const last = new Date(`${end}T00:00:00`)
-  while (d <= last) {
-    dates.push(d.toISOString().split('T')[0])
-    d.setDate(d.getDate() + 1)
-  }
-  return dates
+  // Pure Y-M-D arithmetic — the old local-midnight + toISOString() version
+  // shifted every date back one day in UTC+05:30.
+  return enumerateYmd(start, end)
 }
 
 function openBulkBuilder() {
@@ -1683,13 +1718,13 @@ function exportPDF() {
     return
   }
 
-  const doc = new jsPDF()
+  const doc = new jsPDF('l', 'mm', 'a4')
   doc.setFontSize(16)
-  doc.text('Attendance Report', 14, 15)
+  doc.text('Employee Attendance & Biometric Fingerprint Report', 14, 15)
 
   doc.setFontSize(10)
   doc.setTextColor(100)
-  let filterText = `Date: ${filterDate.value || 'All'}`
+  let filterText = `Period: ${filterDate.value || 'All'}${filterEndDate.value ? ' to ' + filterEndDate.value : ''}`
   if (filterDepartment.value) {
     const dept = departments.value.find((d) => d.id === filterDepartment.value)?.name || ''
     filterText += ` | Department: ${dept}`
@@ -1707,6 +1742,7 @@ function exportPDF() {
       'Date',
       'Check In',
       'Check Out',
+      'Total Hrs',
       'Status',
       'Late (Mins)',
       'Early Dep (Mins)',
@@ -1720,6 +1756,7 @@ function exportPDF() {
     r.attendance_date || '—',
     formatDisplayTime(r.clock_in),
     formatDisplayTime(r.clock_out),
+    r.total_hours || 0,
     r.status || '—',
     r.late_minutes || 0,
     r.early_departure_minutes || 0,
@@ -1735,7 +1772,7 @@ function exportPDF() {
     styles: { fontSize: 8 },
   })
 
-  doc.save('attendance_report.pdf')
+  doc.save(`biometric_attendance_report_${filterDate.value || 'all'}.pdf`)
 }
 
 function exportExcel() {
@@ -1751,6 +1788,7 @@ function exportExcel() {
     Date: r.attendance_date || '',
     'Check In': formatDisplayTime(r.clock_in),
     'Check Out': formatDisplayTime(r.clock_out),
+    'Total Hours': r.total_hours || 0,
     Status: r.status || '',
     'Late (Mins)': r.late_minutes || 0,
     'Early Dep (Mins)': r.early_departure_minutes || 0,
@@ -1759,9 +1797,41 @@ function exportExcel() {
 
   const ws = xlsx.utils.json_to_sheet(exportData)
   const wb = xlsx.utils.book_new()
-  xlsx.utils.book_append_sheet(wb, ws, 'Attendance')
-  xlsx.writeFile(wb, 'attendance_report.xlsx')
+  xlsx.utils.book_append_sheet(wb, ws, 'Attendance_Punches')
+  xlsx.writeFile(wb, `biometric_attendance_report_${filterDate.value || 'all'}.xlsx`)
 }
+
+// Clear an employee filter that no longer belongs to the selected department.
+watch(filterDepartment, () => {
+  if (
+    filterEmployee.value &&
+    filterDepartment.value &&
+    !filteredEmployeesList.value.some((e) => e.id === filterEmployee.value)
+  ) {
+    filterEmployee.value = null
+    loadAttendance()
+  }
+})
+
+function resetFilters() {
+  filterDate.value = localYmd()
+  filterEndDate.value = ''
+  filterDepartment.value = null
+  filterEmployee.value = null
+  search.value = ''
+  loadAttendance()
+}
+
+// Reload when the user switches branch.
+watch(
+  () => authStore.currentBranch?.id,
+  (id, prev) => {
+    if (id && id !== prev) {
+      loadEmployees()
+      loadAttendance()
+    }
+  },
+)
 
 onMounted(() => {
   loadDepartments()

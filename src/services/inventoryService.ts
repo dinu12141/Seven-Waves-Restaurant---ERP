@@ -15,10 +15,30 @@
  *   generate_inv_doc_number(p_company_id, p_doc_type)
  */
 
-import { ref, type Ref } from 'vue'
+import { ref, getCurrentScope, onScopeDispose, type Ref } from 'vue'
 import { supabase } from '../boot/supabase'
 import { useAuthStore } from '../stores/auth'
 import { sanitizePostgrestFilter } from '../utils/security'
+import {
+  invBusinessDate,
+  invDayStartISO,
+  invDayEndExclusiveISO,
+  normalizeStockStatus,
+  isLowOrOut,
+  fetchAllPaged,
+} from './inventory/inventoryHelpers'
+
+/** Remove a realtime channel when the calling component's scope is disposed. */
+function disposeChannelOnUnmount(getChannel: () => any, clear: () => void) {
+  if (!getCurrentScope()) return
+  onScopeDispose(() => {
+    const ch = getChannel()
+    if (ch) {
+      supabase.removeChannel(ch)
+      clear()
+    }
+  })
+}
 
 /* -------------------------------------------------------
    Helpers — Lazy calls to useAuthStore() avoid calling
@@ -102,8 +122,13 @@ export function useDocumentList() {
   const documents: Ref<any[]> = ref([])
   const loading = ref(false)
   const error: Ref<string | null> = ref(null)
+  /** true when the result hit DOC_LIST_LIMIT — older documents are not shown. */
+  const truncated = ref(false)
+  const DOC_LIST_LIMIT = 500
+  let reqSeq = 0
 
   async function listDocuments(filters: DocumentFilters = {}) {
+    const seq = ++reqSeq
     loading.value = true
     error.value = null
     try {
@@ -152,8 +177,11 @@ export function useDocumentList() {
         }
       }
 
-      const { data, error: err } = await query.limit(200)
+      const { data, error: err } = await query.limit(DOC_LIST_LIMIT)
       if (err) throw err
+      // Drop stale responses (realtime + filter changes can overlap).
+      if (seq !== reqSeq) return
+      truncated.value = (data || []).length >= DOC_LIST_LIMIT
 
       // Flatten for UI convenience
       documents.value = (data || []).map((d: any) => {
@@ -184,14 +212,14 @@ export function useDocumentList() {
         }
       })
     } catch (e: any) {
-      error.value = e.message
+      if (seq === reqSeq) error.value = e.message || 'Failed to load documents'
       console.error('[inventoryService] listDocuments error:', e)
     } finally {
-      loading.value = false
+      if (seq === reqSeq) loading.value = false
     }
   }
 
-  return { documents, loading, error, listDocuments }
+  return { documents, loading, error, truncated, listDocuments }
 }
 
 
@@ -294,7 +322,9 @@ export async function fetchDocumentById(docId: string) {
       supplier_email: header.supplier?.email || '',
       target_warehouse_name: header.target_wh?.name || '',
       created_by_name: header.creator?.full_name || '',
-      reference_no: header.reference_type || '',
+      // Was `header.reference_type` — that overwrote the real reference no.
+      // on load and then got saved back into reference_no on "Update draft".
+      reference_no: header.reference_no || '',
     },
     lines: (lines || []).map((l: any) => ({
       ...l,
@@ -350,7 +380,7 @@ export async function createDocument(
       branch_id: branchId,
       doc_type: header.doc_type,
       doc_number: docNumber,
-      doc_date: header.doc_date || new Date().toISOString().split('T')[0],
+      doc_date: header.doc_date || invBusinessDate(),
       warehouse_id: header.warehouse_id,
       target_warehouse_id: header.target_warehouse_id || null,
       supplier_id: header.supplier_id || null,
@@ -361,7 +391,7 @@ export async function createDocument(
       total_cost: totalCost,
       created_by: userId || null,
       // SAP Fields
-      posting_date: header.posting_date || header.doc_date,
+      posting_date: header.posting_date || header.doc_date || invBusinessDate(),
       delivery_date: header.delivery_date || null,
       sub_total: header.sub_total || totalCost,
       tax_total: header.tax_total || 0,
@@ -392,10 +422,26 @@ export async function createDocument(
       // line_total handled by DB
     }))
     const { error: err2 } = await supabase.from('inventory_document_lines').insert(rows)
-    if (err2) throw err2
+    if (err2) {
+      await rollbackDraftHeader(doc.id)
+      throw err2
+    }
   }
 
   return doc
+}
+
+/**
+ * Best-effort removal of a just-created draft header whose lines failed to
+ * insert — avoids empty orphan drafts piling up in the Documents list.
+ * (Header + lines are two round trips; a single RPC would be atomic.)
+ */
+async function rollbackDraftHeader(docId: string) {
+  try {
+    await supabase.from('inventory_documents').delete().eq('id', docId).eq('status', 'draft')
+  } catch (e) {
+    console.warn('[inventoryService] rollbackDraftHeader failed:', e)
+  }
 }
 
 /* ====================================================================
@@ -853,34 +899,48 @@ export function useStockDashboard() {
   const stockOnHand: Ref<any[]> = ref([])
   const lowStockAlerts: Ref<any[]> = ref([])
   const loading = ref(false)
+  const error: Ref<string | null> = ref(null)
   let channel: any = null
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
   function updateAlerts() {
-    lowStockAlerts.value = stockOnHand.value.filter(
-      (r: any) => r.stock_status === 'low_stock' || r.stock_status === 'out_of_stock',
+    lowStockAlerts.value = stockOnHand.value.filter((r: any) => isLowOrOut(r.stock_status))
+  }
+
+  // v_stock_on_hand is one row per item × warehouse — easily > 1000 rows, so
+  // page past the PostgREST cap (previously totals/levels were silently truncated).
+  async function loadAll(companyId: string) {
+    const rows = await fetchAllPaged<any>(() =>
+      supabase
+        .from('v_stock_on_hand')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('item_name')
+        .order('warehouse_id')
+        .order('item_id'),
     )
+    stockOnHand.value = rows.map((r: any) => ({
+      ...r,
+      stock_status: normalizeStockStatus(r.stock_status),
+    }))
+    updateAlerts()
   }
 
   async function fetchStockOnHand() {
     loading.value = true
+    error.value = null
     try {
       const companyId = getCompanyId()
       if (!companyId) return
 
       // 1. Initial Fetch
-      const { data, error } = await supabase
-        .from('v_stock_on_hand')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('item_name')
-      if (error) throw error
-      stockOnHand.value = data || []
-      updateAlerts()
+      await loadAll(companyId)
 
-      // 2. Real-time Subscription
+      // 2. Real-time Subscription (debounced: posting one document touches
+      //    stock_on_hand once per line, which used to trigger N full reloads).
       if (!channel) {
         channel = supabase
-          .channel('stock-on-hand-realtime')
+          .channel(`stock-on-hand-realtime-${Math.random().toString(36).slice(2, 8)}`)
           .on(
             'postgres_changes',
             {
@@ -889,29 +949,34 @@ export function useStockDashboard() {
               table: 'stock_on_hand',
               filter: `company_id=eq.${companyId}`,
             },
-            async () => {
-              // Silently refresh from the view when the underlying table changes
-              const { data: newData } = await supabase
-                .from('v_stock_on_hand')
-                .select('*')
-                .eq('company_id', companyId)
-                .order('item_name')
-              if (newData) {
-                stockOnHand.value = newData
-                updateAlerts()
-              }
+            () => {
+              if (refreshTimer) clearTimeout(refreshTimer)
+              refreshTimer = setTimeout(() => {
+                loadAll(companyId).catch((e) =>
+                  console.error('[inventoryService] stock realtime refresh error:', e),
+                )
+              }, 600)
             },
           )
           .subscribe()
       }
     } catch (e: any) {
+      error.value = e?.message || 'Failed to load stock levels'
       console.error('[inventoryService] fetchStockOnHand error:', e)
     } finally {
       loading.value = false
     }
   }
 
-  return { stockOnHand, lowStockAlerts, loading, fetchStockOnHand }
+  disposeChannelOnUnmount(
+    () => channel,
+    () => {
+      channel = null
+      if (refreshTimer) clearTimeout(refreshTimer)
+    },
+  )
+
+  return { stockOnHand, lowStockAlerts, loading, error, fetchStockOnHand }
 }
 
 /* ====================================================================
@@ -925,14 +990,15 @@ export async function fetchStockByWarehouse(warehouseId: string): Promise<Record
   if (!warehouseId) return {}
   try {
     const companyId = getCompanyId()
-    let query = supabase
-      .from('v_stock_on_hand')
-      .select('item_id, qty_on_hand')
-      .eq('warehouse_id', warehouseId)
-    if (companyId) query = query.eq('company_id', companyId)
-
-    const { data, error } = await query
-    if (error) throw error
+    const data = await fetchAllPaged<any>(() => {
+      let query = supabase
+        .from('v_stock_on_hand')
+        .select('item_id, qty_on_hand')
+        .eq('warehouse_id', warehouseId)
+        .order('item_id')
+      if (companyId) query = query.eq('company_id', companyId)
+      return query
+    })
 
     const result: Record<string, number> = {}
     ;(data || []).forEach((r: any) => {
@@ -960,44 +1026,71 @@ export interface LedgerFilters {
   dateFrom?: string
   dateTo?: string
   search?: string
+  warehouseId?: string
 }
+
+export const LEDGER_LIMIT = 1000
 
 export function useStockLedger() {
   const entries: Ref<any[]> = ref([])
   const loading = ref(false)
+  const error: Ref<string | null> = ref(null)
+  /** true when LEDGER_LIMIT rows came back — older movements are not shown. */
+  const truncated = ref(false)
   let channel: any = null
+  let lastFilters: LedgerFilters = {}
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+  let reqSeq = 0
+
+  function buildQuery(companyId: string, filters: LedgerFilters) {
+    let query = supabase
+      .from('v_inventory_ledger')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('posted_at', { ascending: false })
+      .limit(LEDGER_LIMIT)
+
+    if (filters.docType) query = query.eq('doc_type', filters.docType)
+    if (filters.direction) query = query.eq('direction', filters.direction)
+    if (filters.warehouseId) query = query.eq('warehouse_id', filters.warehouseId)
+    // Colombo-day bounds (was: raw date → UTC midnight, + 'T23:59:59' UTC).
+    if (filters.dateFrom) query = query.gte('posted_at', invDayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', invDayEndExclusiveISO(filters.dateTo))
+    if (filters.search) {
+      const cleanSearch = sanitizePostgrestFilter(filters.search)
+      if (cleanSearch) {
+        query = query.or(
+          `item_name.ilike.%${cleanSearch}%,item_code.ilike.%${cleanSearch}%,doc_number.ilike.%${cleanSearch}%`,
+        )
+      }
+    }
+    return query
+  }
+
+  async function runQuery(companyId: string, filters: LedgerFilters) {
+    const seq = ++reqSeq
+    const { data, error: err } = await buildQuery(companyId, filters)
+    if (err) throw err
+    if (seq !== reqSeq) return // stale response
+    entries.value = data || []
+    truncated.value = entries.value.length >= LEDGER_LIMIT
+  }
 
   async function fetchLedger(filters: LedgerFilters = {}) {
     loading.value = true
+    error.value = null
+    lastFilters = { ...filters }
     try {
       const companyId = getCompanyId()
       if (!companyId) return
-      let query = supabase
-        .from('v_inventory_ledger')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('posted_at', { ascending: false })
-        .limit(500)
+      await runQuery(companyId, lastFilters)
 
-      if (filters.docType) query = query.eq('doc_type', filters.docType)
-      if (filters.direction) query = query.eq('direction', filters.direction)
-      if (filters.dateFrom) query = query.gte('posted_at', filters.dateFrom)
-      if (filters.dateTo) query = query.lte('posted_at', filters.dateTo + 'T23:59:59')
-      if (filters.search) {
-        const cleanSearch = sanitizePostgrestFilter(filters.search)
-        if (cleanSearch) {
-          query = query.or(`item_name.ilike.%${cleanSearch}%,doc_number.ilike.%${cleanSearch}%`)
-        }
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-      entries.value = data || []
-
-      // Real-time subscription for ledger entries
+      // Real-time subscription for ledger entries. Re-runs the query with the
+      // CURRENT filters — it used to replace a filtered list with the
+      // unfiltered latest 500 rows on every insert.
       if (!channel) {
         channel = supabase
-          .channel('inventory-ledger-realtime')
+          .channel(`inventory-ledger-realtime-${Math.random().toString(36).slice(2, 8)}`)
           .on(
             'postgres_changes',
             {
@@ -1006,27 +1099,34 @@ export function useStockLedger() {
               table: 'inventory_ledger',
               filter: `company_id=eq.${companyId}`,
             },
-            async () => {
-              // Refresh siliently to get updated view data
-              const { data: newData } = await supabase
-                .from('v_inventory_ledger')
-                .select('*')
-                .eq('company_id', companyId)
-                .order('posted_at', { ascending: false })
-                .limit(500)
-              if (newData) entries.value = newData
+            () => {
+              if (refreshTimer) clearTimeout(refreshTimer)
+              refreshTimer = setTimeout(() => {
+                runQuery(companyId, lastFilters).catch((e) =>
+                  console.error('[inventoryService] ledger realtime refresh error:', e),
+                )
+              }, 600)
             },
           )
           .subscribe()
       }
     } catch (e: any) {
+      error.value = e?.message || 'Failed to load stock ledger'
       console.error('[inventoryService] fetchLedger error:', e)
     } finally {
       loading.value = false
     }
   }
 
-  return { entries, loading, fetchLedger }
+  disposeChannelOnUnmount(
+    () => channel,
+    () => {
+      channel = null
+      if (refreshTimer) clearTimeout(refreshTimer)
+    },
+  )
+
+  return { entries, loading, error, truncated, fetchLedger }
 }
 
 /* ====================================================================
@@ -1038,13 +1138,19 @@ export async function fetchDashboardStats() {
   if (!companyId) {
     return { totalStockValue: 0, lowStockCount: 0, todayGRN: 0, todayGIN: 0, todayBOM: 0 }
   }
-  const today = new Date().toISOString().split('T')[0]
+  // Colombo business day (toISOString() gave yesterday before 05:30 local).
+  const today = invBusinessDate()
 
-  const [stockRes, grnRes, ginRes, bomRes] = await Promise.all([
-    supabase
-      .from('v_stock_on_hand')
-      .select('total_value, stock_status')
-      .eq('company_id', companyId),
+  const [stockRows, grnRes, ginRes, bomRes] = await Promise.all([
+    // Paged: v_stock_on_hand is item × warehouse and exceeds the 1000-row cap.
+    fetchAllPaged<any>(() =>
+      supabase
+        .from('v_stock_on_hand')
+        .select('total_value, stock_status, warehouse_id, item_id')
+        .eq('company_id', companyId)
+        .order('warehouse_id')
+        .order('item_id'),
+    ),
     supabase
       .from('inventory_documents')
       .select('id', { count: 'exact', head: true })
@@ -1068,11 +1174,8 @@ export async function fetchDashboardStats() {
       .eq('doc_date', today),
   ])
 
-  const stockRows = stockRes.data || []
-  const totalValue = stockRows.reduce((s: number, r: any) => s + (r.total_value || 0), 0)
-  const lowStockCount = stockRows.filter(
-    (r: any) => r.stock_status === 'low_stock' || r.stock_status === 'out_of_stock',
-  ).length
+  const totalValue = stockRows.reduce((s: number, r: any) => s + Number(r.total_value || 0), 0)
+  const lowStockCount = stockRows.filter((r: any) => isLowOrOut(r.stock_status)).length
 
   return {
     totalStockValue: totalValue,
@@ -1124,6 +1227,10 @@ export async function getRecipeMarginReport(startDate?: string, endDate?: string
       )
     `)
     .eq('company_id', companyId)
+    // Only live, current recipes — soft-deleted / superseded versions used to
+    // appear as duplicate menu items with stale costs.
+    .eq('is_active', true)
+    .is('deleted_at', null)
   if (recError) throw recError
 
   const { data: uoms, error: uomError } = await supabase
@@ -1137,20 +1244,22 @@ export async function getRecipeMarginReport(startDate?: string, endDate?: string
     return acc
   }, {})
 
-  let grnQuery = supabase
-    .from('goods_receipt_lines')
-    .select(`
-      item_id, quantity, unit_cost,
-      goods_receipts!inner (company_id, status, doc_date, created_at)
-    `)
-    .eq('goods_receipts.company_id', companyId)
-    .eq('goods_receipts.status', 'posted')
-
-  if (startDate) grnQuery = grnQuery.gte('goods_receipts.doc_date', startDate)
-  if (endDate) grnQuery = grnQuery.lte('goods_receipts.doc_date', endDate)
-
-  const { data: grnLines, error: grnError } = await grnQuery
-  if (grnError) throw grnError
+  // Paged: GRN lines grow without bound; the 1000-row cap made "latest cost"
+  // pick from an arbitrary subset.
+  const grnLines = await fetchAllPaged<any>(() => {
+    let grnQuery = supabase
+      .from('goods_receipt_lines')
+      .select(`
+        id, item_id, quantity, unit_cost,
+        goods_receipts!inner (company_id, status, doc_date, created_at)
+      `)
+      .eq('goods_receipts.company_id', companyId)
+      .eq('goods_receipts.status', 'posted')
+      .order('id')
+    if (startDate) grnQuery = grnQuery.gte('goods_receipts.doc_date', startDate)
+    if (endDate) grnQuery = grnQuery.lte('goods_receipts.doc_date', endDate)
+    return grnQuery
+  })
 
   const itemCosts: Record<string, { totalQty: number, totalCost: number, latestCost: number, latestDate: number }> = {}
   
@@ -1621,8 +1730,8 @@ export async function fetchWastageEntries(filters: WastageFilters = {}) {
     .order('posted_at', { ascending: false })
     .limit(500)
 
-  if (filters.dateFrom) query = query.gte('posted_at', filters.dateFrom + 'T00:00:00')
-  if (filters.dateTo) query = query.lte('posted_at', filters.dateTo + 'T23:59:59')
+  if (filters.dateFrom) query = query.gte('posted_at', invDayStartISO(filters.dateFrom))
+  if (filters.dateTo) query = query.lt('posted_at', invDayEndExclusiveISO(filters.dateTo))
   if (filters.warehouseId) query = query.eq('warehouse_id', filters.warehouseId)
   if (filters.wastageCategory) query = query.eq('wastage_category', filters.wastageCategory)
   if (filters.search) {
@@ -1640,36 +1749,33 @@ export async function fetchWastageEntries(filters: WastageFilters = {}) {
 }
 
 /** Fetch wastage KPI stats for dashboard */
-export async function fetchWastageStats(dateFrom?: string, dateTo?: string) {
+export async function fetchWastageStats(dateFrom?: string, dateTo?: string, warehouseId?: string) {
   const companyId = getCompanyId()
   if (!companyId) return { totalEntries: 0, totalQty: 0, totalLoss: 0, todayEntries: 0, todayLoss: 0 }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Colombo business day (toISOString() gave yesterday before 05:30 local).
+  const today = invBusinessDate()
 
-  // Total wastage in period
-  let periodQuery = supabase
-    .from('inventory_ledger')
-    .select('quantity, total_cost')
-    .eq('company_id', companyId)
-    .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
-    .eq('direction', 'OUT')
+  // NOTE: counts every ADJUSTMENT OUT (theft / stocktake corrections too), not
+  // only wastage — see audit INV-W1. Paged: the 1000-row cap truncated totals.
+  const base = (from?: string, to?: string) => () => {
+    let q = supabase
+      .from('inventory_ledger')
+      .select('id, quantity, total_cost')
+      .eq('company_id', companyId)
+      .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
+      .eq('direction', 'OUT')
+      .order('id')
+    if (warehouseId) q = q.eq('warehouse_id', warehouseId)
+    if (from) q = q.gte('posted_at', invDayStartISO(from))
+    if (to) q = q.lt('posted_at', invDayEndExclusiveISO(to))
+    return q
+  }
 
-  if (dateFrom) periodQuery = periodQuery.gte('posted_at', dateFrom + 'T00:00:00')
-  if (dateTo) periodQuery = periodQuery.lte('posted_at', dateTo + 'T23:59:59')
-
-  // Today wastage
-  const todayQuery = supabase
-    .from('inventory_ledger')
-    .select('quantity, total_cost')
-    .eq('company_id', companyId)
-    .in('doc_type', ['WASTAGE', 'ADJUSTMENT'])
-    .eq('direction', 'OUT')
-    .gte('posted_at', today + 'T00:00:00')
-
-  const [periodRes, todayRes] = await Promise.all([periodQuery, todayQuery])
-
-  const periodData = periodRes.data || []
-  const todayData = todayRes.data || []
+  const [periodData, todayData] = await Promise.all([
+    fetchAllPaged<any>(base(dateFrom, dateTo)),
+    fetchAllPaged<any>(base(today, today)),
+  ])
 
   return {
     totalEntries: periodData.length,
@@ -1690,8 +1796,8 @@ export async function fetchWastageByWarehouse(dateFrom?: string, dateTo?: string
     .select('warehouse_id, warehouse_name, warehouse_type, quantity, total_cost')
     .eq('company_id', companyId)
 
-  if (dateFrom) query = query.gte('posted_at', dateFrom + 'T00:00:00')
-  if (dateTo) query = query.lte('posted_at', dateTo + 'T23:59:59')
+  if (dateFrom) query = query.gte('posted_at', invDayStartISO(dateFrom))
+  if (dateTo) query = query.lt('posted_at', invDayEndExclusiveISO(dateTo))
 
   const { data, error } = await query
   if (error) throw error
@@ -1727,8 +1833,8 @@ export async function fetchWastageByReason(dateFrom?: string, dateTo?: string) {
     .select('wastage_reason, quantity, total_cost')
     .eq('company_id', companyId)
 
-  if (dateFrom) query = query.gte('posted_at', dateFrom + 'T00:00:00')
-  if (dateTo) query = query.lte('posted_at', dateTo + 'T23:59:59')
+  if (dateFrom) query = query.gte('posted_at', invDayStartISO(dateFrom))
+  if (dateTo) query = query.lt('posted_at', invDayEndExclusiveISO(dateTo))
 
   const { data, error } = await query
   if (error) throw error
@@ -1786,14 +1892,14 @@ export async function createWastageDocument(
       branch_id: branchId,
       doc_type: 'ADJUSTMENT',
       doc_number: docNumber,
-      doc_date: new Date().toISOString().split('T')[0],
+      doc_date: invBusinessDate(),
       warehouse_id: warehouseId,
       remarks: fullRemarks,
       status: 'draft',
       total_qty: -Math.abs(totalQty),
       total_cost: totalCost,
       created_by: userId || null,
-      posting_date: new Date().toISOString().split('T')[0],
+      posting_date: invBusinessDate(),
       sub_total: totalCost,
       tax_total: 0,
       grand_total: totalCost,
@@ -1821,7 +1927,10 @@ export async function createWastageDocument(
       notes: `[${l.wastage_reason || 'other'}] ${l.notes || ''}`.trim(),
     }))
     const { error: err2 } = await supabase.from('inventory_document_lines').insert(rows)
-    if (err2) throw err2
+    if (err2) {
+      await rollbackDraftHeader(doc.id)
+      throw err2
+    }
   }
 
   return doc

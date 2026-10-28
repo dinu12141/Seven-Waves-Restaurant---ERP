@@ -63,12 +63,40 @@
         </q-input>
       </div>
       <div class="col-12 col-sm-12 col-md-12 col-lg-2 row justify-end q-gutter-sm items-center">
+        <q-btn
+          v-if="hasActiveFilters"
+          flat
+          dense
+          no-caps
+          color="grey-6"
+          icon="filter_alt_off"
+          label="Reset"
+          @click="resetFilters"
+        />
         <q-btn outline color="grey-5" icon="refresh" round dense @click="reload">
           <q-tooltip>Refresh</q-tooltip>
         </q-btn>
         <q-btn color="primary" icon="add" label="New Document" @click="$emit('create-document')" />
       </div>
     </div>
+
+    <q-banner v-if="error" dense rounded class="bg-negative text-white q-mb-md">
+      <template #avatar><q-icon name="error_outline" /></template>
+      Could not load documents: {{ error }}
+      <template #action>
+        <q-btn flat dense no-caps label="Retry" @click="reload" />
+      </template>
+    </q-banner>
+    <q-banner
+      v-else-if="truncated"
+      dense
+      rounded
+      class="bg-warning text-dark q-mb-md"
+    >
+      <template #avatar><q-icon name="info" /></template>
+      Showing the latest {{ documents.length }} documents only — narrow the date range or
+      filters to see older documents.
+    </q-banner>
 
     <!-- Documents Table -->
     <q-card
@@ -209,7 +237,7 @@ import { supabase } from 'src/boot/supabase'
 
 defineEmits(['create-document', 'view-document', 'edit-document'])
 
-const { documents, loading, listDocuments } = useDocumentList()
+const { documents, loading, error, truncated, listDocuments } = useDocumentList()
 
 const search = ref('')
 const docTypeFilter = ref('')
@@ -225,6 +253,8 @@ const docTypeOptions = [
   { label: 'Transfer', value: 'TRANSFER' },
   { label: 'Adjustment', value: 'ADJUSTMENT' },
   { label: 'Stock Count', value: 'STOCK_COUNT' },
+  { label: 'BOM Deduction', value: 'BOM_DEDUCT' },
+  { label: 'Opening Stock', value: 'OPENING' },
 ]
 
 const statusOptions = [
@@ -240,7 +270,9 @@ function buildFilters() {
     status: statusFilter.value || undefined,
     dateFrom: dateFrom.value || undefined,
     dateTo: dateTo.value || undefined,
-    search: search.value || undefined,
+    // Search is applied client-side by q-table :filter (it also matches item
+    // names/codes). Sending it to the server as well restricted results to
+    // doc_number/reference_no matches after every refresh/realtime reload.
   }
 }
 
@@ -248,21 +280,38 @@ async function reload() {
   await listDocuments(buildFilters())
 }
 
+const hasActiveFilters = computed(
+  () =>
+    !!(docTypeFilter.value || statusFilter.value || dateFrom.value || dateTo.value || search.value),
+)
+
+function resetFilters() {
+  docTypeFilter.value = ''
+  statusFilter.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
+  search.value = ''
+}
+
 let docChannel = null
+let reloadTimer = null
 
 onMounted(() => {
   reload()
 
-  // Real-time subscription — auto-refresh on any insert/update/delete
+  // Real-time subscription — auto-refresh on any insert/update/delete.
+  // Debounced: posting one document fires several UPDATEs in a burst.
   docChannel = supabase
-    .channel('realtime:inventory_documents')
+    .channel(`realtime:inventory_documents:${Math.random().toString(36).slice(2, 8)}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_documents' }, () => {
-      reload()
+      clearTimeout(reloadTimer)
+      reloadTimer = setTimeout(reload, 600)
     })
     .subscribe()
 })
 
 onUnmounted(() => {
+  clearTimeout(reloadTimer)
   if (docChannel) {
     supabase.removeChannel(docChannel)
   }

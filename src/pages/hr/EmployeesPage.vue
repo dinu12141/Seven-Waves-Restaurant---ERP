@@ -173,7 +173,7 @@
 
     <!-- Employee Table -->
     <q-table
-      dark
+      :dark="$q.dark.isActive"
       flat
       bordered
       :rows="filteredEmployees"
@@ -1627,17 +1627,45 @@
                   </div>
 
                   <div
-                    class="text-subtitle1 text-weight-bold q-pa-sm text-center q-mb-md"
-                    style="
-                      border: 1px solid rgba(34, 197, 94, 0.3);
-                      border-radius: 4px;
-                      color: #4ade80;
-                      background: rgba(34, 197, 94, 0.05);
+                    class="text-subtitle1 text-weight-bold q-pa-sm text-center q-mb-sm"
+                    :style="
+                      (viewForm.employment_status || viewEmp?.employment_status) === 'permanent'
+                        ? 'border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 4px; color: #22c55e; background: rgba(34, 197, 94, 0.08);'
+                        : 'border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 4px; color: #f59e0b; background: rgba(245, 158, 11, 0.08);'
                     "
                   >
                     Employee Status:
-                    <span class="text-uppercase">{{ viewEmp?.employment_status || 'ACTIVE' }}</span>
+                    <span class="text-uppercase">{{ viewForm.employment_status || viewEmp?.employment_status || 'PROBATION' }}</span>
                   </div>
+
+                  <q-btn
+                    v-if="(viewForm.employment_status || viewEmp?.employment_status) === 'probation'"
+                    unelevated
+                    dense
+                    no-caps
+                    color="positive"
+                    icon="verified"
+                    label="Confirm as Permanent"
+                    class="full-width q-mb-md"
+                    :loading="savingProfile"
+                    @click="quickConfirmPermanent"
+                  >
+                    <q-tooltip>Promote employee from Probation to Permanent status</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    v-else-if="(viewForm.employment_status || viewEmp?.employment_status) === 'permanent'"
+                    outline
+                    dense
+                    no-caps
+                    color="amber-9"
+                    icon="history"
+                    label="Revert to Probation"
+                    class="full-width q-mb-md"
+                    :loading="savingProfile"
+                    @click="quickSetProbation"
+                  >
+                    <q-tooltip>Revert employee status back to Probation</q-tooltip>
+                  </q-btn>
 
                   <q-btn
                     class="full-width"
@@ -2251,6 +2279,31 @@
                           emit-value
                           map-options
                           clearable
+                        />
+                      </div>
+
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        Employment Status
+                      </div>
+                      <div class="col-9">
+                        <q-select
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.employment_status"
+                          :options="[
+                            { label: 'Permanent', value: 'permanent' },
+                            { label: 'Probation', value: 'probation' },
+                            { label: 'Contract', value: 'contract' },
+                            { label: 'Part Time', value: 'part_time' },
+                          ]"
+                          emit-value
+                          map-options
                         />
                       </div>
 
@@ -3999,6 +4052,7 @@ import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 import {
   disburseStaffReceivable,
@@ -4655,7 +4709,7 @@ const defaultForm = {
   civil_status: 'Married',
   mobile: '',
   email: '',
-  hire_date: new Date().toISOString().split('T')[0],
+  hire_date: localYmd(),
   designation_id: null,
   salary: '', // Basic Salary (kept for display in profile)
   pay_type: 'Monthly',
@@ -5206,7 +5260,7 @@ const advanceForm = reactive({
   amount: 0,
   installments: 1,
   reason: '',
-  advance_date: new Date().toISOString().split('T')[0],
+  advance_date: localYmd(),
   notes: '',
   cash_account_id: null,
 })
@@ -5399,7 +5453,7 @@ async function disbursePendingAdvance(advance) {
     },
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async (accountId) => {
     const res = await disburseStaffReceivable(supabase, 'salary_advance', advance.id, accountId)
     if (res.ok) {
@@ -5421,7 +5475,7 @@ async function writeOffAdvance(advance) {
     message: `Write off remaining LKR ${Number(advance.remaining_amount).toFixed(2)} for this advance? This cannot be undone.`,
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async () => {
     try {
       const { error } = await supabase
@@ -5446,7 +5500,7 @@ const deductionForm = reactive({
   deduction_type: '',
   amount: 0,
   notes: '',
-  effective_date: new Date().toISOString().split('T')[0],
+  effective_date: localYmd(),
 })
 
 const deductionTypeOptions = [
@@ -5538,7 +5592,7 @@ async function saveDeduction() {
       deduction_type: '',
       amount: 0,
       notes: '',
-      effective_date: new Date().toISOString().split('T')[0],
+      effective_date: localYmd(),
     })
     loadEmpDeductions(viewEmp.value?.id)
   } catch (err) {
@@ -5633,6 +5687,7 @@ const viewForm = reactive({
   address_line1: '',
   internal_company: 'Select Internal',
   designation_id: null,
+  employment_status: 'probation',
   probation_period: '',
   salary: '',
   epf_no: '',
@@ -5728,7 +5783,11 @@ async function loadEmployees() {
     if (!branchId) return
     const { data, error } = await supabase
       .from('employees')
-      .select('id, first_name, last_name, full_name, employee_code, employment_status, mobile, email, photo_url, nic_number, epf_no, hire_date, departments(name), designations(title), salary_structures(basic_salary, is_current)')
+      // department_id / designation_id / is_active are required by the
+      // Department, Designation and 'Active' filters in filteredEmployees.
+      .select(
+        'id, first_name, last_name, full_name, employee_code, employment_status, is_active, department_id, designation_id, mobile, email, photo_url, nic_number, epf_no, hire_date, departments(name), designations(title), salary_structures(basic_salary, is_current)',
+      )
       .eq('branch_id', branchId)
       .order('employee_code')
     if (error) throw error
@@ -5743,6 +5802,7 @@ async function loadEmployees() {
     stats.value.contract = employees.value.filter((e) => e.employment_status === 'contract').length
   } catch (err) {
     console.error(err)
+    $q.notify({ type: 'negative', message: `Failed to load employees: ${err.message}` })
   } finally {
     loading.value = false
   }
@@ -5872,6 +5932,8 @@ function populateViewForm(emp) {
   viewForm.email = emp.email || ''
   viewForm.address_line1 = emp.address_line1 || ''
   viewForm.designation_id = emp.designation_id || null
+  viewForm.employment_status = emp.employment_status || 'probation'
+  viewForm.probation_period = emp.probation_period || ''
   viewForm.epf_no = emp.epf_no || ''
   viewForm.bank_name = emp.bank_name || ''
   viewForm.bank_branch = emp.bank_branch || ''
@@ -6045,6 +6107,7 @@ function cleanEmployeePayload(rawPayload) {
   // 3. Convert empty strings to null for nullable DATE / UUID fields
   const nullableKeys = [
     'date_of_birth',
+    'probation_period',
     'termination_date',
     'salary_hold_date',
     'department_id',
@@ -6061,7 +6124,7 @@ function cleanEmployeePayload(rawPayload) {
 
   // 4. Ensure NOT NULL columns have valid fallbacks
   if (!payload.hire_date || payload.hire_date === '') {
-    payload.hire_date = new Date().toISOString().split('T')[0]
+    payload.hire_date = localYmd()
   }
 
   if (payload.mobile && !payload.phone) {
@@ -6096,7 +6159,7 @@ async function saveEmployee() {
       other_allowances: extraAllowances.value.reduce((s, a) => s + (Number(a.amount) || 0), 0),
       salary_type: 'monthly',
       is_current: true,
-      effective_from: new Date().toISOString().split('T')[0],
+      effective_from: localYmd(),
       company_id: authStore.currentBranch?.company_id,
     }
 
@@ -6218,6 +6281,8 @@ async function updateProfile() {
       email: viewForm.email || '',
       address_line1: viewForm.address_line1 || '',
       designation_id: viewForm.designation_id || null,
+      employment_status: viewForm.employment_status || 'probation',
+      probation_period: viewForm.probation_period || null,
       bank_name: viewForm.bank_name || '',
       bank_branch: viewForm.bank_branch || '',
       bank_account_name: viewForm.bank_account_name || '',
@@ -6248,7 +6313,10 @@ async function updateProfile() {
     }
 
     $q.notify({ type: 'positive', message: 'Employee profile updated successfully' })
-    Object.assign(viewEmp.value, payload)
+    if (viewEmp.value) {
+      viewEmp.value.employment_status = viewForm.employment_status
+      Object.assign(viewEmp.value, payload)
+    }
 
     loadEmployees()
   } catch (err) {
@@ -6256,6 +6324,16 @@ async function updateProfile() {
   } finally {
     savingProfile.value = false
   }
+}
+
+async function quickConfirmPermanent() {
+  viewForm.employment_status = 'permanent'
+  await updateProfile()
+}
+
+async function quickSetProbation() {
+  viewForm.employment_status = 'probation'
+  await updateProfile()
 }
 
 function confirmDelete(emp) {

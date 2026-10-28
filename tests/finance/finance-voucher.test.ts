@@ -135,7 +135,7 @@ describe('postVoucher', () => {
     authMock.profile.role = 'cashier'
 
     await expect(financeVoucherService.postVoucher('v1')).rejects.toThrow(
-      'Unauthorized: Only finance managers, accountants, managers, or admins can post vouchers.'
+      'Unauthorized: Only finance or admin users can post vouchers.'
     )
     expect(m.rpcCalls).toHaveLength(0)
   })
@@ -145,7 +145,7 @@ describe('postVoucher', () => {
     authMock.profile.role = 'waiter'
 
     await expect(financeVoucherService.cancelVoucher('v1', 'test')).rejects.toThrow(
-      'Unauthorized: Only finance managers, accountants, managers, or admins can cancel vouchers.'
+      'Unauthorized: Only finance or admin users can cancel vouchers.'
     )
     expect(m.rpcCalls).toHaveLength(0)
   })

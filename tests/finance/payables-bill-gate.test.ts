@@ -48,6 +48,7 @@ describe('fetchApInvoices gate', () => {
     expect(calls(q, 'order').map((c) => c.args)).toEqual([
       ['doc_date', { ascending: true }],
       ['doc_number', { ascending: true }],
+      ['id', { ascending: true }],
     ])
   })
 

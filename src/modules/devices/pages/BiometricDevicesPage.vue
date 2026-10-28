@@ -8,8 +8,8 @@
       <div class="row q-gutter-sm">
         <q-btn
           color="indigo-8"
-          icon="cloud_sync"
-          label="Cloud ADMS Setup"
+          icon="menu_book"
+          label="Machine Setup Guide"
           no-caps
           unelevated
           @click="showAdmsDialog = true"
@@ -33,45 +33,7 @@
       </div>
     </div>
 
-    <!-- Cloud ADMS Live Gateway Banner -->
-    <q-card flat bordered class="q-mb-md bg-grey-10 text-white">
-      <q-card-section class="row items-center justify-between q-py-sm">
-        <div class="row items-center">
-          <q-avatar color="indigo-9" text-color="white" icon="cloud_queue" size="38px" class="q-mr-md" />
-          <div>
-            <div class="text-subtitle2 text-weight-bold row items-center">
-              Cloud ADMS Biometric Gateway
-              <q-badge color="positive" class="q-ml-sm">ACTIVE / LISTENING</q-badge>
-            </div>
-            <div class="text-caption text-grey-4">
-              Real-time push protocol for ZKTeco terminals &bull; Endpoint: <code>{{ admsConfig.serverDomain }}</code> (Port 443)
-            </div>
-          </div>
-        </div>
-        <div class="row items-center q-gutter-xs q-mt-xs q-mt-sm-none">
-          <q-btn
-            outline
-            dense
-            color="info"
-            icon="network_check"
-            label="Test Cloud Endpoint"
-            no-caps
-            class="q-px-sm"
-            :loading="testingAdms"
-            @click="runAdmsHealthCheck"
-          />
-          <q-btn
-            dense
-            color="indigo-7"
-            icon="menu_book"
-            label="Machine Config Guide"
-            no-caps
-            class="q-px-sm"
-            @click="showAdmsDialog = true"
-          />
-        </div>
-      </q-card-section>
-    </q-card>
+
 
     <div class="row q-gutter-md q-mb-lg">
       <q-card flat bordered class="col-12 col-md-3" v-for="stat in stats" :key="stat.label">
@@ -147,9 +109,93 @@
       </q-item>
     </q-list>
 
-    <!-- Recent Attendance Punches (from attendance_logs — the real HR pipeline) -->
-    <div class="text-subtitle1 text-weight-bold q-mb-sm">Recent Fingerprint Punches</div>
+    <!-- Attendance & Punches Navigation Tabs -->
+    <div class="row items-center justify-between q-mb-sm q-mt-md">
+      <q-tabs
+        v-model="activeLogTab"
+        dense
+        class="text-grey-7"
+        active-color="primary"
+        indicator-color="primary"
+        align="left"
+        narrow-indicator
+      >
+        <q-tab name="attendance" icon="how_to_reg" label="Staff Attendance Records (HR)" />
+        <q-tab name="punches" icon="fingerprint" label="Raw Terminal Punch Logs" />
+      </q-tabs>
+      <div class="row q-gutter-xs">
+        <q-btn
+          unelevated
+          dense
+          color="primary"
+          icon="open_in_new"
+          label="Open Full Attendance Page"
+          no-caps
+          size="sm"
+          class="q-px-sm"
+          @click="router.push('/hr/attendance')"
+        >
+          <q-tooltip>Go to HR Attendance management with date range filtering & mark features</q-tooltip>
+        </q-btn>
+        <q-btn
+          outline
+          dense
+          color="positive"
+          icon="download"
+          label="Export (Excel)"
+          no-caps
+          size="sm"
+          class="q-px-sm"
+          @click="activeLogTab === 'attendance' ? exportAttendanceExcel() : exportPunchesExcel()"
+        />
+        <q-btn
+          outline
+          dense
+          color="red-7"
+          icon="picture_as_pdf"
+          label="Export (PDF)"
+          no-caps
+          size="sm"
+          class="q-px-sm"
+          @click="activeLogTab === 'attendance' ? exportAttendancePdf() : exportPunchesPdf()"
+        />
+      </div>
+    </div>
+
+    <!-- Tab 1: Staff Attendance Records -->
     <q-table
+      v-if="activeLogTab === 'attendance'"
+      :rows="attendanceRecords"
+      :columns="attendanceColumns"
+      row-key="id"
+      flat
+      bordered
+      :loading="loadingAttendance"
+      :pagination="{ rowsPerPage: 25 }"
+    >
+      <template #body-cell-status="props">
+        <q-td :props="props">
+          <q-badge
+            :color="
+              props.row.status === 'present'
+                ? 'positive'
+                : props.row.status === 'late'
+                  ? 'warning'
+                  : props.row.status === 'absent'
+                    ? 'negative'
+                    : 'grey'
+            "
+            class="text-capitalize"
+          >
+            {{ props.row.status }}
+          </q-badge>
+        </q-td>
+      </template>
+    </q-table>
+
+    <!-- Tab 2: Raw Terminal Punches -->
+    <q-table
+      v-else
       :rows="recentPunches"
       :columns="columns"
       row-key="id"
@@ -170,6 +216,39 @@
             {{ props.row.is_processed ? 'Processed' : 'Pending' }}
           </q-badge>
         </q-td>
+      </template>
+      <template #no-data>
+        <div class="full-width text-center q-pa-lg text-grey-6">
+          <q-icon name="fingerprint" size="48px" color="grey-4" class="q-mb-sm" />
+          <div class="text-subtitle2 text-weight-medium text-grey-8">
+            No Live Punches Synced From Terminal Yet
+          </div>
+          <div class="text-caption text-grey-6 q-mt-xs" style="max-width: 480px; margin: 0 auto">
+            Connect your fingerprint machine on LAN (192.168.1.201) and click <b>Sync Now</b>, or click <b>Import USB Log</b> to upload <code>1_attlog.dat</code>. You can also view all employee attendance in the HR Attendance tab above.
+          </div>
+          <div class="q-mt-md row justify-center q-gutter-sm">
+            <q-btn
+              color="teal-8"
+              dense
+              unelevated
+              no-caps
+              icon="upload_file"
+              label="Import USB Log"
+              class="q-px-md"
+              @click="showUsbImportDialog = true"
+            />
+            <q-btn
+              color="primary"
+              dense
+              unelevated
+              no-caps
+              icon="how_to_reg"
+              label="View Staff Attendance"
+              class="q-px-md"
+              @click="activeLogTab = 'attendance'"
+            />
+          </div>
+        </div>
       </template>
     </q-table>
 
@@ -471,6 +550,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
@@ -483,10 +563,18 @@ import {
   parseUsbAttlogText,
   importAttlogPunches,
 } from '../services/biometric.service'
+import * as XLSX from 'xlsx'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const $q = useQuasar()
+const router = useRouter()
 const authStore = useAuthStore()
 const deviceStore = useDeviceStore()
+
+const activeLogTab = ref('attendance')
+const attendanceRecords = ref([])
+const loadingAttendance = ref(false)
 
 // Works in either desktop shell this app ships (Electron or Tauri) — both
 // have their own native TCP bridge to reach the fingerprint device's LAN IP.
@@ -614,6 +702,131 @@ const columns = [
   { name: 'is_processed', label: 'Status', field: 'is_processed', align: 'center' },
 ]
 
+const attendanceColumns = [
+  { name: 'date', label: 'Date', field: 'attendance_date', align: 'left', sortable: true },
+  {
+    name: 'employee_code',
+    label: 'Employee Code',
+    field: (r) => r.employees?.employee_code || '—',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'employee_name',
+    label: 'Employee Name',
+    field: (r) => r.employees?.full_name || '—',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'clock_in',
+    label: 'Clock In',
+    field: 'clock_in',
+    format: (v) =>
+      v ? new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+    align: 'center',
+  },
+  {
+    name: 'clock_out',
+    label: 'Clock Out',
+    field: 'clock_out',
+    format: (v) =>
+      v ? new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+    align: 'center',
+  },
+  { name: 'total_hours', label: 'Hours', field: 'total_hours', align: 'center' },
+  { name: 'status', label: 'Status', align: 'center' },
+]
+
+async function loadAttendanceRecords() {
+  loadingAttendance.value = true
+  try {
+    const branchIdVal = authStore.currentBranch?.id
+    const { data } = await supabase
+      .from('attendance_records')
+      .select('*, employees(full_name, employee_code)')
+      .eq('branch_id', branchIdVal)
+      .order('attendance_date', { ascending: false })
+      .limit(100)
+    attendanceRecords.value = data || []
+  } catch (err) {
+    console.error('Failed to load attendance records:', err)
+  } finally {
+    loadingAttendance.value = false
+  }
+}
+
+function exportAttendanceExcel() {
+  if (!attendanceRecords.value.length) {
+    $q.notify({ type: 'warning', message: 'No attendance records to export.' })
+    return
+  }
+  const rows = attendanceRecords.value.map((r, i) => ({
+    '#': i + 1,
+    Date: r.attendance_date || '',
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Clock In': r.clock_in
+      ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '—',
+    'Clock Out': r.clock_out
+      ? new Date(r.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '—',
+    'Total Hours': r.total_hours || 0,
+    Status: r.status || '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Staff_Attendance')
+  XLSX.writeFile(wb, `staff_attendance_${new Date().toISOString().split('T')[0]}.xlsx`)
+  $q.notify({ type: 'positive', message: 'Staff attendance exported to Excel successfully!' })
+}
+
+function exportAttendancePdf() {
+  if (!attendanceRecords.value.length) {
+    $q.notify({ type: 'warning', message: 'No attendance records to export.' })
+    return
+  }
+  const doc = new jsPDF()
+  doc.setFontSize(14)
+  doc.setTextColor(30)
+  doc.text('Staff Attendance & Biometric Fingerprint Records', 14, 15)
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text(
+    `Exported Date: ${new Date().toLocaleString()} | Total Records: ${attendanceRecords.value.length}`,
+    14,
+    21,
+  )
+
+  const head = [['#', 'Date', 'Code', 'Employee Name', 'Clock In', 'Clock Out', 'Hours', 'Status']]
+  const body = attendanceRecords.value.map((r, i) => [
+    i + 1,
+    r.attendance_date || '—',
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    r.clock_in
+      ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '—',
+    r.clock_out
+      ? new Date(r.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '—',
+    r.total_hours || 0,
+    r.status || '—',
+  ])
+
+  autoTable(doc, {
+    startY: 25,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 121, 107] },
+    styles: { fontSize: 8 },
+  })
+  doc.save(`staff_attendance_${new Date().toISOString().split('T')[0]}.pdf`)
+  $q.notify({ type: 'positive', message: 'Staff attendance exported to PDF successfully!' })
+}
+
 async function loadPunches() {
   loading.value = true
   try {
@@ -630,6 +843,66 @@ async function loadPunches() {
   }
 }
 
+function exportPunchesExcel() {
+  if (!recentPunches.value.length) {
+    $q.notify({ type: 'warning', message: 'No biometric punches to export.' })
+    return
+  }
+  const rows = recentPunches.value.map((p, i) => ({
+    '#': i + 1,
+    'Employee Code': p.employee_code || '',
+    'Type': p.punch_type === 'in' ? 'Clock In' : 'Clock Out',
+    'Punch Time': new Date(p.punch_time).toLocaleString(),
+    'Device ID': p.device_id || '',
+    'Status': p.is_processed ? 'Processed' : 'Pending',
+    'Source': p.source || 'biometric',
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Fingerprint_Logs')
+  XLSX.writeFile(wb, `biometric_punches_${new Date().toISOString().split('T')[0]}.xlsx`)
+  $q.notify({ type: 'positive', message: 'Biometric punches exported to Excel successfully!' })
+}
+
+function exportPunchesPdf() {
+  if (!recentPunches.value.length) {
+    $q.notify({ type: 'warning', message: 'No biometric punches to export.' })
+    return
+  }
+  const doc = new jsPDF()
+  doc.setFontSize(14)
+  doc.setTextColor(30)
+  doc.text('Biometric Terminal Fingerprint Punch Logs', 14, 15)
+  doc.setFontSize(9)
+  doc.setTextColor(100)
+  doc.text(
+    `Exported Date: ${new Date().toLocaleString()} | Total Logs: ${recentPunches.value.length}`,
+    14,
+    21,
+  )
+
+  const head = [['#', 'Employee Code', 'Type', 'Punch Time', 'Device', 'Status']]
+  const body = recentPunches.value.map((p, i) => [
+    i + 1,
+    p.employee_code || '—',
+    p.punch_type === 'in' ? 'Clock In' : 'Clock Out',
+    new Date(p.punch_time).toLocaleString(),
+    p.device_id || '—',
+    p.is_processed ? 'Processed' : 'Pending',
+  ])
+
+  autoTable(doc, {
+    startY: 25,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 98, 255] },
+    styles: { fontSize: 8 },
+  })
+  doc.save(`biometric_punches_${new Date().toISOString().split('T')[0]}.pdf`)
+  $q.notify({ type: 'positive', message: 'Biometric punches exported to PDF successfully!' })
+}
+
 onMounted(async () => {
   isDesktopApp.value = isDesktopAvailable()
   branchId.value = authStore.currentBranch?.id
@@ -637,6 +910,7 @@ onMounted(async () => {
   if (branchId.value) {
     await deviceStore.loadDevices(branchId.value)
     await loadPunches()
+    await loadAttendanceRecords()
   }
 })
 

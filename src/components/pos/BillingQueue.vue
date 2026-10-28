@@ -415,6 +415,7 @@ function timeAgo(dateStr) {
   if (mins < 1) return 'Just now'
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
+  if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h ago` // queue spans 7 days
   return `${hrs}h ${mins % 60}m ago`
 }
 </script>

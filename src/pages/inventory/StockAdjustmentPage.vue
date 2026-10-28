@@ -238,7 +238,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { invBusinessDate, invAddDays } from 'src/services/inventory/inventoryHelpers'
 import { useQuasar, date } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import {
@@ -335,6 +336,25 @@ async function onItemSelected(row, itemId) {
   }
 }
 
+// Changing the warehouse after picking items left "Current Stock" showing the
+// previous warehouse's figures — refresh every line.
+watch(selectedWarehouse, async (wh) => {
+  if (!wh || !lines.value.length) return
+  const stockMap = await fetchStockByWarehouse(wh)
+  for (const l of lines.value) {
+    l.current_stock = l.item_id ? (stockMap[l.item_id] ?? 0) : null
+  }
+})
+
+function confirmDialog(opts) {
+  return new Promise((resolve) => {
+    $q.dialog({ cancel: true, persistent: true, ...opts })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false))
+  })
+}
+
 const totalQty = computed(() => lines.value.reduce((s, l) => s + (Number(l.qty) || 0), 0))
 
 const lineColumns = [
@@ -360,7 +380,24 @@ async function postAdjustment() {
     return
   }
 
+  const isDecrease = adjustmentDirection.value !== 'increase'
+  const short = isDecrease
+    ? validLines.filter((l) => l.current_stock != null && Number(l.qty) > Number(l.current_stock))
+    : []
+  const ok = await confirmDialog({
+    title: 'Post stock adjustment?',
+    message:
+      `${isDecrease ? 'Remove' : 'Add'} stock on ${validLines.length} line(s) — reason: ${adjustmentReason.value}. ` +
+      'Posting updates the stock ledger immediately.' +
+      (short.length
+        ? ` WARNING: ${short.length} line(s) exceed the current stock and may be rejected or drive stock negative.`
+        : ''),
+    ok: { label: 'Post', color: isDecrease ? 'negative' : 'positive', unelevated: true },
+  })
+  if (!ok) return
+
   posting.value = true
+  let createdDoc = null
   try {
     const isIncrease = adjustmentDirection.value === 'increase'
     const docLines = validLines.map(row => ({
@@ -379,6 +416,7 @@ async function postAdjustment() {
     }
 
     const doc = await createDocument(header, docLines)
+    createdDoc = doc
     await postDocument(doc.id)
 
     $q.notify({ type: 'positive', message: `Adjustment posted — ${validLines.length} line(s).` })
@@ -392,7 +430,16 @@ async function postAdjustment() {
     await fetchHistory()
   } catch (e) {
     console.error('[StockAdjustmentPage] postAdjustment', e)
-    $q.notify({ type: 'negative', message: 'Posting failed: ' + e.message })
+    $q.notify({
+      type: 'negative',
+      message: 'Posting failed: ' + e.message,
+      // createDocument succeeded but posting did not — a draft now exists;
+      // say so, otherwise a retry creates a duplicate document.
+      caption: createdDoc
+        ? `Draft ${createdDoc.doc_number} was saved — post or delete it in Inventory → Documents.`
+        : undefined,
+      timeout: createdDoc ? 8000 : 5000,
+    })
   } finally {
     posting.value = false
   }
@@ -404,12 +451,15 @@ const historyColumns = [
     format: v => date.formatDate(new Date(v), 'DD MMM YYYY HH:mm') },
   { name: 'item_name',      label: 'Item',      field: 'item_name',      align: 'left' },
   { name: 'warehouse_name', label: 'Warehouse', field: 'warehouse_name', align: 'left' },
-  { name: 'quantity',       label: 'Qty',       field: 'quantity',       align: 'right', sortable: true },
+  // Ledger quantity is unsigned; show the direction so +/- adjustments differ.
+  { name: 'quantity',       label: 'Qty',       field: r => (r.direction === 'OUT' ? -1 : 1) * Number(r.quantity || 0),
+    align: 'right', sortable: true, format: v => (v > 0 ? `+${v}` : String(v)) },
   { name: 'doc_number',     label: 'Doc #',     field: 'doc_number',     align: 'left' },
 ]
 
 async function fetchHistory() {
-  const since = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  // Last 30 Colombo business days (toISOString() was UTC-based).
+  const since = invAddDays(invBusinessDate(), -30)
   await fetchLedger({ docType: 'ADJUSTMENT', dateFrom: since })
 }
 

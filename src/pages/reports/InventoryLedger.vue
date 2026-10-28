@@ -242,7 +242,9 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
+import { applyBranchSecurity } from 'src/services/reportService'
 
 const authStore = useAuthStore()
 const loading = ref(false)
@@ -391,7 +393,7 @@ async function loadData() {
         total_cost,
         doc_type,
         doc_number,
-        notes,
+        reference_type,
         warehouse_id,
         company_id,
         items (
@@ -404,19 +406,22 @@ async function loadData() {
       .order('posted_at', { ascending: false })
 
     if (currentFilters.value.dateFrom) {
-      query = query.gte('posted_at', currentFilters.value.dateFrom + 'T00:00:00')
+      query = query.gte('posted_at', dayStartISO(currentFilters.value.dateFrom))
     }
     if (currentFilters.value.dateTo) {
-      query = query.lte('posted_at', currentFilters.value.dateTo + 'T23:59:59')
+      query = query.lt('posted_at', dayEndExclusiveISO(currentFilters.value.dateTo))
     }
 
-    // Security: restrict non-admin users to their own company's items
-    const companyId = authStore.companyId
+    // Security: company scope + branch scope (authStore.companyId does not exist —
+    // the old filter was a silent no-op).
+    const companyId = authStore.currentBranch?.company_id
     if (companyId) {
       query = query.eq('company_id', companyId)
     }
+    if (currentFilters.value.branch) query = query.eq('branch_id', currentFilters.value.branch)
+    query = applyBranchSecurity(query)
 
-    const { data, error } = await query.limit(1000)
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     const cats = new Set()
@@ -455,7 +460,7 @@ async function loadData() {
         total_value: tv,
         warehouse: r.warehouses?.name || '—',
         warehouse_id: r.warehouse_id,
-        notes: r.notes || '',
+        notes: r.reference_type || '',
       }
     })
 

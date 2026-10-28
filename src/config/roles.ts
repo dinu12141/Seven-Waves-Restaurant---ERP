@@ -19,7 +19,10 @@ export const ROLE_ROUTE_ACCESS: Record<UserRole, string[]> = {
   waiter: ['/pos', '/orders', '/waiter', '/waiter-app'],
   kitchen: ['/kitchen'],
   delivery: ['/delivery-app'],
-  cashier: ['/pos', '/orders', '/cashier', '/kitchen', '/website-orders', '/crm'],
+  // '/admin/loyalty' — route meta + nav both grant cashiers the Loyalty Members
+  // page (crm.loyalty.view); without it this legacy ACL silently bounced them.
+  // Earning-rules stays admin/manager-only via its own route roles.
+  cashier: ['/pos', '/orders', '/cashier', '/kitchen', '/website-orders', '/crm', '/admin/loyalty'],
   manager: [
     '/dashboard',
     '/orders',
@@ -704,6 +707,16 @@ export const NAV_ITEMS: NavItem[] = [
     moduleCode: 'FINANCE',
     group: 'ERP Accounting',
   },
+  {
+    label: 'Fiscal Periods',
+    icon: 'event_available',
+    to: '/finance/fiscal-periods',
+    roles: ['admin', 'finance'],
+    permission: 'finance.fiscal_periods.view',
+    section: 'FINANCE',
+    moduleCode: 'FINANCE',
+    group: 'ERP Accounting',
+  },
   // ── Voucher Management ──
   {
     label: 'Pay Vouchers',
@@ -1331,7 +1344,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'qr_code_2',
     to: '/website-menu-qr',
     roles: ['admin', 'manager'],
-    permission: 'website.orders.view',
+    permission: 'website.menu_qr.view',
     moduleCode: 'WEBSITE',
     section: 'WEBSITE',
     group: 'Website Management',
@@ -1383,7 +1396,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'rule',
     to: '/admin/loyalty/earning-rules',
     roles: ['admin', 'manager'],
-    permission: 'crm.loyalty.view',
+    permission: 'crm.loyalty.manage',
     moduleCode: 'CRM',
     section: 'SYSTEM',
     group: 'CRM',

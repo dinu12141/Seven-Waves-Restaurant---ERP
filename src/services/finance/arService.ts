@@ -79,13 +79,27 @@ function isMissingWriteOffColumn(err: PgError): boolean {
  * working until section 8 of the SQL is applied.
  */
 async function selectWithWriteOffFallback(
-  build: (cols: string) => PromiseLike<{ data: unknown; error: unknown }>,
+  build: (cols: string) => any,
   cols: string,
   legacyCols: string,
 ): Promise<{ data: unknown; error: unknown }> {
-  const res = await build(cols)
-  if (res.error && isMissingWriteOffColumn(res.error as PgError)) return build(legacyCols)
+  const res = await selectAllPages(() => build(cols))
+  if (res.error && isMissingWriteOffColumn(res.error as PgError)) return selectAllPages(() => build(legacyCols))
   return res
+}
+
+/** PostgREST caps a response at 1000 rows; AR lists and the control read every page. */
+export const AR_PAGE_SIZE = 1000
+
+async function selectAllPages(build: () => any, pageSize = AR_PAGE_SIZE): Promise<{ data: any[]; error: unknown }> {
+  const rows: any[] = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await build().range(from, from + pageSize - 1)
+    if (error) return { data: rows, error }
+    const page = (data || []) as any[]
+    rows.push(...page)
+    if (page.length < pageSize) return { data: rows, error: null }
+  }
 }
 
 type RpcResult = { success?: boolean; error?: string; [k: string]: unknown }
@@ -158,7 +172,8 @@ export async function listReceivables(filters: ReceivableFilters = {}): Promise<
     else if (status !== 'all') q = q.eq('status', status)
     if (filters.customerId) q = q.eq('customer_id', filters.customerId)
     if (filters.branchId) q = q.eq('branch_id', filters.branchId)
-    return q.order('due_date', { ascending: true }).order('doc_date', { ascending: true })
+    // id as last key keeps page boundaries stable
+    return q.order('due_date', { ascending: true }).order('doc_date', { ascending: true }).order('id')
   }
 
   const { data, error } = await selectWithWriteOffFallback(build, RECEIVABLE_COLUMNS, RECEIVABLE_BASE_COLUMNS)
@@ -186,15 +201,17 @@ export interface ReceiptFilters {
 }
 
 export async function listReceipts(filters: ReceiptFilters = {}): Promise<any[]> {
-  let q = supabase.from('ar_receipts').select(RECEIPT_COLUMNS)
-  if (filters.customerId) q = q.eq('customer_id', filters.customerId)
-  if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
-  if (filters.branchId) q = q.eq('branch_id', filters.branchId)
-  if (filters.dateFrom) q = q.gte('receipt_date', filters.dateFrom)
-  if (filters.dateTo) q = q.lte('receipt_date', filters.dateTo)
-  q = q.order('receipt_date', { ascending: false }).order('created_at', { ascending: false })
+  const build = () => {
+    let q = supabase.from('ar_receipts').select(RECEIPT_COLUMNS)
+    if (filters.customerId) q = q.eq('customer_id', filters.customerId)
+    if (filters.status && filters.status !== 'all') q = q.eq('status', filters.status)
+    if (filters.branchId) q = q.eq('branch_id', filters.branchId)
+    if (filters.dateFrom) q = q.gte('receipt_date', filters.dateFrom)
+    if (filters.dateTo) q = q.lte('receipt_date', filters.dateTo)
+    return q.order('receipt_date', { ascending: false }).order('created_at', { ascending: false }).order('id')
+  }
 
-  const { data, error } = await q
+  const { data, error } = await selectAllPages(build)
   if (error) throw toError(error as PgError, 'ar_receipts')
   let rows = ((data || []) as any[]).map((r) => ({
     ...r,
@@ -327,10 +344,13 @@ export async function getArControl(): Promise<ArControl> {
     supabase.from('customer_receivables').select(cols).eq('source', 'pos_credit').is('gl_posted_at', null)
   const [ledRes, openRes, firstPosRes] = await Promise.all([
     supabase.from('finance_ledgers').select('id, current_balance').eq('ledger_code', '1003').is('deleted_at', null),
-    supabase
-      .from('customer_receivables')
-      .select('id, total_amount, paid_amount, balance, status')
-      .in('status', [...AR_OPEN_STATUSES]),
+    selectAllPages(() =>
+      supabase
+        .from('customer_receivables')
+        .select('id, total_amount, paid_amount, balance, status')
+        .in('status', [...AR_OPEN_STATUSES])
+        .order('id'),
+    ),
     posQuery(`${posCols}, written_off_amount`),
   ])
   if (ledRes.error) throw toError(ledRes.error as PgError, 'finance_ledgers')

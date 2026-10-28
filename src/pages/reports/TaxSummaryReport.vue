@@ -92,6 +92,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
+import { businessDateOf, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtPercent, fmtDate, applyBranchSecurity } from 'src/services/reportService'
@@ -171,16 +172,16 @@ async function loadData(filters = {}) {
       .select('created_at,subtotal,tax_amount,total_amount,status')
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.order('created_at').limit(5000)
+    const { data, error } = await fetchAllRows(query.order('created_at').order('id'))
     if (error) throw error
     // Aggregate by day
     const dayMap = {}
     ;(data || []).forEach((b) => {
-      const d = b.created_at?.slice(0, 10)
+      const d = b.created_at ? businessDateOf(b.created_at) : null
       if (!d) return
       if (!dayMap[d])
         dayMap[d] = { date: d, bill_count: 0, taxable_amount: 0, tax_amount: 0, total_with_tax: 0 }

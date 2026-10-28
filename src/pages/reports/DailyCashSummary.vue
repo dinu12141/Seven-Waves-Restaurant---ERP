@@ -91,7 +91,9 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { businessDateOf, dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { fmtLKR, fmtDate, applyBranchSecurity } from 'src/services/reportService'
@@ -134,18 +136,20 @@ async function loadData(filters = {}) {
   try {
     let query = supabase
       .from('orders')
-      .select('created_at,total_amount,status,invoices(payments(amount,payment_methods(name)))')
+      .select(
+        'created_at,total_amount,status,invoices(payments(amount,payment_method,voided,payment_methods(name)))',
+      )
       .neq('status', 'cancelled')
       .neq('status', 'void')
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     if (filters.branch) query = query.eq('branch_id', filters.branch)
     query = applyBranchSecurity(query)
-    const { data, error } = await query.order('created_at').limit(5000)
+    const { data, error } = await fetchAllRows(query.order('created_at').order('id'))
     if (error) throw error
     const dMap = {}
     ;(data || []).forEach((b) => {
-      const d = b.created_at?.slice(0, 10)
+      const d = b.created_at ? businessDateOf(b.created_at) : null
       if (!d) return
       if (!dMap[d])
         dMap[d] = {
@@ -156,30 +160,35 @@ async function loadData(filters = {}) {
           total_sales: 0,
           orders: 0,
         }
-      const amt = Number(b.total_amount || 0)
-      // Extract payment method from invoices→payments chain
-      let pm = ''
+      // Sum ACTUAL collected payments per method. Previously the whole bill total was
+      // bucketed under the first payment's method (split bills mis-stated) and unpaid
+      // orders were counted as "collections".
       const invs = Array.isArray(b.invoices) ? b.invoices : b.invoices ? [b.invoices] : []
+      let collected = 0
       for (const inv of invs) {
         const pays = Array.isArray(inv.payments) ? inv.payments : inv.payments ? [inv.payments] : []
         for (const p of pays) {
-          if (p.payment_methods?.name) {
-            pm = p.payment_methods.name.toLowerCase()
-            break
-          }
+          if (p.voided) continue
+          const amt = Number(p.amount || 0)
+          if (!amt) continue
+          const pm = String(p.payment_methods?.name || p.payment_method || '').toLowerCase()
+          if (pm.includes('cash')) dMap[d].cash_sales += amt
+          else if (/card|visa|master|amex/.test(pm)) dMap[d].card_sales += amt
+          else dMap[d].other_sales += amt
+          collected += amt
         }
-        if (pm) break
       }
-      const isCard = pm.includes('card') || pm === 'visa' || pm.includes('visa') || pm.includes('master')
-      if (pm.includes('cash')) dMap[d].cash_sales += amt
-      else if (isCard) dMap[d].card_sales += amt
-      else dMap[d].other_sales += amt
-      dMap[d].total_sales += amt
+      if (!collected) return
+      dMap[d].total_sales += collected
       dMap[d].orders++
     })
-    rows.value = Object.values(dMap).sort((a, b) => a.date.localeCompare(b.date))
+    rows.value = Object.values(dMap)
+      .filter((r) => r.orders > 0)
+      .sort((a, b) => a.date.localeCompare(b.date))
   } catch (e) {
     console.error('[DailyCash]', e)
+    rows.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load daily cash summary: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

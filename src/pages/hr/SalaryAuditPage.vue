@@ -328,7 +328,7 @@ function editPayslip(slip) {
     prompt: { model: String(slip.net_salary), type: 'number' },
     cancel: true,
     persistent: true,
-    dark: true,
+    dark: $q.dark.isActive,
   }).onOk(async (val) => {
     const oldVal = slip.net_salary
     await supabase

@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="point_of_sale"
+      subtitle="Cashier shift takings, variances and GL posting"
       title="POS Shifts Report"
       breadcrumbs="Finance / Cash & Banking / POS Shifts"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     />
 
@@ -14,7 +15,6 @@
         :options="statusOptions"
         label="Status"
         dense
-        dark
         outlined
         style="min-width: 150px"
         clearable
@@ -24,7 +24,6 @@
         label="From Date"
         type="date"
         dense
-        dark
         outlined
         style="min-width: 150px"
       />
@@ -33,7 +32,6 @@
         label="To Date"
         type="date"
         dense
-        dark
         outlined
         style="min-width: 150px"
       />
@@ -41,6 +39,26 @@
         <q-tooltip>Clear Filters</q-tooltip>
       </q-btn>
       <q-space />
+      <q-input
+        v-if="canPostGl"
+        v-model="catchUpFrom"
+        label="Post unposted sales from"
+        type="date"
+        dense
+        outlined
+        style="min-width: 180px"
+      />
+      <q-btn
+        v-if="canPostGl"
+        color="deep-orange"
+        icon="sync_alt"
+        label="Post Unposted Sales to GL"
+        no-caps
+        :loading="postingGl"
+        @click="runCatchUp"
+      >
+        <q-tooltip>Runs fn_pos_post_unposted_sales: posts every paid order with no POS sale GL entry yet</q-tooltip>
+      </q-btn>
       <q-btn-dropdown color="primary" icon="download" label="Export">
         <q-list>
           <q-item clickable v-close-popup @click="exportToCsv">
@@ -59,6 +77,12 @@
       </q-btn-dropdown>
     </div>
 
+    <q-banner v-if="openFailureCount > 0" dense class="bg-red-10 text-white q-mb-md rounded-borders">
+      <template #avatar><q-icon name="error" /></template>
+      {{ openFailureCount }} unresolved POS GL posting failure(s) logged in pos_gl_failures.
+      <span v-if="canPostGl">Fix the cause (e.g. missing ledger mapping) and run "Post Unposted Sales to GL".</span>
+    </q-banner>
+
     <div class="fin-panel">
       <div class="fin-panel__header">
         <span class="fin-panel__title">Shift Records ({{ shifts.length }})</span>
@@ -68,13 +92,36 @@
         :columns="columns"
         row-key="id"
         flat
-        dark
         dense
         :rows-per-page-options="[25, 50, 100]"
         class="fin-table"
         :loading="loading"
         no-data-label="No shift records found"
       >
+        <template #body-cell-gl_status="props">
+          <q-td :props="props" class="text-center">
+            <q-badge :color="glBadge(props.row).color" text-color="white">{{ glBadge(props.row).label }}</q-badge>
+            <q-tooltip v-if="glStatus.get(props.row.id)" max-width="360px">
+              <div>Orders posted: {{ glStatus.get(props.row.id).ordersPosted }} / {{ glStatus.get(props.row.id).orders }}</div>
+              <div v-if="glStatus.get(props.row.id).varianceNeeded">
+                Variance GL: {{ glStatus.get(props.row.id).variancePosted ? 'posted' : 'NOT posted' }}
+              </div>
+              <div v-if="glStatus.get(props.row.id).payouts">
+                Payouts posted: {{ glStatus.get(props.row.id).payoutsPosted }} / {{ glStatus.get(props.row.id).payouts }}
+              </div>
+              <div v-for="f in glStatus.get(props.row.id).failures" :key="f.id" class="text-red-3">
+                {{ f.kind }}: {{ f.error }}
+              </div>
+            </q-tooltip>
+          </q-td>
+        </template>
+
+        <template #body-cell-variance="props">
+          <q-td :props="props" :class="Number(props.row.variance) < 0 ? 'text-red-4' : Number(props.row.variance) > 0 ? 'text-amber-4' : ''">
+            {{ props.value }}
+          </q-td>
+        </template>
+
         <template #body-cell-status="props">
           <q-td :props="props">
             <q-badge
@@ -164,17 +211,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar, exportFile } from 'quasar'
-import { supabase } from 'src/boot/supabase'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import ShiftInvoicesDialog from 'src/components/pos/ShiftInvoicesDialog.vue'
 import { printService } from 'src/services/printService'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
+import { useAuthStore } from 'src/stores/auth'
+import { financePosShiftService, shiftTenderBreakdown } from 'src/modules/finance/services/finance-pos-shift.service'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
+// fn_pos_post_unposted_sales and pos_gl_failures are admin/finance only (server-enforced too).
+const canPostGl = computed(() => authStore.hasAnyRole(['admin', 'finance']))
+const glStatus = ref(new Map())
+const openFailureCount = ref(0)
+const postingGl = ref(false)
+const catchUpFrom = ref('')
 const loading = ref(false)
 const shifts = ref([])
 const showShiftInvoicesModal = ref(false)
@@ -201,12 +256,66 @@ const columns = [
   { name: 'opened_time', label: 'Opened Time', field: 'opened_at', align: 'left', sortable: true, format: val => formatTimeOnly(val) },
   { name: 'closed_date', label: 'Closed Date', field: 'closed_at', align: 'left', sortable: true, format: val => formatDateOnly(val) },
   { name: 'closed_time', label: 'Closed Time', field: 'closed_at', align: 'left', sortable: true, format: val => formatTimeOnly(val) },
+  { name: 'cash_sales', label: 'Cash', field: (r) => shiftTenderBreakdown(r).cash, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'card_sales', label: 'Card (incl. Visa/Master)', field: (r) => shiftTenderBreakdown(r).card, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'qr_sales', label: 'QR', field: (r) => shiftTenderBreakdown(r).qr, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'bank_sales', label: 'Bank', field: (r) => shiftTenderBreakdown(r).bank, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'credit_sales', label: 'Credit (AR)', field: (r) => shiftTenderBreakdown(r).credit, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'total_sales', label: 'Total Sales', field: (r) => shiftTenderBreakdown(r).total, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
+  { name: 'payouts', label: 'Payouts', field: (r) => Number(r.cash_out_total) || 0, align: 'right', sortable: true, format: (val) => formatCurrency(val) },
   { name: 'opening_cash_float', label: 'Opening Float', field: 'opening_cash_float', align: 'right', sortable: true, format: val => formatCurrency(val) },
   { name: 'expected_cash', label: 'Expected Cash', field: 'expected_cash', align: 'right', sortable: true, format: val => formatCurrency(val) },
   { name: 'counted_cash', label: 'Counted Cash', field: 'counted_cash', align: 'right', sortable: true, format: val => formatCurrency(val) },
   { name: 'variance', label: 'Variance', field: 'variance', align: 'right', sortable: true, format: val => formatCurrency(val) },
+  { name: 'gl_status', label: 'GL', field: (r) => glStatus.value.get(r.id)?.status || '', align: 'center', sortable: true },
   { name: 'actions', label: 'Actions', align: 'center' },
 ]
+
+function glBadge(row) {
+  const st = glStatus.value.get(row.id)
+  if (!st) return { label: '-', color: 'grey-7' }
+  return {
+    posted: { label: 'POSTED', color: 'positive' },
+    pending: { label: 'IN PROGRESS', color: 'blue-8' },
+    unposted: { label: `UNPOSTED (${st.ordersUnposted})`, color: 'orange-9' },
+    failed: { label: 'FAILED', color: 'negative' },
+  }[st.status] || { label: st.status, color: 'grey-7' }
+}
+
+async function loadGlStatus(rows) {
+  if (!canPostGl.value) {
+    // GL tables are finance-only under RLS; show nothing rather than a false "unposted".
+    glStatus.value = new Map()
+    return
+  }
+  try {
+    const [map, failures] = await Promise.all([
+      financePosShiftService.loadGlStatus(rows),
+      financePosShiftService.countOpenFailures(),
+    ])
+    glStatus.value = map
+    openFailureCount.value = failures
+  } catch (err) {
+    console.error('Error loading POS GL status:', err)
+    $q.notify({ type: 'warning', message: 'Could not load GL posting status' })
+  }
+}
+
+async function runCatchUp() {
+  postingGl.value = true
+  try {
+    const { posted, failed } = await financePosShiftService.postUnpostedSales(catchUpFrom.value || null)
+    $q.notify({
+      type: failed ? 'warning' : 'positive',
+      message: `POS GL catch-up: ${posted} order(s) posted${failed ? `, ${failed} failed (see pos_gl_failures)` : ''}`,
+    })
+    await loadData()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Catch-up posting failed' })
+  } finally {
+    postingGl.value = false
+  }
+}
 
 function openShiftInvoices(row) {
   selectedShiftForInvoices.value = row
@@ -236,6 +345,14 @@ function downloadShiftSummaryPdf(row) {
     ['Card Sales Total', `LKR ${formatCurrency(row.card_sales_total || 0)}`],
     ['QR / Online Sales Total', `LKR ${formatCurrency(row.qr_sales_total || 0)}`],
     ['Bank Sales Total', `LKR ${formatCurrency(row.bank_sales_total || 0)}`],
+    ['  of which Visa', `LKR ${formatCurrency(row.visa_sales_total || 0)}`],
+    ['  of which Master', `LKR ${formatCurrency(row.master_sales_total || 0)}`],
+    ['Credit (AR) Sales Total', `LKR ${formatCurrency(row.credit_sales_total || 0)}`],
+    ['Total Sales', `LKR ${formatCurrency(shiftTenderBreakdown(row).total)}`],
+    ['Refunds', `LKR ${formatCurrency(row.refunds_total || 0)}`],
+    ['Cash In (float top-up)', `LKR ${formatCurrency(row.cash_in_total || 0)}`],
+    ['Cash Out (payouts)', `LKR ${formatCurrency(row.cash_out_total || 0)}`],
+    ['Cash Drops (to safe)', `LKR ${formatCurrency(row.cash_drops_total || 0)}`],
     ['Expected Cash in Drawer', `LKR ${formatCurrency(row.expected_cash || 0)}`],
     ['Counted Cash in Drawer', `LKR ${formatCurrency(row.counted_cash || 0)}`],
     ['Variance', `LKR ${formatCurrency(row.variance || 0)}`],
@@ -281,39 +398,19 @@ function resetFilters() {
 async function loadData() {
   loading.value = true
   try {
-    let query = supabase
-      .from('pos_shifts')
-      .select(`
-        *,
-        profiles:cashier_id(full_name),
-        opened_by_user:cashier_id(full_name),
-        closed_by_user:closed_by(full_name),
-        branches:branch_id(name)
-      `)
-      .order('opened_at', { ascending: false })
-
-    if (filterStatus.value) {
-      query = query.eq('status', filterStatus.value.value || filterStatus.value)
-    }
-    
-    if (dateFrom.value) {
-      query = query.gte('opened_at', `${dateFrom.value}T00:00:00`)
-    }
-    
-    if (dateTo.value) {
-      query = query.lte('opened_at', `${dateTo.value}T23:59:59`)
-    }
-
-    const { data, error } = await query
-    
-    if (error) throw error
-    shifts.value = data || []
+    // Paged (>1000 shifts) and day bounds in local time, not UTC.
+    shifts.value = await financePosShiftService.listShifts({
+      status: filterStatus.value?.value || filterStatus.value || null,
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value,
+    })
   } catch (err) {
     console.error('Error loading shifts:', err)
     $q.notify({ type: 'negative', message: 'Failed to load shifts' })
   } finally {
     loading.value = false
   }
+  await loadGlStatus(shifts.value)
 }
 
 // Watch filters to auto-reload

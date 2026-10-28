@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="assessment"
+      subtitle="Monthly summary, P&L, balance sheet, COGS and cash flow from the GL"
       title="Financial Reports"
       breadcrumbs="Finance / Reports"
-      showRefresh
+      show-refresh
       @refresh="loadCurrentReport"
     />
 
@@ -14,7 +15,6 @@
         label="From"
         type="date"
         dense
-        dark
         outlined
         style="min-width: 150px"
       />
@@ -23,7 +23,6 @@
         label="To"
         type="date"
         dense
-        dark
         outlined
         style="min-width: 150px"
       />
@@ -33,7 +32,6 @@
         :options="yearOptions"
         label="Year"
         dense
-        dark
         outlined
         style="min-width: 100px"
       />
@@ -47,7 +45,7 @@
         class="q-px-md"
         style="height: 40px"
       />
-      <q-separator vertical dark class="q-mx-sm" />
+      <q-separator vertical class="q-mx-sm" />
       <q-btn flat dense icon="picture_as_pdf" color="red-4" @click="exportPDF" title="Download PDF"
         ><q-tooltip>Export PDF</q-tooltip></q-btn
       >
@@ -65,7 +63,6 @@
     <q-tabs
       v-model="activeTab"
       dense
-      dark
       active-color="blue-4"
       indicator-color="blue-4"
       class="q-mb-md text-grey-5 fin-report-tabs"
@@ -80,7 +77,7 @@
       <q-tab name="cashflow" label="CASH FLOW" icon="swap_vert" />
     </q-tabs>
 
-    <q-tab-panels v-model="activeTab" animated dark class="bg-transparent" id="report-print-area">
+    <q-tab-panels v-model="activeTab" animated class="bg-transparent" id="report-print-area">
       <!-- ═══════ MONTHLY P&L SUMMARY ═══════ -->
       <q-tab-panel name="monthly" class="q-pa-none">
         <div class="fin-panel">
@@ -149,7 +146,6 @@
               :columns="monthlyCols"
               row-key="month"
               flat
-              dark
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -229,7 +225,6 @@
                 v-model="cogsGroupBy"
                 val="item"
                 label="Item-wise"
-                dark
                 dense
                 color="blue-4"
               />
@@ -237,7 +232,6 @@
                 v-model="cogsGroupBy"
                 val="kitchen"
                 label="Kitchen-wise"
-                dark
                 dense
                 color="blue-4"
               />
@@ -245,7 +239,6 @@
                 v-model="cogsGroupBy"
                 val="table"
                 label="Table-wise"
-                dark
                 dense
                 color="blue-4"
               />
@@ -255,7 +248,6 @@
                 :options="cogsFilterOptions"
                 :label="cogsFilterLabel"
                 dense
-                dark
                 outlined
                 clearable
                 emit-value
@@ -264,13 +256,44 @@
               />
             </div>
           </div>
+          <div class="fin-panel__body q-pa-md" v-if="glCogs">
+            <div class="text-subtitle2 text-blue-4 q-mb-xs">
+              Cost of Sales per General Ledger ({{ dateFrom }} to {{ dateTo }})
+            </div>
+            <q-markup-table dense flat class="fin-table q-mb-md">
+              <thead>
+                <tr><th class="text-left">Ledger</th><th class="text-right">Amount</th><th class="text-right">% of Revenue</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in glCogs.rows" :key="r.code">
+                  <td>{{ r.code }} {{ r.name }}</td>
+                  <td class="text-right">{{ fmt(r.amount) }}</td>
+                  <td class="text-right">{{ r.pct_of_revenue.toFixed(1) }}%</td>
+                </tr>
+                <tr class="text-weight-bold">
+                  <td>Total Cost of Sales</td><td class="text-right">{{ fmt(glCogs.total_cogs) }}</td><td></td>
+                </tr>
+                <tr><td>Revenue</td><td class="text-right">{{ fmt(glCogs.revenue) }}</td><td></td></tr>
+                <tr class="text-weight-bold">
+                  <td>Gross Profit</td>
+                  <td class="text-right" :class="glCogs.gross_profit >= 0 ? 'text-green-4' : 'text-red-4'">
+                    {{ fmt(glCogs.gross_profit) }}
+                  </td>
+                  <td class="text-right">{{ glCogs.gp_percent.toFixed(1) }}%</td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+            <div class="text-caption text-grey-6 q-mb-sm" v-if="cogsGrouped.length">
+              Breakdown below is recipe-based (theoretical) cost of non-cancelled orders — an
+              operational analysis, not the GL figure above.
+            </div>
+          </div>
           <div class="fin-panel__body q-pa-md" v-if="cogsGrouped.length">
             <q-table
               :rows="cogsGrouped"
               :columns="cogsCols"
               row-key="name"
               flat
-              dark
               dense
               :pagination="{ rowsPerPage: 50 }"
               class="fin-table"
@@ -305,7 +328,7 @@
               </template>
             </q-table>
           </div>
-          <div v-else class="text-grey-6 text-center q-pa-xl">
+          <div v-else-if="!glCogs" class="text-grey-6 text-center q-pa-xl">
             <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><br />Click Generate to view
             Cost Operations
           </div>
@@ -337,7 +360,6 @@
               :columns="cfCols"
               row-key="category"
               flat
-              dark
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -363,7 +385,6 @@
               :columns="cfCols"
               row-key="category"
               flat
-              dark
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -389,7 +410,6 @@
               :columns="cfCols"
               row-key="category"
               flat
-              dark
               dense
               hide-bottom
               :rows-per-page-options="[0]"
@@ -425,6 +445,12 @@
             </div>
 
             <div
+              v-if="Math.abs(cashFlowData.reconciliation_difference || 0) >= 0.01"
+              class="text-caption text-amber-5 q-mt-sm"
+            >
+              Allocation rounding difference: {{ fmt(cashFlowData.reconciliation_difference) }}
+            </div>
+            <div
               class="fin-summary-row q-mt-md"
               style="
                 border-radius: 6px;
@@ -449,28 +475,29 @@
 </template>
 
 <script setup>
+import { todayLK, monthStart } from 'src/modules/finance/utils/finance-dates'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import FinancialStatementViewer from 'src/modules/finance/components/FinancialStatementViewer.vue'
 import { financeStatementsService } from 'src/modules/finance/services/finance-statements.service'
 import { financeExportService, statementLines } from 'src/modules/finance/services/finance-export.service'
+import { Notify } from 'quasar'
 import {
-  fetchMonthlyPnlSummary,
-  fetchCogsReport,
-  fetchCashFlowStatement,
-} from 'src/services/financeService'
+  financeReportsService,
+  fetchRecipeCogs,
+} from 'src/modules/finance/services/finance-reports.service'
 
 const route = useRoute()
 const validTabs = ['monthly', 'pnl', 'bs', 'cogs', 'cashflow']
 const loading = ref(false)
 const activeTab = ref(validTabs.includes(route.query.tab) ? route.query.tab : 'monthly')
 const now = new Date()
-const dateFrom = ref(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0])
-const dateTo = ref(now.toISOString().split('T')[0])
+const dateFrom = ref(monthStart(todayLK()))
+const dateTo = ref(todayLK())
 const selectedYear = ref(now.getFullYear())
 const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
 
@@ -478,6 +505,7 @@ const pnlData = ref(null)
 const bsData = ref(null)
 const monthlyData = ref(null)
 const cashFlowData = ref(null)
+const glCogs = ref(null)
 
 // COGS references
 const cogsRaw = ref([])
@@ -610,6 +638,17 @@ function getExportData() {
       cols: cogsCols.value,
       title: `COGS_Report_${cogsGroupBy.value}_${dateFrom.value}_${dateTo.value}`,
     }
+  if (tab === 'cogs' && glCogs.value)
+    return {
+      rows: [
+        ...glCogs.value.rows.map((r) => ({ category: `${r.code} ${r.name}`, amount: r.amount })),
+        { category: 'Total Cost of Sales', amount: glCogs.value.total_cogs },
+        { category: 'Revenue', amount: glCogs.value.revenue },
+        { category: 'Gross Profit', amount: glCogs.value.gross_profit },
+      ],
+      cols: cfCols,
+      title: `COGS_GL_${dateFrom.value}_${dateTo.value}`,
+    }
   if (tab === 'cashflow' && cashFlowData.value) {
     const cfRows = [
       { category: 'OPENING CASH BALANCE', amount: cashFlowData.value.opening_balance },
@@ -699,7 +738,7 @@ function exportPDF() {
     styles: { fontSize: 7 },
     columnStyles: Object.fromEntries(d.cols.map((c, i) => [i, { halign: c.align || 'left' }])),
   })
-  doc.save(`${d.title}_${new Date().toISOString().slice(0, 10)}.pdf`)
+  doc.save(`${d.title}_${todayLK()}.pdf`)
 }
 
 // ── Column Definitions ──
@@ -726,8 +765,15 @@ function statementRows(report) {
 
 const monthlyCols = [
   { name: 'month', label: 'Month', field: 'month', align: 'left' },
-  { name: 'revenue', label: 'Revenue', field: 'revenue', align: 'right', format: (v) => fmt(v) },
-  { name: 'expenses', label: 'Expenses', field: 'expenses', align: 'right', format: (v) => fmt(v) },
+  { name: 'revenue', label: 'Income', field: 'revenue', align: 'right', format: (v) => fmt(v) },
+  {
+    name: 'cost_of_sales',
+    label: 'Cost of Sales',
+    field: 'cost_of_sales',
+    align: 'right',
+    format: (v) => fmt(v),
+  },
+  { name: 'expenses', label: 'Other Expenses', field: 'expenses', align: 'right', format: (v) => fmt(v) },
   { name: 'wages', label: 'Wages/Payroll', field: 'wages', align: 'right', format: (v) => fmt(v) },
   { name: 'profit', label: 'Net Profit', field: 'profit', align: 'right', style: 'width:140px' },
 ]
@@ -788,8 +834,7 @@ async function loadCurrentReport() {
     dt = dateTo.value
   try {
     if (tab === 'monthly') {
-      const r = await fetchMonthlyPnlSummary(selectedYear.value)
-      monthlyData.value = r.data
+      monthlyData.value = await financeReportsService.monthlySummary(selectedYear.value)
     } else if (tab === 'pnl') {
       const r = await financeStatementsService.generateProfitLoss({ date_from: df, date_to: dt })
       pnlData.value = { ...r, type: 'pl' }
@@ -798,15 +843,21 @@ async function loadCurrentReport() {
       const r = await financeStatementsService.generateBalanceSheet({ date_from: df, date_to: dt })
       bsData.value = { ...r, type: 'bs' }
     } else if (tab === 'cogs') {
-      const r = await fetchCogsReport(df, dt)
-      cogsRaw.value = r.data || []
+      // GL figure of record (Cost of Sales ledgers) + recipe-based breakdown.
+      glCogs.value = await financeReportsService.glCogs(df, dt)
+      try {
+        cogsRaw.value = await fetchRecipeCogs(df, dt)
+      } catch (e) {
+        cogsRaw.value = []
+        console.warn('[FinanceReports] recipe COGS', e)
+      }
       cogsFilterId.value = null
     } else if (tab === 'cashflow') {
-      const r = await fetchCashFlowStatement(df, dt)
-      cashFlowData.value = r.data
+      cashFlowData.value = await financeReportsService.cashFlow(df, dt)
     }
   } catch (e) {
     console.error('[FinanceReports]', e)
+    Notify.create({ type: 'negative', message: `Report failed: ${e?.message || e}` })
   }
   loading.value = false
 }

@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import { businessDateStr } from 'src/services/reportFilters'
 
 export const useManagerAppStore = defineStore('managerApp', () => {
   const authStore = useAuthStore()
@@ -437,7 +438,7 @@ export const useManagerAppStore = defineStore('managerApp', () => {
 
     todayShiftStaffLoading.value = true
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = businessDateStr()
 
       const { data, error } = await supabase
         .from('shift_assignments')

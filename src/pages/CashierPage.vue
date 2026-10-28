@@ -245,13 +245,11 @@ const tabs = [
 // ── Computed ───────────────────────────────────────────────
 const branchName = computed(() => authStore.currentBranch?.name || 'Branch')
 
-const now = computed(() => {
-  return new Date().toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  })
-})
+// Header clock — a plain computed had no reactive deps and froze at mount time.
+const fmtClock = () =>
+  new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+const now = ref(fmtClock())
+let clockTimer = null
 
 const filteredOrders = computed(() => {
   if (activeTab.value === 'all') return store.billingOrders
@@ -335,9 +333,11 @@ function getStatusGradient(status) {
 // ── Lifecycle ──────────────────────────────────────────────
 onMounted(() => {
   store.initialize()
+  clockTimer = setInterval(() => (now.value = fmtClock()), 30000)
 })
 
 onUnmounted(() => {
+  clearInterval(clockTimer)
   store.cleanup()
 })
 </script>

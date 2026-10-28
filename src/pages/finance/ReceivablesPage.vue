@@ -1,10 +1,11 @@
 <template>
   <q-page class="q-pa-md finance-page">
-    <ERPToolbar
-      moduleName="finance"
+    <FinancePageHeader
+      icon="request_page"
+      subtitle="Customer invoices, receipts, ageing and write-offs"
       title="Accounts Receivable"
       breadcrumbs="Finance / Receivables & Payables / AR"
-      showRefresh
+      show-refresh
       @refresh="loadData"
     >
       <template #actions>
@@ -24,7 +25,6 @@
           label="Collecting Bank"
           outlined
           dense
-          dark
           color="primary"
           style="min-width: 180px"
           emit-value
@@ -42,7 +42,7 @@
         />
         <q-btn unelevated no-caps icon="table_chart" color="green-6" label="Excel" @click="exportBankXLSX" />
       </template>
-    </ERPToolbar>
+    </FinancePageHeader>
 
     <q-banner v-if="loadError" class="bg-red-10 text-white q-mb-md rounded-borders" dense>
       <template #avatar><q-icon name="error" /></template>
@@ -90,7 +90,7 @@
           </div>
         </div>
       </div>
-      <div class="text-caption q-mt-sm" :class="control.reconciled ? 'text-grey-4' : 'text-amber-4'">
+      <div class="text-caption q-mt-sm" :class="control.reconciled ? 'text-grey-6' : 'text-amber-4'">
         <template v-if="control.difference === 0">Sub-ledger and GL 1003 agree.</template>
         <template v-else-if="control.reconciled">
           Difference of LKR {{ fmt(control.difference) }} is POS credit receivables that have no GL entry
@@ -121,7 +121,7 @@
         <q-tab-panel name="open" class="q-pa-none">
           <div class="row q-col-gutter-sm q-mb-sm items-center">
             <div class="col-12 col-sm-4">
-              <q-input v-model="search" placeholder="Search customer, doc #, description" outlined dense dark clearable>
+              <q-input v-model="search" placeholder="Search customer, doc #, description" outlined dense clearable>
                 <template #prepend><q-icon name="search" size="xs" /></template>
               </q-input>
             </div>
@@ -132,7 +132,6 @@
                 label="Customer"
                 outlined
                 dense
-                dark
                 emit-value
                 map-options
                 clearable
@@ -145,7 +144,6 @@
                 label="Status"
                 outlined
                 dense
-                dark
                 emit-value
                 map-options
                 @update:model-value="loadStatusRows"
@@ -191,7 +189,6 @@
             row-key="id"
             selection="multiple"
             flat
-            dark
             dense
             :rows-per-page-options="[20, 50, 100]"
             class="fin-table"
@@ -266,7 +263,7 @@
         <q-tab-panel name="receipts" class="q-pa-none">
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-sm-4">
-              <q-input v-model="receiptSearch" placeholder="Search receipt, customer, reference" outlined dense dark clearable>
+              <q-input v-model="receiptSearch" placeholder="Search receipt, customer, reference" outlined dense clearable>
                 <template #prepend><q-icon name="search" size="xs" /></template>
               </q-input>
             </div>
@@ -281,7 +278,6 @@
                 label="Status"
                 outlined
                 dense
-                dark
                 emit-value
                 map-options
               />
@@ -292,7 +288,6 @@
             :columns="receiptColumns"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[20, 50, 100]"
             class="fin-table"
@@ -332,7 +327,6 @@
             :columns="customerColumns"
             row-key="customer_id"
             flat
-            dark
             dense
             :rows-per-page-options="[20, 50, 100]"
             class="fin-table"
@@ -368,7 +362,7 @@
         <q-tab-panel name="writeoffs" class="q-pa-none">
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-sm-4">
-              <q-input v-model="writeOffSearch" placeholder="Search write-off, customer, invoice, reason" outlined dense dark clearable>
+              <q-input v-model="writeOffSearch" placeholder="Search write-off, customer, invoice, reason" outlined dense clearable>
                 <template #prepend><q-icon name="search" size="xs" /></template>
               </q-input>
             </div>
@@ -383,7 +377,6 @@
                 label="Status"
                 outlined
                 dense
-                dark
                 emit-value
                 map-options
               />
@@ -394,7 +387,6 @@
             :columns="writeOffColumns"
             row-key="id"
             flat
-            dark
             dense
             :rows-per-page-options="[20, 50, 100]"
             class="fin-table"
@@ -434,7 +426,7 @@
 
     <!-- ══ BAD-DEBT WRITE-OFF DIALOG ═════════════════════════════════════ -->
     <q-dialog v-model="showWriteOffDialog" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="bg-grey-10 text-white">
+      <q-card style="width: 520px; max-width: 95vw" class="fin-surface">
         <q-card-section class="row items-center bg-amber-9 text-white q-pa-md">
           <q-icon name="money_off" size="24px" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">Write Off Bad Debt</div>
@@ -442,7 +434,7 @@
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-card-section v-if="woRow" class="q-gutter-md">
-          <div class="rounded-borders q-pa-sm bg-grey-9">
+          <div class="rounded-borders q-pa-sm fin-surface-2">
             <div class="row justify-between items-center">
               <div>
                 <div class="text-caption text-grey-6">{{ woRow.customer_name }}</div>
@@ -463,14 +455,13 @@
             label="Write-off amount (LKR) *"
             outlined
             dense
-            dark
             min="0.01"
             :max="woRow.balance"
             step="0.01"
             prefix="LKR"
             :hint="`Up to the open balance LKR ${fmt(woRow.balance)}`"
           />
-          <q-input v-model="woForm.date" type="date" label="Write-off date *" stack-label outlined dense dark />
+          <q-input v-model="woForm.date" type="date" label="Write-off date *" stack-label outlined dense />
           <q-input
             v-model="woForm.reason"
             type="textarea"
@@ -478,7 +469,6 @@
             label="Reason *"
             outlined
             dense
-            dark
             placeholder="e.g. Customer untraceable after 3 reminders"
           />
           <q-banner dense class="bg-amber-10 text-white rounded-borders">
@@ -489,7 +479,7 @@
           </q-banner>
           <div v-if="woErrors.length" class="text-caption text-amber-4">{{ woErrors[0] }}</div>
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md bg-grey-9">
+        <q-card-actions align="right" class="q-pa-md fin-surface-2">
           <q-btn flat no-caps label="Cancel" color="grey-6" v-close-popup />
           <q-btn
             unelevated
@@ -507,7 +497,7 @@
 
     <!-- ══ RECEIVE PAYMENT DIALOG ════════════════════════════════════════ -->
     <q-dialog v-model="showReceiveDialog" persistent :maximized="$q.screen.lt.sm">
-      <q-card style="width: 860px; max-width: 95vw" class="bg-grey-10 text-white">
+      <q-card style="width: 860px; max-width: 95vw" class="fin-surface">
         <q-card-section class="row items-center bg-positive text-white q-pa-md">
           <q-icon name="payments" size="24px" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">
@@ -518,7 +508,7 @@
         </q-card-section>
 
         <q-card-section class="q-pa-md q-gutter-md">
-          <div class="rounded-borders q-pa-sm bg-grey-9">
+          <div class="rounded-borders q-pa-sm fin-surface-2">
             <div class="row justify-between items-center">
               <div>
                 <div class="text-caption text-grey-6">Customer</div>
@@ -543,7 +533,7 @@
               </div>
             </div>
             <div class="pay-lines-wrap rounded-borders">
-              <q-markup-table flat dense dark separator="horizontal" class="pay-lines-table">
+              <q-markup-table flat dense separator="horizontal" class="pay-lines-table">
                 <thead>
                   <tr>
                     <th style="width: 36px"></th>
@@ -557,7 +547,7 @@
                 <tbody>
                   <tr v-for="line in recvLines" :key="line.id" :class="{ 'pay-line--selected': line.selected }">
                     <td>
-                      <q-checkbox :model-value="line.selected" dense dark @update:model-value="(v) => toggleLine(line, v)" />
+                      <q-checkbox :model-value="line.selected" dense @update:model-value="(v) => toggleLine(line, v)" />
                     </td>
                     <td class="text-weight-bold">
                       {{ line.doc_number || line.id.slice(0, 8) }}
@@ -572,7 +562,6 @@
                         type="number"
                         dense
                         outlined
-                        dark
                         min="0"
                         :max="line.balance"
                         step="0.01"
@@ -600,7 +589,6 @@
               type="number"
               outlined
               dense
-              dark
               min="0.01"
               step="0.01"
               prefix="LKR"
@@ -610,7 +598,7 @@
             />
           </div>
 
-          <div class="rounded-borders q-pa-sm bg-grey-9">
+          <div class="rounded-borders q-pa-sm fin-surface-2">
             <div class="row q-col-gutter-sm text-center">
               <div class="col-6 col-sm-3">
                 <div class="text-caption text-grey-6">Invoices</div>
@@ -639,11 +627,11 @@
           <div class="row q-col-gutter-sm">
             <div class="col-6">
               <div class="text-caption text-weight-bold q-mb-xs">Receipt Date *</div>
-              <q-input v-model="recvForm.receipt_date" type="date" outlined dense dark />
+              <q-input v-model="recvForm.receipt_date" type="date" outlined dense />
             </div>
             <div class="col-6">
               <div class="text-caption text-weight-bold q-mb-xs">Payment Method *</div>
-              <q-select v-model="recvForm.payment_method" :options="paymentMethods" outlined dense dark />
+              <q-select v-model="recvForm.payment_method" :options="paymentMethods" outlined dense />
             </div>
           </div>
 
@@ -654,7 +642,6 @@
               :options="receivingAccountOptions"
               outlined
               dense
-              dark
               emit-value
               map-options
               placeholder="Select cash / bank account"
@@ -671,16 +658,16 @@
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
               <div class="text-caption text-weight-bold q-mb-xs">{{ recvForm.payment_method === 'Cheque' ? 'Cheque Number' : 'Reference' }}</div>
-              <q-input v-model="recvForm.reference_no" outlined dense dark placeholder="e.g. TRF-99210" />
+              <q-input v-model="recvForm.reference_no" outlined dense placeholder="e.g. TRF-99210" />
             </div>
             <div class="col-12 col-sm-6">
               <div class="text-caption text-weight-bold q-mb-xs">Remarks</div>
-              <q-input v-model="recvForm.remarks" outlined dense dark placeholder="Optional notes" />
+              <q-input v-model="recvForm.remarks" outlined dense placeholder="Optional notes" />
             </div>
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-9">
+        <q-card-actions align="right" class="q-pa-md fin-surface-2">
           <q-btn flat no-caps label="Cancel" color="grey-6" v-close-popup />
           <q-btn
             unelevated
@@ -698,7 +685,7 @@
 
     <!-- ══ NEW CUSTOMER INVOICE DIALOG ═══════════════════════════════════ -->
     <q-dialog v-model="showInvoiceDialog" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="bg-grey-10 text-white">
+      <q-card style="width: 560px; max-width: 95vw" class="fin-surface">
         <q-card-section class="row items-center bg-primary text-white q-pa-md">
           <q-icon name="post_add" size="24px" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">New Customer Invoice</div>
@@ -713,7 +700,6 @@
             label="Registered customer *"
             outlined
             dense
-            dark
             use-input
             input-debounce="300"
             :loading="customerSearching"
@@ -737,19 +723,18 @@
             label="Income ledger *"
             outlined
             dense
-            dark
             emit-value
             map-options
           />
-          <q-input v-model.number="invForm.amount" type="number" label="Amount (LKR) *" outlined dense dark min="0.01" step="0.01" />
+          <q-input v-model.number="invForm.amount" type="number" label="Amount (LKR) *" outlined dense min="0.01" step="0.01" />
           <div class="row q-col-gutter-sm">
-            <div class="col-6"><q-input v-model="invForm.doc_date" type="date" label="Invoice date" stack-label outlined dense dark /></div>
-            <div class="col-6"><q-input v-model="invForm.due_date" type="date" label="Due date" stack-label outlined dense dark /></div>
+            <div class="col-6"><q-input v-model="invForm.doc_date" type="date" label="Invoice date" stack-label outlined dense /></div>
+            <div class="col-6"><q-input v-model="invForm.due_date" type="date" label="Due date" stack-label outlined dense /></div>
           </div>
-          <q-input v-model="invForm.description" label="Description" outlined dense dark placeholder="e.g. Function hall booking 12 Nov" />
+          <q-input v-model="invForm.description" label="Description" outlined dense placeholder="e.g. Function hall booking 12 Nov" />
           <div class="text-caption text-grey-5">Posts Dr 1003 Accounts Receivable / Cr the selected income ledger.</div>
         </q-card-section>
-        <q-card-actions align="right" class="q-pa-md bg-grey-9">
+        <q-card-actions align="right" class="q-pa-md fin-surface-2">
           <q-btn flat no-caps label="Cancel" color="grey-6" v-close-popup />
           <q-btn
             unelevated
@@ -767,7 +752,7 @@
 
     <!-- ══ CUSTOMER STATEMENT DIALOG ═════════════════════════════════════ -->
     <q-dialog v-model="showStatementDialog" :maximized="$q.screen.lt.md">
-      <q-card style="width: 900px; max-width: 95vw" class="bg-grey-10 text-white">
+      <q-card style="width: 900px; max-width: 95vw" class="fin-surface">
         <q-card-section class="row items-center q-pa-md" style="background: linear-gradient(135deg, #0f4c75 0%, #1976d2 100%)">
           <q-icon name="description" size="24px" class="q-mr-sm" />
           <div class="text-subtitle1 text-weight-bold">Statement — {{ stmtCustomer.name }}</div>
@@ -776,8 +761,8 @@
         </q-card-section>
         <q-card-section>
           <div class="row q-col-gutter-sm items-end q-mb-sm">
-            <div class="col-6 col-sm-3"><q-input v-model="stmtFrom" type="date" label="From" stack-label outlined dense dark /></div>
-            <div class="col-6 col-sm-3"><q-input v-model="stmtTo" type="date" label="To" stack-label outlined dense dark /></div>
+            <div class="col-6 col-sm-3"><q-input v-model="stmtFrom" type="date" label="From" stack-label outlined dense /></div>
+            <div class="col-6 col-sm-3"><q-input v-model="stmtTo" type="date" label="To" stack-label outlined dense /></div>
             <div class="col-12 col-sm-6 row justify-end q-gutter-xs">
               <q-btn unelevated no-caps color="primary" icon="refresh" label="Load" :loading="stmtLoading" @click="loadStatement" />
               <q-btn unelevated no-caps color="red-6" icon="picture_as_pdf" label="PDF" :disable="!statement" @click="exportStatementPDF" />
@@ -789,7 +774,6 @@
             :columns="statementColumns"
             :row-key="(r) => `${r.type}-${r.ref}-${r.date}`"
             flat
-            dark
             dense
             :pagination="{ rowsPerPage: 0 }"
             hide-pagination
@@ -799,13 +783,13 @@
           />
           <div v-if="statement" class="row justify-end q-mt-sm">
             <div style="min-width: 280px">
-              <div class="row justify-between"><span class="text-grey-4">Opening b/f</span><span>LKR {{ fmt(statement.opening_balance) }}</span></div>
-              <div class="row justify-between"><span class="text-grey-4">Invoiced</span><span>LKR {{ fmt(statement.total_debit) }}</span></div>
-              <div class="row justify-between"><span class="text-grey-4">Received</span><span class="text-green-4">LKR {{ fmt(statement.total_received) }}</span></div>
+              <div class="row justify-between"><span class="text-grey-6">Opening b/f</span><span>LKR {{ fmt(statement.opening_balance) }}</span></div>
+              <div class="row justify-between"><span class="text-grey-6">Invoiced</span><span>LKR {{ fmt(statement.total_debit) }}</span></div>
+              <div class="row justify-between"><span class="text-grey-6">Received</span><span class="text-green-4">LKR {{ fmt(statement.total_received) }}</span></div>
               <div v-if="statement.total_written_off" class="row justify-between">
-                <span class="text-grey-4">Bad debt written off</span><span class="text-amber-4">LKR {{ fmt(statement.total_written_off) }}</span>
+                <span class="text-grey-6">Bad debt written off</span><span class="text-amber-4">LKR {{ fmt(statement.total_written_off) }}</span>
               </div>
-              <q-separator class="q-my-xs" dark />
+              <q-separator class="q-my-xs" />
               <div class="row justify-between text-weight-bolder"><span>Closing balance</span><span class="text-red-4">LKR {{ fmt(statement.closing_balance) }}</span></div>
             </div>
           </div>
@@ -817,7 +801,7 @@
 
 <script setup>
 import { ref, computed, reactive, watch, onMounted } from 'vue'
-import ERPToolbar from 'components/erp/ERPToolbar.vue'
+import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import { useQuasar } from 'quasar'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'

@@ -420,6 +420,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { businessDateStr, businessDateOf } from 'src/services/reportFilters'
 import DashboardChart from 'components/dashboard/DashboardChart.vue'
 
 const $q = useQuasar()
@@ -616,7 +617,7 @@ async function fetchDashboardData() {
         .from('shift_assignments')
         .select('id')
         .eq('branch_id', branchId)
-        .eq('assignment_date', now.toISOString().split('T')[0])
+        .eq('assignment_date', businessDateStr(now))
         .in('status', ['active', 'present']),
     ])
 
@@ -695,22 +696,22 @@ async function fetchDashboardData() {
     } else if (timeFilter.value === 'weekly') {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-        const key = d.toISOString().split('T')[0]
+        const key = businessDateStr(d)
         dates.push(d.toLocaleDateString('en', { weekday: 'short' }))
         dataPoints.push(
           trendOrders
-            .filter((o) => o.created_at.startsWith(key))
+            .filter((o) => businessDateOf(o.created_at) === key)
             .reduce((s, o) => s + (o.total_amount || 0), 0),
         )
       }
     } else {
       for (let i = 29; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-        const key = d.toISOString().split('T')[0]
+        const key = businessDateStr(d)
         dates.push(String(d.getDate()))
         dataPoints.push(
           trendOrders
-            .filter((o) => o.created_at.startsWith(key))
+            .filter((o) => businessDateOf(o.created_at) === key)
             .reduce((s, o) => s + (o.total_amount || 0), 0),
         )
       }

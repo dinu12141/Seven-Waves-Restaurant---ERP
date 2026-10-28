@@ -1,5 +1,9 @@
 // Seven Waves ERP — HR & Payroll Service
+// @deprecated QA 2026-10-28: not imported anywhere. hr_run_payroll / hr_approve_payroll RPCs
+// do not exist live and attendance_records has no `source` column. Use process_monthly_payroll,
+// approve_salary_final and fn_post_payroll_run (see PayrollPage.vue). Do not wire this up as-is.
 import { supabase } from 'src/boot/supabase'
+import { localYmd } from './hrDates'
 import type { Employee, PayrollRun, Payslip, AttendanceRecord, LeaveRequest, RpcResult, UUID } from 'src/types/erp.types'
 
 export async function runPayroll(branchId: UUID, periodStart: string, periodEnd: string): Promise<RpcResult> {
@@ -39,7 +43,7 @@ export async function getAttendance(branchId: UUID, date: string): Promise<Atten
 export async function clockIn(employeeId: UUID, branchId: UUID, companyId: UUID): Promise<RpcResult> {
   const { error } = await supabase.from('attendance_records').upsert({
     company_id: companyId, branch_id: branchId, employee_id: employeeId,
-    attendance_date: new Date().toISOString().split('T')[0], clock_in: new Date().toISOString(), status: 'present', source: 'app',
+    attendance_date: localYmd(), clock_in: new Date().toISOString(), status: 'present', source: 'app',
   }, { onConflict: 'employee_id,attendance_date' })
   return error ? { success: false, error: error.message } : { success: true }
 }

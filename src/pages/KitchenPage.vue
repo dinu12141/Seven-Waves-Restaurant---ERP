@@ -307,7 +307,10 @@ const filteredReady = computed(() => filterByType(store.readyTickets))
 
 function filterByType(tickets) {
   if (filterMode.value === 'All') return tickets
-  return tickets.filter((t) => t.orderType?.toLowerCase() === filterMode.value.toLowerCase())
+  const want = filterMode.value.toLowerCase()
+  // 'Delivery' must also catch 'Website-Delivery' (order_type website_delivery)
+  if (want === 'delivery') return tickets.filter((t) => t.orderType?.toLowerCase().includes('delivery'))
+  return tickets.filter((t) => t.orderType?.toLowerCase() === want)
 }
 
 // Watch for kitchen-specific new ticket alerts → show detailed notification

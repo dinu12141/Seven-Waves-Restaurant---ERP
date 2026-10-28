@@ -4,7 +4,38 @@
 
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
-import { logFinanceAudit } from './finance-ledger.service'
+import { financeLedgerService, logFinanceAudit } from './finance-ledger.service'
+import { accountLinkIssue, recomputeLedgerBalance, signedOpening } from './finance-ledger-integrity'
+
+// Columns an account form may write. Balances are NOT among them: an account
+// mirrors its ledger (opening = the ledger's signed opening, balance = the
+// ledger's GL balance) — opening balances are maintained on the ledger only.
+const ACCOUNT_WRITABLE = [
+  'account_type', 'ledger_id', 'registered_name', 'account_number', 'bank_name', 'bank_branch',
+  'currency', 'is_default', 'is_active', 'branch_id', 'company_id',
+]
+export function pickAccountFields(src = {}) {
+  const out = {}
+  for (const k of ACCOUNT_WRITABLE) if (src[k] !== undefined) out[k] = src[k]
+  if (typeof out.registered_name === 'string') out.registered_name = out.registered_name.trim()
+  if (out.ledger_id === '') out.ledger_id = null
+  return out
+}
+
+/** Validate the account → ledger link; returns the linked ledger row. */
+async function assertLedgerLink(ledgerId, accountId = null) {
+  if (!ledgerId) throw new Error('Every account must be linked to a ledger — otherwise its postings cannot reach the GL.')
+  const ledger = await financeLedgerService.getById(ledgerId)
+  const { data: others, error } = await supabase
+    .from('finance_accounts')
+    .select('id, registered_name, ledger_id, deleted_at')
+    .eq('ledger_id', ledgerId)
+    .is('deleted_at', null)
+  if (error) throw error
+  const issue = accountLinkIssue({ id: accountId, ledger_id: ledgerId }, ledger, others || [])
+  if (issue) throw new Error(issue)
+  return ledger
+}
 
 export const financeAccountService = {
   async list(filters = {}) {
@@ -17,6 +48,24 @@ export const financeAccountService = {
     return data || []
   },
 
+  /**
+   * Accounts annotated with the GL balance of their ledger (signed opening +
+   * Σ Dr − Cr), drift against the stored current_balance and link problems.
+   */
+  async listWithGl(filters = {}) {
+    const [accounts, totals] = await Promise.all([this.list(filters), financeLedgerService.loadGlTotals()])
+    return accounts.map((a) => {
+      const gl = a.ledger ? recomputeLedgerBalance(a.ledger, totals.get(a.ledger_id)) : null
+      const stored = Number(a.current_balance) || 0
+      return {
+        ...a,
+        gl_balance: gl,
+        balance_drift: gl === null || Math.abs(gl - stored) < 0.005 ? 0 : Math.round((stored - gl) * 100) / 100,
+        link_issue: accountLinkIssue(a, a.ledger, accounts),
+      }
+    })
+  },
+
   async getById(id) {
     const { data, error } = await supabase.from('finance_accounts').select('*, ledger:finance_ledgers(*)').eq('id', id).single()
     if (error) throw error
@@ -25,21 +74,15 @@ export const financeAccountService = {
 
   async create(account) {
     const authStore = useAuthStore()
-    const cleaned = { ...account }
-    delete cleaned._isEdit
-    delete cleaned._id
-    // Strip the embedded join object (ledger:finance_ledgers(*)) that list() injects —
-    // it is not a column and PostgREST rejects it on INSERT.
-    delete cleaned.ledger
-    // Seed the live balance from the opening balance — otherwise a new account
-    // always shows LKR 0 until a transaction posts. current_balance then tracks
-    // opening + posted movements.
-    const opening = Number(cleaned.opening_balance) || 0
+    const cleaned = pickAccountFields(account)
+    const ledger = await assertLedgerLink(cleaned.ledger_id)
+    const { balance } = await financeLedgerService.recomputeBalance(ledger)
     const payload = {
       ...cleaned,
       company_id: cleaned.company_id || authStore.currentBranch?.company_id || authStore.profile?.company_id || null,
       branch_id: cleaned.branch_id || authStore.currentBranch?.id || authStore.profile?.branch_id || null,
-      current_balance: cleaned.current_balance ?? opening,
+      opening_balance: signedOpening(ledger),
+      current_balance: balance,
       created_by: authStore.user?.id || null,
       updated_by: authStore.user?.id || null
     }
@@ -52,43 +95,29 @@ export const financeAccountService = {
   async update(id, updates) {
     const authStore = useAuthStore()
     const old = await this.getById(id)
-    const cleaned = { ...updates }
-    delete cleaned._isEdit
-    delete cleaned._id
-    // Strip the embedded join object (ledger:finance_ledgers(*)) that list() injects —
-    // it is not a column and PostgREST would 400 on UPDATE if present.
-    delete cleaned.ledger
+    const cleaned = pickAccountFields(updates)
 
-    const oldOpening = Number(old?.opening_balance) || 0
-    const newOpening = cleaned.opening_balance !== undefined ? (Number(cleaned.opening_balance) || 0) : oldOpening
-    const openingDelta = newOpening - oldOpening
-
-    let newCurrentBalance = Number(old?.current_balance) || 0
-    if (cleaned.current_balance !== undefined && Number(cleaned.current_balance) !== Number(old?.current_balance)) {
-      newCurrentBalance = Number(cleaned.current_balance) || 0
-    } else if (openingDelta !== 0) {
-      newCurrentBalance += openingDelta
-    }
+    // Only a (re)link is validated, so a legacy wrong link can still be edited
+    // (e.g. renamed) — the list flags it until it is re-linked.
+    const ledgerId = cleaned.ledger_id !== undefined ? cleaned.ledger_id : old?.ledger_id
+    let ledger = old?.ledger || null
+    if (ledgerId !== old?.ledger_id) ledger = await assertLedgerLink(ledgerId, id)
+    else if (!ledgerId) throw new Error('Every account must be linked to a ledger.')
 
     const payload = {
       ...cleaned,
-      current_balance: newCurrentBalance,
       updated_by: authStore.user?.id || null,
       updated_at: new Date().toISOString()
+    }
+    if (ledger) {
+      payload.opening_balance = signedOpening(ledger)
+      payload.current_balance = (await financeLedgerService.recomputeBalance(ledger)).balance
     }
 
     const { data, error } = await supabase.from('finance_accounts').update(payload).eq('id', id).select('*, ledger:finance_ledgers(*)').single()
     if (error) throw error
-
-    // Sync linked ledger in finance_ledgers
-    const ledgerId = cleaned.ledger_id || old?.ledger_id
-    if (ledgerId) {
-      await supabase.from('finance_ledgers').update({
-        opening_balance: newOpening,
-        current_balance: newCurrentBalance,
-        updated_at: new Date().toISOString()
-      }).eq('id', ledgerId)
-    }
+    // NOTE: the ledger is never written from here — its opening is edited on
+    // Ledger Registration and its balance comes from GL postings only.
 
     await logFinanceAudit('account_updated', 'finance_account', id, old, data)
     return data

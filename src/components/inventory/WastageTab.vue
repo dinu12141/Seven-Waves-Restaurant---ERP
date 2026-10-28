@@ -45,6 +45,7 @@
         v-model="filterSearch"
         label="Search items..."
         dense outlined clearable
+        debounce="400"
         :dark="$q.dark.isActive"
         style="min-width: 200px"
         @update:model-value="loadData"
@@ -53,26 +54,42 @@
       </q-input>
       <q-input
         v-model="filterDateFrom"
-        label="From" type="date" dense outlined
+        label="From" type="date" dense outlined clearable
         :dark="$q.dark.isActive"
         style="min-width: 150px"
         @update:model-value="loadData"
       />
       <q-input
         v-model="filterDateTo"
-        label="To" type="date" dense outlined
+        label="To" type="date" dense outlined clearable
         :dark="$q.dark.isActive"
         style="min-width: 150px"
         @update:model-value="loadData"
       />
+      <q-btn
+        v-if="hasActiveFilters"
+        flat dense no-caps
+        color="grey-6"
+        icon="filter_alt_off"
+        label="Reset"
+        @click="resetFilters"
+      />
     </div>
 
+    <q-banner v-if="loadError" dense rounded class="bg-negative text-white q-mb-md">
+      <template #avatar><q-icon name="error_outline" /></template>
+      Could not load wastage data: {{ loadError }}
+      <template #action>
+        <q-btn flat dense no-caps label="Retry" @click="loadData" />
+      </template>
+    </q-banner>
+
     <!-- Wastage Table -->
-    <q-card class="bg-dark text-white" flat bordered>
+    <q-card flat bordered>
       <q-table
         :rows="rows"
         :columns="columns"
-        row-key="document_id"
+        row-key="_rk"
         flat dense
         :dark="$q.dark.isActive"
         :loading="loading"
@@ -312,6 +329,27 @@ const filterCategory = ref(null)
 const filterSearch = ref('')
 const filterDateFrom = ref('')
 const filterDateTo = ref('')
+const loadError = ref('')
+
+const hasActiveFilters = computed(
+  () =>
+    !!(
+      filterWarehouse.value ||
+      filterCategory.value ||
+      filterSearch.value ||
+      filterDateFrom.value ||
+      filterDateTo.value
+    ),
+)
+
+function resetFilters() {
+  filterWarehouse.value = null
+  filterCategory.value = null
+  filterSearch.value = ''
+  filterDateFrom.value = ''
+  filterDateTo.value = ''
+  loadData()
+}
 
 // KPI
 const kpis = ref([
@@ -428,6 +466,24 @@ async function saveWastage(autoPost) {
     return
   }
 
+  // Posting deducts stock immediately and can only be undone by an admin
+  // "Cancel & Reverse" — confirm first.
+  if (autoPost) {
+    const ok = await new Promise((resolve) => {
+      $q.dialog({
+        title: 'Post wastage?',
+        message: `Deduct ${validItems.length} item(s) worth ${fmtLKR(grandTotal.value)} from stock now?`,
+        cancel: true,
+        persistent: true,
+        ok: { label: 'Post & Deduct', color: 'deep-orange', unelevated: true },
+      })
+        .onOk(() => resolve(true))
+        .onCancel(() => resolve(false))
+        .onDismiss(() => resolve(false))
+    })
+    if (!ok) return
+  }
+
   saving.value = true
   try {
     const doc = await createWastageDocument(
@@ -438,7 +494,21 @@ async function saveWastage(autoPost) {
     )
 
     if (autoPost) {
-      await postDocument(doc.id)
+      try {
+        await postDocument(doc.id)
+      } catch (postErr) {
+        // The draft exists — say so instead of a generic failure (users used
+        // to re-enter the wastage and create duplicates).
+        $q.notify({
+          type: 'warning',
+          message: `Draft ${doc.doc_number} saved, but posting failed: ${postErr.message || postErr}`,
+          caption: 'Fix the issue and post it from Inventory → Documents.',
+          timeout: 8000,
+        })
+        resetAndClose()
+        await loadData()
+        return
+      }
       $q.notify({ type: 'positive', message: `Wastage ${doc.doc_number} posted! Stock deducted.`, icon: 'verified' })
     } else {
       $q.notify({ type: 'positive', message: `Draft ${doc.doc_number} saved.` })
@@ -482,8 +552,11 @@ function reasonLabel(r) {
   return map[r] || r || '—'
 }
 
+let loadSeq = 0
 async function loadData() {
+  const seq = ++loadSeq
   loading.value = true
+  loadError.value = ''
   try {
     const [entries, stats] = await Promise.all([
       fetchWastageEntries({
@@ -493,18 +566,25 @@ async function loadData() {
         wastageCategory: filterCategory.value || undefined,
         search: filterSearch.value || undefined,
       }),
-      fetchWastageStats(filterDateFrom.value || undefined, filterDateTo.value || undefined),
+      fetchWastageStats(
+        filterDateFrom.value || undefined,
+        filterDateTo.value || undefined,
+        filterWarehouse.value || undefined,
+      ),
     ])
+    if (seq !== loadSeq) return // a newer filter change superseded this load
 
-    rows.value = entries
+    // The view is one row per document LINE — document_id is not unique.
+    rows.value = entries.map((r, i) => ({ ...r, _rk: `${r.document_id}:${r.item_id}:${i}` }))
     kpis.value[0].value = Number(stats.todayLoss).toLocaleString('en-LK', { minimumFractionDigits: 0 })
     kpis.value[1].value = String(stats.totalEntries)
     kpis.value[2].value = Number(stats.totalQty).toFixed(1)
     kpis.value[3].value = Number(stats.totalLoss).toLocaleString('en-LK', { minimumFractionDigits: 0 })
   } catch (e) {
     console.error('[WastageTab] loadData error:', e)
+    if (seq === loadSeq) loadError.value = e?.message || 'Unknown error'
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
 

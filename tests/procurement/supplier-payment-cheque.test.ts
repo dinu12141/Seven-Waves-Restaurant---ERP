@@ -119,6 +119,8 @@ describe('createAndPostPayment', () => {
         p_allocations: allocations,
         p_post_now: true,
         p_bank_account_code: '1010',
+        p_bank_account_id: 'bank-ui',
+        p_cheque_id: null,
       },
     })
   })

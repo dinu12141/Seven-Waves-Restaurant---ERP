@@ -5,6 +5,7 @@
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="displayRows"
+    :show-kitchen-filter="true"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"
@@ -197,7 +198,9 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import { useAuthStore } from 'src/stores/auth'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import InvoiceViewDialog from 'src/components/reports/InvoiceViewDialog.vue'
@@ -508,8 +511,8 @@ async function loadData(filters = {}) {
       `)
 
     // Date filters on orders.created_at
-    if (filters.dateFrom) query = query.gte('orders.created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('orders.created_at', filters.dateTo + 'T23:59:59')
+    if (filters.dateFrom) query = query.gte('orders.created_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('orders.created_at', dayEndExclusiveISO(filters.dateTo))
 
     // Branch filter
     if (filters.branch) {
@@ -519,10 +522,17 @@ async function loadData(filters = {}) {
       if (branchId) query = query.eq('orders.branch_id', branchId)
     }
 
-    // Exclude cancelled order items
-    query = query.not('status', 'eq', 'cancelled')
+    // Kitchen filter (order_items.kitchen_id is set at waiter-accept time)
+    if (filters.kitchen) query = query.eq('kitchen_id', filters.kitchen)
 
-    const { data, error } = await query.limit(5000)
+    // Exclude cancelled / voided order items and cancelled orders (server-side so
+    // paging is not wasted on rows that are dropped client-side)
+    query = query
+      .not('status', 'eq', 'cancelled')
+      .is('void_reason', null)
+      .not('orders.status', 'in', '(cancelled,void,voided)')
+
+    const { data, error } = await fetchAllRows(query.order('id'))
     if (error) throw error
 
     // Aggregate by menu item + category
@@ -590,6 +600,8 @@ async function loadData(filters = {}) {
     })
   } catch (err) {
     console.error('[ItemWiseSale] Error:', err)
+    rawItems.value = []
+    Notify.create({ type: 'negative', message: 'Failed to load Item Wise Sale: ' + (err?.message || err) })
   } finally {
     loading.value = false
   }

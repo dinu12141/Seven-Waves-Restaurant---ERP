@@ -938,6 +938,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { localYmd, localYm, fetchAllRows } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
@@ -974,9 +975,12 @@ const assignFilter = reactive({
 })
 
 function clearAssignFilters() {
+  // shiftId is a server-side filter — reload so the cleared filter takes effect.
+  const hadServerFilter = !!assignFilter.shiftId
   assignFilter.shiftId = null
   assignFilter.employeeId = null
   assignSearch.value = ''
+  if (hadServerFilter) loadAssignments()
 }
 
 // ─── Shift Dialog ──────────────────────────────────────────────────────────
@@ -1159,7 +1163,7 @@ const weekDays = computed(() => {
   const from = new Date(assignFilter.dateFrom)
   const to = new Date(assignFilter.dateTo)
   for (let d = new Date(from); d <= to && days.length < 7; d.setDate(d.getDate() + 1)) {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localYmd()
     const ds = d.toISOString().split('T')[0]
     days.push({
       date: ds,
@@ -1237,27 +1241,45 @@ async function loadShifts() {
 }
 
 async function loadAssignments() {
+  if (!assignFilter.dateFrom || !assignFilter.dateTo) {
+    $q.notify({ type: 'warning', message: 'Select both From and To dates' })
+    return
+  }
+  if (assignFilter.dateTo < assignFilter.dateFrom) {
+    const tmp = assignFilter.dateFrom
+    assignFilter.dateFrom = assignFilter.dateTo
+    assignFilter.dateTo = tmp
+  }
   loadingAssignments.value = true
   const branchId = authStore.currentBranch?.id
-  let q = supabase
-    .from('shift_assignments')
-    .select(`*, employees(full_name, employee_code), shifts(name, start_time, end_time)`)
-    .gte('assignment_date', assignFilter.dateFrom)
-    .lte('assignment_date', assignFilter.dateTo)
-    .order('assignment_date')
+  const build = () => {
+    let q = supabase
+      .from('shift_assignments')
+      .select(`*, employees(full_name, employee_code), shifts(name, start_time, end_time)`)
+      .gte('assignment_date', assignFilter.dateFrom)
+      .lte('assignment_date', assignFilter.dateTo)
+      .order('assignment_date')
+      .order('id')
 
-  if (branchId) q = q.eq('branch_id', branchId)
-  if (assignFilter.shiftId) q = q.eq('shift_id', assignFilter.shiftId)
+    if (branchId) q = q.eq('branch_id', branchId)
+    if (assignFilter.shiftId) q = q.eq('shift_id', assignFilter.shiftId)
+    return q
+  }
 
-  const { data, error } = await q
-  if (error) console.error(error)
-  else assignments.value = data || []
-  loadingAssignments.value = false
+  try {
+    // A month of rosters for a full branch can exceed the 1000-row cap.
+    assignments.value = await fetchAllRows(build)
+  } catch (error) {
+    console.error(error)
+    $q.notify({ type: 'negative', message: `Failed to load shift assignments: ${error.message}` })
+  } finally {
+    loadingAssignments.value = false
+  }
 }
 
 function openUploadDialog() {
   uploadForm.file = null
-  uploadForm.month = new Date().toISOString().substring(0, 7)
+  uploadForm.month = localYm()
   uploadForm.department_id = null
   uploadDialog.open = true
 }

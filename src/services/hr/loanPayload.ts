@@ -1,3 +1,5 @@
+import { localYmd } from './hrDates'
+
 /**
  * Builds an employee_loans INSERT payload using the REAL table columns
  * (hr_payroll.sql: loan_amount, monthly_installment, total_paid,
@@ -58,7 +60,7 @@ export function buildLoanInsert(form: LoanForm, branch: BranchLike | null | unde
   if (!Number.isFinite(installment) || installment <= 0) installment = amount / n
   installment = round2(Math.min(installment, amount))
 
-  const loanDate = form.start_date || new Date().toISOString().slice(0, 10)
+  const loanDate = form.start_date || localYmd()
   // installments needed at this installment amount (the last one may be smaller)
   const months = Math.ceil(round2(amount) / installment)
 

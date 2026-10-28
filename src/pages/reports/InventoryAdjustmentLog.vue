@@ -91,10 +91,12 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue'
+import { Notify } from 'quasar'
 import { supabase } from 'src/boot/supabase'
+import { dayEndExclusiveISO, dayStartISO, fetchAllRows } from 'src/services/reportFilters'
 import ReportLayout from 'src/components/reports/ReportLayout.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
-import { fmtLKR, fmtDate } from 'src/services/reportService'
+import { fmtLKR, fmtDate, applyBranchSecurity } from 'src/services/reportService'
 const loading = ref(false),
   rows = ref([])
 const columns = [
@@ -137,30 +139,32 @@ async function loadData(filters = {}) {
     let query = supabase
       .from('inventory_ledger')
       .select(
-        'id,created_at,quantity,direction,unit_cost,notes,items(name),inventory_documents(doc_number,doc_type)',
+        'id,posted_at,quantity,direction,unit_cost,total_cost,doc_type,doc_number,items(name),inventory_documents!inventory_ledger_document_id_fkey(remarks)',
       )
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom + 'T00:00:00')
-    if (filters.dateTo) query = query.lte('created_at', filters.dateTo + 'T23:59:59')
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(500)
+      .in('doc_type', ['ADJUSTMENT', 'STOCK_COUNT'])
+    if (filters.dateFrom) query = query.gte('posted_at', dayStartISO(filters.dateFrom))
+    if (filters.dateTo) query = query.lt('posted_at', dayEndExclusiveISO(filters.dateTo))
+    if (filters.branch) query = query.eq('branch_id', filters.branch)
+    query = applyBranchSecurity(query)
+    const { data, error } = await fetchAllRows(query.order('posted_at', { ascending: false }).order('id'))
     if (error) throw error
-    rows.value = (data || [])
-      .filter((r) => ['ADJUSTMENT', 'STOCK_COUNT'].includes(r.inventory_documents?.doc_type))
-      .map((r) => {
+    rows.value = (data || []).map((r) => {
         const qty = Number(r.quantity || 0)
         const uc = Number(r.unit_cost || 0)
         return {
           id: r.id,
-          date: r.created_at,
-          doc_number: r.inventory_documents?.doc_number || '—',
+          date: r.posted_at,
+          doc_number: r.doc_number || '—',
           item_name: r.items?.name || '—',
           direction: r.direction,
           quantity: qty,
-          value: qty * uc,
-          notes: r.notes,
+          value: Number(r.total_cost ?? qty * uc),
+          notes: r.inventory_documents?.remarks || '',
         }
       })
   } catch (e) {
     console.error('[InvAdjustment]', e)
+    Notify.create({ type: 'negative', message: 'Failed to load report: ' + (e?.message || e) })
   } finally {
     loading.value = false
   }

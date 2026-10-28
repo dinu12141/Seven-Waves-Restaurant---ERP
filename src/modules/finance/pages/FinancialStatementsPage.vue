@@ -1,12 +1,11 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center q-mb-md">
-      <q-icon name="assessment" size="md" color="primary" class="q-mr-sm" />
-      <div>
-        <div class="text-h5 text-weight-bold">Financial Statements</div>
-        <div class="text-caption text-grey-6">Official accounting statements — Seven Waves Restaurant (Pvt) Ltd</div>
-      </div>
-    </div>
+    <FinancePageHeader
+      title="Financial Statements"
+      icon="assessment"
+      subtitle="Trial balance, profit & loss and balance sheet — Seven Waves Restaurant (Pvt) Ltd"
+      breadcrumbs="Finance / Reports"
+    />
 
     <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="left" narrow-indicator>
       <q-tab name="trial" label="Trial Balance" icon="balance" />
@@ -15,17 +14,19 @@
     </q-tabs>
     <q-separator />
 
-    <div class="row q-col-gutter-sm q-my-md items-center">
-      <div class="col-12 col-sm-3">
-        <q-input v-model="filters.date_from" label="From Date (P&L period)" outlined dense type="date" clearable />
-      </div>
-      <div class="col-12 col-sm-3">
-        <q-input v-model="filters.date_to" label="To Date (Balance Sheet as at)" outlined dense type="date" clearable />
-      </div>
-      <div class="col-12 col-sm-2">
-        <q-btn color="primary" label="Generate" icon="autorenew" unelevated @click="generate" :loading="stmtStore.loading" no-caps />
-      </div>
-    </div>
+    <FinanceFilterBar
+      v-model:from="filters.date_from"
+      v-model:to="filters.date_to"
+      from-label="From (P&L period)"
+      to-label="To (Balance Sheet as at)"
+      :presets="['this_month', 'last_month', 'this_fy', 'last_fy']"
+      default-preset="this_fy"
+      persist-key="financial-statements"
+      class="q-mt-md"
+    >
+      <q-btn color="primary" label="Generate" icon="autorenew" unelevated @click="generate" :loading="stmtStore.loading" no-caps />
+      <span class="text-caption text-grey-7">{{ periodLabel }}</span>
+    </FinanceFilterBar>
 
     <q-tab-panels v-model="tab" animated>
       <!-- TRIAL BALANCE -->
@@ -126,6 +127,9 @@
 </template>
 
 <script setup>
+import FinancePageHeader from '../components/FinancePageHeader.vue'
+import FinanceFilterBar from '../components/FinanceFilterBar.vue'
+import { presetRange, rangeLabel } from '../utils/finance-dates'
 import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useFinanceStatementsStore } from '../stores/finance-statements.store'
@@ -135,7 +139,10 @@ import FinancialStatementViewer from '../components/FinancialStatementViewer.vue
 const $q = useQuasar()
 const stmtStore = useFinanceStatementsStore()
 const tab = ref('trial')
-const filters = ref({ date_from: '', date_to: '' })
+// Default: financial year to date (Sri Lanka time); user can pick any range.
+const fyToDate = presetRange('this_fy')
+const filters = ref({ date_from: fyToDate.from, date_to: fyToDate.to })
+const periodLabel = computed(() => `P&L: ${rangeLabel(filters.value.date_from, filters.value.date_to)} · Balance Sheet as at ${filters.value.date_to || 'today'}`)
 
 const tbColumns = [
   { name: 'ledger_code', label: 'Code', field: 'ledger_code', align: 'left', sortable: true },
