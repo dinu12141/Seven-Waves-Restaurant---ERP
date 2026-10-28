@@ -25,7 +25,11 @@ export interface GatewayConfig {
   owner_phone_number: string
   
   email_provider: 'resend' | 'smtp'
-  resend_api_key: string
+  /**
+   * @deprecated The Resend key is a server-side secret (edge function `send-email`
+   * reads Deno.env RESEND_API_KEY). Any value here is ignored and never persisted.
+   */
+  resend_api_key?: string
   email_from_address: string
   email_from_name: string
   smtp_host: string
@@ -50,7 +54,6 @@ const DEFAULT_CONFIG: GatewayConfig = {
   owner_phone_number: '+94717462205',
   
   email_provider: 'resend',
-  resend_api_key: 're_X1XvPpRy_9AaygVZxxFwmZLgahFXPWkg2',
   email_from_address: 'hr@sevenwaves.lk',
   email_from_name: 'Seven Waves ERP',
   smtp_host: 'smtp.gmail.com',
@@ -65,6 +68,16 @@ const DEFAULT_CONFIG: GatewayConfig = {
 
 const STORAGE_KEY = 'sw_notification_gateway_config'
 
+/** Name of the edge function that holds the Resend key server-side. */
+export const SEND_EMAIL_FUNCTION = 'send-email'
+
+/** Strip server-only secrets so they are never stored client-side or in system_settings. */
+export function sanitizeGatewayConfig<T extends Partial<GatewayConfig>>(config: T): T {
+  const clean = { ...config }
+  delete clean.resend_api_key
+  return clean
+}
+
 /** Get active gateway settings */
 export async function getGatewayConfig(): Promise<GatewayConfig> {
   try {
@@ -75,7 +88,7 @@ export async function getGatewayConfig(): Promise<GatewayConfig> {
       .single()
 
     if (data && data.value) {
-      return { ...DEFAULT_CONFIG, ...(typeof data.value === 'string' ? JSON.parse(data.value) : data.value) }
+      return sanitizeGatewayConfig({ ...DEFAULT_CONFIG, ...(typeof data.value === 'string' ? JSON.parse(data.value) : data.value) })
     }
   } catch (e) {
     // Fallback to local storage if system_settings row is not yet initialized
@@ -84,7 +97,12 @@ export async function getGatewayConfig(): Promise<GatewayConfig> {
   const local = localStorage.getItem(STORAGE_KEY)
   if (local) {
     try {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(local) }
+      const parsed = JSON.parse(local)
+      if (parsed && 'resend_api_key' in parsed) {
+        // Purge a previously cached key from browser storage.
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeGatewayConfig(parsed)))
+      }
+      return sanitizeGatewayConfig({ ...DEFAULT_CONFIG, ...parsed })
     } catch {
       // ignore
     }
@@ -96,13 +114,14 @@ export async function getGatewayConfig(): Promise<GatewayConfig> {
 /** Save gateway settings */
 export async function saveGatewayConfig(config: GatewayConfig): Promise<{ success: boolean; error?: string }> {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+    const safe = sanitizeGatewayConfig(config)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(safe))
 
     const { error } = await supabase
       .from('system_settings')
       .upsert({
         key: 'notification_gateway_config',
-        value: config,
+        value: safe,
         updated_at: new Date().toISOString(),
       })
 
@@ -275,48 +294,50 @@ export async function sendWhatsAppMessage(
 
 // ── Email Dispatchers ─────────────────────────────────────────────
 
-/** Send Transactional Email via Resend REST API */
+/**
+ * Send transactional email. The browser never talks to Resend directly and never
+ * holds the API key: the request goes to the `send-email` edge function, which
+ * authorizes the caller (admin/manager/hr/finance) and reads RESEND_API_KEY from
+ * its server-side secrets. The sender address is fixed server-side (FROM_EMAIL).
+ */
 export async function sendEmail(payload: {
   to: string | string[]
   subject: string
   html: string
   attachments?: Array<{ filename: string; content: string }>
 }): Promise<{ success: boolean; error?: string; messageId?: string }> {
-  const config = await getGatewayConfig()
+  try {
+    const { data, error } = await supabase.functions.invoke(SEND_EMAIL_FUNCTION, {
+      body: {
+        to: Array.isArray(payload.to) ? payload.to : [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        attachments: payload.attachments,
+      },
+    })
 
-  if (config.email_provider === 'resend') {
-    if (!config.resend_api_key) {
-      return { success: false, error: 'Resend API Key is required. Configure in Settings.' }
-    }
-
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.resend_api_key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: `${config.email_from_name || 'Seven Waves ERP'} <${config.email_from_address || 'onboarding@resend.dev'}>`,
-          to: Array.isArray(payload.to) ? payload.to : [payload.to],
-          subject: payload.subject,
-          html: payload.html,
-          attachments: payload.attachments,
-        }),
-      })
-
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.message || `Resend Error (${response.status})`)
+    if (error) {
+      let message = error.message || 'Email dispatch failed'
+      // FunctionsHttpError carries the function's JSON body in `context`.
+      try {
+        const ctx: any = (error as any).context
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json()
+          if (body?.error) message = body.error
+        }
+      } catch {
+        // ignore body parse errors
       }
-
-      return { success: true, messageId: result.id }
-    } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: message }
     }
-  }
 
-  return { success: false, error: 'Configured email provider not supported in browser environment. Use Resend REST API.' }
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Email dispatch failed' }
+    }
+    return { success: true, messageId: data.messageId }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Email dispatch failed' }
+  }
 }
 
 // ── Digest & Alert Templates ──────────────────────────────────────

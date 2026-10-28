@@ -10,7 +10,7 @@ async function checkAllUsersRoles() {
   // Sign in as Admin to query full tables
   const { error: aErr } = await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   if (aErr) {

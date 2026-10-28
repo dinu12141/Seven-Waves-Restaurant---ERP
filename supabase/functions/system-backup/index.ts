@@ -29,12 +29,50 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') || 're_X1XvPpRy_9AaygVZxxFwmZLgahFXPWkg2'
-    const ownerEmail = Deno.env.get('OWNER_EMAIL') || 'dinushahssh@gmail.com'
+    // Secrets come ONLY from the function environment — no baked-in fallbacks.
+    //   supabase secrets set RESEND_API_KEY=re_...   (required for the email step)
+    //   supabase secrets set OWNER_EMAIL=owner@example.com
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    const ownerEmail = Deno.env.get('OWNER_EMAIL')
     const fromEmail = Deno.env.get('FROM_EMAIL') || 'Seven Waves ERP <hr@sevenwaves.lk>'
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    }
+
+    // ── Authorization: full-database export is admin / server-only ───────
+    // Allowed: pg_cron / server calls bearing the service_role key, or an
+    // authenticated user holding the 'admin' role. Everything else is refused.
+    const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim()
+    if (!token) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing Authorization header' }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        status: 401,
+      })
+    }
+    if (token !== serviceRoleKey) {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+      const authClient = anonKey
+        ? createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } })
+        : null
+      const { data: userData } = authClient ? await authClient.auth.getUser() : { data: { user: null } }
+      const user = userData?.user
+      let isAdmin = false
+      if (user) {
+        const admin = createClient(supabaseUrl, serviceRoleKey)
+        const { data: roleRows } = await admin.from('user_roles').select('roles(name)').eq('user_id', user.id)
+        isAdmin = (roleRows ?? []).some((r: any) => r.roles?.name === 'admin')
+      }
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ success: false, error: 'Forbidden' }), {
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+          status: user ? 403 : 401,
+        })
+      }
+    }
+
+    if (!resendApiKey || !ownerEmail) {
+      console.warn('[system-backup] RESEND_API_KEY or OWNER_EMAIL not set — backup will run but no email is sent')
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
@@ -126,7 +164,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 5. Send notification email to owner
-    if (resendApiKey) {
+    if (resendApiKey && ownerEmail) {
       try {
         const downloadButtonHtml = signedDownloadUrl
           ? `

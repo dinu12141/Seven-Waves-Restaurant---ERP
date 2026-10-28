@@ -34,6 +34,10 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   finance: [
     'finance.*', 'procurement.dashboard.view', 'procurement.view', 'procurement.ap.*',
     'procurement.payment.*', 'reports.finance.*', 'reports.sales.*',
+    // Explicit grants that used to be matched only by accident via the old
+    // non-segment-aware wildcard ('procurement.ap.*' matched 'procurement.ap_invoices.*').
+    'procurement.ap_invoices.*', 'procurement.payments.*', 'procurement.payments_report.*',
+    'reports.sales_statement.view',
     'reports.view', 'audit.view',
   ],
 
@@ -56,7 +60,8 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
 
   inventory: [
     'inventory.*', 'procurement.dashboard.view', 'procurement.view', 'procurement.po.view',
-    'reports.inventory.*', 'reports.view',
+    'procurement.grn.view', 'procurement.gin.view',
+    'reports.inventory.*', 'reports.inventory_adjustments.view', 'reports.view',
   ],
 
   procurement: [
@@ -100,10 +105,12 @@ export function hasPermission(
       if (perm === '*') return true
       if (perm === permission) return true
 
-      // Wildcard matching: 'pos.*' matches 'pos.order.create'
+      // Wildcard matching on segment boundaries: 'pos.*' matches 'pos.order.create'
+      // (and the bare namespace 'pos'), but 'hr.*' must NOT match 'hrx.anything'
+      // and 'procurement.ap.*' must NOT match 'procurement.ap_invoices.view'.
       if (perm.endsWith('.*')) {
         const prefix = perm.slice(0, -2)
-        if (permission.startsWith(prefix)) return true
+        if (permission === prefix || permission.startsWith(prefix + '.')) return true
       }
     }
   }

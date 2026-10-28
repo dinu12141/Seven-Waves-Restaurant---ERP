@@ -7,7 +7,7 @@
       <q-btn color="primary" icon="add" label="Register Account" unelevated @click="editing = null; showForm = true" />
     </div>
 
-    <q-table flat bordered :rows="accountStore.accounts" :columns="columns" row-key="id" :loading="accountStore.loading" :pagination="{ rowsPerPage: 20 }">
+    <q-table flat bordered :rows="accountStore.accounts" :columns="columns" row-key="id" :loading="accountStore.loading" :pagination="{ rowsPerPage: 20 }" class="cursor-pointer" @row-click="(_evt, row) => openStatement(row)">
       <template v-slot:body-cell-account_type="p">
         <q-td :props="p"><q-badge :color="accColor(p.value)">{{ p.value?.replace(/_/g, ' ') }}</q-badge></q-td>
       </template>
@@ -16,10 +16,13 @@
       </template>
       <template v-slot:body-cell-actions="p">
         <q-td :props="p">
-          <q-btn flat round size="sm" icon="edit" color="primary" @click="edit(p.row)">
+          <q-btn flat round size="sm" icon="receipt_long" color="teal" @click.stop="openStatement(p.row)">
+            <q-tooltip>View entries</q-tooltip>
+          </q-btn>
+          <q-btn flat round size="sm" icon="edit" color="primary" @click.stop="edit(p.row)">
             <q-tooltip>Edit</q-tooltip>
           </q-btn>
-          <q-btn v-if="isAdmin" flat round size="sm" icon="delete" color="negative" @click="confirmDelete(p.row)">
+          <q-btn v-if="isAdmin" flat round size="sm" icon="delete" color="negative" @click.stop="confirmDelete(p.row)">
             <q-tooltip>Delete (admin)</q-tooltip>
           </q-btn>
         </q-td>
@@ -27,6 +30,7 @@
     </q-table>
 
     <AccountForm v-model="showForm" :account="editing" @saved="handleSave" />
+    <LedgerStatementDialog v-model="showStatement" :account-id="statementAccountId" />
   </q-page>
 </template>
 
@@ -37,6 +41,7 @@ import { useAuthStore } from 'src/stores/auth'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import AccountForm from '../components/AccountForm.vue'
+import LedgerStatementDialog from '../components/LedgerStatementDialog.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -66,6 +71,9 @@ const columns = [
 ]
 
 function accColor(t) { return { cash: 'green', bank: 'blue', petty_cash: 'orange', mobile_wallet: 'purple', card_settlement: 'teal' }[t] || 'grey' }
+const showStatement = ref(false)
+const statementAccountId = ref(null)
+function openStatement(a) { statementAccountId.value = a.id; showStatement.value = true }
 function edit(a) { editing.value = a; showForm.value = true }
 
 async function handleSave(form) {

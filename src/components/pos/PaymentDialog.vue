@@ -116,6 +116,96 @@
                   <span>{{ sub.label }}</span>
                 </button>
               </div>
+
+              <!-- Credit: a registered customer (account) is REQUIRED -->
+              <div v-if="needsCreditCustomer" class="credit-cust-box q-mt-sm">
+                <div class="pay-section-label">
+                  CUSTOMER (ACCOUNT) <span class="credit-required">*</span>
+                </div>
+
+                <div v-if="creditCustomer" class="credit-cust-selected">
+                  <div class="row items-center no-wrap">
+                    <q-icon name="account_circle" size="26px" color="amber-5" class="q-mr-sm" />
+                    <div class="col">
+                      <div class="credit-cust-name">{{ customerDisplayName(creditCustomer) }}</div>
+                      <div class="credit-cust-meta">
+                        {{ [creditCustomer.customer_code, creditCustomer.phone].filter(Boolean).join(' • ') }}
+                      </div>
+                    </div>
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="close"
+                      color="grey-5"
+                      :disable="isProcessing"
+                      @click="clearCreditCustomer"
+                    />
+                  </div>
+                  <div class="credit-cust-figures">
+                    <div>
+                      <span>Credit limit</span>
+                      <strong>{{ creditCheck.hasLimit ? 'LKR ' + fmt(creditCheck.limit) : 'No limit' }}</strong>
+                    </div>
+                    <div>
+                      <span>Open balance</span>
+                      <strong>
+                        <q-spinner v-if="creditBalanceLoading" size="12px" />
+                        <template v-else>{{ creditOpenBalance === null ? '—' : 'LKR ' + fmt(creditOpenBalance) }}</template>
+                      </strong>
+                    </div>
+                    <div>
+                      <span>After this sale</span>
+                      <strong>LKR {{ fmt(creditCheck.projected) }}</strong>
+                    </div>
+                  </div>
+                  <div v-if="creditCheck.exceeds" class="credit-limit-warn">
+                    <q-icon name="warning" size="16px" class="q-mr-xs" />
+                    Over credit limit by LKR {{ fmt(creditCheck.overBy) }} — continue only if approved.
+                  </div>
+                </div>
+
+                <template v-else>
+                  <q-input
+                    v-model="creditSearch"
+                    dark
+                    dense
+                    outlined
+                    clearable
+                    placeholder="Search registered customer by name / phone…"
+                    @update:model-value="onCreditSearchInput"
+                  >
+                    <template #prepend><q-icon name="search" /></template>
+                    <template #append>
+                      <q-spinner v-if="creditSearching" size="18px" color="amber-5" />
+                    </template>
+                  </q-input>
+                  <div v-if="creditResults.length" class="credit-cust-results">
+                    <button
+                      v-for="c in creditResults"
+                      :key="c.id"
+                      class="credit-cust-row"
+                      @click="pickCreditCustomer(c)"
+                    >
+                      <span class="credit-cust-row-name">{{ customerDisplayName(c) }}</span>
+                      <span class="credit-cust-row-meta">
+                        {{ c.phone || '' }}
+                        <template v-if="Number(c.credit_limit) > 0"> • Limit LKR {{ fmt(c.credit_limit) }}</template>
+                      </span>
+                    </button>
+                  </div>
+                  <div
+                    v-else-if="(creditSearch || '').trim().length >= 2 && !creditSearching"
+                    class="credit-cust-empty"
+                  >
+                    {{ creditSearchError || 'No registered customer found — register the customer first.' }}
+                  </div>
+                  <div class="credit-cust-hint">
+                    <q-icon name="info" size="14px" class="q-mr-xs" />
+                    Credit sales can only be charged to a registered customer.
+                  </div>
+                </template>
+              </div>
             </div>
 
             <!-- Split Payment Section -->
@@ -148,6 +238,30 @@
                   <div class="split-label"><q-icon name="qr_code" size="18px" class="q-mr-xs" color="warning" /> QR / Online</div>
                   <input
                     v-model.number="splitQrAmount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    class="split-input"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div class="split-row">
+                  <div class="split-label"><q-icon name="account_balance" size="18px" class="q-mr-xs" color="info" /> Bank Transfer</div>
+                  <input
+                    v-model.number="splitBankAmount"
+                    type="number"
+                    min="0"
+                    step="10"
+                    class="split-input"
+                    placeholder="0.00"
+                  />
+                </div>
+                <!-- CREDIT part → registered customer required (pos_split_pay, #145 §9).
+                     Merged table bills still pay via merge_table_orders_and_pay (single method). -->
+                <div v-if="!isMergeMode" class="split-row">
+                  <div class="split-label"><q-icon name="person" size="18px" class="q-mr-xs" color="amber" /> Credit (Account)</div>
+                  <input
+                    v-model.number="splitCreditAmount"
                     type="number"
                     min="0"
                     step="10"
@@ -281,6 +395,24 @@ import { useCashierStore } from 'src/stores/cashierStore'
 import { useShiftStore } from 'src/stores/shiftStore'
 import { escposPrintService } from 'src/services/escposPrintService'
 import BillPrintTemplate from 'src/components/cashier/BillPrintTemplate.vue'
+import {
+  requiresCreditCustomer,
+  creditAmountFor,
+  canConfirmCredit,
+  checkCreditLimit,
+  sumOpenBalance,
+  customerDisplayName,
+  normalizeCustomerSearch,
+  attachCustomerToOrders,
+  probeSetCustomerRpc,
+  OPEN_RECEIVABLE_STATUSES,
+} from 'src/modules/pos/creditCustomer'
+import {
+  normalizeTenders,
+  tendersTotal,
+  splitDetailsToLines,
+  paySplit,
+} from 'src/modules/pos/splitTenders'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -301,6 +433,8 @@ const props = defineProps({
   queueOrder: { type: Object, default: null },
   // ── MERGED table orders (multiple orders, 1 combined bill) ──
   mergedOrders: { type: Array, default: () => [] },
+  // ── Customer already picked on the POS screen (prefills the CREDIT picker) ──
+  customer: { type: Object, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'new-order', 'paid'])
@@ -329,17 +463,27 @@ const isProcessing = ref(false)
 const splitCashAmount = ref(0)
 const splitCardAmount = ref(0)
 const splitQrAmount = ref(0)
+const splitBankAmount = ref(0)
+const splitCreditAmount = ref(0)
 
-const splitTotalSum = computed(() => {
-  return (Number(splitCashAmount.value) || 0) + (Number(splitCardAmount.value) || 0) + (Number(splitQrAmount.value) || 0)
-})
+// {cash, card, qr, bank, credit} — tender breakdown sent to pos_split_pay
+const splitDetails = computed(() => ({
+  cash: Number(splitCashAmount.value) || 0,
+  card: Number(splitCardAmount.value) || 0,
+  qr: Number(splitQrAmount.value) || 0,
+  bank: Number(splitBankAmount.value) || 0,
+  credit: isMergeMode.value ? 0 : Number(splitCreditAmount.value) || 0,
+}))
+
+const splitTotalSum = computed(() => tendersTotal(splitDetailsToLines(splitDetails.value)))
 
 const isSplitBalanced = computed(() => {
   return Math.abs(splitTotalSum.value - effectiveTotalAmount.value) < 0.01
 })
 
 function fillRemainingToCard() {
-  const remaining = Math.max(0, effectiveTotalAmount.value - (Number(splitCashAmount.value) || 0) - (Number(splitQrAmount.value) || 0))
+  const d = splitDetails.value
+  const remaining = Math.max(0, effectiveTotalAmount.value - d.cash - d.qr - d.bank - d.credit)
   splitCardAmount.value = parseFloat(remaining.toFixed(2))
 }
 
@@ -594,8 +738,201 @@ const amountReceived = computed(() => {
 
 const changeAmount = computed(() => amountReceived.value - effectiveTotalAmount.value)
 
+// ══════════════════════════════════════════════════
+// CREDIT sale — registered customer (account) required
+// ══════════════════════════════════════════════════
+const creditCustomer = ref(null)
+const creditSearch = ref('')
+const creditResults = ref([])
+const creditSearching = ref(false)
+const creditSearchError = ref('')
+const creditOpenBalance = ref(null) // null = unknown
+const creditBalanceLoading = ref(false)
+let creditSearchTimer = null
+let creditSearchSeq = 0
+
+const needsCreditCustomer = computed(() =>
+  requiresCreditCustomer(selectedMethod.value, selectedSubMethod.value, effectiveTotalAmount.value, splitDetails.value),
+)
+const creditAmount = computed(() =>
+  creditAmountFor(selectedMethod.value, selectedSubMethod.value, effectiveTotalAmount.value, splitDetails.value),
+)
+const creditCheck = computed(() =>
+  checkCreditLimit(creditCustomer.value?.credit_limit, creditOpenBalance.value ?? 0, creditAmount.value),
+)
+
+function onCreditSearchInput(val) {
+  clearTimeout(creditSearchTimer)
+  const q = (val || '').trim()
+  creditSearchError.value = ''
+  if (q.length < 2) {
+    creditResults.value = []
+    creditSearching.value = false
+    return
+  }
+  creditSearching.value = true
+  creditSearchTimer = setTimeout(() => runCreditSearch(q), 300)
+}
+
+async function runCreditSearch(q) {
+  const seq = ++creditSearchSeq
+  try {
+    const { data, error } = await supabase.rpc('pos_search_customers', { p_search: q, p_limit: 10 })
+    if (seq !== creditSearchSeq) return
+    if (error || data?.success === false) {
+      creditResults.value = []
+      creditSearchError.value = 'Customer search failed: ' + (error?.message || data?.error || 'unknown error')
+      return
+    }
+    creditResults.value = normalizeCustomerSearch(data).filter((c) => c.is_active !== false)
+  } catch (err) {
+    if (seq !== creditSearchSeq) return
+    creditResults.value = []
+    creditSearchError.value = 'Customer search failed: ' + (err?.message || err)
+  } finally {
+    if (seq === creditSearchSeq) creditSearching.value = false
+  }
+}
+
+// Open balance = Σ(total − paid) of the customer's open receivables
+// (same formula fn_pos_set_order_customer returns; cashiers have SELECT via cr_cashier).
+async function loadCreditOpenBalance(customerId) {
+  creditOpenBalance.value = null
+  if (!customerId) return
+  creditBalanceLoading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('customer_receivables')
+      .select('total_amount, paid_amount, status')
+      .eq('customer_id', customerId)
+      .in('status', [...OPEN_RECEIVABLE_STATUSES])
+    if (!error && creditCustomer.value?.id === customerId) {
+      creditOpenBalance.value = sumOpenBalance(data)
+    }
+  } catch (err) {
+    console.warn('[PaymentDialog] Could not load open balance:', err)
+  } finally {
+    creditBalanceLoading.value = false
+  }
+}
+
+function pickCreditCustomer(c) {
+  if (!c?.id) return
+  creditCustomer.value = c
+  creditResults.value = []
+  creditSearch.value = ''
+  loadCreditOpenBalance(c.id)
+}
+
+function clearCreditCustomer() {
+  creditCustomer.value = null
+  creditOpenBalance.value = null
+}
+
+function resetCreditState() {
+  clearTimeout(creditSearchTimer)
+  creditSearchSeq++
+  creditCustomer.value = null
+  creditSearch.value = ''
+  creditResults.value = []
+  creditSearching.value = false
+  creditSearchError.value = ''
+  creditOpenBalance.value = null
+}
+
+// Prefill from the POS-screen customer, or the order(s) already linked to one.
+async function prefillCreditCustomer() {
+  let customerId = null
+  if (isMergeMode.value) {
+    const ids = [...new Set(props.mergedOrders.map((o) => o.customer_id).filter(Boolean))]
+    if (ids.length === 1 && props.mergedOrders.every((o) => o.customer_id)) customerId = ids[0]
+  } else if (isQueueOrder.value) {
+    customerId = props.queueOrder.customer_id || null
+  } else {
+    const c = props.customer
+    const id = c?.id || c?.customer_id
+    if (id) {
+      pickCreditCustomer({ ...c, id })
+      return
+    }
+  }
+  if (!customerId) return
+  try {
+    const { data } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, phone, customer_code, credit_limit, is_active')
+      .eq('id', customerId)
+      .maybeSingle()
+    if (data && data.is_active !== false && isOpen.value && !creditCustomer.value) pickCreditCustomer(data)
+  } catch (err) {
+    console.warn('[PaymentDialog] Could not prefill customer:', err)
+  }
+}
+
+/**
+ * CREDIT: attach the registered customer to every order being paid BEFORE the
+ * payment RPC (the receivable is created from orders.customer_id on payment).
+ * Manual POS orders do not exist yet — only check the server function is
+ * available; orderStore.processPayment attaches after creating the order.
+ */
+async function prepareCreditSale(cust) {
+  isProcessing.value = true
+  try {
+    let res
+    if (isMergeMode.value) {
+      res = await attachCustomerToOrders(supabase, props.mergedOrders.map((o) => o.id), cust.id)
+    } else if (isQueueOrder.value) {
+      res = await attachCustomerToOrders(supabase, [props.queueOrder.id], cust.id)
+    } else {
+      res = await probeSetCustomerRpc(supabase)
+    }
+    if (!res.success) {
+      Notify.create({
+        message: res.missingRpc ? 'Apply supabase/finance_pos_sales_gl_145.sql' : 'Credit sale blocked',
+        caption: res.missingRpc ? 'Credit sales need the server update (fn_pos_set_order_customer).' : res.error,
+        color: 'red',
+        icon: 'block',
+        position: 'top',
+        timeout: 6000,
+      })
+      return false
+    }
+    if (res.openBalance !== undefined) {
+      creditOpenBalance.value = res.openBalance
+      const chk = checkCreditLimit(res.creditLimit, res.openBalance, creditAmount.value)
+      if (chk.exceeds) {
+        Notify.create({
+          message: `${customerDisplayName(cust)} is over the credit limit`,
+          caption: `Limit LKR ${fmt(chk.limit)} — balance after this sale LKR ${fmt(chk.projected)}`,
+          color: 'orange-9',
+          icon: 'warning',
+          position: 'top',
+          timeout: 5000,
+        })
+      }
+    }
+    return true
+  } catch (err) {
+    Notify.create({ message: 'Credit sale blocked', caption: err?.message || String(err), color: 'red', position: 'top' })
+    return false
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 const canConfirm = computed(() => {
   if (effectiveItemCount.value === 0) return false
+  if (
+    !canConfirmCredit(
+      selectedMethod.value,
+      selectedSubMethod.value,
+      effectiveTotalAmount.value,
+      creditCustomer.value,
+      splitDetails.value,
+    )
+  ) {
+    return false
+  }
   if (selectedMethod.value === 'cash') {
     return amountReceived.value >= effectiveTotalAmount.value
   }
@@ -646,7 +983,15 @@ function setAmount(val) {
 // Confirm Payment — handles BOTH manual POS and queue orders
 // ══════════════════════════════════════════════════
 async function confirmPayment() {
-  if (!canConfirm.value) return
+  if (!canConfirm.value || isProcessing.value) return
+
+  // CREDIT: attach the registered customer to the order(s) first — abort on failure
+  const creditCust = needsCreditCustomer.value ? creditCustomer.value : null
+  if (needsCreditCustomer.value) {
+    if (!creditCust?.id) return
+    const ok = await prepareCreditSale(creditCust)
+    if (!ok) return
+  }
 
   // Trigger cash drawer pulse if cash was received
   if (selectedMethod.value === 'cash' || (selectedMethod.value === 'split' && splitCashAmount.value > 0)) {
@@ -676,11 +1021,12 @@ async function confirmPayment() {
       method: selectedMethod.value,
       amount: selectedMethod.value === 'split' ? effectiveTotalAmount.value : amountReceived.value,
       change: selectedMethod.value === 'split' ? 0 : Math.max(0, changeAmount.value),
-      splitDetails: selectedMethod.value === 'split' ? {
-        cash: splitCashAmount.value,
-        card: splitCardAmount.value,
-        qr: splitQrAmount.value
-      } : null
+      // SPLIT: POSPage pays via orderStore.processSplitPayment → pos_split_pay
+      splitDetails: selectedMethod.value === 'split' ? { ...splitDetails.value } : null,
+      subMethod: selectedSubMethod.value,
+      // CREDIT (full or split part): orderStore attaches this customer after
+      // creating the order and BEFORE pos_quick_pay / pos_split_pay.
+      creditCustomerId: creditCust?.id || null,
     })
   }
 }
@@ -780,30 +1126,51 @@ async function processQueueOrderPayment(methodName) {
     // queue orders (already-accepted/invoiced/paid sub-RPCs all return success:true)
     // and charges the server-side LOCKED order.total_amount — p_amount_paid is the
     // cash tendered, used only for change_due.
-    const { data: payData, error: payError } = await supabase.rpc('pos_quick_pay', {
-      p_order_id: orderId,
-      p_payment_method: methodName,
-      p_amount_paid: effectiveTotalAmount.value,
-    })
-    if (payError) throw new Error(`Payment failed: ${payError.message}`)
-    if (!payData?.success) {
-      throw new Error(payData?.error || 'Payment failed')
-    }
+    let payData
+    if (selectedMethod.value === 'split') {
+      // SPLIT (#145 §9): pos_split_pay stores each tender, books it to its own
+      // account and records the shift payment per tender (p_shift_id) — so no
+      // separate shiftStore.recordPayment here.
+      const { tenders, errors } = normalizeTenders(splitDetailsToLines(splitDetails.value))
+      if (errors.length) throw new Error(errors.join('; '))
+      const sp = await paySplit(supabase, orderId, tenders, shiftStore.shiftId)
+      if (!sp.success) throw new Error(sp.error || 'Split payment failed')
+      payData = sp.data?.payment || {}
+      await shiftStore.refreshShiftTotals()
+    } else {
+      const { data: qp, error: payError } = await supabase.rpc('pos_quick_pay', {
+        p_order_id: orderId,
+        p_payment_method: methodName,
+        p_amount_paid: effectiveTotalAmount.value,
+      })
+      if (payError) throw new Error(`Payment failed: ${payError.message}`)
+      if (!qp?.success) {
+        throw new Error(qp?.error || 'Payment failed')
+      }
+      payData = qp
 
-    // Confirm with POS terminal integration if needed
-    // For now, record locally
-    const actualMethod = selectedMethod.value === 'cash' ? 'cash' : selectedSubMethod.value
-    const ok = await shiftStore.recordPayment(orderId, actualMethod, effectiveTotalAmount.value)
+      // Confirm with POS terminal integration if needed
+      // For now, record locally
+      const actualMethod = selectedMethod.value === 'cash' ? 'cash' : selectedSubMethod.value
+      const ok = await shiftStore.recordPayment(orderId, actualMethod, effectiveTotalAmount.value)
 
-    if (!ok) {
-      Notify.create({ type: 'negative', message: 'Failed to record payment on shift' })
-      isProcessing.value = false
-      return
+      if (!ok) {
+        Notify.create({ type: 'negative', message: 'Failed to record payment on shift' })
+        isProcessing.value = false
+        return
+      }
     }
     
     // Step 4: Fetch real invoice for receipt
     isPaid.value = true
-    await fetchRealInvoice(orderId)
+    if (payData?.invoice_id) {
+      const realInvoice = await cashierStore.fetchInvoiceDetails(payData.invoice_id)
+      if (realInvoice) {
+        printInvoice.value = realInvoice
+      }
+    } else {
+      await fetchRealInvoice(orderId)
+    }
 
     // Notify parent
     emit('paid', orderId)
@@ -873,6 +1240,7 @@ function handleDone() {
   confirmedMethod.value = ''
   printInvoice.value = null
   isProcessing.value = false
+  resetCreditState()
   if (!isQueueOrder.value) {
     emit('new-order')
   }
@@ -895,6 +1263,7 @@ watch(isOpen, async (val) => {
     confirmedMethod.value = ''
     printInvoice.value = null
     isProcessing.value = false
+    resetCreditState()
 
     // ── If opening a PAID queue order, skip to receipt view ──
     if (
@@ -910,6 +1279,11 @@ watch(isOpen, async (val) => {
       isPaid.value = false
     }
   }
+})
+
+// Prefill the account customer the first time CREDIT is chosen
+watch(needsCreditCustomer, (need) => {
+  if (need && !creditCustomer.value && !isPaid.value) prefillCreditCustomer()
 })
 
 // Print using BillPrintTemplate's printReceipt()
@@ -1423,5 +1797,104 @@ defineExpose({ markAsPaid, printBill })
 }
 .new-order-btn:hover {
   background: #4b5563;
+}
+
+/* ── Credit: registered customer (account) ─────────────── */
+.credit-cust-box {
+  padding: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.05);
+}
+.credit-required {
+  color: #f87171;
+}
+.credit-cust-selected {
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.credit-cust-name {
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+.credit-cust-meta {
+  color: #9ca3af;
+  font-size: 12px;
+}
+.credit-cust-figures {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.credit-cust-figures > div {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+}
+.credit-cust-figures strong {
+  color: #f3f4f6;
+  font-size: 14px;
+}
+.credit-limit-warn {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(234, 88, 12, 0.15);
+  border: 1px solid rgba(234, 88, 12, 0.5);
+  color: #fdba74;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+.credit-cust-results {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: #111827;
+}
+.credit-cust-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #1f2937;
+  background: transparent;
+  color: #e5e7eb;
+  cursor: pointer;
+  text-align: left;
+}
+.credit-cust-row:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+.credit-cust-row-name {
+  font-weight: 700;
+  font-size: 13px;
+}
+.credit-cust-row-meta {
+  font-size: 11px;
+  color: #9ca3af;
+}
+.credit-cust-empty {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #fca5a5;
+}
+.credit-cust-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
 }
 </style>

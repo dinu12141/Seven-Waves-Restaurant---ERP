@@ -10,7 +10,7 @@ async function run() {
   console.log('Logging in as admin@sevenwaves.lk...');
   const { error: authError } = await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   if (authError) {

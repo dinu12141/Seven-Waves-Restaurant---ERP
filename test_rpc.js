@@ -10,7 +10,7 @@ async function run() {
   
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
     email: 'NEW12NEW11214@GMAIL.COM', // the actual email from screenshot
-    password: 'password123' // assuming they know the password? The user just created it.
+    password: process.env.SW_TEST_PASSWORD // assuming they know the password? The user just created it.
   })
   console.log('SignIn:', signInData?.user?.email, signInError)
 }

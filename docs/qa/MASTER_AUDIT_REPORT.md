@@ -206,7 +206,7 @@ Total CSS: 1,623 KB (158 files)
 
 #### P0-2: Rotate Google Maps API Key
 1. Go to Google Cloud Console → APIs & Services → Credentials
-2. Delete key `AIzaSyAEeQeQwDmMc8Ir983nvm9wNNpQL6OlPZkvs`
+2. Delete key `AIza****REDACTED`
 3. Create new restricted key (allow only Maps JavaScript API, restrict to domain)
 4. Update Netlify environment variable `VITE_GOOGLE_MAPS_KEY`
 5. Run BFG Repo Cleaner to scrub the old key from git history

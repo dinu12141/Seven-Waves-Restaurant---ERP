@@ -551,6 +551,7 @@
       :loading="isProcessingPayment"
       :queue-order="selectedQueueOrder"
       :merged-orders="mergedTableOrders"
+      :customer="store.selectedCustomer"
       @confirm="handleConfirmPayment"
       @new-order="handleNewOrderAfterPayment"
       @paid="onOrderPaid"
@@ -799,7 +800,9 @@
           <div v-for="(line, idx) in splitPaymentLines" :key="idx" class="split-line">
             <q-select
               v-model="line.method"
-              :options="['cash','mastercard','visa','uber_eats','pickme','website','bank_transfer']"
+              :options="TENDER_OPTIONS"
+              emit-value
+              map-options
               dense outlined label="Method"
               class="split-method"
               dark
@@ -827,15 +830,20 @@
             class="q-mt-sm"
           />
 
+          <!-- CREDIT tender -> registered customer required (pos_split_pay, #145 section 9) -->
+          <div v-if="splitNeedsCustomer" class="q-mt-md">
+            <CreditCustomerPicker v-model="splitCreditCustomer" :credit-amount="splitCreditTotal" />
+          </div>
+
           <div
             class="split-balance"
-            :class="splitPaymentBalance < 0 ? 'txt-red' : splitPaymentBalance === 0 ? 'txt-green' : 'txt-yellow'"
+            :class="Math.abs(splitPaymentBalance) <= 0.01 ? 'txt-green' : splitPaymentBalance < 0 ? 'txt-red' : 'txt-yellow'"
           >
-            {{ splitPaymentBalance > 0
-              ? `Remaining: LKR ${splitPaymentBalance.toFixed(2)}`
-              : splitPaymentBalance < 0
-                ? `Overpaid: LKR ${Math.abs(splitPaymentBalance).toFixed(2)}`
-                : 'BALANCED ✓' }}
+            {{ Math.abs(splitPaymentBalance) <= 0.01
+              ? 'BALANCED ✓'
+              : splitPaymentBalance > 0
+                ? `Remaining: LKR ${splitPaymentBalance.toFixed(2)}`
+                : `Overpaid: LKR ${Math.abs(splitPaymentBalance).toFixed(2)}` }}
           </div>
         </q-card-section>
 
@@ -843,7 +851,7 @@
           <q-btn flat label="Cancel" v-close-popup color="grey" />
           <q-btn
             unelevated color="deep-purple" label="PROCESS SPLIT PAYMENT"
-            :disable="Math.abs(splitPaymentBalance) > 0.01"
+            :disable="Math.abs(splitPaymentBalance) > 0.01 || (splitNeedsCustomer && !splitCreditCustomer?.id)"
             :loading="isProcessingPayment"
             @click="processSplitPayment"
           />
@@ -876,6 +884,17 @@ import CloseShiftDialog from 'src/components/pos/CloseShiftDialog.vue'
 import ShiftSummaryDialog from 'src/components/pos/ShiftSummaryDialog.vue'
 import ManagerAuthDialog from 'src/components/pos/ManagerAuthDialog.vue'
 import { escposPrintService } from 'src/services/escposPrintService'
+import CreditCustomerPicker from 'src/components/pos/CreditCustomerPicker.vue'
+import { attachCustomerToOrders } from 'src/modules/pos/creditCustomer'
+import {
+  TENDER_OPTIONS,
+  normalizeTenders,
+  tenderBalance,
+  tendersRequireCustomer,
+  creditTenderAmount,
+  splitDetailsToLines,
+  paySplit,
+} from 'src/modules/pos/splitTenders'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -1017,8 +1036,11 @@ function getPaymentMethodName() {
 // Split Payment
 const showSplitPaymentDialog = ref(false)
 const splitPaymentLines = ref([])
-const splitPaymentTotal = computed(() => splitPaymentLines.value.reduce((sum, l) => sum + (l.amount || 0), 0))
-const splitPaymentBalance = computed(() => store.total - splitPaymentTotal.value)
+const splitPaymentBalance = computed(() => tenderBalance(splitPaymentLines.value, store.total))
+// CREDIT tender (#145 section 9) -> registered customer required
+const splitCreditCustomer = ref(null)
+const splitNeedsCustomer = computed(() => tendersRequireCustomer(splitPaymentLines.value))
+const splitCreditTotal = computed(() => creditTenderAmount(splitPaymentLines.value))
 
 // Live Table
 const showLiveTable = ref(false)
@@ -2321,12 +2343,14 @@ async function processInlinePayment() {
       })
       if (payError) throw new Error(payError.message)
       if (!payData?.success) throw new Error(payData?.error || 'Payment failed')
+      createdInvoiceId = payData.invoice_id || payData.invoice?.id
 
     } else {
       // ── MANUAL POS FLOW (unsaved items) ──
       const res = await store.processPayment(methodName.toLowerCase())
       if (!res.success) throw new Error(res.reason || 'Manual payment failed')
       finalOrderId = res.orderId
+      createdInvoiceId = res.invoiceId || res.invoice?.id
     }
 
     // Prepare real invoice for printing
@@ -2750,6 +2774,10 @@ function handleSplitPayment() {
     return
   }
   splitPaymentLines.value = [{ method: 'cash', amount: store.total }]
+  // Prefill the CREDIT customer from the customer picked on the POS screen
+  const sc = store.selectedCustomer
+  const scId = sc?.id || sc?.customer_id
+  splitCreditCustomer.value = scId ? { ...sc, id: scId } : null
   showSplitPaymentDialog.value = true
 }
 
@@ -2760,37 +2788,23 @@ async function processSplitPayment() {
   }
   if (isProcessingPayment.value) return
 
+  // Normalise lines -> pos_split_pay tenders [{method, amount}]
+  const { tenders, errors } = normalizeTenders(splitPaymentLines.value)
+  if (errors.length) {
+    Notify.create({ type: 'negative', message: errors.join('; '), position: 'top' })
+    return
+  }
+  const creditCustomerId = splitNeedsCustomer.value ? splitCreditCustomer.value?.id || null : null
+  if (splitNeedsCustomer.value && !creditCustomerId) {
+    Notify.create({ type: 'negative', message: 'A CREDIT part needs a registered customer.', position: 'top' })
+    return
+  }
+
   isProcessingPayment.value = true
   Loading.show({ message: 'Processing Split Payment...' })
 
-  // Primary method is the first line; combined label for receipts
-  const primaryMethod = splitPaymentLines.value[0]?.method || 'split'
-
   try {
-    let finalOrderId = null
-
-    if (store._loadedOrderId && selectedQueueOrder.value) {
-      // Queue order flow — accept (if pending) + invoice + payment in ONE atomic
-      // txn (Security #74). The split lines are validated client-side to equal the
-      // order total (see splitPaymentBalance guard above); pos_quick_pay records a
-      // single 'split'-method payment against the server-side LOCKED total, matching
-      // the prior behaviour but without the partial-commit window.
-      finalOrderId = store._loadedOrderId
-
-      const { data: payData, error: payError } = await supabase.rpc('pos_quick_pay', {
-        p_order_id: finalOrderId,
-        p_payment_method: 'split',
-        p_amount_paid: store.total
-      })
-      if (payError) throw new Error(payError.message)
-      if (!payData?.success) throw new Error(payData?.error || 'Payment failed')
-
-    } else {
-      // Manual POS flow
-      const res = await store.processPayment(primaryMethod)
-      if (!res.success) throw new Error(res.reason || 'Split payment failed')
-      finalOrderId = res.orderId
-    }
+    const finalOrderId = await paySplitTenders(tenders, creditCustomerId)
 
     // Print receipt
     const { data: invoices } = await supabase
@@ -2812,20 +2826,48 @@ async function processSplitPayment() {
 
     Notify.create({ message: 'Split Payment Successful', color: 'positive', position: 'top', icon: 'check_circle' })
 
-    if (shiftStore.hasActiveShift && finalOrderId) {
-      shiftStore.recordPayment(finalOrderId, 'split', store.total)
-    }
-
     showSplitPaymentDialog.value = false
+    splitCreditCustomer.value = null
     handleNewOrderAfterPayment()
 
   } catch (err) {
     console.error('Split Payment Error:', err)
-    Notify.create({ message: 'Split payment error', caption: err.message, color: 'red', position: 'top' })
+    Notify.create({ message: 'Split payment error', caption: err.message, color: 'red', position: 'top', timeout: 6000 })
   } finally {
     Loading.hide()
     isProcessingPayment.value = false
   }
+}
+
+/**
+ * Pay the current bill with split tenders via pos_split_pay (#145 section 9).
+ * pos_split_pay runs the pos_quick_pay pipeline AND records the shift payment
+ * per tender (p_shift_id) -- no separate shiftStore.recordPayment.
+ * A CREDIT tender needs orders.customer_id: fn_pos_set_order_customer first.
+ * Returns the paid order id; throws on failure.
+ */
+async function paySplitTenders(tenders, creditCustomerId) {
+  const shiftId = shiftStore.shiftId || null
+  let orderId
+
+  if (store._loadedOrderId && selectedQueueOrder.value) {
+    // Queue order flow -- order already exists
+    orderId = store._loadedOrderId
+    if (creditCustomerId) {
+      const att = await attachCustomerToOrders(supabase, [orderId], creditCustomerId)
+      if (!att.success) throw new Error(att.missingRpc ? 'Apply supabase/finance_pos_sales_gl_145.sql' : att.error)
+    }
+    const sp = await paySplit(supabase, orderId, tenders, shiftId)
+    if (!sp.success) throw new Error(sp.error || 'Split payment failed')
+  } else {
+    // Manual POS flow -- creates the order (same as processPayment), then pos_split_pay
+    const res = await store.processSplitPayment(tenders, { creditCustomerId, shiftId })
+    if (!res?.success) throw new Error(res?.reason || 'Split payment failed')
+    orderId = res.orderId
+  }
+
+  await shiftStore.refreshShiftTotals()
+  return orderId
 }
 
 function handleSubtotal() {
@@ -2842,8 +2884,46 @@ async function handleConfirmPayment(payload) {
   isProcessingPayment.value = true
   try {
     const method = typeof payload === 'string' ? payload : payload.method
-    const methodName = method === 'cash' ? 'Cash' : method === 'card' ? 'Card' : 'Online'
-    const result = await store.processPayment(methodName)
+    // CREDIT (OTHER → CREDIT) must be posted as 'Credit' to a registered customer
+    // (receivable is created from orders.customer_id — finance_pos_sales_gl_145.sql).
+    const isCredit = typeof payload === 'object' && method === 'other' && payload.subMethod === 'credit'
+    const creditCustomerId = isCredit ? payload.creditCustomerId || null : null
+    if (isCredit && !creditCustomerId) {
+      throw new Error('A credit sale needs a registered customer.')
+    }
+    // SPLIT (PaymentDialog breakdown) -> pos_split_pay; it records the shift per tender itself
+    if (method === 'split' && typeof payload === 'object') {
+      const { tenders, errors } = normalizeTenders(splitDetailsToLines(payload.splitDetails))
+      if (errors.length) throw new Error(errors.join('; '))
+      const needsCust = tendersRequireCustomer(tenders)
+      const splitCustomerId = needsCust ? payload.creditCustomerId || null : null
+      if (needsCust && !splitCustomerId) {
+        throw new Error('A CREDIT part needs a registered customer.')
+      }
+      const splitTotal = store.total
+      const res = await store.processSplitPayment(tenders, {
+        creditCustomerId: splitCustomerId,
+        shiftId: shiftStore.shiftId || null,
+      })
+      if (!res?.success) throw new Error(res?.reason || 'Split payment failed')
+      await shiftStore.refreshShiftTotals()
+      if (paymentDialogRef.value) {
+        paymentDialogRef.value.markAsPaid(res.orderId).then(() => {
+          paymentDialogRef.value.printBill()
+        })
+      }
+      Notify.create({
+        message: 'Payment Successful!',
+        caption: `Order paid via Split (LKR ${Number(res.total || splitTotal).toFixed(2)})`,
+        color: 'positive',
+        icon: 'verified',
+        position: 'top',
+        timeout: 2000,
+      })
+      return
+    }
+    const methodName = isCredit ? 'Credit' : method === 'cash' ? 'Cash' : method === 'card' ? 'Card' : 'Online'
+    const result = await store.processPayment(methodName, isCredit ? { creditCustomerId } : undefined)
     if (result && result.success) {
       // Mark the dialog as paid (shows success state + real invoice receipt)
       if (paymentDialogRef.value) {

@@ -296,7 +296,7 @@ describe('JWT Security', () => {
   it('rejects malformed JWT tokens', () => {
     const fakeTokens = [
       'not-a-jwt',
-      'eyJhbGciOiJIUzI1NiJ9.tampered.signature',
+      'eyJ0eXAiOiJKV1QifQ.tampered.signature',
       '',
       null,
       undefined,
@@ -308,7 +308,7 @@ describe('JWT Security', () => {
       const isValid = token && typeof token === 'string' && token.split('.').length === 3
         && token.split('.').every(p => p.length > 0)
       // Most fake tokens should fail basic structure check
-      if (token !== 'eyJhbGciOiJIUzI1NiJ9.tampered.signature') {
+      if (token !== 'eyJ0eXAiOiJKV1QifQ.tampered.signature') {
         expect(isValid).toBeFalsy()
       }
     })

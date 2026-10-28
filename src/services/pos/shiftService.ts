@@ -152,6 +152,40 @@ export async function createCashMovement(payload: CashMovementPayload) {
   return data as { success: boolean; movement_id?: string; error?: string }
 }
 
+// ── Drawer payout (cash_out → expense, #145 §10) ─────────────────
+
+export interface CashPayoutPayload {
+  shiftId: string
+  amount: number
+  reason?: string
+  expenseLedgerId?: string | null
+  approvedBy?: string
+}
+
+/**
+ * fn_pos_cash_payout wraps pos_cash_movement('cash_out') and books
+ * Dr expense ledger (default 7042 Miscellaneous Expense) / Cr cash.
+ * Calls supabase directly so a missing RPC (PGRST202) can be detected.
+ */
+export async function createCashPayout(payload: CashPayoutPayload) {
+  const { data, error } = await supabase.rpc('fn_pos_cash_payout', {
+    p_shift_id: payload.shiftId,
+    p_amount: payload.amount,
+    p_reason: payload.reason || null,
+    p_expense_ledger_id: payload.expenseLedgerId || null,
+    p_approved_by: payload.approvedBy || null,
+  })
+  if (error) {
+    const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message || '')
+    return {
+      success: false,
+      missingRpc: missing,
+      error: missing ? 'Apply supabase/finance_pos_sales_gl_145.sql' : `Cash payout failed: ${error.message}`,
+    } as { success: boolean; movement_id?: string; error?: string; missingRpc?: boolean; gl_posted?: boolean }
+  }
+  return data as { success: boolean; movement_id?: string; error?: string; missingRpc?: boolean; gl_posted?: boolean }
+}
+
 // ── Get Shift Summary ─────────────────────────────────────────────
 
 export async function getShiftSummary(shiftId: string): Promise<ShiftSummary | null> {

@@ -528,6 +528,12 @@ import {
   rejectDocumentAmendment,
 } from 'src/services/amendmentService'
 import { useAuthStore } from 'src/stores/auth'
+import {
+  disburseStaffReceivable,
+  disburseEmployeeAdvance,
+  FINANCE_POSTING_UNAVAILABLE,
+} from 'src/services/hr/staffReceivableService'
+import { hrTargetStatus, requiresDisbursement } from 'src/services/hr/hrApprovalStatus'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -764,8 +770,12 @@ async function rejectWastage(doc) {
 
 async function approvePOItem(po) {
   try {
-    await approvePO(po.id)
-    $q.notify({ type: 'positive', message: `PO ${po.doc_number || ''} Approved & Opened` })
+    const res = await approvePO(po.id)
+    $q.notify(
+      res.status === 'approved'
+        ? { type: 'positive', message: `PO ${po.doc_number || ''} Approved & Opened` }
+        : { type: 'info', message: `PO ${po.doc_number || ''}: level approved`, caption: res.message },
+    )
     loadAllPending()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to approve PO', caption: err.message })
@@ -887,6 +897,10 @@ async function denyPermission(perm) {
 }
 
 async function handleHRAction(type, id, status) {
+  // Advances / loans are staff receivables: approval = disbursement (#134b).
+  if (requiresDisbursement(type, status)) {
+    return approveStaffReceivable(type, id)
+  }
   const tableMap = {
     leaves: 'leave_requests',
     advances: 'employee_advances',
@@ -894,10 +908,12 @@ async function handleHRAction(type, id, status) {
     expenses: 'employee_expenses',
   }
   const table = tableMap[type]
+  // employee_loans has no 'approved'/'rejected' (chk_loan_status) → active/cancelled
+  const dbStatus = hrTargetStatus(type, status)
   try {
     const { error } = await supabase
       .from(table)
-      .update({ status, approved_at: new Date().toISOString() })
+      .update({ status: dbStatus, approved_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) throw error
@@ -906,6 +922,73 @@ async function handleHRAction(type, id, status) {
   } catch (err) {
     $q.notify({ type: 'negative', message: `Failed to update request: ${err.message}` })
   }
+}
+
+async function approveStaffReceivable(type, id) {
+  const { data: accounts, error: accErr } = await supabase
+    .from('finance_accounts')
+    .select('id, registered_name, account_type')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('registered_name')
+  if (accErr || !accounts?.length) {
+    $q.notify({
+      type: 'negative',
+      message: accErr?.message || 'No active finance cash/bank account to pay this out from.',
+    })
+    return
+  }
+  const def = accounts.find((a) => a.account_type === 'cash') || accounts[0]
+  $q.dialog({
+    title: type === 'loans' ? 'Approve & Disburse Loan' : 'Approve & Disburse Advance',
+    message: 'Pay out from which cash/bank account?',
+    options: {
+      type: 'radio',
+      model: def.id,
+      items: accounts.map((a) => ({
+        label: `${a.registered_name}${a.account_type ? ' (' + a.account_type + ')' : ''}`,
+        value: a.id,
+      })),
+    },
+    cancel: true,
+    persistent: true,
+  }).onOk(async (accountId) => {
+    try {
+      let res
+      if (type === 'advances') {
+        // #134b RPC, falls back to legacy disburse_employee_advance (live today)
+        res = await disburseEmployeeAdvance(supabase, id, accountId, authStore.user?.id)
+      } else {
+        res = await disburseStaffReceivable(supabase, 'employee_loan', id, accountId)
+        if (res.missing) {
+          // Pre-#134b fallback: no loan disbursement posting exists yet —
+          // activate with a VALID status so payroll recovers it (old behaviour).
+          const { error } = await supabase
+            .from('employee_loans')
+            .update({
+              status: hrTargetStatus('loans', 'approved'),
+              approved_at: new Date().toISOString(),
+              approved_by: authStore.user?.id,
+            })
+            .eq('id', id)
+          if (error) throw error
+          $q.notify({
+            type: 'info',
+            message: `Loan approved (active). ${FINANCE_POSTING_UNAVAILABLE}`,
+            multiLine: true,
+            timeout: 7000,
+          })
+          loadAllPending()
+          return
+        }
+      }
+      if (!res.ok) throw new Error(res.missing ? FINANCE_POSTING_UNAVAILABLE : res.error)
+      $q.notify({ type: 'positive', message: 'Approved and disbursed' })
+      loadAllPending()
+    } catch (err) {
+      $q.notify({ type: 'negative', message: `Not approved: ${err.message}`, multiLine: true })
+    }
+  })
 }
 
 function signOffShift(row) {

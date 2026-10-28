@@ -18,7 +18,7 @@ async function run() {
 
   // Use RPC to create user
   const email = 'testwaiter_auth123@test.com'
-  const password = 'mypassword123'
+  const password = process.env.SW_TEST_PASSWORD
   
   const { data: uid, error: createError } = await supabase.rpc('admin_create_user', {
     p_email: email,

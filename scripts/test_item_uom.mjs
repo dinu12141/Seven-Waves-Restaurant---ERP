@@ -9,7 +9,7 @@ async function testItemUOM() {
 
   await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   // Query items table with joins

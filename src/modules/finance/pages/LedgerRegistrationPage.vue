@@ -21,7 +21,7 @@
     </div>
 
     <q-table flat bordered :rows="filteredLedgers" :columns="columns" row-key="id" :loading="ledgerStore.loading"
-      :pagination="{ rowsPerPage: 20 }">
+      :pagination="{ rowsPerPage: 20 }" class="cursor-pointer" @row-click="(_evt, row) => openStatement(row)">
       <template v-slot:body-cell-ledger_type="props">
         <q-td :props="props"><q-badge :color="typeColor(props.value)">{{ props.value }}</q-badge></q-td>
       </template>
@@ -36,9 +36,12 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn flat round size="sm" icon="edit" color="primary" @click="editLedger(props.row)" />
-          <q-btn flat round size="sm" icon="visibility_off" color="orange" @click="deactivate(props.row)" v-if="props.row.is_active && !props.row.is_system_ledger" />
-          <q-btn flat round size="sm" icon="delete" color="negative" @click="confirmDelete(props.row)" v-if="isAdmin && !props.row.is_system_ledger">
+          <q-btn flat round size="sm" icon="receipt_long" color="teal" @click.stop="openStatement(props.row)">
+            <q-tooltip>View entries</q-tooltip>
+          </q-btn>
+          <q-btn flat round size="sm" icon="edit" color="primary" @click.stop="editLedger(props.row)" />
+          <q-btn flat round size="sm" icon="visibility_off" color="orange" @click.stop="deactivate(props.row)" v-if="props.row.is_active && !props.row.is_system_ledger" />
+          <q-btn flat round size="sm" icon="delete" color="negative" @click.stop="confirmDelete(props.row)" v-if="isAdmin && !props.row.is_system_ledger">
             <q-tooltip>Delete (admin)</q-tooltip>
           </q-btn>
         </q-td>
@@ -46,6 +49,7 @@
     </q-table>
 
     <LedgerForm v-model="showForm" :ledger="editingLedger" @saved="handleSave" />
+    <LedgerStatementDialog v-model="showStatement" :ledger-id="statementLedgerId" />
   </q-page>
 </template>
 
@@ -56,6 +60,7 @@ import { useAuthStore } from 'src/stores/auth'
 import { useFinanceLedgerStore } from '../stores/finance-ledger.store'
 import { useFinanceAccountStore } from '../stores/finance-account.store'
 import LedgerForm from '../components/LedgerForm.vue'
+import LedgerStatementDialog from '../components/LedgerStatementDialog.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -95,6 +100,9 @@ const columns = [
 ]
 
 function typeColor(t) { return { asset: 'blue', liability: 'orange', equity: 'purple', income: 'green', expense: 'red' }[t] || 'grey' }
+const showStatement = ref(false)
+const statementLedgerId = ref(null)
+function openStatement(l) { statementLedgerId.value = l.id; showStatement.value = true }
 function editLedger(l) { editingLedger.value = l; showForm.value = true }
 
 async function handleSave(form) {

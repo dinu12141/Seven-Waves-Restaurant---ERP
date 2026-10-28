@@ -6,10 +6,10 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const KITCHEN_TEST_ACCOUNTS = [
-  { name: 'JUICE BAR', user_code: '2001', email: 'juicebar@sevenwaves.lk', password: 'Juice@123456', expected_kitchen_id: '361e910a-70f0-4578-9ea9-ba29595add39' },
-  { name: 'ITALIAN', user_code: '2002', email: 'italian@sevenwaves.lk', password: 'Italian@123456', expected_kitchen_id: '43cbc447-9897-46f3-8c82-670972091bb3' },
-  { name: 'BENMAR', user_code: '2003', email: 'benmar@sevenwaves.lk', password: 'Benmar@123456', expected_kitchen_id: 'd54617dc-5b1e-456b-934d-65e21ab1b8ff' },
-  { name: 'INDIAN', user_code: '2004', email: 'indian@sevenwaves.lk', password: 'Indian@123456', expected_kitchen_id: '0a3eff90-ba1a-40ce-9e05-94d22af609d7' },
+  { name: 'JUICE BAR', user_code: '2001', email: 'juicebar@sevenwaves.lk', password: process.env.SW_KITCHEN_JUICEBAR_PASSWORD, expected_kitchen_id: '361e910a-70f0-4578-9ea9-ba29595add39' },
+  { name: 'ITALIAN', user_code: '2002', email: 'italian@sevenwaves.lk', password: process.env.SW_KITCHEN_ITALIAN_PASSWORD, expected_kitchen_id: '43cbc447-9897-46f3-8c82-670972091bb3' },
+  { name: 'BENMAR', user_code: '2003', email: 'benmar@sevenwaves.lk', password: process.env.SW_KITCHEN_BENMAR_PASSWORD, expected_kitchen_id: 'd54617dc-5b1e-456b-934d-65e21ab1b8ff' },
+  { name: 'INDIAN', user_code: '2004', email: 'indian@sevenwaves.lk', password: process.env.SW_KITCHEN_INDIAN_PASSWORD, expected_kitchen_id: '0a3eff90-ba1a-40ce-9e05-94d22af609d7' },
 ];
 
 async function testKitchenLoginsE2E() {

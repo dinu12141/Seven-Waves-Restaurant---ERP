@@ -18,6 +18,42 @@ export const financeChequeService = {
     return data || []
   },
 
+  async listPlanned(bankAccountId = null) {
+    let q = supabase.from('finance_cheques')
+      .select('*, bank_account:finance_accounts(id, registered_name, bank_name, account_number)')
+      .eq('status', 'planned')
+      .order('cheque_date', { ascending: true })
+    if (bankAccountId) {
+      q = q.eq('bank_account_id', bankAccountId)
+    }
+    const { data, error } = await q
+    if (error) throw error
+    return data || []
+  },
+
+  async create(data) {
+    const payload = {
+      bank_account_id: data.bank_account_id,
+      cheque_no: String(data.cheque_no).trim(),
+      cheque_date: data.cheque_date || new Date().toISOString().split('T')[0],
+      amount: Number(data.amount),
+      issued_to: data.issued_to ? String(data.issued_to).trim() : null,
+      status: data.status || 'planned',
+      company_id: data.company_id || null,
+      branch_id: data.branch_id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    const { data: created, error } = await supabase
+      .from('finance_cheques')
+      .insert(payload)
+      .select('*, voucher:finance_vouchers(voucher_no, voucher_type, pay_to, amount), bank_account:finance_accounts(registered_name, bank_name, account_number)')
+      .single()
+    if (error) throw error
+    await logFinanceAudit('cheque_created', 'finance_cheque', created.id, null, created)
+    return created
+  },
+
   async getById(id) {
     const { data, error } = await supabase.from('finance_cheques').select('*, voucher:finance_vouchers(*), bank_account:finance_accounts(*)').eq('id', id).single()
     if (error) throw error

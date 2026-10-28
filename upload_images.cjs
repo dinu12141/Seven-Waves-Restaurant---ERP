@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const supabase = createClient(
-  'https://clykwuzajtwvwuavmtzs.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWt3dXphanR3dnd1YXZtdHpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyOTYwODEsImV4cCI6MjA4Njg3MjA4MX0.wROPuoQAQ2GD3PAZAM7cnAef6fhDctRe9izwFC-9JGA'
+  process.env.VITE_SUPABASE_URL || 'https://clykwuzajtwvwuavmtzs.supabase.co',
+  process.env.VITE_SUPABASE_ANON_KEY || (console.error('ERROR: VITE_SUPABASE_ANON_KEY env var is not set.'), process.exit(1))
 );
 
 const artifactDir = 'C:\\Users\\ROG STRIX\\.gemini\\antigravity-ide\\brain\\b976c25a-ccc4-435f-87fe-f642986b13f9';

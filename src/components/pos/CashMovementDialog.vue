@@ -57,6 +57,44 @@
             <q-icon name="notes" color="grey-5" />
           </template>
         </q-input>
+
+        <!-- Cash Out = drawer payout, booked as an expense (fn_pos_cash_payout) -->
+        <template v-if="isPayout">
+          <q-select
+            v-model="expenseLedger"
+            :options="ledgerOptions"
+            :option-label="ledgerLabel"
+            option-value="id"
+            label="Expense category"
+            outlined
+            dark
+            dense
+            bg-color="grey-9"
+            use-input
+            input-debounce="150"
+            clearable
+            :loading="ledgersLoading"
+            class="q-mb-xs"
+            @filter="onLedgerFilter"
+          >
+            <template v-slot:prepend>
+              <q-icon name="receipt_long" color="grey-5" />
+            </template>
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  {{ ledgersError || 'No expense ledger found' }}
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <div class="payout-note">
+            <q-icon name="info" size="14px" class="q-mr-xs" />
+            Cash Out is booked as an expense: Dr
+            {{ expenseLedger ? ledgerLabel(expenseLedger) : '7042 — Miscellaneous Expense (default)' }}
+            / Cr Cash.
+          </div>
+        </template>
       </q-card-section>
 
       <q-separator color="grey-8" />
@@ -79,11 +117,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Notify } from 'quasar'
+import { supabase } from 'src/boot/supabase'
 import { useShiftStore } from 'src/stores/shiftStore'
 import { useAuthStore } from 'src/stores/auth'
 import { printService } from 'src/services/printService'
+import { ledgerLabel, pickDefaultExpenseLedger, filterLedgers } from 'src/modules/pos/splitTenders'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -138,6 +178,56 @@ const submitLabel = computed(() => {
   return `Record ${headerTitle.value}`
 })
 
+// ── Cash Out → expense ledger (fn_pos_cash_payout, #145 §10) ──
+const isPayout = computed(() => props.movementType === 'cash_out')
+const expenseLedgers = ref([])
+const ledgerOptions = ref([])
+const expenseLedger = ref(null)
+const ledgersLoading = ref(false)
+const ledgersError = ref('')
+
+async function loadExpenseLedgers() {
+  if (expenseLedgers.value.length || ledgersLoading.value) return
+  ledgersLoading.value = true
+  ledgersError.value = ''
+  try {
+    let q = supabase
+      .from('finance_ledgers')
+      .select('id, ledger_code, ledger_name, company_id')
+      .eq('ledger_type', 'expense')
+      .is('deleted_at', null)
+      .order('ledger_code')
+      .limit(500)
+    const companyId = authStore.currentBranch?.company_id
+    if (companyId) q = q.or(`company_id.eq.${companyId},company_id.is.null`)
+    const { data, error } = await q
+    if (error) throw error
+    expenseLedgers.value = data || []
+    ledgerOptions.value = expenseLedgers.value
+    if (!expenseLedger.value) expenseLedger.value = pickDefaultExpenseLedger(expenseLedgers.value)
+  } catch (err) {
+    // Not fatal: the server falls back to 7042 Miscellaneous Expense.
+    ledgersError.value = 'Could not load expense ledgers — default 7042 will be used'
+    console.warn('[CashMovementDialog] expense ledgers:', err)
+  } finally {
+    ledgersLoading.value = false
+  }
+}
+
+function onLedgerFilter(val, update) {
+  update(() => {
+    ledgerOptions.value = filterLedgers(expenseLedgers.value, val)
+  })
+}
+
+watch(
+  () => [props.modelValue, props.movementType],
+  ([open]) => {
+    if (open && isPayout.value) loadExpenseLedgers()
+  },
+  { immediate: true },
+)
+
 function handleKey(key) {
   if (key === 'C') {
     rawInput.value = ''
@@ -153,16 +243,17 @@ async function handleSubmit() {
     return
   }
 
-  const result = await shiftStore.cashMovement(
-    props.movementType,
-    amount.value,
-    reason.value || undefined,
-  )
+  // cash_out = drawer payout → expense (fn_pos_cash_payout); cash_in / cash_drop unchanged
+  const result = isPayout.value
+    ? await shiftStore.cashPayout(amount.value, reason.value || undefined, expenseLedger.value?.id || null)
+    : await shiftStore.cashMovement(props.movementType, amount.value, reason.value || undefined)
 
   if (result.success) {
     Notify.create({
       message: `${headerTitle.value} Recorded`,
-      caption: `LKR ${amount.value.toFixed(2)}${reason.value ? ' — ' + reason.value : ''}`,
+      caption: `LKR ${amount.value.toFixed(2)}${reason.value ? ' — ' + reason.value : ''}${
+        isPayout.value ? ' — expense: ' + (expenseLedger.value ? ledgerLabel(expenseLedger.value) : '7042') : ''
+      }`,
       color: 'positive',
       icon: 'check_circle',
       position: 'top',
@@ -193,8 +284,8 @@ async function handleSubmit() {
     reason.value = ''
   } else {
     Notify.create({
-      message: `${headerTitle.value} Failed`,
-      caption: result.error || 'Unknown error',
+      message: result.missingRpc ? 'Apply supabase/finance_pos_sales_gl_145.sql' : `${headerTitle.value} Failed`,
+      caption: result.missingRpc ? 'Cash Out needs the server update (fn_pos_cash_payout).' : result.error || 'Unknown error',
       color: 'red',
       icon: 'error',
       position: 'top',
@@ -286,6 +377,15 @@ async function handleSubmit() {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.payout-note {
+  font-size: 11px;
+  color: #ffb74d;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .quick-btn {

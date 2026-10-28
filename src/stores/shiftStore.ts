@@ -11,13 +11,13 @@ import {
   openShift as apiOpenShift,
   recordShiftPayment as apiRecordPayment,
   createCashMovement as apiCashMovement,
+  createCashPayout as apiCashPayout,
   closeShift as apiCloseShift,
   getShiftSummary as apiGetSummary,
   getShiftCashMovements as apiGetMovements,
   type ShiftSummary,
   type OpenShiftPayload,
 } from 'src/services/pos/shiftService'
-import { postShiftJournal } from 'src/services/pos/shiftFinanceService'
 
 const TERMINAL_STORAGE_KEY = 'pos_terminal_id'
 
@@ -208,6 +208,50 @@ export const useShiftStore = defineStore('posShift', () => {
     }
   }
 
+  /**
+   * Drawer payout (cash_out) booked as an expense — fn_pos_cash_payout
+   * (Dr expense ledger, default 7042 / Cr cash). cash_in / cash_drop keep
+   * using cashMovement().
+   */
+  async function cashPayout(
+    amount: number,
+    reason?: string,
+    expenseLedgerId?: string | null,
+    approvedBy?: string,
+  ): Promise<{ success: boolean; movementId?: string; error?: string; missingRpc?: boolean }> {
+    if (!activeShift.value) {
+      return { success: false, error: 'No active shift' }
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const result = await apiCashPayout({
+        shiftId: activeShift.value.id,
+        amount,
+        reason,
+        expenseLedgerId: expenseLedgerId || null,
+        approvedBy,
+      })
+
+      if (result?.success) {
+        await refreshShiftTotals()
+      }
+      return {
+        success: !!result?.success,
+        movementId: result?.movement_id,
+        error: result?.error,
+        missingRpc: !!result?.missingRpc,
+      }
+    } catch (err: any) {
+      error.value = err.message
+      return { success: false, error: err.message }
+    } finally {
+      loading.value = false
+    }
+  }
+
   /** Close the active shift */
   async function closeShift(counts: {
     countedCash: number
@@ -251,74 +295,13 @@ export const useShiftStore = defineStore('posShift', () => {
         return { success: false, error: result.error }
       }
 
-      // Post journal entry & Auto-Transfer
-      const updatedShift = await apiGetSummary(activeShift.value.id)
-      if (updatedShift) {
-        const journalResult = await postShiftJournal(updatedShift)
-        if (!journalResult.success) {
-          console.error('[ShiftStore] Journal posting failed:', journalResult.error)
-        }
-
-        // Auto-Transfer POS Cash to Finance Cashbook
-        if ((counts.countedCash || 0) > 0) {
-          try {
-            const { supabase } = await import('src/boot/supabase')
-            const { financeVoucherService } = await import('src/modules/finance/services/finance-voucher.service')
-            
-            // 1. Find the default Cash Account
-            const { data: cashAccs } = await supabase
-              .from('finance_accounts')
-              .select('id, ledger_id')
-              .eq('account_type', 'cash')
-              .eq('is_active', true)
-              .is('deleted_at', null)
-              .order('is_default', { ascending: false })
-              .limit(1)
-
-            const accountId = cashAccs?.[0]?.id
-
-            // Find Sales Revenue ledger (code 5000 or any income ledger)
-            const { data: revLedgers } = await supabase
-              .from('finance_ledgers')
-              .select('id')
-              .eq('ledger_code', '5000')
-              .eq('is_active', true)
-              .is('deleted_at', null)
-              .limit(1)
-
-            const ledgerId = revLedgers?.[0]?.id || cashAccs?.[0]?.ledger_id
-
-            if (accountId && ledgerId) {
-              // 2. Create the Received Voucher
-              const voucherForm = {
-                voucher_type: 'received',
-                voucher_date: new Date().toISOString().split('T')[0],
-                received_from: `POS Cash Transfer - Shift ${updatedShift.id.slice(0, 8)}`,
-                amount: counts.countedCash,
-                payment_method: 'cash',
-                account_id: accountId,
-                ledger_id: ledgerId,
-                remark: 'Auto-transfer from POS Shift Close',
-                narration: 'POS Cash Transfer',
-                branch_id: updatedShift.branch_id
-              }
-              
-              const createdVoucher = await financeVoucherService.createReceivedVoucher(voucherForm)
-              
-              // 3. Post it immediately using RPC to bypass frontend role restrictions for cashiers
-              if (createdVoucher?.id) {
-                const { error: postErr } = await supabase.rpc('post_finance_voucher', { p_voucher_id: createdVoucher.id })
-                if (postErr) throw postErr
-                console.log('[ShiftStore] POS Cash Auto-Transfer completed:', createdVoucher.voucher_no)
-              }
-            } else {
-              console.warn('[ShiftStore] Could not auto-transfer cash: No valid finance account/ledger found.')
-            }
-          } catch (finErr) {
-            console.error('[ShiftStore] Auto-Transfer failed:', finErr)
-          }
-        }
-      }
+      // Accounting is server-side (#145): every paid order posts its own
+      // balanced GL legs (cash / card-digital clearing / AR vs sales, VAT,
+      // service charge) when it is paid, and the cash variance of this shift is
+      // posted by a trigger on pos_shifts when it closes. The old client steps
+      // — a legacy journal_entries row and a received voucher "Dr cash / Cr
+      // 5000" for the counted cash (opening float booked as sales, revenue
+      // doubled) — must not run any more.
 
       // Clear active shift
       activeShift.value = null
@@ -391,6 +374,7 @@ export const useShiftStore = defineStore('posShift', () => {
     openShift,
     recordPayment,
     cashMovement,
+    cashPayout,
     closeShift,
     refreshShiftTotals,
     fetchShiftSummary,

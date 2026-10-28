@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://clykwuzajtwvwuavmtzs.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWt3dXphanR3dnd1YXZtdHpzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTI5NjA4MSwiZXhwIjoyMDg2ODcyMDgxfQ.ph7Yy1Izhz21kmJSKXpowbWJYGYMz0YxlpoVG6hBABA';
-const RESEND_API_KEY = 're_X1XvPpRy_9AaygVZxxFwmZLgahFXPWkg2';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://clykwuzajtwvwuavmtzs.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || (console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY env var is not set. Export the service role key (never commit it) and re-run.'), process.exit(1)));
+const RESEND_API_KEY = (process.env.RESEND_API_KEY || (console.error('ERROR: RESEND_API_KEY env var is not set.'), process.exit(1)));
 const OWNER_EMAIL = 'dinushahssh@gmail.com';
 const FROM_EMAIL = 'Seven Waves ERP <hr@sevenwaves.lk>';
 

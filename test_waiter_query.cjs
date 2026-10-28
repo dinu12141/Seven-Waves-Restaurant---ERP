@@ -27,7 +27,7 @@ async function testPassword(email, password) {
 
 async function test() {
   const email = 'waiter@sevenwaves.lk';
-  const passwords = ['Admin@123456', 'Waiter@123456', 'waiter123', 'Password@123'];
+  const passwords = (process.env.SW_CANDIDATE_PASSWORDS || '').split(',').filter(Boolean);
   let loggedIn = false;
   let authData = null;
 

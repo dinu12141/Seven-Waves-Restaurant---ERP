@@ -3,7 +3,7 @@
 ## 🔐 Admin Credentials
 
 **Email:** `admin@sevenwaves.lk`  
-**Password:** `Admin@123456`
+**Password:** `<redacted — see password manager>`
 
 ---
 
@@ -17,7 +17,7 @@
 4. Select **"Create new user"**
 5. Enter the credentials:
    - **Email:** `admin@sevenwaves.lk`
-   - **Password:** `Admin@123456`
+   - **Password:** `<redacted — see password manager>`
    - **Auto Confirm User:** ✅ (check this box)
 6. Click **"Create user"**
 
@@ -73,7 +73,7 @@ You should see:
 2. You'll be redirected to `/auth/login`
 3. Enter credentials:
    - **Email:** admin@sevenwaves.lk
-   - **Password:** Admin@123456
+   - **Password:** <redacted — see password manager>
 4. Click **Login**
 5. You should be redirected to `/dashboard`
 
@@ -137,7 +137,7 @@ The admin user will have access to **all menu items** in the sidebar including:
 
 ## 📌 Important Notes
 
-- The password `Admin@123456` is for **development only**
+- The password `<redacted — see password manager>` is for **development only**
 - Change the password in production
 - Admin users have full access to all modules
 - Additional users can be created with different roles (manager, waiter, cashier, etc.)

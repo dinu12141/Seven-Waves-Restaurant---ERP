@@ -17,10 +17,10 @@
 
     <div class="row q-col-gutter-sm q-my-md items-center">
       <div class="col-12 col-sm-3">
-        <q-input v-model="filters.date_from" label="From Date" outlined dense type="date" />
+        <q-input v-model="filters.date_from" label="From Date (P&L period)" outlined dense type="date" clearable />
       </div>
       <div class="col-12 col-sm-3">
-        <q-input v-model="filters.date_to" label="To Date" outlined dense type="date" />
+        <q-input v-model="filters.date_to" label="To Date (Balance Sheet as at)" outlined dense type="date" clearable />
       </div>
       <div class="col-12 col-sm-2">
         <q-btn color="primary" label="Generate" icon="autorenew" unelevated @click="generate" :loading="stmtStore.loading" no-caps />
@@ -42,6 +42,12 @@
             >
               {{ stmtStore.trialBalance.isBalanced ? '✓ Trial Balance is balanced' : '⚠ Trial Balance is NOT balanced' }}
               — Total Debit: LKR {{ Number(stmtStore.trialBalance.totalDebit).toLocaleString(undefined, { minimumFractionDigits: 2 }) }} | Total Credit: LKR {{ Number(stmtStore.trialBalance.totalCredit).toLocaleString(undefined, { minimumFractionDigits: 2 }) }}
+              <div v-if="Math.abs(Number(stmtStore.trialBalance.opening_difference || 0)) >= 0.01" class="text-orange-9 text-weight-medium q-mt-xs">
+                ⚠ Ledger opening balances do not agree by LKR
+                {{ Math.abs(Number(stmtStore.trialBalance.opening_difference)).toLocaleString(undefined, { minimumFractionDigits: 2 }) }}
+                ({{ stmtStore.trialBalance.opening_difference > 0 ? 'debit' : 'credit' }} excess). It is shown as
+                "Difference in Opening Balances (Suspense)" until the openings are corrected in Finance → Ledgers.
+              </div>
             </q-banner>
             <div class="q-ml-md q-gutter-xs">
               <q-btn
@@ -156,10 +162,11 @@ const bsReport = computed(() => {
   }
 })
 
+// Builds all three statements from one data load so no tab shows results
+// from older filters. The Balance Sheet is cumulative as at "To Date"; the
+// P&L covers "From Date" → "To Date".
 async function generate() {
-  if (tab.value === 'trial') await stmtStore.fetchTrialBalance(filters.value)
-  else if (tab.value === 'pl') await stmtStore.fetchProfitLoss(filters.value)
-  else await stmtStore.fetchBalanceSheet(filters.value)
+  await stmtStore.fetchAll({ ...filters.value })
   if (stmtStore.error) {
     $q.notify({ type: 'negative', message: stmtStore.error, position: 'top', timeout: 4000 })
   }
@@ -178,27 +185,27 @@ function downloadTrialPdf() {
   $q.notify({ type: 'positive', message: 'Trial Balance exported to PDF' })
 }
 
-function downloadPlExcel() {
+function downloadPlExcel(opts = {}) {
   if (!stmtStore.profitLoss) return
-  financeExportService.exportProfitLossToExcel(stmtStore.profitLoss)
+  financeExportService.exportProfitLossToExcel(stmtStore.profitLoss, opts)
   $q.notify({ type: 'positive', message: 'Profit & Loss Statement exported to Excel' })
 }
 
-function downloadPlPdf() {
+function downloadPlPdf(opts = {}) {
   if (!stmtStore.profitLoss) return
-  financeExportService.exportProfitLossToPdf(stmtStore.profitLoss)
+  financeExportService.exportProfitLossToPdf(stmtStore.profitLoss, opts)
   $q.notify({ type: 'positive', message: 'Profit & Loss Statement exported to PDF' })
 }
 
-function downloadBsExcel() {
+function downloadBsExcel(opts = {}) {
   if (!stmtStore.balanceSheet) return
-  financeExportService.exportBalanceSheetToExcel(stmtStore.balanceSheet)
+  financeExportService.exportBalanceSheetToExcel(stmtStore.balanceSheet, opts)
   $q.notify({ type: 'positive', message: 'Balance Sheet exported to Excel' })
 }
 
-function downloadBsPdf() {
+function downloadBsPdf(opts = {}) {
   if (!stmtStore.balanceSheet) return
-  financeExportService.exportBalanceSheetToPdf(stmtStore.balanceSheet)
+  financeExportService.exportBalanceSheetToPdf(stmtStore.balanceSheet, opts)
   $q.notify({ type: 'positive', message: 'Balance Sheet exported to PDF' })
 }
 </script>

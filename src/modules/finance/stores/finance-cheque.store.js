@@ -34,5 +34,23 @@ export const useFinanceChequeStore = defineStore('financeCheque', () => {
     return result
   }
 
-  return { cheques, loading, error, fetchCheques, updateStatus, markCleared, cancel, markBounced }
+  async function createCheque(payload) {
+    loading.value = true
+    try {
+      const created = await financeChequeService.create(payload)
+      cheques.value.unshift(created)
+      return created
+    } catch (e) {
+      error.value = e.message
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchPlannedCheques(bankAccountId = null) {
+    return financeChequeService.listPlanned(bankAccountId)
+  }
+
+  return { cheques, loading, error, fetchCheques, updateStatus, markCleared, cancel, markBounced, createCheque, fetchPlannedCheques }
 })

@@ -1,0 +1,14 @@
+# Gitleaks configuration — used by the "Gitleaks" step in .github/workflows/ci.yml
+# Extends the built-in ruleset; only allowlists known, non-secret test fixtures.
+title = "Seven Waves ERP gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known fake credentials used only by unit tests"
+paths = [
+  '''src/core/security/__tests__/enterprise-security\.test\.ts''',
+  '''vitest\.config\.ts''',
+  '''\.env\.example''',
+]

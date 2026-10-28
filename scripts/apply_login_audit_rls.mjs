@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://clykwuzajtwvwuavmtzs.supabase.co';
-const serviceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWt3dXphanR3dnd1YXZtdHpzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTI5NjA4MSwiZXhwIjoyMDg2ODcyMDgxfQ.ph7Yy1Izhz21kmJSKXpowbWJYGYMz0YxlpoVG6hBABA';
+const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || (console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY env var is not set. Export the service role key (never commit it) and re-run.'), process.exit(1)));
 
 const adminClient = createClient(supabaseUrl, serviceKey);
 const publicClient = createClient(supabaseUrl, process.env.VITE_SUPABASE_ANON_KEY);
@@ -25,7 +25,7 @@ async function run() {
   console.log('\n--- Testing login_audit_logs with Authenticated User ---');
   await publicClient.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   const authInsert = await publicClient.from('login_audit_logs').insert({

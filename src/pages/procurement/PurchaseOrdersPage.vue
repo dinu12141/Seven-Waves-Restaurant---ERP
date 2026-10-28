@@ -236,7 +236,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar, date } from 'quasar'
 import { supabase } from 'src/boot/supabase'
-import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, listInventoryPOs, getAnyPODetails, closePO, listSupplierItems } from 'src/services/procurementService'
+import { listPO, createPO, listSuppliers, listItems, listUoms, approvePO, cancelPO as cancelPOService, listInventoryPOs, getAnyPODetails, closePO, listSupplierItems } from 'src/services/procurementService'
 import DocHeader from 'components/procurement/DocHeader.vue'
 import DocLinesEditor from 'components/procurement/DocLinesEditor.vue'
 import PostingBar from 'components/procurement/PostingBar.vue'
@@ -638,6 +638,7 @@ async function savePO(targetStatus) {
     return
   }
 
+  if (saving.value) return // double-submit guard
   saving.value = true
   try {
     const headPayload = {
@@ -666,8 +667,17 @@ async function savePO(targetStatus) {
     } else {
       const po = await createPO(headPayload, lines)
       if (targetStatus === 'open' && po?.id) {
-        await approvePO(po.id)
-        $q.notify({ type: 'positive', message: 'PO Created & Approved' })
+        try {
+          const res = await approvePO(po.id)
+          $q.notify(
+            res.status === 'approved'
+              ? { type: 'positive', message: 'PO Created & Approved' }
+              : { type: 'info', message: 'PO Created — awaiting further approval', caption: res.message },
+          )
+        } catch (e) {
+          // Saved as draft; approval is enforced server-side (e.g. maker-checker)
+          $q.notify({ type: 'warning', message: 'PO Created as draft — approval required', caption: e.message })
+        }
       } else {
         $q.notify({ type: 'positive', message: 'PO Created' })
       }
@@ -682,7 +692,26 @@ async function savePO(targetStatus) {
 }
 
 function cancelPO() {
-  $q.notify({ type: 'info', message: 'Cancellation Logic invoked' })
+  if (!form.value.id) {
+    dialogVisible.value = false
+    return
+  }
+  $q.dialog({
+    title: `Cancel PO ${form.value.doc_number || ''}?`,
+    message: 'Only draft or approved POs can be cancelled. Enter a reason:',
+    prompt: { model: '', type: 'text', isValid: (v) => !!v && v.trim().length > 2 },
+    cancel: true,
+    persistent: true,
+  }).onOk(async (reason) => {
+    try {
+      await cancelPOService(form.value.id, reason.trim())
+      $q.notify({ type: 'positive', message: `PO ${form.value.doc_number || ''} cancelled` })
+      dialogVisible.value = false
+      fetchPOs()
+    } catch (e) {
+      $q.notify({ type: 'negative', message: 'Failed to cancel PO', caption: e.message })
+    }
+  })
 }
 
 function printPO() {

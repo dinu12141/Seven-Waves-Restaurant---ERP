@@ -8,7 +8,7 @@ async function testFullDocWorkflow() {
   console.log('--- Testing Complete Employee Document Workflow ---');
   await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   const empId = 'eaa1230b-caf2-46ce-9b37-e25def78fb75';

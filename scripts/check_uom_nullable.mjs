@@ -9,7 +9,7 @@ async function checkUomNullable() {
 
   await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   const { data: po } = await supabase.from('purchase_orders').select('id').limit(1).single();

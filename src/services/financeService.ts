@@ -19,6 +19,15 @@
  */
 import { supabase } from 'src/boot/supabase'
 import { api } from 'src/core/api/ApiClient'
+import {
+  AR_OPEN_STATUSES,
+  agingBucketFor,
+  customerDisplayName,
+  daysPastDue,
+  localIsoDate,
+  receivableBalance,
+  sumAmounts,
+} from 'src/services/finance/arAllocation'
 
 const MODULE = 'finance'
 
@@ -333,76 +342,101 @@ export async function createCashTransaction(txn: FinanceFilters) {
 // ═══════════════════════════════════════════════════════════════════
 // ACCOUNTS RECEIVABLE
 // ═══════════════════════════════════════════════════════════════════
+/**
+ * Open customer receivables (#144 sub-ledger) — customer_receivables only.
+ * Unpaid served orders are open bills at the POS, NOT receivables: a sale only
+ * becomes a receivable when it is settled on CREDIT (#145 fn_pos_post_sale)
+ * or raised with fn_ar_create_invoice.
+ * New code should use src/services/finance/arService.
+ */
 export async function fetchReceivables(filters: FinanceFilters = {}) {
-  // Combine customer_receivables (if any) and unpaid orders
-  const [crRes, ordersRes] = await Promise.all([
-    supabase.from('customer_receivables')
-      .select('*, customers(name, email, phone, bank_name, bank_account_number)')
-      .order('created_at', { ascending: false }),
-    supabase.from('orders')
-      .select('id, total_amount, created_at, customer_id, customers(name, email, phone)')
-      .neq('payment_status', 'paid')
-      .in('status', ['ready', 'served', 'invoiced', 'completed'])
-      .order('created_at', { ascending: false })
-  ]);
-
-  let data = (crRes.data || []).map(r => ({ ...r, source: 'cr' }));
-  
-  const orders = (ordersRes.data || []).map(o => ({
-    id: o.id,
-    invoice_id: o.id.substring(0, 8),
-    balance: o.total_amount,
-    total_amount: o.total_amount,
-    paid_amount: 0,
-    status: 'outstanding',
-    due_date: new Date(o.created_at).toISOString().split('T')[0],
-    created_at: o.created_at,
-    customers: o.customers,
-    source: 'order'
-  }));
-
-  data = [...data, ...orders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  return { data, error: null }
+  let q = supabase.from('customer_receivables')
+    .select('*, customers(id, first_name, last_name, phone, email, customer_code)')
+    .in('status', [...AR_OPEN_STATUSES])
+    .order('due_date', { ascending: true })
+  if (filters.customer_id) q = q.eq('customer_id', filters.customer_id)
+  if (filters.branch_id) q = q.eq('branch_id', filters.branch_id)
+  const { data, error } = await q
+  if (error) return { data: [], error }
+  const rows = (data || []).map((r: any) => ({
+    ...r,
+    customer_name: customerDisplayName(r.customers),
+    balance: receivableBalance(r),
+  }))
+  return { data: rows, error: null }
 }
 
+/**
+ * Aging of the OPEN balance by days past the DUE date. Bucket keys match the
+ * Receivables KPI cards: 'current' | '1-30 days' | '31-60 days' | '61-90 days' | '90+ days'.
+ */
 export async function fetchReceivableAging() {
-  const { data } = await fetchReceivables();
-  const now = new Date().getTime();
-  
-  const res = (data || []).map(r => {
-    const docDate = new Date(r.created_at || r.due_date).getTime();
-    const days = Math.floor((now - docDate) / (1000 * 3600 * 24));
-    let bucket = 'CURRENT';
-    if (days >= 1 && days <= 30) bucket = '1_30_DAYS';
-    else if (days >= 31 && days <= 60) bucket = '31_60_DAYS';
-    else if (days >= 61 && days <= 90) bucket = '61_90_DAYS';
-    else if (days > 90) bucket = 'OVER_90_DAYS';
-
-    return {
-      id: r.id,
-      customer_id: r.customer_id || r.customers?.id,
-      customer_name: r.customers?.name,
-      balance: r.balance,
-      aging_bucket: bucket
-    }
-  });
-
+  const { data, error } = await fetchReceivables()
+  if (error) return { data: [], error }
+  const today = localIsoDate()
+  const res = (data || []).filter((r: any) => r.balance > 0).map((r: any) => ({
+    id: r.id,
+    customer_id: r.customer_id,
+    customer_name: r.customer_name,
+    doc_number: r.doc_number,
+    due_date: r.due_date,
+    balance: r.balance,
+    days_past_due: daysPastDue(r.due_date, today),
+    aging_bucket: agingBucketFor(r.due_date, today),
+  }))
   return { data: res, error: null }
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // ACCOUNTS PAYABLE (links to procurement AP)
 // ═══════════════════════════════════════════════════════════════════
+/**
+ * Payable = posted to AP (ap_ledger INVOICE row, Dr GRNI / Cr AP) and still
+ * owing. Same rule as procurementService.PAYABLE_AP_INVOICE_STATUSES (kept
+ * local to avoid importing the procurement service and its auth store here).
+ * Draft/approved bills were never credited to AP: listing them as payables let
+ * AP_INV-2026-000118 / -000479 be "paid" with posted_at NULL.
+ */
+export const AP_PAYABLE_STATUSES = ['posted', 'partial_paid'] as const
+export const AP_UNPOSTED_STATUSES = ['draft', 'approved'] as const
+
 export async function fetchApInvoices(filters: FinanceFilters = {}) {
   let query = supabase
     .from('ap_invoices')
     .select('*, suppliers(id, name, code, bank_name, bank_branch, bank_account_number, bank_account_name)')
-    .not('status', 'in', '("cancelled","paid")')
-    .order('doc_date', { ascending: false })
+    .in('status', [...AP_PAYABLE_STATUSES])
+    .gt('balance_due', 0)
+    // Oldest first, deterministic for several bills on the same day
+    .order('doc_date', { ascending: true })
+    .order('doc_number', { ascending: true })
 
   if (filters.limit) query = query.limit(filters.limit)
   const { data, error } = await query
   return { data, error }
+}
+
+/**
+ * Count + outstanding total of bills that exist but are not yet posted
+ * (draft/approved), so Payables can say why they are not listed.
+ */
+export async function fetchUnpostedApSummary(): Promise<{ count: number; total: number; error: unknown }> {
+  const { data, error } = await supabase
+    .from('ap_invoices')
+    .select('id, total_amount, paid_amount, balance_due')
+    .in('status', [...AP_UNPOSTED_STATUSES])
+  if (error) return { count: 0, total: 0, error }
+  let cents = 0
+  let count = 0
+  for (const r of (data || []) as any[]) {
+    const bal = r.balance_due !== undefined && r.balance_due !== null
+      ? Number(r.balance_due)
+      : Number(r.total_amount || 0) - Number(r.paid_amount || 0)
+    const c = Math.round((Number.isFinite(bal) ? bal : 0) * 100)
+    if (c <= 0) continue
+    count++
+    cents += c
+  }
+  return { count, total: cents / 100, error: null }
 }
 
 export async function fetchPayableAging() {
@@ -905,7 +939,7 @@ export async function fetchDashboardKPIs(branchId?: any, startDate?: string, end
     expQuery = expQuery.eq('branch_id', branchId)
   }
 
-  const [ordersRes, recvVouchersRes, payVouchersRes, expRes, accountsRes, ledgersRes, receivableRes, payableRes, payrollRes, unpaidOrdersRes] = await Promise.all([
+  const [ordersRes, recvVouchersRes, payVouchersRes, expRes, accountsRes, ledgersRes, receivableRes, payableRes, payrollRes] = await Promise.all([
     ordersQuery,
     recvVouchersQuery,
     payVouchersQuery,
@@ -917,8 +951,8 @@ export async function fetchDashboardKPIs(branchId?: any, startDate?: string, end
     // Real Ledgers balance (from finance_ledgers)
     supabase.from('finance_ledgers').select('current_balance, ledger_type').eq('is_active', true),
 
-    // Outstanding receivables: customer_receivables + unpaid/credit orders
-    supabase.from('customer_receivables').select('balance').in('status', ['outstanding', 'partial', 'overdue']),
+    // Outstanding receivables: the AR sub-ledger only (#144) — unpaid orders are open bills, not AR
+    supabase.from('customer_receivables').select('balance, total_amount, paid_amount, status').in('status', [...AR_OPEN_STATUSES]),
 
     // Outstanding payables (AP invoices) — include ALL non-cancelled statuses
     supabase.from('ap_invoices').select('balance_due, status')
@@ -926,11 +960,6 @@ export async function fetchDashboardKPIs(branchId?: any, startDate?: string, end
 
     // Latest payroll
     supabase.from('payroll_cycles').select('total_net, status').order('period_end', { ascending: false }).limit(1),
-
-    // Unpaid/credit orders (also count as receivables)
-    supabase.from('orders').select('total_amount')
-      .neq('payment_status', 'paid')
-      .in('status', ['ready', 'served', 'invoiced', 'completed']),
   ])
 
   // Calculate Today Revenue = POS Paid Orders + Received Vouchers
@@ -951,10 +980,8 @@ export async function fetchDashboardKPIs(branchId?: any, startDate?: string, end
       .reduce((s: any, l: any) => s + Number(l.current_balance || 0), 0)
   }
 
-  // AR = customer_receivables + unpaid credit orders
-  const arFromReceivables = (receivableRes.data || []).reduce((s: any, r: any) => s + Number(r.balance || 0), 0)
-  const arFromOrders = (unpaidOrdersRes.data || []).reduce((s: any, o: any) => s + Number(o.total_amount || 0), 0)
-  const outstandingAR = arFromReceivables + arFromOrders
+  // AR = open balance of the customer_receivables sub-ledger (same source as Finance → Receivables)
+  const outstandingAR = sumAmounts((receivableRes.data || []).map((r: any) => receivableBalance(r)))
 
   // AP = sum of balance_due from all non-cancelled/non-paid AP invoices
   const outstandingAP = (payableRes.data || []).reduce((s: any, p: any) => s + Number(p.balance_due || 0), 0)

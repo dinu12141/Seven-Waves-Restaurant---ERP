@@ -6,10 +6,10 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const KITCHEN_ACCOUNTS = [
-  { name: 'JUICE BAR', code: '2001', email: 'juicebar@sevenwaves.lk', pass: 'Juice@123456' },
-  { name: 'ITALIAN', code: '2002', email: 'italian@sevenwaves.lk', pass: 'Italian@123456' },
-  { name: 'BENMAR', code: '2003', email: 'benmar@sevenwaves.lk', pass: 'Benmar@123456' },
-  { name: 'INDIAN', code: '2004', email: 'indian@sevenwaves.lk', pass: 'Indian@123456' },
+  { name: 'JUICE BAR', code: '2001', email: 'juicebar@sevenwaves.lk', pass: process.env.SW_KITCHEN_JUICEBAR_PASSWORD },
+  { name: 'ITALIAN', code: '2002', email: 'italian@sevenwaves.lk', pass: process.env.SW_KITCHEN_ITALIAN_PASSWORD },
+  { name: 'BENMAR', code: '2003', email: 'benmar@sevenwaves.lk', pass: process.env.SW_KITCHEN_BENMAR_PASSWORD },
+  { name: 'INDIAN', code: '2004', email: 'indian@sevenwaves.lk', pass: process.env.SW_KITCHEN_INDIAN_PASSWORD },
 ];
 
 async function diagnose() {

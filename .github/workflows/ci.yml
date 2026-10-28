@@ -128,15 +128,48 @@ jobs:
             echo "❌ service_role key reference found in source code!"
             exit 1
           fi
-          # Check no raw Supabase service key patterns (eyJ... JWT tokens)
-          if grep -rn "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\." src/ --include="*.ts" --include="*.js" --include="*.vue" 2>/dev/null; then
-            echo "❌ Hardcoded JWT token found in source code!"
+          # Check no hardcoded JWTs (Supabase anon/service_role keys start with eyJhbGciOi)
+          # in code-bearing directories (keys belong in .env / CI secrets). Only file
+          # names are printed, never the token, to avoid re-leaking a key into CI logs.
+          JWT_HITS=$(grep -rlI "eyJhbGciOi" scripts/ tests/ src/ supabase/ src-tauri/ \
+            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=target 2>/dev/null || true)
+          if [ -n "$JWT_HITS" ]; then
+            echo "❌ Hardcoded JWT token(s) found in:"
+            echo "$JWT_HITS"
+            echo "Use environment variables (e.g. process.env.SUPABASE_SERVICE_ROLE_KEY) instead."
+            exit 1
+          fi
+          # Extra guard: any JWT anywhere in the repo whose payload decodes to role=service_role
+          SR_HITS=$(grep -rIoE "eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+" . \
+            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git --exclude='.env*' 2>/dev/null \
+            | while IFS= read -r line; do
+                file="${line%%:*}"; tok="${line#*:}"
+                payload=$(echo "$tok" | cut -d. -f2 | tr '_-' '/+')
+                while [ $(( ${#payload} % 4 )) -ne 0 ]; do payload="${payload}="; done
+                if echo "$payload" | base64 -d 2>/dev/null | grep -q '"role":"service_role"'; then echo "$file"; fi
+              done | sort -u)
+          if [ -n "$SR_HITS" ]; then
+            echo "❌ Supabase service_role JWT found in:"
+            echo "$SR_HITS"
+            exit 1
+          fi
+          # Third-party API keys that must only live in Supabase/Vercel secrets:
+          # Resend (re_xxx_xxx), Stripe (sk_live_/sk_test_), Supabase PAT (sbp_), Google (AIza).
+          KEY_HITS=$(grep -rlIE "re_[A-Za-z0-9]{8}_[A-Za-z0-9]{16,}|sk_(live|test)_[A-Za-z0-9]{16,}|sbp_[a-f0-9]{30,}|AIza[0-9A-Za-z_-]{35}" . \
+            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git --exclude-dir=target --exclude='.env*' 2>/dev/null || true)
+          if [ -n "$KEY_HITS" ]; then
+            echo "❌ Hardcoded third-party API key(s) found in:"
+            echo "$KEY_HITS"
+            echo "Move the key to a Supabase edge-function secret (supabase secrets set ...) or CI secret."
             exit 1
           fi
           echo "✅ No exposed secrets found in source"
 
+      # Scans only the commits in this PR (history before the key rotation is not re-flagged).
+      # Pinned to an exact release; .gitleaks.toml at the repo root extends the default rules.
       - name: Gitleaks — Scan PR Commits for Secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false

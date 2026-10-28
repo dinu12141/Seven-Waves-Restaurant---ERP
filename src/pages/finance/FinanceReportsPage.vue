@@ -179,6 +179,8 @@
       </q-tab-panel>
 
       <!-- ═══════ P&L ═══════ -->
+      <!-- Same engine + viewer as Finance > Financial Statements (finance_ledgers
+           grouped by account_group, LKAS 1 order), so both menus always agree. -->
       <q-tab-panel name="pnl" class="q-pa-none">
         <div class="fin-panel">
           <div class="fin-panel__header">
@@ -186,54 +188,11 @@
             ><span class="fin-panel__subtitle">{{ dateFrom }} to {{ dateTo }}</span>
           </div>
           <div class="fin-panel__body q-pa-md" v-if="pnlData">
-            <div class="text-subtitle2 text-green-4 q-mb-xs">Revenue (4xxx)</div>
-            <q-table
-              :rows="pnlData.revenue"
-              :columns="pnlCols"
-              row-key="code"
-              flat
-              dark
-              dense
-              hide-bottom
-              :rows-per-page-options="[0]"
-              class="fin-table q-mb-md"
-              no-data-label="No revenue entries"
+            <FinancialStatementViewer
+              :report="pnlData"
+              @download-excel="(o) => financeExportService.exportProfitLossToExcel(pnlData, o)"
+              @download-pdf="(o) => financeExportService.exportProfitLossToPdf(pnlData, o)"
             />
-            <div class="fin-summary-row q-mb-md" style="border-radius: 6px">
-              <span class="fin-summary-row__label">Total Revenue</span
-              ><span class="fin-summary-row__value text-green-4">{{
-                fmt(pnlData.totalRevenue)
-              }}</span>
-            </div>
-            <div class="text-subtitle2 text-red-4 q-mb-xs">Expenses (5xxx)</div>
-            <q-table
-              :rows="pnlData.expenses"
-              :columns="pnlCols"
-              row-key="code"
-              flat
-              dark
-              dense
-              hide-bottom
-              :rows-per-page-options="[0]"
-              class="fin-table q-mb-md"
-              no-data-label="No expense entries"
-            />
-            <div class="fin-summary-row q-mb-md" style="border-radius: 6px">
-              <span class="fin-summary-row__label">Total Expenses</span
-              ><span class="fin-summary-row__value text-red-4">{{
-                fmt(pnlData.totalExpenses)
-              }}</span>
-            </div>
-            <div class="fin-summary-row" style="border-radius: 6px; border: 1px solid #388bfd">
-              <span class="fin-summary-row__label text-h6">Net Profit / (Loss)</span
-              ><span
-                :class="[
-                  'fin-summary-row__value text-h6',
-                  pnlData.netProfit >= 0 ? 'text-green-4' : 'text-red-4',
-                ]"
-                >{{ fmt(pnlData.netProfit) }}</span
-              >
-            </div>
           </div>
           <div v-else class="text-grey-6 text-center q-pa-xl">
             <q-icon name="trending_up" size="48px" class="q-mb-sm" /><br />Click Generate
@@ -249,87 +208,11 @@
             ><span class="fin-panel__subtitle">As at {{ dateTo }}</span>
           </div>
           <div class="fin-panel__body q-pa-md" v-if="bsData">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-4">
-                <div class="text-subtitle2 text-blue-4 q-mb-xs">Assets</div>
-                <q-table
-                  :rows="bsData.assets"
-                  :columns="bsCols"
-                  row-key="code"
-                  flat
-                  dark
-                  dense
-                  hide-bottom
-                  :rows-per-page-options="[0]"
-                  class="fin-table"
-                />
-                <div class="fin-summary-row" style="border-radius: 6px">
-                  <span class="fin-summary-row__label">Total Assets</span
-                  ><span class="fin-summary-row__value text-blue-4">{{
-                    fmt(bsData.totalAssets)
-                  }}</span>
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="text-subtitle2 text-red-4 q-mb-xs">Liabilities</div>
-                <q-table
-                  :rows="bsData.liabilities"
-                  :columns="bsCols"
-                  row-key="code"
-                  flat
-                  dark
-                  dense
-                  hide-bottom
-                  :rows-per-page-options="[0]"
-                  class="fin-table"
-                />
-                <div class="fin-summary-row" style="border-radius: 6px">
-                  <span class="fin-summary-row__label">Total Liabilities</span
-                  ><span class="fin-summary-row__value text-red-4">{{
-                    fmt(bsData.totalLiabilities)
-                  }}</span>
-                </div>
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="text-subtitle2 text-green-4 q-mb-xs">Equity</div>
-                <q-table
-                  :rows="bsData.equity"
-                  :columns="bsCols"
-                  row-key="code"
-                  flat
-                  dark
-                  dense
-                  hide-bottom
-                  :rows-per-page-options="[0]"
-                  class="fin-table"
-                />
-                <div class="fin-summary-row" style="border-radius: 6px">
-                  <span class="fin-summary-row__label">Total Equity</span
-                  ><span class="fin-summary-row__value text-green-4">{{
-                    fmt(bsData.totalEquity)
-                  }}</span>
-                </div>
-              </div>
-            </div>
-            <div
-              class="fin-summary-row q-mt-md"
-              style="border-radius: 6px; border: 1px solid #388bfd"
-            >
-              <span class="fin-summary-row__label text-h6">Balance Check (A = L + E)</span
-              ><span
-                :class="[
-                  'fin-summary-row__value',
-                  Math.abs(bsData.totalAssets - bsData.totalLiabilities - bsData.totalEquity) < 0.01
-                    ? 'text-green-4'
-                    : 'text-red-4',
-                ]"
-                >{{
-                  Math.abs(bsData.totalAssets - bsData.totalLiabilities - bsData.totalEquity) < 0.01
-                    ? '✓ Balanced'
-                    : '✗ Imbalanced'
-                }}</span
-              >
-            </div>
+            <FinancialStatementViewer
+              :report="bsData"
+              @download-excel="(o) => financeExportService.exportBalanceSheetToExcel(bsData, o)"
+              @download-pdf="(o) => financeExportService.exportBalanceSheetToPdf(bsData, o)"
+            />
           </div>
           <div v-else class="text-grey-6 text-center q-pa-xl">
             <q-icon name="account_balance" size="48px" class="q-mb-sm" /><br />Click Generate
@@ -572,9 +455,10 @@ import ERPToolbar from 'components/erp/ERPToolbar.vue'
 import { exportTableToCSV, exportTableToExcel } from 'src/services/exportService'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import FinancialStatementViewer from 'src/modules/finance/components/FinancialStatementViewer.vue'
+import { financeStatementsService } from 'src/modules/finance/services/finance-statements.service'
+import { financeExportService, statementLines } from 'src/modules/finance/services/finance-export.service'
 import {
-  fetchProfitAndLoss,
-  fetchBalanceSheet,
   fetchMonthlyPnlSummary,
   fetchCogsReport,
   fetchCashFlowStatement,
@@ -710,15 +594,15 @@ function getExportData() {
     }
   if (tab === 'pnl' && pnlData.value)
     return {
-      rows: [...pnlData.value.revenue, ...pnlData.value.expenses],
-      cols: pnlCols,
+      rows: statementRows(pnlData.value),
+      cols: stmtCols,
       title: `PnL_${dateFrom.value}_${dateTo.value}`,
     }
   if (tab === 'bs' && bsData.value)
     return {
-      rows: [...bsData.value.assets, ...bsData.value.liabilities, ...bsData.value.equity],
-      cols: bsCols,
-      title: `Balance_Sheet`,
+      rows: statementRows(bsData.value),
+      cols: stmtCols,
+      title: `Balance_Sheet_${dateTo.value}`,
     }
   if (tab === 'cogs' && cogsGrouped.value.length)
     return {
@@ -760,12 +644,29 @@ function exportCSV() {
   if (!d) return
   exportTableToCSV(d.cols, d.rows, d.title)
 }
+// P&L / Balance Sheet use the formatted statement exports (same layout as screen).
+function exportStatement(kind) {
+  const tab = activeTab.value
+  if (tab === 'pnl' && pnlData.value) {
+    if (kind === 'pdf') financeExportService.exportProfitLossToPdf(pnlData.value)
+    else financeExportService.exportProfitLossToExcel(pnlData.value)
+    return true
+  }
+  if (tab === 'bs' && bsData.value) {
+    if (kind === 'pdf') financeExportService.exportBalanceSheetToPdf(bsData.value)
+    else financeExportService.exportBalanceSheetToExcel(bsData.value)
+    return true
+  }
+  return false
+}
 function exportExcel() {
+  if (exportStatement('excel')) return
   const d = getExportData()
   if (!d) return
   exportTableToExcel(d.cols, d.rows, d.title)
 }
 function exportPDF() {
+  if (exportStatement('pdf')) return
   const d = getExportData()
   if (!d) return
   const doc = new jsPDF({ orientation: d.cols.length > 6 ? 'landscape' : 'portrait' })
@@ -802,22 +703,26 @@ function exportPDF() {
 }
 
 // ── Column Definitions ──
-const pnlCols = [
+// CSV rows for P&L / Balance Sheet: the statement flattened line by line.
+const fmtBlank = (v) => (v === null || v === '' ? '' : fmt(v))
+const stmtCols = [
   { name: 'code', label: 'Code', field: 'code', align: 'left', style: 'width:80px' },
   { name: 'name', label: 'Account', field: 'name', align: 'left' },
-  {
-    name: 'amount',
-    label: 'Amount',
-    field: (row) => (row.code?.startsWith('4') ? row.credit - row.debit : row.debit - row.credit),
-    align: 'right',
-    format: (v) => fmt(v),
-  },
+  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', format: fmtBlank },
+  { name: 'total', label: 'Total', field: 'total', align: 'right', format: fmtBlank },
 ]
-const bsCols = [
-  { name: 'code', label: 'Code', field: 'code', align: 'left', style: 'width:80px' },
-  { name: 'name', label: 'Account', field: 'name', align: 'left' },
-  { name: 'balance', label: 'Balance', field: 'balance', align: 'right', format: (v) => fmt(v) },
-]
+function statementRows(report) {
+  return statementLines(report)
+    .filter((l) => l.kind !== 'spacer')
+    .map((l) => {
+      if (l.kind === 'title') return { code: '', name: l.label, amount: '', total: '' }
+      if (l.kind === 'item')
+        return { code: l.code, name: '  '.repeat(l.depth + 1) + l.name, amount: l.amount ?? '', total: '' }
+      return l.level === 'group'
+        ? { code: '', name: l.label, amount: l.amount, total: '' }
+        : { code: '', name: l.label, amount: '', total: l.amount }
+    })
+}
 
 const monthlyCols = [
   { name: 'month', label: 'Month', field: 'month', align: 'left' },
@@ -886,11 +791,12 @@ async function loadCurrentReport() {
       const r = await fetchMonthlyPnlSummary(selectedYear.value)
       monthlyData.value = r.data
     } else if (tab === 'pnl') {
-      const r = await fetchProfitAndLoss(df, dt)
-      pnlData.value = r.data
+      const r = await financeStatementsService.generateProfitLoss({ date_from: df, date_to: dt })
+      pnlData.value = { ...r, type: 'pl' }
     } else if (tab === 'bs') {
-      const r = await fetchBalanceSheet()
-      bsData.value = r.data
+      // Cumulative as at "To"; "From" only splits Retained Earnings b/f from the period profit.
+      const r = await financeStatementsService.generateBalanceSheet({ date_from: df, date_to: dt })
+      bsData.value = { ...r, type: 'bs' }
     } else if (tab === 'cogs') {
       const r = await fetchCogsReport(df, dt)
       cogsRaw.value = r.data || []

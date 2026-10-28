@@ -291,35 +291,112 @@ export interface TrialBalanceRow {
   closing_credit: number
 }
 
+// Statements are laid out dynamically from finance_ledgers.account_group
+// (see services/finance-statements.builder.js).
+
+export interface StatementItem {
+  kind: 'ledger' | 'header' | 'header_total'
+  id: string
+  code: string
+  name: string
+  /** Natural sign of the section: negative = contra / deduction. null on header rows. */
+  amount: number | null
+  depth: number
+  is_contra?: boolean
+  is_inactive?: boolean
+  synthetic?: boolean
+}
+
+export interface StatementGroup {
+  key: string
+  /** The account_group value (or 'Unclassified' / 'Retained Earnings'). */
+  name: string
+  label: string
+  status: 'mapped' | 'unknown' | 'unclassified' | 'computed'
+  items: StatementItem[]
+  total: number
+}
+
+export interface StatementSection {
+  key: string
+  label: string
+  side?: 'assets' | 'equity_liabilities'
+  normal: 'debit' | 'credit'
+  groups: StatementGroup[]
+  total: number
+  total_label: string
+}
+
+export type StatementLayoutBlock =
+  | { kind: 'heading'; label: string }
+  | { kind: 'section'; section: StatementSection }
+  | { kind: 'subtotal'; key: string; label: string; amount: number; level: 'major' | 'grand' }
+
+export interface StatementWarning {
+  level: 'error' | 'warning' | 'info'
+  code: string
+  message: string
+}
+
+/** Flat section kept for backward compatibility with pre-sections consumers. */
 export interface ProfitLossSection {
   label: string
-  items: { name: string; amount: number }[]
+  items: { code: string; name: string; amount: number }[]
   total: number
 }
 
 export interface ProfitLossReport {
+  company_name: string
+  title: string
   period: string
+  sections: StatementSection[]
+  layout: StatementLayoutBlock[]
   revenue: ProfitLossSection
+  other_income: ProfitLossSection
+  total_income: number
   cost_of_sales: ProfitLossSection
   gross_profit: number
-  operating_expenses: ProfitLossSection
+  expenses: {
+    admin_and_operation: ProfitLossSection
+    selling_and_distribution: ProfitLossSection
+    finance_and_other: ProfitLossSection
+    total_expenses: number
+  }
+  net_profit_before_tax: number
+  tax: { label: string; amount: number; items: ProfitLossSection['items'] }
   net_profit: number
+  warnings: StatementWarning[]
   generated_at: string
 }
 
-export interface BalanceSheetSection {
-  label: string
-  items: { name: string; amount: number }[]
-  total: number
-}
+export type BalanceSheetSection = ProfitLossSection
 
 export interface BalanceSheetReport {
+  company_name: string
+  title: string
   as_of_date: string
-  assets: BalanceSheetSection
-  liabilities: BalanceSheetSection
-  equity: BalanceSheetSection
-  total_liabilities_equity: number
+  sections: StatementSection[]
+  layout: StatementLayoutBlock[]
+  assets: {
+    non_current: BalanceSheetSection
+    current: BalanceSheetSection
+    total_assets: number
+  }
+  equity_and_liabilities: {
+    equity: BalanceSheetSection
+    non_current_liabilities: BalanceSheetSection
+    current_liabilities: BalanceSheetSection
+    total_liabilities_equity: number
+  }
+  retained_earnings_bf: number
+  profit_for_period: number
+  total_assets: number
+  total_liabilities: number
+  total_equity: number
+  total_equity_liabilities: number
+  difference: number
   is_balanced: boolean
+  warnings: StatementWarning[]
   generated_at: string
 }
 

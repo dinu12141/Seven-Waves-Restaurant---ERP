@@ -12,7 +12,7 @@ async function run() {
   console.log('Logging in as admin to query details...');
   await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   // Query profile

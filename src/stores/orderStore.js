@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
+import { attachCustomerToOrders } from 'src/modules/pos/creditCustomer'
+import { paySplit, probeSplitPayRpc } from 'src/modules/pos/splitTenders'
 
 /**
  * POS Order Store — manages the current order cart.
@@ -248,8 +250,13 @@ export const useOrderStore = defineStore('posOrder', () => {
    *   - Audit trail is complete
    *   - All mutations are server-side atomic
    */
-  async function processPayment(paymentMethodName) {
+  async function processPayment(paymentMethodName, opts = {}) {
     if (isEmpty.value) return { success: false, reason: 'cart_empty' }
+    // CREDIT sale: registered customer that the receivable is booked against.
+    const creditCustomerId = opts?.creditCustomerId || null
+    // SPLIT: [{method, amount}] tenders paid via pos_split_pay (#145 §9)
+    const tenders = Array.isArray(opts?.tenders) && opts.tenders.length ? opts.tenders : null
+    const shiftId = opts?.shiftId || null
 
     const authStore = useAuthStore()
     const companyId = authStore.currentBranch?.company_id
@@ -261,6 +268,13 @@ export const useOrderStore = defineStore('posOrder', () => {
     }
     if (!companyId) {
       throw new Error('Company information not loaded. Please refresh the page and try again.')
+    }
+
+    // SPLIT: make sure pos_split_pay is deployed BEFORE creating the order, so a
+    // missing server function never leaves an unpaid orphan order behind.
+    if (tenders) {
+      const probe = await probeSplitPayRpc(supabase)
+      if (!probe.success) throw new Error(probe.error || 'Split payment unavailable')
     }
 
     isSending.value = true
@@ -281,7 +295,8 @@ export const useOrderStore = defineStore('posOrder', () => {
         table_number: tableNumber.value ? (parseInt(String(tableNumber.value).replace(/\D/g, '')) || null) : null,
         total_amount: parseFloat(total.value.toFixed(2)),
         customer_name: customerName.value || null,
-        customer_id: selectedCustomer.value?.id || selectedCustomer.value?.customer_id || null,
+        customer_id:
+          creditCustomerId || selectedCustomer.value?.id || selectedCustomer.value?.customer_id || null,
         subtotal: parseFloat(subtotal.value.toFixed(2)),
         tax_amount: parseFloat(taxAmount.value.toFixed(2)),
         service_charge: parseFloat(serviceChargeAmount.value.toFixed(2)),
@@ -316,19 +331,45 @@ export const useOrderStore = defineStore('posOrder', () => {
       if (!createRes?.success) throw new Error(createRes?.error || 'Failed to create order')
       const order = createRes.order
 
+      // ── Step 2b: CREDIT — attach the registered customer BEFORE payment ──
+      // The GL trigger books the receivable from orders.customer_id when the
+      // order becomes paid, so this must succeed first (fn_pos_set_order_customer).
+      if (creditCustomerId) {
+        const att = await attachCustomerToOrders(supabase, [order.id], creditCustomerId)
+        if (!att.success) {
+          throw new Error(
+            `${att.error} — Order #${order.order_number} was created but NOT paid; settle it from the billing queue.`,
+          )
+        }
+      }
+
       // ── Step 3: Accept + invoice + payment in ONE atomic txn (P0 #48) ─────
       // pos_quick_pay wraps process_waiter_accept → process_cashier_invoice →
       // process_cashier_payment server-side; any failure rolls the whole thing
       // back, so there is no cooked/dispatched-but-unpaid window. The RPC charges
       // the server-side locked order.total_amount; p_amount_paid is cash tendered
       // (used only for change_due).
-      const { data: quickPay, error: quickPayErr } = await supabase.rpc('pos_quick_pay', {
-        p_order_id: order.id,
-        p_payment_method: paymentMethodName || 'cash',
-        p_amount_paid: parseFloat(total.value.toFixed(2)),
-      })
-      if (quickPayErr) throw new Error(`Quick-Pay RPC failed: ${quickPayErr.message}`)
-      if (!quickPay?.success) throw new Error(quickPay?.error || 'pos_quick_pay failed')
+      // SPLIT: pos_split_pay runs the same pos_quick_pay pipeline, stores each
+      // tender and records the shift payment per tender (p_shift_id).
+      let quickPay
+      if (tenders) {
+        const sp = await paySplit(supabase, order.id, tenders, shiftId)
+        if (!sp.success) {
+          throw new Error(
+            `${sp.error} — Order #${order.order_number} was created but NOT paid; settle it from the billing queue.`,
+          )
+        }
+        quickPay = sp.data?.payment || {}
+      } else {
+        const { data: qp, error: quickPayErr } = await supabase.rpc('pos_quick_pay', {
+          p_order_id: order.id,
+          p_payment_method: paymentMethodName || 'cash',
+          p_amount_paid: parseFloat(total.value.toFixed(2)),
+        })
+        if (quickPayErr) throw new Error(`Quick-Pay RPC failed: ${quickPayErr.message}`)
+        if (!qp?.success) throw new Error(qp?.error || 'pos_quick_pay failed')
+        quickPay = qp
+      }
 
       // ── Step 4: Loyalty reward (best-effort — do not fail payment) ─────────
       const customerId = selectedCustomer.value?.id || selectedCustomer.value?.customer_id
@@ -341,7 +382,11 @@ export const useOrderStore = defineStore('posOrder', () => {
         success: true,
         orderId: order.id,
         orderNumber: order.order_number,
+        invoiceId: quickPay.invoice_id || quickPay.invoice?.id || null,
+        invoiceNo: quickPay.invoice_no || quickPay.invoice?.invoice_no || null,
         paymentMethod: paymentMethodName,
+        tenders: tenders || null,
+        shiftRecorded: !!(tenders && shiftId),
         total: parseFloat(total.value.toFixed(2)),
         changeDue: quickPay.change_due ?? 0,
         kotCount: quickPay.kot_count ?? 0,
@@ -355,6 +400,21 @@ export const useOrderStore = defineStore('posOrder', () => {
     } finally {
       isSending.value = false
     }
+  }
+
+  /**
+   * SPLIT payment for a manual POS cart: creates the order exactly like
+   * processPayment, then pays it through pos_split_pay with all tenders.
+   * When shiftId is given the server records the shift payment per tender —
+   * callers must NOT also call shiftStore.recordPayment.
+   * @param {Array<{method: string, amount: number}>} tenders normalised tenders
+   * @param {{creditCustomerId?: string|null, shiftId?: string|null}} opts
+   */
+  async function processSplitPayment(tenders, opts = {}) {
+    if (!Array.isArray(tenders) || tenders.length === 0) {
+      return { success: false, reason: 'no_tenders' }
+    }
+    return processPayment('Split', { ...opts, tenders })
   }
 
   // ── Helpers ──────────────────────────────────────────────
@@ -548,6 +608,7 @@ export const useOrderStore = defineStore('posOrder', () => {
     clearCart,
     sendToKitchen,
     processPayment,
+    processSplitPayment,
     loadOrderFromQueue,
     parkOrder,
     recallParkedOrder,

@@ -441,6 +441,7 @@
             @click="downloadSettlementPDF"
           />
           <q-btn
+            v-if="!settlementRecord || settlementRecord.status === 'draft'"
             unelevated
             color="green"
             label="Approve Settlement"
@@ -448,6 +449,22 @@
             no-caps
             :loading="approvingSettlement"
             @click="approveSettlement"
+          />
+          <q-btn
+            v-if="settlementRecord?.status === 'approved'"
+            unelevated
+            color="primary"
+            label="Pay Settlement"
+            icon="payments"
+            no-caps
+            :loading="payingSettlement"
+            @click="paySettlement"
+          />
+          <q-badge
+            v-if="settlementRecord?.status === 'paid'"
+            color="positive"
+            label="PAID"
+            class="q-pa-sm"
           />
         </q-card-actions>
       </q-card>
@@ -485,6 +502,10 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import {
+  postFinalSettlementToFinance,
+  FINANCE_POSTING_UNAVAILABLE,
+} from 'src/services/hr/staffReceivableService'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -657,7 +678,7 @@ async function approveResign(row) {
     persistent: true,
     dark: true,
   }).onOk(async () => {
-    await supabase
+    const { error } = await supabase
       .from('employee_resignations')
       .update({
         status: 'approved',
@@ -665,6 +686,10 @@ async function approveResign(row) {
         approved_at: new Date().toISOString(),
       })
       .eq('id', row.id)
+    if (error) {
+      $q.notify({ type: 'negative', message: `Resignation not approved: ${error.message}` })
+      return
+    }
     $q.notify({ type: 'positive', message: 'Resignation approved. Employee status changed.' })
     loadResignations()
   })
@@ -677,12 +702,25 @@ const approvingSettlement = ref(false)
 const settlementRow = ref(null)
 const settlement = ref(null)
 const settlementNotes = ref('')
+// stored resignation_settlements row (id + status) — needed to pay it
+const settlementRecord = ref(null)
+const payingSettlement = ref(false)
+
+async function loadSettlementRecord(resignationId) {
+  const { data, error } = await supabase
+    .from('resignation_settlements')
+    .select('id, status')
+    .eq('resignation_id', resignationId)
+    .maybeSingle()
+  settlementRecord.value = error ? null : data
+}
 
 const fmtS = (v) => Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })
 
 async function openSettlement(row) {
   settlementRow.value = row
   settlement.value = null
+  settlementRecord.value = null
   settlementNotes.value = ''
   showSettlement.value = true
   loadingSettlement.value = true
@@ -692,6 +730,7 @@ async function openSettlement(row) {
     })
     if (error) throw error
     settlement.value = data
+    await loadSettlementRecord(row.id)
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to calculate settlement: ' + err.message })
     showSettlement.value = false
@@ -721,6 +760,54 @@ async function approveSettlement() {
   } finally {
     approvingSettlement.value = false
   }
+}
+
+// Pay an APPROVED settlement through Finance (#134b
+// post_final_settlement_to_finance): Dr 7000 / Cr 1004 / Cr 2009 / Cr cash-bank,
+// closes recovered advances/loans and marks the settlement 'paid'.
+async function paySettlement() {
+  if (!settlementRecord.value?.id) return
+  const { data: accounts, error: accErr } = await supabase
+    .from('finance_accounts')
+    .select('id, registered_name, account_type')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('registered_name')
+  if (accErr || !accounts?.length) {
+    $q.notify({
+      type: 'negative',
+      message: accErr?.message || 'No active finance cash/bank account to pay from.',
+    })
+    return
+  }
+  const def = accounts.find((a) => a.account_type === 'cash') || accounts[0]
+  $q.dialog({
+    title: 'Pay Final Settlement',
+    message: `Pay LKR ${fmtS(settlement.value?.net_settlement)} from:`,
+    options: {
+      type: 'radio',
+      model: def.id,
+      items: accounts.map((a) => ({
+        label: `${a.registered_name}${a.account_type ? ' (' + a.account_type + ')' : ''}`,
+        value: a.id,
+      })),
+    },
+    cancel: true,
+    persistent: true,
+    dark: true,
+  }).onOk(async (accountId) => {
+    payingSettlement.value = true
+    try {
+      const res = await postFinalSettlementToFinance(supabase, settlementRecord.value.id, accountId)
+      if (!res.ok) throw new Error(res.missing ? FINANCE_POSTING_UNAVAILABLE : res.error)
+      $q.notify({ type: 'positive', message: 'Final settlement paid and posted to Finance' })
+      await loadSettlementRecord(settlementRow.value.id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: `Settlement not paid: ${err.message}`, multiLine: true, timeout: 8000 })
+    } finally {
+      payingSettlement.value = false
+    }
+  })
 }
 
 function downloadSettlementPDF() {

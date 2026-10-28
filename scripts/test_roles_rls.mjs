@@ -10,7 +10,7 @@ async function testRolesRLS() {
   // Sign in as cashier user (test@gmail.com)
   const loginRes = await supabase.auth.signInWithPassword({
     email: 'test@gmail.com',
-    password: 'Test@123',
+    password: process.env.SW_TEST_PASSWORD,
   });
 
   if (loginRes.error) {

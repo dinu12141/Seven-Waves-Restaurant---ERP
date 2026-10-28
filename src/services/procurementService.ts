@@ -778,8 +778,24 @@ export async function createPO(header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
 
 /**
  * Approve a draft PO → status becomes 'approved' (open for GRN).
+ *
+ * When po_approval_required is on, approval goes through approve_po (role,
+ * maker-checker and thresholds, #132) — a direct status update is rejected by
+ * trg_guard_po_approval (#136). A multi-level PO may come back
+ * 'pending_approval' (still draft). Only when approval is disabled for the
+ * company does it fall back to opening the PO directly.
  */
-export async function approvePO(poId: string) {
+export async function approvePO(
+  poId: string,
+): Promise<{ success: true; status: 'approved' | 'pending_approval'; message?: string }> {
+  const res = await approvePORpc(poId)
+  if (res.success) {
+    return { success: true, status: res.status ?? 'approved', message: res.message }
+  }
+  if (!res.error?.includes('PO approval is not enabled')) {
+    throw new Error(res.error || 'PO approval failed')
+  }
+
   const { user_id } = getContext()
   const { error } = await supabase
     .from('purchase_orders')
@@ -788,14 +804,14 @@ export async function approvePO(poId: string) {
     .eq('status', 'draft')
 
   if (error) throw new Error(error.message)
-  return { success: true }
+  return { success: true, status: 'approved' }
 }
 
 /**
  * Cancel a PO (only if draft or approved).
  */
 export async function cancelPO(poId: string, reason?: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('purchase_orders')
     .update({
       status: 'cancelled',
@@ -804,8 +820,13 @@ export async function cancelPO(poId: string, reason?: string) {
     })
     .eq('id', poId)
     .in('status', ['draft', 'approved'])
+    .select('id')
 
   if (error) throw new Error(error.message)
+  // RLS or a status mismatch filters the row out silently — report it
+  if (!data || data.length === 0) {
+    throw new Error('PO was not cancelled: only draft/approved POs you can edit may be cancelled')
+  }
   return { success: true }
 }
 
@@ -1536,22 +1557,334 @@ export async function postInvoice(
   return data as { success: boolean; doc_number?: string; error?: string }
 }
 
+// ─────────────────────────────────────────────
+// Supplier → bill selection (Supplier Payments dialog)
+// ─────────────────────────────────────────────
+
 /**
- * Get all open (unpaid / partially paid) invoices for a supplier.
- * Used in the payment allocation dialog.
+ * Business rule: a bill is PAYABLE only once it is posted to Accounts Payable
+ * (ap_ledger INVOICE row, supplier balance, Dr GRNI / Cr AP) and still has a
+ * balance. 'draft' / 'approved' bills carry no AP credit: paying them debits a
+ * liability that was never recorded (how AP_INV-2026-000118 / -000479 ended up
+ * "paid" with posted_at NULL). #128's post_supplier_payment rejects them, and
+ * #140 guards allocations server-side. Do NOT loosen this to include drafts —
+ * drafts must be posted first (#128 auto-posts GRN bills; #139 B1 backfills).
  */
-export async function getOpenInvoicesForSupplier(supplierId: string) {
+export const PAYABLE_AP_INVOICE_STATUSES = ['posted', 'partial_paid'] as const
+/** Bills that exist for the supplier but must be posted before payment. */
+export const UNPOSTED_AP_INVOICE_STATUSES = ['draft', 'approved'] as const
+
+export interface SupplierBill {
+  id: string
+  doc_number: string
+  supplier_inv_no?: string | null
+  doc_date?: string | null
+  due_date?: string | null
+  status?: string
+  total_amount: number
+  paid_amount: number
+  balance_due: number
+  grn_id?: string | null
+  /** GRN document number (goods_receipts.doc_number), null for direct bills */
+  grn_number: string | null
+  remarks?: string | null
+}
+
+export interface UnpostedBillsSummary {
+  count: number
+  /** Sum of the unposted bills' outstanding amount */
+  total: number
+  bills: SupplierBill[]
+}
+
+const SUPPLIER_BILL_COLUMNS =
+  'id, doc_number, supplier_inv_no, doc_date, due_date, total_amount, paid_amount, balance_due, status, remarks, grn_id, goods_receipts(id, doc_number)'
+
+/** Money in integer cents, so allocation maths never drifts (0.1 + 0.2). */
+const toCents = (v: unknown): number => {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 100) : 0
+}
+const fromCents = (c: number): number => c / 100
+
+/** Sum of amounts computed in cents (returns a 2dp number). */
+export function sumAmounts(values: unknown[]): number {
+  return fromCents(values.reduce<number>((s, v) => s + toCents(v), 0))
+}
+
+/**
+ * Clamp a per-bill allocation to [0, balance_due], rounded to cents. Partial
+ * payments are allowed, over-allocation is not.
+ */
+export function clampAllocation(value: unknown, balance: unknown): number {
+  const bal = Math.max(toCents(balance), 0)
+  const amt = Math.max(toCents(value), 0)
+  return fromCents(Math.min(amt, bal))
+}
+
+/**
+ * Oldest-first ordering: bill date, then due date (undated last), then bill
+ * number, then id — deterministic for several bills on the same day.
+ */
+export function compareBillsOldestFirst(
+  a: { id?: string; doc_date?: string | null; due_date?: string | null; doc_number?: string | null },
+  b: { id?: string; doc_date?: string | null; due_date?: string | null; doc_number?: string | null },
+): number {
+  const keys: [string, string][] = [
+    [a.doc_date || '9999-12-31', b.doc_date || '9999-12-31'],
+    [a.due_date || '9999-12-31', b.due_date || '9999-12-31'],
+    [a.doc_number || '', b.doc_number || ''],
+    [a.id || '', b.id || ''],
+  ]
+  for (const [x, y] of keys) {
+    if (x !== y) return x < y ? -1 : 1
+  }
+  return 0
+}
+
+/**
+ * Spread `amount` across bills oldest-first, each line clamped to its balance.
+ * Works in cents. Returns the allocations (only bills that receive > 0), the
+ * amount actually allocated and the unallocated remainder (amount larger than
+ * the total outstanding).
+ */
+export function allocateOldestFirst(
+  bills: { id: string; balance_due: unknown; doc_date?: string | null; due_date?: string | null; doc_number?: string | null }[],
+  amount: unknown,
+): { allocations: { invoice_id: string; amount: number }[]; allocated: number; unallocated: number } {
+  const requested = Math.max(toCents(amount), 0)
+  let remaining = requested
+  const allocations: { invoice_id: string; amount: number }[] = []
+  for (const bill of [...bills].sort(compareBillsOldestFirst)) {
+    if (remaining <= 0) break
+    const bal = Math.max(toCents(bill.balance_due), 0)
+    if (bal <= 0) continue
+    const take = Math.min(bal, remaining)
+    allocations.push({ invoice_id: bill.id, amount: fromCents(take) })
+    remaining -= take
+  }
+  return { allocations, allocated: fromCents(requested - remaining), unallocated: fromCents(remaining) }
+}
+
+/** One bill line in a multi-bill payment dialog (Finance Payables). */
+export interface PaymentAllocationLine {
+  id: string
+  /** Bill number, used in error messages */
+  doc_number?: string | null
+  supplier_id?: string | null
+  status?: string | null
+  /** Outstanding balance of the bill */
+  balance_due: unknown
+  /** Ticked for this payment */
+  selected: boolean
+  /** Amount to pay against this bill */
+  allocation: unknown
+}
+
+export interface PaymentAllocationCheck {
+  /** [{invoice_id, amount}] for ticked lines with amount > 0 — feed to createAndPostPayment */
+  allocations: { invoice_id: string; amount: number }[]
+  /** Number of ticked lines */
+  selectedCount: number
+  /** Sum of allocations (2dp, computed in cents) */
+  allocated: number
+  /** Payment amount rounded to cents */
+  amount: number
+  /** amount - allocated (positive = unallocated, negative = over-allocated) */
+  difference: number
+  errors: string[]
+  valid: boolean
+}
+
+/**
+ * Validate a multi-bill supplier payment before submit, mirroring the server
+ * rules (#128/#140): one supplier, payable bills only, 0 < allocation ≤
+ * balance due per bill, and payment amount == sum of allocations. All maths in
+ * cents. Never clamps silently — an invalid line is reported as an error.
+ */
+export function checkPaymentAllocations(lines: PaymentAllocationLine[], paymentAmount: unknown): PaymentAllocationCheck {
+  const errors: string[] = []
+  const selected = (lines || []).filter((l) => l && l.selected)
+  const allocations: { invoice_id: string; amount: number }[] = []
+  let allocatedCents = 0
+
+  const supplierIds = new Set(selected.map((l) => l.supplier_id ?? ''))
+  if (supplierIds.size > 1) errors.push('Selected bills belong to different suppliers. Pay each supplier separately.')
+
+  for (const line of selected) {
+    const label = line.doc_number || line.id
+    const raw = Number(line.allocation)
+    const amt = Number.isFinite(raw) ? toCents(raw) : NaN
+    if (Number.isNaN(amt) || amt < 0) {
+      errors.push(`Invalid amount for bill ${label}.`)
+      continue
+    }
+    if (amt === 0) continue
+    if (!isPayableBill(line)) {
+      errors.push(`Bill ${label} is not payable (must be posted with a balance due).`)
+      continue
+    }
+    if (amt > Math.max(toCents(line.balance_due), 0)) {
+      errors.push(`Amount for bill ${label} exceeds its balance due.`)
+      continue
+    }
+    allocations.push({ invoice_id: line.id, amount: fromCents(amt) })
+    allocatedCents += amt
+  }
+
+  const amountCents = toCents(paymentAmount)
+  if (allocations.length === 0) errors.push('Enter an amount to pay on at least one bill.')
+  if (amountCents <= 0) errors.push('Payment amount must be greater than zero.')
+  else if (amountCents !== allocatedCents) errors.push('Payment amount must equal the total allocated to bills.')
+
+  return {
+    allocations,
+    selectedCount: selected.length,
+    allocated: fromCents(allocatedCents),
+    amount: fromCents(amountCents),
+    difference: fromCents(amountCents - allocatedCents),
+    errors,
+    valid: errors.length === 0,
+  }
+}
+
+/**
+ * Latest-request-wins guard. When the user switches supplier while the
+ * previous supplier's bills are still loading, the slow response must be
+ * dropped — otherwise supplier B's payment gets allocated to supplier A's
+ * bills (the server does not yet check that, see #140).
+ */
+export function createLatestRequestGuard() {
+  let seq = 0
+  return {
+    /** Start a request; keep the token and check it when the response lands. */
+    begin: (): number => ++seq,
+    isCurrent: (token: number): boolean => token === seq,
+    /** Drop whatever is in flight (dialog closed / reset). */
+    invalidate: (): void => {
+      seq++
+    },
+  }
+}
+
+function normaliseBill(inv: any): SupplierBill {
+  const total = Number(inv.total_amount || 0)
+  const paid = Number(inv.paid_amount || 0)
+  const bal = inv.balance_due !== undefined && inv.balance_due !== null ? Number(inv.balance_due) : total - paid
+  const grn = Array.isArray(inv.goods_receipts) ? inv.goods_receipts[0] : inv.goods_receipts
+  return {
+    ...inv,
+    total_amount: total,
+    paid_amount: paid,
+    balance_due: bal > 0 ? fromCents(toCents(bal)) : 0,
+    grn_number: grn?.doc_number ?? null,
+  }
+}
+
+/**
+ * All PAYABLE bills of a supplier (posted / partially paid, balance > 0) in
+ * the current company, oldest first. Used by the payment allocation dialog.
+ * Throws when there is no branch context rather than silently dropping the
+ * company scope.
+ */
+export async function getOpenInvoicesForSupplier(supplierId: string): Promise<SupplierBill[]> {
   const { company_id } = getContext()
+
   const { data, error } = await supabase
     .from('ap_invoices')
-    .select('id, doc_number, doc_date, due_date, total_amount, paid_amount, balance_due')
-    .eq('company_id', company_id)
+    .select(SUPPLIER_BILL_COLUMNS)
     .eq('supplier_id', supplierId)
-    .in('status', ['posted', 'partial_paid'])  // ✅ Only POSTED invoices are payable — no drafts
-    .order('due_date', { ascending: true })
+    .eq('company_id', company_id)
+    // Only posted invoices are payable: post_supplier_payment (#128) rejects
+    // allocations to draft/approved invoices, so listing them here only makes
+    // the payment fail at post time (or, on a DB without #128, corrupts AP).
+    .in('status', [...PAYABLE_AP_INVOICE_STATUSES])
+    .gt('balance_due', 0)
+    .order('doc_date', { ascending: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .order('doc_number', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return data ?? []
+
+  return (data ?? [])
+    .map(normaliseBill)
+    .filter((inv) => inv.balance_due > 0.001)
+    .sort(compareBillsOldestFirst)
+}
+
+/**
+ * Bills of a supplier that exist but are not yet posted to AP (draft /
+ * approved), so the payment dialog can explain WHY nothing is payable instead
+ * of showing a blank list. Read-only; never offered for allocation.
+ */
+export async function getUnpostedBillsForSupplier(supplierId: string): Promise<UnpostedBillsSummary> {
+  const { company_id } = getContext()
+
+  const { data, error } = await supabase
+    .from('ap_invoices')
+    .select(SUPPLIER_BILL_COLUMNS)
+    .eq('supplier_id', supplierId)
+    .eq('company_id', company_id)
+    .in('status', [...UNPOSTED_AP_INVOICE_STATUSES])
+    .order('doc_date', { ascending: true })
+    .order('doc_number', { ascending: true })
+
+  if (error) throw new Error(error.message)
+
+  const bills = (data ?? [])
+    .map(normaliseBill)
+    .filter((inv) => inv.balance_due > 0.001)
+    .sort(compareBillsOldestFirst)
+  return { count: bills.length, total: sumAmounts(bills.map((b) => b.balance_due)), bills }
+}
+
+/**
+ * Everything the payment dialog needs when a supplier is picked: the payable
+ * bills plus (best effort) a summary of bills still awaiting posting. A failure
+ * of the summary lookup never hides the payable list.
+ */
+export async function getSupplierBillsForPayment(
+  supplierId: string,
+): Promise<{ payable: SupplierBill[]; unposted: UnpostedBillsSummary | null }> {
+  const [payable, unposted] = await Promise.all([
+    getOpenInvoicesForSupplier(supplierId),
+    getUnpostedBillsForSupplier(supplierId).catch((e: unknown) => {
+      console.warn('[getSupplierBillsForPayment] unposted-bill lookup failed:', e)
+      return null
+    }),
+  ])
+  return { payable, unposted }
+}
+
+/**
+ * Client-side mirror of the payable rule, for pages that already hold the row
+ * (Finance Payables, re-validation before submit). Bills with no status are
+ * rejected: a caller that cannot prove the bill was posted must not pay it.
+ */
+export function isPayableBill(bill: { status?: string | null; balance_due?: unknown; balance?: unknown } | null | undefined): boolean {
+  if (!bill) return false
+  if (!(PAYABLE_AP_INVOICE_STATUSES as readonly string[]).includes(String(bill.status ?? ''))) return false
+  const bal = bill.balance_due !== undefined && bill.balance_due !== null ? bill.balance_due : bill.balance
+  return toCents(bal) > 0
+}
+
+/**
+ * Empty-state text for a supplier with no payable bills. Explains WHY nothing
+ * can be paid when bills exist but are still draft/approved.
+ */
+export function describeUnpostedBills(
+  summary: { count: number; total: number } | null | undefined,
+  formatMoney: (v: number) => string = (v) =>
+    `LKR ${v.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+): { title: string; detail: string | null } {
+  if (!summary || summary.count <= 0) {
+    return { title: 'No posted bills with a balance due for this supplier', detail: null }
+  }
+  const n = summary.count
+  return {
+    title: `${n} bill${n === 1 ? '' : 's'} (${formatMoney(summary.total)}) ${n === 1 ? 'is' : 'are'} still draft`,
+    detail: `${n === 1 ? 'It' : 'They'} must be posted (Procurement → AP Invoices) before payment. Draft bills are not yet recorded in Accounts Payable.`,
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1576,7 +1909,7 @@ export async function listPayments(
        cheque_no, reference_no, remarks, posted_at, created_at,
        supplier_payment_allocations(
          id, amount,
-         ap_invoices(id, doc_number, total_amount, balance_due)
+         ap_invoices(id, doc_number, doc_date, total_amount, paid_amount, balance_due)
        )`,
     )
     .eq('company_id', company_id)
@@ -1638,21 +1971,36 @@ export async function createPayment(header: Omit<SupplierPayment, 'id' | 'doc_nu
  * Atomic: Create + Allocate + Post a supplier payment in a single
  * SECURITY DEFINER RPC. This bypasses RLS issues with the client role
  * not having write access to supplier_payments.
+ *
+ * All accounting (AP ledger, Dr AP / Cr Cash-Bank, cashbook, supplier balance,
+ * invoice paid_amount/status) is done by the post_supplier_payment DB trigger
+ * (#128). The cheque register (finance_cheques) is synced server-side by
+ * Finance's trigger (#134) — the client never writes finance_cheques, which is
+ * admin/finance-only under RLS (#124). cheque_id / bank_account_id /
+ * supplier_name are accepted for UI compatibility and not sent anywhere.
+ *
+ * Once the RPC succeeds the payment EXISTS: any follow-up problem (stamping the
+ * PDC cheque date) is returned as `warning` with success=true, so the caller
+ * never retries and creates a duplicate payment.
  */
 export async function createAndPostPayment(
   header: {
     supplier_id: string
+    supplier_name?: string
     doc_date: string
     payment_method: string
     reference_no?: string
     cheque_no?: string
+    cheque_date?: string
+    cheque_id?: string
     remarks?: string
     total_amount: number
     bank_account_code?: string | null
+    bank_account_id?: string | null
   },
   allocations: { invoice_id: string; amount: number }[],
   post = true,
-): Promise<{ success: boolean; doc_number?: string; payment_id?: string; error?: string }> {
+): Promise<{ success: boolean; doc_number?: string; payment_id?: string; error?: string; warning?: string }> {
   const { company_id, branch_id } = getContext()
 
   const { data, error } = await supabase.rpc('create_and_post_payment', {
@@ -1663,16 +2011,66 @@ export async function createAndPostPayment(
     p_payment_method: header.payment_method,
     p_total_amount: header.total_amount,
     p_reference_no: header.reference_no || null,
-    p_cheque_no: header.cheque_no || null,
+    p_cheque_no: header.cheque_no?.trim() || null,
     p_allocations: allocations,
     p_post_now: post,
     p_bank_account_code: header.bank_account_code || null,
   })
 
   if (error) return { success: false, error: error.message }
-  return data as { success: boolean; doc_number?: string; payment_id?: string; error?: string }
+  const result = data as { success: boolean; doc_number?: string; payment_id?: string; error?: string }
+
+  if (
+    result?.success &&
+    result.payment_id &&
+    header.cheque_date &&
+    header.payment_method.toLowerCase().includes('cheque')
+  ) {
+    const stamp = await setPaymentChequeDate(result.payment_id, header.cheque_date)
+    if (!stamp.success) {
+      return {
+        ...result,
+        warning: `Payment ${result.doc_number ?? ''} was saved, but the cheque date could not be recorded: ${stamp.error}`,
+      }
+    }
+  }
+
+  return result
 }
 
+/**
+ * Record the PDC cheque date on a draft/posted cheque payment (#136 RPC,
+ * role- and branch-checked). A direct UPDATE is blocked by RLS (admin-only)
+ * and, for posted rows, by the IMMUTABLE_DOC guard.
+ */
+export async function setPaymentChequeDate(
+  paymentId: string,
+  chequeDate: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc('set_supplier_payment_cheque_date', {
+    p_payment_id: paymentId,
+    p_cheque_date: chequeDate,
+  })
+  if (error) return { success: false, error: error.message }
+  return (data as { success: boolean; error?: string }) ?? { success: false, error: 'No response' }
+}
+
+/**
+ * Cancel a supplier payment (#136 RPC: admin/manager/finance, reason required).
+ * posted → cancelled fires #128's full reversal (AP ledger, GL, cashbook,
+ * supplier balance, invoice paid status); #134 voids the cheque.
+ */
+export async function cancelPayment(
+  paymentId: string,
+  reason: string,
+): Promise<{ success: boolean; doc_number?: string; error?: string }> {
+  const { data, error } = await supabase.rpc('cancel_supplier_payment', {
+    p_payment_id: paymentId,
+    p_reason: reason,
+  })
+  if (error) return { success: false, error: error.message }
+  return (data as { success: boolean; doc_number?: string; error?: string }) ?? { success: false, error: 'No response' }
+}
 
 /**
  * Upsert allocations for a draft payment.
@@ -1707,10 +2105,11 @@ export async function allocatePayment(paymentId: string, allocations: PaymentAll
 
 /**
  * Post a supplier payment via safe RPC.
- * Fires DB trigger:
- *  - Creates ap_ledger DEBIT row
- *  - Reduces supplier.balance
- *  - Updates invoice paid_amount and status via allocations
+ * Fires DB trigger post_supplier_payment (fix #128), atomically:
+ *  - Creates ap_ledger PAYMENT row and reduces supplier.balance
+ *  - Dr Accounts Payable / Cr Cash-Bank (ledgers, finance_accounts, cashbook)
+ *  - Recomputes invoice paid_amount and status from allocations
+ * The cheque register is synced server-side (#134).
  */
 export async function postPayment(
   paymentId: string,
@@ -2322,13 +2721,23 @@ export async function recomputeMonthlyAvgCost(month?: string): Promise<number> {
 
 /**
  * Approve a PO via RPC (only works if po_approval_required is enabled).
+ * Server enforces role, maker-checker and procurement_approval_thresholds
+ * (supabase/fix_payroll_and_po_approval_132.sql). For multi-level POs a
+ * successful call may return status 'pending_approval' (PO stays draft until
+ * the final level signs).
  */
-export async function approvePORpc(
-  poId: string,
-): Promise<{ success: boolean; doc_number?: string; error?: string }> {
+export async function approvePORpc(poId: string): Promise<{
+  success: boolean
+  doc_number?: string
+  status?: 'approved' | 'pending_approval'
+  current_level?: number
+  required_level?: number
+  message?: string
+  error?: string
+}> {
   const { data, error } = await supabase.rpc('approve_po', { p_po_id: poId })
   if (error) return { success: false, error: error.message }
-  return data as { success: boolean; doc_number?: string; error?: string }
+  return data
 }
 
 /**

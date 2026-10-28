@@ -107,6 +107,12 @@ export const financeLedgerService = {
   // non-admins). System ledgers and any ledger with posted movements (FK from
   // cashbook/vouchers) cannot be deleted — deactivate instead.
   async remove(id) {
+    const authStore = useAuthStore()
+    const role = authStore.userRole || authStore.profile?.role
+    if (role && role !== 'admin' && role !== 'super_admin' && role !== 'owner') {
+      throw new Error('Unauthorized: Only administrators can delete ledgers.')
+    }
+
     const old = await this.getById(id).catch(() => null)
     if (old?.is_system_ledger) throw new Error('System ledgers cannot be deleted.')
     const { error } = await supabase.from('finance_ledgers').delete().eq('id', id)

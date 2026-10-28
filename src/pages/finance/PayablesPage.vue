@@ -80,10 +80,59 @@
           Click any <strong class="text-primary">Bill #</strong> to view items or make payment
         </div>
       </div>
+
+      <div v-if="unpostedAp.count > 0" class="text-caption text-amber-4 q-mb-sm">
+        <q-icon name="pending_actions" size="14px" />
+        {{ unpostedAp.count }} bill{{ unpostedAp.count === 1 ? '' : 's' }} (LKR {{ fmt(unpostedAp.total) }})
+        {{ unpostedAp.count === 1 ? 'is' : 'are' }} still draft and not listed — they must be posted (Procurement → AP Invoices) before payment.
+      </div>
+
+      <!-- Multi-bill selection action bar -->
+      <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
+        <div
+          v-if="selectedRows.length > 0"
+          class="row items-center justify-between q-pa-sm q-mb-sm rounded-borders text-white shadow-2"
+          style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)"
+        >
+          <div class="row items-center q-gutter-sm">
+            <q-badge color="positive" class="text-weight-bold q-pa-xs">
+              {{ selectedRows.length }} Bill{{ selectedRows.length > 1 ? 's' : '' }} Selected
+            </q-badge>
+            <span class="text-weight-bold">Total Due: LKR {{ fmt(selectedTotalDue) }}</span>
+            <span v-if="selectedSupplierSummary" class="text-caption text-amber-2">
+              ({{ selectedSupplierSummary }})
+            </span>
+          </div>
+          <div class="row q-gutter-xs">
+            <q-btn
+              v-if="selectionSupplierId && supplierPayableCount(selectionSupplierId) > selectedRows.length"
+              flat
+              dense
+              color="white"
+              icon="library_add_check"
+              :label="`Select all ${supplierPayableCount(selectionSupplierId)} of this supplier`"
+              no-caps
+              @click="selectAllOfSupplier(selectionSupplierId)"
+            />
+            <q-btn
+              unelevated
+              color="positive"
+              icon="payments"
+              :label="'Pay Selected Bills (' + selectedRows.length + ')'"
+              no-caps
+              @click="openPaySelectedDialog"
+            />
+            <q-btn flat dense color="white" label="Clear Selection" no-caps @click="selectedRows = []" />
+          </div>
+        </div>
+      </transition>
+
       <q-table
         :rows="filteredPayables"
         :columns="columns"
         row-key="id"
+        selection="multiple"
+        v-model:selected="selectedRows"
         flat
         dark
         dense
@@ -95,7 +144,22 @@
       >
         <template #body-cell-supplier="props">
           <q-td :props="props">
-            <div class="text-weight-bold">{{ props.row.supplier_name }}</div>
+            <div class="row items-center no-wrap">
+              <span class="text-weight-bold">{{ props.row.supplier_name }}</span>
+              <q-btn
+                v-if="supplierPayableCount(props.row.supplier_id) > 1"
+                flat
+                round
+                dense
+                size="xs"
+                color="primary"
+                icon="library_add_check"
+                class="q-ml-xs"
+                @click.stop="selectAllOfSupplier(props.row.supplier_id)"
+              >
+                <q-tooltip>Select all {{ supplierPayableCount(props.row.supplier_id) }} open bills of this supplier</q-tooltip>
+              </q-btn>
+            </div>
             <div class="text-caption text-grey-5" v-if="props.row.bank_name || props.row.bank_account_number">
               {{ props.row.bank_name || 'Bank' }}: {{ props.row.bank_account_number || '-' }}
             </div>
@@ -141,7 +205,7 @@
         <template #body-cell-actions="props">
           <q-td :props="props" class="text-center">
             <q-btn
-              v-if="Number(props.row.balance || 0) > 0"
+              v-if="isPayableBill(props.row)"
               unelevated
               dense
               no-caps
@@ -246,7 +310,7 @@
         <q-card-actions align="right" class="q-pa-md bg-grey-9">
           <q-btn flat label="Close" color="grey-4" v-close-popup no-caps />
           <q-btn
-            v-if="Number(selectedInvoice?.balance_due || 0) > 0"
+            v-if="isPayableBill(selectedInvoice)"
             unelevated
             color="positive"
             icon="payments"
@@ -259,26 +323,110 @@
     </q-dialog>
 
     <!-- ══ PAY BILL / RECORD SUPPLIER PAYMENT DIALOG ═══════════════════ -->
-    <q-dialog v-model="showPayDialog" persistent>
-      <q-card style="min-width: 480px; max-width: 95vw" :class="[$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white text-dark']">
+    <q-dialog v-model="showPayDialog" persistent :maximized="$q.screen.lt.sm">
+      <q-card style="width: 820px; max-width: 95vw" :class="[$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white text-dark']">
         <q-card-section class="row items-center bg-positive text-white q-pa-md">
           <q-icon name="payments" size="24px" class="q-mr-sm" />
-          <div class="text-subtitle1 text-weight-bold">Record Supplier Payment</div>
+          <div class="text-subtitle1 text-weight-bold">
+            Record Supplier Payment {{ payCheck.selectedCount > 1 ? `(${payCheck.selectedCount} Bills)` : '' }}
+          </div>
           <q-space />
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
 
         <q-card-section class="q-pa-md q-gutter-md">
-          <!-- Summary Banner -->
-          <div class="rounded-borders q-pa-sm bg-grey-9 row justify-between items-center">
-            <div>
-              <div class="text-caption text-grey-4">Supplier</div>
-              <div class="text-weight-bold">{{ payTarget?.supplier_name }}</div>
-              <div class="text-caption text-primary">Bill # {{ payTarget?.doc_number }}</div>
+          <!-- Supplier banner -->
+          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+            <div class="row justify-between items-center q-col-gutter-sm">
+              <div>
+                <div class="text-caption text-grey-6">Supplier / Payee</div>
+                <div class="text-weight-bold text-subtitle2">{{ paySupplier.name }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-caption text-grey-6">
+                  Total Open ({{ payLines.length }} bill{{ payLines.length === 1 ? '' : 's' }})
+                </div>
+                <div class="text-subtitle1 text-weight-bolder text-red-5">LKR {{ fmt(paySupplierOpenTotal) }}</div>
+              </div>
             </div>
-            <div class="text-right">
-              <div class="text-caption text-grey-4">Outstanding Due</div>
-              <div class="text-subtitle1 text-weight-bolder text-red-4">LKR {{ fmt(payTarget?.balance) }}</div>
+          </div>
+
+          <!-- Bills of this supplier -->
+          <div>
+            <div class="row items-center justify-between q-mb-xs q-col-gutter-xs">
+              <div class="text-caption text-weight-bold">Bills to settle *</div>
+              <div class="row q-gutter-xs">
+                <q-btn flat dense no-caps size="sm" color="primary" icon="done_all" label="Select all" @click="selectAllPayLines" />
+                <q-btn flat dense no-caps size="sm" color="grey-6" icon="remove_done" label="Clear" @click="clearPayLines" />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  size="sm"
+                  color="primary"
+                  icon="low_priority"
+                  label="Auto-allocate oldest-first"
+                  @click="autoAllocateAllLines"
+                >
+                  <q-tooltip>Spread the payment amount over this supplier's bills, oldest first</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+            <div class="pay-lines-wrap rounded-borders">
+              <q-markup-table flat dense :dark="$q.dark.isActive" separator="horizontal" class="pay-lines-table">
+                <thead>
+                  <tr>
+                    <th class="text-left" style="width: 36px"></th>
+                    <th class="text-left">Bill #</th>
+                    <th class="text-left gt-xs">Date</th>
+                    <th class="text-left gt-xs">Due</th>
+                    <th class="text-right">Balance Due</th>
+                    <th class="text-right" style="width: 150px">Amount to Pay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="line in payLines"
+                    :key="line.id"
+                    :class="{ 'pay-line--selected': line.selected }"
+                  >
+                    <td>
+                      <q-checkbox
+                        :model-value="line.selected"
+                        dense
+                        :dark="$q.dark.isActive"
+                        @update:model-value="(v) => togglePayLine(line, v)"
+                      />
+                    </td>
+                    <td class="text-weight-bold">
+                      {{ line.doc_number }}
+                      <div class="text-caption text-grey-6 lt-sm">{{ line.doc_date || '-' }}</div>
+                    </td>
+                    <td class="gt-xs">{{ line.doc_date || '-' }}</td>
+                    <td class="gt-xs">{{ line.due_date || '-' }}</td>
+                    <td class="text-right">LKR {{ fmt(line.balance) }}</td>
+                    <td class="text-right">
+                      <q-input
+                        :model-value="line.allocation"
+                        type="number"
+                        dense
+                        outlined
+                        :dark="$q.dark.isActive"
+                        min="0"
+                        :max="line.balance"
+                        step="0.01"
+                        input-class="text-right"
+                        :disable="!line.selected"
+                        @update:model-value="(v) => onLineAllocationInput(line, v)"
+                        @blur="onLineAllocationBlur(line)"
+                      />
+                    </td>
+                  </tr>
+                  <tr v-if="payLines.length === 0">
+                    <td colspan="6" class="text-center text-grey-6 q-pa-md">No payable bills for this supplier.</td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
             </div>
           </div>
 
@@ -290,12 +438,55 @@
               type="number"
               outlined
               dense
-              dark
+              :dark="$q.dark.isActive"
               min="0.01"
-              :max="Number(payTarget?.balance || 0)"
               step="0.01"
               prefix="LKR"
+              debounce="400"
+              hint="Typing an amount spreads it over the ticked bills, oldest first"
+              @update:model-value="onPayAmountInput"
             />
+          </div>
+
+          <!-- Allocation summary -->
+          <div class="rounded-borders q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+            <div class="row q-col-gutter-sm text-center">
+              <div class="col-6 col-sm-3">
+                <div class="text-caption text-grey-6">Bills selected</div>
+                <div class="text-weight-bold">{{ payCheck.allocations.length }} / {{ payLines.length }}</div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="text-caption text-grey-6">Total allocated</div>
+                <div class="text-weight-bold">LKR {{ fmt(payCheck.allocated) }}</div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="text-caption text-grey-6">Payment amount</div>
+                <div class="text-weight-bold">LKR {{ fmt(payCheck.amount) }}</div>
+              </div>
+              <div class="col-6 col-sm-3">
+                <div class="text-caption text-grey-6">Difference</div>
+                <div class="text-weight-bolder" :class="payCheck.difference === 0 ? 'text-positive' : 'text-negative'">
+                  LKR {{ fmt(payCheck.difference) }}
+                </div>
+              </div>
+            </div>
+            <div v-if="!payCheck.valid" class="row items-center justify-between q-mt-sm q-col-gutter-xs">
+              <div class="text-caption text-negative">
+                <q-icon name="warning" size="14px" />
+                {{ payCheck.errors[0] }}
+              </div>
+              <q-btn
+                v-if="payCheck.difference !== 0 && payCheck.allocated > 0"
+                outline
+                dense
+                no-caps
+                size="sm"
+                color="primary"
+                icon="sync_alt"
+                label="Set amount = allocated"
+                @click="syncAmountToAllocated"
+              />
+            </div>
           </div>
 
           <!-- Payment Date & Method -->
@@ -308,7 +499,7 @@
               <div class="text-caption text-weight-bold q-mb-xs">Payment Method *</div>
               <q-select
                 v-model="payForm.payment_method"
-                :options="['Bank Transfer', 'Cash', 'Cheque']"
+                :options="['Cheque', 'Bank Transfer', 'Cash']"
                 outlined
                 dense
                 dark
@@ -336,14 +527,66 @@
               </template>
             </q-select>
             <div class="text-caption text-grey-5 q-mt-xs">
-              💵 This account will be CREDITED and Accounts Payable (2000) will be DEBITED.
+              💵 This account balance will be DEDUCTED and Accounts Payable (2000) will be DEBITED.
             </div>
           </div>
 
-          <!-- Reference / Cheque No -->
-          <div>
-            <div class="text-caption text-weight-bold q-mb-xs">Reference / Cheque Number</div>
-            <q-input v-model="payForm.reference" placeholder="e.g. TRF-99210 or CHQ-00123" outlined dense dark />
+          <!-- CHEQUE PAYMENT SPECIAL CONTROLS -->
+          <div v-if="(payForm.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm bg-grey-9 rounded-borders q-gutter-xs">
+            <div class="row items-center justify-between q-mb-xs">
+              <span class="text-caption text-weight-bold text-indigo-3">Cheque Selection Mode</span>
+              <div class="row q-gutter-sm">
+                <q-radio v-model="payForm.cheque_source" val="planned" label="Select Planned Cheque" dense dark />
+                <q-radio v-model="payForm.cheque_source" val="new" label="Enter New Cheque" dense dark />
+              </div>
+            </div>
+
+            <!-- Planned Cheque Dropdown -->
+            <div v-if="payForm.cheque_source === 'planned'" class="q-mb-xs">
+              <div class="text-caption text-weight-bold q-mb-xs">Select Planned Cheque *</div>
+              <q-select
+                v-model="payForm.selected_planned_cheque"
+                :options="plannedChequeOptions"
+                outlined
+                dense
+                dark
+                emit-value
+                map-options
+                placeholder="Choose available planned cheque"
+                @update:model-value="onPlannedChequeSelected"
+              >
+                <template #no-option>
+                  <div class="q-pa-sm text-caption text-grey-5">
+                    No planned cheques found for this bank account. Switch to "Enter New Cheque" or plan one in Cheque Plan.
+                  </div>
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Cheque Number & Cheque Date -->
+            <div class="row q-col-gutter-sm q-mt-xs">
+              <div class="col-6">
+                <div class="text-caption text-weight-bold q-mb-xs">Cheque Number *</div>
+                <q-input
+                  v-model="payForm.reference"
+                  placeholder="e.g. 578427"
+                  outlined
+                  dense
+                  dark
+                  :readonly="payForm.cheque_source === 'planned' && !!payForm.selected_planned_cheque"
+                />
+              </div>
+              <div class="col-6">
+                <div class="text-caption text-weight-bold q-mb-xs">Cheque Date * (PDC Support)</div>
+                <q-input v-model="payForm.cheque_date" type="date" outlined dense dark />
+              </div>
+            </div>
+          </div>
+
+          <!-- Non-Cheque Reference -->
+          <div v-else>
+            <div class="text-caption text-weight-bold q-mb-xs">Reference Number</div>
+            <q-input v-model="payForm.reference" placeholder="e.g. TRF-99210" outlined dense dark />
           </div>
 
           <!-- Remarks -->
@@ -353,8 +596,8 @@
           </div>
         </q-card-section>
 
-        <q-card-actions align="right" class="q-pa-md bg-grey-9">
-          <q-btn flat label="Cancel" color="grey-4" v-close-popup no-caps />
+        <q-card-actions align="right" class="q-pa-md" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+          <q-btn flat label="Cancel" color="grey-6" v-close-popup no-caps />
           <q-btn
             unelevated
             label="Confirm Payment"
@@ -362,6 +605,7 @@
             icon="check_circle"
             no-caps
             :loading="paying"
+            :disable="!payCheck.valid"
             @click="submitSupplierPayment"
           />
         </q-card-actions>
@@ -373,8 +617,16 @@
 <script setup>
 import { ref, computed, reactive, watch, onMounted } from 'vue'
 import ERPToolbar from 'components/erp/ERPToolbar.vue'
-import { fetchPayableAging } from 'src/services/financeService'
-import { createAndPostPayment } from 'src/services/procurementService'
+import { fetchPayableAging, fetchUnpostedApSummary } from 'src/services/financeService'
+import {
+  createAndPostPayment,
+  isPayableBill,
+  compareBillsOldestFirst,
+  allocateOldestFirst,
+  clampAllocation,
+  sumAmounts,
+  checkPaymentAllocations,
+} from 'src/services/procurementService'
 import { useQuasar } from 'quasar'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -384,12 +636,50 @@ import { supabase } from 'src/boot/supabase'
 const $q = useQuasar()
 const loading = ref(false)
 const payables = ref([])
+/** Draft/approved bills — not payable until posted, so not listed. */
+const unpostedAp = ref({ count: 0, total: 0 })
 const companyBankAccounts = ref([])
 const financeAccounts = ref([])
 
 const searchQuery = ref('')
 const selectedBank = ref('All Banks')
 const bankOptions = ['All Banks', 'BOC', 'HNB', 'Commercial Bank', 'Sampath Bank']
+
+// Multi-bill selection
+const selectedRows = ref([])
+const selectedTotalDue = computed(() => {
+  return selectedRows.value.reduce((s, r) => s + Number(r.balance || 0), 0)
+})
+const selectedSupplierSummary = computed(() => {
+  if (selectedRows.value.length === 0) return ''
+  const names = [...new Set(selectedRows.value.map((r) => r.supplier_name))]
+  if (names.length === 1) return names[0]
+  return `${names.length} different suppliers`
+})
+/** Supplier id when the whole selection belongs to one supplier, else null. */
+const selectionSupplierId = computed(() => {
+  const ids = [...new Set(selectedRows.value.map((r) => r.supplier_id))]
+  return ids.length === 1 ? ids[0] : null
+})
+/** Open (payable) bills per supplier, from the loaded AP list. */
+const payableBySupplier = computed(() => {
+  const map = new Map()
+  for (const r of payables.value) {
+    if (!isPayableBill(r)) continue
+    if (!map.has(r.supplier_id)) map.set(r.supplier_id, [])
+    map.get(r.supplier_id).push(r)
+  }
+  return map
+})
+function supplierPayableCount(supplierId) {
+  return payableBySupplier.value.get(supplierId)?.length || 0
+}
+/** Replace the selection with every open bill of this supplier. */
+function selectAllOfSupplier(supplierId) {
+  const bills = payableBySupplier.value.get(supplierId) || []
+  if (bills.length === 0) return
+  selectedRows.value = [...bills].sort(compareBillsOldestFirst)
+}
 
 // ── Invoices Details State ──────────────────────────────────────────
 const showInvoiceDialog = ref(false)
@@ -408,16 +698,135 @@ const lineColumns = [
 
 // ── Payment Dialog State ────────────────────────────────────────────
 const showPayDialog = ref(false)
-const payTarget = ref(null)
+/** Supplier of the payment being recorded (one payment = one supplier). */
+const paySupplier = ref({ id: null, name: '' })
+/**
+ * All open payable bills of that supplier, oldest first:
+ * { id, supplier_id, status, doc_number, doc_date, due_date, balance, balance_due, selected, allocation }
+ */
+const payLines = ref([])
 const paying = ref(false)
+const plannedCheques = ref([])
+
+const paySupplierOpenTotal = computed(() => sumAmounts(payLines.value.map((l) => l.balance)))
+
+function allocatedTotal() {
+  return sumAmounts(payLines.value.filter((l) => l.selected).map((l) => l.allocation))
+}
+
+const plannedChequeOptions = computed(() => {
+  return plannedCheques.value.map((c) => ({
+    label: `Cheque #${c.cheque_no} (${c.cheque_date}) — LKR ${fmt(c.amount)} ${c.issued_to ? '— ' + c.issued_to : ''}`,
+    value: c.id,
+    cheque: c,
+  }))
+})
+
 const payForm = reactive({
   amount: 0,
   doc_date: new Date().toISOString().split('T')[0],
-  payment_method: 'Bank Transfer',
+  payment_method: 'Cheque',
   bank_account_id: null,
   reference: '',
   remarks: '',
+  cheque_source: 'planned',
+  selected_planned_cheque: null,
+  cheque_date: new Date().toISOString().split('T')[0],
+  cheque_id: null,
 })
+
+/** Live validation of the allocation table (mirrors server rules #128/#140). */
+const payCheck = computed(() => checkPaymentAllocations(payLines.value, payForm.amount))
+
+/** Default remarks follow the ticked bills until the user types their own. */
+function autoRemarks() {
+  return `Payment for ${payLines.value
+    .filter((l) => l.selected)
+    .map((l) => l.doc_number)
+    .join(', ')}`
+}
+let lastAutoRemarks = ''
+watch(
+  () => payLines.value.filter((l) => l.selected).map((l) => l.id).join(','),
+  () => {
+    if (!showPayDialog.value || payForm.remarks !== lastAutoRemarks) return
+    lastAutoRemarks = autoRemarks()
+    payForm.remarks = lastAutoRemarks
+  },
+)
+
+/** Editing lines drives the payment amount. */
+function syncAmountToAllocated() {
+  payForm.amount = allocatedTotal()
+}
+
+function togglePayLine(line, value) {
+  line.selected = !!value
+  line.allocation = line.selected ? line.balance : 0
+  syncAmountToAllocated()
+}
+
+function onLineAllocationInput(line, value) {
+  const n = value === '' || value === null ? 0 : Number(value)
+  // Over-allocation is clamped straight away; rounding to cents happens on blur
+  line.allocation = Number.isFinite(n) && n > line.balance ? line.balance : value
+  syncAmountToAllocated()
+}
+
+function onLineAllocationBlur(line) {
+  line.allocation = clampAllocation(line.allocation, line.balance)
+  syncAmountToAllocated()
+}
+
+function selectAllPayLines() {
+  for (const l of payLines.value) {
+    l.selected = true
+    l.allocation = l.balance
+  }
+  syncAmountToAllocated()
+}
+
+function clearPayLines() {
+  for (const l of payLines.value) {
+    l.selected = false
+    l.allocation = 0
+  }
+  syncAmountToAllocated()
+}
+
+/** Spread `amount` over the given lines oldest-first; the rest of them get 0. */
+function spreadAmount(lines, amount) {
+  const { allocations } = allocateOldestFirst(
+    lines.map((l) => ({ ...l, balance_due: l.balance })),
+    amount,
+  )
+  const byId = new Map(allocations.map((a) => [a.invoice_id, a.amount]))
+  for (const l of lines) l.allocation = byId.get(l.id) || 0
+  return byId
+}
+
+/** Typing a payment amount re-spreads it over the ticked bills, oldest first. */
+function onPayAmountInput(value) {
+  const ticked = payLines.value.filter((l) => l.selected)
+  if (ticked.length === 0) return
+  spreadAmount(ticked, value)
+}
+
+/** Spread the payment amount over ALL of the supplier's bills, ticking the ones that get paid. */
+function autoAllocateAllLines() {
+  const typed = Number(payForm.amount) || 0
+  const amount = typed > 0 ? typed : paySupplierOpenTotal.value
+  const byId = spreadAmount(payLines.value, amount)
+  for (const l of payLines.value) l.selected = byId.has(l.id)
+  if (typed <= 0) {
+    syncAmountToAllocated()
+  } else if (typed > paySupplierOpenTotal.value) {
+    $q.notify({
+      type: 'warning',
+      message: `Amount exceeds this supplier's open balance (LKR ${fmt(paySupplierOpenTotal.value)}).`,
+    })
+  }
+}
 
 // Dynamic account filtering: Cash vs Bank based on payment method
 const payingAccountOptions = computed(() => {
@@ -443,10 +852,39 @@ const payingAccountOptions = computed(() => {
   })
 })
 
+async function loadPlannedCheques(bankAccountId = null) {
+  let q = supabase
+    .from('finance_cheques')
+    .select('id, cheque_no, cheque_date, amount, issued_to, bank_account_id')
+    .eq('status', 'planned')
+    .order('cheque_date', { ascending: true })
+
+  if (bankAccountId) {
+    q = q.eq('bank_account_id', bankAccountId)
+  }
+
+  const { data } = await q
+  plannedCheques.value = data || []
+}
+
+function onPlannedChequeSelected(val) {
+  const opt = plannedChequeOptions.value.find((o) => o.value === val)
+  if (opt?.cheque) {
+    const c = opt.cheque
+    payForm.reference = c.cheque_no
+    payForm.cheque_date = c.cheque_date
+    if (Number(c.amount) > 0) {
+      payForm.amount = Number(c.amount)
+      onPayAmountInput(payForm.amount)
+    }
+    payForm.cheque_id = c.id
+  }
+}
+
 // Auto-switch selected account when payment method toggles between Cash and Bank
 watch(
   () => payForm.payment_method,
-  () => {
+  async (newMethod) => {
     const opts = payingAccountOptions.value
     if (opts.length > 0) {
       const stillValid = opts.some((o) => o.value === payForm.bank_account_id)
@@ -455,6 +893,22 @@ watch(
       }
     } else {
       payForm.bank_account_id = null
+    }
+
+    if (newMethod && newMethod.toLowerCase().includes('cheque')) {
+      await loadPlannedCheques(payForm.bank_account_id)
+      if (plannedCheques.value.length === 0) {
+        payForm.cheque_source = 'new'
+      }
+    }
+  },
+)
+
+watch(
+  () => payForm.bank_account_id,
+  async (newAccId) => {
+    if (newAccId && payForm.payment_method.toLowerCase().includes('cheque')) {
+      await loadPlannedCheques(newAccId)
     }
   },
 )
@@ -496,12 +950,8 @@ const filteredPayables = computed(() => {
     )
   }
 
-  // Sort newest first
-  return [...list].sort((a, b) => {
-    const da = a.doc_date || ''
-    const db = b.doc_date || ''
-    return db.localeCompare(da)
-  })
+  // Oldest first (payment priority), deterministic within the same day
+  return [...list].sort(compareBillsOldestFirst)
 })
 
 // ── Aging Buckets ───────────────────────────────────────────────────
@@ -578,19 +1028,94 @@ async function openInvoiceDetails(row) {
 }
 
 // ── Open Payment Dialog ─────────────────────────────────────────────
-function openPayDialog(row) {
-  payTarget.value = row
-  payForm.amount = Number(row.balance || 0)
-  payForm.doc_date = new Date().toISOString().split('T')[0]
-  payForm.payment_method = 'Bank Transfer'
-  payForm.reference = ''
-  payForm.remarks = `Payment for ${row.doc_number}`
+async function openPayDialog(row) {
+  if (!isPayableBill(row)) {
+    $q.notify({ type: 'warning', message: 'Only posted bills with a balance due can be paid. Post the bill first (Procurement → AP Invoices).' })
+    return
+  }
+  await openPaymentFor([row])
+}
 
-  // Pre-select first matching bank account
+async function openPaySelectedDialog() {
+  if (selectedRows.value.length === 0) {
+    $q.notify({ type: 'warning', message: 'Please select at least one bill to pay.' })
+    return
+  }
+  const supIds = [...new Set(selectedRows.value.map((r) => r.supplier_id))]
+  if (supIds.length > 1) {
+    $q.notify({
+      type: 'warning',
+      message: 'Multiple suppliers selected. A payment must be issued to a single supplier. Please select bills from one supplier.',
+      timeout: 5000,
+    })
+    return
+  }
+
+  if (selectedRows.value.some((r) => !isPayableBill(r))) {
+    $q.notify({ type: 'warning', message: 'Only posted bills with a balance due can be paid. Remove draft/settled bills from the selection.' })
+    return
+  }
+
+  await openPaymentFor(selectedRows.value)
+}
+
+/**
+ * Build the allocation table: every open payable bill of the supplier, with
+ * the chosen bills pre-ticked at their full balance. Other open bills are
+ * listed unticked so they can be added without leaving the dialog.
+ */
+async function openPaymentFor(targets) {
+  const first = targets[0]
+  paySupplier.value = { id: first.supplier_id, name: first.supplier_name || '' }
+  const preselected = new Set(targets.map((t) => t.id))
+
+  const byId = new Map()
+  for (const r of [...(payableBySupplier.value.get(first.supplier_id) || []), ...targets]) {
+    if (r.supplier_id === first.supplier_id && isPayableBill(r) && !byId.has(r.id)) byId.set(r.id, r)
+  }
+  payLines.value = [...byId.values()]
+    .map((r) => {
+      const raw = r.balance ?? r.balance_due
+      const balance = clampAllocation(raw, raw)
+      const selected = preselected.has(r.id)
+      return {
+        id: r.id,
+        supplier_id: r.supplier_id,
+        status: r.status,
+        doc_number: r.doc_number,
+        doc_date: r.doc_date || null,
+        due_date: r.due_date && r.due_date !== '-' ? r.due_date : null,
+        balance,
+        balance_due: balance,
+        selected,
+        allocation: selected ? balance : 0,
+      }
+    })
+    .sort(compareBillsOldestFirst)
+
+  await initPaymentForm()
+  showPayDialog.value = true
+}
+
+async function initPaymentForm() {
+  payForm.amount = allocatedTotal()
+  payForm.doc_date = new Date().toISOString().split('T')[0]
+  payForm.payment_method = 'Cheque'
+  payForm.cheque_source = 'planned'
+  payForm.selected_planned_cheque = null
+  payForm.cheque_id = null
+  payForm.reference = ''
+  payForm.cheque_date = new Date().toISOString().split('T')[0]
+  lastAutoRemarks = autoRemarks()
+  payForm.remarks = lastAutoRemarks
+
   const opts = payingAccountOptions.value
   payForm.bank_account_id = opts.length > 0 ? opts[0].value : null
 
-  showPayDialog.value = true
+  await loadPlannedCheques(payForm.bank_account_id)
+  if (plannedCheques.value.length === 0) {
+    payForm.cheque_source = 'new'
+  }
 }
 
 function openPayFromInvoice() {
@@ -600,6 +1125,9 @@ function openPayFromInvoice() {
     supplier_id: selectedInvoice.value.supplier_id,
     supplier_name: selectedInvoice.value.suppliers?.name,
     doc_number: selectedInvoice.value.doc_number,
+    doc_date: selectedInvoice.value.doc_date,
+    due_date: selectedInvoice.value.due_date,
+    status: selectedInvoice.value.status,
     balance: selectedInvoice.value.balance_due,
   }
   openPayDialog(target)
@@ -607,12 +1135,27 @@ function openPayFromInvoice() {
 
 // ── Submit Supplier Payment ─────────────────────────────────────────
 async function submitSupplierPayment() {
-  if (!payForm.amount || payForm.amount <= 0) {
-    $q.notify({ type: 'warning', message: 'Please enter a valid payment amount.' })
+  const check = payCheck.value
+  if (!check.valid) {
+    $q.notify({ type: 'warning', message: check.errors[0] || 'Check the bill allocations.' })
     return
   }
   if (!payForm.bank_account_id) {
     $q.notify({ type: 'warning', message: 'Please select a paying cash/bank account.' })
+    return
+  }
+  if (!paySupplier.value.id) {
+    $q.notify({ type: 'warning', message: 'No supplier selected for payment.' })
+    return
+  }
+
+  const isCheque = (payForm.payment_method || '').toLowerCase().includes('cheque')
+  if (isCheque && payForm.cheque_source === 'planned' && !payForm.selected_planned_cheque) {
+    $q.notify({ type: 'warning', message: 'Please select a planned cheque or switch to "Enter New Cheque".' })
+    return
+  }
+  if (isCheque && payForm.cheque_source === 'new' && (!payForm.reference || !payForm.reference.trim())) {
+    $q.notify({ type: 'warning', message: 'Please enter the cheque number.' })
     return
   }
 
@@ -621,18 +1164,29 @@ async function submitSupplierPayment() {
     const selectedAcc = financeAccounts.value.find((a) => a.id === payForm.bank_account_id)
     const paymentMethod = (payForm.payment_method || 'bank_transfer').toLowerCase().replace(/ /g, '_')
 
+    // One supplier, posted bills only, 0 < allocation <= balance due and
+    // amount == sum(allocations): checked by checkPaymentAllocations here and
+    // again server-side (#128/#140).
+    const allocations = check.allocations
+
+    const chequeNo = isCheque ? (payForm.reference || null) : null
+
     const res = await createAndPostPayment(
       {
-        supplier_id: payTarget.value.supplier_id,
+        supplier_id: paySupplier.value.id,
+        supplier_name: paySupplier.value.name,
         doc_date: payForm.doc_date,
         payment_method: paymentMethod,
         reference_no: payForm.reference || null,
-        cheque_no: paymentMethod === 'cheque' ? payForm.reference || null : null,
-        total_amount: payForm.amount,
+        cheque_no: chequeNo,
+        cheque_date: isCheque ? payForm.cheque_date : null,
+        cheque_id: isCheque && payForm.cheque_source === 'planned' ? payForm.selected_planned_cheque : null,
+        total_amount: check.amount,
         remarks: payForm.remarks || null,
         bank_account_code: selectedAcc?.account_number || selectedAcc?.registered_name || null,
+        bank_account_id: selectedAcc?.id || null,
       },
-      [{ invoice_id: payTarget.value.id, amount: payForm.amount }],
+      allocations,
       true,
     )
 
@@ -643,12 +1197,13 @@ async function submitSupplierPayment() {
     $q.notify({
       type: 'positive',
       icon: 'check_circle',
-      message: `✅ Payment ${res.doc_number || ''} recorded successfully! Bill balance reduced.`,
-      timeout: 4000,
+      message: `✅ Payment ${res.doc_number || ''} recorded successfully! Bill balance reduced and bank account updated.`,
+      timeout: 4500,
     })
 
     showPayDialog.value = false
     showInvoiceDialog.value = false
+    selectedRows.value = []
     await loadData()
   } catch (err) {
     console.error('Payment error:', err)
@@ -910,8 +1465,9 @@ async function loadData() {
     }))
 
   // 2. Load payables aging list
-  const { data } = await fetchPayableAging()
+  const [{ data }, unposted] = await Promise.all([fetchPayableAging(), fetchUnpostedApSummary()])
   payables.value = data || []
+  unpostedAp.value = unposted.error ? { count: 0, total: 0 } : { count: unposted.count, total: unposted.total }
   loading.value = false
 }
 
@@ -922,4 +1478,17 @@ onMounted(() => {
 
 <style scoped lang="scss">
 @import 'src/css/finance-common.scss';
+
+.pay-lines-wrap {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+}
+.pay-lines-table td,
+.pay-lines-table th {
+  white-space: nowrap;
+}
+.pay-line--selected {
+  background: rgba(33, 186, 69, 0.1);
+}
 </style>

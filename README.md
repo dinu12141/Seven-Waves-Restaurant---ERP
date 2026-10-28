@@ -35,13 +35,13 @@ Every department in the ERP is guarded with granular **Role-Based Access Control
 
 | Department / Role              | User / Station Name     | Email / Identifier       | User Code / PIN | Password             | Target Entry URL     |
 | :----------------------------- | :---------------------- | :----------------------- | :-------------: | :------------------- | :------------------- |
-| **👑 System Administrator**    | Master Admin            | `admin@sevenwaves.lk`    |    _(None)_     | `Admin@123456`       | `/dashboard`         |
-| **💳 Cashier / POS**           | Main Terminal Cashier   | `test@gmail.com`         |     `1010`      | `Test@123`           | `/pos` or `/cashier` |
+| **👑 System Administrator**    | Master Admin            | `admin@sevenwaves.lk`    |    _(None)_     | `<redacted — see password manager>`       | `/dashboard`         |
+| **💳 Cashier / POS**           | Main Terminal Cashier   | `test@gmail.com`         |     `1010`      | `<redacted — see password manager>`           | `/pos` or `/cashier` |
 | **🏃 Waiter / Steward**        | Service Waiter          | `dinushaud12@gmail.com`  |     `2007`      | `123456`             | `/waiter-app`        |
-| **🍳 Kitchen Display (KDS 1)** | Juice Bar Station       | `juicebar@sevenwaves.lk` |     `2001`      | `Juice@123456`       | `/kitchen`           |
-| **🍳 Kitchen Display (KDS 2)** | Italian & Pizza Station | `italian@sevenwaves.lk`  |     `2002`      | `Italian@123456`     | `/kitchen`           |
-| **🍳 Kitchen Display (KDS 3)** | Benmar Hot Kitchen      | `benmar@sevenwaves.lk`   |     `2003`      | `Benmar@123456`      | `/kitchen`           |
-| **🍳 Kitchen Display (KDS 4)** | Indian / Curry Station  | `indian@sevenwaves.lk`   |     `2004`      | `Indian@123456`      | `/kitchen`           |
+| **🍳 Kitchen Display (KDS 1)** | Juice Bar Station       | `juicebar@sevenwaves.lk` |     `2001`      | `<redacted — see password manager>`       | `/kitchen`           |
+| **🍳 Kitchen Display (KDS 2)** | Italian & Pizza Station | `italian@sevenwaves.lk`  |     `2002`      | `<redacted — see password manager>`     | `/kitchen`           |
+| **🍳 Kitchen Display (KDS 3)** | Benmar Hot Kitchen      | `benmar@sevenwaves.lk`   |     `2003`      | `<redacted — see password manager>`      | `/kitchen`           |
+| **🍳 Kitchen Display (KDS 4)** | Indian / Curry Station  | `indian@sevenwaves.lk`   |     `2004`      | `<redacted — see password manager>`      | `/kitchen`           |
 | **📱 Guest / Customer**        | Public Dining Menu / QR | _(Public Session)_       |    _(None)_     | _(No Auth Required)_ | `/touch` or `/menu`  |
 
 > 💡 **Quick PIN Login**: Front-of-house staff (Cashiers, Waiters, Kitchen Screens) can swiftly authenticate on touchscreens simply by punching in their **4-digit User Code** without entering a full email address.

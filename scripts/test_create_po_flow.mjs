@@ -10,7 +10,7 @@ async function testCreatePOFlow() {
   // Sign in as Admin
   const loginRes = await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   if (loginRes.error) {

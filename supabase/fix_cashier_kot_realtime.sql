@@ -170,4 +170,6 @@ BEGIN
     END LOOP;
 END $$;
 
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated, anon;
+-- SEC-A: Never grant blanket execute on all functions to anon!
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;

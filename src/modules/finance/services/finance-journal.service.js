@@ -1,15 +1,67 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // Finance Journal Service — General Ledger Journal Entries (Double-Entry)
+// Posting and reversal run in single server RPCs (finance_gl_integrity_141.sql),
+// so a journal, its lines, its cashbook legs and the ledger balances are written
+// atomically. The General Ledger view reads finance_cashbook_entries directly.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
-import { logFinanceAudit } from './finance-ledger.service'
 import { useAuthStore } from 'src/stores/auth'
+import { logFinanceAudit } from './finance-ledger.service'
+import { fetchAllPages } from './finance-statements.service'
+import {
+  buildGlPostings,
+  chunk,
+  docRefFromRow,
+  GL_DOC_SOURCES,
+  titleCase,
+} from './finance-gl.builder'
 
 const cleanUuid = (val) => (typeof val === 'string' && val.trim() !== '' ? val : null)
 
+export const GL_RPC_MISSING_MSG =
+  'The General Ledger posting functions are not installed on the database. ' +
+  'Apply supabase/finance_gl_integrity_141.sql, then try again.'
+
+export const SYSTEM_JOURNAL_REVERSE_MSG =
+  'System journal — reverse it from its source document (e.g. cancel the supplier payment in Procurement → Payments).'
+
+/** Manual journals (reference_type 'manual' or NULL) are the only ones reversible here. */
+export function isSystemJournal(journal) {
+  const t = journal?.reference_type
+  return !(t === null || t === undefined || t === '' || t === 'manual')
+}
+
+function isMissingRpc(error) {
+  return error?.code === 'PGRST202' || /Could not find the function/i.test(error?.message || '')
+}
+
+/** Normalise a `{ success, error }` jsonb RPC result; throws on any failure. */
+function unwrapRpc(data, error) {
+  if (error) {
+    if (isMissingRpc(error)) throw new Error(GL_RPC_MISSING_MSG)
+    throw new Error(error.message || 'Journal posting failed.')
+  }
+  const res = typeof data === 'string' ? JSON.parse(data) : data
+  if (!res || res.success !== true) {
+    throw new Error(res?.error || 'Journal posting failed.')
+  }
+  return res
+}
+
+/** `select … where id in (…)`, chunked (≤ 200 ids) to keep request URLs short. */
+async function fetchByIds(table, select, ids, size = 200) {
+  const rows = []
+  for (const part of chunk(ids, size)) {
+    const { data, error } = await supabase.from(table).select(select).in('id', part)
+    if (error) throw error
+    rows.push(...(data || []))
+  }
+  return rows
+}
+
 export const financeJournalService = {
-  // ── List ──────────────────────────────────────────────────────────────────
+  // ── List (journal_entries — manual & legacy system journals) ─────────────
   async list(filters = {}) {
     const ok = (v) => v !== undefined && v !== null && v !== ''
     let q = supabase
@@ -48,10 +100,9 @@ export const financeJournalService = {
     return data
   },
 
-  // ── Create and Post Double-Entry Journal Entry ───────────────────────────
+  // ── Create and Post Double-Entry Journal Entry (atomic RPC) ──────────────
   async create(header, lines) {
     const authStore = useAuthStore()
-    const user = (await supabase.auth.getUser()).data?.user
 
     if (!header.doc_date) throw new Error('Document date is required.')
     if (!header.description || !header.description.trim()) {
@@ -89,12 +140,9 @@ export const financeJournalService = {
 
       validLines.push({
         ledger_id: line.ledger_id,
-        account_code: line.account_code || '',
-        account_name: line.account_name || '',
         dr_amount: dr,
         cr_amount: cr,
         memo: line.memo || null,
-        line_number: i + 1,
       })
     }
 
@@ -112,247 +160,125 @@ export const financeJournalService = {
       )
     }
 
-    const companyId =
-      cleanUuid(header.company_id) ||
-      cleanUuid(authStore.currentBranch?.company_id) ||
-      cleanUuid(authStore.profile?.company_id) ||
-      null
-
     const branchId =
       cleanUuid(header.branch_id) ||
       cleanUuid(authStore.currentBranch?.id) ||
       cleanUuid(authStore.profile?.branch_id) ||
       null
 
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const toUuidOrNull = (v) => (typeof v === 'string' && UUID_RE.test(v.trim()) ? v.trim() : null)
-
-    const refText = header.reference_id?.trim() || ''
-    const refUuid = toUuidOrNull(refText)
-    let fullDescription = header.description.trim()
-    if (refText && !refUuid && !fullDescription.includes(refText)) {
-      fullDescription = `[Ref: ${refText}] ${fullDescription}`
+    // Categories such as petty cash reimbursement / accrual are still manual
+    // journals on the server; keep the category visible in the narration.
+    let description = header.description.trim()
+    const refType = header.reference_type || 'manual'
+    if (refType !== 'manual') {
+      const label = titleCase(refType)
+      if (!description.startsWith(`[${label}]`)) description = `[${label}] ${description}`
     }
 
-    // 1. Insert header as draft (is_posted: false) so lines can be inserted
-    // (Database has a trigger blocking line modifications once is_posted = true)
-    const headerPayload = {
-      company_id: companyId,
-      branch_id: branchId,
-      doc_date: header.doc_date,
-      description: fullDescription,
-      reference_type: header.reference_type || 'manual',
-      reference_id: refUuid,
-      total_dr: totalDr,
-      total_cr: totalCr,
-      is_posted: false,
-      posted_by: user?.id || null,
-    }
+    // Single atomic server-side posting: journal_entries + journal_lines +
+    // cashbook legs + ledger/account balances in one transaction.
+    const { data, error } = await supabase.rpc('fn_fin_post_manual_journal', {
+      p_doc_date: header.doc_date,
+      p_description: description,
+      p_reference: header.reference_id?.trim() || null,
+      p_branch_id: branchId,
+      p_lines: validLines,
+    })
+    const res = unwrapRpc(data, error)
+    if (!res.journal_id) throw new Error('Journal posting did not return a journal id.')
 
-    const { data: journal, error: jErr } = await supabase
-      .from('journal_entries')
-      .insert(headerPayload)
-      .select()
-      .single()
-
-    if (jErr) throw jErr
-
-    // 2. Insert journal lines
-    const linePayloads = validLines.map((l) => ({
-      journal_id: journal.id,
-      account_code: l.account_code,
-      account_name: l.account_name,
-      dr_amount: l.dr_amount,
-      cr_amount: l.cr_amount,
-      memo: l.memo,
-      line_number: l.line_number,
-      branch_id: branchId,
-    }))
-
-    const { error: linesErr } = await supabase.from('journal_lines').insert(linePayloads)
-    if (linesErr) {
-      // Clean up orphaned header if line insert fails
-      await supabase.from('journal_entries').delete().eq('id', journal.id).catch(() => {})
-      throw linesErr
-    }
-
-    // 3. Mark journal as posted (locks lines and activates immutability guard)
-    const { error: postErr } = await supabase
-      .from('journal_entries')
-      .update({
-        is_posted: true,
-        posted_at: new Date().toISOString(),
-      })
-      .eq('id', journal.id)
-
-    if (postErr) throw postErr
-
-    // 3. Post movements to Cashbook entries & update Ledger balances
-    for (const l of validLines) {
-      const delta = l.dr_amount - l.cr_amount
-
-      // Write to finance_cashbook_entries for Trial Balance, P&L and statement aggregations
-      await supabase.from('finance_cashbook_entries').insert({
-        company_id: companyId,
-        branch_id: branchId,
-        source_type: 'manual_adjustment',
-        source_id: journal.id,
-        entry_date: journal.doc_date,
-        ledger_id: l.ledger_id,
-        description: `${journal.description}${l.memo ? ' — ' + l.memo : ''}`,
-        debit_amount: l.dr_amount,
-        credit_amount: l.cr_amount,
-        running_balance: 0,
-      })
-
-      // Update finance_ledgers current balance
-      const { data: currLedger } = await supabase
-        .from('finance_ledgers')
-        .select('current_balance')
-        .eq('id', l.ledger_id)
-        .single()
-
-      if (currLedger) {
-        const newBal = Number(currLedger.current_balance || 0) + delta
-        await supabase
-          .from('finance_ledgers')
-          .update({ current_balance: newBal, updated_at: new Date().toISOString() })
-          .eq('id', l.ledger_id)
-      }
-    }
-
-    await logFinanceAudit('journal_posted', 'journal_entry', journal.id, null, journal)
-    return this.getById(journal.id)
+    const journal = await this.getById(res.journal_id)
+    await logFinanceAudit('journal_posted', 'journal_entry', res.journal_id, null, journal)
+    return journal
   },
 
-  // ── Reverse Journal Entry ────────────────────────────────────────────────
+  // ── Reverse Journal Entry (manual journals only, atomic RPC) ─────────────
   async reverse(journalId, reason = '') {
-    const user = (await supabase.auth.getUser()).data?.user
     const original = await this.getById(journalId)
 
     if (!original) throw new Error('Journal entry not found.')
     if (original.is_reversed) throw new Error('This journal entry has already been reversed.')
+    if (isSystemJournal(original)) throw new Error(SYSTEM_JOURNAL_REVERSE_MSG)
 
-    // 1. Mark original as reversed
-    const { error: updErr } = await supabase
-      .from('journal_entries')
-      .update({
-        is_reversed: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', journalId)
-
-    if (updErr) throw updErr
-
-    // 2. Prepare reversed lines (swap Debit and Credit)
-    const reversedLines = (original.lines || []).map((l, idx) => ({
-      account_code: l.account_code,
-      account_name: l.account_name,
-      dr_amount: l.cr_amount || 0, // Swapped
-      cr_amount: l.dr_amount || 0, // Swapped
-      memo: `Reversal of line ${l.line_number}: ${l.memo || ''}`.trim(),
-      line_number: idx + 1,
-    }))
-
-    // 3. Insert Reversal Journal Entry header as draft
-    const reversalDesc = `REVERSAL of ${original.description}${reason ? ' (' + reason + ')' : ''}`
-    const { data: revJournal, error: revErr } = await supabase
-      .from('journal_entries')
-      .insert({
-        company_id: original.company_id,
-        branch_id: original.branch_id,
-        doc_date: new Date().toISOString().slice(0, 10),
-        description: reversalDesc,
-        reference_type: 'reversal',
-        reference_id: original.id,
-        total_dr: original.total_cr,
-        total_cr: original.total_dr,
-        is_posted: false,
-        posted_by: user?.id || null,
-        reversal_id: original.id,
-      })
-      .select()
-      .single()
-
-    if (revErr) throw revErr
-
-    // 4. Insert lines for reversal journal
-    const revLinePayloads = reversedLines.map((l) => ({
-      journal_id: revJournal.id,
-      account_code: l.account_code,
-      account_name: l.account_name,
-      dr_amount: l.dr_amount,
-      cr_amount: l.cr_amount,
-      memo: l.memo,
-      line_number: l.line_number,
-      branch_id: original.branch_id,
-    }))
-
-    await supabase.from('journal_lines').insert(revLinePayloads)
-
-    // Mark reversal as posted (locks lines)
-    await supabase
-      .from('journal_entries')
-      .update({
-        is_posted: true,
-        posted_at: new Date().toISOString(),
-      })
-      .eq('id', revJournal.id)
-
-    // Update original to link reversal
-    await supabase
-      .from('journal_entries')
-      .update({ reversed_by_id: revJournal.id })
-      .eq('id', journalId)
-
-    // 5. Post reversing movements to cashbook & restore ledgers
-    for (const l of (original.lines || [])) {
-      // Lookup ledger by account_code and branch/company
-      let ledgerQuery = supabase
-        .from('finance_ledgers')
-        .select('id, current_balance')
-        .eq('ledger_code', l.account_code)
-      if (original.branch_id) {
-        ledgerQuery = ledgerQuery.eq('branch_id', original.branch_id)
-      }
-      let { data: matchedLedger } = await ledgerQuery.maybeSingle()
-      if (!matchedLedger) {
-        const { data: fallbackList } = await supabase
-          .from('finance_ledgers')
-          .select('id, current_balance')
-          .eq('ledger_code', l.account_code)
-          .limit(1)
-        matchedLedger = fallbackList?.[0] || null
-      }
-
-      if (matchedLedger) {
-        // Reverse direction: Credit the original Dr, Debit the original Cr
-        const revDr = l.cr_amount || 0
-        const revCr = l.dr_amount || 0
-        const delta = revDr - revCr
-
-        await supabase.from('finance_cashbook_entries').insert({
-          company_id: original.company_id,
-          branch_id: original.branch_id,
-          source_type: 'manual_adjustment',
-          source_id: revJournal.id,
-          entry_date: revJournal.doc_date,
-          ledger_id: matchedLedger.id,
-          description: `REVERSAL of ${original.description}`,
-          debit_amount: revDr,
-          credit_amount: revCr,
-          running_balance: 0,
-        })
-
-        const newBal = Number(matchedLedger.current_balance || 0) + delta
-        await supabase
-          .from('finance_ledgers')
-          .update({ current_balance: newBal, updated_at: new Date().toISOString() })
-          .eq('id', matchedLedger.id)
-      }
-    }
-
+    const { data, error } = await supabase.rpc('fn_fin_reverse_manual_journal', {
+      p_journal_id: journalId,
+      p_reason: reason?.trim() || null,
+    })
+    const res = unwrapRpc(data, error)
+    if (!res.reversal_id) return { id: null, reversal_of: journalId }
+    const revJournal = await this.getById(res.reversal_id)
     await logFinanceAudit('journal_reversed', 'journal_entry', journalId, original, revJournal)
     return revJournal
+  },
+
+  // ── General Ledger: every cashbook posting, grouped per source document ──
+  async listGeneralLedger(filters = {}) {
+    const ok = (v) => v !== undefined && v !== null && v !== ''
+
+    const entries = await fetchAllPages(() => {
+      let q = supabase
+        .from('finance_cashbook_entries')
+        .select(
+          'id, branch_id, source_type, source_id, entry_date, ledger_id, account_id, description, debit_amount, credit_amount, created_at',
+        )
+        .order('entry_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('id')
+      if (ok(filters.branch_id)) q = q.eq('branch_id', filters.branch_id)
+      if (ok(filters.date_from)) q = q.gte('entry_date', filters.date_from)
+      if (ok(filters.date_to)) q = q.lte('entry_date', filters.date_to)
+      if (ok(filters.source_type)) q = q.eq('source_type', filters.source_type)
+      if (ok(filters.search)) q = q.ilike('description', `%${filters.search}%`)
+      return q
+    })
+
+    const uniq = (arr) => [...new Set(arr.filter(Boolean))]
+
+    const [ledgerRows, accountRows] = await Promise.all([
+      fetchByIds(
+        'finance_ledgers',
+        'id, ledger_code, ledger_name, account_group',
+        uniq(entries.map((e) => e.ledger_id)),
+      ),
+      fetchByIds(
+        'finance_accounts',
+        'id, registered_name, account_number',
+        uniq(entries.map((e) => e.account_id)),
+      ),
+    ])
+    const ledgers = new Map(ledgerRows.map((r) => [r.id, r]))
+    const accounts = new Map(accountRows.map((r) => [r.id, r]))
+
+    // Document numbers: one batched lookup per source table.
+    const byTable = new Map()
+    for (const e of entries) {
+      const cfg = GL_DOC_SOURCES[e.source_type]
+      if (!cfg || !e.source_id) continue
+      const k = `${cfg.table}|${cfg.select}`
+      if (!byTable.has(k)) byTable.set(k, { cfg, ids: new Set(), types: new Set() })
+      const t = byTable.get(k)
+      t.ids.add(e.source_id)
+      t.types.add(e.source_type)
+    }
+
+    const docRefs = new Map()
+    await Promise.all(
+      [...byTable.values()].map(async ({ cfg, ids, types }) => {
+        let rows = []
+        try {
+          rows = await fetchByIds(cfg.table, cfg.select, [...ids])
+        } catch {
+          return // a missing document number must never hide the ledger
+        }
+        for (const row of rows) {
+          for (const type of types) {
+            const ref = docRefFromRow(type, row)
+            if (ref) docRefs.set(`${type}|${row.id}`, ref)
+          }
+        }
+      }),
+    )
+
+    return buildGlPostings(entries, { ledgers, accounts, docRefs })
   },
 }

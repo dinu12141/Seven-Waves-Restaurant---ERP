@@ -17,7 +17,7 @@
         no-caps
         dense
         padding="xs md"
-        @click="$emit('download-excel')"
+        @click="$emit('download-excel', { hideZero })"
       >
         <q-tooltip>Download professional Excel spreadsheet (.xlsx)</q-tooltip>
       </q-btn>
@@ -29,7 +29,7 @@
         no-caps
         dense
         padding="xs md"
-        @click="$emit('download-pdf')"
+        @click="$emit('download-pdf', { hideZero })"
       >
         <q-tooltip>Download formatted corporate PDF document (.pdf)</q-tooltip>
       </q-btn>
@@ -37,299 +37,131 @@
 
     <q-separator class="q-mb-md" />
 
-    <!-- PROFIT & LOSS VIEW -->
-    <div v-if="report.type === 'pl'" class="statement-body">
-      <!-- 1. REVENUE -->
-      <div class="section-title">REVENUE</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.revenue?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL REVENUE</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.revenue?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- STATEMENT BODY — rendered generically from report.layout so every
+         account_group gets its own heading, ledger lines and subtotal -->
+    <div v-if="report.layout" class="statement-body">
+      <div class="row items-center justify-between q-mb-sm print-hide">
+        <q-toggle v-model="hideZero" dense size="sm" label="Hide zero-balance ledgers" />
+        <q-badge
+          v-if="report.type === 'bs'"
+          :color="report.is_balanced ? 'positive' : 'negative'"
+          class="q-pa-sm text-weight-bold"
+        >
+          <q-icon :name="report.is_balanced ? 'check_circle' : 'error'" size="xs" class="q-mr-xs" />
+          {{ report.is_balanced ? 'BALANCED' : `UNBALANCED — difference LKR ${formatMoney(report.difference)}` }}
+        </q-badge>
+      </div>
 
-      <!-- 2. OTHER INCOME -->
-      <div class="section-title q-mt-md">OTHER INCOME</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.other_income?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL OTHER INCOME</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.other_income?.total) }}</td>
-          </tr>
-          <tr class="major-total-row">
-            <td></td>
-            <td class="text-weight-bolder">TOTAL INCOME</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder text-green-8">LKR {{ formatMoney(report.total_income) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <template v-for="(block, bi) in report.layout" :key="`${block.kind}-${bi}`">
+        <div v-if="block.kind === 'heading'" class="category-header">{{ block.label }}</div>
 
-      <!-- 3. COST OF GOODS SOLD (COGS) -->
-      <div class="section-title q-mt-md">COST OF GOODS SOLD (COGS)</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.cost_of_sales?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL COST OF SALES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.cost_of_sales?.total) }}</td>
-          </tr>
-          <tr class="major-total-row">
-            <td></td>
-            <td class="text-weight-bolder">GROSS PROFIT</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder" :class="report.gross_profit >= 0 ? 'text-green-8' : 'text-red-8'">
-              LKR {{ formatMoney(report.gross_profit) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <template v-else-if="block.kind === 'section'">
+          <div class="section-title q-mt-md">{{ block.section.label }}</div>
+          <table class="statement-table">
+            <tbody>
+              <template v-for="group in block.section.groups" :key="group.key">
+                <tr v-if="showGroupHeading(block.section, group)" class="group-row">
+                  <td class="col-code"></td>
+                  <td class="col-name group-title" colspan="3">
+                    {{ group.label }}
+                    <q-badge v-if="group.status === 'unknown'" color="orange-8" class="q-ml-sm print-hide">new category</q-badge>
+                    <q-badge v-else-if="group.status === 'unclassified'" color="negative" class="q-ml-sm print-hide">needs a category</q-badge>
+                  </td>
+                </tr>
+                <tr
+                  v-for="item in visibleItems(group)"
+                  :key="item.id"
+                  :class="[rowClass(item), { 'drillable-row': isDrillable(item) }]"
+                  @click="openLedger(item)"
+                >
+                  <td class="col-code">{{ item.code }}</td>
+                  <td class="col-name" :class="indentClass(block.section, group, item)">
+                    <span v-if="item.is_contra && item.kind === 'ledger'" class="text-grey-7">Less: </span>{{ item.name }}
+                    <q-badge v-if="item.is_inactive" color="grey-6" class="q-ml-xs print-hide">inactive</q-badge>
+                  </td>
+                  <td class="col-amount" :class="{ 'text-weight-bold': item.kind === 'header_total' }">
+                    {{ item.kind === 'header' ? '' : formatMoney(item.amount) }}
+                  </td>
+                  <td class="col-subtotal"></td>
+                </tr>
+                <tr v-if="!group.items.length" class="empty-row">
+                  <td></td>
+                  <td class="col-name indent-2 text-grey-5 text-italic">No ledgers in this category</td>
+                  <td class="col-amount">-</td>
+                  <td></td>
+                </tr>
+                <tr v-if="showGroupHeading(block.section, group)" class="group-subtotal-row">
+                  <td></td>
+                  <td class="col-name indent">Total {{ group.label }}</td>
+                  <td class="col-amount text-weight-bold">{{ formatMoney(group.total) }}</td>
+                  <td></td>
+                </tr>
+              </template>
+              <tr class="subtotal-row">
+                <td></td>
+                <td class="text-weight-bold">{{ block.section.total_label }}</td>
+                <td></td>
+                <td class="col-subtotal text-weight-bold">{{ formatMoney(block.section.total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
 
-      <!-- 4. EXPENSES -->
-      <div class="section-title q-mt-md">EXPENSES</div>
+        <table v-else-if="block.kind === 'subtotal'" class="statement-table">
+          <tbody>
+            <tr :class="block.level === 'grand' ? 'grand-total-row' : 'major-total-row'">
+              <td class="col-code"></td>
+              <td class="text-weight-bolder" :class="block.level === 'grand' ? 'text-h6 text-primary' : ''">
+                {{ block.label }}
+              </td>
+              <td class="col-amount"></td>
+              <td
+                class="col-subtotal text-weight-bolder"
+                :class="[block.level === 'grand' ? 'text-h6' : '', block.amount < 0 ? 'text-red-8' : 'text-green-8']"
+              >
+                LKR {{ formatMoney(block.amount) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
 
-      <!-- 4a. Admin & Operations -->
-      <div class="sub-section-title">ADMIN AND OPERATION EXPENSES</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.expenses?.admin_and_operation?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent-2">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL ADMIN AND OPERATION EXPENSES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.expenses?.admin_and_operation?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 4b. Selling & Distribution -->
-      <div class="sub-section-title q-mt-sm">SELLING AND DISTRIBUTION EXPENSES</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.expenses?.selling_and_distribution?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent-2">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL SELLING AND DISTRIBUTION</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.expenses?.selling_and_distribution?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 4c. Finance & Other -->
-      <div class="sub-section-title q-mt-sm">FINANCE AND OTHER EXPENSES</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.expenses?.finance_and_other?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent-2">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL FINANCE AND OTHER EXPENSES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.expenses?.finance_and_other?.total) }}</td>
-          </tr>
-          <tr class="major-total-row">
-            <td></td>
-            <td class="text-weight-bolder">TOTAL EXPENSES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder text-red-8">LKR {{ formatMoney(report.expenses?.total_expenses) }}</td>
-          </tr>
-          <tr class="major-total-row">
-            <td></td>
-            <td class="text-weight-bolder">NET PROFIT BEFORE TAX</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder">LKR {{ formatMoney(report.net_profit_before_tax) }}</td>
-          </tr>
-          <tr v-if="report.tax?.amount" class="tax-row">
-            <td>7043</td>
-            <td class="indent">TAX (Corporate Income Tax)</td>
-            <td></td>
-            <td class="col-subtotal text-red-7">({{ formatMoney(report.tax?.amount) }})</td>
-          </tr>
-          <tr class="grand-total-row">
-            <td></td>
-            <td class="text-weight-bolder text-h6" :class="report.net_profit >= 0 ? 'text-primary' : 'text-negative'">
-              {{ report.net_profit >= 0 ? 'NET PROFIT' : 'NET LOSS' }}
-            </td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder text-h6" :class="report.net_profit >= 0 ? 'text-green-8' : 'text-red-8'">
-              LKR {{ formatMoney(report.net_profit) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- BALANCE SHEET VIEW -->
-    <div v-else-if="report.type === 'bs'" class="statement-body">
-      <!-- ── ASSETS ── -->
-      <div class="category-header">ASSETS</div>
-
-      <!-- Non-Current Assets -->
-      <div class="sub-section-title">NON-CURRENT ASSETS</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.assets?.non_current?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL NON-CURRENT ASSETS</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.assets?.non_current?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Current Assets -->
-      <div class="sub-section-title q-mt-md">CURRENT ASSETS</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.assets?.current?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL CURRENT ASSETS</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.assets?.current?.total) }}</td>
-          </tr>
-          <tr class="grand-total-row">
-            <td></td>
-            <td class="text-weight-bolder text-h6 text-primary">TOTAL ASSETS</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder text-h6 text-primary">
-              LKR {{ formatMoney(report.assets?.total_assets) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- ── EQUITY AND LIABILITIES ── -->
-      <div class="category-header q-mt-lg">EQUITY AND LIABILITIES</div>
-
-      <!-- Equity -->
-      <div class="sub-section-title">EQUITY</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.equity_and_liabilities?.equity?.items" :key="item.name">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL EQUITY</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.equity_and_liabilities?.equity?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Non-Current Liabilities -->
-      <div class="sub-section-title q-mt-md">NON CURRENT LIABILITIES</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.equity_and_liabilities?.non_current_liabilities?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL NON CURRENT LIABILITIES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.equity_and_liabilities?.non_current_liabilities?.total) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Current Liabilities -->
-      <div class="sub-section-title q-mt-md">CURRENT LIABILITIES</div>
-      <table class="statement-table">
-        <tbody>
-          <tr v-for="item in report.equity_and_liabilities?.current_liabilities?.items" :key="item.code">
-            <td class="col-code">{{ item.code }}</td>
-            <td class="col-name indent">{{ item.name }}</td>
-            <td class="col-amount">{{ formatMoney(item.amount) }}</td>
-            <td class="col-subtotal"></td>
-          </tr>
-          <tr class="subtotal-row">
-            <td></td>
-            <td class="text-weight-bold">TOTAL CURRENT LIABILITIES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bold">{{ formatMoney(report.equity_and_liabilities?.current_liabilities?.total) }}</td>
-          </tr>
-          <tr class="grand-total-row">
-            <td></td>
-            <td class="text-weight-bolder text-h6 text-primary">TOTAL EQUITY AND LIABILITIES</td>
-            <td></td>
-            <td class="col-subtotal text-weight-bolder text-h6 text-primary">
-              LKR {{ formatMoney(report.equity_and_liabilities?.total_liabilities_equity) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Balance Sheet check banner -->
+      <!-- Balance check + diagnostics -->
       <div class="q-mt-md">
-        <q-banner v-if="report.is_balanced" rounded class="bg-green-1 text-green-9 text-weight-medium">
-          <q-icon name="check_circle" color="positive" size="sm" class="q-mr-xs" />
-          Statement of Financial Position is balanced ✓ (Assets = Liabilities + Equity)
-        </q-banner>
-        <q-banner v-else rounded class="bg-amber-1 text-amber-10 text-weight-medium">
-          <q-icon name="info" color="warning" size="sm" class="q-mr-xs" />
-          Balance difference: LKR {{ formatMoney(Math.abs((report.assets?.total_assets || 0) - (report.equity_and_liabilities?.total_liabilities_equity || 0))) }} (Pending posted transaction adjustments)
-        </q-banner>
+        <template v-if="report.type === 'bs'">
+          <q-banner v-if="report.is_balanced" rounded class="bg-green-1 text-green-9 text-weight-medium">
+            <q-icon name="check_circle" color="positive" size="sm" class="q-mr-xs" />
+            Statement of Financial Position is balanced (Assets = Equity + Liabilities)
+          </q-banner>
+          <q-banner v-else rounded class="bg-red-1 text-red-9 text-weight-medium">
+            <q-icon name="error" color="negative" size="sm" class="q-mr-xs" />
+            NOT balanced — Total Assets LKR {{ formatMoney(report.total_assets) }} vs Total Equity and Liabilities
+            LKR {{ formatMoney(report.total_equity_liabilities) }} (difference LKR {{ formatMoney(report.difference) }}).
+            See the statement checks below.
+          </q-banner>
+        </template>
+
+        <q-expansion-item
+          v-if="report.warnings && report.warnings.length"
+          dense
+          class="q-mt-sm print-hide warnings-panel"
+          icon="rule"
+          :label="`Statement checks (${report.warnings.length})`"
+          :default-opened="report.warnings.some((w) => w.level === 'error')"
+        >
+          <q-list dense separator>
+            <q-item v-for="(w, wi) in report.warnings" :key="wi">
+              <q-item-section avatar>
+                <q-icon :name="warningIcon(w.level)" :color="warningColor(w.level)" size="xs" />
+              </q-item-section>
+              <q-item-section class="text-caption">{{ w.message }}</q-item-section>
+            </q-item>
+          </q-list>
+        </q-expansion-item>
       </div>
     </div>
+
+    <LedgerStatementDialog v-model="showStatement" :ledger-id="statementLedgerId" />
 
     <!-- Timestamp footer -->
     <div class="text-caption text-grey-5 q-mt-lg text-right">
@@ -339,6 +171,10 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { visibleStatementItems, showStatementGroupHeading } from '../services/finance-statements.builder'
+import LedgerStatementDialog from './LedgerStatementDialog.vue'
+
 defineProps({
   report: {
     type: Object,
@@ -347,6 +183,51 @@ defineProps({
 })
 
 defineEmits(['download-excel', 'download-pdf'])
+
+// Hides ledger lines with a zero balance; category headings and totals stay.
+const hideZero = ref(false)
+
+// Ledger lines carry the finance_ledgers id — click one to see its entries.
+// Synthetic lines (retained earnings b/f, profit for the period) have no ledger.
+const showStatement = ref(false)
+const statementLedgerId = ref(null)
+
+function isDrillable(item) {
+  return (item.kind === 'ledger' || item.kind === 'header') && !item.synthetic && !!item.id
+}
+
+function openLedger(item) {
+  if (!isDrillable(item)) return
+  statementLedgerId.value = item.id
+  showStatement.value = true
+}
+
+function visibleItems(group) {
+  return visibleStatementItems(group, hideZero.value)
+}
+
+function showGroupHeading(section, group) {
+  return showStatementGroupHeading(section, group)
+}
+
+function indentClass(section, group, item) {
+  const depth = (showGroupHeading(section, group) ? 1 : 0) + (item.depth || 0)
+  return depth >= 2 ? 'indent-3' : depth === 1 ? 'indent-2' : 'indent'
+}
+
+function rowClass(item) {
+  if (item.kind === 'header') return 'header-ledger-row'
+  if (item.kind === 'header_total') return 'header-total-row'
+  return item.synthetic ? 'synthetic-row' : ''
+}
+
+function warningIcon(level) {
+  return level === 'error' ? 'error' : level === 'warning' ? 'warning' : 'info'
+}
+
+function warningColor(level) {
+  return level === 'error' ? 'negative' : level === 'warning' ? 'orange-8' : 'blue-grey-6'
+}
 
 function formatMoney(num) {
   if (num === null || num === undefined || isNaN(num)) return '-'
@@ -422,7 +303,38 @@ function formatMoney(num) {
 }
 
 .indent-2 {
-  padding-left: 28px !important;
+  padding-left: 34px !important;
+}
+
+.indent-3 {
+  padding-left: 50px !important;
+}
+
+.group-title {
+  font-weight: 700;
+  color: #37474f;
+  padding-left: 18px !important;
+  padding-top: 8px !important;
+}
+
+.group-subtotal-row td {
+  border-top: 1px dashed #cfd8dc;
+  font-weight: 600;
+  color: #37474f;
+}
+
+.header-ledger-row td {
+  font-weight: 600;
+  color: #37474f;
+}
+
+.header-total-row td {
+  color: #546e7a;
+  font-style: italic;
+}
+
+.synthetic-row td {
+  font-style: italic;
 }
 
 .col-amount {
@@ -455,8 +367,12 @@ function formatMoney(num) {
   background: #f5f7fa;
 }
 
-.tax-row {
-  color: #d32f2f;
+.drillable-row {
+  cursor: pointer;
+}
+
+.drillable-row:hover td {
+  background: #f1f5fb;
 }
 
 @media print {

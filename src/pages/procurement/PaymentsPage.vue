@@ -114,6 +114,40 @@
                   </template>
                 </q-input>
 
+                <!-- Amount to pay: follows the ticked bills until the user types
+                     an amount (or picks a planned cheque); then it stays fixed
+                     and "Auto-allocate" spreads it oldest-first. -->
+                <q-input
+                  :model-value="form.amount"
+                  type="number"
+                  label="Amount to Pay *"
+                  outlined
+                  dense
+                  :min="0"
+                  step="0.01"
+                  :readonly="form.status !== 'draft'"
+                  :hint="amountHint"
+                  @update:model-value="onAmountInput"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="payments" color="grey-6" />
+                  </template>
+                  <template v-slot:append>
+                    <q-btn
+                      v-if="form.status === 'draft' && form.allocations.length > 0 && allocationDiff !== 0"
+                      flat
+                      dense
+                      round
+                      size="sm"
+                      icon="sync"
+                      color="primary"
+                      @click="matchAmountToAllocations"
+                    >
+                      <q-tooltip>Set the amount to the allocated total</q-tooltip>
+                    </q-btn>
+                  </template>
+                </q-input>
+
                 <!-- Method -->
                 <q-select
                   v-model="form.payment_method"
@@ -148,8 +182,72 @@
                   </template>
                 </q-select>
 
-                <!-- Reference -->
+                <!-- Cheque options when Cheque method is selected -->
+                <div v-if="(form.payment_method || '').toLowerCase().includes('cheque')" class="q-pa-sm bg-grey-2 rounded-borders q-gutter-xs">
+                  <div class="row items-center justify-between q-mb-xs">
+                    <span class="text-caption text-weight-bold text-primary">Cheque Selection Mode</span>
+                    <div class="row q-gutter-sm">
+                      <q-radio v-model="form.cheque_source" val="planned" label="Planned Cheque" dense :disable="form.status !== 'draft'" />
+                      <q-radio v-model="form.cheque_source" val="new" label="New Cheque" dense :disable="form.status !== 'draft'" />
+                    </div>
+                  </div>
+
+                  <!-- Planned Cheque Dropdown -->
+                  <div v-if="form.cheque_source === 'planned'" class="q-mb-xs">
+                    <q-select
+                      v-model="form.selected_planned_cheque"
+                      :options="plannedChequeOptions"
+                      label="Select Planned Cheque *"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      :readonly="form.status !== 'draft'"
+                      @update:model-value="onPlannedChequeSelected"
+                    >
+                      <template #no-option>
+                        <div class="q-pa-sm text-caption text-grey-6">
+                          No planned cheques found for this bank account.
+                        </div>
+                      </template>
+                    </q-select>
+                  </div>
+
+                  <!-- Cheque Number & Cheque Date -->
+                  <div class="row q-col-gutter-sm q-mt-xs">
+                    <div class="col-6">
+                      <q-input
+                        v-model="form.reference"
+                        label="Cheque #"
+                        outlined
+                        dense
+                        :readonly="form.status !== 'draft' || (form.cheque_source === 'planned' && !!form.selected_planned_cheque)"
+                      >
+                        <template v-slot:prepend>
+                          <q-icon name="tag" color="grey-6" />
+                        </template>
+                      </q-input>
+                    </div>
+                    <div class="col-6">
+                      <q-input
+                        v-model="form.cheque_date"
+                        type="date"
+                        label="Cheque Date (PDC)"
+                        outlined
+                        dense
+                        :readonly="form.status !== 'draft'"
+                      >
+                        <template v-slot:prepend>
+                          <q-icon name="event" color="grey-6" />
+                        </template>
+                      </q-input>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Reference (non-cheque) -->
                 <q-input
+                  v-else
                   v-model="form.reference"
                   label="Ref / Cheque #"
                   outlined
@@ -192,7 +290,15 @@
                   </span>
                 </div>
                 <div v-if="!canPost && form.supplier && form.amount > 0" class="q-mt-xs text-caption text-negative">
-                  <q-icon name="warning" size="12px" /> Amount must match total allocated
+                  <q-icon name="warning" size="12px" />
+                  <template v-if="form.allocations.length === 0"> Select at least one bill to pay</template>
+                  <template v-else-if="allocationDiff > 0">
+                    {{ formatCurrency(allocationDiff) }} not allocated — amount must match total allocated
+                  </template>
+                  <template v-else-if="allocationDiff < 0">
+                    Over-allocated by {{ formatCurrency(-allocationDiff) }} — amount must match total allocated
+                  </template>
+                  <template v-else> Amount must match total allocated</template>
                 </div>
                 <div v-if="canPost" class="q-mt-xs text-caption text-positive">
                   <q-icon name="check_circle" size="12px" /> Ready to post
@@ -208,12 +314,24 @@
                   <q-btn
                     flat
                     dense
+                    icon="low_priority"
+                    color="primary"
+                    size="sm"
+                    label="Oldest First"
+                    @click="allocateAmountOldestFirst"
+                    :disable="!form.supplier || form.status !== 'draft' || openInvoices.length === 0 || !(Number(form.amount) > 0)"
+                  >
+                    <q-tooltip>Spread the payment amount across bills, oldest first</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    dense
                     icon="done_all"
                     color="primary"
                     size="sm"
                     label="Pay All"
                     @click="autoAllocateInvoices"
-                    :disable="!form.supplier || form.status !== 'draft'"
+                    :disable="!form.supplier || form.status !== 'draft' || openInvoices.length === 0"
                   />
                   <q-btn
                     flat
@@ -240,13 +358,33 @@
 
               <!-- Invoice list -->
               <template v-else>
+                <!-- Loading State -->
                 <div
-                  v-if="openInvoices.length === 0"
+                  v-if="loadingInvoices"
+                  class="column items-center justify-center q-py-xl text-primary"
+                  style="border: 2px dashed var(--erp-border); border-radius: 8px; min-height: 200px"
+                >
+                  <q-spinner-dots size="40px" color="primary" />
+                  <div class="text-caption text-grey-7 q-mt-sm">Loading open invoices...</div>
+                </div>
+
+                <div
+                  v-else-if="openInvoices.length === 0"
                   class="column items-center justify-center q-py-xl text-grey-5"
                   style="border: 2px dashed var(--erp-border); border-radius: 8px; min-height: 200px"
                 >
-                  <q-icon name="receipt_long" size="36px" class="q-mb-sm" />
-                  <div class="text-body2">No posted invoices pending payment</div>
+                  <q-icon
+                    :name="unpostedSummary && unpostedSummary.count > 0 ? 'pending_actions' : 'receipt_long'"
+                    size="36px"
+                    class="q-mb-sm"
+                    :color="unpostedSummary && unpostedSummary.count > 0 ? 'warning' : undefined"
+                  />
+                  <div class="text-body2 text-center" :class="{ 'text-grey-8': unpostedSummary && unpostedSummary.count > 0 }">
+                    {{ emptyStateText.title }}
+                  </div>
+                  <div v-if="emptyStateText.detail" class="text-caption text-grey-7 text-center q-mt-xs q-px-md">
+                    {{ emptyStateText.detail }}
+                  </div>
                 </div>
 
                 <div v-else class="invoice-list">
@@ -266,9 +404,17 @@
                       />
                     </div>
                     <div class="invoice-item__info">
-                      <div class="text-weight-bold text-body2">{{ inv.doc_number }}</div>
+                      <div class="text-weight-bold text-body2">
+                        {{ inv.doc_number }}
+                        <span v-if="inv.supplier_inv_no" class="text-caption text-grey-7">({{ inv.supplier_inv_no }})</span>
+                      </div>
                       <div class="text-caption text-grey-6">
-                        Due: {{ inv.due_date ? formatDate(inv.due_date) : '—' }}
+                        Date: {{ inv.doc_date ? formatDate(inv.doc_date) : '—' }}
+                        · GRN: {{ inv.grn_number || '—' }}
+                        <template v-if="inv.due_date"> · Due: {{ formatDate(inv.due_date) }}</template>
+                      </div>
+                      <div v-if="inv.total_amount !== undefined" class="text-caption text-grey-6">
+                        Total: {{ formatCurrency(inv.total_amount) }} · Paid: {{ formatCurrency(inv.paid_amount) }}
                       </div>
                     </div>
                     <div class="invoice-item__amounts">
@@ -308,7 +454,16 @@
             </template>
           </div>
           <div class="row q-gutter-sm">
-            <q-btn flat label="Cancel" @click="dialogVisible = false" />
+            <q-btn flat label="Close" @click="dialogVisible = false" />
+            <q-btn
+              v-if="form.id && form.status === 'posted'"
+              outline
+              color="negative"
+              icon="block"
+              label="Cancel Payment"
+              :loading="saving"
+              @click="confirmCancelPayment"
+            />
             <q-btn
               v-if="form.status === 'draft' || !form.status"
               unelevated
@@ -331,15 +486,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar, date } from 'quasar'
 import {
   listPayments,
   createAndPostPayment,
   allocatePayment,
   postPayment,
-  getOpenInvoicesForSupplier,
+  cancelPayment,
+  getSupplierBillsForPayment,
   listSuppliers,
+  allocateOldestFirst,
+  clampAllocation,
+  sumAmounts,
+  createLatestRequestGuard,
+  describeUnpostedBills,
+  isPayableBill,
 } from 'src/services/procurementService'
 import { supabase } from 'src/boot/supabase'
 
@@ -352,6 +514,17 @@ const saving = ref(false)
 const payments = ref([])
 const supplierOptions = ref([])
 const openInvoices = ref([])
+const loadingInvoices = ref(false)
+/** { count, total } of the supplier's draft/approved bills (not payable yet) */
+const unpostedSummary = ref(null)
+/**
+ * true once the user typed an amount or picked a planned cheque: from then on
+ * ticking bills must NOT overwrite form.amount (a cheque's face value is
+ * fixed) — the difference is shown instead. false → amount follows the ticks.
+ */
+const amountLocked = ref(false)
+/** Latest-request-wins guard for bill loading (supplier switch / edit). */
+const billRequests = createLatestRequestGuard()
 
 const defaultForm = {
   id: '',
@@ -366,6 +539,10 @@ const defaultForm = {
   remarks: '',
   status: 'draft',
   allocations: [],
+  cheque_source: 'planned',
+  selected_planned_cheque: null,
+  cheque_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
+  cheque_id: null,
 }
 const form = ref({ ...defaultForm })
 
@@ -401,8 +578,50 @@ const columns = [
   { name: 'actions', label: '', field: 'actions', align: 'right', width: 60 },
 ]
 
-
 const financeAccounts = ref([])
+const plannedCheques = ref([])
+
+const plannedChequeOptions = computed(() => {
+  return plannedCheques.value.map((c) => ({
+    label: `Cheque #${c.cheque_no} (${c.cheque_date}) — LKR ${formatCurrency(c.amount)} ${c.issued_to ? '— ' + c.issued_to : ''}`,
+    value: c.id,
+    cheque: c,
+  }))
+})
+
+async function loadPlannedCheques(bankAccountId = null) {
+  let q = supabase
+    .from('finance_cheques')
+    .select('id, cheque_no, cheque_date, amount, issued_to, bank_account_id')
+    .eq('status', 'planned')
+    .order('cheque_date', { ascending: true })
+
+  if (bankAccountId) {
+    q = q.eq('bank_account_id', bankAccountId)
+  }
+
+  const { data } = await q
+  plannedCheques.value = data || []
+}
+
+function onPlannedChequeSelected(val) {
+  const opt = plannedChequeOptions.value.find((o) => o.value === val)
+  if (opt?.cheque) {
+    const c = opt.cheque
+    form.value.reference = c.cheque_no
+    form.value.cheque_date = c.cheque_date
+    if (Number(c.amount) > 0) {
+      // The cheque's face value is fixed: lock it so ticking bills never
+      // silently replaces it. Spread it oldest-first if nothing is ticked yet.
+      form.value.amount = Math.round(Number(c.amount) * 100) / 100
+      amountLocked.value = true
+      if (form.value.allocations.length === 0 && openInvoices.value.length > 0) {
+        allocateAmountOldestFirst()
+      }
+    }
+    form.value.cheque_id = c.id
+  }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -473,7 +692,7 @@ const payingAccountOptions = computed(() => {
   })
 })
 
-function onPaymentMethodChange() {
+async function onPaymentMethodChange() {
   const opts = payingAccountOptions.value
   if (opts.length > 0) {
     const stillValid = opts.some((o) => o.code === form.value.bank_account_code)
@@ -483,25 +702,73 @@ function onPaymentMethodChange() {
   } else {
     form.value.bank_account_code = null
   }
+
+  if ((form.value.payment_method || '').toLowerCase().includes('cheque')) {
+    const chosenAcc = payingAccountOptions.value.find((o) => o.code === form.value.bank_account_code)
+    await loadPlannedCheques(chosenAcc?.id)
+    if (plannedCheques.value.length === 0) {
+      form.value.cheque_source = 'new'
+    }
+  }
 }
 
-async function onSupplierChange(supplier) {
-  form.value.allocations = []
-  form.value.amount = 0
-  if (supplier) {
-    try {
-      const data = await getOpenInvoicesForSupplier(supplier.id)
-      openInvoices.value = data.map((inv) => ({
-        ...inv,
-        isSelected: false,
-        allocation: 0,
-      }))
-    } catch (e) {
-      $q.notify({ type: 'negative', message: 'Failed to load invoices', caption: e.message })
+watch(
+  () => form.value.bank_account_code,
+  async (newCode) => {
+    if (newCode && (form.value.payment_method || '').toLowerCase().includes('cheque')) {
+      const chosenAcc = payingAccountOptions.value.find((o) => o.code === newCode)
+      await loadPlannedCheques(chosenAcc?.id)
     }
-  } else {
-    openInvoices.value = []
+  },
+)
+
+async function onSupplierChange(supplier) {
+  // A new supplier invalidates everything tied to the old one, including any
+  // bill list still loading for it.
+  const token = billRequests.begin()
+  form.value.allocations = []
+  openInvoices.value = []
+  unpostedSummary.value = null
+  // A planned cheque keeps its face value; a typed amount does not carry over.
+  const keepChequeAmount = amountLocked.value && !!form.value.cheque_id
+  if (!keepChequeAmount) {
+    form.value.amount = 0
+    amountLocked.value = false
   }
+  const supplierId = supplier?.id || (typeof supplier === 'string' ? supplier : null)
+  form.value.supplier_id = supplierId
+
+  if (!supplierId) {
+    loadingInvoices.value = false
+    return
+  }
+
+  loadingInvoices.value = true
+  try {
+    const { payable, unposted } = await getSupplierBillsForPayment(supplierId)
+    if (!billRequests.isCurrent(token)) return // stale: user picked another supplier
+    openInvoices.value = toBillRows(payable)
+    unpostedSummary.value = unposted
+    if (amountLocked.value && Number(form.value.amount) > 0) allocateAmountOldestFirst()
+  } catch (e) {
+    if (!billRequests.isCurrent(token)) return
+    console.error('[onSupplierChange] Failed to load invoices:', e)
+    $q.notify({ type: 'negative', message: 'Failed to load invoices', caption: e.message })
+  } finally {
+    if (billRequests.isCurrent(token)) loadingInvoices.value = false
+  }
+}
+
+/** Only payable bills ever become selectable rows (never drafts). */
+function toBillRows(bills, existingAllocs = []) {
+  return (bills || []).filter(isPayableBill).map((inv) => {
+    const existing = existingAllocs.find((a) => a.invoice_id === inv.id)
+    return {
+      ...inv,
+      isSelected: !!existing,
+      allocation: existing ? clampAllocation(existing.amount, inv.balance_due) : 0,
+    }
+  })
 }
 
 function toggleInvoice(inv) {
@@ -511,7 +778,14 @@ function toggleInvoice(inv) {
 
 function onInvoiceSelect(inv) {
   if (inv.isSelected) {
-    inv.allocation = inv.balance_due
+    // With a fixed amount, a newly ticked bill takes only what is left.
+    if (amountLocked.value) {
+      const others = sumAmounts(openInvoices.value.filter((i) => i !== inv && i.isSelected).map((i) => i.allocation))
+      const left = Math.max(Math.round((Number(form.value.amount) - others) * 100) / 100, 0)
+      inv.allocation = clampAllocation(left > 0 ? left : inv.balance_due, inv.balance_due)
+    } else {
+      inv.allocation = inv.balance_due
+    }
   } else {
     inv.allocation = 0
   }
@@ -519,11 +793,54 @@ function onInvoiceSelect(inv) {
 }
 
 function recalcFromTable() {
+  // Partial payments are allowed, over-allocation is not: clamp each line to
+  // [0, balance_due] so the payment can never exceed what is owed.
+  openInvoices.value.forEach((i) => {
+    if (!i.isSelected) return
+    i.allocation = clampAllocation(i.allocation, i.balance_due)
+  })
   const selected = openInvoices.value.filter((i) => i.isSelected && i.allocation > 0)
   form.value.allocations = selected.map((i) => ({
     invoice_id: i.id,
     amount: i.allocation,
   }))
+  // Never overwrite a typed amount / planned cheque value.
+  if (!amountLocked.value) form.value.amount = totalAllocated.value
+}
+
+/** Spread form.amount across the payable bills, oldest first. */
+function allocateAmountOldestFirst() {
+  const { allocations, unallocated } = allocateOldestFirst(openInvoices.value, form.value.amount)
+  openInvoices.value.forEach((inv) => {
+    const a = allocations.find((x) => x.invoice_id === inv.id)
+    inv.isSelected = !!a
+    inv.allocation = a ? a.amount : 0
+  })
+  recalcFromTable()
+  if (unallocated > 0) {
+    $q.notify({
+      type: 'warning',
+      message: `${formatCurrency(unallocated)} exceeds this supplier's payable balance and is not allocated`,
+      caption: 'Reduce the amount — a payment cannot exceed the posted bills it settles.',
+    })
+  }
+}
+
+function onAmountInput(val) {
+  const n = Number(val)
+  if (val === '' || val === null || !Number.isFinite(n) || n <= 0) {
+    // Cleared → amount follows the ticked bills again
+    amountLocked.value = false
+    form.value.amount = totalAllocated.value
+    return
+  }
+  form.value.amount = Math.round(n * 100) / 100
+  amountLocked.value = true
+  if (openInvoices.value.length > 0) allocateAmountOldestFirst()
+}
+
+function matchAmountToAllocations() {
+  amountLocked.value = false
   form.value.amount = totalAllocated.value
 }
 
@@ -557,15 +874,28 @@ function statusColor(status) {
   return 'red-7'
 }
 
+function resetBillState() {
+  billRequests.invalidate() // drop any bill list still loading
+  openInvoices.value = []
+  unpostedSummary.value = null
+  loadingInvoices.value = false
+  amountLocked.value = false
+}
+
 function createNewPayment() {
   isEditing.value = false
+  resetBillState()
   form.value = { ...defaultForm, allocations: [] }
-  openInvoices.value = []
   dialogVisible.value = true
 }
 
+watch(dialogVisible, (open) => {
+  if (!open) billRequests.invalidate()
+})
+
 function editPayment(row) {
   isEditing.value = true
+  resetBillState()
 
   const supplierObj = row.suppliers
     ? { id: row.suppliers.id, name: row.suppliers.name, code: row.suppliers.code }
@@ -579,6 +909,9 @@ function editPayment(row) {
     invoice_id: spa.ap_invoices?.id || spa.invoice_id,
     amount: spa.amount,
     doc_number: spa.ap_invoices?.doc_number,
+    doc_date: spa.ap_invoices?.doc_date,
+    total_amount: spa.ap_invoices?.total_amount,
+    paid_amount: spa.ap_invoices?.paid_amount,
     balance_due: spa.ap_invoices?.balance_due,
   }))
 
@@ -598,29 +931,42 @@ function editPayment(row) {
     allocations: existingAllocs,
   }
 
-  if (row.status === 'posted') {
+  if (row.status !== 'draft') {
+    // Read-only history view of what this payment settled.
     openInvoices.value = existingAllocs.map((a) => ({
       id: a.invoice_id,
       doc_number: a.doc_number,
+      doc_date: a.doc_date,
+      total_amount: a.total_amount,
+      paid_amount: a.paid_amount,
       balance_due: a.balance_due,
       isSelected: true,
       allocation: a.amount,
     }))
   } else {
-    openInvoices.value = []
-    if (supplierObj) {
-      getOpenInvoicesForSupplier(supplierObj.id)
-        .then((data) => {
-          openInvoices.value = data.map((inv) => {
-            const existing = existingAllocs.find((a) => a.invoice_id === inv.id)
-            return {
-              ...inv,
-              isSelected: !!existing,
-              allocation: existing ? existing.amount : 0,
-            }
-          })
+    // Draft payment: its amount is already fixed — keep it, re-offer only
+    // bills that are still payable.
+    amountLocked.value = true
+    form.value.allocations = []
+    const supId = supplierObj?.id || row.supplier_id
+    if (supId) {
+      const token = billRequests.begin()
+      loadingInvoices.value = true
+      getSupplierBillsForPayment(supId)
+        .then(({ payable, unposted }) => {
+          if (!billRequests.isCurrent(token)) return
+          openInvoices.value = toBillRows(payable, existingAllocs)
+          unpostedSummary.value = unposted
+          recalcFromTable()
         })
-        .catch(() => {})
+        .catch((e) => {
+          if (!billRequests.isCurrent(token)) return
+          console.error('[editPayment] Failed to load invoices:', e)
+          $q.notify({ type: 'negative', message: 'Failed to load invoices', caption: e.message })
+        })
+        .finally(() => {
+          if (billRequests.isCurrent(token)) loadingInvoices.value = false
+        })
     }
   }
 
@@ -628,17 +974,64 @@ function editPayment(row) {
 }
 
 
-const totalAllocated = computed(() =>
-  form.value.allocations.reduce((sum, a) => sum + (a.amount || 0), 0),
+const totalAllocated = computed(() => sumAmounts(form.value.allocations.map((a) => a.amount)))
+
+/** amount − allocated, in LKR (2dp). > 0 → unallocated, < 0 → over-allocated. */
+const allocationDiff = computed(
+  () => (Math.round(Number(form.value.amount || 0) * 100) - Math.round(totalAllocated.value * 100)) / 100,
+)
+
+const amountHint = computed(() => {
+  if (form.value.status !== 'draft') return ''
+  if (form.value.cheque_id && amountLocked.value) return 'Planned cheque amount (fixed)'
+  if (amountLocked.value) return 'Fixed amount — use "Oldest First" to re-spread it'
+  return 'Type an amount to auto-allocate oldest bills first'
+})
+
+const emptyStateText = computed(() => describeUnpostedBills(unpostedSummary.value, formatCurrency))
+
+/** Every allocation targets a payable bill of THIS supplier, within its balance. */
+const allocationsValid = computed(() =>
+  form.value.allocations.every((a) => {
+    const inv = openInvoices.value.find((i) => i.id === a.invoice_id)
+    return !!inv && isPayableBill(inv) && a.amount > 0 && clampAllocation(a.amount, inv.balance_due) === a.amount
+  }),
 )
 
 const canPost = computed(() => {
   if (!form.value.supplier || form.value.amount <= 0) return false
   if (form.value.allocations.length === 0) return false
-  return Math.abs(form.value.amount - totalAllocated.value) < 0.01
+  if (!allocationsValid.value) return false
+  return allocationDiff.value === 0
 })
 
+function confirmCancelPayment() {
+  $q.dialog({
+    title: `Cancel payment ${form.value.doc_number || ''}?`,
+    message:
+      'This reverses the AP ledger, cash/bank posting, supplier balance and invoice paid amounts. Enter a reason:',
+    prompt: { model: '', type: 'text', isValid: (v) => !!v && v.trim().length > 2 },
+    cancel: true,
+    persistent: true,
+  }).onOk(async (reason) => {
+    if (saving.value) return
+    saving.value = true
+    try {
+      const res = await cancelPayment(form.value.id, reason.trim())
+      if (!res.success) throw new Error(res.error || 'Cancellation failed')
+      $q.notify({ type: 'positive', message: `Payment ${res.doc_number || ''} cancelled` })
+      dialogVisible.value = false
+      fetchPayments()
+    } catch (e) {
+      $q.notify({ type: 'negative', message: 'Cancel Failed', caption: e.message, timeout: 6000 })
+    } finally {
+      saving.value = false
+    }
+  })
+}
+
 async function savePayment(targetStatus) {
+  if (saving.value) return // double-click / Enter while the RPC is in flight
   saving.value = true
   try {
     const supplierId = form.value.supplier?.id || form.value.supplier_id
@@ -648,6 +1041,19 @@ async function savePayment(targetStatus) {
     }
     if (targetStatus === 'posted' && form.value.allocations.length === 0) {
       $q.notify({ type: 'warning', message: 'Select at least one invoice to allocate' })
+      return
+    }
+    // Never pay a draft / foreign / over-allocated bill, and the payment must
+    // equal what it settles (server guard: #140).
+    if (!allocationsValid.value) {
+      $q.notify({
+        type: 'warning',
+        message: 'Allocations must target posted bills of this supplier, within each balance due',
+      })
+      return
+    }
+    if (targetStatus === 'posted' && allocationDiff.value !== 0) {
+      $q.notify({ type: 'warning', message: 'Payment amount must equal the total allocated' })
       return
     }
 
@@ -660,25 +1066,39 @@ async function savePayment(targetStatus) {
       return
     }
 
-    const paymentMethod = pm.toLowerCase().replace(/ /g, '_')
+    const paymentMethod = (form.value.payment_method || 'cash').toLowerCase().replace(/ /g, '_')
+    const isCheque = paymentMethod.includes('cheque')
+    const chosenAcc = payingAccountOptions.value.find((o) => o.code === form.value.bank_account_code)
 
     if (!form.value.id) {
       // New payment: use atomic SECURITY DEFINER RPC (bypasses RLS)
       const res = await createAndPostPayment(
         {
           supplier_id: supplierId,
+          supplier_name: form.value.supplier?.name,
           doc_date: form.value.doc_date,
           payment_method: paymentMethod,
           reference_no: form.value.reference || null,
-          cheque_no: paymentMethod === 'cheque' ? form.value.reference || null : null,
+          cheque_no: isCheque ? form.value.reference || null : null,
+          cheque_date: isCheque ? form.value.cheque_date : null,
+          cheque_id: isCheque && form.value.cheque_source === 'planned' ? form.value.selected_planned_cheque : null,
           total_amount: form.value.amount,
           remarks: form.value.remarks || null,
           bank_account_code: form.value.bank_account_code || null,
+          bank_account_id: chosenAcc?.id || null,
         },
         form.value.allocations,
         targetStatus === 'posted',
       )
-      if (!res.success) throw new Error(res.error || 'Payment failed')
+      if (!res.success) {
+        // If the server created the document anyway, never create it again
+        if (res.payment_id) {
+          form.value.id = res.payment_id
+          form.value.doc_number = res.doc_number
+        }
+        throw new Error(res.error || 'Payment failed')
+      }
+      form.value.id = res.payment_id || form.value.id
       $q.notify({
         type: 'positive',
         message:
@@ -686,6 +1106,9 @@ async function savePayment(targetStatus) {
             ? `Payment ${res.doc_number} Posted Successfully`
             : `Payment ${res.doc_number} saved as Draft`,
       })
+      if (res.warning) {
+        $q.notify({ type: 'warning', message: res.warning, timeout: 8000 })
+      }
     } else {
       // Existing draft payment: allocate then post
       if (form.value.allocations.length > 0) {

@@ -268,7 +268,7 @@
                   color="grey-6"
                   size="xs"
                   v-if="props.row.status === 'pending'"
-                  @click="deleteRecord('advances', props.row.id)"
+                  @click="deleteRecord('advances', props.row.id, props.row.status)"
                 >
                   <q-tooltip>Delete</q-tooltip>
                 </q-btn>
@@ -416,7 +416,7 @@
                     size="sm"
                     @click="updateStatus('expenses', props.row.id, 'approved')"
                   >
-                    <q-tooltip>Approve</q-tooltip>
+                    <q-tooltip>Approve (records approval only — no finance/payroll posting yet)</q-tooltip>
                   </q-btn>
                   <q-btn
                     flat
@@ -592,7 +592,7 @@
           <q-separator class="q-my-sm" />
           <div>
             <div class="text-caption text-weight-bold q-mb-xs">
-              Disburse from Cash/Bank Account (Optional):
+              Disburse from Cash/Bank Account (required):
             </div>
             <q-select
               :dark="$q.dark.isActive"
@@ -602,15 +602,15 @@
               :options="disburseAccountOptions"
               emit-value
               map-options
-              clearable
-              placeholder="Select account to record immediate payout"
+              placeholder="Select the account the advance is paid from"
             />
             <div class="text-caption text-grey-5 q-mt-xs">
               <span v-if="disburseAccount">
                 💵 Will DEBIT Staff Receivable (1004) and CREDIT the selected account immediately.
               </span>
-              <span v-else>
-                ℹ️ Leave empty to approve as an HR deduction only (no immediate finance transaction).
+              <span v-else class="text-warning">
+                An advance can only be approved once it is paid out from a cash/bank account —
+                payroll recovers only disbursed advances.
               </span>
             </div>
           </div>
@@ -623,6 +623,7 @@
             color="positive"
             no-caps
             :loading="approvingAdv"
+            :disable="!disburseAccount"
             @click="confirmApproveAdvance"
           />
         </q-card-actions>
@@ -779,6 +780,7 @@ import { useAuthStore } from 'stores/auth'
 import { usePermission } from 'src/core/rbac/usePermission'
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
 import LoansTab from 'src/components/hr/LoansTab.vue'
+import { disburseEmployeeAdvance } from 'src/services/hr/staffReceivableService'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -1110,32 +1112,46 @@ async function openApproveAdvance(row) {
 
 async function confirmApproveAdvance() {
   if (!selectedAdvTarget.value) return
+  // #134b: no more "approve as payroll deduction only" — an advance becomes
+  // recoverable only after it is disbursed (Dr 1004 / Cr cash-bank).
+  if (!disburseAccount.value) {
+    $q.notify({ type: 'warning', message: 'Select the cash/bank account the advance is paid from.' })
+    return
+  }
   approvingAdv.value = true
   try {
-    if (disburseAccount.value) {
-      const { data: res, error: rpcErr } = await supabase.rpc('disburse_employee_advance', {
-        p_advance_id: selectedAdvTarget.value.id,
-        p_cash_bank_account_id: disburseAccount.value,
-        p_disbursed_by: authStore.user?.id,
-      })
-
-      if (!rpcErr && res && res.success !== false) {
-        $q.notify({
-          type: 'positive',
-          icon: 'payments',
-          message: `Advance approved & ${formatCurrency(selectedAdvTarget.value.amount || 0)} disbursed from finance account!`,
-        })
-        showApproveAdvDialog.value = false
-        await loadData()
-        return
-      }
+    // disburse_staff_receivable (#134b); falls back to the legacy
+    // disburse_employee_advance RPC while #134b is not applied.
+    const res = await disburseEmployeeAdvance(
+      supabase,
+      selectedAdvTarget.value.id,
+      disburseAccount.value,
+      authStore.user?.id,
+    )
+    // A failed disbursement must NOT fall through to a plain approval — that
+    // would mark the advance approved with no money/finance record. Surface it.
+    if (!res.ok) {
+      throw new Error(
+        res.missing
+          ? 'Advance disbursement service is not available on the server.'
+          : res.error || 'Advance disbursement failed.',
+      )
     }
 
-    // Default approval (payroll deduction only or fallback)
-    await updateStatus('advances', selectedAdvTarget.value.id, 'approved')
+    $q.notify({
+      type: 'positive',
+      icon: 'payments',
+      message: `Advance approved & ${formatCurrency(selectedAdvTarget.value.amount || 0)} disbursed from finance account!`,
+    })
     showApproveAdvDialog.value = false
+    await loadData()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    $q.notify({
+      type: 'negative',
+      message: `Advance not disbursed: ${err.message || String(err)}`,
+      multiLine: true,
+      timeout: 6000,
+    })
   } finally {
     approvingAdv.value = false
   }
@@ -1163,7 +1179,13 @@ async function updateStatus(type, id, newStatus) {
   }
 }
 
-async function deleteRecord(type, id) {
+async function deleteRecord(type, id, status = 'pending') {
+  // Approved / deducted advances are a disbursed staff receivable (#134b
+  // blocks the DELETE in the DB as well) — never offer to delete them.
+  if (type === 'advances' && status !== 'pending') {
+    $q.notify({ type: 'warning', message: 'Only pending advances can be deleted.' })
+    return
+  }
   $q.dialog({
     title: 'Confirm',
     message: 'Are you sure you want to delete this record?',

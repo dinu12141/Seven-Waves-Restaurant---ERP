@@ -5,13 +5,13 @@
 -- 
 -- Admin Credentials:
 -- Email: admin@sevenwaves.lk
--- Password: Admin@123456
+-- Password: <redacted — see password manager>
 --
 -- Instructions:
 -- 1. Go to Supabase Dashboard → Authentication → Users
 -- 2. Click "Add User" → "Create new user"
 -- 3. Enter email: admin@sevenwaves.lk
--- 4. Enter password: Admin@123456
+-- 4. Enter password: <redacted — see password manager>
 -- 5. Click "Create user"
 -- 6. Copy the user UUID
 -- 7. Replace 'YOUR_USER_UUID_HERE' below with the actual UUID

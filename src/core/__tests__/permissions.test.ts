@@ -75,6 +75,37 @@ describe('hasPermission', () => {
   it('empty roles array has no permissions', () => {
     expect(hasPermission([], 'pos.order.create')).toBe(false)
   })
+
+  // ── Wildcard segment boundaries ───────────────────────────────
+  it('wildcard only matches on a dot segment boundary', () => {
+    // hr role holds 'hr.*' — must not leak into a namespace that merely shares a prefix
+    expect(hasPermission(['hr'], 'hr.payroll.run')).toBe(true)
+    expect(hasPermission(['hr'], 'hrx.secret.view')).toBe(false)
+    expect(hasPermission(['hr'], 'hr')).toBe(true) // bare namespace
+    // finance's 'procurement.ap.*' must not implicitly cover other procurement resources
+    expect(hasPermission(['finance'], 'procurement.ap.view')).toBe(true)
+    expect(hasPermission(['finance'], 'procurement.apx.view')).toBe(false)
+    expect(hasPermission(['finance'], 'procurement.grn.view')).toBe(false)
+  })
+
+  it('finance keeps intended AP invoice / payments access via explicit grants', () => {
+    expect(hasPermission(['finance'], 'procurement.ap_invoices.view')).toBe(true)
+    expect(hasPermission(['finance'], 'procurement.ap_invoices.create')).toBe(true)
+    expect(hasPermission(['finance'], 'procurement.payments.view')).toBe(true)
+    expect(hasPermission(['finance'], 'procurement.payments_report.view')).toBe(true)
+    expect(hasPermission(['finance'], 'reports.sales_statement.view')).toBe(true)
+  })
+
+  it('inventory role can view GRN and GIN pages', () => {
+    expect(hasPermission(['inventory'], 'procurement.grn.view')).toBe(true)
+    expect(hasPermission(['inventory'], 'procurement.gin.view')).toBe(true)
+    expect(hasPermission(['inventory'], 'procurement.grn.create')).toBe(false)
+    expect(hasPermission(['inventory'], 'reports.inventory_adjustments.view')).toBe(true)
+  })
+
+  it('a namespace that merely shares a prefix with a granted one is denied', () => {
+    expect(hasPermission(['waiter'], 'kitchenx.view')).toBe(false)
+  })
 })
 
 describe('hasModuleAccess', () => {

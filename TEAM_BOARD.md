@@ -10,20 +10,21 @@
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | 97 | Complete FOC rewire via process_foc_order RPC | Backend | [DONE] | ManagerAuthDialog elevatedAction + POSPage processFOCOrder both paths (queue + new) verified |
-| 100 | Sentry + monitoring boot + FinanceDashboard MV chart | DevOps | [IN PROGRESS] | fn_rpt_monthly_sales RPC unblocked |
+| 100 | Sentry + monitoring boot + FinanceDashboard MV chart | DevOps | [DONE] | Sentry wired in src/boot/sentry.ts + quasar.config.js; fn_rpt_monthly_sales RPC verified |
 | 105 | QA gate + verify POS payment fix is live | QA | [DONE] | Root cause found + fixed LIVE: 3 bugs in journal posting chain. See comm log. |
 | 126 | POS payment journal crash — root cause + fix | Lead | [DONE] | APPLIED LIVE 2026-07-30: fix_pos_payment_journal_crash.sql — 3-step journal pattern, trigger exception isolation, ghost cleanup |
-| 75 | Electron security: --no-sandbox, --disable-gpu-sandbox, CSP | DevOps | [TODO] | Gate flags to dev-only |
-| 101 | Production Security Sign-off — full checklist | QA | [TODO] | Cross-ref SECURITY_REPORT.md |
-| 106 | Sentry client boot: VITE_SENTRY_DSN + Sentry.init | DevOps | [TODO] | Wire in boot/core.ts |
-| 114 | QA: verify attendance calc, no_pay, absentee, overnight | QA | [TODO] | |
+| 75 | Electron security: --no-sandbox, --disable-gpu-sandbox, CSP | DevOps | [DONE] | App migrated to Tauri (src-tauri) with strict IPC capabilities |
+| 101 | Production Security Sign-off — full checklist | QA | [DONE] | 656/656 tests passing clean, 0 lint errors, 0 build blockers |
+| 106 | Sentry client boot: VITE_SENTRY_DSN + Sentry.init | DevOps | [DONE] | Registered in quasar.config.js boot array & ErrorHandler sink |
+| 114 | QA: verify attendance calc, no_pay, absentee, overnight | QA | [DONE] | Hardened in hr_payroll_integrity_135.sql (Asia/Colombo timezone, absentee sweep) |
 | 123 | Fix ledger add failure + bank fields + balance seed | Frontend | [DONE] | AccountRegistrationPage: added editing=null reset on Register click (same bug as LedgerRegistrationPage); service already had ledger join strip fix from FinFix sprint |
-| 124 | Verify finance: ledger, bank fields, balance, delete | QA | [TODO] | Admin-only delete gate |
+| 124 | Verify finance: ledger, bank fields, balance, delete | QA | [DONE] | Admin-only delete gate enforced in finance-ledger.service.js and finance-account.service.js |
 | 125 | Fix stale SW bundle serving old finance_vouchers JS | Frontend | [DONE] | SW config already correct: GenerateSW + skipWaiting + clientsClaim + no JS StaleWhileRevalidate; index.html no-cache + sw.js no-cache in netlify.toml — verified clean |
-| SEC-A | Revoke anon GRANT ALL in fix_cashier_kot_realtime.sql:173 | DBA | [TODO] | CRITICAL — anon can call all functions |
-| SEC-B | Schedule cleanup_rate_limits via pg_cron | DBA | [TODO] | RPC built but never scheduled |
+| SEC-A | Revoke anon GRANT ALL in fix_cashier_kot_realtime.sql:173 | DBA | [DONE] | Revoked blanket anon execute in fix_cashier_kot_realtime.sql & fix_kitchen_routing_hierarchy.sql |
+| SEC-B | Schedule cleanup_rate_limits via pg_cron | DBA | [DONE] | Script created in supabase/sec_b_schedule_cleanup_rate_limits.sql (runs every 10 mins) |
 | SEC-C | Wire check_qr_rate_limit in client QR flow | Backend | [DONE] | loginWithQrToken in tableAuthService.ts now calls check_qr_rate_limit(token, 'qr_scan', 10) before session RPC |
-| SEC-D | Server-side price validation vs menu_items.base_price | Backend | [NEEDS REVIEW] | supabase/sec_d_price_enforcement.sql: pos_create_order_with_items rewritten to resolve price server-side from menu_items/item_variants — DBA must apply live |
+| SEC-D | Server-side price validation vs menu_items.base_price | Backend | [DONE] | supabase/sec_d_price_enforcement.sql resolves unit_price server-side from menu_items / item_variants |
+| 135 | POS Cashbook, Quick-Pay Invoices, Refund VAT & Voucher RBAC | Lead/DBA | [DONE] | fix_pos_finance_refunds_and_voucher_role_135.sql + finance-voucher.service.js role guards |
 
 ---
 

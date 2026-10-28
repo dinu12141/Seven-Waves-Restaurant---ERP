@@ -6,7 +6,7 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SU
 async function check() {
   await supabase.auth.signInWithPassword({
     email: 'admin@sevenwaves.lk',
-    password: 'Admin@123456',
+    password: process.env.SW_ADMIN_PASSWORD,
   });
 
   const { data: rows, error } = await supabase.from('loyalty_transactions').select('*').limit(1);

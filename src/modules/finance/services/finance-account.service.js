@@ -102,6 +102,12 @@ export const financeAccountService = {
   // (admin ALL); the UI also hides the button for non-admins. Blocks deleting
   // an account that has posted cashbook/cheque movements (FK) — deactivate instead.
   async remove(id) {
+    const authStore = useAuthStore()
+    const role = authStore.userRole || authStore.profile?.role
+    if (role && role !== 'admin' && role !== 'super_admin' && role !== 'owner') {
+      throw new Error('Unauthorized: Only administrators can delete finance accounts.')
+    }
+
     const old = await this.getById(id).catch(() => null)
     const { error } = await supabase.from('finance_accounts').delete().eq('id', id)
     if (error) throw error

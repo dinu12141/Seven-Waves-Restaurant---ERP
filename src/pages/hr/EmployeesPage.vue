@@ -1929,8 +1929,8 @@
                       </tr>
                       <tr v-for="ded in empDeductions" :key="ded.id">
                         <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
-                          {{ ded.deduction_type }}
-                          <span v-if="ded.effective_date" class="text-grey-5 q-ml-xs">({{ ded.effective_date }})</span>
+                          {{ ded.description || ded.deduction_type }}
+                          <span v-if="ded.start_date" class="text-grey-5 q-ml-xs">({{ ded.start_date }})</span>
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
                           {{ Number(ded.amount || 0).toFixed(2) }}
@@ -1945,8 +1945,7 @@
                             color="negative"
                             @click="
                               async () => {
-                                await supabase.from('employee_deductions').delete().eq('id', ded.id)
-                                loadEmpDeductions(viewEmp?.id)
+                                await deleteDeduction(ded)
                               }
                             "
                           />
@@ -3341,7 +3340,9 @@
                                 ? 'amber-8'
                                 : props.row.status === 'fully_recovered'
                                   ? 'green'
-                                  : 'red'
+                                  : props.row.status === 'pending'
+                                    ? 'grey-6'
+                                    : 'red'
                             "
                             :label="props.row.status.replace(/_/g, ' ')"
                             class="text-capitalize"
@@ -3350,6 +3351,18 @@
                       </template>
                       <template #body-cell-actions="props">
                         <q-td :props="props">
+                          <q-btn
+                            v-if="props.row.status === 'pending'"
+                            flat
+                            round
+                            dense
+                            icon="payments"
+                            color="positive"
+                            size="xs"
+                            @click="disbursePendingAdvance(props.row)"
+                          >
+                            <q-tooltip>Disburse (pay out) this advance</q-tooltip>
+                          </q-btn>
                           <q-btn
                             v-if="props.row.status === 'active'"
                             flat
@@ -3637,6 +3650,18 @@
                   × {{ advanceForm.installments }} installment(s)
                 </div>
               </q-card>
+            </div>
+            <div class="col-12">
+              <q-select
+                :dark="$q.dark.isActive"
+                outlined
+                v-model="advanceForm.cash_account_id"
+                :options="advanceAccountOptions"
+                emit-value
+                map-options
+                label="Paid from Cash/Bank Account *"
+                hint="The advance is disbursed (Dr Staff Receivable / Cr this account) before payroll can recover it"
+              />
             </div>
             <div class="col-12">
               <q-input
@@ -3975,6 +4000,10 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
+import {
+  disburseStaffReceivable,
+  FINANCE_POSTING_UNAVAILABLE,
+} from 'src/services/hr/staffReceivableService'
 import { validateFileSecurity, IMAGE_UPLOAD_OPTIONS, DOCUMENT_UPLOAD_OPTIONS } from 'src/utils/security'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -5179,6 +5208,41 @@ const advanceForm = reactive({
   reason: '',
   advance_date: new Date().toISOString().split('T')[0],
   notes: '',
+  cash_account_id: null,
+})
+
+// #134b: an advance must be disbursed from a cash/bank account before payroll
+// can recover it.
+const advanceAccounts = ref([])
+const advanceAccountOptions = computed(() =>
+  advanceAccounts.value.map((a) => ({
+    label: `${a.registered_name}${a.account_type ? ' (' + a.account_type + ')' : ''} — LKR ${fmtAdv(a.current_balance)}`,
+    value: a.id,
+  })),
+)
+
+async function loadAdvanceAccounts() {
+  try {
+    const { data, error } = await supabase
+      .from('finance_accounts')
+      .select('id, registered_name, account_type, current_balance')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('registered_name')
+    if (error) throw error
+    advanceAccounts.value = data || []
+    if (!advanceForm.cash_account_id) {
+      const def = advanceAccounts.value.find((a) => a.account_type === 'cash')
+      if (def) advanceForm.cash_account_id = def.id
+    }
+  } catch (err) {
+    console.error('[HR-Advances] Failed to load finance accounts:', err.message)
+    advanceAccounts.value = []
+  }
+}
+
+watch(showNewAdvance, (open) => {
+  if (open) loadAdvanceAccounts()
 })
 
 const fmtAdv = (v) => Number(v || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })
@@ -5262,22 +5326,54 @@ async function addAdvance() {
     $q.notify({ type: 'warning', message: 'Installments must be at least 1' })
     return
   }
+  if (!advanceForm.cash_account_id) {
+    $q.notify({ type: 'warning', message: 'Select the cash/bank account the advance is paid from' })
+    return
+  }
   savingAdvance.value = true
   try {
-    const { error } = await supabase.from('salary_advances').insert({
-      company_id: authStore.currentBranch?.company_id,
-      branch_id: authStore.currentBranch?.id,
-      employee_id: viewEmp.value?.id,
-      amount: advanceForm.amount,
-      installments: advanceForm.installments,
-      reason: advanceForm.reason || null,
-      advance_date: advanceForm.advance_date,
-      notes: advanceForm.notes || null,
-      approved_by: authStore.user?.id,
-      approved_at: new Date().toISOString(),
-    })
+    // No explicit status: #134b defaults it to 'pending' (becomes 'active' on
+    // disbursement); before #134b the table default keeps the old behaviour.
+    const { data: inserted, error } = await supabase
+      .from('salary_advances')
+      .insert({
+        company_id: authStore.currentBranch?.company_id,
+        branch_id: authStore.currentBranch?.id,
+        employee_id: viewEmp.value?.id,
+        amount: advanceForm.amount,
+        installments: advanceForm.installments,
+        reason: advanceForm.reason || null,
+        advance_date: advanceForm.advance_date,
+        notes: advanceForm.notes || null,
+        approved_by: authStore.user?.id,
+        approved_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single()
     if (error) throw error
-    $q.notify({ type: 'positive', message: 'Salary advance recorded successfully' })
+
+    const res = await disburseStaffReceivable(
+      supabase,
+      'salary_advance',
+      inserted.id,
+      advanceForm.cash_account_id,
+    )
+    if (res.ok) {
+      $q.notify({ type: 'positive', message: 'Salary advance recorded and disbursed' })
+    } else if (res.missing) {
+      $q.notify({
+        type: 'info',
+        message: `Salary advance recorded. ${FINANCE_POSTING_UNAVAILABLE}`,
+        timeout: 6000,
+      })
+    } else {
+      $q.notify({
+        type: 'warning',
+        message: `Advance saved as PENDING but not disbursed: ${res.error}. Use the Disburse action to retry.`,
+        multiLine: true,
+        timeout: 8000,
+      })
+    }
     showNewAdvance.value = false
     loadEmpAdvances(viewEmp.value?.id)
   } catch (err) {
@@ -5285,6 +5381,38 @@ async function addAdvance() {
   } finally {
     savingAdvance.value = false
   }
+}
+
+async function disbursePendingAdvance(advance) {
+  await loadAdvanceAccounts()
+  if (!advanceAccounts.value.length) {
+    $q.notify({ type: 'warning', message: 'No active finance cash/bank accounts found' })
+    return
+  }
+  $q.dialog({
+    title: 'Disburse Advance',
+    message: `Pay out LKR ${fmtAdv(advance.amount)} from:`,
+    options: {
+      type: 'radio',
+      model: advanceForm.cash_account_id || advanceAccounts.value[0].id,
+      items: advanceAccountOptions.value,
+    },
+    cancel: true,
+    persistent: true,
+    dark: true,
+  }).onOk(async (accountId) => {
+    const res = await disburseStaffReceivable(supabase, 'salary_advance', advance.id, accountId)
+    if (res.ok) {
+      $q.notify({ type: 'positive', message: 'Advance disbursed — payroll will now recover it' })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: res.missing ? FINANCE_POSTING_UNAVAILABLE : res.error,
+        multiLine: true,
+      })
+    }
+    loadEmpAdvances(viewEmp.value?.id)
+  })
 }
 
 async function writeOffAdvance(advance) {
@@ -5329,15 +5457,35 @@ const deductionTypeOptions = [
   'Other',
 ]
 
+// UI label -> salary_deductions.deduction_type (chk_deduction_type allows
+// emergency | recurring | installment | welfare | penalty | other). The label
+// itself is kept in salary_deductions.description.
+const DEDUCTION_TYPE_MAP = {
+  'Loan Recovery': 'installment',
+  'Advance Recovery': 'installment',
+  Damage: 'penalty',
+  Absence: 'penalty',
+  Other: 'other',
+}
+
+async function deleteDeduction(ded) {
+  const { error } = await supabase.from('salary_deductions').delete().eq('id', ded.id)
+  if (error) {
+    $q.notify({ type: 'negative', message: error.message || 'Failed to delete deduction' })
+    return
+  }
+  loadEmpDeductions(viewEmp.value?.id)
+}
+
 async function loadEmpDeductions(empId) {
   if (!empId) return
   loadingDeductions.value = true
   try {
     const { data, error } = await supabase
-      .from('employee_deductions')
+      .from('salary_deductions')
       .select('*')
       .eq('employee_id', empId)
-      .order('effective_date', { ascending: false })
+      .order('start_date', { ascending: false })
     if (error) throw error
     empDeductions.value = data || []
   } catch (err) {
@@ -5359,14 +5507,29 @@ async function saveDeduction() {
   }
   savingDeduction.value = true
   try {
-    const { error } = await supabase.from('employee_deductions').insert({
+    // Canonical table is salary_deductions — process_monthly_payroll reads it
+    // (employee_deductions was never picked up by payroll). A row applies to
+    // every payroll period overlapping [start_date, end_date]; a NULL end_date
+    // would deduct EVERY month, so a one-off deduction uses end_date = start_date.
+    const branchId = viewEmp.value?.branch_id || authStore.currentBranch?.id
+    const companyId =
+      viewEmp.value?.company_id ||
+      authStore.currentBranch?.company_id ||
+      authStore.profile?.company_id
+    if (!branchId || !companyId) throw new Error('Branch/company is missing for this employee')
+    const { error } = await supabase.from('salary_deductions').insert({
       employee_id: viewEmp.value?.id,
-      deduction_type: deductionForm.deduction_type,
+      branch_id: branchId,
+      company_id: companyId,
+      description: deductionForm.deduction_type,
+      deduction_type: DEDUCTION_TYPE_MAP[deductionForm.deduction_type] || 'other',
       amount: Number(deductionForm.amount),
+      total_amount: Number(deductionForm.amount),
+      start_date: deductionForm.effective_date,
+      end_date: deductionForm.effective_date,
+      is_recurring: false,
       notes: deductionForm.notes || null,
-      effective_date: deductionForm.effective_date,
-      branch_id: authStore.currentBranch?.id,
-      company_id: authStore.currentBranch?.company_id,
+      created_by: authStore.user?.id || null,
     })
     if (error) throw error
     $q.notify({ type: 'positive', message: 'Deduction added successfully' })

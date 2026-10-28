@@ -86,7 +86,7 @@ This single migration addresses approximately 15 of the 23 vulnerabilities in th
 ### VULN-002: Google Maps API Key Exposed in Git History — Key Not Confirmed Rotated
 **Severity:** CRITICAL (P0)  
 **Commit:** `3bb7ce6` — "security: stop tracking .env — remove live credentials from git index"  
-**Key:** `VITE_GOOGLE_MAPS_KEY=AIzaSyAEeQwDmMc8Ir983nvm9wNNpQL6OlPZkvs`  
+**Key:** `VITE_GOOGLE_MAPS_KEY=AIza****REDACTED`  
 
 **Evidence:**  
 The commit message states: *"Rotate VITE_GOOGLE_MAPS_KEY immediately — it has been exposed."* The key is still present in the local `.env` file and was in git history across multiple commits before `3bb7ce6`. The key was publicly accessible to anyone with read access to the repository.

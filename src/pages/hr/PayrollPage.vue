@@ -1930,6 +1930,7 @@ const cashAccounts = computed(() =>
     .filter(
       (a) =>
         a.account_type === 'cash' ||
+        a.account_type === 'petty_cash' ||
         (a.account_type === 'Asset' &&
           a.is_active &&
           (a.name?.toLowerCase().includes('cash') || a.name?.toLowerCase().includes('petty'))),
@@ -2669,25 +2670,32 @@ async function loadAccounts() {
   if (financeAccounts.value.length) return
   loadingAccounts.value = true
   try {
-    const { data: realAccounts, error: rErr } = await supabase
+    // post_payroll_to_finance_v2 expects a finance_accounts id (same source the
+    // Finance voucher pages use) — never chart_of_accounts ids.
+    const { data, error } = await supabase
       .from('finance_accounts')
-      .select('id, registered_name, account_type, account_number, current_balance, ledger_id')
-      .order('registered_name')
-    if (!rErr && realAccounts && realAccounts.length > 0) {
-      financeAccounts.value = realAccounts
-      return
-    }
-
-    const { data } = await supabase
-      .from('chart_of_accounts')
-      .select('id, code, name, account_type, is_active')
+      .select(
+        'id, registered_name, bank_name, account_type, account_number, current_balance, ledger_id, is_default',
+      )
       .eq('is_active', true)
-      .order('code')
+      .is('deleted_at', null)
+      .order('registered_name')
+    if (error) throw error
     financeAccounts.value = data || []
+  } catch (err) {
+    $q.notify({ type: 'negative', message: `Could not load finance accounts: ${err.message}` })
   } finally {
     loadingAccounts.value = false
   }
 }
+
+// PostgREST / Postgres codes meaning "function does not exist" — the only case
+// where falling back to the legacy posting RPC is safe (no double-post risk).
+const isMissingRpcError = (err) =>
+  !!err &&
+  (err.code === 'PGRST202' ||
+    err.code === '42883' ||
+    /could not find the function/i.test(err.message || ''))
 
 async function confirmPostToFinance() {
   const f = postFinanceForm
@@ -2699,7 +2707,7 @@ async function confirmPostToFinance() {
   if (!selectedRun.value) return
   postingFinance.value = true
   try {
-    // 1. Prefer modern post_payroll_to_finance_v2 (linked to finance_ledgers & finance_cashbook_entries)
+    // 1. post_payroll_to_finance_v2 (finance_ledgers + cashbook + journal, migration #129)
     const { data: res, error: rpcErr } = await supabase.rpc('post_payroll_to_finance_v2', {
       p_payroll_run_id: selectedRun.value.id,
       p_cash_bank_account_id: f.cash_bank_acc,
@@ -2707,12 +2715,20 @@ async function confirmPostToFinance() {
       p_posted_by: authStore.user?.id,
     })
 
-    if (!rpcErr && res && res.success !== false) {
+    if (!rpcErr) {
+      if (res && res.success === false) {
+        // Older v2 builds report failures in the payload — surface, never fall back.
+        throw new Error(res.error || 'Posting to Finance failed.')
+      }
+      const remaining = Number(res?.slips_remaining || 0)
       $q.notify({
         type: 'positive',
         icon: 'account_balance',
-        message: `✅ Payroll posted to Finance! Ledgers & Cashbook updated, payslips marked PAID.`,
-        timeout: 4000,
+        message:
+          remaining > 0
+            ? `Payroll posted to Finance (${res?.slips_paid ?? 0} payslip(s) marked PAID). ${remaining} held/unposted payslip(s) remain — post again after releasing them.`
+            : `Payroll posted to Finance! Ledgers, Cashbook & Journal updated, payslips marked PAID.`,
+        timeout: 5000,
       })
       showPostFinanceDialog.value = false
       showPayslips.value = false
@@ -2720,19 +2736,30 @@ async function confirmPostToFinance() {
       return
     }
 
-    // 2. Fallback to legacy post_payroll_to_finance if v2 RPC is not yet migrated in Supabase
-    const expAcc = financeAccounts.value.find((a) => a.code === '5100')?.id
-    const payAcc = financeAccounts.value.find((a) => a.code === '2200')?.id
-    const epfExp = financeAccounts.value.find((a) => a.code === '5130')?.id
-    const etfExp = financeAccounts.value.find((a) => a.code === '5140')?.id
-    const epfPay = financeAccounts.value.find((a) => a.code === '2210')?.id
-    const etfPay = financeAccounts.value.find((a) => a.code === '2220')?.id
+    // Any real v2 error (validation, imbalance, missing ledger, already posted…)
+    // must be shown — falling back to the legacy RPC here could double-post.
+    if (!isMissingRpcError(rpcErr)) throw rpcErr
 
-    if (!expAcc || !payAcc) {
-      if (rpcErr) throw rpcErr
+    // 2. v2 not deployed yet → legacy post_payroll_to_finance (chart_of_accounts ids)
+    const { data: coa, error: coaErr } = await supabase
+      .from('chart_of_accounts')
+      .select('id, code')
+      .eq('is_active', true)
+    if (coaErr) throw coaErr
+    const byCode = (code) => (coa || []).find((a) => a.code === code)?.id
+    const expAcc = byCode('5100')
+    const payAcc = byCode('2200')
+    const epfExp = byCode('5130')
+    const etfExp = byCode('5140')
+    const epfPay = byCode('2210')
+    const etfPay = byCode('2220')
+    const cashBankCoa = byCode(f.payment_method === 'cash' ? '1000' : '1010')
+
+    if (!expAcc || !payAcc || !cashBankCoa) {
       $q.notify({
         type: 'warning',
-        message: 'Standard Payroll accounts not found. Please run Migration #129 in Supabase.',
+        message:
+          'post_payroll_to_finance_v2 is not deployed and legacy payroll accounts were not found. Please run Migration #129 in Supabase.',
       })
       return
     }
@@ -2745,22 +2772,22 @@ async function confirmPostToFinance() {
       p_salary_payable_acc: payAcc,
       p_epf_payable_acc: epfPay || payAcc,
       p_etf_payable_acc: etfPay || payAcc,
-      p_cash_bank_acc: f.cash_bank_acc,
+      p_cash_bank_acc: cashBankCoa,
       p_payment_method: f.payment_method,
       p_posted_by: authStore.user?.id,
     })
-    if (error) throw (rpcErr || error)
+    if (error) throw error
     $q.notify({
       type: 'positive',
       icon: 'account_balance',
-      message: `✅ Payroll posted to Finance! All pending payslips marked as PAID.`,
+      message: `Payroll posted to Finance (legacy)! All pending payslips marked as PAID.`,
       timeout: 4000,
     })
     showPostFinanceDialog.value = false
     showPayslips.value = false
     await loadRuns()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.message })
+    $q.notify({ type: 'negative', message: err.message || String(err), multiLine: true })
   } finally {
     postingFinance.value = false
   }

@@ -30,5 +30,19 @@ export const useFinanceStatementsStore = defineStore('financeStatements', () => 
     finally { loading.value = false }
   }
 
-  return { trialBalance, profitLoss, balanceSheet, loading, error, fetchTrialBalance, fetchProfitLoss, fetchBalanceSheet }
+  // Builds all three statements from one data load so the tabs never show
+  // results generated from different filters.
+  async function fetchAll(filters = {}) {
+    loading.value = true; error.value = null
+    try {
+      const all = await financeStatementsService.generateAll(filters)
+      trialBalance.value = all.trialBalance
+      profitLoss.value = all.profitLoss
+      balanceSheet.value = all.balanceSheet
+    }
+    catch (e) { error.value = e.message }
+    finally { loading.value = false }
+  }
+
+  return { trialBalance, profitLoss, balanceSheet, loading, error, fetchTrialBalance, fetchProfitLoss, fetchBalanceSheet, fetchAll }
 })
