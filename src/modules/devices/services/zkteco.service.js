@@ -172,6 +172,23 @@ export class ZKTecoClient {
       return { success: true, fetched: 0, written: 0 }
     }
 
+    // ── Fetch active employees to map device user_id (e.g. "3" -> "EMP000003") ─
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('id, employee_code')
+      .eq('is_active', true)
+
+    const empMap = new Map()
+    for (const e of employees || []) {
+      const code = String(e.employee_code).trim()
+      empMap.set(code.toLowerCase(), e)
+      const numOnly = code.replace(/\D/g, '')
+      if (numOnly) {
+        empMap.set(numOnly, e)
+        empMap.set(parseInt(numOnly, 10).toString(), e)
+      }
+    }
+
     // ── Infer punch direction (in/out) ──────────────────────────────────
     // Group by employee + calendar day, sort chronologically, then alternate
     // in/out starting from whatever this employee's last known punch was
@@ -187,11 +204,16 @@ export class ZKTecoClient {
 
     const lastTypeByKey = new Map()
     for (const key of byEmployeeDay.keys()) {
-      const [employeeCode, day] = key.split('|')
+      const [rawUserId, day] = key.split('|')
+      const cleanId = rawUserId.trim().toLowerCase()
+      const numOnly = cleanId.replace(/\D/g, '')
+      const emp = empMap.get(cleanId) || (numOnly ? empMap.get(numOnly) || empMap.get(parseInt(numOnly, 10).toString()) : null)
+      const empCode = emp ? emp.employee_code : rawUserId
+
       const { data: last } = await supabase
         .from('attendance_logs')
         .select('punch_type')
-        .eq('employee_code', employeeCode)
+        .eq('employee_code', empCode)
         .eq('device_id', this.ip)
         .gte('punch_time', `${day}T00:00:00`)
         .lt('punch_time', `${day}T23:59:59.999`)
@@ -207,10 +229,18 @@ export class ZKTecoClient {
       for (const r of dayRecords) {
         const punchType = lastType === 'in' ? 'out' : 'in'
         lastType = punchType
+
+        const cleanId = String(r.user_id).trim().toLowerCase()
+        const numOnly = cleanId.replace(/\D/g, '')
+        const emp = empMap.get(cleanId) || (numOnly ? empMap.get(numOnly) || empMap.get(parseInt(numOnly, 10).toString()) : null)
+        const finalCode = emp ? emp.employee_code : r.user_id
+        const finalEmpId = emp ? emp.id : null
+
         rows.push({
           company_id: this.companyId,
           branch_id: this.branchId,
-          employee_code: r.user_id,
+          employee_id: finalEmpId,
+          employee_code: finalCode,
           device_id: this.ip,
           punch_time: r.punch_time,
           punch_type: punchType,
@@ -232,9 +262,9 @@ export class ZKTecoClient {
 
     // Nudge the processing function immediately instead of waiting for the
     // next cron tick, so the sync feels instant in the UI.
-    const { error: procError } = await supabase.rpc('process_attendance_logs')
+    const { error: procError } = await supabase.rpc('process_attendance_logs_v2')
     if (procError) {
-      logger.warn('[ZKTeco] process_attendance_logs RPC failed (cron will retry)', procError)
+      await supabase.rpc('process_attendance_logs')
     }
 
     return { success: true, fetched: records.length, written: rows.length }
