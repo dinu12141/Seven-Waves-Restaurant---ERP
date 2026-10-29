@@ -1077,6 +1077,7 @@ const columns = [
     label: 'Check In',
     align: 'center',
     field: 'clock_in',
+    sortable: true,
     format: (v) => formatDisplayTime(v),
   },
   {
@@ -1084,18 +1085,20 @@ const columns = [
     label: 'Check Out',
     align: 'center',
     field: 'clock_out',
+    sortable: true,
     format: (v) => formatDisplayTime(v),
   },
-  { name: 'status', label: 'Status', align: 'center', field: 'status' },
-  { name: 'late', label: 'Late Mins', align: 'center', field: 'late_minutes' },
+  { name: 'status', label: 'Status', align: 'center', field: 'status', sortable: true },
+  { name: 'late', label: 'Late Mins', align: 'center', field: 'late_minutes', sortable: true },
   {
     name: 'early',
     label: 'Early Dep (Mins)',
     align: 'center',
     field: 'early_departure_minutes',
+    sortable: true,
     format: (v) => v || 0,
   },
-  { name: 'ot', label: 'OT Hrs', align: 'center', field: 'overtime_hours' },
+  { name: 'ot', label: 'OT Hrs', align: 'center', field: 'overtime_hours', sortable: true },
   { name: 'actions', label: '', align: 'center' },
 ]
 
@@ -1215,11 +1218,16 @@ function markAbsentees() {
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
-// Parse time directly from the stored "YYYY-MM-DDTHH:MM:SS" string to avoid
-// UTC timezone shift that new Date() would apply to naive local timestamps.
+// Format stored ISO timestamps into local browser time (e.g. Asia/Colombo +05:30).
 function formatDisplayTime(v) {
   if (!v) return '—'
-  // Extract HH:MM from stored value: "2026-03-28T07:30:00" → "07:30"
+  if (typeof v === 'string' && (v.includes('T') || v.includes('Z') || v.includes('+'))) {
+    const d = new Date(v)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  }
+  // Fallback for naive HH:MM
   const timePart = v.includes('T') ? v.split('T')[1].slice(0, 5) : v.slice(0, 5)
   const [hStr, mStr] = timePart.split(':')
   const h = parseInt(hStr, 10)
@@ -1235,14 +1243,18 @@ function formatTimeToTimestamp(dateStr, timeStr) {
   const parts = timeStr.split(':')
   const hh = parts[0].padStart(2, '0')
   const mm = (parts[1] || '00').padStart(2, '0')
-  return `${dateStr}T${hh}:${mm}:00`
+  return `${dateStr}T${hh}:${mm}:00+05:30`
 }
 
 function extractTime(timestampOrTime) {
   if (!timestampOrTime) return ''
-  // Handle both "2026-03-28T07:30:00" and "07:30" formats
-  if (timestampOrTime.includes('T')) {
-    return timestampOrTime.split('T')[1].slice(0, 5)
+  if (typeof timestampOrTime === 'string' && (timestampOrTime.includes('T') || timestampOrTime.includes('Z') || timestampOrTime.includes('+'))) {
+    const d = new Date(timestampOrTime)
+    if (!isNaN(d.getTime())) {
+      const hh = String(d.getHours()).padStart(2, '0')
+      const mm = String(d.getMinutes()).padStart(2, '0')
+      return `${hh}:${mm}`
+    }
   }
   return timestampOrTime.slice(0, 5)
 }
