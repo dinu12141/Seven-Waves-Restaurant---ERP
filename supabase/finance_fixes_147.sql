@@ -236,6 +236,7 @@ $$;
 
 -- ── 2. Supplier payment: exact paying account + planned cheque ─────────────
 ALTER TABLE public.supplier_payments ADD COLUMN IF NOT EXISTS bank_account_id UUID REFERENCES public.finance_accounts(id);
+ALTER TABLE public.supplier_payments ADD COLUMN IF NOT EXISTS bank_account TEXT;
 
 CREATE OR REPLACE FUNCTION public.post_supplier_payment()
 RETURNS TRIGGER
@@ -277,9 +278,9 @@ BEGIN
             v_desc := 'Supplier Payment ' || NEW.doc_number || ' to ' || COALESCE(v_sup_name, 'Supplier')
                       || ' via ' || NEW.payment_method;
 
-            -- Resolve paying cash/bank account. bank_account_code is read via
-            -- jsonb so this works whether or not that column exists.
-            v_acc_code := NULLIF(TRIM(COALESCE(to_jsonb(NEW) ->> 'bank_account_code', NEW.bank_account)), '');
+            -- Resolve paying cash/bank account. Read safely via jsonb so this
+            -- works whether or not the column exists in the row type.
+            v_acc_code := NULLIF(TRIM(COALESCE(to_jsonb(NEW) ->> 'bank_account_code', to_jsonb(NEW) ->> 'bank_account', '')), '');
 
             -- #147: the exact finance_accounts row chosen in the UI wins
             IF NULLIF(to_jsonb(NEW) ->> 'bank_account_id', '') IS NOT NULL THEN
@@ -507,12 +508,13 @@ BEGIN
 
     INSERT INTO public.supplier_payments (
         company_id, branch_id, doc_number, doc_date, supplier_id, payment_method,
-        cheque_no, reference_no, total_amount, status, created_by, bank_account_code, bank_account_id
+        cheque_no, reference_no, total_amount, status, created_by, bank_account_code, bank_account, bank_account_id
     ) VALUES (
         v_company, p_branch_id, v_doc, COALESCE(p_doc_date, CURRENT_DATE), p_supplier_id,
         COALESCE(NULLIF(TRIM(p_payment_method), ''), 'bank_transfer'),
         v_chq_no, NULLIF(TRIM(COALESCE(p_reference_no, '')), ''),
         v_total, 'draft', v_uid,
+        COALESCE(NULLIF(TRIM(COALESCE(p_bank_account_code, '')), ''), v_acc.account_number, v_acc.registered_name),
         COALESCE(NULLIF(TRIM(COALESCE(p_bank_account_code, '')), ''), v_acc.account_number, v_acc.registered_name),
         v_acc.id
     ) RETURNING id INTO v_pay;

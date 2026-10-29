@@ -1125,7 +1125,7 @@ async function savePayment(targetStatus) {
 
     const paymentMethod = (form.value.payment_method || 'cash').toLowerCase().replace(/ /g, '_')
     const isCheque = paymentMethod.includes('cheque')
-    const chosenAcc = payingAccountOptions.value.find((o) => o.code === form.value.bank_account_code)
+    const chosenAcc = payingAccountOptions.value.find((o) => o.code === form.value.bank_account_code || o.id === form.value.bank_account_code)
 
     if (!form.value.id) {
       // New payment: use atomic SECURITY DEFINER RPC (bypasses RLS)

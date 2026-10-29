@@ -794,9 +794,9 @@ BEGIN
             v_desc := 'Supplier Payment ' || NEW.doc_number || ' to ' || COALESCE(v_sup_name, 'Supplier')
                       || ' via ' || NEW.payment_method;
 
-            -- Resolve paying cash/bank account. bank_account_code is read via
-            -- jsonb so this works whether or not that column exists.
-            v_acc_code := NULLIF(TRIM(COALESCE(to_jsonb(NEW) ->> 'bank_account_code', NEW.bank_account)), '');
+            -- Resolve paying cash/bank account. Read safely via jsonb so this
+            -- works whether or not the column exists in the row type.
+            v_acc_code := NULLIF(TRIM(COALESCE(to_jsonb(NEW) ->> 'bank_account_code', to_jsonb(NEW) ->> 'bank_account', '')), '');
 
             IF v_acc_code IS NOT NULL THEN
                 SELECT fa.* INTO v_cash_acc
