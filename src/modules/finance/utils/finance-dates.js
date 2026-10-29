@@ -22,7 +22,11 @@ export function isDateKey(v) {
   return typeof v === 'string' && DATE_RE.test(v)
 }
 
-/** 'YYYY-MM-DD' of the given instant in Sri Lanka time. */
+/**
+ * 'YYYY-MM-DD' of the given instant in Sri Lanka time.
+ * @param {Date | string | number | null | undefined} [d]
+ * @returns {string}
+ */
 export function lkDateKey(d = new Date()) {
   const dt = d instanceof Date ? d : new Date(d)
   if (Number.isNaN(dt.getTime())) return ''
@@ -31,7 +35,11 @@ export function lkDateKey(d = new Date()) {
   return `${s.getUTCFullYear()}-${pad(s.getUTCMonth() + 1)}-${pad(s.getUTCDate())}`
 }
 
-/** Today in Sri Lanka as 'YYYY-MM-DD'. */
+/**
+ * Today in Sri Lanka as 'YYYY-MM-DD'.
+ * @param {Date | string | number | null | undefined} [now]
+ * @returns {string}
+ */
 export function todayLK(now = new Date()) {
   return lkDateKey(now)
 }

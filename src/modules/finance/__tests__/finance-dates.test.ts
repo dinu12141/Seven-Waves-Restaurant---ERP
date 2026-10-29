@@ -32,7 +32,7 @@ describe('finance-dates: Sri Lanka local date keys', () => {
   })
   it('todayLK accepts an injected clock; invalid input → empty', () => {
     expect(todayLK(EARLY_MORNING_LK)).toBe('2026-10-28')
-    expect(lkDateKey('not a date')).toBe('')
+    expect(lkDateKey('not a date' as any)).toBe('')
   })
 })
 
