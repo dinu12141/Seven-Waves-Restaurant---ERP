@@ -1,0 +1,2567 @@
+{
+  "deviceId": "CGCA222960804",
+  "exportDate": "2026-10-29",
+  "files": {
+    "attlog": {
+      "name": "CGCA222960804_attlog.dat",
+      "totalRows": 8722,
+      "dateRange": "2026-08-21 to 2026-10-29"
+    },
+    "users": {
+      "name": "user.dat",
+      "totalEnrolledUsers": 224
+    },
+    "templates": {
+      "name": "template.fp10",
+      "totalTemplates": 282,
+      "uniqueUsersWithTemplates": 224
+    }
+  },
+  "databaseSyncSummary": {
+    "employeesAdded": 151,
+    "totalEmployeesInDb": 219,
+    "attendanceLogsImported": 8722,
+    "attendanceRecordsGenerated": 4420,
+    "uniquePunchingEmployees": 96
+  },
+  "templateEnrollments": [
+    {
+      "pin1": 70,
+      "pinStr": "70",
+      "employeeCode": "EMP000070",
+      "name": "G.C.K.Fonsaka0V�",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 884
+    },
+    {
+      "pin1": 70,
+      "pinStr": "70",
+      "employeeCode": "EMP000070",
+      "name": "G.C.K.Fonsaka0V�",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 872
+    },
+    {
+      "pin1": 4,
+      "pinStr": "4",
+      "employeeCode": "EMP000004",
+      "name": "Dulaj Srilal",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1036
+    },
+    {
+      "pin1": 4,
+      "pinStr": "4",
+      "employeeCode": "EMP000004",
+      "name": "Dulaj Srilal",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 1124
+    },
+    {
+      "pin1": 60,
+      "pinStr": "60",
+      "employeeCode": "EMP000060",
+      "name": "G.K.G.Ishara Nuwan Band",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 826
+    },
+    {
+      "pin1": 60,
+      "pinStr": "60",
+      "employeeCode": "EMP000060",
+      "name": "G.K.G.Ishara Nuwan Band",
+      "fingerId": 7,
+      "valid": 1,
+      "sizeBytes": 782
+    },
+    {
+      "pin1": 39,
+      "pinStr": "39",
+      "employeeCode": "EMP000039",
+      "name": "Pasindu Madushan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 862
+    },
+    {
+      "pin1": 39,
+      "pinStr": "39",
+      "employeeCode": "EMP000039",
+      "name": "Pasindu Madushan",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 728
+    },
+    {
+      "pin1": 15,
+      "pinStr": "15",
+      "employeeCode": "EMP000015",
+      "name": "Senadi Raja",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 842
+    },
+    {
+      "pin1": 15,
+      "pinStr": "15",
+      "employeeCode": "EMP000015",
+      "name": "Senadi Raja",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 940
+    },
+    {
+      "pin1": 51,
+      "pinStr": "51",
+      "employeeCode": "EMP000051",
+      "name": "Niroth Nirmal",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1216
+    },
+    {
+      "pin1": 51,
+      "pinStr": "51",
+      "employeeCode": "EMP000051",
+      "name": "Niroth Nirmal",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 846
+    },
+    {
+      "pin1": 54,
+      "pinStr": "54",
+      "employeeCode": "EMP000054",
+      "name": "J.K.S.Sadaruwan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 856
+    },
+    {
+      "pin1": 54,
+      "pinStr": "54",
+      "employeeCode": "EMP000054",
+      "name": "J.K.S.Sadaruwan",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 916
+    },
+    {
+      "pin1": 56,
+      "pinStr": "56",
+      "employeeCode": "EMP000056",
+      "name": "J.A.Samantha Pathma Kum",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 954
+    },
+    {
+      "pin1": 56,
+      "pinStr": "56",
+      "employeeCode": "EMP000056",
+      "name": "J.A.Samantha Pathma Kum",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 7,
+      "pinStr": "7",
+      "employeeCode": "EMP000007",
+      "name": "M.G.Sampath",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 780
+    },
+    {
+      "pin1": 7,
+      "pinStr": "7",
+      "employeeCode": "EMP000007",
+      "name": "M.G.Sampath",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 1020
+    },
+    {
+      "pin1": 13,
+      "pinStr": "13",
+      "employeeCode": "EMP000013",
+      "name": "A.vijayakumar",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 972
+    },
+    {
+      "pin1": 13,
+      "pinStr": "13",
+      "employeeCode": "EMP000013",
+      "name": "A.vijayakumar",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 742
+    },
+    {
+      "pin1": 21,
+      "pinStr": "21",
+      "employeeCode": "EMP000021",
+      "name": "Ashan Pramuditha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 884
+    },
+    {
+      "pin1": 21,
+      "pinStr": "21",
+      "employeeCode": "EMP000021",
+      "name": "Ashan Pramuditha",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 924
+    },
+    {
+      "pin1": 41,
+      "pinStr": "41",
+      "employeeCode": "EMP000041",
+      "name": "Bishara Kavindi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1078
+    },
+    {
+      "pin1": 41,
+      "pinStr": "41",
+      "employeeCode": "EMP000041",
+      "name": "Bishara Kavindi",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1540
+    },
+    {
+      "pin1": 3,
+      "pinStr": "3",
+      "employeeCode": "EMP000003",
+      "name": "Samindu Sankalpa",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 792
+    },
+    {
+      "pin1": 3,
+      "pinStr": "3",
+      "employeeCode": "EMP000003",
+      "name": "Samindu Sankalpa",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 984
+    },
+    {
+      "pin1": 80,
+      "pinStr": "86",
+      "employeeCode": "EMP000086",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 916
+    },
+    {
+      "pin1": 80,
+      "pinStr": "86",
+      "employeeCode": "EMP000086",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1156
+    },
+    {
+      "pin1": 81,
+      "pinStr": "81",
+      "employeeCode": "EMP000081",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 834
+    },
+    {
+      "pin1": 81,
+      "pinStr": "81",
+      "employeeCode": "EMP000081",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 770
+    },
+    {
+      "pin1": 82,
+      "pinStr": "90",
+      "employeeCode": "EMP000090",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 796
+    },
+    {
+      "pin1": 82,
+      "pinStr": "90",
+      "employeeCode": "EMP000090",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 790
+    },
+    {
+      "pin1": 84,
+      "pinStr": "101",
+      "employeeCode": "EMP000101",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 886
+    },
+    {
+      "pin1": 84,
+      "pinStr": "101",
+      "employeeCode": "EMP000101",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 848
+    },
+    {
+      "pin1": 85,
+      "pinStr": "97",
+      "employeeCode": "EMP000097",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 678
+    },
+    {
+      "pin1": 85,
+      "pinStr": "97",
+      "employeeCode": "EMP000097",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 816
+    },
+    {
+      "pin1": 86,
+      "pinStr": "83",
+      "employeeCode": "EMP000083",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 666
+    },
+    {
+      "pin1": 86,
+      "pinStr": "83",
+      "employeeCode": "EMP000083",
+      "name": "",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 702
+    },
+    {
+      "pin1": 89,
+      "pinStr": "105",
+      "employeeCode": "EMP000105",
+      "name": "Pradeep",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 644
+    },
+    {
+      "pin1": 89,
+      "pinStr": "105",
+      "employeeCode": "EMP000105",
+      "name": "Pradeep",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 758
+    },
+    {
+      "pin1": 93,
+      "pinStr": "92",
+      "employeeCode": "EMP000092",
+      "name": "Upali",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1094
+    },
+    {
+      "pin1": 93,
+      "pinStr": "92",
+      "employeeCode": "EMP000092",
+      "name": "Upali",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 924
+    },
+    {
+      "pin1": 99,
+      "pinStr": "117",
+      "employeeCode": "EMP000117",
+      "name": "Ajith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 802
+    },
+    {
+      "pin1": 99,
+      "pinStr": "117",
+      "employeeCode": "EMP000117",
+      "name": "Ajith",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 866
+    },
+    {
+      "pin1": 104,
+      "pinStr": "95",
+      "employeeCode": "EMP000095",
+      "name": "Liyana",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 802
+    },
+    {
+      "pin1": 106,
+      "pinStr": "99",
+      "employeeCode": "EMP000099",
+      "name": "Gamini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 948
+    },
+    {
+      "pin1": 106,
+      "pinStr": "99",
+      "employeeCode": "EMP000099",
+      "name": "Gamini",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 862
+    },
+    {
+      "pin1": 107,
+      "pinStr": "119",
+      "employeeCode": "EMP000119",
+      "name": "Upul",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 726
+    },
+    {
+      "pin1": 111,
+      "pinStr": "125",
+      "employeeCode": "EMP000125",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 730
+    },
+    {
+      "pin1": 111,
+      "pinStr": "125",
+      "employeeCode": "EMP000125",
+      "name": "",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 896
+    },
+    {
+      "pin1": 114,
+      "pinStr": "88",
+      "employeeCode": "EMP000088",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 864
+    },
+    {
+      "pin1": 115,
+      "pinStr": "89",
+      "employeeCode": "EMP000089",
+      "name": "Chamod",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 840
+    },
+    {
+      "pin1": 117,
+      "pinStr": "129",
+      "employeeCode": "EMP000129",
+      "name": "Dharshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1072
+    },
+    {
+      "pin1": 120,
+      "pinStr": "118",
+      "employeeCode": "EMP000118",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 724
+    },
+    {
+      "pin1": 64,
+      "pinStr": "64",
+      "employeeCode": "EMP000064",
+      "name": "Karan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 894
+    },
+    {
+      "pin1": 64,
+      "pinStr": "64",
+      "employeeCode": "EMP000064",
+      "name": "Karan",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1018
+    },
+    {
+      "pin1": 62,
+      "pinStr": "62",
+      "employeeCode": "EMP000062",
+      "name": "H.E.Niluka Niroshani",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 702
+    },
+    {
+      "pin1": 62,
+      "pinStr": "62",
+      "employeeCode": "EMP000062",
+      "name": "H.E.Niluka Niroshani",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 872
+    },
+    {
+      "pin1": 63,
+      "pinStr": "63",
+      "employeeCode": "EMP000063",
+      "name": "Shiva",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 712
+    },
+    {
+      "pin1": 63,
+      "pinStr": "63",
+      "employeeCode": "EMP000063",
+      "name": "Shiva",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 848
+    },
+    {
+      "pin1": 121,
+      "pinStr": "134",
+      "employeeCode": "EMP000134",
+      "name": "Rashmika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 812
+    },
+    {
+      "pin1": 121,
+      "pinStr": "134",
+      "employeeCode": "EMP000134",
+      "name": "Rashmika",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 724
+    },
+    {
+      "pin1": 123,
+      "pinStr": "131",
+      "employeeCode": "EMP000131",
+      "name": "Nuwan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1092
+    },
+    {
+      "pin1": 123,
+      "pinStr": "131",
+      "employeeCode": "EMP000131",
+      "name": "Nuwan",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 986
+    },
+    {
+      "pin1": 124,
+      "pinStr": "135",
+      "employeeCode": "EMP000135",
+      "name": "Madhushika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1074
+    },
+    {
+      "pin1": 124,
+      "pinStr": "135",
+      "employeeCode": "EMP000135",
+      "name": "Madhushika",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1194
+    },
+    {
+      "pin1": 125,
+      "pinStr": "84",
+      "employeeCode": "EMP000084",
+      "name": "Mahesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 820
+    },
+    {
+      "pin1": 126,
+      "pinStr": "136",
+      "employeeCode": "EMP000136",
+      "name": "Hashitha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1004
+    },
+    {
+      "pin1": 127,
+      "pinStr": "138",
+      "employeeCode": "EMP000138",
+      "name": "Pasindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 818
+    },
+    {
+      "pin1": 127,
+      "pinStr": "138",
+      "employeeCode": "EMP000138",
+      "name": "Pasindu",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1074
+    },
+    {
+      "pin1": 129,
+      "pinStr": "140",
+      "employeeCode": "EMP000140",
+      "name": "Yohan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1040
+    },
+    {
+      "pin1": 129,
+      "pinStr": "140",
+      "employeeCode": "EMP000140",
+      "name": "Yohan",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1040
+    },
+    {
+      "pin1": 130,
+      "pinStr": "137",
+      "employeeCode": "EMP000137",
+      "name": "Silva",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 752
+    },
+    {
+      "pin1": 131,
+      "pinStr": "141",
+      "employeeCode": "EMP000141",
+      "name": "Prasanna",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 896
+    },
+    {
+      "pin1": 132,
+      "pinStr": "142",
+      "employeeCode": "EMP000142",
+      "name": "Sajith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 832
+    },
+    {
+      "pin1": 130,
+      "pinStr": "137",
+      "employeeCode": "EMP000137",
+      "name": "Silva",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 854
+    },
+    {
+      "pin1": 133,
+      "pinStr": "106",
+      "employeeCode": "EMP000106",
+      "name": "Udekumar",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 720
+    },
+    {
+      "pin1": 134,
+      "pinStr": "145",
+      "employeeCode": "EMP000145",
+      "name": "Wagira",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 134,
+      "pinStr": "145",
+      "employeeCode": "EMP000145",
+      "name": "Wagira",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 978
+    },
+    {
+      "pin1": 135,
+      "pinStr": "139",
+      "employeeCode": "EMP000139",
+      "name": "Rasindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 808
+    },
+    {
+      "pin1": 136,
+      "pinStr": "151",
+      "employeeCode": "EMP000151",
+      "name": "Lakshika",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1022
+    },
+    {
+      "pin1": 137,
+      "pinStr": "150",
+      "employeeCode": "EMP000150",
+      "name": "Ayesha",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1168
+    },
+    {
+      "pin1": 138,
+      "pinStr": "153",
+      "employeeCode": "EMP000153",
+      "name": "Sachin",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 732
+    },
+    {
+      "pin1": 139,
+      "pinStr": "152",
+      "employeeCode": "EMP000152",
+      "name": "Araliya",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 978
+    },
+    {
+      "pin1": 140,
+      "pinStr": "156",
+      "employeeCode": "EMP000156",
+      "name": "Maheshika",
+      "fingerId": 7,
+      "valid": 1,
+      "sizeBytes": 758
+    },
+    {
+      "pin1": 141,
+      "pinStr": "159",
+      "employeeCode": "EMP000159",
+      "name": "Anjula",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 638
+    },
+    {
+      "pin1": 142,
+      "pinStr": "160",
+      "employeeCode": "EMP000160",
+      "name": "Heshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 666
+    },
+    {
+      "pin1": 143,
+      "pinStr": "158",
+      "employeeCode": "EMP000158",
+      "name": "Chamod",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 740
+    },
+    {
+      "pin1": 144,
+      "pinStr": "161",
+      "employeeCode": "EMP000161",
+      "name": "Janani",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 740
+    },
+    {
+      "pin1": 145,
+      "pinStr": "155",
+      "employeeCode": "EMP000155",
+      "name": "Isuru",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 736
+    },
+    {
+      "pin1": 146,
+      "pinStr": "162",
+      "employeeCode": "EMP000162",
+      "name": "Pathun",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 854
+    },
+    {
+      "pin1": 147,
+      "pinStr": "164",
+      "employeeCode": "EMP000164",
+      "name": "Lakshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 860
+    },
+    {
+      "pin1": 148,
+      "pinStr": "165",
+      "employeeCode": "EMP000165",
+      "name": "Santhi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1288
+    },
+    {
+      "pin1": 149,
+      "pinStr": "146",
+      "employeeCode": "EMP000146",
+      "name": "Maiindi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 658
+    },
+    {
+      "pin1": 150,
+      "pinStr": "163",
+      "employeeCode": "EMP000163",
+      "name": "Hasini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 864
+    },
+    {
+      "pin1": 117,
+      "pinStr": "129",
+      "employeeCode": "EMP000129",
+      "name": "Dharshan",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 842
+    },
+    {
+      "pin1": 151,
+      "pinStr": "167",
+      "employeeCode": "EMP000167",
+      "name": "Dinesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1044
+    },
+    {
+      "pin1": 152,
+      "pinStr": "169",
+      "employeeCode": "EMP000169",
+      "name": "Prakash",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 608
+    },
+    {
+      "pin1": 153,
+      "pinStr": "168",
+      "employeeCode": "EMP000168",
+      "name": "Ramesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 888
+    },
+    {
+      "pin1": 154,
+      "pinStr": "166",
+      "employeeCode": "EMP000166",
+      "name": "Senethmi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 848
+    },
+    {
+      "pin1": 155,
+      "pinStr": "171",
+      "employeeCode": "EMP000171",
+      "name": "Banuka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 722
+    },
+    {
+      "pin1": 156,
+      "pinStr": "172",
+      "employeeCode": "EMP000172",
+      "name": "Shiva",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 972
+    },
+    {
+      "pin1": 157,
+      "pinStr": "173",
+      "employeeCode": "EMP000173",
+      "name": "Suji",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 820
+    },
+    {
+      "pin1": 158,
+      "pinStr": "174",
+      "employeeCode": "EMP000174",
+      "name": "Dhammika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 998
+    },
+    {
+      "pin1": 159,
+      "pinStr": "175",
+      "employeeCode": "EMP000175",
+      "name": "Palitha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 832
+    },
+    {
+      "pin1": 104,
+      "pinStr": "95",
+      "employeeCode": "EMP000095",
+      "name": "Liyana",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 926
+    },
+    {
+      "pin1": 160,
+      "pinStr": "179",
+      "employeeCode": "EMP000179",
+      "name": "Suchetha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 916
+    },
+    {
+      "pin1": 161,
+      "pinStr": "176",
+      "employeeCode": "EMP000176",
+      "name": "Chamara",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1080
+    },
+    {
+      "pin1": 162,
+      "pinStr": "177",
+      "employeeCode": "EMP000177",
+      "name": "Hiruni",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 876
+    },
+    {
+      "pin1": 163,
+      "pinStr": "180",
+      "employeeCode": "EMP000180",
+      "name": "Dilakshi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 808
+    },
+    {
+      "pin1": 164,
+      "pinStr": "181",
+      "employeeCode": "EMP000181",
+      "name": "Kavith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 970
+    },
+    {
+      "pin1": 165,
+      "pinStr": "182",
+      "employeeCode": "EMP000182",
+      "name": "Dimuthu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 726
+    },
+    {
+      "pin1": 167,
+      "pinStr": "184",
+      "employeeCode": "EMP000184",
+      "name": "Kishara",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 866
+    },
+    {
+      "pin1": 168,
+      "pinStr": "185",
+      "employeeCode": "EMP000185",
+      "name": "Sumudu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 942
+    },
+    {
+      "pin1": 169,
+      "pinStr": "186",
+      "employeeCode": "EMP000186",
+      "name": "Nishanth",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1066
+    },
+    {
+      "pin1": 4,
+      "pinStr": "4",
+      "employeeCode": "EMP000004",
+      "name": "Dulaj Srilal",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1116
+    },
+    {
+      "pin1": 170,
+      "pinStr": "187",
+      "employeeCode": "EMP000187",
+      "name": "Chavini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 966
+    },
+    {
+      "pin1": 170,
+      "pinStr": "187",
+      "employeeCode": "EMP000187",
+      "name": "Chavini",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 944
+    },
+    {
+      "pin1": 171,
+      "pinStr": "189",
+      "employeeCode": "EMP000189",
+      "name": "Randima",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 662
+    },
+    {
+      "pin1": 171,
+      "pinStr": "189",
+      "employeeCode": "EMP000189",
+      "name": "Randima",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 788
+    },
+    {
+      "pin1": 172,
+      "pinStr": "190",
+      "employeeCode": "EMP000190",
+      "name": "Sampath",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 868
+    },
+    {
+      "pin1": 173,
+      "pinStr": "191",
+      "employeeCode": "EMP000191",
+      "name": "Suthesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 786
+    },
+    {
+      "pin1": 174,
+      "pinStr": "192",
+      "employeeCode": "EMP000192",
+      "name": "Nalin",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 856
+    },
+    {
+      "pin1": 174,
+      "pinStr": "192",
+      "employeeCode": "EMP000192",
+      "name": "Nalin",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 658
+    },
+    {
+      "pin1": 175,
+      "pinStr": "193",
+      "employeeCode": "EMP000193",
+      "name": "Sewwandi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 952
+    },
+    {
+      "pin1": 175,
+      "pinStr": "193",
+      "employeeCode": "EMP000193",
+      "name": "Sewwandi",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 176,
+      "pinStr": "198",
+      "employeeCode": "EMP000198",
+      "name": "Venuj",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 880
+    },
+    {
+      "pin1": 176,
+      "pinStr": "198",
+      "employeeCode": "EMP000198",
+      "name": "Venuj",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1090
+    },
+    {
+      "pin1": 177,
+      "pinStr": "199",
+      "employeeCode": "EMP000199",
+      "name": "Udana",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 798
+    },
+    {
+      "pin1": 177,
+      "pinStr": "199",
+      "employeeCode": "EMP000199",
+      "name": "Udana",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 778
+    },
+    {
+      "pin1": 178,
+      "pinStr": "204",
+      "employeeCode": "EMP000204",
+      "name": "Sadali",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 880
+    },
+    {
+      "pin1": 178,
+      "pinStr": "204",
+      "employeeCode": "EMP000204",
+      "name": "Sadali",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 934
+    },
+    {
+      "pin1": 179,
+      "pinStr": "201",
+      "employeeCode": "EMP000201",
+      "name": "Sulaksha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 796
+    },
+    {
+      "pin1": 179,
+      "pinStr": "201",
+      "employeeCode": "EMP000201",
+      "name": "Sulaksha",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1006
+    },
+    {
+      "pin1": 180,
+      "pinStr": "196",
+      "employeeCode": "EMP000196",
+      "name": "Sadini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 844
+    },
+    {
+      "pin1": 181,
+      "pinStr": "200",
+      "employeeCode": "EMP000200",
+      "name": "Sasanka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1006
+    },
+    {
+      "pin1": 182,
+      "pinStr": "194",
+      "employeeCode": "EMP000194",
+      "name": "Kawya",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 930
+    },
+    {
+      "pin1": 183,
+      "pinStr": "203",
+      "employeeCode": "EMP000203",
+      "name": "Dinesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 960
+    },
+    {
+      "pin1": 184,
+      "pinStr": "205",
+      "employeeCode": "EMP000205",
+      "name": "Anusari",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 692
+    },
+    {
+      "pin1": 185,
+      "pinStr": "206",
+      "employeeCode": "EMP000206",
+      "name": "Akash",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 936
+    },
+    {
+      "pin1": 186,
+      "pinStr": "212",
+      "employeeCode": "EMP000212",
+      "name": "Peshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 868
+    },
+    {
+      "pin1": 187,
+      "pinStr": "211",
+      "employeeCode": "EMP000211",
+      "name": "Praveen",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 952
+    },
+    {
+      "pin1": 188,
+      "pinStr": "210",
+      "employeeCode": "EMP000210",
+      "name": "Supun",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 942
+    },
+    {
+      "pin1": 189,
+      "pinStr": "209",
+      "employeeCode": "EMP000209",
+      "name": "Pawani",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1112
+    },
+    {
+      "pin1": 190,
+      "pinStr": "214",
+      "employeeCode": "EMP000214",
+      "name": "Mahesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 980
+    },
+    {
+      "pin1": 192,
+      "pinStr": "208",
+      "employeeCode": "EMP000208",
+      "name": "Pasindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1198
+    },
+    {
+      "pin1": 193,
+      "pinStr": "217",
+      "employeeCode": "EMP000217",
+      "name": "Pubudu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 748
+    },
+    {
+      "pin1": 194,
+      "pinStr": "207",
+      "employeeCode": "EMP000207",
+      "name": "Humesh",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 756
+    },
+    {
+      "pin1": 196,
+      "pinStr": "215",
+      "employeeCode": "EMP000215",
+      "name": "Violet",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 768
+    },
+    {
+      "pin1": 197,
+      "pinStr": "216",
+      "employeeCode": "EMP000216",
+      "name": "Kaushith",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 860
+    },
+    {
+      "pin1": 198,
+      "pinStr": "195",
+      "employeeCode": "EMP000195",
+      "name": "Ganidu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 836
+    },
+    {
+      "pin1": 199,
+      "pinStr": "202",
+      "employeeCode": "EMP000202",
+      "name": "Sayuru",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1078
+    },
+    {
+      "pin1": 193,
+      "pinStr": "217",
+      "employeeCode": "EMP000217",
+      "name": "Pubudu",
+      "fingerId": 7,
+      "valid": 1,
+      "sizeBytes": 696
+    },
+    {
+      "pin1": 200,
+      "pinStr": "219",
+      "employeeCode": "EMP000219",
+      "name": "Imesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 854
+    },
+    {
+      "pin1": 192,
+      "pinStr": "208",
+      "employeeCode": "EMP000208",
+      "name": "Pasindu",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1108
+    },
+    {
+      "pin1": 176,
+      "pinStr": "198",
+      "employeeCode": "EMP000198",
+      "name": "Venuj",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1190
+    },
+    {
+      "pin1": 201,
+      "pinStr": "197",
+      "employeeCode": "EMP000197",
+      "name": "Chiran",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1132
+    },
+    {
+      "pin1": 202,
+      "pinStr": "227",
+      "employeeCode": "EMP000227",
+      "name": "Lakshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 826
+    },
+    {
+      "pin1": 203,
+      "pinStr": "213",
+      "employeeCode": "EMP000213",
+      "name": "Kesara",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 201,
+      "pinStr": "197",
+      "employeeCode": "EMP000197",
+      "name": "Chiran",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 1310
+    },
+    {
+      "pin1": 205,
+      "pinStr": "235",
+      "employeeCode": "EMP000235",
+      "name": "Gayashan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 770
+    },
+    {
+      "pin1": 206,
+      "pinStr": "239",
+      "employeeCode": "EMP000239",
+      "name": "Praveen",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1052
+    },
+    {
+      "pin1": 207,
+      "pinStr": "233",
+      "employeeCode": "EMP000233",
+      "name": "Arosha",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 1226
+    },
+    {
+      "pin1": 208,
+      "pinStr": "241",
+      "employeeCode": "EMP000241",
+      "name": "Tharusha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 972
+    },
+    {
+      "pin1": 209,
+      "pinStr": "234",
+      "employeeCode": "EMP000234",
+      "name": "Gihan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 946
+    },
+    {
+      "pin1": 210,
+      "pinStr": "231",
+      "employeeCode": "EMP000231",
+      "name": "Sathmina",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 810
+    },
+    {
+      "pin1": 211,
+      "pinStr": "230",
+      "employeeCode": "EMP000230",
+      "name": "Dayani",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1470
+    },
+    {
+      "pin1": 207,
+      "pinStr": "233",
+      "employeeCode": "EMP000233",
+      "name": "Arosha",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1638
+    },
+    {
+      "pin1": 207,
+      "pinStr": "233",
+      "employeeCode": "EMP000233",
+      "name": "Arosha",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1418
+    },
+    {
+      "pin1": 212,
+      "pinStr": "232",
+      "employeeCode": "EMP000232",
+      "name": "Jagath",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 974
+    },
+    {
+      "pin1": 213,
+      "pinStr": "242",
+      "employeeCode": "EMP000242",
+      "name": "Hasitha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1020
+    },
+    {
+      "pin1": 214,
+      "pinStr": "243",
+      "employeeCode": "EMP000243",
+      "name": "Samadhi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 742
+    },
+    {
+      "pin1": 215,
+      "pinStr": "245",
+      "employeeCode": "EMP000245",
+      "name": "Punsara",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 866
+    },
+    {
+      "pin1": 216,
+      "pinStr": "238",
+      "employeeCode": "EMP000238",
+      "name": "Prageeth",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 898
+    },
+    {
+      "pin1": 217,
+      "pinStr": "247",
+      "employeeCode": "EMP000247",
+      "name": "Nethmi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 714
+    },
+    {
+      "pin1": 218,
+      "pinStr": "250",
+      "employeeCode": "EMP000250",
+      "name": "Ashish",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1016
+    },
+    {
+      "pin1": 219,
+      "pinStr": "249",
+      "employeeCode": "EMP000249",
+      "name": "Pradeep",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 790
+    },
+    {
+      "pin1": 220,
+      "pinStr": "251",
+      "employeeCode": "EMP000251",
+      "name": "Kavindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 974
+    },
+    {
+      "pin1": 221,
+      "pinStr": "244",
+      "employeeCode": "EMP000244",
+      "name": "Dinesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1000
+    },
+    {
+      "pin1": 222,
+      "pinStr": "246",
+      "employeeCode": "EMP000246",
+      "name": "Vijitha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 840
+    },
+    {
+      "pin1": 223,
+      "pinStr": "253",
+      "employeeCode": "EMP000253",
+      "name": "Hirushi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 940
+    },
+    {
+      "pin1": 224,
+      "pinStr": "254",
+      "employeeCode": "EMP000254",
+      "name": "Rooban",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 832
+    },
+    {
+      "pin1": 225,
+      "pinStr": "255",
+      "employeeCode": "EMP000255",
+      "name": "Yogaral",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 856
+    },
+    {
+      "pin1": 226,
+      "pinStr": "258",
+      "employeeCode": "EMP000258",
+      "name": "Moneesha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 998
+    },
+    {
+      "pin1": 227,
+      "pinStr": "252",
+      "employeeCode": "EMP000252",
+      "name": "Dinesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 840
+    },
+    {
+      "pin1": 228,
+      "pinStr": "259",
+      "employeeCode": "EMP000259",
+      "name": "Kavinda",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 760
+    },
+    {
+      "pin1": 229,
+      "pinStr": "260",
+      "employeeCode": "EMP000260",
+      "name": "Sohit",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1176
+    },
+    {
+      "pin1": 230,
+      "pinStr": "236",
+      "employeeCode": "EMP000236",
+      "name": "Diluka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 710
+    },
+    {
+      "pin1": 231,
+      "pinStr": "262",
+      "employeeCode": "EMP000262",
+      "name": "Nayana",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 528
+    },
+    {
+      "pin1": 232,
+      "pinStr": "261",
+      "employeeCode": "EMP000261",
+      "name": "Anusha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 816
+    },
+    {
+      "pin1": 233,
+      "pinStr": "263",
+      "employeeCode": "EMP000263",
+      "name": "Kaveesha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 632
+    },
+    {
+      "pin1": 234,
+      "pinStr": "264",
+      "employeeCode": "EMP000264",
+      "name": "Nalindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 844
+    },
+    {
+      "pin1": 235,
+      "pinStr": "248",
+      "employeeCode": "EMP000248",
+      "name": "Kuldeep",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 792
+    },
+    {
+      "pin1": 236,
+      "pinStr": "237",
+      "employeeCode": "EMP000237",
+      "name": "P",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 914
+    },
+    {
+      "pin1": 237,
+      "pinStr": "240",
+      "employeeCode": "EMP000240",
+      "name": "Gihan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 778
+    },
+    {
+      "pin1": 236,
+      "pinStr": "237",
+      "employeeCode": "EMP000237",
+      "name": "P",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 748
+    },
+    {
+      "pin1": 206,
+      "pinStr": "239",
+      "employeeCode": "EMP000239",
+      "name": "Praveen",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 1152
+    },
+    {
+      "pin1": 238,
+      "pinStr": "266",
+      "employeeCode": "EMP000266",
+      "name": "Niluka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 808
+    },
+    {
+      "pin1": 239,
+      "pinStr": "269",
+      "employeeCode": "EMP000269",
+      "name": "Sachini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 912
+    },
+    {
+      "pin1": 240,
+      "pinStr": "267",
+      "employeeCode": "EMP000267",
+      "name": "Kalyani",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 768
+    },
+    {
+      "pin1": 241,
+      "pinStr": "268",
+      "employeeCode": "EMP000268",
+      "name": "Nethmi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 796
+    },
+    {
+      "pin1": 242,
+      "pinStr": "270",
+      "employeeCode": "EMP000270",
+      "name": "Ramesh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 800
+    },
+    {
+      "pin1": 243,
+      "pinStr": "271",
+      "employeeCode": "EMP000271",
+      "name": "Eranga",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1020
+    },
+    {
+      "pin1": 245,
+      "pinStr": "272",
+      "employeeCode": "EMP000272",
+      "name": "Shanuka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 938
+    },
+    {
+      "pin1": 246,
+      "pinStr": "276",
+      "employeeCode": "EMP000276",
+      "name": "Sadeepa",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1136
+    },
+    {
+      "pin1": 247,
+      "pinStr": "274",
+      "employeeCode": "EMP000274",
+      "name": "Sandeepa",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1064
+    },
+    {
+      "pin1": 247,
+      "pinStr": "274",
+      "employeeCode": "EMP000274",
+      "name": "Sandeepa",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 984
+    },
+    {
+      "pin1": 248,
+      "pinStr": "282",
+      "employeeCode": "EMP000282",
+      "name": "Hemamall",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1144
+    },
+    {
+      "pin1": 249,
+      "pinStr": "283",
+      "employeeCode": "EMP000283",
+      "name": "Sewmini",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 824
+    },
+    {
+      "pin1": 250,
+      "pinStr": "280",
+      "employeeCode": "EMP000280",
+      "name": "Pimasha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 251,
+      "pinStr": "277",
+      "employeeCode": "EMP000277",
+      "name": "Dinesha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 896
+    },
+    {
+      "pin1": 252,
+      "pinStr": "281",
+      "employeeCode": "EMP000281",
+      "name": "Kavindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 836
+    },
+    {
+      "pin1": 253,
+      "pinStr": "287",
+      "employeeCode": "EMP000287",
+      "name": "Buddika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1144
+    },
+    {
+      "pin1": 254,
+      "pinStr": "285",
+      "employeeCode": "EMP000285",
+      "name": "Daniel",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 760
+    },
+    {
+      "pin1": 255,
+      "pinStr": "290",
+      "employeeCode": "EMP000290",
+      "name": "Uvindu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1022
+    },
+    {
+      "pin1": 257,
+      "pinStr": "291",
+      "employeeCode": "EMP000291",
+      "name": "Milan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1020
+    },
+    {
+      "pin1": 258,
+      "pinStr": "295",
+      "employeeCode": "EMP000295",
+      "name": "Mahesha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 944
+    },
+    {
+      "pin1": 259,
+      "pinStr": "292",
+      "employeeCode": "EMP000292",
+      "name": "Priyantha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 874
+    },
+    {
+      "pin1": 260,
+      "pinStr": "294",
+      "employeeCode": "EMP000294",
+      "name": "Sunethra",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 830
+    },
+    {
+      "pin1": 261,
+      "pinStr": "296",
+      "employeeCode": "EMP000296",
+      "name": "Chandra",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1062
+    },
+    {
+      "pin1": 262,
+      "pinStr": "286",
+      "employeeCode": "EMP000286",
+      "name": "Samitha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1044
+    },
+    {
+      "pin1": 263,
+      "pinStr": "288",
+      "employeeCode": "EMP000288",
+      "name": "",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 780
+    },
+    {
+      "pin1": 243,
+      "pinStr": "271",
+      "employeeCode": "EMP000271",
+      "name": "Eranga",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 852
+    },
+    {
+      "pin1": 264,
+      "pinStr": "302",
+      "employeeCode": "EMP000302",
+      "name": "Sarangi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 824
+    },
+    {
+      "pin1": 265,
+      "pinStr": "298",
+      "employeeCode": "EMP000298",
+      "name": "Oshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 992
+    },
+    {
+      "pin1": 266,
+      "pinStr": "300",
+      "employeeCode": "EMP000300",
+      "name": "Ishika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 662
+    },
+    {
+      "pin1": 267,
+      "pinStr": "303",
+      "employeeCode": "EMP000303",
+      "name": "Lakshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 996
+    },
+    {
+      "pin1": 229,
+      "pinStr": "260",
+      "employeeCode": "EMP000260",
+      "name": "Sohit",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 1044
+    },
+    {
+      "pin1": 268,
+      "pinStr": "305",
+      "employeeCode": "EMP000305",
+      "name": "Imesha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1034
+    },
+    {
+      "pin1": 269,
+      "pinStr": "299",
+      "employeeCode": "EMP000299",
+      "name": "Themiya",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 742
+    },
+    {
+      "pin1": 270,
+      "pinStr": "297",
+      "employeeCode": "EMP000297",
+      "name": "Nishantha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 794
+    },
+    {
+      "pin1": 271,
+      "pinStr": "304",
+      "employeeCode": "EMP000304",
+      "name": "Dhana",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 810
+    },
+    {
+      "pin1": 272,
+      "pinStr": "309",
+      "employeeCode": "EMP000309",
+      "name": "Krishan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 952
+    },
+    {
+      "pin1": 273,
+      "pinStr": "312",
+      "employeeCode": "EMP000312",
+      "name": "Rachith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 970
+    },
+    {
+      "pin1": 274,
+      "pinStr": "320",
+      "employeeCode": "EMP000320",
+      "name": "Chamodya",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 720
+    },
+    {
+      "pin1": 275,
+      "pinStr": "308",
+      "employeeCode": "EMP000308",
+      "name": "Dilshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 828
+    },
+    {
+      "pin1": 276,
+      "pinStr": "319",
+      "employeeCode": "EMP000319",
+      "name": "Irusha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 926
+    },
+    {
+      "pin1": 277,
+      "pinStr": "324",
+      "employeeCode": "EMP000324",
+      "name": "Noor",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 860
+    },
+    {
+      "pin1": 278,
+      "pinStr": "317",
+      "employeeCode": "EMP000317",
+      "name": "Shashin",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1146
+    },
+    {
+      "pin1": 279,
+      "pinStr": "318",
+      "employeeCode": "EMP000318",
+      "name": "Dulani",
+      "fingerId": 3,
+      "valid": 1,
+      "sizeBytes": 974
+    },
+    {
+      "pin1": 280,
+      "pinStr": "311",
+      "employeeCode": "EMP000311",
+      "name": "Manel",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 958
+    },
+    {
+      "pin1": 281,
+      "pinStr": "316",
+      "employeeCode": "EMP000316",
+      "name": "Dilki",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 986
+    },
+    {
+      "pin1": 282,
+      "pinStr": "315",
+      "employeeCode": "EMP000315",
+      "name": "Achila",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 830
+    },
+    {
+      "pin1": 283,
+      "pinStr": "301",
+      "employeeCode": "EMP000301",
+      "name": "Aqeel",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 866
+    },
+    {
+      "pin1": 284,
+      "pinStr": "325",
+      "employeeCode": "EMP000325",
+      "name": "Gaveen",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 892
+    },
+    {
+      "pin1": 285,
+      "pinStr": "323",
+      "employeeCode": "EMP000323",
+      "name": "Sumith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1012
+    },
+    {
+      "pin1": 286,
+      "pinStr": "327",
+      "employeeCode": "EMP000327",
+      "name": "Tuan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 790
+    },
+    {
+      "pin1": 287,
+      "pinStr": "330",
+      "employeeCode": "EMP000330",
+      "name": "Piyumi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 878
+    },
+    {
+      "pin1": 288,
+      "pinStr": "328",
+      "employeeCode": "EMP000328",
+      "name": "Jude",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 916
+    },
+    {
+      "pin1": 289,
+      "pinStr": "329",
+      "employeeCode": "EMP000329",
+      "name": "Dileep",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1136
+    },
+    {
+      "pin1": 290,
+      "pinStr": "331",
+      "employeeCode": "EMP000331",
+      "name": "Dulshan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 992
+    },
+    {
+      "pin1": 291,
+      "pinStr": "332",
+      "employeeCode": "EMP000332",
+      "name": "Saman",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1052
+    },
+    {
+      "pin1": 292,
+      "pinStr": "326",
+      "employeeCode": "EMP000326",
+      "name": "Malsha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1210
+    },
+    {
+      "pin1": 293,
+      "pinStr": "333",
+      "employeeCode": "EMP000333",
+      "name": "Pathum",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 844
+    },
+    {
+      "pin1": 294,
+      "pinStr": "335",
+      "employeeCode": "EMP000335",
+      "name": "Tharusha",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 918
+    },
+    {
+      "pin1": 295,
+      "pinStr": "336",
+      "employeeCode": "EMP000336",
+      "name": "Geethika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 962
+    },
+    {
+      "pin1": 296,
+      "pinStr": "334",
+      "employeeCode": "EMP000334",
+      "name": "Chamara",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 824
+    },
+    {
+      "pin1": 297,
+      "pinStr": "338",
+      "employeeCode": "EMP000338",
+      "name": "Dasun",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 572
+    },
+    {
+      "pin1": 298,
+      "pinStr": "342",
+      "employeeCode": "EMP000342",
+      "name": "Asanka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 866
+    },
+    {
+      "pin1": 299,
+      "pinStr": "339",
+      "employeeCode": "EMP000339",
+      "name": "Disna",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 862
+    },
+    {
+      "pin1": 300,
+      "pinStr": "347",
+      "employeeCode": "EMP000347",
+      "name": "Paramie",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 708
+    },
+    {
+      "pin1": 301,
+      "pinStr": "345",
+      "employeeCode": "EMP000345",
+      "name": "Chathu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1126
+    },
+    {
+      "pin1": 302,
+      "pinStr": "346",
+      "employeeCode": "EMP000346",
+      "name": "Thimalka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 588
+    },
+    {
+      "pin1": 303,
+      "pinStr": "344",
+      "employeeCode": "EMP000344",
+      "name": "Sajewan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 884
+    },
+    {
+      "pin1": 304,
+      "pinStr": "340",
+      "employeeCode": "EMP000340",
+      "name": "Devsing",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1108
+    },
+    {
+      "pin1": 305,
+      "pinStr": "348",
+      "employeeCode": "EMP000348",
+      "name": "Deepika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 786
+    },
+    {
+      "pin1": 306,
+      "pinStr": "351",
+      "employeeCode": "EMP000351",
+      "name": "Lakmali",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1154
+    },
+    {
+      "pin1": 307,
+      "pinStr": "352",
+      "employeeCode": "EMP000352",
+      "name": "Prabashi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 916
+    },
+    {
+      "pin1": 308,
+      "pinStr": "350",
+      "employeeCode": "EMP000350",
+      "name": "Sadali",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 920
+    },
+    {
+      "pin1": 309,
+      "pinStr": "357",
+      "employeeCode": "EMP000357",
+      "name": "Sachchi",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 858
+    },
+    {
+      "pin1": 310,
+      "pinStr": "349",
+      "employeeCode": "EMP000349",
+      "name": "Janith",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 792
+    },
+    {
+      "pin1": 311,
+      "pinStr": "341",
+      "employeeCode": "EMP000341",
+      "name": "Santosh",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 924
+    },
+    {
+      "pin1": 312,
+      "pinStr": "355",
+      "employeeCode": "EMP000355",
+      "name": "Hansuka",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 838
+    },
+    {
+      "pin1": 51,
+      "pinStr": "51",
+      "employeeCode": "EMP000051",
+      "name": "Niroth Nirmal",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 868
+    },
+    {
+      "pin1": 313,
+      "pinStr": "356",
+      "employeeCode": "EMP000356",
+      "name": "Dammika",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 808
+    },
+    {
+      "pin1": 314,
+      "pinStr": "358",
+      "employeeCode": "EMP000358",
+      "name": "Lesandu",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 826
+    },
+    {
+      "pin1": 315,
+      "pinStr": "359",
+      "employeeCode": "EMP000359",
+      "name": "Rashid",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1368
+    },
+    {
+      "pin1": 316,
+      "pinStr": "361",
+      "employeeCode": "EMP000361",
+      "name": "Disal",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 854
+    },
+    {
+      "pin1": 317,
+      "pinStr": "360",
+      "employeeCode": "EMP000360",
+      "name": "Sahan",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 1180
+    },
+    {
+      "pin1": 303,
+      "pinStr": "344",
+      "employeeCode": "EMP000344",
+      "name": "Sajewan",
+      "fingerId": 4,
+      "valid": 1,
+      "sizeBytes": 1002
+    },
+    {
+      "pin1": 318,
+      "pinStr": "313",
+      "employeeCode": "EMP000313",
+      "name": "Themiya",
+      "fingerId": 5,
+      "valid": 1,
+      "sizeBytes": 856
+    },
+    {
+      "pin1": 319,
+      "pinStr": "363",
+      "employeeCode": "EMP000363",
+      "name": "Amodya",
+      "fingerId": 6,
+      "valid": 1,
+      "sizeBytes": 994
+    }
+  ]
+}
