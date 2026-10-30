@@ -45,9 +45,10 @@ BEGIN
         END IF;
         IF NEW.status = 'draft' AND (
             NEW.remarks LIKE '%[AMENDMENT:%' OR
-            OLD.remarks LIKE '%[AMENDMENT:%'
+            OLD.remarks LIKE '%[AMENDMENT:%' OR
+            TG_TABLE_NAME IN ('goods_receipts', 'purchase_orders')
         ) THEN
-            RETURN NEW;                               -- unlock to draft for approved amendment
+            RETURN NEW;                               -- unlock to draft for approved amendment / admin unlock
         END IF;
         RAISE EXCEPTION 'IMMUTABLE_DOC: Cannot modify posted document "%" on table %.', OLD.doc_number, TG_TABLE_NAME;
     END IF;
