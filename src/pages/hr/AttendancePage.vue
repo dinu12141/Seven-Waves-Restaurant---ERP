@@ -13,6 +13,7 @@
           outlined
           v-model="filterDate"
           type="date"
+          clearable
           style="width: 145px"
           @update:model-value="loadAttendance"
         />
@@ -288,6 +289,53 @@
             ><q-tooltip>Edit</q-tooltip></q-btn
           >
         </q-td>
+      </template>
+
+      <template #no-data>
+        <div class="full-width column flex-center q-pa-xl text-center">
+          <q-icon name="fingerprint" size="44px" color="amber-8" class="q-mb-sm" />
+          <div class="text-subtitle1 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">
+            {{ filterDate ? `No Attendance Records for ${filterDate}` : 'No Attendance Records Found' }}
+          </div>
+          <div class="text-caption text-grey-6 q-mb-md" style="max-width: 480px">
+            {{
+              filterDate === localYmd()
+                ? "Biometric fingerprint machine logs for today (30/10/2026) have not been uploaded/synced yet. You can view yesterday's records, show all recent logs, or mark attendance manually."
+                : "No attendance records match the selected date or department filters. Try adjusting the filters above."
+            }}
+          </div>
+          <div class="row q-gutter-sm justify-center">
+            <q-btn
+              v-if="filterDate === localYmd()"
+              outline
+              dense
+              no-caps
+              color="primary"
+              icon="history"
+              label="View Yesterday (29/10)"
+              @click="setDateYesterday"
+            />
+            <q-btn
+              outline
+              dense
+              no-caps
+              color="grey-7"
+              icon="clear_all"
+              label="Show All Recent"
+              @click="showAllAttendance"
+            />
+            <q-btn
+              unelevated
+              dense
+              no-caps
+              color="amber-9"
+              text-color="dark"
+              icon="add"
+              label="Mark Attendance"
+              @click="openMarkAttendance"
+            />
+          </div>
+        </div>
       </template>
     </q-table>
 
@@ -1121,12 +1169,11 @@ const statusOptions = ['present', 'absent', 'late', 'half_day', 'on_leave', 'no_
 async function loadAttendance() {
   loading.value = true
   try {
-    const branchId = authStore.currentBranch?.id
+    const branchId =
+      authStore.currentBranch?.id ||
+      authStore.profile?.branch_id ||
+      (authStore.branches && authStore.branches[0]?.id)
 
-    if (!branchId) {
-      records.value = []
-      return
-    }
     // Swap a reversed range instead of silently returning nothing.
     if (filterDate.value && filterEndDate.value && filterEndDate.value < filterDate.value) {
       const tmp = filterDate.value
@@ -1138,7 +1185,10 @@ async function loadAttendance() {
       let query = supabase
         .from('attendance_records')
         .select('*, employees!inner(full_name, employee_code, department_id)')
-        .eq('branch_id', branchId)
+
+      if (branchId) {
+        query = query.eq('branch_id', branchId)
+      }
 
       if (filterDate.value && filterEndDate.value) {
         query = query
@@ -1146,6 +1196,8 @@ async function loadAttendance() {
           .lte('attendance_date', filterEndDate.value)
       } else if (filterDate.value) {
         query = query.eq('attendance_date', filterDate.value)
+      } else if (filterEndDate.value) {
+        query = query.lte('attendance_date', filterEndDate.value)
       }
       if (filterDepartment.value) {
         query = query.eq('employees.department_id', filterDepartment.value)
@@ -1824,6 +1876,23 @@ watch(filterDepartment, () => {
     loadAttendance()
   }
 })
+
+function setDateYesterday() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  filterDate.value = `${y}-${m}-${day}`
+  filterEndDate.value = ''
+  loadAttendance()
+}
+
+function showAllAttendance() {
+  filterDate.value = ''
+  filterEndDate.value = ''
+  loadAttendance()
+}
 
 function resetFilters() {
   filterDate.value = localYmd()
