@@ -282,6 +282,32 @@ export async function approveDocumentAmendment(
           .eq('id', docId)
 
         if (error) throw new Error(error.message)
+      } else {
+        const fallbackAmendment: DocumentAmendmentRequest = {
+          id: amendmentId,
+          doc_type: 'GRN',
+          doc_id: docId,
+          doc_number: grn?.doc_number || '',
+          requested_by_name: 'Staff',
+          requester_role: 'User',
+          reason: adminNotes || 'Admin unlock',
+          action_type: 'edit_unlock',
+          status: 'approved',
+          created_at: resolvedAt,
+          resolved_at: resolvedAt,
+          resolved_by: adminMeta?.name || 'Administrator',
+          admin_notes: adminNotes,
+        }
+        const newRemarks = packAmendmentIntoRemarks(grn?.remarks, fallbackAmendment)
+        const { error } = await supabase
+          .from('goods_receipts')
+          .update({
+            status: 'draft',
+            remarks: newRemarks,
+          })
+          .eq('id', docId)
+
+        if (error) throw new Error(error.message)
       }
     } catch (err: any) {
       console.warn('[AmendmentService] Error unlocking GRN in database:', err)
