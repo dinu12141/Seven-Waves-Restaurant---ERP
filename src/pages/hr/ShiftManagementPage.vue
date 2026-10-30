@@ -12,8 +12,9 @@
         class="shift-toggle"
         :class="$q.dark.isActive ? 'bg-grey-9 border-grey-8' : ''"
         :options="[
+          { label: 'Visual Roster Grid', value: 'roster', icon: 'grid_view' },
           { label: 'Shift Definitions', value: 'definitions', icon: 'schedule' },
-          { label: 'Employee Assignments', value: 'assignments', icon: 'calendar_month' },
+          { label: 'Assignment List', value: 'assignments', icon: 'table_rows' },
         ]"
       />
       <q-space />
@@ -30,7 +31,18 @@
       />
       <div class="row q-gutter-x-sm">
         <q-btn
-          v-if="viewMode === 'assignments'"
+          v-if="viewMode === 'roster'"
+          color="primary"
+          icon="person_add"
+          label="Assign Shift"
+          no-caps
+          dense
+          size="sm"
+          unelevated
+          @click="openAssignDialog()"
+        />
+        <q-btn
+          v-if="viewMode === 'assignments' || viewMode === 'roster'"
           color="positive"
           icon="download"
           label="Excel"
@@ -41,7 +53,7 @@
           @click="exportExcel"
         />
         <q-btn
-          v-if="viewMode === 'assignments'"
+          v-if="viewMode === 'assignments' || viewMode === 'roster'"
           color="red-6"
           icon="picture_as_pdf"
           label="PDF"
@@ -52,7 +64,7 @@
           @click="exportPDF"
         />
         <q-btn
-          v-if="viewMode === 'assignments'"
+          v-if="viewMode === 'assignments' || viewMode === 'roster'"
           color="secondary"
           icon="upload_file"
           label="Upload Roster"
@@ -74,6 +86,11 @@
           @click="openAssignDialog()"
         />
       </div>
+    </div>
+
+    <!-- ─── VISUAL ROSTER GRID VIEW (Frappe Style) ─── -->
+    <div v-if="viewMode === 'roster'">
+      <VisualShiftRosterGrid ref="rosterGridRef" />
     </div>
 
     <!-- ─── SHIFT DEFINITIONS VIEW ─── -->
@@ -940,6 +957,7 @@ import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { localYmd, localYm, fetchAllRows } from 'src/services/hr/hrDates'
 import { useAuthStore } from 'stores/auth'
+import VisualShiftRosterGrid from 'components/hr/VisualShiftRosterGrid.vue'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -948,7 +966,8 @@ const $q = useQuasar()
 const authStore = useAuthStore()
 
 // ─── State ───────────────────────────────────────────────────────────────────
-const viewMode = ref('definitions')
+const viewMode = ref('roster')
+const rosterGridRef = ref(null)
 const shifts = ref([])
 const assignments = ref([])
 const employees = ref([])
@@ -1420,6 +1439,7 @@ async function processRosterUpload() {
     })
     uploadDialog.open = false
     await loadAssignments()
+    rosterGridRef.value?.loadRosterData?.()
   } catch (err) {
     console.error('Upload Error:', err)
     $q.notify({ type: 'negative', message: err.message || 'Error processing Excel file' })
@@ -1602,6 +1622,7 @@ async function saveAssignment() {
     }
     assignDialog.open = false
     await loadAssignments()
+    rosterGridRef.value?.loadRosterData?.()
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'Failed to save assignment' })
   } finally {
