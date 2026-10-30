@@ -1270,13 +1270,18 @@ function markAbsentees() {
 }
 
 // ── Display helpers ──────────────────────────────────────────────────────────
-// Format stored ISO timestamps into local browser time (e.g. Asia/Colombo +05:30).
+// Format stored ISO timestamps into Sri Lanka local time (Asia/Colombo UTC+05:30).
 function formatDisplayTime(v) {
   if (!v) return '—'
   if (typeof v === 'string' && (v.includes('T') || v.includes('Z') || v.includes('+'))) {
     const d = new Date(v)
     if (!isNaN(d.getTime())) {
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      return d.toLocaleTimeString('en-GB', {
+        timeZone: 'Asia/Colombo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
     }
   }
   // Fallback for naive HH:MM
@@ -1303,9 +1308,12 @@ function extractTime(timestampOrTime) {
   if (typeof timestampOrTime === 'string' && (timestampOrTime.includes('T') || timestampOrTime.includes('Z') || timestampOrTime.includes('+'))) {
     const d = new Date(timestampOrTime)
     if (!isNaN(d.getTime())) {
-      const hh = String(d.getHours()).padStart(2, '0')
-      const mm = String(d.getMinutes()).padStart(2, '0')
-      return `${hh}:${mm}`
+      return d.toLocaleTimeString('en-GB', {
+        timeZone: 'Asia/Colombo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
     }
   }
   return timestampOrTime.slice(0, 5)
