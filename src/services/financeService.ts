@@ -94,6 +94,7 @@ export async function fetchJournalEntries(filters: FinanceFilters = {}) {
   const { data: vouchers } = await supabase
     .from('finance_vouchers')
     .select('id, voucher_no, voucher_type, voucher_date, amount, pay_to, received_from, created_at')
+    .neq('status', 'cancelled')
     .order('created_at', { ascending: false })
     .limit(filters.limit || 10)
 
@@ -603,7 +604,11 @@ export async function fetchExpenses(filters: FinanceFilters = {}) {
     .eq('voucher_type', 'pay')
     .order('created_at', { ascending: false })
 
-  if (filters.status && filters.status !== 'All') vQuery = vQuery.eq('status', filters.status)
+  if (filters.status && filters.status !== 'All') {
+    vQuery = vQuery.eq('status', filters.status)
+  } else {
+    vQuery = vQuery.neq('status', 'cancelled')
+  }
   if (filters.dateFrom) vQuery = vQuery.gte('voucher_date', filters.dateFrom)
   if (filters.dateTo) vQuery = vQuery.lte('voucher_date', filters.dateTo)
   if (filters.limit) vQuery = vQuery.limit(filters.limit)
@@ -630,7 +635,11 @@ export async function fetchExpenses(filters: FinanceFilters = {}) {
 
   if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
   if (filters.branchId) query = query.eq('branch_id', filters.branchId)
-  if (filters.status && filters.status !== 'All') query = query.eq('status', filters.status)
+  if (filters.status && filters.status !== 'All') {
+    query = query.eq('status', filters.status)
+  } else {
+    query = query.neq('status', 'cancelled')
+  }
   if (filters.dateFrom) query = query.gte('expense_date', filters.dateFrom)
   if (filters.dateTo) query = query.lte('expense_date', filters.dateTo)
   if (filters.limit) query = query.limit(filters.limit)

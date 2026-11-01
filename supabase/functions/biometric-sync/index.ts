@@ -449,7 +449,7 @@ async function buildAttendanceLogRows(
   // Fetch active employees to match PIN with employee_code
   const { data: employees } = await supabase
     .from('employees')
-    .select('id, employee_code, first_name, last_name')
+    .select('id, employee_code, attendance_device_id, first_name, last_name')
     .eq('is_active', true)
 
   const employeeMap = new Map<string, { id: string; code: string }>()
@@ -457,6 +457,12 @@ async function buildAttendanceLogRows(
     for (const emp of employees) {
       const code = String(emp.employee_code).trim()
       employeeMap.set(code.toLowerCase(), { id: emp.id, code })
+      // Map explicit biometric PIN / attendance_device_id (Frappe style)
+      if (emp.attendance_device_id) {
+        const pin = String(emp.attendance_device_id).trim()
+        employeeMap.set(pin.toLowerCase(), { id: emp.id, code })
+        employeeMap.set(pin, { id: emp.id, code })
+      }
       // Support numeric match (e.g. EMP001 -> '1', '01', '001')
       const numOnly = code.replace(/\D/g, '')
       if (numOnly) {

@@ -111,7 +111,10 @@ const kpiData = computed(() => [
 async function loadData(filters = {}) {
   loading.value = true
   try {
-    let query = supabase.from('purchase_orders').select('total_amount,suppliers(name)')
+    let query = supabase
+      .from('purchase_orders')
+      .select('total_amount,suppliers(name)')
+      .neq('status', 'cancelled')
     if (filters.dateFrom) query = query.gte('created_at', dayStartISO(filters.dateFrom))
     if (filters.dateTo) query = query.lt('created_at', dayEndExclusiveISO(filters.dateTo))
     const { data, error } = await fetchAllRows(query.order('id'))

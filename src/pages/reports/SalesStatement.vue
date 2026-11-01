@@ -200,19 +200,25 @@ function fmtN(val) {
 }
 
 // ── Compute statement values from raw orders ──────────────
+const validOrders = computed(() =>
+  rawOrders.value.filter((o) => o.status !== 'cancelled' && o.status !== 'void')
+)
+
 const grossSales = computed(() =>
-  rawOrders.value.reduce((s, o) => s + Number(o.subtotal || o.total_amount || 0), 0),
+  validOrders.value.reduce((s, o) => s + Number(o.subtotal || o.total_amount || 0), 0),
 )
 const totalDiscount = computed(() =>
-  rawOrders.value.reduce((s, o) => s + Number(o.discount_amount || 0), 0),
+  validOrders.value.reduce((s, o) => s + Number(o.discount_amount || 0), 0),
 )
-const totalServiceCharge = computed(() => rawOrders.value.reduce((s, o) => s + Number(o.service_charge || 0), 0))
+const totalServiceCharge = computed(() =>
+  validOrders.value.reduce((s, o) => s + Number(o.service_charge || 0), 0),
+)
 
 const totalDelivery = computed(() =>
-  rawOrders.value.reduce((s, o) => s + Number(o.delivery_charge || 0), 0),
+  validOrders.value.reduce((s, o) => s + Number(o.delivery_charge || 0), 0),
 )
 const totalAmount = computed(() =>
-  rawOrders.value.reduce((s, o) => s + Number(o.total_amount || 0), 0),
+  validOrders.value.reduce((s, o) => s + Number(o.total_amount || 0), 0),
 )
 
 const voidRefundAmount = computed(() =>

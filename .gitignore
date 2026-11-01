@@ -45,3 +45,4 @@ yarn-error.log*
 # Local database dumps and scratch files
 backups/
 scratch/
+/*.pdf

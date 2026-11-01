@@ -260,7 +260,7 @@
                 $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
               ]"
             >
-              <div class="col-12">
+              <div class="col-12 col-md-6">
                 <div class="text-caption">Employee ID:</div>
                 <q-input
                   :dark="$q.dark.isActive"
@@ -268,6 +268,17 @@
                   dense
                   v-model="form.employee_code"
                   readonly
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="text-caption">Biometric Terminal PIN (Machine User ID):</div>
+                <q-input
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.attendance_device_id"
+                  placeholder="e.g. 83"
+                  hint="Device enrollment number on fingerprint terminal"
                 />
               </div>
 
@@ -4698,6 +4709,7 @@ function onBankChange(formObj) {
 const defaultForm = {
   id: null,
   employee_code: '',
+  attendance_device_id: '',
   first_name: '',
   last_name: '',
   address_line1: '',

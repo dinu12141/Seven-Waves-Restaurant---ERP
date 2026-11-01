@@ -163,6 +163,14 @@
                   <q-icon name="timer" size="10px" class="q-mr-xs" />
                   {{ calculateHours(shift) }}hrs
                 </div>
+                <div class="col-auto">
+                  <q-icon name="schedule" size="10px" class="q-mr-xs text-amber" />
+                  {{ shift.grace_minutes ?? 10 }}m grace
+                </div>
+                <div class="col-auto">
+                  <q-icon name="swap_horiz" size="10px" class="q-mr-xs text-primary" />
+                  -{{ shift.pre_shift_buffer_minutes ?? 60 }}m / +{{ shift.post_shift_buffer_minutes ?? 120 }}m
+                </div>
               </div>
             </q-card-section>
 
@@ -549,7 +557,51 @@
               />
             </div>
           </div>
-          <!-- Removed Shift Type here to avoid schema 400 errors -->
+          <!-- Shift Tolerance & Window Buffers (Frappe Style) -->
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-4">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                Grace Period (mins)
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model.number="shiftForm.grace_minutes"
+                type="number"
+                min="0"
+                hint="Late arrival tolerance"
+              />
+            </div>
+            <div class="col-12 col-sm-4">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                Pre-shift Buffer (mins)
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model.number="shiftForm.pre_shift_buffer_minutes"
+                type="number"
+                min="0"
+                hint="Check-in window before shift"
+              />
+            </div>
+            <div class="col-12 col-sm-4">
+              <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+                Post-shift Buffer (mins)
+              </div>
+              <q-input
+                :dark="$q.dark.isActive"
+                dense
+                outlined
+                v-model.number="shiftForm.post_shift_buffer_minutes"
+                type="number"
+                min="0"
+                hint="Check-out window after shift"
+              />
+            </div>
+          </div>
           <q-toggle
             :dark="$q.dark.isActive"
             v-model="shiftForm.is_active"
@@ -1012,6 +1064,9 @@ const shiftForm = reactive({
   break_duration_minutes: 60,
   is_overnight: false,
   is_active: true,
+  grace_minutes: 10,
+  pre_shift_buffer_minutes: 60,
+  post_shift_buffer_minutes: 120,
 })
 
 function openShiftDialog(shift = null) {
@@ -1025,6 +1080,9 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: shift.break_duration_minutes || 0,
       is_overnight: shift.is_overnight || false,
       is_active: shift.is_active !== false,
+      grace_minutes: shift.grace_minutes ?? 10,
+      pre_shift_buffer_minutes: shift.pre_shift_buffer_minutes ?? 60,
+      post_shift_buffer_minutes: shift.post_shift_buffer_minutes ?? 120,
     })
   } else {
     Object.assign(shiftForm, {
@@ -1035,6 +1093,9 @@ function openShiftDialog(shift = null) {
       break_duration_minutes: 60,
       is_overnight: false,
       is_active: true,
+      grace_minutes: 10,
+      pre_shift_buffer_minutes: 60,
+      post_shift_buffer_minutes: 120,
     })
   }
   shiftDialog.open = true
@@ -1505,6 +1566,9 @@ async function saveShift() {
     break_duration_minutes: shiftForm.break_duration_minutes || 0,
     is_overnight: shiftForm.is_overnight,
     is_active: shiftForm.is_active,
+    grace_minutes: shiftForm.grace_minutes ?? 10,
+    pre_shift_buffer_minutes: shiftForm.pre_shift_buffer_minutes ?? 60,
+    post_shift_buffer_minutes: shiftForm.post_shift_buffer_minutes ?? 120,
   }
   try {
     if (shiftDialog.isEdit) {

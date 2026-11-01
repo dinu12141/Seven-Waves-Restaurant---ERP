@@ -175,13 +175,18 @@ export class ZKTecoClient {
     // ── Fetch active employees to map device user_id (e.g. "3" -> "EMP000003") ─
     const { data: employees } = await supabase
       .from('employees')
-      .select('id, employee_code')
+      .select('id, employee_code, attendance_device_id')
       .eq('is_active', true)
 
     const empMap = new Map()
     for (const e of employees || []) {
       const code = String(e.employee_code).trim()
       empMap.set(code.toLowerCase(), e)
+      if (e.attendance_device_id) {
+        const pin = String(e.attendance_device_id).trim()
+        empMap.set(pin.toLowerCase(), e)
+        empMap.set(pin, e)
+      }
       const numOnly = code.replace(/\D/g, '')
       if (numOnly) {
         empMap.set(numOnly, e)
@@ -212,14 +217,41 @@ export class ZKTecoClient {
 
       const { data: last } = await supabase
         .from('attendance_logs')
-        .select('punch_type')
+        .select('punch_type, punch_time')
         .eq('employee_code', empCode)
         .eq('device_id', this.ip)
         .gte('punch_time', `${day}T00:00:00`)
         .lt('punch_time', `${day}T23:59:59.999`)
         .order('punch_time', { ascending: false })
         .limit(1)
-      lastTypeByKey.set(key, last?.[0]?.punch_type || null)
+
+      if (last?.[0]?.punch_type) {
+        lastTypeByKey.set(key, last[0].punch_type)
+      } else {
+        // Look back to yesterday: if employee clocked 'in' within the last 18 hours,
+        // treat previous state as 'in' so the first early punch today becomes 'out'.
+        const { data: prevLast } = await supabase
+          .from('attendance_logs')
+          .select('punch_type, punch_time')
+          .eq('employee_code', empCode)
+          .eq('device_id', this.ip)
+          .lt('punch_time', `${day}T00:00:00`)
+          .order('punch_time', { ascending: false })
+          .limit(1)
+
+        const prev = prevLast?.[0]
+        if (prev?.punch_type === 'in' && prev.punch_time) {
+          const diffHours =
+            (new Date(`${day}T00:00:00`).getTime() - new Date(prev.punch_time).getTime()) / 3600000
+          if (diffHours >= 0 && diffHours <= 18) {
+            lastTypeByKey.set(key, 'in')
+          } else {
+            lastTypeByKey.set(key, null)
+          }
+        } else {
+          lastTypeByKey.set(key, null)
+        }
+      }
     }
 
     const rows = []

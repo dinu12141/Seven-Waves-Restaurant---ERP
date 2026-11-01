@@ -264,7 +264,7 @@ async function fetchImageAsPNG(url: string): Promise<string | null> {
   })
 }
 
-async function generatePDFTableDoc(columns: any[], rows: any[], title: string, subtitle: string = ''): Promise<jsPDF> {
+async function generatePDFTableDoc(columns: any[], rows: any[], title: string, subtitle: string = '', foot?: any[][]): Promise<jsPDF> {
   const doc = new jsPDF({ orientation: columns.length > 6 ? 'landscape' : 'portrait' })
 
   await drawSAPHeader(doc, title, subtitle)
@@ -301,40 +301,52 @@ async function generatePDFTableDoc(columns: any[], rows: any[], title: string, s
       tableStyles.minCellHeight = 12
     }
 
-    autoTable(doc, {
+    const tableConfig: any = {
       startY: 38,
       head: [heads],
       body,
       theme: 'grid',
       headStyles: { fillColor: [27, 58, 107], halign: 'center', fontSize: 8 }, // #1b3a6b matching Navy Blue
       styles: tableStyles,
-    columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
-    didParseCell: (data) => {
-      if (data.section === 'body') {
-        const colDef = columns[data.column.index]
-        if (imageCols.includes(colDef)) {
-          data.cell.text = [] // clear text
+      columnStyles: Object.fromEntries(columns.map((c: any, i: number) => [i, { halign: c.align || 'left' }])),
+      didParseCell: (data: any) => {
+        if (data.section === 'body') {
+          const colDef = columns[data.column.index]
+          if (imageCols.includes(colDef)) {
+            data.cell.text = [] // clear text
+          }
         }
-      }
-    },
-    didDrawCell: (data) => {
-      if (data.section === 'body') {
-        const colDef = columns[data.column.index]
-        if (imageCols.includes(colDef)) {
-          const rowData = rows[data.row.index]
-          if (!rowData) return
-          const val = typeof colDef.field === 'function' ? colDef.field(rowData) : rowData[colDef.field]
-          if (val && typeof val === 'string' && imageCache[val]) {
-            const imgData = imageCache[val]
-            const dim = 10 // 10x10 mm
-            const x = data.cell.x + (data.cell.width - dim) / 2
-            const y = data.cell.y + (data.cell.height - dim) / 2
-            doc.addImage(imgData, 'PNG', x, y, dim, dim)
+      },
+      didDrawCell: (data: any) => {
+        if (data.section === 'body') {
+          const colDef = columns[data.column.index]
+          if (imageCols.includes(colDef)) {
+            const rowData = rows[data.row.index]
+            if (!rowData) return
+            const val = typeof colDef.field === 'function' ? colDef.field(rowData) : rowData[colDef.field]
+            if (val && typeof val === 'string' && imageCache[val]) {
+              const imgData = imageCache[val]
+              const dim = 10 // 10x10 mm
+              const x = data.cell.x + (data.cell.width - dim) / 2
+              const y = data.cell.y + (data.cell.height - dim) / 2
+              doc.addImage(imgData, 'PNG', x, y, dim, dim)
+            }
           }
         }
       }
     }
-  })
+
+    if (foot && foot.length > 0) {
+      tableConfig.foot = foot
+      tableConfig.footStyles = {
+        fillColor: [238, 238, 238],
+        textColor: [20, 20, 20],
+        fontStyle: 'bold',
+        fontSize: 8,
+      }
+    }
+
+    autoTable(doc, tableConfig)
   
   return doc
 }
@@ -342,8 +354,8 @@ async function generatePDFTableDoc(columns: any[], rows: any[], title: string, s
 /**
  * Generic PDF Export with jsPDF-AutoTable
  */
-export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
-  const doc = await generatePDFTableDoc(columns, rows, title, subtitle)
+export async function exportTableToPDF(columns: any[], rows: any[], title: string, subtitle: string = '', foot?: any[][]) {
+  const doc = await generatePDFTableDoc(columns, rows, title, subtitle, foot)
   doc.save(`${title}_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
@@ -351,8 +363,8 @@ export async function exportTableToPDF(columns: any[], rows: any[], title: strin
  * Print report as PDF — generates the same PDF as exportTableToPDF
  * but opens it in a new tab for printing instead of downloading.
  */
-export async function printTableAsPDF(columns: any[], rows: any[], title: string, subtitle: string = '') {
-  const doc = await generatePDFTableDoc(columns, rows, title, subtitle)
+export async function printTableAsPDF(columns: any[], rows: any[], title: string, subtitle: string = '', foot?: any[][]) {
+  const doc = await generatePDFTableDoc(columns, rows, title, subtitle, foot)
   const pdfBlob = doc.output('blob')
   const url = URL.createObjectURL(pdfBlob)
   const printWindow = window.open(url, '_blank')

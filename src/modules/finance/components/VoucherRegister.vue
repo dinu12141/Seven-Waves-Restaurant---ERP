@@ -13,9 +13,38 @@
       <div class="col-12 col-md-4"><q-input v-model="search" label="Search voucher # / name / narration" outlined dense clearable><template #prepend><q-icon name="search" /></template></q-input></div>
     </div>
     <q-banner v-if="voucherStore.error" class="bg-red-1 text-negative q-mb-md" rounded dense>{{ voucherStore.error }}</q-banner>
+
+    <!-- Summary Strip (Excludes Cancelled Vouchers) -->
+    <div class="row q-col-gutter-sm q-mb-md items-center" v-if="rows.length">
+      <div class="col-auto">
+        <q-chip icon="receipt_long" color="primary" text-color="white" dense>
+          {{ activeVouchers.length }} Active Voucher{{ activeVouchers.length !== 1 ? 's' : '' }}
+        </q-chip>
+      </div>
+      <div class="col-auto">
+        <q-chip icon="payments" :color="isPay ? 'red-8' : 'green-8'" text-color="white" dense class="text-weight-bold">
+          Total Active: LKR {{ fmt(activeVoucherTotal) }}
+        </q-chip>
+      </div>
+      <div class="col-auto" v-if="cancelledCount > 0">
+        <q-chip icon="cancel" color="grey-8" text-color="white" dense>
+          {{ cancelledCount }} Cancelled (Excluded)
+        </q-chip>
+      </div>
+    </div>
+
     <q-table flat bordered :rows="rows" :columns="columns" row-key="id" :loading="voucherStore.loading" :pagination="{ rowsPerPage: 20 }" :filter="search">
       <template v-slot:body-cell-status="p"><q-td :props="p"><q-badge :color="statusColor(p.value)">{{ p.value }}</q-badge></q-td></template>
-      <template v-slot:body-cell-amount="p"><q-td :props="p" class="text-weight-bold" :class="isPay ? '' : 'text-green-8'">LKR {{ fmt(p.value) }}</q-td></template>
+      <template v-slot:body-cell-amount="p"><q-td :props="p" class="text-weight-bold" :class="p.row.status === 'cancelled' ? 'text-strike text-grey-5' : (isPay ? '' : 'text-green-8')">LKR {{ fmt(p.value) }}</q-td></template>
+      <template v-slot:bottom-row>
+        <q-tr class="bg-grey-9 text-white text-weight-bold" v-if="rows.length > 0">
+          <q-td colspan="5" class="text-right">TOTAL (Active Vouchers):</q-td>
+          <q-td class="text-right text-weight-bolder" :class="isPay ? 'text-amber-4' : 'text-green-4'">
+            LKR {{ fmt(activeVoucherTotal) }}
+          </q-td>
+          <q-td colspan="4" />
+        </q-tr>
+      </template>
       <template v-slot:body-cell-actions="p">
         <q-td :props="p">
           <div class="row items-center justify-center q-gutter-x-xs no-wrap">
@@ -63,6 +92,14 @@ const search = ref('')
 const filters = ref({ status: null, date_from: '', date_to: '' })
 
 const rows = computed(() => (isPay.value ? voucherStore.payVouchers : voucherStore.receivedVouchers))
+const activeVouchers = computed(() => {
+  if (filters.value.status === 'cancelled') return rows.value
+  return rows.value.filter((v) => v.status !== 'cancelled')
+})
+const activeVoucherTotal = computed(() =>
+  activeVouchers.value.reduce((s, v) => s + Number(v.amount || 0), 0)
+)
+const cancelledCount = computed(() => rows.value.filter((v) => v.status === 'cancelled').length)
 // Always show the live row so the panel follows status changes.
 const selected = computed({
   get: () => rows.value.find((v) => v.id === selectedId.value) || null,

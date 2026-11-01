@@ -326,41 +326,52 @@ const filteredRows = computed(() => {
   return r
 })
 
-const totals = computed(() => ({
-  subtotal: filteredRows.value.reduce((s, r) => s + (r.subtotal || 0), 0),
-  discount: filteredRows.value.reduce((s, r) => s + (r.discount || 0), 0),
-  service_charge: filteredRows.value.reduce((s, r) => s + (r.service_charge || 0), 0),
-  tax: filteredRows.value.reduce((s, r) => s + (r.tax || 0), 0),
-  total: filteredRows.value.reduce((s, r) => s + (r.total || 0), 0),
-}))
+const activeRows = computed(() => {
+  return filteredRows.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+})
 
-const kpiData = computed(() => [
-  {
-    label: 'Total Revenue',
-    value: fmtLKR(totals.value.total),
-    icon: 'payments',
-    color: 'blue',
-    sub: `${filteredRows.value.length} orders`,
-  },
-  {
-    label: 'Gross Sales',
-    value: fmtLKR(totals.value.subtotal),
-    icon: 'shopping_cart',
-    color: 'green',
-  },
-  {
-    label: 'Total Discount',
-    value: `(${fmtLKR(totals.value.discount)})`,
-    icon: 'discount',
-    color: 'amber',
-  },
-  {
-    label: 'Avg. Order Value',
-    value: filteredRows.value.length ? fmtLKR(totals.value.total / filteredRows.value.length) : 'LKR 0',
-    icon: 'trending_up',
-    color: 'teal',
-  },
-])
+const totals = computed(() => {
+  // If user explicitly chose status === 'cancelled', calculate on those; otherwise strictly exclude cancelled/void
+  const source = extraFilters.value.status === 'cancelled' ? filteredRows.value : activeRows.value
+  return {
+    subtotal: source.reduce((s, r) => s + (r.subtotal || 0), 0),
+    discount: source.reduce((s, r) => s + (r.discount || 0), 0),
+    service_charge: source.reduce((s, r) => s + (r.service_charge || 0), 0),
+    tax: source.reduce((s, r) => s + (r.tax || 0), 0),
+    total: source.reduce((s, r) => s + (r.total || 0), 0),
+  }
+})
+
+const kpiData = computed(() => {
+  const source = extraFilters.value.status === 'cancelled' ? filteredRows.value : activeRows.value
+  return [
+    {
+      label: 'Total Revenue',
+      value: fmtLKR(totals.value.total),
+      icon: 'payments',
+      color: 'blue',
+      sub: `${source.length} orders`,
+    },
+    {
+      label: 'Gross Sales',
+      value: fmtLKR(totals.value.subtotal),
+      icon: 'shopping_cart',
+      color: 'green',
+    },
+    {
+      label: 'Total Discount',
+      value: `(${fmtLKR(totals.value.discount)})`,
+      icon: 'discount',
+      color: 'amber',
+    },
+    {
+      label: 'Avg. Order Value',
+      value: source.length ? fmtLKR(totals.value.total / source.length) : 'LKR 0',
+      icon: 'trending_up',
+      color: 'teal',
+    },
+  ]
+})
 
 async function onFilterChange(filters) {
   currentFilters.value = filters

@@ -257,6 +257,16 @@
             <q-badge v-else color="grey-8" label="Paid" />
           </q-td>
         </template>
+
+        <template #bottom-row>
+          <q-tr class="bg-grey-9 text-white text-weight-bold" v-if="filteredPayables.length > 0">
+            <q-td colspan="3">TOTAL ({{ filteredPayables.length }} Active Bills)</q-td>
+            <q-td class="text-right text-amber-4">LKR {{ fmt(totalBilled) }}</q-td>
+            <q-td class="text-right text-green-4">LKR {{ fmt(totalPaid) }}</q-td>
+            <q-td class="text-right text-red-4">LKR {{ fmt(totalBalance) }}</q-td>
+            <q-td colspan="3" />
+          </q-tr>
+        </template>
       </q-table>
     </div>
 
@@ -984,9 +994,16 @@ const filteredPayables = computed(() => {
     )
   }
 
+  // Strictly exclude cancelled or voided bills from active payables
+  list = list.filter((p) => p.status !== 'cancelled' && p.status !== 'void')
+
   // Oldest first (payment priority), deterministic within the same day
   return [...list].sort(compareBillsOldestFirst)
 })
+
+const totalBilled = computed(() => filteredPayables.value.reduce((s, p) => s + Number(p.credit || 0), 0))
+const totalPaid = computed(() => filteredPayables.value.reduce((s, p) => s + Number(p.debit || 0), 0))
+const totalBalance = computed(() => filteredPayables.value.reduce((s, p) => s + Number(p.balance || 0), 0))
 
 // ── Aging Buckets ───────────────────────────────────────────────────
 const agingBuckets = computed(() => {

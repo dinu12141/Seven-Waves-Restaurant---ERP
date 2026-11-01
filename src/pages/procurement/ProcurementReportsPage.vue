@@ -19,6 +19,8 @@
         <q-tab name="aging" label="AP Aging" icon="access_time" />
         <q-tab name="po_grn" label="PO vs GRN" icon="compare_arrows" />
         <q-tab name="summary" label="Supplier Summary" icon="summarize" />
+        <q-tab name="item_wise" label="Item-Wise Purchases" icon="inventory_2" />
+        <q-tab name="supplier_wise" label="Supplier-Wise Purchases" icon="local_shipping" />
       </q-tabs>
       <q-separator />
 
@@ -430,6 +432,322 @@
             </template>
           </q-table>
         </q-tab-panel>
+        <!-- ══ TAB 5: ITEM-WISE PURCHASES ══════════════════════════════════ -->
+        <q-tab-panel name="item_wise" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <div class="row q-col-gutter-md items-end col-grow">
+              <div class="col-6 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">From</div>
+                <q-input v-model="itemWiseFrom" type="date" outlined dense />
+              </div>
+              <div class="col-6 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">To</div>
+                <q-input v-model="itemWiseTo" type="date" outlined dense />
+              </div>
+              <div class="col-12 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">Supplier</div>
+                <q-select
+                  v-model="itemWiseSupplier"
+                  :options="supplierOptions"
+                  option-label="name"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  clearable
+                  placeholder="All Suppliers"
+                  use-input
+                  input-debounce="0"
+                  @filter="filterSuppliers"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">Source Document</div>
+                <q-select
+                  v-model="itemWiseSource"
+                  :options="sourceOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-btn
+                  unelevated
+                  color="amber-8"
+                  text-color="dark"
+                  icon="search"
+                  label="Generate"
+                  no-caps
+                  class="full-width"
+                  :loading="loadingItemWise"
+                  @click="loadItemWiseReport"
+                />
+              </div>
+            </div>
+            <div class="row q-gutter-sm q-ml-sm" v-if="itemWiseRows.length > 0">
+              <q-btn
+                flat dense icon="print" label="Print" color="grey-8" no-caps
+                @click="printItemWise"
+              />
+              <q-btn
+                flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                @click="exportItemWisePDF"
+              />
+              <q-btn
+                flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                @click="exportExcel(itemWiseCols, filteredItemWiseRows, 'Item_Wise_Purchases')"
+              />
+            </div>
+          </div>
+
+          <!-- Summary chips -->
+          <div v-if="itemWiseRows.length > 0" class="row q-col-gutter-sm q-mb-md">
+            <div class="col-auto">
+              <q-chip color="blue-grey-8" text-color="white" dense icon="payments">
+                Total Spend: {{ fmtCur(itemWiseTotals.totalAmount) }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="teal-8" text-color="white" dense icon="scale">
+                Total Qty: {{ Number(itemWiseTotals.totalQty.toFixed(2)).toLocaleString() }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="deep-purple-7" text-color="white" dense icon="inventory_2">
+                Unique Items: {{ itemWiseRows.length }}
+              </q-chip>
+            </div>
+            <div class="col-auto" v-if="itemWiseTotals.topItem">
+              <q-chip color="amber-9" text-color="dark" dense icon="star">
+                Top Item: {{ itemWiseTotals.topItem }} ({{ fmtCur(itemWiseTotals.topItemAmount) }})
+              </q-chip>
+            </div>
+          </div>
+
+          <!-- Live search filter -->
+          <div class="row q-mb-sm" v-if="itemWiseRows.length > 0">
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="itemWiseSearch"
+                dense
+                outlined
+                clearable
+                placeholder="Filter by item code, name, category, or supplier..."
+              >
+                <template #prepend><q-icon name="search" size="18px" /></template>
+              </q-input>
+            </div>
+          </div>
+
+          <q-table
+            :rows="filteredItemWiseRows"
+            :columns="itemWiseCols"
+            row-key="item_id"
+            flat
+            bordered
+            dense
+            :loading="loadingItemWise"
+            :rows-per-page-options="[25, 50, 100, 0]"
+          >
+            <template #body-cell-code="props">
+              <q-td :props="props" class="text-weight-bold text-blue-9">
+                {{ props.row.code }}
+              </q-td>
+            </template>
+            <template #body-cell-name="props">
+              <q-td :props="props" class="text-weight-medium">
+                {{ props.row.name }}
+              </q-td>
+            </template>
+            <template #body-cell-total_amount="props">
+              <q-td :props="props" class="text-right text-weight-bolder text-green-8">
+                {{ fmtCur(props.row.total_amount) }}
+              </q-td>
+            </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold" v-if="filteredItemWiseRows.length > 0">
+                <q-td>TOTAL ({{ filteredItemWiseRows.length }} Items)</q-td>
+                <q-td />
+                <q-td />
+                <q-td />
+                <q-td class="text-right">{{ Number(itemWiseTableTotals.totalQty.toFixed(2)).toLocaleString() }}</q-td>
+                <q-td />
+                <q-td class="text-right text-green-9">{{ fmtCur(itemWiseTableTotals.totalAmount) }}</q-td>
+                <q-td class="text-center">{{ itemWiseTableTotals.docCount }}</q-td>
+                <q-td />
+              </q-tr>
+            </template>
+            <template #no-data>
+              <div class="full-width row justify-center text-grey q-pa-md">
+                No item purchase records found for this period
+              </div>
+            </template>
+          </q-table>
+        </q-tab-panel>
+
+        <!-- ══ TAB 6: SUPPLIER-WISE PURCHASES ══════════════════════════════ -->
+        <q-tab-panel name="supplier_wise" class="q-pa-md">
+          <div class="row items-center justify-between q-mb-md">
+            <div class="row q-col-gutter-md items-end col-grow">
+              <div class="col-6 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">From</div>
+                <q-input v-model="suppWiseFrom" type="date" outlined dense />
+              </div>
+              <div class="col-6 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">To</div>
+                <q-input v-model="suppWiseTo" type="date" outlined dense />
+              </div>
+              <div class="col-12 col-md-3">
+                <div class="text-caption q-mb-xs text-weight-medium">Supplier</div>
+                <q-select
+                  v-model="suppWiseSupplier"
+                  :options="supplierOptions"
+                  option-label="name"
+                  option-value="id"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  clearable
+                  placeholder="All Suppliers"
+                  use-input
+                  input-debounce="0"
+                  @filter="filterSuppliers"
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="text-caption q-mb-xs text-weight-medium">Source Document</div>
+                <q-select
+                  v-model="suppWiseSource"
+                  :options="sourceOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-btn
+                  unelevated
+                  color="amber-8"
+                  text-color="dark"
+                  icon="search"
+                  label="Generate"
+                  no-caps
+                  class="full-width"
+                  :loading="loadingSuppWise"
+                  @click="loadSuppWiseReport"
+                />
+              </div>
+            </div>
+            <div class="row q-gutter-sm q-ml-sm" v-if="suppWiseRows.length > 0">
+              <q-btn
+                flat dense icon="print" label="Print" color="grey-8" no-caps
+                @click="printSuppWise"
+              />
+              <q-btn
+                flat dense icon="picture_as_pdf" label="Export PDF" color="negative" no-caps
+                @click="exportSuppWisePDF"
+              />
+              <q-btn
+                flat dense icon="table_view" label="Export Excel" color="positive" no-caps
+                @click="exportExcel(suppWiseCols, filteredSuppWiseRows, 'Supplier_Wise_Purchases')"
+              />
+            </div>
+          </div>
+
+          <!-- Summary chips -->
+          <div v-if="suppWiseRows.length > 0" class="row q-col-gutter-sm q-mb-md">
+            <div class="col-auto">
+              <q-chip color="blue-grey-8" text-color="white" dense icon="payments">
+                Total Spend: {{ fmtCur(suppWiseTotals.totalAmount) }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="indigo-7" text-color="white" dense icon="people">
+                Active Suppliers: {{ suppWiseTotals.activeSuppliersCount }}
+              </q-chip>
+            </div>
+            <div class="col-auto">
+              <q-chip color="teal-8" text-color="white" dense icon="shopping_bag">
+                Total Items: {{ suppWiseTotals.totalItemsCount }}
+              </q-chip>
+            </div>
+            <div class="col-auto" v-if="suppWiseTotals.topSupplier">
+              <q-chip color="amber-9" text-color="dark" dense icon="emoji_events">
+                Top Supplier: {{ suppWiseTotals.topSupplier }} ({{ fmtCur(suppWiseTotals.topSupplierAmount) }})
+              </q-chip>
+            </div>
+          </div>
+
+          <!-- Live search filter -->
+          <div class="row q-mb-sm" v-if="suppWiseRows.length > 0">
+            <div class="col-12 col-md-4">
+              <q-input
+                v-model="suppWiseSearch"
+                dense
+                outlined
+                clearable
+                placeholder="Filter by supplier, item code, or item name..."
+              >
+                <template #prepend><q-icon name="search" size="18px" /></template>
+              </q-input>
+            </div>
+          </div>
+
+          <q-table
+            :rows="filteredSuppWiseRows"
+            :columns="suppWiseCols"
+            row-key="id"
+            flat
+            bordered
+            dense
+            :loading="loadingSuppWise"
+            :rows-per-page-options="[25, 50, 100, 0]"
+          >
+            <template #body-cell-supplier_name="props">
+              <q-td :props="props" class="text-weight-bold text-dark">
+                {{ props.row.supplier_name }}
+              </q-td>
+            </template>
+            <template #body-cell-item_code="props">
+              <q-td :props="props" class="text-weight-bold text-blue-9">
+                {{ props.row.item_code }}
+              </q-td>
+            </template>
+            <template #body-cell-total_amount="props">
+              <q-td :props="props" class="text-right text-weight-bolder text-green-8">
+                {{ fmtCur(props.row.total_amount) }}
+              </q-td>
+            </template>
+            <template #body-cell-share="props">
+              <q-td :props="props" class="text-right text-weight-medium">
+                {{ props.row.share }}%
+              </q-td>
+            </template>
+            <template #bottom-row>
+              <q-tr class="bg-grey-2 text-weight-bold" v-if="filteredSuppWiseRows.length > 0">
+                <q-td>TOTAL ({{ filteredSuppWiseRows.length }} Rows)</q-td>
+                <q-td />
+                <q-td />
+                <q-td />
+                <q-td class="text-right">{{ Number(suppWiseTableTotals.totalQty.toFixed(2)).toLocaleString() }}</q-td>
+                <q-td />
+                <q-td class="text-right text-green-9">{{ fmtCur(suppWiseTableTotals.totalAmount) }}</q-td>
+                <q-td class="text-right">100%</q-td>
+                <q-td class="text-center">{{ suppWiseTableTotals.docCount }}</q-td>
+              </q-tr>
+            </template>
+            <template #no-data>
+              <div class="full-width row justify-center text-grey q-pa-md">
+                No supplier purchase records found for this period
+              </div>
+            </template>
+          </q-table>
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
   </q-page>
@@ -456,10 +774,10 @@ function fmtCur(val) {
 }
 
 // Shared Print / Export PDF / Export Excel handlers (matches SupplierPaymentReport.vue UX)
-async function printReport(columns, rows, title, subtitle) {
+async function printReport(columns, rows, title, subtitle, foot) {
   exporting.value = true
   try {
-    await printTableAsPDF(columns, rows, title, subtitle)
+    await printTableAsPDF(columns, rows, title, subtitle, foot)
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'Print failed' })
   } finally {
@@ -467,10 +785,10 @@ async function printReport(columns, rows, title, subtitle) {
   }
 }
 
-async function exportPDF(columns, rows, title, subtitle) {
+async function exportPDF(columns, rows, title, subtitle, foot) {
   exporting.value = true
   try {
-    await exportTableToPDF(columns, rows, title, subtitle)
+    await exportTableToPDF(columns, rows, title, subtitle, foot)
   } catch (err) {
     $q.notify({ type: 'negative', message: err.message || 'PDF export failed' })
   } finally {
@@ -497,6 +815,9 @@ onMounted(async () => {
   supplierOptions.value = allSuppliers.value
   loadAging()
   loadSummary()
+  loadCategoriesAndUoms()
+  loadItemWiseReport()
+  loadSuppWiseReport()
 })
 
 function filterSuppliers(val, update) {
@@ -551,10 +872,14 @@ const statementSubtitle = computed(() => {
   return `Period: ${statementFrom.value} to ${statementTo.value}${supplierName ? ' | Supplier: ' + supplierName : ''}`
 })
 
+const activeStatementRows = computed(() =>
+  statementRows.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+)
+
 const statementTotals = computed(() => ({
-  amount: statementRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
-  paid: statementRows.value.reduce((s, r) => s + Number(r.paid_amount || 0), 0),
-  balance: statementRows.value.reduce((s, r) => s + Number(r.balance_due || 0), 0),
+  amount: activeStatementRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+  paid: activeStatementRows.value.reduce((s, r) => s + Number(r.paid_amount || 0), 0),
+  balance: activeStatementRows.value.reduce((s, r) => s + Number(r.balance_due || 0), 0),
 }))
 
 async function loadStatement() {
@@ -565,6 +890,7 @@ async function loadStatement() {
       .from('ap_invoices')
       .select('id, doc_number, doc_date, total_amount, paid_amount, balance_due, status')
       .eq('supplier_id', statementSupplier.value)
+      .neq('status', 'cancelled')
       .gte('doc_date', statementFrom.value)
       .lte('doc_date', statementTo.value)
       .order('doc_date')
@@ -618,10 +944,14 @@ const agingCols = [
 
 const agingSubtitle = computed(() => `As of ${todayStr}`)
 
+const activeAgingRows = computed(() =>
+  agingRows.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+)
+
 const agingTotals = computed(() => ({
-  total: agingRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
-  paid: agingRows.value.reduce((s, r) => s + Number(r.paid_amount || 0), 0),
-  balance: agingRows.value.reduce((s, r) => s + Number(r.balance_due || 0), 0),
+  total: activeAgingRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+  paid: activeAgingRows.value.reduce((s, r) => s + Number(r.paid_amount || 0), 0),
+  balance: activeAgingRows.value.reduce((s, r) => s + Number(r.balance_due || 0), 0),
 }))
 
 function agingBucketLabel(days) {
@@ -648,7 +978,7 @@ const agingBuckets = computed(() => {
     { label: '61-90 Days', color: 'deep-orange', key: (d) => d > 60 && d <= 90, total: 0, count: 0 },
     { label: '90+ Days', color: 'red', key: (d) => d > 90, total: 0, count: 0 },
   ]
-  agingRows.value.forEach((r) => {
+  activeAgingRows.value.forEach((r) => {
     const d = Number(r.days_overdue || 0)
     buckets.forEach((b) => {
       if (b.key(d)) {
@@ -666,7 +996,9 @@ async function loadAging() {
     const { data, error } = await supabase
       .from('ap_invoices')
       .select('id, doc_number, doc_date, total_amount, paid_amount, balance_due, status, suppliers(name)')
-      .in('status', ['pending', 'partial', 'overdue'])
+      .in('status', ['posted', 'partial_paid'])
+      .gt('balance_due', 0)
+      .neq('status', 'cancelled')
       .order('doc_date')
     if (error) throw error
 
@@ -720,21 +1052,26 @@ const poGrnCols = [
 
 const poGrnSubtitle = computed(() => `Period: ${poGrnFrom.value} to ${poGrnTo.value}`)
 
+const activePoGrnRows = computed(() =>
+  poGrnRows.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+)
+
 const poGrnTotals = computed(() => ({
-  poAmount: poGrnRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
-  received: poGrnRows.value.reduce((s, r) => s + Number(r.received_amount || 0), 0),
-  variance: poGrnRows.value.reduce((s, r) => s + Number(r.variance || 0), 0),
+  poAmount: activePoGrnRows.value.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+  received: activePoGrnRows.value.reduce((s, r) => s + Number(r.received_amount || 0), 0),
+  variance: activePoGrnRows.value.reduce((s, r) => s + Number(r.variance || 0), 0),
 }))
 
 async function loadPoGrn() {
   loadingPoGrn.value = true
   try {
-    // Load POs in date range
+    // Load POs in date range (exclude cancelled/void)
     const { data: poData, error: poErr } = await supabase
       .from('purchase_orders')
       .select('id, doc_number, doc_date, total_amount, status, suppliers(name)')
       .gte('doc_date', poGrnFrom.value)
       .lte('doc_date', poGrnTo.value)
+      .neq('status', 'cancelled')
       .order('doc_date')
     if (poErr) throw poErr
 
@@ -825,5 +1162,481 @@ async function loadSummary() {
   } finally {
     loadingSummary.value = false
   }
+}
+
+// ── TAB 5: Item-Wise Purchases ───────────────────────────────────────────────
+const itemWiseFrom = ref(firstOfMonth)
+const itemWiseTo = ref(todayStr)
+const itemWiseSupplier = ref(null)
+const itemWiseSource = ref('grn')
+const itemWiseSearch = ref('')
+const loadingItemWise = ref(false)
+const itemWiseRows = ref([])
+
+const sourceOptions = [
+  { label: 'Goods Receipts (GRN)', value: 'grn' },
+  { label: 'Purchase Orders (PO)', value: 'po' },
+]
+
+const categoryMap = new Map()
+const uomMap = new Map()
+
+async function loadCategoriesAndUoms() {
+  try {
+    const [{ data: cats }, { data: uoms }] = await Promise.all([
+      supabase.from('item_categories').select('id, name'),
+      supabase.from('uom').select('id, code, name')
+    ])
+    ;(cats || []).forEach(c => categoryMap.set(c.id, c.name))
+    ;(uoms || []).forEach(u => uomMap.set(u.id, u.code || u.name))
+  } catch (e) {
+    console.warn('Could not preload category or UOM maps', e)
+  }
+}
+
+const itemWiseSubtitle = computed(() => {
+  const suppName = itemWiseSupplier.value ? allSuppliers.value.find(s => s.id === itemWiseSupplier.value)?.name : 'All Suppliers'
+  return `Period: ${itemWiseFrom.value} to ${itemWiseTo.value} | Source: ${itemWiseSource.value.toUpperCase()} | Supplier: ${suppName}`
+})
+
+const filteredItemWiseRows = computed(() => {
+  const s = (itemWiseSearch.value || '').trim().toLowerCase()
+  if (!s) return itemWiseRows.value
+  return itemWiseRows.value.filter(r =>
+    (r.code && String(r.code).toLowerCase().includes(s)) ||
+    (r.name && String(r.name).toLowerCase().includes(s)) ||
+    (r.category && String(r.category).toLowerCase().includes(s)) ||
+    (r.supplier_name && String(r.supplier_name).toLowerCase().includes(s))
+  )
+})
+
+const itemWiseTotals = computed(() => {
+  const rows = itemWiseRows.value
+  const totalAmount = rows.reduce((s, r) => s + Number(r.total_amount || 0), 0)
+  const totalQty = rows.reduce((s, r) => s + Number(r.total_qty || 0), 0)
+  const top = [...rows].sort((a, b) => b.total_amount - a.total_amount)[0]
+  return {
+    totalAmount,
+    totalQty,
+    topItem: top?.name || '',
+    topItemAmount: top?.total_amount || 0
+  }
+})
+
+const itemWiseTableTotals = computed(() => {
+  const rows = filteredItemWiseRows.value
+  return {
+    totalAmount: rows.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+    totalQty: rows.reduce((s, r) => s + Number(r.total_qty || 0), 0),
+    docCount: rows.reduce((s, r) => s + Number(r.doc_count || 0), 0),
+  }
+})
+
+const itemWiseCols = [
+  { name: 'code', label: 'Item Code', field: 'code', align: 'left', sortable: true },
+  { name: 'name', label: 'Item Name', field: 'name', align: 'left', sortable: true },
+  { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
+  { name: 'uom', label: 'UOM', field: 'uom', align: 'center', sortable: true },
+  {
+    name: 'total_qty',
+    label: 'Total Qty',
+    field: 'total_qty',
+    align: 'right',
+    sortable: true,
+    format: (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  },
+  {
+    name: 'avg_cost',
+    label: 'Avg Cost (LKR)',
+    field: 'avg_cost',
+    align: 'right',
+    sortable: true,
+    format: (v) => fmtCur(v)
+  },
+  {
+    name: 'total_amount',
+    label: 'Total Spend (LKR)',
+    field: 'total_amount',
+    align: 'right',
+    sortable: true,
+    format: (v) => fmtCur(v)
+  },
+  { name: 'doc_count', label: '# Receipts/POs', field: 'doc_count', align: 'center', sortable: true },
+  { name: 'supplier_name', label: 'Main Supplier', field: 'supplier_name', align: 'left', sortable: true }
+]
+
+async function loadItemWiseReport() {
+  loadingItemWise.value = true
+  try {
+    let rowsData = []
+    if (itemWiseSource.value === 'grn') {
+      let query = supabase
+        .from('goods_receipt_lines')
+        .select(`
+          id, quantity, unit_cost, line_total, uom_id,
+          items ( id, name, code, category_id ),
+          goods_receipts!inner (
+            id, doc_number, doc_date, status, supplier_id,
+            suppliers ( id, name )
+          )
+        `)
+        .gte('goods_receipts.doc_date', itemWiseFrom.value)
+        .lte('goods_receipts.doc_date', itemWiseTo.value)
+        .neq('goods_receipts.status', 'cancelled')
+
+      if (itemWiseSupplier.value) {
+        query = query.eq('goods_receipts.supplier_id', itemWiseSupplier.value)
+      }
+      const { data, error } = await query
+      if (error) throw error
+      rowsData = (data || []).map(r => ({
+        item_id: r.items?.id || r.id,
+        code: r.items?.code || '—',
+        name: r.items?.name || 'Unnamed Item',
+        category: categoryMap.get(r.items?.category_id) || 'General',
+        uom: uomMap.get(r.uom_id) || 'PCS',
+        quantity: Number(r.quantity || 0),
+        unit_cost: Number(r.unit_cost || 0),
+        line_total: Number(r.line_total || (r.quantity * r.unit_cost) || 0),
+        supplier_name: r.goods_receipts?.suppliers?.name || 'Unknown',
+        doc_date: r.goods_receipts?.doc_date,
+        doc_number: r.goods_receipts?.doc_number
+      }))
+    } else {
+      let query = supabase
+        .from('purchase_order_lines')
+        .select(`
+          id, quantity, unit_price, line_total, uom_id,
+          items ( id, name, code, category_id ),
+          purchase_orders!inner (
+            id, doc_number, doc_date, status, supplier_id,
+            suppliers ( id, name )
+          )
+        `)
+        .gte('purchase_orders.doc_date', itemWiseFrom.value)
+        .lte('purchase_orders.doc_date', itemWiseTo.value)
+        .neq('purchase_orders.status', 'cancelled')
+
+      if (itemWiseSupplier.value) {
+        query = query.eq('purchase_orders.supplier_id', itemWiseSupplier.value)
+      }
+      const { data, error } = await query
+      if (error) throw error
+      rowsData = (data || []).map(r => ({
+        item_id: r.items?.id || r.id,
+        code: r.items?.code || '—',
+        name: r.items?.name || 'Unnamed Item',
+        category: categoryMap.get(r.items?.category_id) || 'General',
+        uom: uomMap.get(r.uom_id) || 'PCS',
+        quantity: Number(r.quantity || 0),
+        unit_cost: Number(r.unit_price || 0),
+        line_total: Number(r.line_total || (r.quantity * r.unit_price) || 0),
+        supplier_name: r.purchase_orders?.suppliers?.name || 'Unknown',
+        doc_date: r.purchase_orders?.doc_date,
+        doc_number: r.purchase_orders?.doc_number
+      }))
+    }
+
+    const map = new Map()
+    for (const r of rowsData) {
+      const key = r.item_id || r.code || r.name
+      if (!map.has(key)) {
+        map.set(key, {
+          item_id: key,
+          code: r.code,
+          name: r.name,
+          category: r.category,
+          uom: r.uom,
+          total_qty: 0,
+          total_amount: 0,
+          doc_count: 0,
+          suppliers: new Set(),
+          last_date: r.doc_date
+        })
+      }
+      const entry = map.get(key)
+      entry.total_qty += r.quantity
+      entry.total_amount += r.line_total
+      entry.doc_count += 1
+      if (r.supplier_name) entry.suppliers.add(r.supplier_name)
+      if (r.doc_date && (!entry.last_date || r.doc_date > entry.last_date)) {
+        entry.last_date = r.doc_date
+      }
+    }
+
+    itemWiseRows.value = Array.from(map.values()).map(e => ({
+      ...e,
+      avg_cost: e.total_qty > 0 ? e.total_amount / e.total_qty : 0,
+      supplier_name: Array.from(e.suppliers).slice(0, 2).join(', ') + (e.suppliers.size > 2 ? ` (+${e.suppliers.size - 2})` : '')
+    })).sort((a, b) => b.total_amount - a.total_amount)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load item-wise purchases' })
+  } finally {
+    loadingItemWise.value = false
+  }
+}
+
+async function exportItemWisePDF() {
+  const foot = [[
+    `TOTAL (${filteredItemWiseRows.value.length} Items)`,
+    '',
+    '',
+    '',
+    Number(itemWiseTableTotals.value.totalQty.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    '',
+    fmtCur(itemWiseTableTotals.value.totalAmount),
+    String(itemWiseTableTotals.value.docCount),
+    ''
+  ]]
+  await exportPDF(itemWiseCols, filteredItemWiseRows.value, 'Item-Wise Purchases Report', itemWiseSubtitle.value, foot)
+}
+
+async function printItemWise() {
+  const foot = [[
+    `TOTAL (${filteredItemWiseRows.value.length} Items)`,
+    '',
+    '',
+    '',
+    Number(itemWiseTableTotals.value.totalQty.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    '',
+    fmtCur(itemWiseTableTotals.value.totalAmount),
+    String(itemWiseTableTotals.value.docCount),
+    ''
+  ]]
+  await printReport(itemWiseCols, filteredItemWiseRows.value, 'Item-Wise Purchases Report', itemWiseSubtitle.value, foot)
+}
+
+// ── TAB 6: Supplier-Wise Purchases ───────────────────────────────────────────
+const suppWiseFrom = ref(firstOfMonth)
+const suppWiseTo = ref(todayStr)
+const suppWiseSupplier = ref(null)
+const suppWiseSource = ref('grn')
+const suppWiseSearch = ref('')
+const loadingSuppWise = ref(false)
+const suppWiseRows = ref([])
+
+const suppWiseSubtitle = computed(() => {
+  const suppName = suppWiseSupplier.value ? allSuppliers.value.find(s => s.id === suppWiseSupplier.value)?.name : 'All Suppliers'
+  return `Period: ${suppWiseFrom.value} to ${suppWiseTo.value} | Source: ${suppWiseSource.value.toUpperCase()} | Supplier: ${suppName}`
+})
+
+const filteredSuppWiseRows = computed(() => {
+  const s = (suppWiseSearch.value || '').trim().toLowerCase()
+  if (!s) return suppWiseRows.value
+  return suppWiseRows.value.filter(r =>
+    (r.supplier_name && String(r.supplier_name).toLowerCase().includes(s)) ||
+    (r.item_code && String(r.item_code).toLowerCase().includes(s)) ||
+    (r.item_name && String(r.item_name).toLowerCase().includes(s))
+  )
+})
+
+const suppWiseTotals = computed(() => {
+  const rows = suppWiseRows.value
+  const totalAmount = rows.reduce((s, r) => s + Number(r.total_amount || 0), 0)
+  const totalItemsCount = new Set(rows.map(r => r.item_name)).size
+  const suppTotals = new Map()
+  for (const r of rows) {
+    suppTotals.set(r.supplier_name, (suppTotals.get(r.supplier_name) || 0) + Number(r.total_amount || 0))
+  }
+  let topSupplier = ''
+  let topSupplierAmount = 0
+  for (const [name, amt] of suppTotals.entries()) {
+    if (amt > topSupplierAmount) {
+      topSupplierAmount = amt
+      topSupplier = name
+    }
+  }
+  return {
+    totalAmount,
+    totalItemsCount,
+    activeSuppliersCount: suppTotals.size,
+    topSupplier,
+    topSupplierAmount
+  }
+})
+
+const suppWiseTableTotals = computed(() => {
+  const rows = filteredSuppWiseRows.value
+  return {
+    totalAmount: rows.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+    totalQty: rows.reduce((s, r) => s + Number(r.total_qty || 0), 0),
+    docCount: rows.reduce((s, r) => s + Number(r.doc_count || 0), 0),
+  }
+})
+
+const suppWiseCols = [
+  { name: 'supplier_name', label: 'Supplier', field: 'supplier_name', align: 'left', sortable: true },
+  { name: 'item_code', label: 'Item Code', field: 'item_code', align: 'left', sortable: true },
+  { name: 'item_name', label: 'Item Name', field: 'item_name', align: 'left', sortable: true },
+  { name: 'uom', label: 'UOM', field: 'uom', align: 'center', sortable: true },
+  {
+    name: 'total_qty',
+    label: 'Total Qty',
+    field: 'total_qty',
+    align: 'right',
+    sortable: true,
+    format: (v) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  },
+  {
+    name: 'avg_cost',
+    label: 'Avg Cost (LKR)',
+    field: 'avg_cost',
+    align: 'right',
+    sortable: true,
+    format: (v) => fmtCur(v)
+  },
+  {
+    name: 'total_amount',
+    label: 'Total Spend (LKR)',
+    field: 'total_amount',
+    align: 'right',
+    sortable: true,
+    format: (v) => fmtCur(v)
+  },
+  {
+    name: 'share',
+    label: '% Share',
+    field: 'share',
+    align: 'right',
+    sortable: true,
+    format: (v) => `${v}%`
+  },
+  { name: 'doc_count', label: '# Receipts/POs', field: 'doc_count', align: 'center', sortable: true }
+]
+
+async function loadSuppWiseReport() {
+  loadingSuppWise.value = true
+  try {
+    let rowsData = []
+    if (suppWiseSource.value === 'grn') {
+      let query = supabase
+        .from('goods_receipt_lines')
+        .select(`
+          id, quantity, unit_cost, line_total, uom_id,
+          items ( id, name, code ),
+          goods_receipts!inner (
+            id, doc_number, doc_date, status, supplier_id,
+            suppliers ( id, name )
+          )
+        `)
+        .gte('goods_receipts.doc_date', suppWiseFrom.value)
+        .lte('goods_receipts.doc_date', suppWiseTo.value)
+        .neq('goods_receipts.status', 'cancelled')
+
+      if (suppWiseSupplier.value) {
+        query = query.eq('goods_receipts.supplier_id', suppWiseSupplier.value)
+      }
+      const { data, error } = await query
+      if (error) throw error
+      rowsData = (data || []).map(r => ({
+        supplier_id: r.goods_receipts?.supplier_id,
+        supplier_name: r.goods_receipts?.suppliers?.name || 'Unknown Supplier',
+        item_id: r.items?.id || r.id,
+        item_code: r.items?.code || '—',
+        item_name: r.items?.name || 'Unnamed Item',
+        uom: uomMap.get(r.uom_id) || 'PCS',
+        quantity: Number(r.quantity || 0),
+        unit_cost: Number(r.unit_cost || 0),
+        line_total: Number(r.line_total || (r.quantity * r.unit_cost) || 0),
+      }))
+    } else {
+      let query = supabase
+        .from('purchase_order_lines')
+        .select(`
+          id, quantity, unit_price, line_total, uom_id,
+          items ( id, name, code ),
+          purchase_orders!inner (
+            id, doc_number, doc_date, status, supplier_id,
+            suppliers ( id, name )
+          )
+        `)
+        .gte('purchase_orders.doc_date', suppWiseFrom.value)
+        .lte('purchase_orders.doc_date', suppWiseTo.value)
+        .neq('purchase_orders.status', 'cancelled')
+
+      if (suppWiseSupplier.value) {
+        query = query.eq('purchase_orders.supplier_id', suppWiseSupplier.value)
+      }
+      const { data, error } = await query
+      if (error) throw error
+      rowsData = (data || []).map(r => ({
+        supplier_id: r.purchase_orders?.supplier_id,
+        supplier_name: r.purchase_orders?.suppliers?.name || 'Unknown Supplier',
+        item_id: r.items?.id || r.id,
+        item_code: r.items?.code || '—',
+        item_name: r.items?.name || 'Unnamed Item',
+        uom: uomMap.get(r.uom_id) || 'PCS',
+        quantity: Number(r.quantity || 0),
+        unit_cost: Number(r.unit_price || 0),
+        line_total: Number(r.line_total || (r.quantity * r.unit_price) || 0),
+      }))
+    }
+
+    const map = new Map()
+    let grandTotal = 0
+    for (const r of rowsData) {
+      const key = `${r.supplier_name}__${r.item_code}__${r.item_name}`
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          supplier_name: r.supplier_name,
+          item_code: r.item_code,
+          item_name: r.item_name,
+          uom: r.uom,
+          total_qty: 0,
+          total_amount: 0,
+          doc_count: 0
+        })
+      }
+      const entry = map.get(key)
+      entry.total_qty += r.quantity
+      entry.total_amount += r.line_total
+      entry.doc_count += 1
+      grandTotal += r.line_total
+    }
+
+    suppWiseRows.value = Array.from(map.values()).map(e => ({
+      ...e,
+      avg_cost: e.total_qty > 0 ? e.total_amount / e.total_qty : 0,
+      share: grandTotal > 0 ? Number(((e.total_amount / grandTotal) * 100).toFixed(1)) : 0
+    })).sort((a, b) => {
+      const cmp = a.supplier_name.localeCompare(b.supplier_name)
+      return cmp !== 0 ? cmp : b.total_amount - a.total_amount
+    })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.message || 'Failed to load supplier-wise purchases' })
+  } finally {
+    loadingSuppWise.value = false
+  }
+}
+
+async function exportSuppWisePDF() {
+  const foot = [[
+    `TOTAL (${filteredSuppWiseRows.value.length} Rows)`,
+    '',
+    '',
+    '',
+    Number(suppWiseTableTotals.value.totalQty.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    '',
+    fmtCur(suppWiseTableTotals.value.totalAmount),
+    '100%',
+    String(suppWiseTableTotals.value.docCount)
+  ]]
+  await exportPDF(suppWiseCols, filteredSuppWiseRows.value, 'Supplier-Wise Purchases Report', suppWiseSubtitle.value, foot)
+}
+
+async function printSuppWise() {
+  const foot = [[
+    `TOTAL (${filteredSuppWiseRows.value.length} Rows)`,
+    '',
+    '',
+    '',
+    Number(suppWiseTableTotals.value.totalQty.toFixed(2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    '',
+    fmtCur(suppWiseTableTotals.value.totalAmount),
+    '100%',
+    String(suppWiseTableTotals.value.docCount)
+  ]]
+  await printReport(suppWiseCols, filteredSuppWiseRows.value, 'Supplier-Wise Purchases Report', suppWiseSubtitle.value, foot)
 }
 </script>

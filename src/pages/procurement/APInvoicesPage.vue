@@ -41,6 +41,35 @@
       </q-card-section>
     </q-card>
 
+    <!-- Summary Strip -->
+    <div class="row q-col-gutter-sm q-mb-md items-center" v-if="visibleInvoices.length">
+      <div class="col-auto">
+        <q-chip icon="receipt_long" color="primary" text-color="white" dense>
+          {{ activeInvoices.length }} Active Bill{{ activeInvoices.length !== 1 ? 's' : '' }}
+        </q-chip>
+      </div>
+      <div class="col-auto">
+        <q-chip icon="payments" color="blue-8" text-color="white" dense class="text-weight-bold">
+          Total Bill Amount: {{ formatCurrency(totalBillAmount) }}
+        </q-chip>
+      </div>
+      <div class="col-auto">
+        <q-chip icon="schedule" :color="totalDueBillAmount > 0 ? 'red-8' : 'green-8'" text-color="white" dense class="text-weight-bold">
+          Total Due: {{ formatCurrency(totalDueBillAmount) }}
+        </q-chip>
+      </div>
+      <div class="col-auto" v-if="totalPaidBillAmount > 0">
+        <q-chip icon="check_circle" color="green-8" text-color="white" dense>
+          Paid: {{ formatCurrency(totalPaidBillAmount) }}
+        </q-chip>
+      </div>
+      <div class="col-auto" v-if="cancelledCount > 0">
+        <q-chip icon="cancel" color="grey-8" text-color="white" dense>
+          {{ cancelledCount }} Cancelled (Excluded)
+        </q-chip>
+      </div>
+    </div>
+
     <!-- Invoice List -->
     <q-table
       :rows="visibleInvoices"
@@ -78,12 +107,10 @@
         </q-td>
       </template>
       <template v-slot:bottom-row>
-        <q-tr class="text-weight-bold ap-total-row" v-if="visibleInvoices.length > 0">
-          <q-td colspan="4" class="text-right">
-            {{ filters.status === 'paid' ? 'TOTAL PAID AMOUNT:' : (filters.status === 'UNPAID' || filters.status === 'draft' ? 'TOTAL BALANCE DUE:' : 'TOTAL INVOICE AMOUNT:') }}
-          </q-td>
-          <q-td align="right">{{ (filters.status !== 'UNPAID' && filters.status !== 'draft') ? formatCurrency(computedTotalAmount) : '-' }}</q-td>
-          <q-td align="right">{{ (filters.status === 'UNPAID' || filters.status === 'draft') ? formatCurrency(computedTotalAmount) : '-' }}</q-td>
+        <q-tr class="text-weight-bold bg-grey-9 text-white ap-total-row" v-if="visibleInvoices.length > 0">
+          <q-td colspan="4" class="text-right">TOTAL ({{ activeInvoices.length }} Active Bills):</q-td>
+          <q-td align="right" class="text-weight-bolder text-amber-4">{{ formatCurrency(totalBillAmount) }}</q-td>
+          <q-td align="right" class="text-weight-bolder text-red-4">{{ formatCurrency(totalDueBillAmount) }}</q-td>
           <q-td colspan="2"></q-td>
         </q-tr>
       </template>
@@ -462,13 +489,32 @@ const totalAmount = computed(() => {
   )
 })
 
+const activeInvoices = computed(() => {
+  if (filters.value.status === 'cancelled') return visibleInvoices.value
+  return visibleInvoices.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+})
+
+const cancelledCount = computed(() => visibleInvoices.value.filter((r) => r.status === 'cancelled').length)
+
+const totalBillAmount = computed(() => {
+  return activeInvoices.value.reduce((acc, row) => acc + (parseFloat(row.total_amount) || 0), 0)
+})
+
+const totalDueBillAmount = computed(() => {
+  return activeInvoices.value.reduce((acc, row) => acc + (parseFloat(row.balance_due) || 0), 0)
+})
+
+const totalPaidBillAmount = computed(() => {
+  return activeInvoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || 0), 0)
+})
+
 const computedTotalAmount = computed(() => {
   if (filters.value.status === 'paid') {
-    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || parseFloat(row.total_amount) || 0), 0)
+    return totalPaidBillAmount.value
   } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
-    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.balance_due) || 0), 0)
+    return totalDueBillAmount.value
   } else {
-    return visibleInvoices.value.reduce((acc, row) => acc + (parseFloat(row.total_amount) || 0), 0)
+    return totalBillAmount.value
   }
 })
 
@@ -507,19 +553,13 @@ function handleExportExcel() {
   const exportCols = columns.filter((c) => c.name !== 'actions')
   const dataToExport = [...visibleInvoices.value]
   
-  // Add total row for Excel
-  let totalLabel = 'TOTAL AMOUNT'
-  let amountField = 'total_amount'
-  
-  if (filters.value.status === 'paid') {
-    totalLabel = 'TOTAL PAID AMOUNT'
-  } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
-    totalLabel = 'TOTAL BALANCE DUE'
-    amountField = 'balance_due'
+  // Add total row for Excel showing both Billed Amount and Balance Due
+  const totalRow = {
+    doc_number: 'TOTAL',
+    grn_ref: `${activeInvoices.value.length} Active Bills`,
+    total_amount: totalBillAmount.value,
+    balance_due: totalDueBillAmount.value,
   }
-
-  const totalRow = { doc_number: 'TOTAL', grn_ref: totalLabel }
-  totalRow[amountField] = computedTotalAmount.value
   
   dataToExport.push(totalRow)
   exportTableToExcel(exportCols, dataToExport, 'AP_Invoices')

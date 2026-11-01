@@ -220,18 +220,25 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
   // ─── Shift ────────────────────────────────────────────────────────────────
 
   /**
-   * Checks if currentTime falls within [start - buffer, end + buffer].
+   * Checks if currentTime falls within [start - preBuffer, end + postBuffer].
    * Handles overnight / midnight-crossing shifts (e.g. 22:00 → 06:00).
    *
    * Key rules:
    *   - "Overnight" means the shift CROSSES midnight (start > end in raw minutes).
    *   - A shift like 00:00→08:00 does NOT cross midnight — it's a regular shift.
-   *   - Buffer is clamped so startMin never goes below 0 and endMin never exceeds 1439.
+   *   - Buffers are dynamically read from shift configuration (default: 60m pre, 120m post).
    */
-  function _isWithinShiftTime(startTimeStr, endTimeStr, isOvernight) {
+  function _isWithinShiftTime(
+    startTimeStr,
+    endTimeStr,
+    isOvernight,
+    preBufferMinutes = 60,
+    postBufferMinutes = 120,
+  ) {
     if (!startTimeStr || !endTimeStr) return true // can't determine, assume on shift
 
-    const BUFFER_MINUTES = 30
+    const preBuffer = Math.max(0, Number(preBufferMinutes) || 60)
+    const postBuffer = Math.max(0, Number(postBufferMinutes) || 120)
     const DAY = 1440 // minutes in a day
 
     // IMPORTANT: Shift times are stored in Asia/Colombo timezone.
@@ -267,8 +274,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
 
     if (crossesMidnight) {
       // Overnight shift spans two calendar days.
-      const shiftStart = rawStart - BUFFER_MINUTES
-      const shiftEnd = rawEnd + DAY + BUFFER_MINUTES
+      const shiftStart = rawStart - preBuffer
+      const shiftEnd = rawEnd + DAY + postBuffer
 
       // Normalize current time: if before raw start, treat as next-day
       const cur = currentMinutes < rawStart ? currentMinutes + DAY : currentMinutes
@@ -277,8 +284,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
     }
 
     // Normal daytime shift — clamp buffer so we don't go negative
-    const startMin = Math.max(0, rawStart - BUFFER_MINUTES)
-    const endMin = Math.min(DAY - 1, rawEnd + BUFFER_MINUTES)
+    const startMin = Math.max(0, rawStart - preBuffer)
+    const endMin = Math.min(DAY - 1, rawEnd + postBuffer)
 
     return currentMinutes >= startMin && currentMinutes <= endMin
   }
@@ -377,7 +384,7 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
       .select(
         `
         id, assignment_date, status,
-        shifts ( id, name, start_time, end_time, is_overnight )
+        shifts ( id, name, start_time, end_time, is_overnight, pre_shift_buffer_minutes, post_shift_buffer_minutes )
       `,
       )
       .eq('employee_id', employeeId)
@@ -400,6 +407,8 @@ export const useWaiterAppStore = defineStore('waiterApp', () => {
         sa.shifts?.start_time,
         sa.shifts?.end_time,
         sa.shifts?.is_overnight || false,
+        sa.shifts?.pre_shift_buffer_minutes,
+        sa.shifts?.post_shift_buffer_minutes,
       )
     })
 

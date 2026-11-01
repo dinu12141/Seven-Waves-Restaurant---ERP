@@ -55,9 +55,11 @@
 
         <template #bottom-row>
           <q-tr class="report-table__total-row">
-            <q-td colspan="4" class="report-table__td--bold">TOTAL ({{ filteredRows.length }} POs)</q-td>
+            <q-td colspan="4" class="report-table__td--bold">
+              TOTAL ({{ (statusFilter === 'cancelled' ? filteredRows : activeRows).length }} Active POs)
+            </q-td>
             <q-td class="report-table__td--bold report-table__td--num text-blue">
-              {{ fmtLKR(filteredRows.reduce((s, r) => s + r.total, 0)) }}
+              {{ fmtLKR(totalValue) }}
             </q-td>
             <q-td />
           </q-tr>
@@ -144,14 +146,25 @@ const filteredRows = computed(() => {
   return rows.value.filter((r) => r.status === statusFilter.value)
 })
 
+const activeRows = computed(() => {
+  return filteredRows.value.filter((r) => r.status !== 'cancelled' && r.status !== 'void')
+})
+
+const totalValue = computed(() => {
+  const source = statusFilter.value === 'cancelled' ? filteredRows.value : activeRows.value
+  return source.reduce((s, x) => s + x.total, 0)
+})
+
 // KPI cards
 const kpis = computed(() => {
   const r = filteredRows.value
-  const total = r.reduce((s, x) => s + x.total, 0)
+  const active = activeRows.value
+  const source = statusFilter.value === 'cancelled' ? r : active
+  const total = totalValue.value
   const approved = r.filter((x) => x.status === 'approved').length
   const closed = r.filter((x) => ['closed', 'partial'].includes(x.status)).length
   return [
-    { label: 'Total POs', value: r.length.toString(), icon: 'receipt_long', color: 'blue' },
+    { label: 'Total POs', value: source.length.toString(), icon: 'receipt_long', color: 'blue' },
     { label: 'Total Value', value: fmtLKR(total), icon: 'payments', color: 'green' },
     { label: 'Approved', value: approved.toString(), icon: 'check_circle', color: 'teal' },
     { label: 'Received / Partial', value: closed.toString(), icon: 'local_shipping', color: 'purple' },
