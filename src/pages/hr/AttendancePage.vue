@@ -1111,7 +1111,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
@@ -1253,6 +1253,15 @@ const statusOptions = ['present', 'absent', 'late', 'half_day', 'on_leave', 'no_
 async function loadAttendance() {
   loading.value = true
   try {
+    // Proactively compute any unprocessed biometric punches into daily records
+    try {
+      await supabase.rpc('process_attendance_logs_v2')
+    } catch {
+      try {
+        await supabase.rpc('process_attendance_logs')
+      } catch {}
+    }
+
     const branchId =
       authStore.currentBranch?.id ||
       authStore.profile?.branch_id ||
@@ -1307,6 +1316,54 @@ async function loadAttendance() {
     $q.notify({ type: 'negative', message: 'Failed to load attendance records' })
   } finally {
     loading.value = false
+  }
+}
+
+async function loadAttendanceSilent() {
+  try {
+    const branchId =
+      authStore.currentBranch?.id ||
+      authStore.profile?.branch_id ||
+      (authStore.branches && authStore.branches[0]?.id)
+
+    const build = () => {
+      let query = supabase
+        .from('attendance_records')
+        .select('*, employees!inner(full_name, employee_code, department_id)')
+
+      if (branchId) {
+        query = query.eq('branch_id', branchId)
+      }
+
+      if (filterDate.value && filterEndDate.value) {
+        query = query
+          .gte('attendance_date', filterDate.value)
+          .lte('attendance_date', filterEndDate.value)
+      } else if (filterDate.value) {
+        query = query.eq('attendance_date', filterDate.value)
+      } else if (filterEndDate.value) {
+        query = query.lte('attendance_date', filterEndDate.value)
+      }
+      if (filterDepartment.value) {
+        query = query.eq('employees.department_id', filterDepartment.value)
+      }
+      if (filterEmployee.value) {
+        query = query.eq('employee_id', filterEmployee.value)
+      }
+      return query
+        .order('attendance_date', { ascending: false })
+        .order('clock_in', { ascending: true })
+        .order('id', { ascending: true })
+    }
+
+    records.value = await fetchAllRows(build)
+    stats.present = records.value.filter((r) => r.status === 'present').length
+    stats.absent = records.value.filter((r) => r.status === 'absent').length
+    stats.late = records.value.filter((r) => r.status === 'late').length
+    stats.leave = records.value.filter((r) => r.status === 'on_leave').length
+    stats.no_pay = records.value.filter((r) => r.status === 'no_pay').length
+  } catch (err) {
+    console.warn('Silent attendance reload error:', err)
   }
 }
 
@@ -2150,10 +2207,49 @@ async function processBiometricLogUpload() {
   }
 }
 
+let realtimeChannel = null
+
+function setupRealtimeAttendance() {
+  try {
+    realtimeChannel = supabase
+      .channel('public:attendance_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance_records' },
+        () => {
+          loadAttendanceSilent()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'attendance_logs' },
+        async () => {
+          try {
+            await supabase.rpc('process_attendance_logs_v2')
+          } catch {}
+          loadAttendanceSilent()
+        },
+      )
+      .subscribe()
+  } catch (e) {
+    console.warn('Realtime attendance subscription notice:', e)
+  }
+}
+
 onMounted(() => {
   loadDepartments()
   loadEmployees()
   loadAttendance()
+  setupRealtimeAttendance()
+})
+
+onUnmounted(() => {
+  if (realtimeChannel) {
+    try {
+      supabase.removeChannel(realtimeChannel)
+    } catch {}
+    realtimeChannel = null
+  }
 })
 </script>
 

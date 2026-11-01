@@ -449,4 +449,28 @@ async function sync() {
   }
 }
 
-sync()
+const isLoop = process.argv.includes('--loop') || process.argv.includes('--daemon')
+const loopIntervalSec = parseInt(process.env.BIOMETRIC_SYNC_INTERVAL || '30', 10)
+
+async function start() {
+  if (isLoop) {
+    console.log(`🔄 Continuous Background Sync Mode Active (Interval: ${loopIntervalSec}s)`)
+    console.log(`   Press Ctrl+C to stop.\n`)
+    while (true) {
+      const startMs = Date.now()
+      try {
+        await sync()
+      } catch (e) {
+        console.error(`Sync error:`, e.message)
+      }
+      const elapsed = Math.round((Date.now() - startMs) / 1000)
+      const sleepTime = Math.max(5, loopIntervalSec - elapsed)
+      console.log(`⏳ Next sync check in ${sleepTime}s...\n`)
+      await new Promise((r) => setTimeout(r, sleepTime * 1000))
+    }
+  } else {
+    await sync()
+  }
+}
+
+start()
