@@ -4,6 +4,7 @@
   "outputDirectory": "dist/spa",
   "framework": null,
   "rewrites": [
+    { "source": "/iclock/:path*", "destination": "/api/iclock" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
