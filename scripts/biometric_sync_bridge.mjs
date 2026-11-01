@@ -1,20 +1,21 @@
 /**
  * Seven Waves ERP — Biometric Machine LAN to Cloud Bridge
  * ========================================================
- * Synchronizes attendance punches from a physical ZKTeco fingerprint/face
- * machine located on the local network (LAN) directly to the Cloud ERP database.
- *
- * Implements the native ZKTeco TCP protocol using standard Node.js `net` sockets
- * (Zero external C/native dependencies required!).
+ * Dual-Mode Synchronization Bridge:
+ *  1. Active TCP Client (Port 4370): Actively connects to ZKTeco and pulls logs.
+ *  2. ADMS Push Receiver (Port 8081): Listens for live ADMS push streams from
+ *     the machine when configured with the PC's local IP address.
  *
  * Usage:
- *   node scripts/biometric_sync_bridge.mjs [DEVICE_IP] [PORT]
+ *   node scripts/biometric_sync_bridge.mjs [DEVICE_IP] [PORT] [--loop]
  *
  * Example:
- *   node scripts/biometric_sync_bridge.mjs 192.168.1.201 4370
+ *   node scripts/biometric_sync_bridge.mjs 192.168.8.201 4370 --loop
  */
 
 import net from 'net'
+import http from 'http'
+import os from 'os'
 import path from 'path'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
@@ -36,13 +37,42 @@ if (!SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
-const deviceIp = process.argv[2] || process.env.BIOMETRIC_DEVICE_IP || '192.168.1.201'
-const devicePort = parseInt(process.argv[3] || process.env.BIOMETRIC_DEVICE_PORT || '4370', 10)
+const deviceIp = process.argv[2] && !process.argv[2].startsWith('--')
+  ? process.argv[2]
+  : process.env.BIOMETRIC_DEVICE_IP || '192.168.8.201'
+
+const devicePort = parseInt(
+  process.argv[3] && !process.argv[3].startsWith('--')
+    ? process.argv[3]
+    : process.env.BIOMETRIC_DEVICE_PORT || '4370',
+  10
+)
+
+const admsPort = parseInt(process.env.BIOMETRIC_ADMS_PORT || '8081', 10)
+
+// Helper to find local IPv4 address
+function getLocalIps() {
+  const interfaces = os.networkInterfaces()
+  const ips = []
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ips.push({ name, address: iface.address })
+      }
+    }
+  }
+  return ips
+}
+
+const localIps = getLocalIps()
+const primaryIp = localIps[0]?.address || '127.0.0.1'
 
 console.log(`=======================================================`)
-console.log(` Seven Waves ERP — Biometric Sync Bridge`)
-console.log(` Target Device: ${deviceIp}:${devicePort}`)
-console.log(` Cloud Target:  ${SUPABASE_URL}`)
+console.log(` Seven Waves ERP — Biometric Sync Bridge & ADMS Server`)
+console.log(` Cloud Target:   ${SUPABASE_URL}`)
+console.log(` Local PC IP:    ${primaryIp}`)
+console.log(` Target Device:  ${deviceIp}:${devicePort}`)
+console.log(` ADMS Port:      ${admsPort}`)
 console.log(`=======================================================\n`)
 
 // ─── ZKTeco TCP Protocol Implementation ──────────────────────────────────────
@@ -325,18 +355,19 @@ class NativeZkClient {
   }
 }
 
-// ─── Main Synchronization Flow ───────────────────────────────────────────────
+// ─── Shared Database Sync Helper ─────────────────────────────────────────────
 
-async function sync() {
-  console.log(`1. Resolving company and branch context...`)
-  const { data: branch } = await supabase.from('branches').select('id, company_id, name').limit(1).single()
-  if (!branch) {
-    console.error(`❌ No branch found in database. Check SUPABASE_URL / key.`)
-    process.exit(1)
+let cachedBranch = null
+let cachedEmpMap = null
+let lastCacheRefresh = 0
+
+async function getMappingContext() {
+  const now = Date.now()
+  if (cachedBranch && cachedEmpMap && now - lastCacheRefresh < 60000) {
+    return { branch: cachedBranch, empMap: cachedEmpMap }
   }
-  console.log(`   Connected Branch: ${branch.name} (${branch.id})`)
 
-  console.log(`2. Loading active employees for biometric mapping...`)
+  const { data: branch } = await supabase.from('branches').select('id, company_id, name').limit(1).single()
   const { data: employees } = await supabase
     .from('employees')
     .select('id, employee_code, attendance_device_id, full_name')
@@ -356,120 +387,212 @@ async function sync() {
       empMap.set(parseInt(numOnly, 10).toString(), e)
     }
   }
-  console.log(`   Mapped ${employees?.length || 0} active employees.`)
 
-  console.log(`3. Connecting to ZKTeco terminal at ${deviceIp}:${devicePort}...`)
-  const client = new NativeZkClient(deviceIp, devicePort, 8000)
+  cachedBranch = branch
+  cachedEmpMap = empMap
+  lastCacheRefresh = now
+
+  return { branch, empMap }
+}
+
+async function uploadPunchesToCloud(punches, sourceDevice) {
+  if (!punches || punches.length === 0) return 0
+  const { branch, empMap } = await getMappingContext()
+  if (!branch) throw new Error('No branch found')
+
+  const rows = punches.map((p) => {
+    const pin = String(p.deviceUserId || p.pin || '').trim().toLowerCase()
+    const emp = empMap.get(pin)
+    const finalCode = emp ? emp.employee_code : p.deviceUserId || p.pin || 'UNKNOWN'
+    const finalEmpId = emp ? emp.id : null
+
+    return {
+      company_id: branch.company_id,
+      branch_id: branch.id,
+      employee_id: finalEmpId,
+      employee_code: finalCode,
+      device_id: sourceDevice,
+      punch_time: new Date(p.recordTime || p.punchTime).toISOString(),
+      punch_type: p.punchType || 'in',
+      source: 'biometric',
+      raw_data: { pin: p.deviceUserId || p.pin, raw: p.rawLine || p },
+    }
+  })
+
+  let insertedTotal = 0
+  for (let i = 0; i < rows.length; i += 100) {
+    const batch = rows.slice(i, i + 100)
+    const { data, error } = await supabase
+      .from('attendance_logs')
+      .upsert(batch, {
+        onConflict: 'employee_code, punch_time, device_id',
+        ignoreDuplicates: true,
+      })
+      .select('id')
+
+    if (error) {
+      console.error(`❌ Upsert error:`, error.message)
+    } else {
+      insertedTotal += data?.length || 0
+    }
+  }
+
+  // Trigger engine calculation
+  try {
+    await supabase.rpc('process_attendance_logs_v2')
+  } catch {
+    await supabase.rpc('process_attendance_logs')
+  }
+
+  return insertedTotal
+}
+
+// ─── ADMS Push Receiver HTTP Server ──────────────────────────────────────────
+
+function parseZkAttlogText(rawText) {
+  const lines = (rawText || '').split(/\r?\n/)
+  const punches = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('SN=') || trimmed.startsWith('table=')) continue
+    let tokens = trimmed.includes('\t')
+      ? trimmed.split('\t')
+      : trimmed.includes(',')
+      ? trimmed.split(',')
+      : trimmed.split(/\s+/)
+    tokens = tokens.map((t) => t.trim()).filter((t) => t.length > 0)
+    if (tokens.length < 2) continue
+
+    const pin = tokens[0]
+    let timestampStr = ''
+    if (tokens[1].includes('-') || tokens[1].includes('/')) {
+      if (tokens[1].includes(':') || tokens[1].includes('T')) {
+        timestampStr = tokens[1]
+      } else if (tokens[2] && tokens[2].includes(':')) {
+        timestampStr = `${tokens[1]} ${tokens[2]}`
+      }
+    }
+    if (!timestampStr) continue
+
+    let isoTime = null
+    try {
+      const d = new Date(timestampStr.replace(/\//g, '-').trim())
+      if (!isNaN(d.getTime())) isoTime = d.toISOString()
+    } catch {}
+    if (!isoTime) continue
+
+    punches.push({ deviceUserId: pin, recordTime: isoTime, rawLine: trimmed })
+  }
+  return punches
+}
+
+function startAdmsHttpServer() {
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`)
+    const sn = url.searchParams.get('SN') || url.searchParams.get('sn') || 'ZKTeco-ADMS'
+
+    if (req.method === 'GET') {
+      if (url.pathname.includes('/getrequest')) {
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        res.end('OK')
+        return
+      }
+
+      console.log(`📡 [ADMS Handshake] Machine (${sn}) connected to ADMS listener!`)
+      const config = [
+        `GET OPTION FROM: ${sn}`,
+        'ATTLOGStamp=None',
+        'Realtime=1',
+        'Delay=5',
+        'TransInterval=1',
+        'TransFlag=1111000000',
+        'TimeZone=5.5',
+      ].join('\n')
+
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end(config)
+      return
+    }
+
+    if (req.method === 'POST') {
+      let body = ''
+      req.on('data', (c) => { body += c })
+      req.on('end', async () => {
+        if (url.pathname.includes('/devicecmd')) {
+          res.writeHead(200, { 'Content-Type': 'text/plain' })
+          res.end('OK')
+          return
+        }
+
+        const punches = parseZkAttlogText(body)
+        console.log(`📡 [ADMS Push] Received ${punches.length} punches from ${sn}`)
+        if (punches.length > 0) {
+          const synced = await uploadPunchesToCloud(punches, sn)
+          console.log(`   ✅ Synced ${synced} punches to Cloud ERP!`)
+        }
+        res.writeHead(200, { 'Content-Type': 'text/plain' })
+        res.end(`OK: ${punches.length}`)
+      })
+      return
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('OK')
+  })
+
+  server.listen(admsPort, '0.0.0.0', () => {
+    console.log(`🌐 ADMS Push Receiver listening on http://${primaryIp}:${admsPort}`)
+    console.log(`   👉 Set machine: Server Address: ${primaryIp} | Port: ${admsPort}\n`)
+  })
+}
+
+// ─── Active TCP Polling Flow ─────────────────────────────────────────────────
+
+async function syncActiveTcp() {
+  console.log(`🔍 [Active TCP Poller] Connecting to ${deviceIp}:${devicePort}...`)
+  const client = new NativeZkClient(deviceIp, devicePort, 6000)
 
   try {
     await client.connect()
-    console.log(`   ✅ Socket connected to device!`)
-
-    const info = await client.getInfo()
-    console.log(`   Terminal Info: Users: ${info.userCounts || 0}, Total Logs: ${info.logCounts || 0}`)
-
-    console.log(`4. Pulling attendance log records...`)
     const attendances = await client.getAttendances()
     client.disconnect()
 
     if (!attendances || attendances.length === 0) {
-      console.log(`   ℹ️ No attendance records found on device.`)
+      console.log(`   ℹ️ No attendance records found on machine.`)
       return
     }
 
-    console.log(`   Retrieved ${attendances.length} total attendance records.`)
-
-    const rows = []
-    for (const att of attendances) {
-      const pin = String(att.deviceUserId || '').trim().toLowerCase()
-      const emp = empMap.get(pin)
-
-      const finalEmployeeCode = emp ? emp.employee_code : att.deviceUserId || 'UNKNOWN'
-      const finalEmployeeId = emp ? emp.id : null
-      const punchTime = new Date(att.recordTime).toISOString()
-
-      rows.push({
-        company_id: branch.company_id,
-        branch_id: branch.id,
-        employee_id: finalEmployeeId,
-        employee_code: finalEmployeeCode,
-        device_id: deviceIp,
-        punch_time: punchTime,
-        punch_type: 'in', // Attendance engine alternates automatically
-        source: 'biometric',
-        raw_data: {
-          deviceUserId: att.deviceUserId,
-          recordTime: att.recordTime,
-          deviceIp,
-        },
-      })
-    }
-
-    console.log(`5. Upserting ${rows.length} punches into Supabase attendance_logs...`)
-    const batchSize = 100
-    let insertedTotal = 0
-
-    for (let i = 0; i < rows.length; i += batchSize) {
-      const batch = rows.slice(i, i + batchSize)
-      const { data, error } = await supabase
-        .from('attendance_logs')
-        .upsert(batch, {
-          onConflict: 'employee_code, punch_time, device_id',
-          ignoreDuplicates: true,
-        })
-        .select('id')
-
-      if (error) {
-        console.error(`❌ Batch error:`, error.message)
-      } else {
-        insertedTotal += data?.length || 0
-      }
-    }
-
-    console.log(`   ✅ Successfully synced ${insertedTotal} new attendance punches to cloud!`)
-
-    console.log(`6. Executing process_attendance_logs_v2() engine...`)
-    const { error: rpcErr } = await supabase.rpc('process_attendance_logs_v2')
-    if (rpcErr) {
-      console.warn(`   ⚠️ process_attendance_logs_v2 note:`, rpcErr.message)
-      await supabase.rpc('process_attendance_logs')
-    } else {
-      console.log(`   ✅ Attendance engine processed successfully. Records updated!`)
-    }
-
-    console.log(`\n🎉 SYNC COMPLETED SUCCESSFULLY! Check https://erp.sevenwaves.lk/hr/attendance\n`)
+    console.log(`   Retrieved ${attendances.length} records. Syncing to Cloud...`)
+    const synced = await uploadPunchesToCloud(attendances, deviceIp)
+    console.log(`   ✅ Synced ${synced} new punches to Cloud ERP!`)
   } catch (err) {
     client.disconnect()
-    console.error(`❌ Biometric Connection Error: ${err.message}`)
-    console.log(`\n💡 Troubleshooting Tips:`)
-    console.log(`   1. Ensure the fingerprint machine is powered ON and connected via Ethernet / Wi-Fi.`)
-    console.log(`   2. Make sure this PC is on the same local network subnet (e.g. 192.168.1.xxx).`)
-    console.log(`   3. Check the device IP in Menu -> Comm. -> Ethernet -> IP Address.`)
-    console.log(`   4. Command: node scripts/biometric_sync_bridge.mjs <IP> <PORT>\n`)
+    console.warn(`   ⚠️ TCP Poll note: ${err.message}`)
   }
 }
+
+// ─── Main Runner ─────────────────────────────────────────────────────────────
 
 const isLoop = process.argv.includes('--loop') || process.argv.includes('--daemon')
 const loopIntervalSec = parseInt(process.env.BIOMETRIC_SYNC_INTERVAL || '30', 10)
 
 async function start() {
+  // Start ADMS Push Receiver
+  try {
+    startAdmsHttpServer()
+  } catch (e) {
+    console.warn('ADMS server notice:', e.message)
+  }
+
+  // Active Poller loop
   if (isLoop) {
-    console.log(`🔄 Continuous Background Sync Mode Active (Interval: ${loopIntervalSec}s)`)
-    console.log(`   Press Ctrl+C to stop.\n`)
+    console.log(`🔄 Active Poller running every ${loopIntervalSec} seconds...`)
     while (true) {
-      const startMs = Date.now()
-      try {
-        await sync()
-      } catch (e) {
-        console.error(`Sync error:`, e.message)
-      }
-      const elapsed = Math.round((Date.now() - startMs) / 1000)
-      const sleepTime = Math.max(5, loopIntervalSec - elapsed)
-      console.log(`⏳ Next sync check in ${sleepTime}s...\n`)
-      await new Promise((r) => setTimeout(r, sleepTime * 1000))
+      await syncActiveTcp()
+      await new Promise((r) => setTimeout(r, loopIntervalSec * 1000))
     }
   } else {
-    await sync()
+    await syncActiveTcp()
   }
 }
 
