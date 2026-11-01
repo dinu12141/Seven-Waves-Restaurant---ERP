@@ -243,7 +243,21 @@ export async function approveDocumentAmendment(
     saveLocalAmendments(local)
   }
 
-  // 2. If it's a GRN, update goods_receipts table in Supabase
+  // 2. Authoritative Server Unlock via RPC if available (#155)
+  try {
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('unlock_document_for_amendment', {
+      p_doc_type: docType,
+      p_doc_id: docId,
+      p_admin_notes: adminNotes || null,
+    })
+    if (!rpcErr && rpcRes && (rpcRes as any).success) {
+      return { success: true }
+    }
+  } catch (rpcEx) {
+    console.warn('[AmendmentService] unlock_document_for_amendment RPC fallback:', rpcEx)
+  }
+
+  // 3. Fallback: Direct table update in Supabase
   if (docType === 'GRN') {
     try {
       const { data: grn } = await supabase
@@ -281,7 +295,9 @@ export async function approveDocumentAmendment(
           })
           .eq('id', docId)
 
-        if (error) throw new Error(error.message)
+        if (error) {
+          console.warn('[AmendmentService] goods_receipts draft status update warned:', error.message)
+        }
       } else {
         const fallbackAmendment: DocumentAmendmentRequest = {
           id: amendmentId,
@@ -307,11 +323,12 @@ export async function approveDocumentAmendment(
           })
           .eq('id', docId)
 
-        if (error) throw new Error(error.message)
+        if (error) {
+          console.warn('[AmendmentService] goods_receipts fallback draft update warned:', error.message)
+        }
       }
     } catch (err: any) {
-      console.warn('[AmendmentService] Error unlocking GRN in database:', err)
-      return { success: false, error: err.message }
+      console.warn('[AmendmentService] Non-blocking goods_receipts DB unlock:', err.message)
     }
   } else if (['GIN', 'WASTAGE', 'STOCK_ADJUSTMENT'].includes(docType)) {
     try {

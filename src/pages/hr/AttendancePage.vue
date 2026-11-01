@@ -132,6 +132,18 @@
             <q-tooltip>Month-end: bulk build / correct attendance before payroll</q-tooltip>
           </q-btn>
           <q-btn
+            v-if="canManageAttendance"
+            color="teal-8"
+            icon="fingerprint"
+            label="Upload Machine Log"
+            @click="showBiometricUpload = true"
+            no-caps
+            unelevated
+            style="height: 40px"
+          >
+            <q-tooltip>Import ZKTeco attlog.dat or text file from USB pen drive or machine</q-tooltip>
+          </q-btn>
+          <q-btn
             color="positive"
             icon="download"
             label="Excel"
@@ -1025,6 +1037,73 @@
             :disable="bulkSaveCount === 0"
             no-caps
           />
+    <!-- Biometric Machine Log Import Dialog (USB / Text Upload) -->
+    <q-dialog v-model="showBiometricUpload" persistent>
+      <q-card style="min-width: 580px; max-width: 95vw" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white text-dark'">
+        <q-card-section class="row items-center q-pa-md border-bottom">
+          <q-avatar icon="fingerprint" color="teal-1" text-color="teal-9" size="38px" class="q-mr-sm" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">Sync / Upload Biometric Machine Logs</div>
+            <div class="text-caption text-grey-6">Import attendance punches directly from ZKTeco USB download or text log</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md q-gutter-y-md">
+          <q-banner dense rounded class="bg-teal-1 text-teal-10 border-teal">
+            <template #avatar><q-icon name="info" color="teal" /></template>
+            <div class="text-caption">
+              <b>How to get logs from machine:</b> Plug a USB pen drive into the fingerprint terminal &rarr;
+              <b>Menu &rarr; USB Manager &rarr; Download Attendance Data</b> (AttLog). Upload the exported
+              <b>attlog.dat</b> or text file here.
+            </div>
+          </q-banner>
+
+          <div>
+            <div class="text-caption text-weight-medium q-mb-xs">Select Biometric Log File (.dat, .txt, .csv)</div>
+            <q-file
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              v-model="biometricFile"
+              label="Choose attlog.dat / text file"
+              accept=".dat,.txt,.csv"
+              clearable
+            >
+              <template #prepend>
+                <q-icon name="attach_file" />
+              </template>
+            </q-file>
+          </div>
+
+          <div class="text-center text-caption text-grey-6">— OR PASTE RAW PUNCH LINES BELOW —</div>
+
+          <div>
+            <q-input
+              :dark="$q.dark.isActive"
+              outlined
+              dense
+              type="textarea"
+              rows="4"
+              v-model="rawBiometricText"
+              placeholder="e.g.&#10;1   2026-10-31 08:30:15   0   1&#10;2   2026-10-31 08:45:00   0   1"
+              hint="Paste tab, comma, or space-separated ZKTeco raw punch lines"
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup color="grey-7" no-caps />
+          <q-btn
+            color="teal-8"
+            icon="cloud_upload"
+            label="Process & Sync into Attendance"
+            @click="processBiometricLogUpload"
+            :loading="uploadingBiometric"
+            no-caps
+            unelevated
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1058,6 +1137,11 @@ const filterDate = ref(localYmd())
 const filterEndDate = ref('')
 const filterDepartment = ref(null)
 const filterEmployee = ref(null)
+
+const showBiometricUpload = ref(false)
+const uploadingBiometric = ref(false)
+const biometricFile = ref(null)
+const rawBiometricText = ref('')
 
 const departments = ref([])
 
@@ -1911,16 +1995,160 @@ function resetFilters() {
   loadAttendance()
 }
 
-// Reload when the user switches branch.
-watch(
-  () => authStore.currentBranch?.id,
-  (id, prev) => {
-    if (id && id !== prev) {
-      loadEmployees()
-      loadAttendance()
+// Parse ZKTeco / Biometric raw log format
+function parseAttlogText(rawText) {
+  const lines = (rawText || '').split(/\r?\n/)
+  const punches = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('SN=') || trimmed.startsWith('table=')) continue
+    let tokens = trimmed.includes('\t')
+      ? trimmed.split('\t')
+      : trimmed.includes(',')
+      ? trimmed.split(',')
+      : trimmed.split(/\s+/)
+    tokens = tokens.map((t) => t.trim()).filter((t) => t.length > 0)
+    if (tokens.length < 2) continue
+
+    const pin = tokens[0]
+    let timestampStr = ''
+    let statusToken = ''
+
+    if (tokens[1].includes('-') || tokens[1].includes('/')) {
+      if (tokens[1].includes(':') || tokens[1].includes('T')) {
+        timestampStr = tokens[1]
+        statusToken = tokens[2] || ''
+      } else if (tokens[2] && tokens[2].includes(':')) {
+        timestampStr = `${tokens[1]} ${tokens[2]}`
+        statusToken = tokens[3] || ''
+      }
     }
-  },
-)
+    if (!timestampStr) continue
+
+    let isoTime = null
+    try {
+      const cleaned = timestampStr.replace(/\//g, '-').trim()
+      const d = new Date(cleaned)
+      if (!isNaN(d.getTime())) {
+        isoTime = d.toISOString()
+      } else {
+        const parts = cleaned.split(' ')
+        if (parts.length === 2) isoTime = new Date(`${parts[0]}T${parts[1]}+05:30`).toISOString()
+      }
+    } catch {}
+
+    if (!isoTime) continue
+
+    const punchType =
+      statusToken === '1' || statusToken.toLowerCase() === 'out' || statusToken === '2' || statusToken === '5'
+        ? 'out'
+        : 'in'
+
+    punches.push({
+      pin,
+      punchTime: isoTime,
+      punchType,
+      rawLine: trimmed,
+    })
+  }
+  return punches
+}
+
+async function processBiometricLogUpload() {
+  if (!rawBiometricText.value && !biometricFile.value) {
+    $q.notify({ type: 'warning', message: 'Please choose an attlog.dat file or paste punch text' })
+    return
+  }
+  uploadingBiometric.value = true
+  try {
+    let content = rawBiometricText.value
+    if (biometricFile.value) {
+      content = await biometricFile.value.text()
+    }
+    const punches = parseAttlogText(content)
+    if (!punches.length) {
+      $q.notify({ type: 'warning', message: 'No valid attendance punch lines detected in the file' })
+      return
+    }
+
+    const branchId =
+      authStore.currentBranch?.id ||
+      authStore.profile?.branch_id ||
+      (authStore.branches && authStore.branches[0]?.id)
+    const companyId =
+      authStore.currentCompany?.id ||
+      authStore.profile?.company_id ||
+      '5c7ff29c-418a-461a-9624-3667375c2af4'
+
+    // Build PIN and code mapping
+    const { data: emps } = await supabase
+      .from('employees')
+      .select('id, employee_code, attendance_device_id')
+      .eq('is_active', true)
+
+    const empMap = new Map()
+    for (const e of emps || []) {
+      const code = String(e.employee_code).trim().toLowerCase()
+      empMap.set(code, e)
+      if (e.attendance_device_id) {
+        empMap.set(String(e.attendance_device_id).trim().toLowerCase(), e)
+      }
+      const numOnly = code.replace(/\D/g, '')
+      if (numOnly) {
+        empMap.set(numOnly, e)
+        empMap.set(parseInt(numOnly, 10).toString(), e)
+      }
+    }
+
+    const rows = punches.map((p) => {
+      const pinLower = p.pin.toLowerCase()
+      const matched = empMap.get(pinLower) || empMap.get(p.pin)
+      return {
+        company_id: companyId,
+        branch_id: branchId,
+        employee_id: matched ? matched.id : null,
+        employee_code: matched ? matched.employee_code : p.pin,
+        device_id: 'USB-IMPORT',
+        punch_time: p.punchTime,
+        punch_type: p.punchType,
+        source: 'biometric',
+        raw_data: { pin: p.pin, raw: p.rawLine },
+      }
+    })
+
+    // Upsert into attendance_logs in batches of 100
+    for (let i = 0; i < rows.length; i += 100) {
+      const batch = rows.slice(i, i + 100)
+      await supabase.from('attendance_logs').upsert(batch, {
+        onConflict: 'employee_code, punch_time, device_id',
+        ignoreDuplicates: true,
+      })
+    }
+
+    // Trigger calculation engine
+    try {
+      await supabase.rpc('process_attendance_logs_v2')
+    } catch {
+      await supabase.rpc('process_attendance_logs')
+    }
+
+    $q.notify({
+      type: 'positive',
+      icon: 'fingerprint',
+      message: `Successfully processed ${punches.length} punches from biometric file!`,
+    })
+
+    showBiometricUpload.value = false
+    biometricFile.value = null
+    rawBiometricText.value = ''
+    loadAttendance()
+  } catch (err) {
+    console.error('Biometric log upload error:', err)
+    $q.notify({ type: 'negative', message: 'Failed to process biometric file: ' + err.message })
+  } finally {
+    uploadingBiometric.value = false
+  }
+}
 
 onMounted(() => {
   loadDepartments()
