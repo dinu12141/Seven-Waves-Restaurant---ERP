@@ -239,7 +239,7 @@ async function connectToWhatsApp() {
 function cleanPhone(raw) {
   let cleaned = String(raw || '').replace(/\D/g, '');
   if (cleaned.startsWith('0')) {
-    cleaned = '94' + cleanPhone.slice(1);
+    cleaned = '94' + cleaned.slice(1);
   }
   if (!cleaned.startsWith('94') && cleaned.length === 9) {
     cleaned = '94' + cleaned;
