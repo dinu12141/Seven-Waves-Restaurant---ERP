@@ -2714,6 +2714,14 @@ async function queueCloudPdf(phone, pdfBase64, filename, caption) {
       .from('system_settings')
       .update({ setting_value: { items }, updated_at: new Date().toISOString() })
       .eq('id', row.id)
+  } else {
+    await supabase
+      .from('system_settings')
+      .insert({
+        company_id: selectedRun.value?.company_id || null,
+        setting_key: 'whatsapp_outbox',
+        setting_value: { items },
+      })
   }
 }
 
@@ -4939,15 +4947,25 @@ async function sendPayslipEmail(payslip) {
 async function sendPayslipWhatsApp(payslip) {
   if (!payslip) return
   const empName = payslip.employees?.full_name || payslip.employees?.employee_code || 'Employee'
-  const rawMobile = payslip.employees?.mobile
+  let rawMobile = payslip.employees?.mobile
   if (!rawMobile) {
-    $q.notify({
-      type: 'warning',
-      icon: 'contact_phone',
-      message: `No mobile / WhatsApp number on file for ${empName}. Please update mobile in HR → Employees.`,
-      timeout: 5000,
+    const inputMobile = await new Promise((resolve) => {
+      $q.dialog({
+        title: 'Enter WhatsApp Number',
+        message: `No mobile number found on file for ${empName}. Please enter employee's WhatsApp number:`,
+        prompt: {
+          model: '',
+          type: 'tel',
+          placeholder: 'e.g. 0717266563 or 0771234567',
+        },
+        cancel: true,
+        persistent: true,
+      })
+        .onOk((val) => resolve(val ? val.trim() : null))
+        .onCancel(() => resolve(null))
     })
-    return
+    if (!inputMobile) return
+    rawMobile = inputMobile
   }
 
   // Format clean Sri Lankan phone number (e.g. 0771234567 -> 94771234567)
@@ -4955,20 +4973,13 @@ async function sendPayslipWhatsApp(payslip) {
   if (cleanPhone.startsWith('0')) {
     cleanPhone = '94' + cleanPhone.substring(1)
   }
+  if (!cleanPhone.startsWith('94') && cleanPhone.length === 9) {
+    cleanPhone = '94' + cleanPhone
+  }
 
   // ── 1. Check if WhatsApp Gateway Bridge is running & connected ─────────
-  let bridgeConnected = false
-  try {
-    const statusResp = await fetch('http://localhost:3005/status', {
-      signal: AbortSignal.timeout(1200),
-    })
-    const statusData = await statusResp.json()
-    if (statusData.connected) {
-      bridgeConnected = true
-    }
-  } catch {
-    bridgeConnected = false
-  }
+  await checkBridgeStatus()
+  const bridgeConnected = !!bridgeStatus.connected
 
   // ── 2. If Bridge is connected, dispatch ACTUAL PDF DOCUMENT FILE! ──────
   if (bridgeConnected) {
@@ -4977,61 +4988,83 @@ async function sendPayslipWhatsApp(payslip) {
     })
     try {
       const { base64, filename } = await generatePayslipPdfDoc(payslip)
-      const resp = await fetch('http://localhost:3005/send-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          pdfBase64: base64,
-          filename: filename,
-          caption: `🌟 *SEVEN WAVES RESTAURANT (PVT) LTD*\n📄 *OFFICIAL MONTHLY PAYSLIP*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Employee:* ${empName}\n📅 *Period:* ${selectedRun.value?.period_start || ''} to ${selectedRun.value?.period_end || ''}\n💰 *Net Salary:* LKR ${fmt(payslip.net_salary)}\n━━━━━━━━━━━━━━━━━━━━━\n_Please find attached your confidential salary payslip PDF._`,
-        }),
-      })
-      const result = await resp.json()
-      if (!result.success) throw new Error(result.error || 'Bridge dispatch failed')
+      const caption = `🌟 *SEVEN WAVES RESTAURANT (PVT) LTD*\n📄 *OFFICIAL MONTHLY PAYSLIP*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Employee:* ${empName}\n📅 *Period:* ${selectedRun.value?.period_start || ''} to ${selectedRun.value?.period_end || ''}\n💰 *Net Salary:* LKR ${fmt(payslip.net_salary)}\n━━━━━━━━━━━━━━━━━━━━━\n_Please find attached your confidential salary payslip PDF._`
+
+      let sent = false
+      // Attempt 1: Direct Localhost dispatch (if browser is on local network without HTTPS blocks)
+      try {
+        const resp = await fetch('http://localhost:3005/send-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            pdfBase64: base64,
+            filename: filename,
+            caption: caption,
+          }),
+          signal: AbortSignal.timeout(2000),
+        })
+        const result = await resp.json()
+        if (result.success) sent = true
+      } catch {
+        sent = false
+      }
+
+      // Attempt 2: Cloud Outbox Queue (100% reliable across HTTPS and network boundaries)
+      if (!sent) {
+        await queueCloudPdf(cleanPhone, base64, filename, caption)
+        sent = true
+      }
 
       $q.notify({
         type: 'positive',
         icon: 'chat',
-        message: `✅ Payslip PDF file successfully delivered to ${empName}'s WhatsApp (+${cleanPhone})!`,
-        timeout: 5000,
+        message: `✅ Payslip PDF file successfully dispatched to ${empName}'s WhatsApp (+${cleanPhone})!`,
+        timeout: 6000,
       })
       return
     } catch (dispatchErr) {
-      console.warn('Bridge send error, falling back to WhatsApp Web:', dispatchErr)
+      console.warn('Bridge send error:', dispatchErr)
       $q.notify({
-        type: 'warning',
-        message: `Bridge dispatch failed (${dispatchErr.message}). Opening WhatsApp Web instead.`,
+        type: 'negative',
+        message: `Bridge dispatch failed: ${dispatchErr.message}`,
       })
+      return
     } finally {
       $q.loading.hide()
     }
   }
 
-  // ── 3. Fallback: Open WhatsApp Web ────────────────────────────────────
-  const periodStr = `${selectedRun.value?.period_start || 'Period Start'} to ${selectedRun.value?.period_end || 'Period End'}`
-  const empCode = payslip.employees?.employee_code || '—'
-  const basic = fmt(payslip.basic_salary)
-  const allowances = fmt(payslip.total_allowances)
-  const ot = fmt(Number(payslip.normal_ot_amount || 0) + Number(payslip.holiday_ot_amount || 0))
-  const gross = fmt(payslip.gross_salary)
-  const epf8 = fmt(payslip.epf_employee)
-  const advance = fmt(payslip.advance_deduction)
-  const otherDed = fmt(
-    Number(payslip.loan_deduction || 0) +
-      Number(payslip.welfare_deduction || 0) +
-      Number(payslip.other_deductions || 0),
-  )
-  const totDed = fmt(payslip.total_deductions)
-  const net = fmt(payslip.net_salary)
-  const payMethod = payslip.payment_method
-    ? String(payslip.payment_method).replace('_', ' ').toUpperCase()
-    : 'BANK TRANSFER'
-  const bankName = payslip.employees?.bank_name || ''
-  const accNo = payslip.employees?.bank_account_number || payslip.employees?.account_number || ''
-  const bankInfo = bankName ? `${bankName} (${accNo})` : 'Direct Transfer'
+  // ── 3. Fallback: If Gateway is offline, ask user if they want to open WhatsApp Web ───
+  $q.dialog({
+    title: 'WhatsApp Gateway Offline',
+    message: `WhatsApp Gateway is currently not connected. Would you like to open WhatsApp Web to send a text summary, or connect the WhatsApp Gateway from the top toolbar?`,
+    ok: { label: 'Open WhatsApp Web', color: 'green-8', noCaps: true },
+    cancel: { label: 'Cancel', flat: true },
+  }).onOk(() => {
+    const periodStr = `${selectedRun.value?.period_start || 'Period Start'} to ${selectedRun.value?.period_end || 'Period End'}`
+    const empCode = payslip.employees?.employee_code || '—'
+    const basic = fmt(payslip.basic_salary)
+    const allowances = fmt(payslip.total_allowances)
+    const ot = fmt(Number(payslip.normal_ot_amount || 0) + Number(payslip.holiday_ot_amount || 0))
+    const gross = fmt(payslip.gross_salary)
+    const epf8 = fmt(payslip.epf_employee)
+    const advance = fmt(payslip.advance_deduction)
+    const otherDed = fmt(
+      Number(payslip.loan_deduction || 0) +
+        Number(payslip.welfare_deduction || 0) +
+        Number(payslip.other_deductions || 0),
+    )
+    const totDed = fmt(payslip.total_deductions)
+    const net = fmt(payslip.net_salary)
+    const payMethod = payslip.payment_method
+      ? String(payslip.payment_method).replace('_', ' ').toUpperCase()
+      : 'BANK TRANSFER'
+    const bankName = payslip.employees?.bank_name || ''
+    const accNo = payslip.employees?.bank_account_number || payslip.employees?.account_number || ''
+    const bankInfo = bankName ? `${bankName} (${accNo})` : 'Direct Transfer'
 
-  const message =
+    const message =
 `🌟 *SEVEN WAVES RESTAURANT (PVT) LTD*
 📄 *MONTHLY SALARY PAYSLIP ADVICE*
 ━━━━━━━━━━━━━━━━━━━━━
@@ -5056,13 +5089,14 @@ async function sendPayslipWhatsApp(payslip) {
 ━━━━━━━━━━━━━━━━━━━━━
 _This is an official confidential salary advice from Seven Waves HR._`
 
-  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-  window.open(waUrl, '_blank')
-  $q.notify({
-    type: 'positive',
-    icon: 'chat',
-    message: `Opening WhatsApp chat for ${empName} (+${cleanPhone})...`,
-    timeout: 4000,
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    window.open(waUrl, '_blank')
+    $q.notify({
+      type: 'positive',
+      icon: 'chat',
+      message: `Opening WhatsApp chat for ${empName} (+${cleanPhone})...`,
+      timeout: 4000,
+    })
   })
 }
 
