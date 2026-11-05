@@ -164,8 +164,7 @@
             class="filter-chip"
             :class="{ active: desigDeptFilter === null }"
             @click="
-              desigDeptFilter = null
-              selectedDept = null
+              desigDeptFilter = null; selectedDept = null;
             "
           >
             All
@@ -176,8 +175,7 @@
             class="filter-chip"
             :class="{ active: desigDeptFilter === dept.id }"
             @click="
-              desigDeptFilter = dept.id
-              selectedDept = dept
+              desigDeptFilter = dept.id; selectedDept = dept;
             "
           >
             {{ dept.name }}

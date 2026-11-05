@@ -82,6 +82,26 @@
       </div>
 
       <div class="col-auto">
+        <div :class="['text-caption q-mb-xs', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']">
+          Report Filter
+        </div>
+        <q-select
+          :dark="$q.dark.isActive"
+          dense
+          outlined
+          v-model="reportFilterType"
+          :options="[
+            { label: 'All Attendance', value: 'all' },
+            { label: '⭐ OT Only', value: 'ot' },
+            { label: '⭐ Late Only', value: 'late' },
+          ]"
+          emit-value
+          map-options
+          style="width: 155px"
+        />
+      </div>
+
+      <div class="col-auto">
         <div class="row q-gutter-x-sm">
           <q-btn
             color="primary"
@@ -143,24 +163,73 @@
           >
             <q-tooltip>Import ZKTeco attlog.dat or text file from USB pen drive or machine</q-tooltip>
           </q-btn>
-          <q-btn
+          <q-btn-dropdown
             color="positive"
             icon="download"
             label="Excel"
-            @click="exportExcel"
             no-caps
             unelevated
             style="height: 40px"
-          />
-          <q-btn
+          >
+            <q-list dense class="q-pa-xs" style="min-width: 220px">
+              <q-item clickable v-close-popup @click="exportExcel">
+                <q-item-section avatar><q-icon name="table_chart" color="positive" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Full Attendance Log</q-item-label>
+                  <q-item-label caption>All staff punches (.xlsx)</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator class="q-my-xs" />
+              <q-item clickable v-close-popup @click="exportOTExcel">
+                <q-item-section avatar><q-icon name="more_time" color="purple" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Overtime (OT) Report</q-item-label>
+                  <q-item-label caption>Only employees with OT (.xlsx)</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportLateExcel">
+                <q-item-section avatar><q-icon name="alarm" color="amber-9" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Late Arrival Report</q-item-label>
+                  <q-item-label caption>Late minutes & hours (.xlsx)</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+
+          <q-btn-dropdown
             color="red-6"
             icon="picture_as_pdf"
             label="PDF"
-            @click="exportPDF"
             no-caps
             unelevated
             style="height: 40px"
-          />
+          >
+            <q-list dense class="q-pa-xs" style="min-width: 220px">
+              <q-item clickable v-close-popup @click="exportPDF">
+                <q-item-section avatar><q-icon name="description" color="red-6" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Full Attendance Log</q-item-label>
+                  <q-item-label caption>Complete log (.pdf)</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator class="q-my-xs" />
+              <q-item clickable v-close-popup @click="exportOTPDF">
+                <q-item-section avatar><q-icon name="more_time" color="purple" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Overtime (OT) Report</q-item-label>
+                  <q-item-label caption>Filtered OT summary (.pdf)</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportLatePDF">
+                <q-item-section avatar><q-icon name="alarm" color="amber-9" size="20px" /></q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Late Arrival Report</q-item-label>
+                  <q-item-label caption>Late minutes & hours (.pdf)</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
         </div>
       </div>
       <q-space />
@@ -206,15 +275,28 @@
         </q-card>
       </div>
 
-      <div class="col-12 col-sm-6 col-md">
-        <q-card flat class="hr-kpi-card hr-kpi-card--amber">
+      <div class="col-12 col-sm-6 col-md cursor-pointer" @click="reportFilterType = reportFilterType === 'late' ? 'all' : 'late'">
+        <q-card flat class="hr-kpi-card hr-kpi-card--amber" :style="reportFilterType === 'late' ? 'outline: 2px solid #ffb300;' : ''">
           <q-card-section class="hr-kpi-inner">
-            <div class="hr-kpi-icon"><q-icon name="schedule" size="22px" color="white" /></div>
+            <div class="hr-kpi-icon"><q-icon name="alarm" size="22px" color="white" /></div>
             <div style="flex: 1">
-              <div class="hr-kpi-label">Late</div>
+              <div class="hr-kpi-label">Late {{ reportFilterType === 'late' ? '(Filtered)' : '' }}</div>
               <div class="hr-kpi-value">{{ stats.late }}</div>
             </div>
             <q-icon name="alarm" size="64px" class="hr-kpi-watermark" color="white" />
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <div class="col-12 col-sm-6 col-md cursor-pointer" @click="reportFilterType = reportFilterType === 'ot' ? 'all' : 'ot'">
+        <q-card flat class="hr-kpi-card hr-kpi-card--purple" :style="reportFilterType === 'ot' ? 'outline: 2px solid #ab47bc;' : ''">
+          <q-card-section class="hr-kpi-inner">
+            <div class="hr-kpi-icon"><q-icon name="more_time" size="22px" color="white" /></div>
+            <div style="flex: 1">
+              <div class="hr-kpi-label">Overtime (OT) {{ reportFilterType === 'ot' ? '(Filtered)' : '' }}</div>
+              <div class="hr-kpi-value">{{ stats.total_ot_hours }} <span style="font-size: 13px; font-weight: normal">hrs</span></div>
+            </div>
+            <q-icon name="schedule" size="64px" class="hr-kpi-watermark" color="white" />
           </q-card-section>
         </q-card>
       </div>
@@ -250,7 +332,7 @@
       :dark="$q.dark.isActive"
       flat
       bordered
-      :rows="records"
+      :rows="displayedRecords"
       :columns="columns"
       row-key="id"
       :loading="loading"
@@ -1037,6 +1119,10 @@
             :disable="bulkSaveCount === 0"
             no-caps
           />
+            </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Biometric Machine Log Import Dialog (USB / Text Upload) -->
     <q-dialog v-model="showBiometricUpload" persistent>
       <q-card style="min-width: 580px; max-width: 95vw" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white text-dark'">
@@ -1193,7 +1279,18 @@ const markForm = reactive({
   is_manual_override: false,
 })
 
-const stats = reactive({ present: 0, absent: 0, late: 0, leave: 0, no_pay: 0 })
+const reportFilterType = ref('all')
+const stats = reactive({ present: 0, absent: 0, late: 0, leave: 0, no_pay: 0, total_ot_hours: 0, total_late_minutes: 0, ot_staff_count: 0 })
+
+const displayedRecords = computed(() => {
+  let list = records.value
+  if (reportFilterType.value === 'ot') {
+    list = list.filter((r) => Number(r.overtime_hours) > 0)
+  } else if (reportFilterType.value === 'late') {
+    list = list.filter((r) => Number(r.late_minutes) > 0 || r.status === 'late')
+  }
+  return list
+})
 
 const columns = [
   {
@@ -1259,7 +1356,9 @@ async function loadAttendance() {
     } catch {
       try {
         await supabase.rpc('process_attendance_logs')
-      } catch {}
+      } catch {
+        // ignored
+      }
     }
 
     const branchId =
@@ -1308,9 +1407,12 @@ async function loadAttendance() {
     records.value = await fetchAllRows(build)
     stats.present = records.value.filter((r) => r.status === 'present').length
     stats.absent = records.value.filter((r) => r.status === 'absent').length
-    stats.late = records.value.filter((r) => r.status === 'late').length
+    stats.late = records.value.filter((r) => r.status === 'late' || Number(r.late_minutes) > 0).length
     stats.leave = records.value.filter((r) => r.status === 'on_leave').length
     stats.no_pay = records.value.filter((r) => r.status === 'no_pay').length
+    stats.total_ot_hours = Number(records.value.reduce((acc, r) => acc + (Number(r.overtime_hours) || 0), 0).toFixed(2))
+    stats.total_late_minutes = records.value.reduce((acc, r) => acc + (Number(r.late_minutes) || 0), 0)
+    stats.ot_staff_count = records.value.filter((r) => Number(r.overtime_hours) > 0).length
   } catch (err) {
     console.error('Failed to load attendance:', err.message)
     $q.notify({ type: 'negative', message: 'Failed to load attendance records' })
@@ -1359,9 +1461,12 @@ async function loadAttendanceSilent() {
     records.value = await fetchAllRows(build)
     stats.present = records.value.filter((r) => r.status === 'present').length
     stats.absent = records.value.filter((r) => r.status === 'absent').length
-    stats.late = records.value.filter((r) => r.status === 'late').length
+    stats.late = records.value.filter((r) => r.status === 'late' || Number(r.late_minutes) > 0).length
     stats.leave = records.value.filter((r) => r.status === 'on_leave').length
     stats.no_pay = records.value.filter((r) => r.status === 'no_pay').length
+    stats.total_ot_hours = Number(records.value.reduce((acc, r) => acc + (Number(r.overtime_hours) || 0), 0).toFixed(2))
+    stats.total_late_minutes = records.value.reduce((acc, r) => acc + (Number(r.late_minutes) || 0), 0)
+    stats.ot_staff_count = records.value.filter((r) => Number(r.overtime_hours) > 0).length
   } catch (err) {
     console.warn('Silent attendance reload error:', err)
   }
@@ -2014,6 +2119,238 @@ function exportExcel() {
   xlsx.writeFile(wb, `biometric_attendance_report_${filterDate.value || 'all'}.xlsx`)
 }
 
+function getDeptName(deptId) {
+  return departments.value.find((d) => d.id === deptId)?.name || '—'
+}
+
+function exportOTExcel() {
+  const otRecords = records.value.filter((r) => Number(r.overtime_hours) > 0)
+  if (otRecords.length === 0) {
+    $q.notify({ type: 'warning', message: 'No overtime (OT) records found for the selected period.' })
+    return
+  }
+
+  const exportData = otRecords.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Department': getDeptName(r.employees?.department_id),
+    'Date': r.attendance_date || '',
+    'Check In': formatDisplayTime(r.clock_in),
+    'Check Out': formatDisplayTime(r.clock_out),
+    'Total Hours': r.total_hours || 0,
+    'OT Hours': Number(r.overtime_hours || 0),
+    'Public Holiday OT': r.is_public_holiday ? 'Yes' : 'No',
+  }))
+
+  const totalOT = Number(otRecords.reduce((acc, r) => acc + (Number(r.overtime_hours) || 0), 0).toFixed(2))
+  exportData.push({
+    '#': '',
+    'Employee Code': '',
+    'Employee Name': 'TOTAL OVERTIME HOURS',
+    'Department': '',
+    'Date': '',
+    'Check In': '',
+    'Check Out': '',
+    'Total Hours': '',
+    'OT Hours': totalOT,
+    'Public Holiday OT': '',
+  })
+
+  const ws = xlsx.utils.json_to_sheet(exportData)
+  const wb = xlsx.utils.book_new()
+  xlsx.utils.book_append_sheet(wb, ws, 'Overtime_Report')
+  xlsx.writeFile(wb, `overtime_ot_report_${filterDate.value || 'all'}.xlsx`)
+  $q.notify({ type: 'positive', message: `Exported OT Report with ${otRecords.length} records (${totalOT} total hrs)` })
+}
+
+function exportOTPDF() {
+  const otRecords = records.value.filter((r) => Number(r.overtime_hours) > 0)
+  if (otRecords.length === 0) {
+    $q.notify({ type: 'warning', message: 'No overtime (OT) records found for the selected period.' })
+    return
+  }
+
+  const doc = new jsPDF('l', 'mm', 'a4')
+  doc.setFontSize(16)
+  doc.setTextColor(30)
+  doc.text('Overtime (OT) Summary Report — Seven Waves ERP', 14, 15)
+
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  let filterText = `Period: ${filterDate.value || 'All'}${filterEndDate.value ? ' to ' + filterEndDate.value : ''}`
+  if (filterDepartment.value) {
+    const dept = departments.value.find((d) => d.id === filterDepartment.value)?.name || ''
+    filterText += ` | Department: ${dept}`
+  }
+  const totalOT = Number(otRecords.reduce((acc, r) => acc + (Number(r.overtime_hours) || 0), 0).toFixed(2))
+  filterText += ` | Staff with OT: ${otRecords.length} | Total OT Hours: ${totalOT} hrs`
+
+  doc.text(filterText, 14, 22)
+
+  const head = [
+    [
+      '#',
+      'Employee Code',
+      'Employee Name',
+      'Department',
+      'Date',
+      'Check In',
+      'Check Out',
+      'Total Hrs',
+      'OT Hrs',
+      'Holiday OT',
+    ],
+  ]
+  const body = otRecords.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    getDeptName(r.employees?.department_id),
+    r.attendance_date || '—',
+    formatDisplayTime(r.clock_in),
+    formatDisplayTime(r.clock_out),
+    r.total_hours || 0,
+    r.overtime_hours || 0,
+    r.is_public_holiday ? 'Yes' : 'No',
+  ])
+
+  body.push(['', '', 'TOTAL OVERTIME HOURS', '', '', '', '', '', `${totalOT} hrs`, ''])
+
+  autoTable(doc, {
+    startY: 28,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [142, 36, 170] },
+    styles: { fontSize: 8 },
+    didParseCell: (data) => {
+      if (data.row.index === body.length - 1) {
+        data.cell.styles.fontStyle = 'bold'
+        data.cell.styles.fillColor = [245, 235, 250]
+      }
+    },
+  })
+
+  doc.save(`overtime_ot_report_${filterDate.value || 'all'}.pdf`)
+  $q.notify({ type: 'positive', message: `Exported OT Report PDF (${totalOT} total hrs)` })
+}
+
+function exportLateExcel() {
+  const lateRecords = records.value.filter((r) => Number(r.late_minutes) > 0 || r.status === 'late')
+  if (lateRecords.length === 0) {
+    $q.notify({ type: 'warning', message: 'No late arrival records found for the selected period.' })
+    return
+  }
+
+  const exportData = lateRecords.map((r, i) => ({
+    '#': i + 1,
+    'Employee Code': r.employees?.employee_code || '',
+    'Employee Name': r.employees?.full_name || '',
+    'Department': getDeptName(r.employees?.department_id),
+    'Date': r.attendance_date || '',
+    'Check In': formatDisplayTime(r.clock_in),
+    'Check Out': formatDisplayTime(r.clock_out),
+    'Late (Mins)': Number(r.late_minutes || 0),
+    'Late Equivalent (Hrs)': Number(((r.late_minutes || 0) / 60).toFixed(2)),
+    'Status': r.status || '',
+  }))
+
+  const totalLateMins = lateRecords.reduce((acc, r) => acc + (Number(r.late_minutes) || 0), 0)
+  const totalLateHrs = (totalLateMins / 60).toFixed(2)
+  exportData.push({
+    '#': '',
+    'Employee Code': '',
+    'Employee Name': 'TOTAL LATE TIME',
+    'Department': '',
+    'Date': '',
+    'Check In': '',
+    'Check Out': '',
+    'Late (Mins)': `${totalLateMins} mins`,
+    'Late Equivalent (Hrs)': `${totalLateHrs} hrs`,
+    'Status': '',
+  })
+
+  const ws = xlsx.utils.json_to_sheet(exportData)
+  const wb = xlsx.utils.book_new()
+  xlsx.utils.book_append_sheet(wb, ws, 'Late_Arrivals_Report')
+  xlsx.writeFile(wb, `late_attendance_report_${filterDate.value || 'all'}.xlsx`)
+  $q.notify({ type: 'positive', message: `Exported Late Report with ${lateRecords.length} records (${totalLateMins} mins)` })
+}
+
+function exportLatePDF() {
+  const lateRecords = records.value.filter((r) => Number(r.late_minutes) > 0 || r.status === 'late')
+  if (lateRecords.length === 0) {
+    $q.notify({ type: 'warning', message: 'No late arrival records found for the selected period.' })
+    return
+  }
+
+  const doc = new jsPDF('l', 'mm', 'a4')
+  doc.setFontSize(16)
+  doc.setTextColor(30)
+  doc.text('Late Arrival & Hours Report — Seven Waves ERP', 14, 15)
+
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  let filterText = `Period: ${filterDate.value || 'All'}${filterEndDate.value ? ' to ' + filterEndDate.value : ''}`
+  if (filterDepartment.value) {
+    const dept = departments.value.find((d) => d.id === filterDepartment.value)?.name || ''
+    filterText += ` | Department: ${dept}`
+  }
+  const totalLateMins = lateRecords.reduce((acc, r) => acc + (Number(r.late_minutes) || 0), 0)
+  const totalLateHrs = (totalLateMins / 60).toFixed(2)
+  filterText += ` | Late Records: ${lateRecords.length} | Total Late: ${totalLateMins} mins (${totalLateHrs} hrs)`
+
+  doc.text(filterText, 14, 22)
+
+  const head = [
+    [
+      '#',
+      'Employee Code',
+      'Employee Name',
+      'Department',
+      'Date',
+      'Check In',
+      'Check Out',
+      'Late (Mins)',
+      'Late Eq. (Hrs)',
+      'Status',
+    ],
+  ]
+  const body = lateRecords.map((r, i) => [
+    i + 1,
+    r.employees?.employee_code || '—',
+    r.employees?.full_name || '—',
+    getDeptName(r.employees?.department_id),
+    r.attendance_date || '—',
+    formatDisplayTime(r.clock_in),
+    formatDisplayTime(r.clock_out),
+    `${r.late_minutes || 0} mins`,
+    `${((r.late_minutes || 0) / 60).toFixed(2)} hrs`,
+    r.status || '—',
+  ])
+
+  body.push(['', '', 'TOTAL LATE TIME', '', '', '', '', `${totalLateMins} mins`, `${totalLateHrs} hrs`, ''])
+
+  autoTable(doc, {
+    startY: 28,
+    head,
+    body,
+    theme: 'grid',
+    headStyles: { fillColor: [245, 124, 0] },
+    styles: { fontSize: 8 },
+    didParseCell: (data) => {
+      if (data.row.index === body.length - 1) {
+        data.cell.styles.fontStyle = 'bold'
+        data.cell.styles.fillColor = [255, 243, 224]
+      }
+    },
+  })
+
+  doc.save(`late_attendance_report_${filterDate.value || 'all'}.pdf`)
+  $q.notify({ type: 'positive', message: `Exported Late Report PDF (${totalLateMins} total mins)` })
+}
+
 // Clear an employee filter that no longer belongs to the selected department.
 watch(filterDepartment, () => {
   if (
@@ -2048,6 +2385,7 @@ function resetFilters() {
   filterEndDate.value = ''
   filterDepartment.value = null
   filterEmployee.value = null
+  reportFilterType.value = 'all'
   search.value = ''
   loadAttendance()
 }
@@ -2092,7 +2430,9 @@ function parseAttlogText(rawText) {
         const parts = cleaned.split(' ')
         if (parts.length === 2) isoTime = new Date(`${parts[0]}T${parts[1]}+05:30`).toISOString()
       }
-    } catch {}
+    } catch {
+        // ignored
+      }
 
     if (!isoTime) continue
 
@@ -2226,7 +2566,9 @@ function setupRealtimeAttendance() {
         async () => {
           try {
             await supabase.rpc('process_attendance_logs_v2')
-          } catch {}
+          } catch {
+        // ignored
+      }
           loadAttendanceSilent()
         },
       )
@@ -2247,7 +2589,9 @@ onUnmounted(() => {
   if (realtimeChannel) {
     try {
       supabase.removeChannel(realtimeChannel)
-    } catch {}
+    } catch {
+        // ignored
+      }
     realtimeChannel = null
   }
 })

@@ -164,6 +164,17 @@
             :loading="loading"
             style="border-radius: 8px; padding: 6px 14px"
           />
+          <q-btn
+            unelevated
+            color="primary"
+            icon="cloud_upload"
+            no-caps
+            size="sm"
+            label="Upload Document"
+            @click="openUploadDialog"
+            class="q-ml-sm"
+            style="border-radius: 8px; padding: 6px 14px"
+          />
         </div>
       </div>
 
@@ -565,12 +576,130 @@
         </div>
       </div>
     </q-expansion-item>
+
+    <!-- ── Upload Document Dialog ────────────────────────────────────── -->
+    <q-dialog v-model="showUploadDialog" persistent>
+      <q-card style="min-width: 500px; max-width: 95vw" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white text-dark'">
+        <q-card-section class="row items-center q-pa-md border-bottom">
+          <q-avatar icon="cloud_upload" color="blue-1" text-color="blue-9" size="36px" class="q-mr-sm" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">Upload Employee Document</div>
+            <div class="text-caption text-grey-6">Store identification, contracts, or certifications</div>
+          </div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md q-gutter-y-md">
+          <!-- Employee Select -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Employee <span class="text-red">*</span></div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.employee_id"
+              :options="employeeOptions"
+              emit-value
+              map-options
+              placeholder="Select Employee"
+            />
+          </div>
+
+          <!-- Document Type -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Document Type <span class="text-red">*</span></div>
+            <q-select
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.doc_type"
+              :options="docTypeOptions"
+              emit-value
+              map-options
+              placeholder="Select Document Type"
+            />
+          </div>
+
+          <!-- Document Custom Title / Name -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Document Name / Title (Optional)</div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.doc_name"
+              placeholder="e.g. NIC Copy 2026, Employment Agreement"
+            />
+          </div>
+
+          <!-- File Upload -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Choose File (PDF, Image) <span class="text-red">*</span></div>
+            <q-file
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.file"
+              label="Select file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              max-file-size="10485760"
+              @rejected="onFileRejected"
+            >
+              <template #prepend>
+                <q-icon name="attach_file" />
+              </template>
+            </q-file>
+          </div>
+
+          <!-- Expiry Date (Optional) -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Expiry Date (If applicable)</div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.expiry_date"
+              type="date"
+              clearable
+            />
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Notes (Optional)</div>
+            <q-input
+              :dark="$q.dark.isActive"
+              dense
+              outlined
+              v-model="uploadForm.notes"
+              type="textarea"
+              rows="2"
+              placeholder="Additional remarks..."
+            />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" v-close-popup color="grey-6" no-caps />
+          <q-btn
+            color="primary"
+            icon="cloud_upload"
+            label="Upload & Save"
+            @click="submitUploadDocument"
+            :loading="uploadingDoc"
+            unelevated
+            no-caps
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'stores/auth'
@@ -851,6 +980,84 @@ onMounted(() => {
   loadDocuments()
   loadEmployees()
 })
+
+// ── Upload Document Dialog Logic ──────────────────────────────────────────────
+const showUploadDialog = ref(false)
+const uploadingDoc = ref(false)
+const uploadForm = reactive({
+  employee_id: null,
+  doc_type: 'nic_front',
+  doc_name: '',
+  file: null,
+  expiry_date: '',
+  notes: '',
+})
+
+function openUploadDialog() {
+  uploadForm.employee_id = null
+  uploadForm.doc_type = 'nic_front'
+  uploadForm.doc_name = ''
+  uploadForm.file = null
+  uploadForm.expiry_date = ''
+  uploadForm.notes = ''
+  showUploadDialog.value = true
+}
+
+function onFileRejected() {
+  $q.notify({ type: 'negative', message: 'File rejected. Max size 10MB (PDF, PNG, JPG, WEBP only).' })
+}
+
+async function submitUploadDocument() {
+  if (!uploadForm.employee_id) {
+    $q.notify({ type: 'warning', message: 'Please select an employee' })
+    return
+  }
+  if (!uploadForm.doc_type) {
+    $q.notify({ type: 'warning', message: 'Please select document type' })
+    return
+  }
+  if (!uploadForm.file) {
+    $q.notify({ type: 'warning', message: 'Please select a file to upload' })
+    return
+  }
+
+  uploadingDoc.value = true
+  try {
+    const file = uploadForm.file
+    const ext = file.name.split('.').pop()
+    const path = `${uploadForm.employee_id}/${uploadForm.doc_type}_${Date.now()}.${ext}`
+
+    const companyId = authStore.currentBranch?.company_id || authStore.profile?.company_id
+    if (!companyId) throw new Error('Company ID is missing')
+
+    const { error: uploadErr } = await supabase.storage
+      .from('employee-documents')
+      .upload(path, file, { contentType: file.type, upsert: true })
+    if (uploadErr) throw uploadErr
+
+    const { error: dbErr } = await supabase.from('employee_documents').insert({
+      company_id: companyId,
+      employee_id: uploadForm.employee_id,
+      doc_type: uploadForm.doc_type,
+      doc_name: uploadForm.doc_name || file.name,
+      file_path: path,
+      file_size: file.size,
+      mime_type: file.type,
+      expiry_date: uploadForm.expiry_date || null,
+      notes: uploadForm.notes || null,
+      verified: false,
+    })
+    if (dbErr) throw dbErr
+
+    $q.notify({ type: 'positive', message: 'Document uploaded successfully!' })
+    showUploadDialog.value = false
+    loadDocuments()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Upload failed: ' + err.message })
+  } finally {
+    uploadingDoc.value = false
+  }
+}
 </script>
 
 <style scoped>

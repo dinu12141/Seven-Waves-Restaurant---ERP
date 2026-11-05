@@ -97,7 +97,7 @@
           />
           <!-- Post to Finance: visible for approved runs that are not yet paid -->
           <q-btn
-            v-if="props.row.status === 'approved'"
+            v-if="props.row.status === 'approved' || props.row.status === 'paid'"
             unelevated
             dense
             no-caps
@@ -222,7 +222,7 @@
           </q-btn>
           <!-- ✅ POST TO FINANCE — prominent, always visible for approved runs -->
           <q-btn
-            v-if="selectedRun?.status === 'approved'"
+            v-if="selectedRun?.status === 'approved' || selectedRun?.status === 'paid'"
             unelevated
             no-caps
             color="blue-8"
@@ -408,7 +408,7 @@
                   <div class="col-12 col-sm-3 row q-gutter-xs justify-end items-end">
                     <!-- Post to Finance: always visible when run is approved -->
                     <q-btn
-                      v-if="selectedRun?.status === 'approved'"
+                      v-if="selectedRun?.status === 'approved' || selectedRun?.status === 'paid'"
                       unelevated
                       dense
                       no-caps
