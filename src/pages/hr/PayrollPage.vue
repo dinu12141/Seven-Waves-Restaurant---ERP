@@ -555,6 +555,18 @@
                   >
                     <q-tooltip>Send to Email</q-tooltip>
                   </q-btn>
+                  <!-- WhatsApp -->
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="chat"
+                    color="green-7"
+                    size="xs"
+                    @click="sendPayslipWhatsApp(props.row)"
+                  >
+                    <q-tooltip>Send Payslip to Employee WhatsApp</q-tooltip>
+                  </q-btn>
                   <!-- Hold: show if not held and not paid -->
                   <q-btn
                     v-if="
@@ -1636,6 +1648,14 @@
             label="Download PDF"
             color="primary"
             @click="downloadPayslipPDF(selectedPayslip)"
+            no-caps
+          />
+          <q-btn
+            unelevated
+            icon="chat"
+            label="Send via WhatsApp"
+            color="green-8"
+            @click="sendPayslipWhatsApp(selectedPayslip)"
             no-caps
           />
         </q-card-actions>
@@ -2906,7 +2926,7 @@ async function openBulkPaymentExport() {
     const { data, error } = await supabase
       .from('payslips')
       .select(
-        '*, employees(full_name, employee_code, email, nic_number, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+        '*, employees(full_name, employee_code, email, mobile, nic_number, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
       )
       .eq('payroll_run_id', selectedRun.value.id)
       .eq('payment_status', 'paid')
@@ -3687,7 +3707,7 @@ async function viewRun(run) {
   const { data, error } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, mobile, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', run.id)
     .order('net_salary', { ascending: false })
@@ -3797,7 +3817,7 @@ async function openPostFinanceForRun(run) {
   const { data } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, mobile, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', run.id)
     .order('net_salary', { ascending: false })
@@ -3951,7 +3971,7 @@ async function refreshPayslips() {
   const { data } = await supabase
     .from('payslips')
     .select(
-      '*, employees(full_name, employee_code, nic_number, epf_no, email, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
+      '*, employees(full_name, employee_code, nic_number, epf_no, email, mobile, bank_name, bank_branch, bank_account_name, bank_account_number, account_number, bank_code)',
     )
     .eq('payroll_run_id', selectedRun.value.id)
     .order('net_salary', { ascending: false })
@@ -4653,6 +4673,83 @@ async function sendPayslipEmail(payslip) {
     sendingEmail.value = null
     $q.loading.hide()
   }
+}
+
+function sendPayslipWhatsApp(payslip) {
+  if (!payslip) return
+  const empName = payslip.employees?.full_name || payslip.employees?.employee_code || 'Employee'
+  const rawMobile = payslip.employees?.mobile
+  if (!rawMobile) {
+    $q.notify({
+      type: 'warning',
+      icon: 'contact_phone',
+      message: `No mobile / WhatsApp number on file for ${empName}. Please update mobile in HR → Employees.`,
+      timeout: 5000,
+    })
+    return
+  }
+
+  // Format clean Sri Lankan phone number (e.g. 0771234567 -> 94771234567)
+  let cleanPhone = String(rawMobile).replace(/[^0-9]/g, '')
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = '94' + cleanPhone.substring(1)
+  }
+
+  const periodStr = `${selectedRun.value?.period_start || 'Period Start'} to ${selectedRun.value?.period_end || 'Period End'}`
+  const empCode = payslip.employees?.employee_code || '—'
+  const basic = fmt(payslip.basic_salary)
+  const allowances = fmt(payslip.total_allowances)
+  const ot = fmt(Number(payslip.normal_ot_amount || 0) + Number(payslip.holiday_ot_amount || 0))
+  const gross = fmt(payslip.gross_salary)
+  const epf8 = fmt(payslip.epf_employee)
+  const advance = fmt(payslip.advance_deduction)
+  const otherDed = fmt(
+    Number(payslip.loan_deduction || 0) +
+      Number(payslip.welfare_deduction || 0) +
+      Number(payslip.other_deductions || 0),
+  )
+  const totDed = fmt(payslip.total_deductions)
+  const net = fmt(payslip.net_salary)
+  const payMethod = payslip.payment_method
+    ? String(payslip.payment_method).replace('_', ' ').toUpperCase()
+    : 'BANK TRANSFER'
+  const bankName = payslip.employees?.bank_name || ''
+  const accNo = payslip.employees?.bank_account_number || payslip.employees?.account_number || ''
+  const bankInfo = bankName ? `${bankName} (${accNo})` : 'Direct Transfer'
+
+  const message =
+`🌟 *SEVEN WAVES RESTAURANT (PVT) LTD*
+📄 *MONTHLY SALARY PAYSLIP ADVICE*
+━━━━━━━━━━━━━━━━━━━━━
+👤 *Employee:* ${empName} (${empCode})
+📅 *Period:* ${periodStr}
+
+💵 *EARNINGS:*
+  • Basic Salary: LKR ${basic}
+  • Allowances: LKR ${allowances}
+  • Overtime (OT): LKR ${ot}
+  ⭐ *Gross Salary: LKR ${gross}*
+
+📉 *DEDUCTIONS:*
+  • Employee EPF (8%): LKR ${epf8}
+  • Salary Advance: LKR ${advance}
+  • Other Deductions / Loans: LKR ${otherDed}
+  🔻 *Total Deductions: LKR ${totDed}*
+
+━━━━━━━━━━━━━━━━━━━━━
+💰 *NET SALARY PAYABLE: LKR ${net}*
+🏦 *Payment Method:* ${payMethod} ${bankName ? '— ' + bankInfo : ''}
+━━━━━━━━━━━━━━━━━━━━━
+_This is an official confidential salary advice from Seven Waves HR._`
+
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+  window.open(waUrl, '_blank')
+  $q.notify({
+    type: 'positive',
+    icon: 'chat',
+    message: `Opening WhatsApp chat for ${empName} (+${cleanPhone})...`,
+    timeout: 4000,
+  })
 }
 
 watch(statusFilter, () => loadRuns())
