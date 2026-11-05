@@ -11,12 +11,43 @@ import makeWASocket, {
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load .env from root ERP directory
+const rootEnvPath = path.resolve(__dirname, '../../.env');
+if (fs.existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath });
+} else {
+  dotenv.config();
+}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://clykwuzajtwvwuavmtzs.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+let supabase = null;
+let companyId = null;
+
+if (SUPABASE_URL && SERVICE_KEY) {
+  supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+}
+
 const PORT = process.env.PORT || 3005;
 const app = express();
+
+// Full CORS + Private Network Access (PNA) headers so browser can call localhost from HTTPS without errors
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Access-Control-Request-Private-Network, x-client-info, apikey');
+  res.header('Access-Control-Allow-Private-Network', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -29,6 +60,104 @@ let connectedUser = null;
 let lastDisconnectReason = null;
 
 const logger = pino({ level: 'silent' });
+
+// ── Sync Status to Supabase Cloud so HTTPS ERP can read with 0 Mixed-Content errors ──
+async function syncStatusToCloud() {
+  if (!supabase) return;
+  try {
+    if (!companyId) {
+      const { data: comp } = await supabase.from('companies').select('id').limit(1).single();
+      if (comp) companyId = comp.id;
+    }
+    if (!companyId) return;
+
+    const payload = {
+      connected: isConnected,
+      user: connectedUser ? {
+        number: connectedUser.id.split(':')[0],
+        name: connectedUser.name || 'Seven Waves'
+      } : null,
+      qr: isConnected ? null : qrCodeDataUrl,
+      serviceRunning: true,
+      lastSeen: Date.now()
+    };
+
+    const { data: existing } = await supabase
+      .from('system_settings')
+      .select('id')
+      .eq('setting_key', 'whatsapp_bridge_status')
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('system_settings')
+        .update({ setting_value: payload, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('system_settings')
+        .insert({
+          company_id: companyId,
+          setting_key: 'whatsapp_bridge_status',
+          setting_value: payload
+        });
+    }
+  } catch (err) {
+    console.debug('[Cloud Sync Note]:', err?.message);
+  }
+}
+
+// ── Cloud Outbox Dispatcher (Processes messages queued from HTTPS ERP) ────────
+async function processCloudOutbox() {
+  if (!supabase || !isConnected || !sock) return;
+  try {
+    const { data: outboxRow } = await supabase
+      .from('system_settings')
+      .select('id, setting_value')
+      .eq('setting_key', 'whatsapp_outbox')
+      .maybeSingle();
+
+    if (!outboxRow || !outboxRow.setting_value) return;
+    const items = outboxRow.setting_value.items || [];
+    const pendingItems = items.filter(it => it.status === 'pending');
+
+    if (pendingItems.length === 0) return;
+
+    for (const item of pendingItems) {
+      try {
+        console.log(`[Cloud Outbox] Sending PDF to ${item.phone}...`);
+        const clean = cleanPhone(item.phone);
+        const jid = `${clean}@s.whatsapp.net`;
+        const rawBase64 = (item.pdfBase64 || '').replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
+        const buffer = Buffer.from(rawBase64, 'base64');
+
+        await sock.sendMessage(jid, {
+          document: buffer,
+          mimetype: 'application/pdf',
+          fileName: item.filename || `Payslip_${clean}.pdf`,
+          caption: item.caption || '🌟 *Seven Waves Restaurant (Pvt) Ltd*\n📄 *Official Monthly Payslip*'
+        });
+
+        item.status = 'sent';
+        item.sentAt = new Date().toISOString();
+        console.log(`[Cloud Outbox] ✅ Sent successfully to +${clean}`);
+      } catch (sendErr) {
+        console.error(`[Cloud Outbox] ❌ Error sending to ${item.phone}:`, sendErr.message);
+        item.status = 'failed';
+        item.error = sendErr.message;
+      }
+    }
+
+    // Keep last 30 items
+    const trimmed = items.slice(-30);
+    await supabase
+      .from('system_settings')
+      .update({ setting_value: { items: trimmed }, updated_at: new Date().toISOString() })
+      .eq('id', outboxRow.id);
+  } catch (err) {
+    console.debug('[Outbox Poll Note]:', err?.message);
+  }
+}
 
 async function connectToWhatsApp() {
   const authFolder = path.join(__dirname, 'auth_info_baileys');
@@ -63,7 +192,7 @@ async function connectToWhatsApp() {
       }
       console.log('\n======================================================');
       console.log('📱 SCAN THE QR CODE BELOW WITH WHATSAPP TO CONNECT:');
-      console.log('   (Or open http://localhost:3005 in your browser)');
+      console.log('   (Or view directly inside ERP Payroll or http://localhost:3005)');
       console.log('======================================================\n');
       try {
         const qrTerminal = await QRCode.toString(qr, { type: 'terminal', small: true });
@@ -71,6 +200,7 @@ async function connectToWhatsApp() {
       } catch (err) {
         console.debug('Terminal QR render note:', err?.message);
       }
+      await syncStatusToCloud();
     }
 
     if (connection === 'close') {
@@ -80,6 +210,7 @@ async function connectToWhatsApp() {
       connectedUser = null;
       lastDisconnectReason = lastDisconnect?.error?.message || `Status: ${statusCode}`;
       console.log(`[WhatsApp Bridge] Connection closed due to: ${lastDisconnectReason}. Reconnecting: ${shouldReconnect}`);
+      await syncStatusToCloud();
       if (shouldReconnect) {
         setTimeout(connectToWhatsApp, 3000);
       } else {
@@ -100,6 +231,7 @@ async function connectToWhatsApp() {
       console.log(`   Connected Number: ${sock.user?.id ? sock.user.id.split(':')[0] : 'Unknown'}`);
       console.log(`   User Name: ${sock.user?.name || 'Seven Waves'}`);
       console.log('======================================================\n');
+      await syncStatusToCloud();
     }
   });
 }
@@ -107,7 +239,7 @@ async function connectToWhatsApp() {
 function cleanPhone(raw) {
   let cleaned = String(raw || '').replace(/\D/g, '');
   if (cleaned.startsWith('0')) {
-    cleaned = '94' + cleaned.slice(1);
+    cleaned = '94' + cleanPhone.slice(1);
   }
   if (!cleaned.startsWith('94') && cleaned.length === 9) {
     cleaned = '94' + cleaned;
@@ -231,7 +363,7 @@ app.post('/send-pdf', async (req, res) => {
   if (!isConnected || !sock) {
     return res.status(503).json({
       success: false,
-      error: 'WhatsApp is not connected. Please scan the QR code at http://localhost:3005 first.'
+      error: 'WhatsApp is not connected. Please scan the QR code first.'
     });
   }
 
@@ -247,7 +379,6 @@ app.post('/send-pdf', async (req, res) => {
     const clean = cleanPhone(phone);
     const jid = `${clean}@s.whatsapp.net`;
 
-    // Strip data URI prefix if present
     const rawBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
     const buffer = Buffer.from(rawBase64, 'base64');
 
@@ -291,7 +422,6 @@ app.post('/send-test', async (req, res) => {
     const phone = cleanPhone(req.body.phone || '0717266563');
     const jid = `${phone}@s.whatsapp.net`;
 
-    // Minimal valid sample PDF in base64
     const samplePdfBase64 =
       'JVBERi0xLjQKJeLjz9MKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgNTk1IDg0Ml0vQ29udGVudHMgNCAwIFIvUmVzb3VyY2VzPDwvRm9udDw8L0YxIDUgMCBSPj4+Pj4+ZW5kb2JqCjUgMCBvYmo8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMS9CYXNlRm9udC9IZWx2ZXRpY2E+PmVuZG9iago0IDAgb2JqPDwvTGVuZ3RoIDE0MD4+c3RyZWFtCkJUCi9GMSAxNiBUZgoxMDAgNzUwIFRkCihTRVZFTiBXQVZFUyBSRVNUAURBTlQgLSBPZkZJQ0lBTCBQQVlTTElQKSBUagovRjEgMTIgVGYKMTAwIDcwMCBUZApJRW1wbG95ZWU6IE1yLiBLYXJhbiB8IE5ldCBTYWxhcnk6IExLUiA2NSwwMTYuODcpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMzI1IDAwMDAwIG4gCjAwMDAwMDAyNTcgMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjUxOQolJUVPRg==';
 
@@ -330,5 +460,10 @@ app.listen(PORT, () => {
   connectToWhatsApp().catch(err => {
     console.error('Failed to initialize WhatsApp connection:', err);
   });
-});
 
+  // Heartbeat loop & Outbox loop
+  setInterval(() => {
+    syncStatusToCloud();
+    processCloudOutbox();
+  }, 3000);
+});
