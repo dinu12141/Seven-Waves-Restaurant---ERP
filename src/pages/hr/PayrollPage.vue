@@ -2698,7 +2698,11 @@ async function queueCloudPdf(phone, pdfBase64, filename, caption) {
   const sampleBase64 =
     'JVBERi0xLjQKJeLjz9MKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgNTk1IDg0Ml0vQ29udGVudHMgNCAwIFIvUmVzb3VyY2VzPDwvRm9udDw8L0YxIDUgMCBSPj4+Pj4+ZW5kb2JqCjUgMCBvYmo8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMS9CYXNlRm9udC9IZWx2ZXRpY2E+PmVuZG9iago0IDAgb2JqPDwvTGVuZ3RoIDE0MD4+c3RyZWFtCkJUCi9GMSAxNiBUZgoxMDAgNzUwIFRkCihTRVZFTiBXQVZFUyBSRVNUAURBTlQgLSBPZkZJQ0lBTCBQQVlTTElQKSBUagovRjEgMTIgVGYKMTAwIDcwMCBUZApJRW1wbG95ZWU6IE1yLiBLYXJhbiB8IE5ldCBTYWxhcnk6IExLUiA2NSwwMTYuODcpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMzI1IDAwMDAwIG4gCjAwMDAwMDAyNTcgMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjUxOQolJUVPRg=='
 
-  const items = row?.setting_value?.items || []
+  // Purge heavy base64 from sent items and keep only last 5 to ensure ultra-fast sync (< 80KB)
+  const items = (row?.setting_value?.items || [])
+    .slice(-5)
+    .map((it) => (it.status === 'sent' ? { ...it, pdfBase64: null } : it))
+
   items.push({
     id: String(Date.now()),
     phone,
@@ -4869,18 +4873,19 @@ async function generatePayslipPdfDoc(payslip) {
 
   populatePdfData(payslip, bd)
   await nextTick()
-  await new Promise((r) => setTimeout(r, 200))
+  await new Promise((r) => setTimeout(r, 40))
 
   const el = document.getElementById('payslip-print-view')
   if (!el) throw new Error('Payslip template element not found')
 
   const canvas = await html2canvas(el, {
-    scale: 3,
+    scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
+    logging: false,
   })
 
-  const imgData = canvas.toDataURL('image/jpeg', 1.0)
+  const imgData = canvas.toDataURL('image/jpeg', 0.85)
   const pdfWidth = 105
   const pdfHeight = (canvas.height * pdfWidth) / canvas.width
 
@@ -4978,7 +4983,9 @@ async function sendPayslipWhatsApp(payslip) {
   }
 
   // ── 1. Check if WhatsApp Gateway Bridge is running & connected ─────────
-  await checkBridgeStatus()
+  if (!bridgeStatus.connected) {
+    await checkBridgeStatus()
+  }
   const bridgeConnected = !!bridgeStatus.connected
 
   // ── 2. If Bridge is connected, dispatch ACTUAL PDF DOCUMENT FILE! ──────
@@ -5002,7 +5009,7 @@ async function sendPayslipWhatsApp(payslip) {
             filename: filename,
             caption: caption,
           }),
-          signal: AbortSignal.timeout(2000),
+          signal: AbortSignal.timeout(4000),
         })
         const result = await resp.json()
         if (result.success) sent = true

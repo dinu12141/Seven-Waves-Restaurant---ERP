@@ -140,16 +140,18 @@ async function processCloudOutbox() {
 
         item.status = 'sent';
         item.sentAt = new Date().toISOString();
+        item.pdfBase64 = null;
         console.log(`[Cloud Outbox] ✅ Sent successfully to +${clean}`);
       } catch (sendErr) {
         console.error(`[Cloud Outbox] ❌ Error sending to ${item.phone}:`, sendErr.message);
         item.status = 'failed';
         item.error = sendErr.message;
+        item.pdfBase64 = null;
       }
     }
 
-    // Keep last 30 items
-    const trimmed = items.slice(-30);
+    // Keep last 10 items, stripping pdfBase64 from sent items
+    const trimmed = items.slice(-10).map(it => it.status === 'sent' || it.status === 'failed' ? { ...it, pdfBase64: null } : it);
     await supabase
       .from('system_settings')
       .update({ setting_value: { items: trimmed }, updated_at: new Date().toISOString() })
@@ -461,9 +463,9 @@ app.listen(PORT, () => {
     console.error('Failed to initialize WhatsApp connection:', err);
   });
 
-  // Heartbeat loop & Outbox loop
+  // Heartbeat loop & Outbox loop (ultra-responsive 1.2s poll)
   setInterval(() => {
     syncStatusToCloud();
     processCloudOutbox();
-  }, 3000);
+  }, 1200);
 });

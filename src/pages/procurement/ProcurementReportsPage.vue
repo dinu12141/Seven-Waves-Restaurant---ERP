@@ -731,14 +731,22 @@ const allSuppliers = ref([])
 const supplierOptions = ref([])
 
 onMounted(async () => {
-  const { data } = await supabase.from('suppliers').select('id, name').eq('is_active', true).order('name')
-  allSuppliers.value = data || []
+  const [{ data: supps }] = await Promise.all([
+    supabase.from('suppliers').select('id, name').eq('is_active', true).order('name'),
+    loadCategoriesAndUoms(),
+    loadItemsList(),
+  ])
+  allSuppliers.value = supps || []
   supplierOptions.value = allSuppliers.value
-  loadAging()
-  loadSummary()
-  loadCategoriesAndUoms()
-  loadItemsList()
-  loadPurchasesReport()
+
+  // Fast load: only load report for the active tab
+  if (activeTab.value === 'purchases') {
+    loadPurchasesReport()
+  } else if (activeTab.value === 'aging') {
+    loadAging()
+  } else if (activeTab.value === 'summary') {
+    loadSummary()
+  }
 })
 
 function filterSuppliers(val, update) {
@@ -1154,6 +1162,10 @@ watch(activeTab, (val) => {
   }
   if (val === 'purchases' && rawPurchaseRows.value.length === 0) {
     loadPurchasesReport()
+  } else if (val === 'aging' && agingRows.value.length === 0) {
+    loadAging()
+  } else if (val === 'summary' && summaryRows.value.length === 0) {
+    loadSummary()
   }
 })
 
