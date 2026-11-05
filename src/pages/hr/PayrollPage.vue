@@ -3760,7 +3760,6 @@ async function saveHold() {
       .update({
         is_held: true,
         hold_reason: holdReason.value.trim(),
-        payment_status: 'held', // sync so SQL function excludes this payslip
         payment_notes: holdReason.value.trim(),
       })
       .eq('id', holdTarget.value.id)
@@ -3792,7 +3791,6 @@ async function releaseHold(payslip) {
       .update({
         is_held: false,
         hold_reason: null,
-        payment_status: 'pending', // restore to pending
         payment_notes: null,
       })
       .eq('id', payslip.id)
