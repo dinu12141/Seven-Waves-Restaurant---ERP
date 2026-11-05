@@ -30,6 +30,26 @@
       >
         <q-tooltip>Lifetime accumulated EPF (8% + 12%) & ETF (3%) contributions by employee</q-tooltip>
       </q-btn>
+      <!-- WhatsApp Gateway Status & QR Scan Button -->
+      <q-btn
+        unelevated
+        :color="bridgeStatus.connected ? 'green-8' : 'blue-grey-8'"
+        text-color="white"
+        icon="chat"
+        :label="bridgeStatus.connected ? 'WhatsApp: Linked' : 'Connect WhatsApp'"
+        @click="openWhatsAppGatewayDialog"
+        no-caps
+        dense
+        padding="xs md"
+        class="text-weight-medium"
+      >
+        <q-badge
+          floating
+          rounded
+          :color="bridgeStatus.connected ? 'green' : (bridgeStatus.qr ? 'amber' : 'grey-5')"
+        />
+        <q-tooltip>Scan QR Code or Check WhatsApp PDF Dispatch Gateway</q-tooltip>
+      </q-btn>
       <q-space />
       <div style="min-width: 160px">
         <div
@@ -145,6 +165,98 @@
         </q-td>
       </template>
     </q-table>
+
+    <!-- ══ WhatsApp Gateway QR Scan Dialog ══ -->
+    <q-dialog v-model="showWhatsAppDialog">
+      <q-card :class="[$q.dark.isActive ? 'bg-grey-10' : 'bg-white']" style="min-width: 440px; max-width: 520px; border-radius: 12px">
+        <q-card-section class="row items-center q-pb-none">
+          <q-avatar icon="chat" color="green-8" text-color="white" size="36px" />
+          <div class="q-ml-sm">
+            <div class="text-subtitle1 text-weight-bold">WhatsApp PDF Dispatch Gateway</div>
+            <div class="text-caption text-grey">Seven Waves Automated Payslip Delivery</div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-separator class="q-my-sm" />
+
+        <q-card-section class="text-center q-pt-xs">
+          <!-- Case 1: WhatsApp Connected -->
+          <div v-if="bridgeStatus.connected" class="q-pa-md">
+            <q-icon name="check_circle" color="positive" size="56px" />
+            <div class="text-h6 text-weight-bold text-positive q-mt-sm">WhatsApp Connected!</div>
+            <div class="text-caption text-grey-8 q-mb-md">
+              Linked Account: <strong>+{{ bridgeStatus.user?.number || 'Active' }}</strong> ({{ bridgeStatus.user?.name || 'Seven Waves' }})
+            </div>
+            <div class="text-caption bg-positive-1 text-positive q-pa-sm rounded-borders q-mb-md">
+              The gateway is online. Clicking <strong>Send via WhatsApp</strong> on any employee's payslip will deliver the actual PDF file directly to their phone.
+            </div>
+
+            <!-- Test Send Box -->
+            <div class="bg-grey-2 q-pa-md rounded-borders text-left">
+              <div class="text-caption text-weight-bold q-mb-xs">Send Test Payslip PDF</div>
+              <div class="row q-gutter-sm items-center">
+                <q-input
+                  dense
+                  outlined
+                  v-model="testPhone"
+                  placeholder="0717266563"
+                  class="col"
+                />
+                <q-btn
+                  unelevated
+                  color="primary"
+                  label="Send Test"
+                  icon="send"
+                  no-caps
+                  :loading="sendingTestPdf"
+                  @click="sendTestPdfDirect"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Case 2: Gateway Running but Needs QR Scan -->
+          <div v-else-if="bridgeStatus.qr" class="q-pa-md">
+            <div class="text-subtitle2 text-weight-bold text-amber-9 q-mb-xs">Scan with WhatsApp to Connect</div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              1. Open <strong>WhatsApp</strong> on your phone<br>
+              2. Go to <strong>Linked Devices &gt; Link a Device</strong><br>
+              3. Scan the QR code below:
+            </div>
+            <div class="q-pa-sm bg-white rounded-borders" style="border: 2px dashed #059669; display: inline-block">
+              <img :src="bridgeStatus.qr" style="width: 240px; height: 240px; display: block" alt="WhatsApp QR Code" />
+            </div>
+            <div class="text-caption text-grey-6 q-mt-sm">
+              <q-spinner-dots size="xs" color="primary" class="q-mr-xs" />
+              Waiting for phone scan... Dialog updates automatically.
+            </div>
+          </div>
+
+          <!-- Case 3: Gateway Service is Not Running -->
+          <div v-else class="q-pa-lg text-center">
+            <q-icon name="link_off" color="warning" size="48px" />
+            <div class="text-subtitle1 text-weight-bold text-warning q-mt-sm">WhatsApp Bridge Not Detected</div>
+            <div class="text-caption text-grey-7 q-my-sm">
+              The local WhatsApp background service is not running on port 3005.
+            </div>
+            <div class="bg-amber-1 text-amber-9 q-pa-sm rounded-borders text-caption q-mb-md text-left">
+              Double-click <strong>Start WhatsApp Bridge.bat</strong> on your Desktop to start the gateway, or click retry below.
+            </div>
+            <q-btn
+              unelevated
+              color="amber-9"
+              icon="refresh"
+              label="Check Connection Again"
+              no-caps
+              :loading="bridgeStatus.loading"
+              @click="checkBridgeStatus"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
     <!-- ══ Run Payroll Dialog ══ -->
     <q-dialog v-model="showRunDialog" persistent>
@@ -2508,6 +2620,86 @@ import { localYmd } from 'src/services/hr/hrDates'
 const $q = useQuasar()
 const authStore = useAuthStore()
 
+// ── WhatsApp Gateway Bridge Status & QR Dialog ──
+const showWhatsAppDialog = ref(false)
+const bridgeStatus = reactive({
+  connected: false,
+  user: null,
+  qr: null,
+  serviceRunning: false,
+  loading: false,
+})
+const testPhone = ref('0717266563')
+const sendingTestPdf = ref(false)
+let bridgePollInterval = null
+
+async function checkBridgeStatus() {
+  bridgeStatus.loading = true
+  try {
+    const res = await fetch('http://localhost:3005/status', {
+      signal: AbortSignal.timeout(1500),
+    })
+    const data = await res.json()
+    bridgeStatus.serviceRunning = true
+    bridgeStatus.connected = !!data.connected
+    bridgeStatus.user = data.user
+    bridgeStatus.qr = data.qr
+  } catch {
+    bridgeStatus.serviceRunning = false
+    bridgeStatus.connected = false
+    bridgeStatus.user = null
+    bridgeStatus.qr = null
+  } finally {
+    bridgeStatus.loading = false
+  }
+}
+
+function openWhatsAppGatewayDialog() {
+  showWhatsAppDialog.value = true
+  checkBridgeStatus()
+  if (bridgePollInterval) clearInterval(bridgePollInterval)
+  bridgePollInterval = setInterval(() => {
+    if (showWhatsAppDialog.value) {
+      checkBridgeStatus()
+    } else {
+      clearInterval(bridgePollInterval)
+    }
+  }, 2500)
+}
+
+async function sendTestPdfDirect() {
+  if (!testPhone.value) {
+    $q.notify({ type: 'warning', message: 'Please enter a recipient number.' })
+    return
+  }
+  sendingTestPdf.value = true
+  try {
+    const resp = await fetch('http://localhost:3005/send-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: testPhone.value }),
+    })
+    const data = await resp.json()
+    if (data.success) {
+      $q.notify({
+        type: 'positive',
+        icon: 'chat',
+        message: `✅ Test Payslip PDF successfully sent to ${testPhone.value}!`,
+        timeout: 6000,
+      })
+    } else {
+      throw new Error(data.error || 'Failed to send test PDF.')
+    }
+  } catch (err) {
+    $q.notify({
+      type: 'negative',
+      message: err.message,
+    })
+  } finally {
+    sendingTestPdf.value = false
+  }
+}
+
 // For the exact format PDF
 const pdfData = ref(null)
 
@@ -4810,7 +5002,10 @@ watch(
     if (id && id !== prev) loadRuns()
   },
 )
-onMounted(() => loadRuns())
+onMounted(() => {
+  loadRuns()
+  checkBridgeStatus()
+})
 </script>
 
 <style scoped>
