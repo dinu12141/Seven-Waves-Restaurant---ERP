@@ -38,14 +38,14 @@
     <!-- Filter Bar -->
     <q-card class="q-mb-md flat-card" flat bordered>
       <q-card-section>
-        <div class="row q-col-gutter-md items-center">
-          <div class="col-12 col-md-3">
+        <div class="row q-col-gutter-sm items-center">
+          <div class="col-12 col-sm-6 col-md-2">
             <q-input outlined v-model="filters.startDate" label="Start Date" type="date" dense />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-sm-6 col-md-2">
             <q-input outlined v-model="filters.endDate" label="End Date" type="date" dense />
           </div>
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-sm-6 col-md-3">
             <q-select
               outlined dense
               v-model="filters.supplier_id"
@@ -54,9 +54,34 @@
               option-label="name"
               label="Supplier (All)"
               emit-value map-options clearable
-            />
+              use-input fill-input hide-selected
+              input-debounce="0"
+              @filter="filterSuppliers"
+            >
+              <template #no-option>
+                <q-item><q-item-section class="text-grey">No matching suppliers</q-item-section></q-item>
+              </template>
+            </q-select>
           </div>
-          <div class="col-12 col-md-2">
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              outlined dense
+              v-model="filters.item_id"
+              :options="itemOptions"
+              option-value="id"
+              :option-label="(opt) => opt ? (opt.code ? `${opt.code} - ${opt.name}` : opt.name) : 'All Items'"
+              label="Item (All)"
+              emit-value map-options clearable
+              use-input fill-input hide-selected
+              input-debounce="0"
+              @filter="filterItems"
+            >
+              <template #no-option>
+                <q-item><q-item-section class="text-grey">No matching items</q-item-section></q-item>
+              </template>
+            </q-select>
+          </div>
+          <div class="col-12 col-sm-6 col-md-2">
             <q-select
               outlined dense
               v-model="filters.taxStatus"
@@ -67,10 +92,10 @@
               emit-value map-options clearable
             />
           </div>
-          <div class="col-12 col-md-2 row justify-end">
+          <div class="col-12 col-sm-6 col-md-auto">
             <q-btn
-              color="primary" icon="search" label="Generate"
-              class="full-width" @click="fetchReport" :loading="loading"
+              color="primary" icon="search" label="Generate" unelevated
+              class="full-width" style="height: 40px; min-width: 110px;" @click="fetchReport" :loading="loading"
             />
           </div>
         </div>
@@ -78,7 +103,7 @@
     </q-card>
 
     <!-- Summary Strip -->
-    <div class="row q-col-gutter-md q-mb-md" v-if="rows.length">
+    <div class="row q-col-gutter-sm q-mb-md items-center" v-if="rows.length || filters.supplier_id || filters.item_id">
       <div class="col-auto">
         <q-chip icon="receipt_long" color="primary" text-color="white">
           {{ rows.length }} Record{{ rows.length !== 1 ? 's' : '' }}
@@ -87,6 +112,16 @@
       <div class="col-auto">
         <q-chip icon="payments" color="green-8" text-color="white">
           Total: {{ formatCurrency(totalAmount) }}
+        </q-chip>
+      </div>
+      <div class="col-auto" v-if="filters.supplier_id">
+        <q-chip icon="store" color="blue-grey-7" text-color="white" removable @remove="filters.supplier_id = null; fetchReport()">
+          Supplier: {{ getSupplierName(filters.supplier_id) }}
+        </q-chip>
+      </div>
+      <div class="col-auto" v-if="filters.item_id">
+        <q-chip icon="inventory_2" color="indigo-7" text-color="white" removable @remove="filters.item_id = null; fetchReport()">
+          Item: {{ getItemName(filters.item_id) }}
         </q-chip>
       </div>
     </div>
@@ -176,9 +211,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useQuasar } from 'quasar'
-import { date as qDate } from 'quasar'
-import { getSupplierPaymentsReport, listSuppliers, sumPostedPayments } from 'src/services/procurementService'
+import { useQuasar, date as qDate } from 'quasar'
+import {
+  getSupplierPaymentsReport,
+  listSuppliers,
+  listItems,
+  sumPostedPayments,
+} from 'src/services/procurementService'
 import {
   exportPaymentReceiptToPDF,
   exportSupplierPaymentReportToPDF,
@@ -190,7 +229,12 @@ const $q = useQuasar()
 const loading = ref(false)
 const exporting = ref(false)
 const rows = ref([])
+
+const allSuppliers = ref([])
 const supplierOptions = ref([])
+
+const allItems = ref([])
+const itemOptions = ref([])
 
 const today = new Date()
 const pastMonth = new Date()
@@ -200,6 +244,7 @@ const filters = ref({
   startDate: qDate.formatDate(pastMonth, 'YYYY-MM-DD'),
   endDate: qDate.formatDate(today, 'YYYY-MM-DD'),
   supplier_id: null,
+  item_id: null,
   taxStatus: null,
 })
 
@@ -229,16 +274,72 @@ const columns = [
   { name: 'actions', align: 'right', label: '', field: 'actions', sortable: false },
 ]
 
+function filterSuppliers(val, update) {
+  const selected = allSuppliers.value.find((s) => s.id === filters.value.supplier_id)
+  const selectedLabel = selected?.name || ''
+
+  update(() => {
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      supplierOptions.value = allSuppliers.value
+    } else {
+      supplierOptions.value = allSuppliers.value.filter(
+        (s) => s.name?.toLowerCase().includes(q) || (s.code && s.code.toLowerCase().includes(q))
+      )
+    }
+  })
+}
+
+function filterItems(val, update) {
+  const selected = allItems.value.find((i) => i.id === filters.value.item_id)
+  const selectedLabel = selected ? (selected.code ? `${selected.code} - ${selected.name}` : selected.name) : ''
+
+  update(() => {
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      itemOptions.value = allItems.value
+    } else {
+      itemOptions.value = allItems.value.filter(
+        (i) =>
+          (i.name && i.name.toLowerCase().includes(q)) ||
+          (i.code && i.code.toLowerCase().includes(q))
+      )
+    }
+  })
+}
+
+function getSupplierName(id) {
+  const s = allSuppliers.value.find((x) => x.id === id)
+  return s ? s.name : ''
+}
+
+function getItemName(id) {
+  const i = allItems.value.find((x) => x.id === id)
+  return i ? (i.code ? `${i.code} - ${i.name}` : i.name) : ''
+}
+
 onMounted(async () => {
-  await fetchSuppliers()
+  await Promise.all([fetchSuppliers(), fetchItems()])
   await fetchReport()
 })
 
 async function fetchSuppliers() {
   try {
-    supplierOptions.value = await listSuppliers()
+    const data = await listSuppliers()
+    allSuppliers.value = data || []
+    supplierOptions.value = allSuppliers.value
   } catch {
     $q.notify({ type: 'negative', message: 'Failed to load suppliers' })
+  }
+}
+
+async function fetchItems() {
+  try {
+    const data = await listItems()
+    allItems.value = data || []
+    itemOptions.value = allItems.value
+  } catch {
+    $q.notify({ type: 'negative', message: 'Failed to load items' })
   }
 }
 
@@ -249,7 +350,8 @@ async function fetchReport() {
       filters.value.startDate,
       filters.value.endDate,
       filters.value.supplier_id,
-      filters.value.taxStatus
+      filters.value.taxStatus,
+      filters.value.item_id,
     )
     rows.value = data || []
   } catch {
@@ -288,11 +390,13 @@ async function handlePrintReceipt(row) {
 async function handleExportReportPDF() {
   exporting.value = true
   try {
-    const supplierName = supplierOptions.value.find((s) => s.id === filters.value.supplier_id)?.name
+    const supplierName = allSuppliers.value.find((s) => s.id === filters.value.supplier_id)?.name
+    const itemName = allItems.value.find((i) => i.id === filters.value.item_id)?.name
     await exportSupplierPaymentReportToPDF(rows.value, {
       startDate: filters.value.startDate,
       endDate: filters.value.endDate,
       supplierName,
+      itemName,
     })
   } catch (e) {
     $q.notify({ type: 'negative', message: 'Export failed', caption: e.message })
@@ -304,11 +408,13 @@ async function handleExportReportPDF() {
 async function handlePrintReport() {
   exporting.value = true
   try {
-    const supplierName = supplierOptions.value.find((s) => s.id === filters.value.supplier_id)?.name
+    const supplierName = allSuppliers.value.find((s) => s.id === filters.value.supplier_id)?.name
+    const itemName = allItems.value.find((i) => i.id === filters.value.item_id)?.name
     await exportSupplierPaymentReportToPDF(rows.value, {
       startDate: filters.value.startDate,
       endDate: filters.value.endDate,
       supplierName,
+      itemName,
     })
   } catch (e) {
     $q.notify({ type: 'negative', message: 'Print failed', caption: e.message })
@@ -323,7 +429,7 @@ function handleExportExcel() {
   
   dataToExport.push({
     payment_method: 'TOTAL',
-    total_amount: totalAmount.value
+    total_amount: totalAmount.value,
   })
 
   exportTableToExcel(exportCols, dataToExport, 'Supplier_Payment_Report')

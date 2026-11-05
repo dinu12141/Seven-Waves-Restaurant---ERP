@@ -28,7 +28,22 @@
             </q-input>
           </div>
           <div class="col-12 col-md-2">
-            <q-select outlined dense v-model="filters.supplier_id" :options="supplierOptions" option-value="id" option-label="name" label="Supplier (All)" emit-value map-options clearable />
+            <q-select
+              outlined dense
+              v-model="filters.supplier_id"
+              :options="filterSupplierOptions"
+              option-value="id"
+              option-label="name"
+              label="Supplier (All)"
+              emit-value map-options clearable
+              use-input fill-input hide-selected
+              input-debounce="0"
+              @filter="filterFilterSuppliers"
+            >
+              <template #no-option>
+                <q-item><q-item-section class="text-grey">No matching suppliers</q-item-section></q-item>
+              </template>
+            </q-select>
           </div>
           <div class="col-12 col-md-2">
             <q-select outlined dense v-model="filters.status" :options="statusOptions" option-value="value" option-label="label" label="Status" emit-value map-options clearable />
@@ -333,6 +348,8 @@ const detailLoading = ref(false)
 
 const invoices = ref([])
 const supplierOptions = ref([])
+const allSuppliers = ref([])
+const filterSupplierOptions = ref([])
 const itemOptions = ref([])
 
 const createMode = ref('direct')
@@ -473,7 +490,26 @@ async function fetchInvoices() {
   }
 }
 async function fetchSuppliers() {
-  supplierOptions.value = await listSuppliers()
+  const data = await listSuppliers()
+  allSuppliers.value = data || []
+  supplierOptions.value = allSuppliers.value
+  filterSupplierOptions.value = allSuppliers.value
+}
+
+function filterFilterSuppliers(val, update) {
+  const selected = allSuppliers.value.find((s) => s.id === filters.value.supplier_id)
+  const selectedLabel = selected?.name || ''
+
+  update(() => {
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      filterSupplierOptions.value = allSuppliers.value
+    } else {
+      filterSupplierOptions.value = allSuppliers.value.filter(
+        (s) => s.name?.toLowerCase().includes(q) || (s.code && s.code.toLowerCase().includes(q))
+      )
+    }
+  })
 }
 async function fetchItems() {
   itemOptions.value = await listItems()
@@ -508,15 +544,7 @@ const totalPaidBillAmount = computed(() => {
   return activeInvoices.value.reduce((acc, row) => acc + (parseFloat(row.paid_amount) || 0), 0)
 })
 
-const computedTotalAmount = computed(() => {
-  if (filters.value.status === 'paid') {
-    return totalPaidBillAmount.value
-  } else if (filters.value.status === 'UNPAID' || filters.value.status === 'draft') {
-    return totalDueBillAmount.value
-  } else {
-    return totalBillAmount.value
-  }
-})
+// computedTotalAmount removed (unused)
 
 function formatCurrency(val) {
   return `LKR\u00A0${(Number(val) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

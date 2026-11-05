@@ -520,9 +520,9 @@ export async function exportPaymentReceiptToPDF(payment: {
 /**
  * Export the full Supplier Payment Report as a PDF with summary totals.
  */
-export async function exportSupplierPaymentReportToPDF(rows: any[], filters: { startDate: string; endDate: string; supplierName?: string }) {
+export async function exportSupplierPaymentReportToPDF(rows: any[], filters: { startDate: string; endDate: string; supplierName?: string; itemName?: string }) {
   const doc = new jsPDF({ orientation: 'landscape' })
-  const subtitle = `Period: ${filters.startDate} to ${filters.endDate}${filters.supplierName ? ' | Supplier: ' + filters.supplierName : ''}`
+  const subtitle = `Period: ${filters.startDate} to ${filters.endDate}${filters.supplierName ? ' | Supplier: ' + filters.supplierName : ''}${filters.itemName ? ' | Item: ' + filters.itemName : ''}`
 
   await drawSAPHeader(doc, 'SUPPLIER PAYMENT REPORT', subtitle)
 

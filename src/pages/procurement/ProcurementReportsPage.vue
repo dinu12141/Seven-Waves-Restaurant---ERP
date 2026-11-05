@@ -43,9 +43,15 @@
                   clearable
                   placeholder="Select supplier"
                   use-input
+                  fill-input
+                  hide-selected
                   input-debounce="0"
                   @filter="filterSuppliers"
-                />
+                >
+                  <template #no-option>
+                    <q-item><q-item-section class="text-grey">No matching suppliers</q-item-section></q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="col-6 col-md-3">
                 <div class="text-caption q-mb-xs text-weight-medium">From</div>
@@ -457,9 +463,15 @@
                   clearable
                   placeholder="All Suppliers"
                   use-input
+                  fill-input
+                  hide-selected
                   input-debounce="0"
                   @filter="filterSuppliers"
-                />
+                >
+                  <template #no-option>
+                    <q-item><q-item-section class="text-grey">No matching suppliers</q-item-section></q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="col-12 col-sm-6 col-md-3">
                 <div class="text-caption q-mb-xs text-weight-medium">Item</div>
@@ -475,9 +487,15 @@
                   clearable
                   placeholder="All Items"
                   use-input
+                  fill-input
+                  hide-selected
                   input-debounce="0"
                   @filter="filterItems"
-                />
+                >
+                  <template #no-option>
+                    <q-item><q-item-section class="text-grey">No matching items</q-item-section></q-item>
+                  </template>
+                </q-select>
               </div>
               <div class="col-6 col-sm-3 col-md-2">
                 <div class="text-caption q-mb-xs text-weight-medium">Source Document</div>
@@ -750,11 +768,19 @@ onMounted(async () => {
 })
 
 function filterSuppliers(val, update) {
+  const currentId = activeTab.value === 'statement' ? statementSupplier.value : purchasesSupplier.value
+  const selected = allSuppliers.value.find((s) => s.id === currentId)
+  const selectedLabel = selected?.name || ''
+
   update(() => {
-    const q = val.toLowerCase()
-    supplierOptions.value = q
-      ? allSuppliers.value.filter((s) => s.name.toLowerCase().includes(q))
-      : allSuppliers.value
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      supplierOptions.value = allSuppliers.value
+    } else {
+      supplierOptions.value = allSuppliers.value.filter(
+        (s) => s.name?.toLowerCase().includes(q) || (s.code && s.code.toLowerCase().includes(q))
+      )
+    }
   })
 }
 
@@ -1112,15 +1138,20 @@ async function loadItemsList() {
 }
 
 function filterItems(val, update) {
+  const selected = allItems.value.find((i) => i.id === purchasesItem.value)
+  const selectedLabel = selected ? (selected.code ? `${selected.code} - ${selected.name}` : selected.name) : ''
+
   update(() => {
     const q = (val || '').toLowerCase().trim()
-    itemOptions.value = q
-      ? allItems.value.filter(
-          (i) =>
-            (i.name && i.name.toLowerCase().includes(q)) ||
-            (i.code && i.code.toLowerCase().includes(q)),
-        )
-      : allItems.value
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      itemOptions.value = allItems.value
+    } else {
+      itemOptions.value = allItems.value.filter(
+        (i) =>
+          (i.name && i.name.toLowerCase().includes(q)) ||
+          (i.code && i.code.toLowerCase().includes(q)),
+      )
+    }
   })
 }
 

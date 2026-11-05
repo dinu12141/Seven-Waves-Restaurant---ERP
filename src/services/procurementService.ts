@@ -2871,17 +2871,20 @@ export async function approveInvoice(
 /**
  * Get supplier payments report with optional filtering
  */
-export async function getSupplierPaymentsReport(startDate: string, endDate: string, supplierId?: string, taxStatus?: string | null) {
+export async function getSupplierPaymentsReport(startDate: string, endDate: string, supplierId?: string, taxStatus?: string | null, itemId?: string | null) {
   const { company_id, branch_id } = getContext()
 
-  return fetchAllProcRows(() => {
+  const data = await fetchAllProcRows(() => {
     let query = supabase
       .from('supplier_payments')
       .select(
         `*, suppliers${taxStatus ? '!inner' : ''}(id, name, code, tax_id),
          supplier_payment_allocations(
            id, amount,
-           ap_invoices(id, doc_number, total_amount, balance_due)
+           ap_invoices(
+             id, doc_number, total_amount, balance_due,
+             ap_invoice_lines(id, item_id, items(id, name, code))
+           )
          )`,
       )
       .eq('company_id', company_id)
@@ -2897,5 +2900,15 @@ export async function getSupplierPaymentsReport(startDate: string, endDate: stri
     if (taxStatus === 'NON_TAX') query = query.is('suppliers.tax_id', null)
 
     return query.order('doc_date', { ascending: false }).order('id', { ascending: false })
+  })
+
+  if (!itemId) return data
+
+  return (data || []).filter((payment: any) => {
+    const allocs = payment.supplier_payment_allocations || []
+    return allocs.some((alloc: any) => {
+      const lines = alloc.ap_invoices?.ap_invoice_lines || []
+      return lines.some((l: any) => l.item_id === itemId || l.items?.id === itemId)
+    })
   })
 }

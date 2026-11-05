@@ -20,9 +20,18 @@
           emit-value
           map-options
           clearable
+          use-input
+          fill-input
+          hide-selected
+          input-debounce="0"
+          @filter="filterSuppliers"
           placeholder="All Suppliers"
           class="report-filter-input"
-        />
+        >
+          <template #no-option>
+            <q-item><q-item-section class="text-grey">No matching suppliers</q-item-section></q-item>
+          </template>
+        </q-select>
       </div>
       <div class="report-filter-group">
         <label class="report-filter-label">Item</label>
@@ -35,10 +44,17 @@
           map-options
           clearable
           use-input
+          fill-input
+          hide-selected
+          input-debounce="0"
           @filter="filterItems"
           placeholder="All Items"
           class="report-filter-input"
-        />
+        >
+          <template #no-option>
+            <q-item><q-item-section class="text-grey">No matching items</q-item-section></q-item>
+          </template>
+        </q-select>
       </div>
     </template>
     
@@ -162,13 +178,17 @@ const loading = ref(false)
 const rows = ref([])
 const expanded = ref(new Set())
 
+const allSupplierOptions = ref([])
 const supplierOptions = ref([])
 const itemOptions = ref([])
 const allItemOptions = ref([])
 
 onMounted(async () => {
   const { data: s } = await supabase.from('suppliers').select('id, name').order('name')
-  if (s) supplierOptions.value = s.map(x => ({ label: x.name, value: x.id }))
+  if (s) {
+    allSupplierOptions.value = s.map(x => ({ label: x.name, value: x.id }))
+    supplierOptions.value = [...allSupplierOptions.value]
+  }
   
   const { data: i } = await supabase.from('items').select('id, name, code').order('name')
   if (i) {
@@ -177,16 +197,31 @@ onMounted(async () => {
   }
 })
 
-function filterItems(val, update) {
-  if (val === '') {
-    update(() => {
-      itemOptions.value = allItemOptions.value
-    })
-    return
-  }
+function filterSuppliers(val, update) {
+  const selected = allSupplierOptions.value.find(s => s.value === filters.supplier_id)
+  const selectedLabel = selected?.label || ''
+
   update(() => {
-    const needle = val.toLowerCase()
-    itemOptions.value = allItemOptions.value.filter(v => v.label.toLowerCase().includes(needle))
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      supplierOptions.value = allSupplierOptions.value
+    } else {
+      supplierOptions.value = allSupplierOptions.value.filter(s => s.label.toLowerCase().includes(q))
+    }
+  })
+}
+
+function filterItems(val, update) {
+  const selected = allItemOptions.value.find(i => i.value === filters.item_id)
+  const selectedLabel = selected?.label || ''
+
+  update(() => {
+    const q = (val || '').toLowerCase().trim()
+    if (!q || (selectedLabel && val === selectedLabel)) {
+      itemOptions.value = allItemOptions.value
+    } else {
+      itemOptions.value = allItemOptions.value.filter(v => v.label.toLowerCase().includes(q))
+    }
   })
 }
 
