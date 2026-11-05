@@ -24,7 +24,6 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 let sock = null;
 let qrCodeDataUrl = null;
-let qrCodeRaw = null;
 let isConnected = false;
 let connectedUser = null;
 let lastDisconnectReason = null;
@@ -57,7 +56,6 @@ async function connectToWhatsApp() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      qrCodeRaw = qr;
       try {
         qrCodeDataUrl = await QRCode.toDataURL(qr, { scale: 8, margin: 2 });
       } catch (e) {
@@ -70,7 +68,9 @@ async function connectToWhatsApp() {
       try {
         const qrTerminal = await QRCode.toString(qr, { type: 'terminal', small: true });
         console.log(qrTerminal);
-      } catch {}
+      } catch (err) {
+        console.debug('Terminal QR render note:', err?.message);
+      }
     }
 
     if (connection === 'close') {
@@ -86,13 +86,14 @@ async function connectToWhatsApp() {
         console.log('[WhatsApp Bridge] Logged out. Deleting old session...');
         try {
           fs.rmSync(authFolder, { recursive: true, force: true });
-        } catch {}
+        } catch (err) {
+          console.debug('Session cleanup note:', err?.message);
+        }
         setTimeout(connectToWhatsApp, 3000);
       }
     } else if (connection === 'open') {
       isConnected = true;
       qrCodeDataUrl = null;
-      qrCodeRaw = null;
       connectedUser = sock.user;
       console.log('\n======================================================');
       console.log(`✅ WHATSAPP CONNECTED SUCCESSFULLY!`);
