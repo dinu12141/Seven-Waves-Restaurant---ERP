@@ -4673,7 +4673,7 @@ async function sendPayslipEmail(payslip) {
   }
 }
 
-function sendPayslipWhatsApp(payslip) {
+async function sendPayslipWhatsApp(payslip) {
   if (!payslip) return
   const empName = payslip.employees?.full_name || payslip.employees?.employee_code || 'Employee'
   const rawMobile = payslip.employees?.mobile
@@ -4693,6 +4693,59 @@ function sendPayslipWhatsApp(payslip) {
     cleanPhone = '94' + cleanPhone.substring(1)
   }
 
+  // ── 1. Check if WhatsApp Gateway Bridge is running & connected ─────────
+  let bridgeConnected = false
+  try {
+    const statusResp = await fetch('http://localhost:3005/status', {
+      signal: AbortSignal.timeout(1200),
+    })
+    const statusData = await statusResp.json()
+    if (statusData.connected) {
+      bridgeConnected = true
+    }
+  } catch {
+    bridgeConnected = false
+  }
+
+  // ── 2. If Bridge is connected, dispatch ACTUAL PDF DOCUMENT FILE! ──────
+  if (bridgeConnected) {
+    $q.loading.show({
+      message: `Generating official PDF and dispatching to ${empName}'s WhatsApp (+${cleanPhone})...`,
+    })
+    try {
+      const { base64, filename } = await generatePayslipPdfDoc(payslip)
+      const resp = await fetch('http://localhost:3005/send-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          pdfBase64: base64,
+          filename: filename,
+          caption: `🌟 *SEVEN WAVES RESTAURANT (PVT) LTD*\n📄 *OFFICIAL MONTHLY PAYSLIP*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Employee:* ${empName}\n📅 *Period:* ${selectedRun.value?.period_start || ''} to ${selectedRun.value?.period_end || ''}\n💰 *Net Salary:* LKR ${fmt(payslip.net_salary)}\n━━━━━━━━━━━━━━━━━━━━━\n_Please find attached your confidential salary payslip PDF._`,
+        }),
+      })
+      const result = await resp.json()
+      if (!result.success) throw new Error(result.error || 'Bridge dispatch failed')
+
+      $q.notify({
+        type: 'positive',
+        icon: 'chat',
+        message: `✅ Payslip PDF file successfully delivered to ${empName}'s WhatsApp (+${cleanPhone})!`,
+        timeout: 5000,
+      })
+      return
+    } catch (dispatchErr) {
+      console.warn('Bridge send error, falling back to WhatsApp Web:', dispatchErr)
+      $q.notify({
+        type: 'warning',
+        message: `Bridge dispatch failed (${dispatchErr.message}). Opening WhatsApp Web instead.`,
+      })
+    } finally {
+      $q.loading.hide()
+    }
+  }
+
+  // ── 3. Fallback: Open WhatsApp Web ────────────────────────────────────
   const periodStr = `${selectedRun.value?.period_start || 'Period Start'} to ${selectedRun.value?.period_end || 'Period End'}`
   const empCode = payslip.employees?.employee_code || '—'
   const basic = fmt(payslip.basic_salary)
