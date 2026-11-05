@@ -16,6 +16,20 @@
         padding="xs md"
         class="text-weight-medium"
       />
+      <q-btn
+        unelevated
+        color="teal-8"
+        text-color="white"
+        icon="auto_graph"
+        label="Cumulative EPF Summary"
+        @click="openCumulativeEpfSummary"
+        no-caps
+        dense
+        padding="xs md"
+        class="text-weight-medium"
+      >
+        <q-tooltip>Lifetime accumulated EPF (8% + 12%) & ETF (3%) contributions by employee</q-tooltip>
+      </q-btn>
       <q-space />
       <div style="min-width: 160px">
         <div
@@ -1628,11 +1642,11 @@
       </q-card>
     </q-dialog>
 
-    <!-- ══ POST TO FINANCE Dialog ══ -->
+    <!-- ══ POST TO FINANCE Dialog (Supports Option A & Option B) ══ -->
     <q-dialog v-model="showPostFinanceDialog" persistent>
       <q-card
         :class="[$q.dark.isActive ? 'bg-grey-10' : 'bg-white']"
-        style="min-width: 540px; max-width: 95vw"
+        style="min-width: 680px; max-width: 95vw"
       >
         <!-- Header -->
         <q-card-section
@@ -1640,7 +1654,12 @@
           :style="{ background: 'linear-gradient(135deg, #0f4c75 0%, #1976d2 100%)' }"
         >
           <q-icon name="account_balance" color="white" size="22px" class="q-mr-sm" />
-          <div class="text-subtitle1 text-weight-bold text-white">Post Payroll to Finance</div>
+          <div>
+            <div class="text-subtitle1 text-weight-bold text-white">Post Payroll to Finance</div>
+            <div class="text-caption text-blue-1">
+              {{ selectedRun?.period_start }} — {{ selectedRun?.period_end }}
+            </div>
+          </div>
           <q-space />
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-card-section>
@@ -1648,174 +1667,595 @@
         <!-- Payroll Summary Banner -->
         <div :class="['row q-pa-md q-col-gutter-md', $q.dark.isActive ? 'bg-grey-9' : 'bg-blue-1']">
           <div class="col">
-            <div class="text-caption text-grey-6">Period</div>
+            <div class="text-caption text-grey-6">Total Staff</div>
             <div class="text-weight-bold text-caption">
-              {{ selectedRun?.period_start }} — {{ selectedRun?.period_end }}
+              {{ payslips.length }} employees
             </div>
           </div>
           <div class="col">
-            <div class="text-caption text-grey-6">Employees</div>
-            <div class="text-weight-bold text-caption">
-              {{ payslips.filter((p) => !p.is_held).length }}
+            <div class="text-caption text-grey-6">Pending Posting</div>
+            <div class="text-weight-bold text-caption text-primary">
+              {{ unpostedPayslips.length }} employees
             </div>
           </div>
           <div class="col">
-            <div class="text-caption text-grey-6">Total to Pay</div>
-            <div class="text-weight-bold text-green">
-              LKR
-              {{
-                fmt(
-                  payslips
-                    .filter((p) => !p.is_held && p.payment_status !== 'paid')
-                    .reduce((s, p) => s + Number(p.net_salary || 0), 0),
-                )
-              }}
+            <div class="text-caption text-grey-6">Already Paid/Posted</div>
+            <div class="text-weight-bold text-caption text-positive">
+              {{ postedPayslips.length }} employees
+            </div>
+          </div>
+          <div class="col">
+            <div class="text-caption text-grey-6">Total Unposted Net</div>
+            <div class="text-weight-bold" :class="unpostedTotalNet > 0 ? 'text-green' : 'text-grey'">
+              LKR {{ fmt(unpostedTotalNet) }}
             </div>
           </div>
           <div class="col" v-if="heldTotal > 0">
-            <div class="text-caption text-grey-6">On Hold (excluded)</div>
+            <div class="text-caption text-grey-6">On Hold</div>
             <div class="text-weight-bold text-orange">LKR {{ fmt(heldTotal) }}</div>
           </div>
         </div>
 
-        <q-card-section class="q-gutter-md q-pa-lg">
-          <!-- ── STEP 1: Payment Method ──────────────────────── -->
-          <div>
-            <div class="row items-center q-mb-sm">
-              <q-avatar
-                size="22px"
-                color="blue-8"
-                text-color="white"
-                class="q-mr-sm text-caption text-weight-bold"
-                >1</q-avatar
-              >
-              <span :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']"
-                >Payment Method</span
-              >
+        <!-- Case 1: If ALL payslips are already posted/paid -->
+        <div v-if="unpostedPayslips.length === 0" class="q-pa-lg">
+          <div class="q-pa-md bg-positive-1 text-positive rounded-borders row items-center q-gutter-md q-mb-md">
+            <q-icon name="verified" size="36px" color="positive" />
+            <div class="col">
+              <div class="text-subtitle2 text-weight-bold">Payroll Run Fully Posted to Finance!</div>
+              <div class="text-caption text-grey-8">
+                All {{ payslips.length }} payslips for this period have already been posted to Finance & marked as PAID.
+                Salaries have been credited from company accounts and recorded in the General Ledger.
+              </div>
             </div>
-            <div class="row q-gutter-sm">
+          </div>
+
+          <!-- Summary Breakdown of Paid Slips -->
+          <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Disbursed Payslip Breakdown:</div>
+          <q-list bordered separator dense class="rounded-borders">
+            <q-item v-for="(count, bank) in paidBankSummary" :key="bank">
+              <q-item-section avatar>
+                <q-icon :name="bank.toLowerCase().includes('cash') ? 'payments' : 'account_balance'" color="positive" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ bank }}</q-item-label>
+                <q-item-label caption>{{ count.count }} employee(s) paid</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <span class="text-weight-bold text-dark">LKR {{ fmt(count.total) }}</span>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div class="row justify-end q-mt-md">
+            <q-btn flat label="Close" color="primary" v-close-popup no-caps />
+          </div>
+        </div>
+
+        <!-- Case 2: When there are unposted payslips to post -->
+        <div v-else class="q-pa-md">
+          <!-- Posting Mode Toggle (Option A vs Option B) -->
+          <div class="q-mb-md">
+            <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Select Disbursing Method:</div>
+            <q-btn-toggle
+              v-model="postFinanceMode"
+              spread
+              no-caps
+              rounded
+              unelevated
+              toggle-color="primary"
+              color="grey-3"
+              text-color="grey-8"
+              :options="[
+                { label: 'Option A: Single Company Account (SLIPS / Bulk)', value: 'bulk', icon: 'account_balance' },
+                { label: 'Option B: Split by Bank & Cash (Multiple Accounts)', value: 'split', icon: 'call_split' }
+              ]"
+            />
+          </div>
+
+          <!-- ═════ OPTION A: Single Account (Bulk / SLIPS) ═════ -->
+          <div v-if="postFinanceMode === 'bulk'" class="q-gutter-md">
+            <div class="text-caption text-grey-7 bg-grey-2 q-pa-sm rounded-borders">
+              <q-icon name="info" color="primary" class="q-mr-xs" />
+              <strong>Option A:</strong> All {{ unpostedPayslips.length }} unposted employees will be paid together from a single company account (e.g. Commercial Bank SLIPS transfer to all employee bank accounts).
+            </div>
+
+            <!-- STEP 1: Payment Method -->
+            <div>
+              <div class="text-caption text-weight-bold q-mb-xs">1. Payment Method</div>
+              <div class="row q-gutter-sm">
+                <q-btn
+                  v-for="m in paymentMethods"
+                  :key="m.value"
+                  unelevated
+                  no-caps
+                  :label="m.label"
+                  :icon="m.icon"
+                  :color="postFinanceForm.payment_method === m.value ? 'blue-8' : $q.dark.isActive ? 'grey-8' : 'grey-2'"
+                  :text-color="postFinanceForm.payment_method === m.value ? 'white' : 'grey-7'"
+                  @click="postFinanceForm.payment_method = m.value"
+                  style="flex: 1; min-width: 120px"
+                />
+              </div>
+            </div>
+
+            <!-- STEP 2: Company Paying Account -->
+            <div>
+              <div class="text-caption text-weight-bold q-mb-xs">
+                2. {{ postFinanceForm.payment_method === 'cash' ? 'Cash Account (money goes out from)' : 'Company Bank Account (transfer from)' }}
+              </div>
+              <q-select
+                :dark="$q.dark.isActive"
+                outlined
+                dense
+                v-model="postFinanceForm.cash_bank_acc"
+                :options="postFinanceForm.payment_method === 'cash' ? cashAccounts : bankAccounts"
+                emit-value
+                map-options
+                clearable
+                :loading="loadingAccounts"
+                @popup-show="loadAccounts"
+                placeholder="Select company cash/bank account"
+              >
+                <template #prepend>
+                  <q-icon :name="postFinanceForm.payment_method === 'cash' ? 'payments' : 'account_balance_wallet'" size="xs" />
+                </template>
+              </q-select>
+              <div class="text-caption text-grey-6 q-mt-xs q-pl-xs">
+                🏦 This company account will be <strong>CREDITED</strong> (deducted by LKR {{ fmt(unpostedTotalNet) }}).
+              </div>
+            </div>
+
+            <q-card-actions align="right" class="q-pt-md">
+              <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
               <q-btn
-                v-for="m in paymentMethods"
-                :key="m.value"
                 unelevated
+                color="blue-8"
+                icon="account_balance"
                 no-caps
-                :label="m.label"
-                :icon="m.icon"
-                :color="
-                  postFinanceForm.payment_method === m.value
-                    ? 'blue-8'
-                    : $q.dark.isActive
-                      ? 'grey-8'
-                      : 'grey-2'
-                "
-                :text-color="postFinanceForm.payment_method === m.value ? 'white' : 'grey-7'"
-                @click="postFinanceForm.payment_method = m.value"
-                style="flex: 1; min-width: 120px"
+                :label="`Post All (${unpostedPayslips.length} Employees — LKR ${fmt(unpostedTotalNet)})`"
+                @click="confirmPostToFinance"
+                :loading="postingFinance"
+                :disable="!postFinanceForm.cash_bank_acc"
+              />
+            </q-card-actions>
+          </div>
+
+          <!-- ═════ OPTION B: Split by Bank & Cash ═════ -->
+          <div v-else-if="postFinanceMode === 'split'" class="q-gutter-md">
+            <div class="text-caption text-grey-7 bg-grey-2 q-pa-sm rounded-borders">
+              <q-icon name="info" color="primary" class="q-mr-xs" />
+              <strong>Option B:</strong> Employees are automatically grouped by their receiving bank or cash. Select the corresponding Company Account for each group and post them separately!
+            </div>
+
+            <!-- Subtabs: Bank Groups vs Custom Selection -->
+            <q-tabs
+              v-model="splitSubTab"
+              dense
+              no-caps
+              active-color="primary"
+              indicator-color="primary"
+              align="left"
+              class="text-grey-7"
+            >
+              <q-tab name="bank_groups" label="Grouped by Bank & Cash" icon="account_balance" />
+              <q-tab name="custom_select" label="Custom Employee Selection" icon="checklist" />
+            </q-tabs>
+            <q-separator />
+
+            <!-- Tab 1: Bank & Cash Groups -->
+            <div v-if="splitSubTab === 'bank_groups'" class="q-gutter-sm">
+              <div v-if="splitBankGroups.length === 0" class="text-center text-grey-6 q-py-md">
+                No unposted bank groups found.
+              </div>
+
+              <q-card
+                v-for="group in splitBankGroups"
+                :key="group.key"
+                flat
+                bordered
+                :class="[$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1', 'q-pa-sm rounded-borders q-mb-sm']"
+              >
+                <div class="row items-center justify-between q-col-gutter-sm">
+                  <div class="col-12 col-md-4">
+                    <div class="row items-center">
+                      <q-icon
+                        :name="group.isCash ? 'payments' : 'account_balance'"
+                        :color="group.isCash ? 'amber-9' : 'primary'"
+                        size="24px"
+                        class="q-mr-sm"
+                      />
+                      <div>
+                        <div class="text-weight-bold text-subtitle2">{{ group.bankName }}</div>
+                        <div class="text-caption text-grey-7">
+                          {{ group.employees.length }} employee(s) • <span class="text-weight-bold text-green">LKR {{ fmt(group.totalNet) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-md-5">
+                    <q-select
+                      :dark="$q.dark.isActive"
+                      outlined
+                      dense
+                      v-model="groupPayingAccounts[group.key]"
+                      :options="group.isCash ? cashAccounts : bankAccounts"
+                      emit-value
+                      map-options
+                      :label="group.isCash ? 'Pay from Company Cash Account' : 'Pay from Company Bank Account'"
+                    />
+                  </div>
+
+                  <div class="col-12 col-md-3 row justify-end">
+                    <q-btn
+                      unelevated
+                      :color="group.isCash ? 'amber-9' : 'primary'"
+                      :text-color="group.isCash ? 'dark' : 'white'"
+                      icon="send"
+                      no-caps
+                      size="sm"
+                      label="Post Group"
+                      @click="postSplitGroupToFinance(group)"
+                      :loading="postingGroupId === group.key"
+                      :disable="!groupPayingAccounts[group.key]"
+                    >
+                      <q-tooltip>Post this specific group from the selected company account</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+
+                <!-- Expansion to see employees in group -->
+                <q-expansion-item
+                  dense
+                  dense-toggle
+                  header-class="text-caption text-grey-7 q-pa-none q-mt-xs"
+                  :label="`View ${group.employees.length} employees in this group`"
+                >
+                  <q-list dense separator class="q-mt-xs bg-white rounded-borders">
+                    <q-item v-for="emp in group.employees" :key="emp.id" dense>
+                      <q-item-section>
+                        <q-item-label class="text-caption text-weight-medium">
+                          {{ emp.employees?.full_name || emp.employees?.employee_code }}
+                        </q-item-label>
+                        <q-item-label caption class="text-grey-6">
+                          Acc: {{ emp.employees?.bank_account_number || emp.employees?.account_number || 'Cash' }}
+                          <span v-if="emp.employees?.bank_branch"> ({{ emp.employees.bank_branch }})</span>
+                        </q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <span class="text-caption text-weight-bold text-dark">LKR {{ fmt(emp.net_salary) }}</span>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-expansion-item>
+              </q-card>
+            </div>
+
+            <!-- Tab 2: Custom Employee Selection -->
+            <div v-else-if="splitSubTab === 'custom_select'" class="q-gutter-sm">
+              <div class="row q-col-gutter-sm items-center q-mb-sm">
+                <div class="col-12 col-sm-6">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    v-model="customPayingAccountId"
+                    :options="customPaymentMethod === 'cash' ? cashAccounts : bankAccounts"
+                    emit-value
+                    map-options
+                    label="Paying Company Account"
+                  />
+                </div>
+                <div class="col-12 col-sm-3">
+                  <q-select
+                    :dark="$q.dark.isActive"
+                    outlined
+                    dense
+                    v-model="customPaymentMethod"
+                    :options="[
+                      { label: 'Bank Transfer', value: 'bank_transfer' },
+                      { label: 'Cash', value: 'cash' },
+                      { label: 'Cheque', value: 'cheque' }
+                    ]"
+                    emit-value
+                    map-options
+                    label="Method"
+                  />
+                </div>
+                <div class="col-12 col-sm-3">
+                  <q-btn
+                    unelevated
+                    color="primary"
+                    icon="send"
+                    no-caps
+                    dense
+                    class="full-width q-py-xs"
+                    :label="`Post Selected (${selectedCustomSlips.length})`"
+                    :disable="!customPayingAccountId || selectedCustomSlips.length === 0"
+                    :loading="postingCustom"
+                    @click="postCustomSelectedToFinance"
+                  />
+                </div>
+              </div>
+
+              <!-- Unposted Slips Table with Selection -->
+              <q-table
+                dense
+                flat
+                bordered
+                :rows="unpostedPayslips"
+                :columns="customSelectColumns"
+                row-key="id"
+                selection="multiple"
+                v-model:selected="selectedCustomSlips"
+                :pagination="{ rowsPerPage: 10 }"
               />
             </div>
+
+            <q-card-actions align="right" class="q-pt-sm">
+              <q-btn flat label="Close" color="grey" no-caps v-close-popup />
+            </q-card-actions>
           </div>
+        </div>
+      </q-card>
+    </q-dialog>
 
-          <q-separator />
-
-          <!-- ── STEP 2: Which account is money going OUT from ─ -->
-          <div>
-            <div class="row items-center q-mb-sm">
-              <q-avatar
-                size="22px"
-                color="blue-8"
-                text-color="white"
-                class="q-mr-sm text-caption text-weight-bold"
-                >2</q-avatar
-              >
-              <span :class="['text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                {{
-                  postFinanceForm.payment_method === 'cash'
-                    ? 'Cash Account (money goes out from)'
-                    : postFinanceForm.payment_method === 'cheque'
-                      ? 'Bank Account (cheque issued from)'
-                      : 'Bank Account (transfer from)'
-                }}
-              </span>
-            </div>
-            <q-select
-              :dark="$q.dark.isActive"
-              outlined
-              dense
-              v-model="postFinanceForm.cash_bank_acc"
-              :options="postFinanceForm.payment_method === 'cash' ? cashAccounts : bankAccounts"
-              emit-value
-              map-options
-              clearable
-              :loading="loadingAccounts"
-              @popup-show="loadAccounts"
-            >
-              <template #prepend>
-                <q-icon
-                  :name="
-                    postFinanceForm.payment_method === 'cash'
-                      ? 'payments'
-                      : 'account_balance_wallet'
-                  "
-                  size="xs"
-                />
-              </template>
-              <template #no-option>
-                <q-item
-                  ><q-item-section class="text-grey-5"
-                    >No accounts found — add accounts in Finance → Chart of Accounts</q-item-section
-                  ></q-item
-                >
-              </template>
-            </q-select>
-            <div class="text-caption text-grey-5 q-mt-xs q-pl-xs">
-              <q-icon name="info" size="12px" class="q-mr-xs" />
-              {{
-                postFinanceForm.payment_method === 'cash'
-                  ? '💵 This cash account will be CREDITED (balance reduces)'
-                  : '🏦 This bank account will be CREDITED (balance reduces)'
-              }}
-            </div>
-          </div>
-
-          <q-separator />
-
-          <!-- Removed Step 3 UI manually mapped to codes: 5100, 2200, etc. -->
-
-          <!-- Held salary warning -->
-          <div
-            v-if="heldTotal > 0"
-            :class="[
-              'rounded-borders q-pa-sm row items-center q-gutter-sm',
-              $q.dark.isActive ? 'bg-orange-10' : 'bg-orange-1',
-            ]"
-          >
-            <q-icon name="warning" color="orange" />
-            <div class="text-caption text-orange">
-              <strong>{{ payslips.filter((p) => p.is_held).length }} salary(ies) on HOLD</strong> —
-              LKR {{ fmt(heldTotal) }} will NOT be posted to Finance.
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-          :style="{
-            borderTop: $q.dark.isActive
-              ? '1px solid rgba(255,255,255,0.07)'
-              : '1px solid rgba(0,0,0,0.08)',
-          }"
+    <!-- ══ CUMULATIVE EPF & ETF SUMMARY DIALOG ══ -->
+    <q-dialog v-model="showCumulativeEpfDialog" maximized persistent>
+      <q-card :class="[$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-1']">
+        <!-- Header -->
+        <q-bar
+          :class="[$q.dark.isActive ? 'bg-dark' : 'bg-teal-9 text-white']"
+          style="height: 56px; padding: 0 16px"
         >
-          <q-btn flat label="Cancel" color="grey" no-caps v-close-popup />
+          <q-icon name="auto_graph" color="amber" size="22px" />
+          <div class="q-ml-sm text-weight-bold text-subtitle1">
+            Employee Cumulative EPF & ETF Contribution Summary
+          </div>
+          <q-badge color="teal-6" class="q-ml-sm text-caption">Seven Waves ERP</q-badge>
+          <q-space />
           <q-btn
             unelevated
-            color="blue-8"
-            icon="account_balance"
+            dense
+            color="positive"
+            icon="file_download"
+            label="Export Excel"
+            class="q-mr-sm"
+            @click="exportCumulativeEpfExcel"
             no-caps
-            label="Post to Finance & Mark Paid"
-            @click="confirmPostToFinance"
-            :loading="postingFinance"
-            :disable="!postFinanceForm.cash_bank_acc"
+            size="sm"
+          >
+            <q-tooltip>Download complete summary in Excel format (.xlsx)</q-tooltip>
+          </q-btn>
+          <q-btn
+            unelevated
+            dense
+            color="red-7"
+            icon="picture_as_pdf"
+            label="Export PDF"
+            class="q-mr-sm"
+            @click="exportCumulativeEpfPdf"
+            no-caps
+            size="sm"
+          >
+            <q-tooltip>Download formatted A4 PDF statement</q-tooltip>
+          </q-btn>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-bar>
+
+        <q-card-section class="q-pa-md">
+          <!-- Filter Controls -->
+          <div class="row q-col-gutter-sm items-center q-mb-md">
+            <div class="col-12 col-md-5">
+              <q-input
+                :dark="$q.dark.isActive"
+                outlined
+                dense
+                v-model="cumulativeSearch"
+                placeholder="Search by Employee Name, Code, EPF No, NIC, Department..."
+                clearable
+              >
+                <template #prepend>
+                  <q-icon name="search" size="xs" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-3">
+              <q-select
+                :dark="$q.dark.isActive"
+                outlined
+                dense
+                v-model="cumulativeYearFilter"
+                :options="cumulativeYearOptions"
+                label="Contribution Period"
+              />
+            </div>
+            <div class="col-12 col-md-4 text-right text-caption text-grey-7">
+              Showing <strong>{{ filteredCumulativeEmployees.length }}</strong> active EPF contributors
+            </div>
+          </div>
+
+          <!-- Cumulative KPI Cards -->
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-white rounded-borders">
+                <div class="text-caption text-grey-7">Total Contributors</div>
+                <div class="text-h6 text-weight-bolder text-primary">
+                  {{ cumulativeGrandTotals.staffCount }}
+                </div>
+              </q-card>
+            </div>
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-white rounded-borders">
+                <div class="text-caption text-grey-7">Cumulative Basic</div>
+                <div class="text-subtitle2 text-weight-bold text-dark">
+                  LKR {{ fmt(cumulativeGrandTotals.totalBasic) }}
+                </div>
+              </q-card>
+            </div>
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-teal-1 rounded-borders">
+                <div class="text-caption text-teal-9 text-weight-medium">Emp EPF (8%)</div>
+                <div class="text-subtitle2 text-weight-bold text-teal-9">
+                  LKR {{ fmt(cumulativeGrandTotals.totalEpf8) }}
+                </div>
+              </q-card>
+            </div>
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-blue-1 rounded-borders">
+                <div class="text-caption text-blue-9 text-weight-medium">Empr EPF (12%)</div>
+                <div class="text-subtitle2 text-weight-bold text-blue-9">
+                  LKR {{ fmt(cumulativeGrandTotals.totalEpf12) }}
+                </div>
+              </q-card>
+            </div>
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-indigo-1 rounded-borders">
+                <div class="text-caption text-indigo-9 text-weight-medium">Total EPF (20%)</div>
+                <div class="text-subtitle2 text-weight-bold text-indigo-9">
+                  LKR {{ fmt(cumulativeGrandTotals.totalEpf20) }}
+                </div>
+              </q-card>
+            </div>
+            <div class="col-6 col-sm-4 col-md-2">
+              <q-card flat bordered class="q-pa-sm text-center bg-purple-1 rounded-borders">
+                <div class="text-caption text-purple-9 text-weight-medium">Grand Total (23%)</div>
+                <div class="text-subtitle2 text-weight-bold text-purple-9">
+                  LKR {{ fmt(cumulativeGrandTotals.total23) }}
+                </div>
+              </q-card>
+            </div>
+          </div>
+
+          <!-- Cumulative Table -->
+          <q-table
+            flat
+            bordered
+            dense
+            :rows="filteredCumulativeEmployees"
+            :columns="cumulativeColumns"
+            row-key="empId"
+            :loading="cumulativeLoading"
+            :pagination="{ rowsPerPage: 15 }"
+            class="bg-white rounded-borders"
+            table-header-class="bg-grey-2 text-weight-bold text-uppercase text-caption"
+          >
+            <template #body-cell-actions="props">
+              <q-td :props="props" class="q-gutter-xs">
+                <q-btn
+                  flat
+                  dense
+                  size="sm"
+                  color="teal-8"
+                  icon="visibility"
+                  label="History"
+                  no-caps
+                  @click="openSingleEmpHistory(props.row)"
+                >
+                  <q-tooltip>View complete monthly contribution history</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  dense
+                  size="sm"
+                  color="red-7"
+                  icon="download"
+                  @click="exportIndividualEmployeePdf(props.row)"
+                >
+                  <q-tooltip>Download individual employee statement PDF</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
+          </q-table>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- ══ INDIVIDUAL EMPLOYEE EPF HISTORY DIALOG ══ -->
+    <q-dialog v-model="showEmpHistoryDialog">
+      <q-card style="min-width: 720px; max-width: 95vw" :class="[$q.dark.isActive ? 'bg-grey-10' : 'bg-white']">
+        <q-card-section class="row items-center bg-teal-8 text-white q-pa-md">
+          <q-icon name="person" size="22px" class="q-mr-sm" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">{{ selectedEmpHistory?.name }}</div>
+            <div class="text-caption text-teal-1">
+              Code: {{ selectedEmpHistory?.code }} | EPF No: {{ selectedEmpHistory?.epfNo }} | NIC: {{ selectedEmpHistory?.nic }}
+            </div>
+          </div>
+          <q-space />
+          <q-btn
+            unelevated
+            dense
+            size="sm"
+            color="white"
+            text-color="teal-9"
+            icon="download"
+            label="Download PDF"
+            class="q-mr-sm"
+            @click="exportIndividualEmployeePdf(selectedEmpHistory)"
+            no-caps
+          />
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <!-- Quick Meta Grid -->
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-4">
+              <div class="text-caption text-grey-6">Department</div>
+              <div class="text-weight-medium">{{ selectedEmpHistory?.department }}</div>
+            </div>
+            <div class="col-4">
+              <div class="text-caption text-grey-6">Designation</div>
+              <div class="text-weight-medium">{{ selectedEmpHistory?.designation }}</div>
+            </div>
+            <div class="col-4">
+              <div class="text-caption text-grey-6">Total Contribution Months</div>
+              <div class="text-weight-medium">{{ selectedEmpHistory?.monthsCount }} month(s)</div>
+            </div>
+          </div>
+
+          <!-- Employee Total Summary -->
+          <div class="q-pa-sm bg-teal-1 rounded-borders row justify-between items-center q-mb-md">
+            <div>
+              <span class="text-caption text-grey-7">Emp EPF (8%): </span>
+              <strong class="text-teal-9">LKR {{ fmt(selectedEmpHistory?.totalEpf8) }}</strong>
+            </div>
+            <div>
+              <span class="text-caption text-grey-7">Empr EPF (12%): </span>
+              <strong class="text-blue-9">LKR {{ fmt(selectedEmpHistory?.totalEpf12) }}</strong>
+            </div>
+            <div>
+              <span class="text-caption text-grey-7">Total EPF (20%): </span>
+              <strong class="text-indigo-9">LKR {{ fmt(selectedEmpHistory?.totalEpf20) }}</strong>
+            </div>
+            <div>
+              <span class="text-caption text-grey-7">Total (23%): </span>
+              <strong class="text-purple-9">LKR {{ fmt(selectedEmpHistory?.total23) }}</strong>
+            </div>
+          </div>
+
+          <!-- Monthly History Table -->
+          <q-table
+            flat
+            bordered
+            dense
+            :rows="selectedEmpHistory?.history || []"
+            :columns="empHistoryColumns"
+            row-key="id"
+            :pagination="{ rowsPerPage: 10 }"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Close" color="grey" v-close-popup no-caps />
+          <q-btn
+            unelevated
+            color="teal-8"
+            icon="picture_as_pdf"
+            label="Download Certified Statement"
+            @click="exportIndividualEmployeePdf(selectedEmpHistory)"
+            no-caps
           />
         </q-card-actions>
       </q-card>
@@ -2164,6 +2604,247 @@ const paymentMethods = [
   { label: 'Bank Transfer', value: 'bank_transfer', icon: 'account_balance' },
   { label: 'Cash', value: 'cash', icon: 'payments' },
   { label: 'Cheque', value: 'cheque', icon: 'description' },
+]
+
+// ── Post to Finance Options (Option A: Bulk / Option B: Split) ────────────────
+const postFinanceMode = ref('bulk') // 'bulk' | 'split'
+const splitSubTab = ref('bank_groups') // 'bank_groups' | 'custom_select'
+const groupPayingAccounts = reactive({})
+const postingGroupId = ref(null)
+
+const selectedCustomSlips = ref([])
+const customPayingAccountId = ref(null)
+const customPaymentMethod = ref('bank_transfer')
+const postingCustom = ref(false)
+
+const unpostedPayslips = computed(() =>
+  payslips.value.filter(
+    (p) => !p.is_held && !p.finance_posted_at && p.payment_status !== 'paid',
+  ),
+)
+
+const postedPayslips = computed(() =>
+  payslips.value.filter((p) => p.finance_posted_at || p.payment_status === 'paid'),
+)
+
+const unpostedTotalNet = computed(() =>
+  unpostedPayslips.value.reduce((s, p) => s + Number(p.net_salary || 0), 0),
+)
+
+const paidBankSummary = computed(() => {
+  const map = {}
+  postedPayslips.value.forEach((p) => {
+    const rawBank = (p.employees?.bank_name || '').trim()
+    const bankName = !rawBank || rawBank.toLowerCase() === 'cash' ? 'Cash / Handover' : rawBank
+    if (!map[bankName]) {
+      map[bankName] = { count: 0, total: 0 }
+    }
+    map[bankName].count++
+    map[bankName].total += Number(p.net_salary || 0)
+  })
+  return map
+})
+
+const splitBankGroups = computed(() => {
+  const map = {}
+  unpostedPayslips.value.forEach((p) => {
+    const rawBank = (p.employees?.bank_name || '').trim()
+    const isCash = !rawBank || rawBank.toLowerCase() === 'cash'
+    const bankName = isCash ? 'Cash Payment (Direct Handover)' : rawBank
+    const key = isCash ? '__cash__' : bankName.toLowerCase()
+
+    if (!map[key]) {
+      map[key] = {
+        key,
+        bankName,
+        isCash,
+        employees: [],
+        totalNet: 0,
+      }
+    }
+    map[key].employees.push(p)
+    map[key].totalNet += Number(p.net_salary || 0)
+  })
+
+  const groups = Object.values(map).sort((a, b) => {
+    if (a.isCash) return 1
+    if (b.isCash) return -1
+    return a.bankName.localeCompare(b.bankName)
+  })
+
+  // Match default account for each group if not already selected
+  groups.forEach((g) => {
+    if (!groupPayingAccounts[g.key]) {
+      if (g.isCash) {
+        const cashDef = cashAccounts.value[0]?.value
+        if (cashDef) groupPayingAccounts[g.key] = cashDef
+      } else {
+        const matched = bankAccounts.value.find(
+          (a) =>
+            a.label.toLowerCase().includes(g.bankName.toLowerCase()) ||
+            g.bankName.toLowerCase().includes(a.label.toLowerCase()),
+        )
+        groupPayingAccounts[g.key] = matched ? matched.value : bankAccounts.value[0]?.value || null
+      }
+    }
+  })
+
+  return groups
+})
+
+const customSelectColumns = [
+  { name: 'code', label: 'Code', align: 'left', field: (r) => r.employees?.employee_code || '—', sortable: true },
+  { name: 'name', label: 'Employee Name', align: 'left', field: (r) => r.employees?.full_name || '—', sortable: true },
+  { name: 'bank', label: 'Bank Name', align: 'left', field: (r) => r.employees?.bank_name || 'Cash', sortable: true },
+  { name: 'acc', label: 'Account No', align: 'left', field: (r) => r.employees?.bank_account_number || r.employees?.account_number || '—' },
+  { name: 'net', label: 'Net Salary', align: 'right', field: (r) => `LKR ${fmt(r.net_salary)}`, sortable: true },
+]
+
+// ── Cumulative EPF & ETF Summary State ────────────────────────────────────────
+const showCumulativeEpfDialog = ref(false)
+const cumulativeLoading = ref(false)
+const cumulativeRawData = ref([])
+const cumulativeSearch = ref('')
+const cumulativeYearFilter = ref('All Time')
+const selectedEmpHistory = ref(null)
+const showEmpHistoryDialog = ref(false)
+
+const cumulativeYearOptions = computed(() => {
+  const years = new Set()
+  cumulativeRawData.value.forEach((p) => {
+    const periodStart = p.payroll_runs?.period_start || p.created_at || ''
+    if (periodStart) {
+      years.add(String(periodStart).substring(0, 4))
+    }
+  })
+  return ['All Time', ...Array.from(years).sort().reverse()]
+})
+
+const cumulativeEmployeeList = computed(() => {
+  const empMap = {}
+  cumulativeRawData.value.forEach((p) => {
+    const emp = p.employees
+    if (!emp) return
+    const empId = emp.id
+    const run = p.payroll_runs
+    const periodStart = run?.period_start || p.created_at || ''
+    const year = periodStart ? String(periodStart).substring(0, 4) : ''
+
+    if (cumulativeYearFilter.value !== 'All Time' && year !== cumulativeYearFilter.value) {
+      return
+    }
+
+    if (!empMap[empId]) {
+      empMap[empId] = {
+        empId,
+        code: emp.employee_code || '—',
+        name: emp.full_name || 'Employee',
+        epfNo: emp.epf_no || emp.employee_code || '—',
+        nic: emp.nic_number || '—',
+        department: emp.departments?.name || '—',
+        designation: emp.designations?.title || '—',
+        hireDate: emp.hire_date || '—',
+        monthsCount: 0,
+        totalBasic: 0,
+        totalEpf8: 0,
+        totalEpf12: 0,
+        totalEpf20: 0,
+        totalEtf3: 0,
+        total23: 0,
+        history: [],
+      }
+    }
+
+    const b = Number(p.basic_salary || 0)
+    const e8 = Number(p.epf_employee || 0)
+    const e12 = Number(p.epf_employer || 0)
+    const e20 = e8 + e12
+    const et3 = Number(p.etf_employer || 0)
+    const t23 = e20 + et3
+
+    empMap[empId].monthsCount++
+    empMap[empId].totalBasic += b
+    empMap[empId].totalEpf8 += e8
+    empMap[empId].totalEpf12 += e12
+    empMap[empId].totalEpf20 += e20
+    empMap[empId].totalEtf3 += et3
+    empMap[empId].total23 += t23
+
+    empMap[empId].history.push({
+      id: p.id,
+      periodStart: run?.period_start || '—',
+      periodEnd: run?.period_end || '—',
+      basic: b,
+      epf8: e8,
+      epf12: e12,
+      epf20: e20,
+      etf3: et3,
+      total23: t23,
+      status: run?.status || 'processed',
+    })
+  })
+
+  return Object.values(empMap).sort((a, b) => a.code.localeCompare(b.code))
+})
+
+const filteredCumulativeEmployees = computed(() => {
+  const q = cumulativeSearch.value?.trim().toLowerCase()
+  if (!q) return cumulativeEmployeeList.value
+  return cumulativeEmployeeList.value.filter(
+    (e) =>
+      e.name.toLowerCase().includes(q) ||
+      e.code.toLowerCase().includes(q) ||
+      e.epfNo.toLowerCase().includes(q) ||
+      e.nic.toLowerCase().includes(q) ||
+      e.department.toLowerCase().includes(q),
+  )
+})
+
+const cumulativeGrandTotals = computed(() => {
+  let staffCount = filteredCumulativeEmployees.value.length
+  let totalBasic = 0
+  let totalEpf8 = 0
+  let totalEpf12 = 0
+  let totalEpf20 = 0
+  let totalEtf3 = 0
+  let total23 = 0
+
+  filteredCumulativeEmployees.value.forEach((e) => {
+    totalBasic += e.totalBasic
+    totalEpf8 += e.totalEpf8
+    totalEpf12 += e.totalEpf12
+    totalEpf20 += e.totalEpf20
+    totalEtf3 += e.totalEtf3
+    total23 += e.total23
+  })
+
+  return { staffCount, totalBasic, totalEpf8, totalEpf12, totalEpf20, totalEtf3, total23 }
+})
+
+const cumulativeColumns = [
+  { name: 'code', label: 'Code', align: 'left', field: 'code', sortable: true },
+  { name: 'epfNo', label: 'EPF No', align: 'left', field: 'epfNo', sortable: true },
+  { name: 'name', label: 'Employee Name', align: 'left', field: 'name', sortable: true },
+  { name: 'department', label: 'Department', align: 'left', field: 'department', sortable: true },
+  { name: 'monthsCount', label: 'Months', align: 'center', field: 'monthsCount', sortable: true },
+  { name: 'totalBasic', label: 'Cumulative Basic', align: 'right', field: (r) => `LKR ${fmt(r.totalBasic)}`, sortable: true },
+  { name: 'totalEpf8', label: 'Emp 8%', align: 'right', field: (r) => `LKR ${fmt(r.totalEpf8)}`, sortable: true },
+  { name: 'totalEpf12', label: 'Empr 12%', align: 'right', field: (r) => `LKR ${fmt(r.totalEpf12)}`, sortable: true },
+  { name: 'totalEpf20', label: 'Total EPF 20%', align: 'right', field: (r) => `LKR ${fmt(r.totalEpf20)}`, sortable: true },
+  { name: 'totalEtf3', label: 'ETF 3%', align: 'right', field: (r) => `LKR ${fmt(r.totalEtf3)}`, sortable: true },
+  { name: 'total23', label: 'Total 23%', align: 'right', field: (r) => `LKR ${fmt(r.total23)}`, sortable: true },
+  { name: 'actions', label: 'Statement', align: 'center' },
+]
+
+const empHistoryColumns = [
+  { name: 'period', label: 'Period', align: 'left', field: (r) => `${r.periodStart} — ${r.periodEnd}` },
+  { name: 'basic', label: 'Basic Salary', align: 'right', field: (r) => `LKR ${fmt(r.basic)}` },
+  { name: 'epf8', label: 'Emp 8%', align: 'right', field: (r) => `LKR ${fmt(r.epf8)}` },
+  { name: 'epf12', label: 'Empr 12%', align: 'right', field: (r) => `LKR ${fmt(r.epf12)}` },
+  { name: 'epf20', label: 'Total 20%', align: 'right', field: (r) => `LKR ${fmt(r.epf20)}` },
+  { name: 'etf3', label: 'ETF 3%', align: 'right', field: (r) => `LKR ${fmt(r.etf3)}` },
+  { name: 'total23', label: 'Total 23%', align: 'right', field: (r) => `LKR ${fmt(r.total23)}` },
+  { name: 'status', label: 'Status', align: 'center', field: 'status' },
 ]
 
 // ── Breakdown ─────────────────────────────────────────────────────────────────
@@ -3275,6 +3956,516 @@ async function refreshPayslips() {
     .eq('payroll_run_id', selectedRun.value.id)
     .order('net_salary', { ascending: false })
   payslips.value = data || []
+}
+
+// ── Post Split Group (Option B) ──────────────────────────────────────────────
+async function postSplitGroupToFinance(group) {
+  const accountId = groupPayingAccounts[group.key]
+  if (!accountId) {
+    $q.notify({
+      type: 'warning',
+      message: `Please select a paying Cash/Bank account for ${group.bankName}`,
+    })
+    return
+  }
+  if (!selectedRun.value) return
+
+  postingGroupId.value = group.key
+  try {
+    const targetSlipIds = group.employees.map((p) => p.id)
+
+    // Identify other unposted payslips in this run that are NOT in this group
+    const otherUnpostedSlips = payslips.value.filter(
+      (p) =>
+        !targetSlipIds.includes(p.id) &&
+        !p.finance_posted_at &&
+        p.payment_status !== 'paid' &&
+        !p.is_held,
+    )
+
+    if (otherUnpostedSlips.length > 0) {
+      const otherIds = otherUnpostedSlips.map((p) => p.id)
+      const { error: holdErr } = await supabase
+        .from('payslips')
+        .update({ is_held: true, hold_reason: '__temp_split_hold__' })
+        .in('id', otherIds)
+      if (holdErr) throw holdErr
+    }
+
+    // Ensure target slips are not held
+    await supabase
+      .from('payslips')
+      .update({ is_held: false, hold_reason: null })
+      .in('id', targetSlipIds)
+
+    const paymentMethod = group.isCash ? 'cash' : 'bank_transfer'
+
+    const { data: res, error: rpcErr } = await supabase.rpc('fn_post_payroll_run', {
+      p_payroll_run_id: selectedRun.value.id,
+      p_cash_bank_account_id: accountId,
+      p_payment_method: paymentMethod,
+      p_posting_date: null,
+    })
+
+    // Release temporary holds
+    if (otherUnpostedSlips.length > 0) {
+      const otherIds = otherUnpostedSlips.map((p) => p.id)
+      await supabase
+        .from('payslips')
+        .update({ is_held: false, hold_reason: null })
+        .in('id', otherIds)
+        .eq('hold_reason', '__temp_split_hold__')
+    }
+
+    if (rpcErr) throw rpcErr
+    if (res && res.success === false) {
+      throw new Error(res.error || 'Posting failed.')
+    }
+
+    $q.notify({
+      type: 'positive',
+      icon: 'account_balance',
+      message: `Posted ${group.bankName} (${group.employees.length} employees — LKR ${fmt(group.totalNet)}) to Finance!`,
+      timeout: 5000,
+    })
+
+    // Refresh payslips and accounts
+    await refreshPayslips()
+    await loadAccounts()
+    await loadRuns()
+
+    const remaining = payslips.value.filter(
+      (p) => !p.is_held && !p.finance_posted_at && p.payment_status !== 'paid',
+    )
+    if (remaining.length === 0) {
+      $q.notify({
+        type: 'positive',
+        icon: 'verified',
+        message: 'All salary groups in this run have been posted to Finance! Payroll status is now PAID.',
+        timeout: 6000,
+      })
+    }
+  } catch (err) {
+    try {
+      await supabase
+        .from('payslips')
+        .update({ is_held: false, hold_reason: null })
+        .eq('payroll_run_id', selectedRun.value.id)
+        .eq('hold_reason', '__temp_split_hold__')
+    } catch {
+      // ignore
+    }
+    $q.notify({ type: 'negative', message: err.message || String(err), multiLine: true })
+  } finally {
+    postingGroupId.value = null
+  }
+}
+
+// ── Post Custom Selected Slips (Option B) ────────────────────────────────────
+async function postCustomSelectedToFinance() {
+  if (!customPayingAccountId.value) {
+    $q.notify({ type: 'warning', message: 'Please select a Cash/Bank account to transfer from.' })
+    return
+  }
+  if (!selectedCustomSlips.value.length) {
+    $q.notify({ type: 'warning', message: 'Please select at least one employee to post.' })
+    return
+  }
+  if (!selectedRun.value) return
+
+  postingCustom.value = true
+  try {
+    const targetSlipIds = selectedCustomSlips.value.map((p) => p.id)
+    const otherUnpostedSlips = payslips.value.filter(
+      (p) =>
+        !targetSlipIds.includes(p.id) &&
+        !p.finance_posted_at &&
+        p.payment_status !== 'paid' &&
+        !p.is_held,
+    )
+
+    if (otherUnpostedSlips.length > 0) {
+      const otherIds = otherUnpostedSlips.map((p) => p.id)
+      await supabase
+        .from('payslips')
+        .update({ is_held: true, hold_reason: '__temp_split_hold__' })
+        .in('id', otherIds)
+    }
+
+    await supabase
+      .from('payslips')
+      .update({ is_held: false, hold_reason: null })
+      .in('id', targetSlipIds)
+
+    const { data: res, error: rpcErr } = await supabase.rpc('fn_post_payroll_run', {
+      p_payroll_run_id: selectedRun.value.id,
+      p_cash_bank_account_id: customPayingAccountId.value,
+      p_payment_method: customPaymentMethod.value,
+      p_posting_date: null,
+    })
+
+    if (otherUnpostedSlips.length > 0) {
+      const otherIds = otherUnpostedSlips.map((p) => p.id)
+      await supabase
+        .from('payslips')
+        .update({ is_held: false, hold_reason: null })
+        .in('id', otherIds)
+        .eq('hold_reason', '__temp_split_hold__')
+    }
+
+    if (rpcErr) throw rpcErr
+    if (res && res.success === false) throw new Error(res.error || 'Posting failed.')
+
+    $q.notify({
+      type: 'positive',
+      icon: 'account_balance',
+      message: `Posted ${selectedCustomSlips.value.length} selected employees to Finance!`,
+      timeout: 5000,
+    })
+
+    selectedCustomSlips.value = []
+    await refreshPayslips()
+    await loadAccounts()
+    await loadRuns()
+  } catch (err) {
+    try {
+      await supabase
+        .from('payslips')
+        .update({ is_held: false, hold_reason: null })
+        .eq('payroll_run_id', selectedRun.value.id)
+        .eq('hold_reason', '__temp_split_hold__')
+    } catch {
+      // ignore
+    }
+    $q.notify({ type: 'negative', message: err.message || String(err), multiLine: true })
+  } finally {
+    postingCustom.value = false
+  }
+}
+
+// ── Cumulative EPF & ETF Functions ───────────────────────────────────────────
+async function openCumulativeEpfSummary() {
+  showCumulativeEpfDialog.value = true
+  cumulativeLoading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('payslips')
+      .select(`
+        id,
+        basic_salary,
+        epf_employee,
+        epf_employer,
+        etf_employer,
+        gross_salary,
+        net_salary,
+        created_at,
+        payroll_runs (
+          id,
+          period_start,
+          period_end,
+          status
+        ),
+        employees (
+          id,
+          employee_code,
+          full_name,
+          first_name,
+          last_name,
+          nic_number,
+          epf_no,
+          hire_date,
+          departments (name),
+          designations (title)
+        )
+      `)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    cumulativeRawData.value = data || []
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to load EPF data: ' + err.message })
+  } finally {
+    cumulativeLoading.value = false
+  }
+}
+
+function openSingleEmpHistory(emp) {
+  selectedEmpHistory.value = emp
+  showEmpHistoryDialog.value = true
+}
+
+function exportCumulativeEpfExcel() {
+  const list = filteredCumulativeEmployees.value
+  if (!list.length) {
+    $q.notify({ type: 'warning', message: 'No EPF records to export.' })
+    return
+  }
+
+  const rows = list.map((e, idx) => ({
+    '#': idx + 1,
+    'Employee Code': e.code,
+    'EPF Member No': e.epfNo,
+    'NIC Number': e.nic,
+    'Employee Name': e.name,
+    'Department': e.department,
+    'Designation': e.designation,
+    'Months Paid': e.monthsCount,
+    'Cumulative Basic (LKR)': e.totalBasic,
+    'Employee EPF 8% (LKR)': e.totalEpf8,
+    'Employer EPF 12% (LKR)': e.totalEpf12,
+    'Total EPF 20% (LKR)': e.totalEpf20,
+    'Employer ETF 3% (LKR)': e.totalEtf3,
+    'Grand Statutory Total 23% (LKR)': e.total23,
+  }))
+
+  rows.push({
+    '#': 'TOTAL',
+    'Employee Code': '',
+    'EPF Member No': '',
+    'NIC Number': '',
+    'Employee Name': `${list.length} Employees`,
+    'Department': '',
+    'Designation': '',
+    'Months Paid': '',
+    'Cumulative Basic (LKR)': cumulativeGrandTotals.value.totalBasic,
+    'Employee EPF 8% (LKR)': cumulativeGrandTotals.value.totalEpf8,
+    'Employer EPF 12% (LKR)': cumulativeGrandTotals.value.totalEpf12,
+    'Total EPF 20% (LKR)': cumulativeGrandTotals.value.totalEpf20,
+    'Employer ETF 3% (LKR)': cumulativeGrandTotals.value.totalEtf3,
+    'Grand Statutory Total 23% (LKR)': cumulativeGrandTotals.value.total23,
+  })
+
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Cumulative_EPF_Summary')
+  const fileName = `Seven_Waves_Employee_Cumulative_EPF_Summary_${localYmd()}.xlsx`
+  XLSX.writeFile(wb, fileName)
+  $q.notify({ type: 'positive', message: 'Cumulative EPF Excel report exported successfully!' })
+}
+
+function exportCumulativeEpfPdf() {
+  const list = filteredCumulativeEmployees.value
+  if (!list.length) {
+    $q.notify({ type: 'warning', message: 'No EPF records to export.' })
+    return
+  }
+
+  const doc = new jsPDF('l', 'mm', 'a4')
+
+  doc.setFontSize(14)
+  doc.setTextColor(0, 105, 92)
+  doc.text('SEVEN WAVES RESTAURANT (PVT) LTD — EMPLOYEE CUMULATIVE EPF & ETF SUMMARY', 14, 14)
+
+  doc.setFontSize(9)
+  doc.setTextColor(80)
+  doc.text(
+    `Scope: ${cumulativeYearFilter.value} | Total Employees: ${list.length} | Generated: ${new Date().toLocaleDateString()}`,
+    14,
+    20,
+  )
+
+  const head = [
+    [
+      '#',
+      'Code',
+      'EPF No',
+      'NIC',
+      'Employee Name',
+      'Department',
+      'Mths',
+      'Basic Salary',
+      'EPF 8% (Emp)',
+      'EPF 12% (Empr)',
+      'Total EPF 20%',
+      'ETF 3% (Empr)',
+      'Total (23%)',
+    ],
+  ]
+
+  const body = list.map((e, idx) => [
+    idx + 1,
+    e.code,
+    e.epfNo,
+    e.nic,
+    e.name,
+    e.department,
+    e.monthsCount,
+    fmt(e.totalBasic),
+    fmt(e.totalEpf8),
+    fmt(e.totalEpf12),
+    fmt(e.totalEpf20),
+    fmt(e.totalEtf3),
+    fmt(e.total23),
+  ])
+
+  const foot = [
+    [
+      'TOTAL',
+      '',
+      '',
+      '',
+      `${list.length} Staff`,
+      '',
+      '',
+      fmt(cumulativeGrandTotals.value.totalBasic),
+      fmt(cumulativeGrandTotals.value.totalEpf8),
+      fmt(cumulativeGrandTotals.value.totalEpf12),
+      fmt(cumulativeGrandTotals.value.totalEpf20),
+      fmt(cumulativeGrandTotals.value.totalEtf3),
+      fmt(cumulativeGrandTotals.value.total23),
+    ],
+  ]
+
+  autoTable(doc, {
+    startY: 24,
+    head,
+    body,
+    foot,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 121, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: [224, 242, 241], textColor: [0, 77, 64], fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7.5 },
+    styles: { cellPadding: 1.5, overflow: 'linebreak' },
+  })
+
+  doc.save(`Seven_Waves_Cumulative_EPF_Summary_${localYmd()}.pdf`)
+  $q.notify({ type: 'positive', message: 'Cumulative EPF PDF report exported successfully!' })
+}
+
+function exportIndividualEmployeePdf(emp) {
+  if (!emp) return
+  const doc = new jsPDF('p', 'mm', 'a4')
+
+  // Header Letterhead
+  doc.setFontSize(16)
+  doc.setTextColor(0, 105, 92)
+  doc.setFont('helvetica', 'bold')
+  doc.text('SEVEN WAVES (PVT) LTD', 105, 18, { align: 'center' })
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80)
+  doc.text('Seven Waves Food Court, Beach Road, Sri Lanka', 105, 23, { align: 'center' })
+
+  doc.setLineWidth(0.5)
+  doc.setDrawColor(0, 121, 107)
+  doc.line(14, 27, 196, 27)
+
+  // Document Title
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(33, 33, 33)
+  doc.text('EMPLOYEE STATUTORY EPF & ETF CONTRIBUTION STATEMENT', 105, 34, { align: 'center' })
+
+  // Employee Meta Box
+  doc.setFillColor(245, 247, 250)
+  doc.roundedRect(14, 38, 182, 32, 2, 2, 'F')
+  doc.setDrawColor(210, 215, 225)
+  doc.roundedRect(14, 38, 182, 32, 2, 2, 'D')
+
+  doc.setFontSize(8.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(50)
+  doc.text('Employee Name:', 18, 45)
+  doc.text('Employee Code:', 18, 52)
+  doc.text('NIC Number:', 18, 59)
+  doc.text('EPF Member No:', 18, 66)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(0)
+  doc.text(emp.name || '—', 48, 45)
+  doc.text(emp.code || '—', 48, 52)
+  doc.text(emp.nic || '—', 48, 59)
+  doc.text(emp.epfNo || '—', 48, 66)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(50)
+  doc.text('Department:', 115, 45)
+  doc.text('Designation:', 115, 52)
+  doc.text('Date Appointed:', 115, 59)
+  doc.text('Date of Statement:', 115, 66)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(0)
+  doc.text(emp.department || '—', 145, 45)
+  doc.text(emp.designation || '—', 145, 52)
+  doc.text(emp.hireDate || '—', 145, 59)
+  doc.text(new Date().toLocaleDateString(), 145, 66)
+
+  // Cumulative Summary Box
+  doc.setFillColor(232, 245, 233)
+  doc.roundedRect(14, 73, 182, 18, 2, 2, 'F')
+  doc.setDrawColor(165, 214, 167)
+  doc.roundedRect(14, 73, 182, 18, 2, 2, 'D')
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(46, 125, 50)
+  doc.text(`Total Months: ${emp.monthsCount}`, 18, 80)
+  doc.text(`Emp EPF (8%): LKR ${fmt(emp.totalEpf8)}`, 55, 80)
+  doc.text(`Empr EPF (12%): LKR ${fmt(emp.totalEpf12)}`, 110, 80)
+  doc.text(`Total EPF (20%): LKR ${fmt(emp.totalEpf20)}`, 18, 86)
+  doc.text(`Empr ETF (3%): LKR ${fmt(emp.totalEtf3)}`, 75, 86)
+  doc.text(`Grand Remittance (23%): LKR ${fmt(emp.total23)}`, 130, 86)
+
+  // Monthly Table
+  const head = [
+    ['#', 'Period Start', 'Period End', 'Basic (LKR)', 'EPF 8%', 'EPF 12%', 'Total 20%', 'ETF 3%', 'Total 23%'],
+  ]
+  const body = (emp.history || []).map((h, i) => [
+    i + 1,
+    h.periodStart,
+    h.periodEnd,
+    fmt(h.basic),
+    fmt(h.epf8),
+    fmt(h.epf12),
+    fmt(h.epf20),
+    fmt(h.etf3),
+    fmt(h.total23),
+  ])
+
+  const foot = [
+    [
+      'TOTAL',
+      '',
+      `${emp.monthsCount} Months`,
+      fmt(emp.totalBasic),
+      fmt(emp.totalEpf8),
+      fmt(emp.totalEpf12),
+      fmt(emp.totalEpf20),
+      fmt(emp.totalEtf3),
+      fmt(emp.total23),
+    ],
+  ]
+
+  autoTable(doc, {
+    startY: 94,
+    head,
+    body,
+    foot,
+    theme: 'grid',
+    headStyles: { fillColor: [0, 121, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: [224, 242, 241], textColor: [0, 77, 64], fontStyle: 'bold', fontSize: 8 },
+    bodyStyles: { fontSize: 7.5 },
+    styles: { cellPadding: 1.5, overflow: 'linebreak' },
+  })
+
+  const finalY = doc.lastAutoTable?.finalY || 200
+
+  // Signatures
+  const sigY = Math.min(finalY + 25, 270)
+  doc.setFontSize(8.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80)
+
+  doc.line(25, sigY, 75, sigY)
+  doc.text('Prepared by: HR Department', 25, sigY + 5)
+
+  doc.line(135, sigY, 185, sigY)
+  doc.text('Certified by: Head of Finance', 135, sigY + 5)
+
+  doc.save(`EPF_Statement_${emp.code}_${emp.name.replace(/\s+/g, '_')}.pdf`)
+  $q.notify({ type: 'positive', message: `EPF Statement downloaded for ${emp.name}` })
 }
 
 // ── Build PDF Data Helper ───────────────────────────────────────────────────

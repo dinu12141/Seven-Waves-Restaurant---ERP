@@ -1605,19 +1605,32 @@
                     </div>
                     <div
                       :class="[
-                        'q-pa-sm text-caption rounded-borders',
+                        'q-pa-sm text-caption rounded-borders row items-center justify-between',
                         $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
                       ]"
-                      style=""
                     >
-                      EPF No:
-                      <span
-                        :class="[
-                          'text-weight-medium',
-                          $q.dark.isActive ? 'text-white' : 'text-dark',
-                        ]"
-                        >{{ viewEmp?.epf_no || '' }}</span
+                      <div>
+                        EPF No:
+                        <span
+                          :class="[
+                            'text-weight-medium',
+                            $q.dark.isActive ? 'text-white' : 'text-dark',
+                          ]"
+                          >{{ viewEmp?.epf_no || '—' }}</span
+                        >
+                      </div>
+                      <q-btn
+                        flat
+                        dense
+                        size="xs"
+                        color="teal-8"
+                        icon="description"
+                        label="EPF Statement"
+                        no-caps
+                        @click="openEmployeeEpfStatement(viewEmp)"
                       >
+                        <q-tooltip>Download Certified EPF Statement for this employee</q-tooltip>
+                      </q-btn>
                     </div>
                     <div
                       :class="[
@@ -6534,6 +6547,204 @@ function exportPDF() {
   })
 
   doc.save('employees_list.pdf')
+}
+
+async function openEmployeeEpfStatement(emp) {
+  if (!emp || !emp.id) return
+  $q.loading.show({ message: 'Generating Employee EPF Statement...' })
+  try {
+    const { data, error } = await supabase
+      .from('payslips')
+      .select(`
+        id,
+        basic_salary,
+        epf_employee,
+        epf_employer,
+        etf_employer,
+        gross_salary,
+        net_salary,
+        created_at,
+        payroll_runs (
+          period_start,
+          period_end
+        )
+      `)
+      .eq('employee_id', emp.id)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    const slips = data || []
+    if (slips.length === 0) {
+      $q.notify({ type: 'warning', message: 'No payslip / EPF records found for this employee.' })
+      return
+    }
+
+    const doc = new jsPDF('p', 'mm', 'a4')
+
+    // Letterhead
+    doc.setFontSize(16)
+    doc.setTextColor(0, 105, 92)
+    doc.setFont('helvetica', 'bold')
+    doc.text('SEVEN WAVES (PVT) LTD', 105, 18, { align: 'center' })
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(80)
+    doc.text('Seven Waves Food Court, Beach Road, Sri Lanka', 105, 23, { align: 'center' })
+
+    doc.setLineWidth(0.5)
+    doc.setDrawColor(0, 121, 107)
+    doc.line(14, 27, 196, 27)
+
+    // Document Title
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(33, 33, 33)
+    doc.text('EMPLOYEE STATUTORY EPF & ETF CONTRIBUTION STATEMENT', 105, 34, { align: 'center' })
+
+    // Employee Meta Box
+    doc.setFillColor(245, 247, 250)
+    doc.roundedRect(14, 38, 182, 32, 2, 2, 'F')
+    doc.setDrawColor(210, 215, 225)
+    doc.roundedRect(14, 38, 182, 32, 2, 2, 'D')
+
+    const empName = emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || '—'
+    const dept = emp.departments?.name || '—'
+    const desig = emp.designations?.title || '—'
+
+    doc.setFontSize(8.5)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(50)
+    doc.text('Employee Name:', 18, 45)
+    doc.text('Employee Code:', 18, 52)
+    doc.text('NIC Number:', 18, 59)
+    doc.text('EPF Member No:', 18, 66)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0)
+    doc.text(empName, 48, 45)
+    doc.text(emp.employee_code || '—', 48, 52)
+    doc.text(emp.nic_number || '—', 48, 59)
+    doc.text(emp.epf_no || '—', 48, 66)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(50)
+    doc.text('Department:', 115, 45)
+    doc.text('Designation:', 115, 52)
+    doc.text('Date Appointed:', 115, 59)
+    doc.text('Date of Statement:', 115, 66)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0)
+    doc.text(dept, 145, 45)
+    doc.text(desig, 145, 52)
+    doc.text(emp.hire_date || '—', 145, 59)
+    doc.text(new Date().toLocaleDateString(), 145, 66)
+
+    // Calculate totals
+    let totBasic = 0
+    let totEpf8 = 0
+    let totEpf12 = 0
+    let totEpf20 = 0
+    let totEtf3 = 0
+    let tot23 = 0
+    const body = slips.map((s, idx) => {
+      const b = Number(s.basic_salary || 0)
+      const e8 = Number(s.epf_employee || 0)
+      const e12 = Number(s.epf_employer || 0)
+      const e20 = e8 + e12
+      const et3 = Number(s.etf_employer || 0)
+      const t = e20 + et3
+
+      totBasic += b
+      totEpf8 += e8
+      totEpf12 += e12
+      totEpf20 += e20
+      totEtf3 += et3
+      tot23 += t
+
+      const pStart = s.payroll_runs?.period_start || s.created_at?.slice(0, 10) || '—'
+      const pEnd = s.payroll_runs?.period_end || '—'
+
+      return [
+        idx + 1,
+        pStart,
+        pEnd,
+        b.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        e8.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        e12.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        e20.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        et3.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        t.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+      ]
+    })
+
+    // Cumulative Summary Box
+    doc.setFillColor(232, 245, 233)
+    doc.roundedRect(14, 73, 182, 18, 2, 2, 'F')
+    doc.setDrawColor(165, 214, 167)
+    doc.roundedRect(14, 73, 182, 18, 2, 2, 'D')
+
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(46, 125, 50)
+    doc.text(`Total Months: ${slips.length}`, 18, 80)
+    doc.text(`Emp EPF (8%): LKR ${totEpf8.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 55, 80)
+    doc.text(`Empr EPF (12%): LKR ${totEpf12.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 110, 80)
+    doc.text(`Total EPF (20%): LKR ${totEpf20.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 18, 86)
+    doc.text(`Empr ETF (3%): LKR ${totEtf3.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 75, 86)
+    doc.text(`Grand Remittance (23%): LKR ${tot23.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, 86)
+
+    const head = [
+      ['#', 'Period Start', 'Period End', 'Basic (LKR)', 'EPF 8%', 'EPF 12%', 'Total 20%', 'ETF 3%', 'Total 23%'],
+    ]
+
+    const foot = [
+      [
+        'TOTAL',
+        '',
+        `${slips.length} Months`,
+        totBasic.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        totEpf8.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        totEpf12.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        totEpf20.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        totEtf3.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+        tot23.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+      ],
+    ]
+
+    autoTable(doc, {
+      startY: 94,
+      head,
+      body,
+      foot,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 121, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+      footStyles: { fillColor: [224, 242, 241], textColor: [0, 77, 64], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 7.5 },
+      styles: { cellPadding: 1.5, overflow: 'linebreak' },
+    })
+
+    const finalY = doc.lastAutoTable?.finalY || 200
+    const sigY = Math.min(finalY + 25, 270)
+    doc.setFontSize(8.5)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(80)
+
+    doc.line(25, sigY, 75, sigY)
+    doc.text('Prepared by: HR Department', 25, sigY + 5)
+
+    doc.line(135, sigY, 185, sigY)
+    doc.text('Certified by: Head of Finance', 135, sigY + 5)
+
+    doc.save(`EPF_Statement_${emp.employee_code || 'emp'}_${empName.replace(/\s+/g, '_')}.pdf`)
+    $q.notify({ type: 'positive', message: `EPF Statement downloaded for ${empName}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to generate EPF statement: ' + (err.message || String(err)) })
+  } finally {
+    $q.loading.hide()
+  }
 }
 
 function exportExcel() {
