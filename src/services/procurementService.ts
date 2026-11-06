@@ -2883,7 +2883,10 @@ export async function getSupplierPaymentsReport(startDate: string, endDate: stri
            id, amount,
            ap_invoices(
              id, doc_number, total_amount, balance_due,
-             ap_invoice_lines(id, item_id, items(id, name, code))
+             ap_invoice_lines(
+               id, item_id, quantity, unit_price, line_total, description,
+               items(id, name, code)
+             )
            )
          )`,
       )

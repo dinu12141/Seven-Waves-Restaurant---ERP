@@ -1,3 +1,4 @@
+import { supabase } from 'src/boot/supabase'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -380,6 +381,7 @@ export async function printTableAsPDF(columns: any[], rows: any[], title: string
  * Includes logo, company name, supplier details, payment info, and allocation table.
  */
 export async function exportPaymentReceiptToPDF(payment: {
+  id?: string
   doc_number: string
   doc_date: string
   status: string
@@ -391,7 +393,21 @@ export async function exportPaymentReceiptToPDF(payment: {
   suppliers?: { name: string; code?: string }
   supplier_payment_allocations?: Array<{
     amount: number
-    ap_invoices?: { doc_number: string; total_amount: number; balance_due: number }
+    ap_invoices?: {
+      id?: string
+      doc_number: string
+      total_amount: number
+      balance_due: number
+      ap_invoice_lines?: Array<{
+        id?: string
+        item_id?: string
+        quantity?: number
+        unit_price?: number
+        line_total?: number
+        description?: string
+        items?: { id?: string; name: string; code?: string }
+      }>
+    }
   }>
 }, download = true) {
   const doc = new jsPDF()
@@ -427,12 +443,12 @@ export async function exportPaymentReceiptToPDF(payment: {
 
   // ── Info Block ─────────────────────────────────────────────────────────
   const fmt = (v: number) =>
-    new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v)
+    new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v || 0)
   const fmtDate = (d: string) => {
     const dt = new Date(d)
     return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   }
-  const pm = (payment.payment_method || 'cash').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  const pm = (payment.payment_method || 'cash').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
@@ -466,25 +482,96 @@ export async function exportPaymentReceiptToPDF(payment: {
   doc.setLineWidth(0.3)
   doc.line(14, divY, pageWidth - 14, divY)
 
-  // ── Allocation Table ──────────────────────────────────────────────────
+  // ── Ensure Invoice Line Items are Loaded ──────────────────────────────
   const allocs = payment.supplier_payment_allocations || []
-  const tableBody = allocs.map((a, i) => [
-    i + 1,
-    a.ap_invoices?.doc_number || '-',
-    fmt(a.ap_invoices?.total_amount || 0),
-    fmt(a.amount),
-  ])
+  const missingLines = allocs.some((a: any) => a.ap_invoices?.id && (!a.ap_invoices.ap_invoice_lines || a.ap_invoices.ap_invoice_lines.length === 0))
+
+  if (missingLines) {
+    try {
+      const invIds = allocs.map((a: any) => a.ap_invoices?.id).filter(Boolean)
+      if (invIds.length > 0) {
+        const { data: invLines } = await supabase
+          .from('ap_invoice_lines')
+          .select('id, invoice_id, item_id, quantity, unit_price, line_total, description, items(id, name, code)')
+          .in('invoice_id', invIds)
+          .order('line_number', { ascending: true })
+
+        if (invLines && invLines.length > 0) {
+          for (const a of allocs) {
+            if (a.ap_invoices) {
+              const matched = invLines.filter((l: any) => l.invoice_id === a.ap_invoices?.id)
+              if (matched.length > 0) {
+                a.ap_invoices.ap_invoice_lines = matched
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load invoice lines for payment voucher', e)
+    }
+  }
+
+  // ── Allocation & Items Table ──────────────────────────────────────────
+  const tableBody: any[] = []
+  let rowIdx = 1
+
+  for (const a of allocs) {
+    const inv = a.ap_invoices
+    const lines = inv?.ap_invoice_lines || []
+    const invDocNo = inv?.doc_number || '-'
+
+    if (lines.length > 0) {
+      lines.forEach((l: any, lIdx: number) => {
+        const itemCode = l.items?.code ? `[${l.items.code}] ` : ''
+        const itemName = l.items?.name || l.description || 'Item'
+        const fullItem = `${itemCode}${itemName}`.trim()
+        const qty = l.quantity != null ? String(l.quantity) : '-'
+        const unitPrice = l.unit_price != null ? fmt(l.unit_price) : '-'
+        const lineTotal = l.line_total != null ? fmt(l.line_total) : '-'
+        const allocPaid = lIdx === 0 ? fmt(a.amount) : ''
+
+        tableBody.push([
+          rowIdx++,
+          lIdx === 0 ? invDocNo : '',
+          fullItem,
+          qty,
+          unitPrice,
+          lineTotal,
+          allocPaid,
+        ])
+      })
+    } else {
+      tableBody.push([
+        rowIdx++,
+        invDocNo,
+        '—',
+        '—',
+        '—',
+        fmt(inv?.total_amount || 0),
+        fmt(a.amount),
+      ])
+    }
+  }
 
   autoTable(doc, {
     startY: divY + 4,
-    head: [['#', 'Invoice #', 'Invoice Amount', 'Amount Paid']],
-    body: tableBody.length ? tableBody : [['—', 'No allocations', '', '']],
-    foot: [['', 'TOTAL PAID', '', fmt(payment.total_amount)]],
+    head: [['#', 'Invoice #', 'Item / Description', 'Qty', 'Unit Price', 'Line Total', 'Amount Paid']],
+    body: tableBody.length ? tableBody : [['—', 'No allocations', '', '', '', '', '']],
+    foot: [['', '', '', '', '', 'TOTAL PAID', fmt(payment.total_amount)]],
     theme: 'grid',
-    headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
     footStyles: { fillColor: [240, 240, 240], textColor: [27, 58, 107], fontStyle: 'bold', fontSize: 9 },
-    styles: { fontSize: 9 },
-    columnStyles: { 0: { halign: 'center', cellWidth: 12 }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    styles: { fontSize: 8 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'left', cellWidth: 32 },
+      2: { halign: 'left' },
+      3: { halign: 'center', cellWidth: 14 },
+      4: { halign: 'right', cellWidth: 24 },
+      5: { halign: 'right', cellWidth: 26 },
+      6: { halign: 'right', cellWidth: 28 },
+    },
   })
 
   const finalY = (doc as any).lastAutoTable.finalY + 10
@@ -529,29 +616,38 @@ export async function exportSupplierPaymentReportToPDF(rows: any[], filters: { s
   const fmt = (v: number) =>
     new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(v || 0)
 
-  const body = rows.map((r, i) => [
-    i + 1,
-    r.doc_date,
-    r.suppliers?.name || '-',
-    r.doc_number,
-    r.cheque_no || r.reference_no || '-',
-    (r.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-    fmt(r.total_amount),
-    (r.status || '').toUpperCase(),
-  ])
+  const body = rows.map((r, i) => {
+    const itemNames = (r.supplier_payment_allocations || [])
+      .flatMap((a: any) => a.ap_invoices?.ap_invoice_lines || [])
+      .map((l: any) => l.items?.name || l.description)
+      .filter(Boolean)
+    const uniqueItems = Array.from(new Set(itemNames)).join(', ') || '—'
+
+    return [
+      i + 1,
+      r.doc_date,
+      r.suppliers?.name || '-',
+      r.doc_number,
+      uniqueItems,
+      r.cheque_no || r.reference_no || '-',
+      (r.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+      fmt(r.total_amount),
+      (r.status || '').toUpperCase(),
+    ]
+  })
 
   const total = rows.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0)
 
   autoTable(doc, {
     startY: 40,
-    head: [['#', 'Date', 'Supplier', 'Document #', 'Ref/Cheque', 'Method', 'Amount', 'Status']],
+    head: [['#', 'Date', 'Supplier', 'Document #', 'Items', 'Ref/Cheque', 'Method', 'Amount', 'Status']],
     body,
-    foot: [['', '', '', '', '', 'TOTAL', fmt(total), '']],
+    foot: [['', '', '', '', '', '', 'TOTAL', fmt(total), '']],
     theme: 'grid',
     headStyles: { fillColor: [27, 58, 107], textColor: 255, fontStyle: 'bold', fontSize: 8 },
     footStyles: { fillColor: [240, 240, 240], textColor: [27, 58, 107], fontStyle: 'bold', fontSize: 8 },
-    styles: { fontSize: 8 },
-    columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 6: { halign: 'right' }, 7: { halign: 'center' } },
+    styles: { fontSize: 7.5 },
+    columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 4: { cellWidth: 45 }, 7: { halign: 'right' }, 8: { halign: 'center' } },
   })
 
   doc.save(`Supplier_Payment_Report_${filters.startDate}_${filters.endDate}.pdf`)

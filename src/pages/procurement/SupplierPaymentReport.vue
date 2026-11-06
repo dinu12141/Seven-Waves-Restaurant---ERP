@@ -136,6 +136,17 @@
         flat
         :pagination="initialPagination"
       >
+        <!-- Items -->
+        <template v-slot:body-cell-items="props">
+          <q-td :props="props">
+            <div class="ellipsis" style="max-width: 240px;">
+              <span v-if="props.value !== '—'" :title="props.value" class="text-weight-medium text-primary">{{ props.value }}</span>
+              <span v-else class="text-grey-5">—</span>
+            </div>
+            <q-tooltip v-if="props.value !== '—'" max-width="380px">{{ props.value }}</q-tooltip>
+          </q-td>
+        </template>
+
         <!-- Amount -->
         <template v-slot:body-cell-total_amount="props">
           <q-td :props="props">
@@ -191,7 +202,7 @@
         <!-- Bottom Row (Total) -->
         <template v-slot:bottom-row>
           <q-tr class="text-weight-bold" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'" v-if="rows.length > 0">
-            <q-td colspan="5" class="text-right">TOTAL PAID AMOUNT (posted only):</q-td>
+            <q-td colspan="6" class="text-right">TOTAL PAID AMOUNT (posted only):</q-td>
             <q-td class="text-left">{{ formatCurrency(totalAmount) }}</q-td>
             <q-td colspan="2"></q-td>
           </q-tr>
@@ -267,6 +278,11 @@ const columns = [
     field: (row) => row.suppliers?.name || 'Unknown', sortable: true,
   },
   { name: 'doc_number', align: 'left', label: 'Document #', field: 'doc_number', sortable: true },
+  {
+    name: 'items', align: 'left', label: 'Items',
+    field: (row) => getPaymentItemsSummary(row),
+    sortable: false,
+  },
   { name: 'reference', align: 'left', label: 'Ref / Cheque #', field: (row) => row.cheque_no || row.reference_no || '-' },
   { name: 'payment_method', align: 'left', label: 'Method', field: 'payment_method', sortable: true },
   { name: 'total_amount', align: 'right', label: 'Amount', field: 'total_amount', sortable: true, format: (v) => formatCurrency(v) },
@@ -316,6 +332,20 @@ function getSupplierName(id) {
 function getItemName(id) {
   const i = allItems.value.find((x) => x.id === id)
   return i ? (i.code ? `${i.code} - ${i.name}` : i.name) : ''
+}
+
+function getPaymentItemsSummary(row) {
+  const allocs = row.supplier_payment_allocations || []
+  const itemNames = allocs
+    .flatMap((a) => a.ap_invoices?.ap_invoice_lines || [])
+    .map((l) => {
+      const code = l.items?.code ? `[${l.items.code}] ` : ''
+      const name = l.items?.name || l.description || ''
+      return `${code}${name}`.trim()
+    })
+    .filter(Boolean)
+  const unique = Array.from(new Set(itemNames))
+  return unique.length ? unique.join(', ') : '—'
 }
 
 onMounted(async () => {
