@@ -685,6 +685,8 @@
                     icon="chat"
                     color="green-7"
                     size="xs"
+                    :loading="sendingWhatsAppId === props.row.id"
+                    :disable="!!sendingWhatsAppId"
                     @click="sendPayslipWhatsApp(props.row)"
                   >
                     <q-tooltip>Send Payslip to Employee WhatsApp</q-tooltip>
@@ -1777,6 +1779,8 @@
             icon="chat"
             label="Send via WhatsApp"
             color="green-8"
+            :loading="!!sendingWhatsAppId"
+            :disable="!!sendingWhatsAppId"
             @click="sendPayslipWhatsApp(selectedPayslip)"
             no-caps
           />
@@ -2703,6 +2707,15 @@ async function queueCloudPdf(phone, pdfBase64, filename, caption) {
     .slice(-5)
     .map((it) => (it.status === 'sent' ? { ...it, pdfBase64: null } : it))
 
+  // Deduplicate before adding to cloud outbox: skip if already pending for this phone
+  const alreadyPending = items.some(
+    (it) => it.phone === phone && it.status === 'pending'
+  )
+  if (alreadyPending) {
+    console.log('[queueCloudPdf] Skipping queue: payslip already pending for phone', phone)
+    return
+  }
+
   items.push({
     id: String(Date.now()),
     phone,
@@ -2799,6 +2812,7 @@ const selectedRun = ref(null)
 const payslips = ref([])
 const showPayslips = ref(false)
 const sendingEmail = ref(null)
+const sendingWhatsAppId = ref(null)
 const selectedPayslipRows = ref([])
 
 // ── Filters inside payslips dialog ───────────────────────────────────────────
@@ -4950,7 +4964,8 @@ async function sendPayslipEmail(payslip) {
 }
 
 async function sendPayslipWhatsApp(payslip) {
-  if (!payslip) return
+  if (!payslip || sendingWhatsAppId.value) return
+  sendingWhatsAppId.value = payslip.id
   const empName = payslip.employees?.full_name || payslip.employees?.employee_code || 'Employee'
   let rawMobile = payslip.employees?.mobile
   if (!rawMobile) {
@@ -5009,7 +5024,7 @@ async function sendPayslipWhatsApp(payslip) {
             filename: filename,
             caption: caption,
           }),
-          signal: AbortSignal.timeout(4000),
+          signal: AbortSignal.timeout(12000),
         })
         const result = await resp.json()
         if (result.success) sent = true
@@ -5038,6 +5053,7 @@ async function sendPayslipWhatsApp(payslip) {
       })
       return
     } finally {
+      sendingWhatsAppId.value = null
       $q.loading.hide()
     }
   }

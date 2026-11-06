@@ -107,9 +107,17 @@ async function syncStatusToCloud() {
   }
 }
 
+// ── Outbox Concurrency Lock & Deduplication Cache ──────────────────────────────
+let isProcessingOutbox = false;
+const processedItemIds = new Set();
+const recentSendHistory = new Map(); // dedupeKey -> timestamp (60s TTL)
+
 // ── Cloud Outbox Dispatcher (Processes messages queued from HTTPS ERP) ────────
 async function processCloudOutbox() {
+  if (isProcessingOutbox) return; // STRICT MUTEX: Prevent overlapping outbox dispatch loops!
   if (!supabase || !isConnected || !sock) return;
+
+  isProcessingOutbox = true;
   try {
     const { data: outboxRow } = await supabase
       .from('system_settings')
@@ -119,14 +127,29 @@ async function processCloudOutbox() {
 
     if (!outboxRow || !outboxRow.setting_value) return;
     const items = outboxRow.setting_value.items || [];
-    const pendingItems = items.filter(it => it.status === 'pending');
+    const pendingItems = items.filter(it => it.status === 'pending' && !processedItemIds.has(it.id));
 
     if (pendingItems.length === 0) return;
 
     for (const item of pendingItems) {
+      if (processedItemIds.has(item.id)) continue;
+      processedItemIds.add(item.id);
+
+      const clean = cleanPhone(item.phone);
+      const dedupeKey = `${clean}_${item.filename || ''}_${(item.caption || '').slice(0, 35)}`;
+      const lastSent = recentSendHistory.get(dedupeKey);
+
+      // Deduplication: if exact payslip was sent to this phone within the last 60 seconds, skip!
+      if (lastSent && Date.now() - lastSent < 60000) {
+        console.log(`[Cloud Outbox] ⏭️ Skipping duplicate dispatch to +${clean} (sent ${Math.round((Date.now() - lastSent)/1000)}s ago)`);
+        item.status = 'sent';
+        item.sentAt = new Date(lastSent).toISOString();
+        item.pdfBase64 = null;
+        continue;
+      }
+
       try {
-        console.log(`[Cloud Outbox] Sending PDF to ${item.phone}...`);
-        const clean = cleanPhone(item.phone);
+        console.log(`[Cloud Outbox] Sending PDF to +${clean}...`);
         const jid = `${clean}@s.whatsapp.net`;
         const rawBase64 = (item.pdfBase64 || '').replace(/^data:application\/pdf;base64,/, '').replace(/\s/g, '');
         const buffer = Buffer.from(rawBase64, 'base64');
@@ -141,6 +164,7 @@ async function processCloudOutbox() {
         item.status = 'sent';
         item.sentAt = new Date().toISOString();
         item.pdfBase64 = null;
+        recentSendHistory.set(dedupeKey, Date.now());
         console.log(`[Cloud Outbox] ✅ Sent successfully to +${clean}`);
       } catch (sendErr) {
         console.error(`[Cloud Outbox] ❌ Error sending to ${item.phone}:`, sendErr.message);
@@ -150,14 +174,16 @@ async function processCloudOutbox() {
       }
     }
 
-    // Keep last 10 items, stripping pdfBase64 from sent items
-    const trimmed = items.slice(-10).map(it => it.status === 'sent' || it.status === 'failed' ? { ...it, pdfBase64: null } : it);
+    // Keep last 10 items, stripping pdfBase64 from sent/failed items
+    const trimmed = items.slice(-10).map(it => (it.status === 'sent' || it.status === 'failed') ? { ...it, pdfBase64: null } : it);
     await supabase
       .from('system_settings')
       .update({ setting_value: { items: trimmed }, updated_at: new Date().toISOString() })
       .eq('id', outboxRow.id);
   } catch (err) {
     console.debug('[Outbox Poll Note]:', err?.message);
+  } finally {
+    isProcessingOutbox = false;
   }
 }
 
@@ -387,6 +413,18 @@ app.post('/send-pdf', async (req, res) => {
     const fileName = filename || `Payslip_${clean}.pdf`;
     const docCaption = caption || '🌟 *Seven Waves Restaurant (Pvt) Ltd*\n📄 *Official Monthly Payslip Advice*';
 
+    const dedupeKey = `${clean}_${fileName}_${docCaption.slice(0, 35)}`;
+    const lastSent = recentSendHistory.get(dedupeKey);
+    if (lastSent && Date.now() - lastSent < 60000) {
+      console.log(`[WhatsApp Bridge] ⏭️ Skipping duplicate /send-pdf to +${clean} (sent ${Math.round((Date.now() - lastSent)/1000)}s ago)`);
+      return res.json({
+        success: true,
+        recipient: clean,
+        duplicate: true,
+        note: 'Already dispatched recently'
+      });
+    }
+
     console.log(`[WhatsApp Bridge] Sending PDF (${buffer.length} bytes) to +${clean} as "${fileName}"...`);
 
     const result = await sock.sendMessage(jid, {
@@ -396,6 +434,7 @@ app.post('/send-pdf', async (req, res) => {
       caption: docCaption
     });
 
+    recentSendHistory.set(dedupeKey, Date.now());
     console.log(`[WhatsApp Bridge] ✅ Message delivered successfully:`, result?.key?.id);
     return res.json({
       success: true,
@@ -463,9 +502,13 @@ app.listen(PORT, () => {
     console.error('Failed to initialize WhatsApp connection:', err);
   });
 
-  // Heartbeat loop & Outbox loop (ultra-responsive 1.2s poll)
+  // Cloud Outbox worker loop (runs with strict concurrency lock)
+  setInterval(() => {
+    processCloudOutbox();
+  }, 2000);
+
+  // Status heartbeat (every 5 seconds is plenty and reduces DB load)
   setInterval(() => {
     syncStatusToCloud();
-    processCloudOutbox();
-  }, 1200);
+  }, 5000);
 });
