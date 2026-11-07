@@ -43,6 +43,15 @@
       :filter="filter"
       :loading="loading"
     >
+      <template #body-cell-opening_balance="props">
+        <q-td :props="props" class="text-right">
+          <span class="text-weight-bold" :class="props.value > 0 ? 'text-primary' : 'text-grey-6'">
+            {{ Number(props.value || 0).toLocaleString() }}
+          </span>
+          <span class="text-caption text-grey-6 q-ml-xs">{{ props.row.uom_code }}</span>
+        </q-td>
+      </template>
+
       <template #body-cell-last_purchase_price="props">
         <q-td :props="props">{{ formatCurrency(props.value) }}</q-td>
       </template>
@@ -183,10 +192,25 @@
 
       <BaseFormSection
         title="Procurement & Reordering"
-        description="Supplier pricing and minimum stock level. Stock quantity is managed automatically via GRN receipts."
+        description="Supplier pricing, initial opening stock, and minimum stock level."
       >
         <div class="row q-col-gutter-md">
-          <div class="col-6">
+          <div class="col-4">
+            <BaseInput
+              label="Opening Balance"
+              v-model.number="form.opening_balance"
+              type="number"
+              :disable="!canEditOpeningBalance"
+              :hint="openingBalanceHint"
+            >
+              <template v-if="!canEditOpeningBalance" #append>
+                <q-icon name="lock" color="warning" size="xs">
+                  <q-tooltip>Opening balance is locked. Only Admin can modify it.</q-tooltip>
+                </q-icon>
+              </template>
+            </BaseInput>
+          </div>
+          <div class="col-4">
             <BaseInput
               label="Last Purchase Price (LKR)"
               v-model.number="form.last_purchase_price"
@@ -194,7 +218,7 @@
               hint="Reference only — cost auto-updates on GRN post"
             />
           </div>
-          <div class="col-6">
+          <div class="col-4">
             <BaseInput
               label="Reorder Level (Min Stock)"
               v-model.number="form.reorder_level"
@@ -272,9 +296,26 @@ import BaseSelect from 'components/common/erp/BaseSelect.vue'
 import BaseButton from 'components/common/erp/BaseButton.vue'
 import OptionManagerDialog from './OptionManagerDialog.vue'
 import { useItemsList, useCategoryList, useUomList } from 'src/services/inventoryService'
+import { useAuthStore } from 'src/stores/auth'
 
 const $q = useQuasar()
 const router = useRouter()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isAdmin)
+
+const canEditOpeningBalance = computed(() => {
+  if (!editingItem.value) return true // Creating new item: allowed to enter initial balance
+  const currentVal = Number(editingItem.value.opening_balance || 0)
+  if (currentVal <= 0) return true // Never set before: allowed to initialize
+  return isAdmin.value // Once set > 0: ONLY Admin can edit
+})
+
+const openingBalanceHint = computed(() => {
+  if (!canEditOpeningBalance.value) {
+    return 'Locked: Only Admin can modify once established'
+  }
+  return 'Initial stock balance count'
+})
 const { items, loading, listItems, createItem, updateItem, deleteItem, generateNextItemCode } =
   useItemsList()
 const { categories, listCategories, createCategory, deleteCategory } = useCategoryList()
@@ -353,6 +394,7 @@ const emptyForm = {
   item_type: 'Raw Material',
   category_id: null,
   inventory_uom_id: null,
+  opening_balance: 0,
   last_purchase_price: 0,
   reorder_level: 0,
 }
@@ -392,7 +434,13 @@ const columns = [
     sortable: true,
   },
   { name: 'uom_code', label: 'UOM', field: 'uom_code', align: 'center', style: 'width: 70px' },
-
+  {
+    name: 'opening_balance',
+    label: 'Opening Balance',
+    field: 'opening_balance',
+    align: 'right',
+    sortable: true,
+  },
   {
     name: 'last_purchase_price',
     label: 'Last Price',
@@ -426,6 +474,7 @@ function openEdit(row) {
     item_type: row.item_type || 'Raw Material',
     category_id: row.category_id,
     inventory_uom_id: row.inventory_uom_id,
+    opening_balance: Number(row.opening_balance || 0),
     last_purchase_price: row.last_purchase_price,
     reorder_level: row.reorder_level,
   })
@@ -461,6 +510,7 @@ async function saveItem() {
       item_type: form.item_type,
       category_id: form.category_id,
       inventory_uom_id: form.inventory_uom_id,
+      opening_balance: Number(form.opening_balance || 0),
       last_purchase_price: form.last_purchase_price || 0,
       reorder_level: form.reorder_level || 0,
     }

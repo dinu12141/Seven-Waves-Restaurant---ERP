@@ -159,6 +159,24 @@
             </div>
             <div class="col-6">
               <q-input
+                v-model.number="form.opening_balance"
+                label="Opening Balance"
+                type="number"
+                outlined
+                dense
+                min="0"
+                :disable="!canEditOpeningBalance"
+                :hint="openingBalanceHint"
+              >
+                <template v-if="!canEditOpeningBalance" #append>
+                  <q-icon name="lock" color="warning" size="xs">
+                    <q-tooltip>Opening balance is locked. Only Admin can modify it.</q-tooltip>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input
                 v-model.number="form.reorder_level"
                 label="Reorder Level"
                 type="number"
@@ -205,6 +223,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
+import { useAuthStore } from 'src/stores/auth'
 import {
   useItemsList,
   useCategoryList,
@@ -212,6 +231,20 @@ import {
 } from 'src/services/inventoryService'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isAdmin)
+
+const canEditOpeningBalance = computed(() => {
+  if (!isEdit.value) return true
+  const currentVal = Number(form.value.id ? items.value.find(i => i.id === form.value.id)?.opening_balance : 0)
+  if (currentVal <= 0) return true
+  return isAdmin.value
+})
+
+const openingBalanceHint = computed(() => {
+  if (!canEditOpeningBalance.value) return 'Locked: Only Admin can modify once established'
+  return 'Initial stock balance'
+})
 
 // ── Service composables ───────────────────────────────────────────────────────
 const { items, loading, listItems, createItem, updateItem, deleteItem } = useItemsList()
@@ -231,6 +264,7 @@ const emptyForm = () => ({
   name:             '',
   category_id:      null,
   inventory_uom_id: null,
+  opening_balance:  0,
   reorder_level:    0,
   avg_cost:         0,
   is_active:        true,
@@ -255,6 +289,8 @@ const columns = [
   { name: 'name',          label: 'Name',            field: 'name',          align: 'left',   sortable: true },
   { name: 'category_name', label: 'Category',        field: 'category_name', align: 'left',   sortable: true },
   { name: 'uom_code',      label: 'UOM',             field: 'uom_code',      align: 'center', sortable: true },
+  { name: 'opening_balance', label: 'Opening Balance', field: 'opening_balance', align: 'right', sortable: true,
+    format: v => Number(v || 0).toLocaleString() },
   { name: 'reorder_level', label: 'Reorder Level',   field: 'reorder_level', align: 'right',  sortable: true,
     format: v => Number(v || 0).toFixed(2) },
   { name: 'avg_cost',      label: 'Avg Cost / Unit', field: 'avg_cost',      align: 'right',  sortable: true,
@@ -294,6 +330,7 @@ function openEditDialog(row) {
     name:             row.name,
     category_id:      row.category_id,
     inventory_uom_id: row.inventory_uom_id,
+    opening_balance:  Number(row.opening_balance || 0),
     reorder_level:    row.reorder_level || 0,
     avg_cost:         row.avg_cost || 0,
     is_active:        row.is_active,
@@ -315,6 +352,7 @@ async function saveItem() {
       name:             form.value.name.trim(),
       category_id:      form.value.category_id,
       inventory_uom_id: form.value.inventory_uom_id,
+      opening_balance:  Number(form.value.opening_balance || 0),
       reorder_level:    Number(form.value.reorder_level) || 0,
       avg_cost:         Number(form.value.avg_cost) || 0,
       is_active:        form.value.is_active,

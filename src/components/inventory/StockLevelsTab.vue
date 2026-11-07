@@ -99,11 +99,31 @@
             </q-td>
           </template>
 
-          <!-- Qty Cell -->
-          <template #body-cell-qty_on_hand="props">
+          <!-- Opening Balance Cell -->
+          <template #body-cell-opening_balance="props">
             <q-td :props="props" class="text-right">
-              <span class="stock-qty" :class="getQtyColor(props.row)">
-                {{ props.value.toLocaleString() }}
+              <span class="stock-qty" :class="props.value > 0 ? 'text-primary' : 'text-grey-6'">
+                {{ Number(props.value || 0).toLocaleString() }}
+              </span>
+              <span class="stock-qty__uom">{{ props.row.uom_code }}</span>
+            </q-td>
+          </template>
+
+          <!-- GRN In Cell -->
+          <template #body-cell-grn_qty="props">
+            <q-td :props="props" class="text-right">
+              <span class="stock-qty" :class="props.value > 0 ? 'text-positive' : 'text-grey-6'">
+                {{ Number(props.value || 0).toLocaleString() }}
+              </span>
+              <span class="stock-qty__uom">{{ props.row.uom_code }}</span>
+            </q-td>
+          </template>
+
+          <!-- Total Balance Cell -->
+          <template #body-cell-total_balance="props">
+            <q-td :props="props" class="text-right">
+              <span class="stock-qty text-weight-bold" :class="getQtyColor(props.row)">
+                {{ Number(props.value || 0).toLocaleString() }}
               </span>
               <span class="stock-qty__uom">{{ props.row.uom_code }}</span>
             </q-td>
@@ -217,9 +237,23 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'qty_on_hand',
-    label: 'On Hand',
-    field: 'qty_on_hand',
+    name: 'opening_balance',
+    label: 'Opening Balance',
+    field: 'opening_balance',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'grn_qty',
+    label: 'GRN In',
+    field: 'grn_qty',
+    align: 'right',
+    sortable: true,
+  },
+  {
+    name: 'total_balance',
+    label: 'Total Balance',
+    field: 'total_balance',
     align: 'right',
     sortable: true,
   },
@@ -262,7 +296,8 @@ function getWhColor(type) {
 }
 
 function getQtyColor(row) {
-  if (row.qty_on_hand <= 0) return 'text-red'
+  const qty = Number(row.total_balance ?? row.qty_on_hand ?? 0)
+  if (qty <= 0) return 'text-red'
   if (row.stock_status === 'low_stock') return 'text-orange'
   return 'text-primary'
 }

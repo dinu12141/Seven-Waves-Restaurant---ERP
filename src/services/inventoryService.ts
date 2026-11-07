@@ -562,6 +562,63 @@ export function useItemsList() {
   const items: Ref<any[]> = ref([])
   const loading = ref(false)
 
+  async function getDefaultWarehouseId(companyId: string): Promise<string | null> {
+    const { data } = await supabase
+      .from('warehouses')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('is_default', true)
+      .limit(1)
+      .maybeSingle()
+    if (data?.id) return data.id
+    const { data: anyWh } = await supabase
+      .from('warehouses')
+      .select('id')
+      .eq('company_id', companyId)
+      .limit(1)
+      .maybeSingle()
+    return anyWh?.id || null
+  }
+
+  async function syncOpeningBalanceStock(
+    companyId: string,
+    itemId: string,
+    qtyDelta: number,
+    unitCost: number = 0,
+  ) {
+    if (!qtyDelta || !companyId || !itemId) return
+    try {
+      const warehouseId = await getDefaultWarehouseId(companyId)
+      if (!warehouseId) return
+
+      const signedCost = qtyDelta * (unitCost || 0)
+      await supabase.rpc('update_stock_on_hand', {
+        p_company_id: companyId,
+        p_warehouse_id: warehouseId,
+        p_item_id: itemId,
+        p_signed_qty: qtyDelta,
+        p_signed_cost: signedCost,
+      })
+
+      if (qtyDelta > 0) {
+        await supabase.from('inventory_ledger').insert({
+          company_id: companyId,
+          warehouse_id: warehouseId,
+          item_id: itemId,
+          doc_type: 'OPENING',
+          doc_number: `OP-${Date.now().toString().slice(-6)}`,
+          direction: 'IN',
+          quantity: qtyDelta,
+          unit_cost: unitCost || 0,
+          total_cost: signedCost,
+          posted_by: getUserId(),
+        })
+      }
+    } catch (err) {
+      console.warn('[inventoryService] syncOpeningBalanceStock error:', err)
+    }
+  }
+
   async function listItems() {
     loading.value = true
     try {
@@ -582,13 +639,24 @@ export function useItemsList() {
         .order('name')
 
       if (error) throw error
-      items.value = (data || []).map((i: any) => ({
-        ...i,
-        category_name: i.category?.name || '',
-        uom_code: i.inv_uom?.code || '',
-        uom_id: i.inv_uom?.id || '',
-        supplier_name: i.default_supplier?.name || '',
-      }))
+      items.value = (data || []).map((i: any) => {
+        let opBal = i.opening_balance
+        if (opBal === undefined || opBal === null) {
+          if (typeof i.attrs === 'object' && !Array.isArray(i.attrs) && i.attrs !== null) {
+            opBal = i.attrs.opening_balance
+          } else if (Array.isArray(i.attrs)) {
+            opBal = i.attrs.find((a: any) => a?.key === 'opening_balance')?.value
+          }
+        }
+        return {
+          ...i,
+          opening_balance: Number(opBal || 0),
+          category_name: i.category?.name || '',
+          uom_code: i.inv_uom?.code || '',
+          uom_id: i.inv_uom?.id || '',
+          supplier_name: i.default_supplier?.name || '',
+        }
+      })
     } catch (e: any) {
       console.error('[inventoryService] listItems error:', e)
     } finally {
@@ -598,24 +666,128 @@ export function useItemsList() {
 
   async function createItem(item: Record<string, any>) {
     const companyId = getCompanyId()
-    const { data, error } = await supabase
-      .from('items')
-      .insert({ ...item, company_id: companyId })
-      .select('id')
-      .single()
-    if (error) throw error
+    const opBal = Number(item.opening_balance || 0)
+
+    const existingAttrs =
+      typeof item.attrs === 'object' && !Array.isArray(item.attrs) && item.attrs !== null
+        ? item.attrs
+        : {}
+    const attrs = { ...existingAttrs, opening_balance: opBal }
+
+    const payload: Record<string, any> = {
+      ...item,
+      company_id: companyId,
+      attrs,
+    }
+
+    let data: any
+    try {
+      const res = await supabase
+        .from('items')
+        .insert({ ...payload, opening_balance: opBal })
+        .select('id')
+        .single()
+      if (res.error) throw res.error
+      data = res.data
+    } catch (colErr: any) {
+      if (colErr?.message?.includes('opening_balance')) {
+        const fallbackRes = await supabase
+          .from('items')
+          .insert(payload)
+          .select('id')
+          .single()
+        if (fallbackRes.error) throw fallbackRes.error
+        data = fallbackRes.data
+      } else {
+        throw colErr
+      }
+    }
+
+    if (opBal > 0 && data?.id && companyId) {
+      await syncOpeningBalanceStock(
+        companyId,
+        data.id,
+        opBal,
+        Number(item.last_purchase_price || item.avg_cost || 0),
+      )
+    }
+
     return data
   }
 
   async function updateItem(id: string, updates: Record<string, any>) {
-    const { data, error } = await supabase
-      .from('items')
-      .update(updates)
-      .eq('id', id)
-      .select('id')
-      .single()
-    if (error) throw error
-    return data
+    const companyId = getCompanyId()
+    const hasOpBal = updates.opening_balance !== undefined
+    const opBal = hasOpBal ? Number(updates.opening_balance || 0) : undefined
+
+    let payload: Record<string, any> = { ...updates }
+
+    if (hasOpBal && companyId) {
+      const { data: current } = await supabase
+        .from('items')
+        .select('attrs, opening_balance, last_purchase_price, avg_cost')
+        .eq('id', id)
+        .single()
+
+      let oldOpBal = (current as any)?.opening_balance
+      if (oldOpBal === undefined || oldOpBal === null) {
+        if (
+          typeof current?.attrs === 'object' &&
+          !Array.isArray(current?.attrs) &&
+          current?.attrs !== null
+        ) {
+          oldOpBal = current.attrs.opening_balance
+        }
+      }
+      oldOpBal = Number(oldOpBal || 0)
+
+      const existingAttrs =
+        typeof current?.attrs === 'object' &&
+          !Array.isArray(current?.attrs) &&
+          current?.attrs !== null
+          ? current.attrs
+          : {}
+      payload.attrs = { ...existingAttrs, opening_balance: opBal }
+
+      const diff = (opBal || 0) - oldOpBal
+      if (diff !== 0) {
+        await syncOpeningBalanceStock(
+          companyId,
+          id,
+          diff,
+          Number(
+            updates.last_purchase_price ||
+              (current as any)?.last_purchase_price ||
+              (current as any)?.avg_cost ||
+              0,
+          ),
+        )
+      }
+    }
+
+    try {
+      const res = await supabase
+        .from('items')
+        .update(payload)
+        .eq('id', id)
+        .select('id')
+        .single()
+      if (res.error) throw res.error
+      return res.data
+    } catch (colErr: any) {
+      if (colErr?.message?.includes('opening_balance')) {
+        delete payload.opening_balance
+        const fallbackRes = await supabase
+          .from('items')
+          .update(payload)
+          .eq('id', id)
+          .select('id')
+          .single()
+        if (fallbackRes.error) throw fallbackRes.error
+        return fallbackRes.data
+      }
+      throw colErr
+    }
   }
 
   async function deactivateItem(id: string) {
@@ -910,19 +1082,61 @@ export function useStockDashboard() {
   // v_stock_on_hand is one row per item × warehouse — easily > 1000 rows, so
   // page past the PostgREST cap (previously totals/levels were silently truncated).
   async function loadAll(companyId: string) {
-    const rows = await fetchAllPaged<any>(() =>
+    const [rows, itemRes, grnRes] = await Promise.all([
+      fetchAllPaged<any>(() =>
+        supabase
+          .from('v_stock_on_hand')
+          .select('*')
+          .eq('company_id', companyId)
+          .order('item_name')
+          .order('warehouse_id')
+          .order('item_id'),
+      ),
       supabase
-        .from('v_stock_on_hand')
-        .select('*')
+        .from('items')
+        .select('id, attrs')
+        .eq('company_id', companyId),
+      supabase
+        .from('inventory_ledger')
+        .select('warehouse_id, item_id, quantity')
         .eq('company_id', companyId)
-        .order('item_name')
-        .order('warehouse_id')
-        .order('item_id'),
-    )
-    stockOnHand.value = rows.map((r: any) => ({
-      ...r,
-      stock_status: normalizeStockStatus(r.stock_status),
-    }))
+        .eq('doc_type', 'GRN')
+        .eq('direction', 'IN'),
+    ])
+
+    const opBalMap = new Map<string, number>()
+    for (const it of itemRes.data || []) {
+      let op = (it as any).opening_balance
+      if (op === undefined || op === null) {
+        if (typeof it.attrs === 'object' && !Array.isArray(it.attrs) && it.attrs !== null) {
+          op = it.attrs.opening_balance
+        } else if (Array.isArray(it.attrs)) {
+          op = it.attrs.find((a: any) => a?.key === 'opening_balance')?.value
+        }
+      }
+      opBalMap.set(it.id, Number(op || 0))
+    }
+
+    const grnMap = new Map<string, number>()
+    for (const g of grnRes.data || []) {
+      const k = `${g.warehouse_id}:${g.item_id}`
+      grnMap.set(k, (grnMap.get(k) || 0) + Number(g.quantity || 0))
+    }
+
+    stockOnHand.value = rows.map((r: any) => {
+      const k = `${r.warehouse_id}:${r.item_id}`
+      const opBal = opBalMap.get(r.item_id) || Number(r.opening_balance || 0)
+      const grnIn = grnMap.get(k) || 0
+      const totalBal = opBal + grnIn
+
+      return {
+        ...r,
+        opening_balance: opBal,
+        grn_qty: grnIn,
+        total_balance: totalBal > 0 ? totalBal : (r.qty_on_hand || 0),
+        stock_status: normalizeStockStatus(r.stock_status),
+      }
+    })
     updateAlerts()
   }
 
