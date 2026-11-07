@@ -223,6 +223,7 @@ import {
 } from 'src/services/inventoryService'
 import { useAuthStore } from 'src/stores/auth'
 import { invBusinessDate, isSystemLinkedDoc } from 'src/services/inventory/inventoryHelpers'
+import { postGinToFinance } from 'src/services/inventory/ginAccountingHelper'
 
 function formatDateTime(val) {
   if (!val) return '-'
@@ -687,6 +688,15 @@ async function onPost() {
     const doc = await postDocument(header.id)
     header.status = 'posted'
     header.posted_at = doc.posted_at || new Date().toISOString()
+
+    // 3. Post to Finance if GIN issue (COGS / Operating Expenses)
+    if (['GIN', 'GIN_ISSUE', 'WASTAGE'].includes(header.doc_type) && !header.target_warehouse_id) {
+      try {
+        await postGinToFinance(header.id)
+      } catch (finErr) {
+        console.error('Failed to post GIN to finance:', finErr)
+      }
+    }
 
     $q.notify({
       type: 'positive',

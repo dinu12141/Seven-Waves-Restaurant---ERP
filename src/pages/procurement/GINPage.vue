@@ -159,6 +159,7 @@
                 dense
                 :readonly="form.status !== 'draft'"
                 :rules="[v => !!v || 'Required']"
+                @update:model-value="onPurposeChange"
               />
             </div>
             <div class="col-12 col-md-3">
@@ -225,6 +226,21 @@
                   </template>
                 </q-select>
                 <span v-else>{{ props.row.item_name }}</span>
+              </q-td>
+            </template>
+
+            <template #body-cell-allocation="props">
+              <q-td :props="props">
+                <q-badge
+                  v-if="props.row.allocation"
+                  :color="props.row.allocation.allocationType === 'COGS' ? 'amber-9' : 'teal-8'"
+                  text-color="white"
+                  class="q-pa-xs text-caption"
+                >
+                  <q-icon :name="props.row.allocation.allocationType === 'COGS' ? 'restaurant' : 'cleaning_services'" size="14px" class="q-mr-xs" />
+                  {{ props.row.allocation.debitLedgerCode }} - {{ props.row.allocation.debitLedgerName }}
+                </q-badge>
+                <span v-else class="text-grey-5">—</span>
               </q-td>
             </template>
 
@@ -296,16 +312,27 @@
             @click="addLine"
           />
 
-          <!-- Total -->
-          <div class="row justify-end q-mt-md">
+          <!-- Accounting Breakdown & Total -->
+          <div class="row q-col-gutter-sm justify-end q-mt-md">
             <div class="col-12 col-md-4">
-              <div class="erp-card q-pa-md">
-                <div class="row justify-between items-center">
-                  <span style="font-size: 14px; color: var(--erp-text-secondary)">Total Cost</span>
-                  <span style="font-size: 18px; font-weight: 700; color: var(--erp-text-primary)">
-                    {{ fmtCurrency(totalCost) }}
-                  </span>
-                </div>
+              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-warning)">
+                <div class="text-caption text-weight-bold text-amber-9">Cost of Goods Sold (COGS)</div>
+                <div class="text-subtitle1 text-weight-bolder">{{ fmtCurrency(totalCogs) }}</div>
+                <div class="text-caption text-grey-6" style="font-size: 11px">6000 Food Cost / 6001 Packaging</div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-positive)">
+                <div class="text-caption text-weight-bold text-teal-8">Operating Expenses</div>
+                <div class="text-subtitle1 text-weight-bolder">{{ fmtCurrency(totalExpenses) }}</div>
+                <div class="text-caption text-grey-6" style="font-size: 11px">7044 Cleaning / 7011 Gas / 7005 Staff</div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-primary)">
+                <div class="text-caption text-weight-bold text-primary">Total GIN Issue Value</div>
+                <div class="text-subtitle1 text-weight-bolder">{{ fmtCurrency(totalCost) }}</div>
+                <div class="text-caption text-grey-6" style="font-size: 11px">Total Stock Asset Consumed</div>
               </div>
             </div>
           </div>
@@ -353,6 +380,7 @@ import {
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import { useAuthStore } from 'src/stores/auth'
 import { requestDocumentAmendment } from 'src/services/amendmentService'
+import { resolveItemGinAccounts, postGinToFinance } from 'src/services/inventory/ginAccountingHelper'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -375,6 +403,9 @@ const stockMap       = ref({})  // item_id → qty_on_hand for selected warehous
 const issuePurposes = [
   'Kitchen Use',
   'Bar Use',
+  'Cleaning & Maintenance',
+  'Cooking Gas / Fuel',
+  'Packaging & Delivery',
   'Staff Meal',
   'Event / Catering',
   'Internal Transfer',
@@ -398,6 +429,18 @@ const form = ref(emptyForm())
 
 const totalCost = computed(() =>
   (form.value.lines || []).reduce((s, l) => s + (l.line_total || 0), 0)
+)
+
+const totalCogs = computed(() =>
+  (form.value.lines || [])
+    .filter(l => l.allocation?.allocationType === 'COGS')
+    .reduce((s, l) => s + (l.line_total || 0), 0)
+)
+
+const totalExpenses = computed(() =>
+  (form.value.lines || [])
+    .filter(l => l.allocation?.allocationType === 'EXPENSE')
+    .reduce((s, l) => s + (l.line_total || 0), 0)
 )
 
 // ── Options ──────────────────────────────────────────────────────────────────
@@ -440,12 +483,13 @@ const columns = [
 ]
 
 const lineColumns = [
-  { name: 'item_id',   label: 'Item',       field: 'item_name',  align: 'left',  style: 'min-width: 220px' },
-  { name: 'quantity',  label: 'Quantity',   field: 'quantity',   align: 'right', style: 'width: 120px' },
-  { name: 'uom_code',  label: 'UOM',        field: 'uom_code',   align: 'center', style: 'width: 80px' },
-  { name: 'unit_cost', label: 'Unit Cost',  field: 'unit_cost',  align: 'right', style: 'width: 130px' },
-  { name: 'line_total', label: 'Line Total', field: 'line_total', align: 'right', style: 'width: 130px' },
-  { name: 'remove',    label: '',           field: 'remove',     align: 'center', style: 'width: 48px' },
+  { name: 'item_id',    label: 'Item',                 field: 'item_name',  align: 'left',   style: 'min-width: 200px' },
+  { name: 'allocation', label: 'Accounting Allocation', field: 'allocation', align: 'left',   style: 'min-width: 170px' },
+  { name: 'quantity',   label: 'Quantity',             field: 'quantity',   align: 'right',  style: 'width: 110px' },
+  { name: 'uom_code',   label: 'UOM',                  field: 'uom_code',   align: 'center', style: 'width: 80px' },
+  { name: 'unit_cost',  label: 'Unit Cost',            field: 'unit_cost',  align: 'right',  style: 'width: 120px' },
+  { name: 'line_total', label: 'Line Total',           field: 'line_total', align: 'right',  style: 'width: 120px' },
+  { name: 'remove',     label: '',                     field: 'remove',     align: 'center', style: 'width: 48px' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -480,6 +524,7 @@ function addLine() {
     quantity: 1,
     unit_cost: 0,
     line_total: 0,
+    allocation: null,
   })
 }
 
@@ -494,7 +539,20 @@ function onItemChange(line, itemId) {
   line.uom_id    = item.uom_id || item.inventory_uom_id || null
   line.uom_code  = item.uom_code || ''
   line.unit_cost = Number(item.avg_cost || 0)
+  line.allocation = resolveItemGinAccounts(item, form.value.issue_purpose)
   recalcLine(line)
+}
+
+function onPurposeChange() {
+  if (!form.value.lines?.length) return
+  form.value.lines.forEach(l => {
+    if (l.item_id) {
+      const item = items.value.find(i => i.id === l.item_id)
+      if (item) {
+        l.allocation = resolveItemGinAccounts(item, form.value.issue_purpose)
+      }
+    }
+  })
 }
 
 function recalcLine(line) {
@@ -541,16 +599,20 @@ async function openView(row) {
         : null,
       remarks:       doc.header.remarks || '',
       status:        doc.header.status,
-      lines:         doc.lines.map((l, idx) => ({
-        line_number: l.line_number || idx + 1,
-        item_id:     l.item_id,
-        item_name:   l.item_name,
-        uom_id:      l.uom_id,
-        uom_code:    l.uom_code,
-        quantity:    l.quantity,
-        unit_cost:   l.unit_cost || 0,
-        line_total:  l.quantity * (l.unit_cost || 0),
-      })),
+      lines:         doc.lines.map((l, idx) => {
+        const itemObj = items.value.find(i => i.id === l.item_id)
+        return {
+          line_number: l.line_number || idx + 1,
+          item_id:     l.item_id,
+          item_name:   l.item_name,
+          uom_id:      l.uom_id,
+          uom_code:    l.uom_code,
+          quantity:    l.quantity,
+          unit_cost:   l.unit_cost || 0,
+          line_total:  l.quantity * (l.unit_cost || 0),
+          allocation:  resolveItemGinAccounts(itemObj, doc.header.remarks),
+        }
+      }),
     }
   } catch (e) {
     $q.notify({ type: 'negative', message: 'Could not load GIN details', caption: e.message })
@@ -618,11 +680,22 @@ async function saveAndPost() {
     )
 
     await postDocument(doc.id)
+
+    let finResult = null
+    if (!isTransfer) {
+      try {
+        finResult = await postGinToFinance(doc.id)
+      } catch (finErr) {
+        console.error('Finance posting failed for GIN:', finErr)
+      }
+    }
+
     $q.notify({
       type: 'positive',
       message: isTransfer
         ? `Transfer ${doc.doc_number} posted — stock moved to ${form.value.target_warehouse?.name || 'target store'}.`
-        : `GIN ${doc.doc_number} posted — stock deducted.`,
+        : `GIN ${doc.doc_number} posted — stock deducted & finance entries posted (COGS / Expenses).`,
+      caption: finResult?.success ? `Finance: ${finResult.entries?.map(e => `${e.debitLedgerCode} Dr`).join(', ')}` : undefined,
     })
     dialogVisible.value = false
     await fetchGins()
