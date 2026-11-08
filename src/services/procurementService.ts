@@ -1429,7 +1429,7 @@ export async function getInvoiceDetails(invoiceId: string) {
  */
 export async function createInvoiceFromGRN(
   grnId: string,
-  overrides: { supplier_inv_no?: string; doc_date?: string; remarks?: string } = {},
+  overrides: { supplier_inv_no?: string; doc_date?: string; remarks?: string; tax_amount?: number } = {},
 ) {
   const { company_id, branch_id, user_id } = getContext()
 
@@ -1475,6 +1475,8 @@ export async function createInvoiceFromGRN(
   })
 
   const subtotal = linePayloads.reduce((s: number, l: any) => s + l.quantity * l.unit_price, 0)
+  const taxAmount = Number(overrides.tax_amount) || 0
+  const totalAmount = subtotal + taxAmount
 
   const { data: invoice, error: invErr } = await supabase
     .from('ap_invoices')
@@ -1489,7 +1491,8 @@ export async function createInvoiceFromGRN(
       po_id: grn.po_id || null,
       status: 'draft',
       subtotal,
-      total_amount: subtotal,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
       remarks: overrides.remarks || null,
       created_by: user_id,
     })
@@ -1629,12 +1632,21 @@ export async function updateInvoice(
   if (linesErr) throw new Error(linesErr.message)
 
   const subtotal = lines.reduce(
-    (s, l) => s + l.quantity * l.unit_price * (1 - (l.discount_pct || 0) / 100),
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0) * (1 - (Number(l.discount_pct) || 0) / 100),
     0,
   )
+  const taxAmount = Number(header.tax_amount) || 0
+  const discountAmount = Number(header.discount_amount) || 0
+  const totalAmount = subtotal + taxAmount - discountAmount
+
   await supabase
     .from('ap_invoices')
-    .update({ subtotal, total_amount: subtotal })
+    .update({
+      subtotal,
+      tax_amount: taxAmount,
+      discount_amount: discountAmount,
+      total_amount: totalAmount,
+    })
     .eq('id', invoiceId)
 
   return { id: invoiceId }

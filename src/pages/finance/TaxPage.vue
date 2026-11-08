@@ -7,7 +7,20 @@
       breadcrumbs="Finance / Expenses & Tax / Tax"
       show-refresh
       @refresh="loadData"
-    />
+    >
+      <template #actions>
+        <q-btn
+          unelevated
+          color="primary"
+          icon="account_balance"
+          label="Settle VAT / IRD Return"
+          size="sm"
+          no-caps
+          class="q-mr-xs"
+          @click="openSettlementDialog"
+        />
+      </template>
+    </FinancePageHeader>
 
     <FinanceFilterBar v-model:from="dateFrom" v-model:to="dateTo" persist-key="tax" @change="loadData">
       <div class="text-caption text-grey-6">
@@ -48,7 +61,7 @@
             <q-icon name="arrow_upward" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Input VAT (recoverable, {{ INPUT_VAT_LEDGER_CODE }})</div>
+            <div class="fin-kpi-card__label">Input VAT (recoverable asset, {{ INPUT_VAT_LEDGER_CODE }})</div>
             <div class="fin-kpi-card__value">{{ fmt(vat.inputVat) }}</div>
           </div>
         </div>
@@ -68,7 +81,7 @@
 
     <div class="text-caption text-grey-5 q-mb-md">
       Current GL balances — {{ OUTPUT_VAT_LEDGER_CODE }}: LKR {{ fmt(vat.outputLedgerBalance) }} (Cr) ·
-      {{ INPUT_VAT_LEDGER_CODE }}: LKR {{ fmt(vat.inputLedgerBalance) }} (Dr)
+      {{ INPUT_VAT_LEDGER_CODE }}: LKR {{ fmt(vat.inputLedgerBalance) }} (Dr Recoverable Asset)
     </div>
 
     <q-banner v-if="vat.apBillTax.total > 0" dense class="bg-amber-2 text-black q-mb-md">
@@ -146,17 +159,187 @@
         </template>
       </q-table>
     </div>
+
+    <!-- VAT Settlement / IRD Return Dialog -->
+    <q-dialog v-model="showSettlementDialog" persistent>
+      <q-card style="min-width: 550px; max-width: 680px; width: 100%; border-radius: 12px">
+        <q-card-section class="row items-center q-pb-none bg-primary text-white">
+          <div>
+            <div class="text-h6 text-weight-bold">Settle VAT / IRD Return</div>
+            <div class="text-caption text-blue-1">
+              Reconcile Output VAT (2006) vs Input VAT Asset (1010) and remit net to IRD
+            </div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup text-color="white" />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <!-- Summary info alert -->
+          <div class="q-pa-sm q-mb-md bg-blue-1 text-blue-9 rounded-borders text-caption">
+            <q-icon name="info" size="18px" class="q-mr-xs" />
+            Posting this settlement will <strong>Debit 2006</strong> (clear Output VAT liability),
+            <strong>Credit 1010</strong> (offset Input VAT asset), and <strong>Credit Bank</strong> for the net
+            remittance to the Inland Revenue Department (IRD).
+          </div>
+
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-6">
+              <q-input
+                v-model="settlementForm.periodMonth"
+                label="Tax Period (YYYY-MM)"
+                outlined
+                dense
+                placeholder="2026-11"
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model="settlementForm.periodDate"
+                label="Settlement Date"
+                type="date"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-6">
+              <q-input
+                v-model.number="settlementForm.outputVatClear"
+                label="Output VAT to Clear (Dr 2006)"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                prefix="LKR"
+                hint="Collected sales tax liability"
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model.number="settlementForm.inputVatOffset"
+                label="Input VAT to Offset (Cr 1010)"
+                type="number"
+                step="0.01"
+                outlined
+                dense
+                prefix="LKR"
+                hint="Recoverable tax asset credit"
+              />
+            </div>
+          </div>
+
+          <!-- Net Remittance Calculation Card -->
+          <div class="q-pa-md q-my-md bg-grey-2 rounded-borders">
+            <div class="row items-center justify-between">
+              <div>
+                <div class="text-caption text-grey-8">Net Remittance to IRD:</div>
+                <div
+                  class="text-h6 text-weight-bolder"
+                  :class="computedNetRemittance >= 0 ? 'text-primary' : 'text-positive'"
+                >
+                  LKR {{ fmt(Math.abs(computedNetRemittance)) }}
+                  <span class="text-caption font-normal">
+                    ({{ computedNetRemittance >= 0 ? 'Payable to IRD' : 'Refund Claimable from IRD' }})
+                  </span>
+                </div>
+              </div>
+              <q-badge
+                :color="computedNetRemittance >= 0 ? 'primary' : 'positive'"
+                :label="computedNetRemittance >= 0 ? 'Remittance Due' : 'Refund Due'"
+                class="q-pa-xs text-bold"
+              />
+            </div>
+          </div>
+
+          <!-- Bank / Payment details -->
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12">
+              <q-select
+                v-model="settlementForm.accountId"
+                :options="payingAccounts"
+                option-value="id"
+                :option-label="(opt) => `${opt.name} (${opt.account_number || opt.account_type}) — Bal: LKR ${fmt(opt.current_balance)}`"
+                emit-value
+                map-options
+                label="Paying / Receiving Bank Account *"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-6">
+              <q-select
+                v-model="settlementForm.paymentMethod"
+                :options="paymentMethodOptions"
+                emit-value
+                map-options
+                label="Payment Method"
+                outlined
+                dense
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model="settlementForm.paymentRef"
+                label="Cheque / Reference No"
+                outlined
+                dense
+                placeholder="e.g. CHQ-10492 or TXN-849102"
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-12">
+              <q-input
+                v-model="settlementForm.notes"
+                label="Notes / Settlement Remarks"
+                outlined
+                dense
+                placeholder="e.g. Q3 IRD VAT Remittance for restaurant operations"
+              />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="Cancel" color="grey-8" v-close-popup no-caps />
+          <q-btn
+            unelevated
+            color="primary"
+            label="Confirm & Post Settlement"
+            icon="check"
+            no-caps
+            :loading="submittingSettlement"
+            @click="submitSettlement"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useQuasar } from 'quasar'
 import FinancePageHeader from 'src/modules/finance/components/FinancePageHeader.vue'
 import FinanceFilterBar from 'src/modules/finance/components/FinanceFilterBar.vue'
 import FinanceExportMenu from 'src/modules/finance/components/FinanceExportMenu.vue'
 import { todayLK, monthStart, rangeLabel } from 'src/modules/finance/utils/finance-dates'
 import { fetchTaxCodes } from 'src/services/financeService'
 import { fetchVatReport, OUTPUT_VAT_LEDGER_CODE, INPUT_VAT_LEDGER_CODE } from 'src/services/finance/glReports'
+import { taxSettlementService } from 'src/services/finance/taxSettlementService'
+import { useAuthStore } from 'src/stores/auth'
+
+const $q = useQuasar()
+const authStore = useAuthStore()
 
 const emptyVat = () => ({
   outputLedgerFound: true,
@@ -177,6 +360,33 @@ const taxCodes = ref([])
 const vat = ref(emptyVat())
 const dateFrom = ref(monthStart(todayLK()))
 const dateTo = ref(todayLK())
+
+// VAT Settlement Modal State
+const showSettlementDialog = ref(false)
+const submittingSettlement = ref(false)
+const payingAccounts = ref([])
+const paymentMethodOptions = [
+  { label: 'Bank Transfer (CEFT / SLIPS)', value: 'bank_transfer' },
+  { label: 'Cheque', value: 'cheque' },
+  { label: 'Cash', value: 'cash' },
+]
+
+const settlementForm = ref({
+  periodMonth: '',
+  periodDate: '',
+  outputVatClear: 0,
+  inputVatOffset: 0,
+  accountId: '',
+  paymentMethod: 'bank_transfer',
+  paymentRef: '',
+  notes: '',
+})
+
+const computedNetRemittance = computed(() => {
+  const outVal = Number(settlementForm.value.outputVatClear || 0)
+  const inVal = Number(settlementForm.value.inputVatOffset || 0)
+  return Math.round((outVal - inVal) * 100) / 100
+})
 
 const monthCols = [
   { name: 'month', label: 'Month', field: 'month', align: 'left' },
@@ -224,6 +434,81 @@ async function loadData() {
     loading.value = false
   }
 }
+
+async function openSettlementDialog() {
+  try {
+    const accs = await taxSettlementService.fetchPayingAccounts()
+    payingAccounts.value = accs || []
+
+    const currentPeriod = dateFrom.value ? dateFrom.value.slice(0, 7) : todayLK().slice(0, 7)
+    const outBal = Number(vat.value.outputLedgerBalance || 0)
+    const inBal = Number(vat.value.inputLedgerBalance || 0)
+
+    settlementForm.value = {
+      periodMonth: currentPeriod,
+      periodDate: todayLK(),
+      outputVatClear: outBal > 0 ? outBal : Number(vat.value.outputVat || 0),
+      inputVatOffset: inBal > 0 ? inBal : Number(vat.value.inputVat || 0),
+      accountId: payingAccounts.value[0]?.id || '',
+      paymentMethod: 'bank_transfer',
+      paymentRef: '',
+      notes: `IRD VAT Return for ${currentPeriod}`,
+    }
+
+    showSettlementDialog.value = true
+  } catch (e) {
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to prepare settlement dialog: ' + (e?.message || e),
+    })
+  }
+}
+
+async function submitSettlement() {
+  if (!settlementForm.value.accountId) {
+    $q.notify({ type: 'warning', message: 'Please select a paying bank/cash account.' })
+    return
+  }
+
+  const outClear = Number(settlementForm.value.outputVatClear || 0)
+  const inOffset = Number(settlementForm.value.inputVatOffset || 0)
+
+  if (outClear <= 0 && inOffset <= 0) {
+    $q.notify({ type: 'warning', message: 'At least one of Output VAT or Input VAT must be greater than zero.' })
+    return
+  }
+
+  submittingSettlement.value = true
+  try {
+    await taxSettlementService.recordVatSettlement({
+      companyId: authStore.currentBranch?.company_id,
+      branchId: authStore.currentBranch?.id,
+      periodMonth: settlementForm.value.periodMonth || todayLK().slice(0, 7),
+      periodDate: settlementForm.value.periodDate || todayLK(),
+      accountId: settlementForm.value.accountId,
+      paymentMethod: settlementForm.value.paymentMethod,
+      paymentRef: settlementForm.value.paymentRef,
+      outputVatClear: outClear,
+      inputVatOffset: inOffset,
+      notes: settlementForm.value.notes,
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'VAT Settlement successfully posted to General Ledger!',
+    })
+    showSettlementDialog.value = false
+    await loadData()
+  } catch (e) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error recording settlement: ' + (e?.message || e),
+    })
+  } finally {
+    submittingSettlement.value = false
+  }
+}
+
 onMounted(loadData)
 </script>
 

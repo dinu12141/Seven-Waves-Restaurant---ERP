@@ -242,12 +242,74 @@
             @item-change="onItemChange"
           />
 
-          <!-- Totals -->
-          <div class="row justify-end q-mt-md">
-            <div class="col-12 col-md-4">
-              <div class="erp-card q-pa-md">
+          <!-- Totals & Tax Allocation -->
+          <div class="row q-col-gutter-md justify-between items-start q-mt-md">
+            <!-- Tax Treatment (Asset 1010 Input VAT) -->
+            <div class="col-12 col-md-6" v-if="form.status === 'draft'">
+              <div class="erp-card q-pa-sm" style="border: 1px solid rgba(var(--q-primary-rgb), 0.3); border-left: 4px solid var(--q-primary)">
+                <div class="text-caption text-weight-bold text-primary row items-center q-mb-xs">
+                  <q-icon name="percent" size="16px" class="q-mr-xs" />
+                  Tax / VAT Settings (Recoverable Asset)
+                </div>
+                <div class="row q-col-gutter-sm items-center">
+                  <div class="col-12 col-sm-6">
+                    <q-select
+                      v-model="form.tax_mode"
+                      :options="[
+                        { label: '18% Standard VAT', value: 'vat_18' },
+                        { label: '0% Tax Exempt / None', value: 'none' },
+                        { label: 'Custom Tax Amount', value: 'custom' },
+                      ]"
+                      emit-value
+                      map-options
+                      dense
+                      outlined
+                      label="Tax Treatment"
+                      @update:model-value="onTaxModeChange"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-input
+                      v-model.number="form.tax_amount"
+                      type="number"
+                      dense
+                      outlined
+                      label="Input VAT (LKR)"
+                      :readonly="form.tax_mode === 'none' || form.tax_mode === 'vat_18'"
+                      :min="0"
+                      step="0.01"
+                      @update:model-value="recalcTotals"
+                    />
+                  </div>
+                </div>
+                <div class="text-caption text-grey-6 q-mt-xs" style="font-size: 11px">
+                  <q-icon name="verified" size="13px" color="positive" class="q-mr-xs" />
+                  Debits <span class="text-weight-bold text-teal-8">1010 Input VAT - Recoverable</span> (Current Asset). Claimable / offset with IRD.
+                </div>
+              </div>
+            </div>
+
+            <!-- Totals Breakdown Card -->
+            <div class="col-12" :class="form.status === 'draft' ? 'col-md-5' : 'col-md-6'">
+              <div class="erp-card q-pa-md shadow-1">
+                <div class="row justify-between items-center q-mb-xs">
+                  <span style="font-size: 13px; color: var(--erp-text-secondary)">Subtotal (Net Goods Value)</span>
+                  <span style="font-size: 14px; font-weight: 600; color: var(--erp-text-primary)">
+                    {{ formatCurrency(subtotalAmount) }}
+                  </span>
+                </div>
+                <div class="row justify-between items-center q-mb-xs">
+                  <div class="row items-center">
+                    <span style="font-size: 13px; color: var(--erp-text-secondary)">Input VAT (Tax Asset)</span>
+                    <q-badge color="teal-8" text-color="white" label="1010 Asset" class="q-ml-xs text-caption" style="font-size: 10px" />
+                  </div>
+                  <span style="font-size: 14px; font-weight: 600; color: var(--q-primary)">
+                    {{ formatCurrency(form.tax_amount || 0) }}
+                  </span>
+                </div>
+                <q-separator class="q-my-xs" />
                 <div class="row justify-between items-center">
-                  <span style="font-size: 14px; color: var(--erp-text-secondary)">Total Amount</span>
+                  <span style="font-size: 14px; font-weight: 700; color: var(--erp-text-secondary)">Total Amount Payable</span>
                   <span style="font-size: 18px; font-weight: 700; color: var(--erp-text-primary)">
                     {{ formatCurrency(totalAmount) }}
                   </span>
@@ -408,6 +470,9 @@ const defaultForm = {
   lines: [],
   base_doc_id: null,
   grn_ref: '',
+  tax_mode: 'vat_18',
+  tax_amount: 0,
+  subtotal: 0,
   total_amount: 0,
   paid_amount: 0,
   balance_due: 0,
@@ -515,15 +580,40 @@ async function fetchItems() {
   itemOptions.value = await listItems()
 }
 
-const totalAmount = computed(() => {
+const subtotalAmount = computed(() => {
   if (form.value.id && form.value.status !== 'draft') {
-    return form.value.total_amount || 0
+    return Number(form.value.subtotal) || Number(form.value.total_amount) || 0
   }
   return (form.value.lines || []).reduce(
-    (acc, line) => acc + (line.quantity || 0) * (line.unit_price || 0),
+    (acc, line) =>
+      acc +
+      (Number(line.quantity) || 0) *
+        (Number(line.unit_price) || 0) *
+        (1 - (Number(line.discount_pct) || 0) / 100),
     0,
   )
 })
+
+const totalAmount = computed(() => {
+  if (form.value.id && form.value.status !== 'draft') {
+    return Number(form.value.total_amount) || 0
+  }
+  return Math.round((subtotalAmount.value + (Number(form.value.tax_amount) || 0)) * 100) / 100
+})
+
+function onTaxModeChange(mode) {
+  if (mode === 'vat_18') {
+    form.value.tax_amount = Math.round(subtotalAmount.value * 0.18 * 100) / 100
+  } else if (mode === 'none') {
+    form.value.tax_amount = 0
+  }
+}
+
+function recalcTotals() {
+  if (form.value.tax_mode === 'vat_18') {
+    form.value.tax_amount = Math.round(subtotalAmount.value * 0.18 * 100) / 100
+  }
+}
 
 const activeInvoices = computed(() => {
   if (filters.value.status === 'cancelled') return visibleInvoices.value
@@ -643,8 +733,19 @@ async function editInvoice(row) {
       po_line_id: l.po_line_id || null,
     }))
 
+    const taxAmt = Number(full.tax_amount) || 0
+    const subTot = Number(full.subtotal) || 0
+    let taxMode = 'none'
+    if (taxAmt > 0) {
+      const calc18 = Math.round(subTot * 0.18 * 100) / 100
+      taxMode = Math.abs(taxAmt - calc18) <= 1 ? 'vat_18' : 'custom'
+    }
+
     form.value = {
       ...full,
+      tax_mode: taxMode,
+      tax_amount: taxAmt,
+      subtotal: subTot,
       supplier:
         full.suppliers ||
         supplierOptions.value.find((s) => s.id === full.supplier_id) ||
@@ -674,10 +775,12 @@ function addLine() {
     tax_pct: 0,
     line_total: 0,
   })
+  recalcTotals()
 }
 
 function removeLine(index) {
   form.value.lines.splice(index, 1)
+  recalcTotals()
 }
 
 function onItemChange(line, item) {
@@ -687,6 +790,7 @@ function onItemChange(line, item) {
   line.uom_id = item.purchase_uom_id || item.inventory_uom_id || item.default_uom_id || item.uom_id || ''
   line.uom_name = item.uom_name || item.uom?.name || item.uom?.code || 'PCS'
   line.unit_price = item.last_purchase_price || item.cost_price || item.unit_cost || 0
+  recalcTotals()
 }
 
 // ── Save / Post ─────────────────────────────────────────────────────────
@@ -718,6 +822,7 @@ async function saveInvoice(targetStatus) {
           doc_date: form.value.doc_date,
           due_date: form.value.due_date,
           supplier_inv_no: form.value.supplier_inv_no,
+          tax_amount: Number(form.value.tax_amount) || 0,
         },
         lines,
       )
@@ -737,6 +842,7 @@ async function saveInvoice(targetStatus) {
           doc_date: form.value.doc_date,
           due_date: form.value.due_date,
           supplier_inv_no: form.value.supplier_inv_no,
+          tax_amount: Number(form.value.tax_amount) || 0,
         },
         lines,
       )
