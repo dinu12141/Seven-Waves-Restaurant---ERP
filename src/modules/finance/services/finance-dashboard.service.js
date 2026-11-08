@@ -12,7 +12,7 @@ import { AR_OPEN_STATUSES, receivableBalance, sumAmounts } from 'src/services/fi
 /** AP bills that are in the GL and still owed (same rule as Payables). */
 export const DASHBOARD_AP_STATUSES = ['posted', 'partial_paid']
 /** Payroll runs whose net pay is still owed to staff. */
-export const PAYROLL_DUE_STATUSES = ['approved', 'processed', 'posted']
+export const PAYROLL_DUE_STATUSES = ['posted']
 
 function check(res, what) {
   if (res.error) throw new Error(`${what}: ${res.error.message || res.error}`)

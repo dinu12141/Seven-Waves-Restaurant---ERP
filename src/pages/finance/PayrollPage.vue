@@ -325,7 +325,7 @@ async function loadData() {
       fetchEmployeeSalaryStructures(),
     ])
     // Only display payroll runs that have been posted to the General Ledger in Finance
-    cycles.value = runs.filter((r) => (r.slip_summary?.posted || 0) > 0 || ['paid', 'posted'].includes(r.status))
+    cycles.value = runs.filter((r) => (r.slip_summary?.posted || 0) > 0)
     employeeData.value = empRes.data || []
   } catch (e) {
     console.error('[PayrollOverview]', e)
