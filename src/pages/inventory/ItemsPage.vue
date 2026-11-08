@@ -78,6 +78,13 @@
       <template #body-cell-actions="props">
         <q-td :props="props" auto-width>
           <q-btn
+            flat dense round icon="compare_arrows" color="teal-8" size="sm"
+            aria-label="Compare supplier prices"
+            @click="openPriceComparison(props.row)"
+          >
+            <q-tooltip>Compare Supplier Prices & History</q-tooltip>
+          </q-btn>
+          <q-btn
             flat dense round icon="edit" color="primary" size="sm"
             aria-label="Edit item"
             @click="openEditDialog(props.row)"
@@ -216,6 +223,12 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Supplier Price Comparison Dialog -->
+    <SupplierPriceComparisonDialog
+      v-model="showPriceComparison"
+      :item-id="selectedItemIdForPrice"
+    />
   </q-page>
 </template>
 
@@ -223,6 +236,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import ErpPageHeader from 'components/common/ErpPageHeader.vue'
+import SupplierPriceComparisonDialog from 'src/components/inventory/SupplierPriceComparisonDialog.vue'
 import { useAuthStore } from 'src/stores/auth'
 import {
   useItemsList,
@@ -257,6 +271,9 @@ const categoryFilter = ref(null)
 const dialogOpen     = ref(false)
 const isEdit         = ref(false)
 const saving         = ref(false)
+
+const showPriceComparison = ref(false)
+const selectedItemIdForPrice = ref('')
 
 const emptyForm = () => ({
   id:               null,
@@ -315,7 +332,7 @@ const filteredItems = computed(() => {
   return list
 })
 
-// ── Dialog helpers ────────────────────────────────────────────────────────────
+// ── Dialog helpers ────────────────────────────────────────────────────
 function openAddDialog() {
   isEdit.value     = false
   form.value       = emptyForm()
@@ -338,7 +355,12 @@ function openEditDialog(row) {
   dialogOpen.value = true
 }
 
-// ── Save ──────────────────────────────────────────────────────────────────────
+function openPriceComparison(row) {
+  selectedItemIdForPrice.value = row.id
+  showPriceComparison.value = true
+}
+
+// ── Save ──────────────────────────────────────────────────────────────
 async function saveItem() {
   if (!form.value.code || !form.value.name || !form.value.category_id || !form.value.inventory_uom_id) {
     $q.notify({ type: 'warning', message: 'Please fill in all required fields.' })
@@ -380,7 +402,7 @@ async function saveItem() {
   }
 }
 
-// ── Toggle active ─────────────────────────────────────────────────────────────
+// ── Toggle active ─────────────────────────────────────────────────────
 async function toggleActive(row) {
   try {
     await updateItem(row.id, { is_active: !row.is_active })
@@ -391,7 +413,7 @@ async function toggleActive(row) {
   }
 }
 
-// ── Delete ────────────────────────────────────────────────────────────────────
+// ── Delete ────────────────────────────────────────────────────────────
 function confirmDelete(row) {
   $q.dialog({
     title:   'Confirm Delete',

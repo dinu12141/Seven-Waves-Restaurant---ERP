@@ -444,6 +444,11 @@ const routes = [
           },
           { path: 'variance', component: () => import('pages/reports/VarianceReport.vue'), meta: { permission: 'reports.variance.view' } },
           {
+            path: 'monthly-cogs',
+            component: () => import('pages/reports/MonthlyInventoryCostReport.vue'),
+            meta: { permission: 'reports.inventory.view' },
+          },
+          {
             path: 'kot-deduction-log',
             component: () => import('pages/reports/KotDeductionLog.vue'),
             meta: { permission: 'reports.kot_deduction_log.view' },

@@ -351,6 +351,13 @@ export const REPORT_GROUPS = [
         description: 'Purchase vs usage variance',
       },
       {
+        id: 'monthly-cogs',
+        label: 'Monthly Inventory Cost (COGS)',
+        icon: 'assessment',
+        route: '/reports/monthly-cogs',
+        description: 'Monthly inventory cost, moving weighted average valuation, and COGS variance',
+      },
+      {
         id: 'variance',
         label: 'Variance Report',
         icon: 'troubleshoot',
