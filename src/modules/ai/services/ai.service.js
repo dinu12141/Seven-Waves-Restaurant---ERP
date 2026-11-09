@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
+import { naturalLanguageDbAgent } from 'src/services/ai/naturalLanguageDbAgent'
 import { sendEmail } from 'src/services/notifications/notificationGatewayService'
 import { businessDateStr, dayStartISO } from 'src/services/reportFilters'
 import {
@@ -147,20 +148,18 @@ async function invokeAi(action, payload) {
     }
 
     if (action === 'chat_assistant') {
-      const msg = (payload.message || '').toLowerCase()
-      let reply = 'I am your local Seven Waves AI Assistant. How can I help you manage the restaurant today?'
-      
-      if (msg.includes('kitchen')) {
-        reply = 'The kitchen is currently operating smoothly. Average ticket time is 14 minutes, with 0 delayed orders in the last hour.'
-      } else if (msg.includes('sales')) {
-        reply = 'Sales are looking good. You are on track to meet today\'s revenue target.'
-      } else if (msg.includes('inventory')) {
-        reply = 'Inventory levels are mostly stable. However, a few fast-moving items might need restocking soon.'
-      }
-
+      const branchId = payload.branch_id
+      const message = payload.message || ''
+      const res = await naturalLanguageDbAgent.processQuery(message, branchId)
       return {
         success: true,
-        data: { message: reply }
+        data: {
+          message: res.answer,
+          intent: res.intent,
+          confidence: res.confidence,
+          suggestions: res.suggestions || [],
+          data: res.data
+        }
       }
     }
 
