@@ -51,16 +51,41 @@ export async function runDailySummary() {
   console.log(`📱 Recipient Phone: +${cleanPhone(targetPhone)}`)
   console.log(`====================================================================\n`)
 
-  // 1. Fetch Today's GRNs (Goods Received)
-  const { data: grns } = await s
+  // 1. Fetch Today's GRNs (Both inventory_documents and goods_receipts)
+  const { data: grnDocs } = await s
+    .from('inventory_documents')
+    .select(`
+      id, doc_number, doc_date, total_qty, total_cost, status, remarks,
+      supplier:suppliers(id, name, phone),
+      lines:inventory_document_lines(id, item_id, quantity, unit_cost, line_total, tax_amount, item:items(name, code))
+    `)
+    .eq('doc_date', targetDate)
+    .eq('doc_type', 'GRN')
+    .neq('status', 'cancelled')
+
+  const { data: grnReceipts } = await s
     .from('goods_receipts')
     .select(`
       id, doc_number, doc_date, subtotal, tax_amount, total_amount, status,
       supplier:suppliers(id, name, phone),
-      lines:goods_receipt_lines(id, item_id, quantity, unit_cost, line_total, item:items(name, code, uom(code)))
+      lines:goods_receipt_lines(id, item_id, quantity, unit_cost, line_total, item:items(name, code))
     `)
     .eq('doc_date', targetDate)
     .neq('status', 'cancelled')
+
+  const grns = [...(grnDocs || []).map(d => ({
+    doc_number: d.doc_number,
+    supplier: d.supplier,
+    total_amount: Number(d.total_cost || 0),
+    tax_amount: (d.lines || []).reduce((sum, l) => sum + Number(l.tax_amount || 0), 0),
+    lines: d.lines || []
+  })), ...(grnReceipts || []).map(r => ({
+    doc_number: r.doc_number,
+    supplier: r.supplier,
+    total_amount: Number(r.total_amount || 0),
+    tax_amount: Number(r.tax_amount || 0),
+    lines: r.lines || []
+  }))]
 
   // 2. Fetch Today's GINs (Goods Issued)
   const { data: gins } = await s
@@ -68,7 +93,7 @@ export async function runDailySummary() {
     .select(`
       id, doc_number, doc_date, doc_type, status, remarks, warehouse_id, target_warehouse_id,
       target_warehouse:warehouses!target_warehouse_id(name),
-      lines:inventory_document_lines(id, item_id, quantity, unit_cost, item:items(name, code, category:item_categories(name)))
+      lines:inventory_document_lines(id, item_id, quantity, unit_cost, line_total, item:items(name, code))
     `)
     .eq('doc_date', targetDate)
     .in('doc_type', ['GIN', 'GIN_ISSUE', 'WASTAGE'])
@@ -92,18 +117,18 @@ export async function runDailySummary() {
     .from('stock_on_hand')
     .select(`
       item_id, qty_on_hand,
-      item:items(id, name, code, reorder_level, uom(code), category:item_categories(name), is_active)
+      items(id, name, code, reorder_level, is_active)
     `)
 
   const stockByItem = new Map()
   for (const row of allStock || []) {
-    if (!row.item || !row.item.is_active) continue
+    const it = row.items
+    if (!it || it.is_active === false) continue
     const curr = stockByItem.get(row.item_id) || {
-      name: row.item.name,
-      code: row.item.code,
-      uom: row.item.uom?.code || 'PCS',
-      category: row.item.category?.name || 'General',
-      reorder_level: Number(row.item.reorder_level || 0),
+      name: it.name,
+      code: it.code,
+      uom: 'PCS',
+      reorder_level: Number(it.reorder_level || 0),
       qty_on_hand: 0
     }
     curr.qty_on_hand += Number(row.qty_on_hand || 0)
