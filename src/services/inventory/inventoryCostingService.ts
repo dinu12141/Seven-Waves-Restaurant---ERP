@@ -374,12 +374,39 @@ export const inventoryCostingService = {
       } else if (leg.doc_type === 'GIN' || leg.doc_type === 'GIN_ISSUE' || leg.doc_type === 'BOM_DEDUCT') {
         // Categorize into Food Cost vs Operating Supplies
         const cat = (row.categoryName || '').toLowerCase()
+        const iName = (row.itemName || '').toLowerCase()
         const isOperating =
           cat.includes('clean') ||
           cat.includes('fuel') ||
           cat.includes('gas') ||
           cat.includes('chemical') ||
-          cat.includes('hygiene')
+          cat.includes('hygiene') ||
+          iName.includes('bleach') ||
+          iName.includes('soap') ||
+          iName.includes('detergent') ||
+          iName.includes('clean') ||
+          iName.includes('wash') ||
+          iName.includes('dishwash') ||
+          iName.includes('handwash') ||
+          iName.includes('sanit') ||
+          iName.includes('disinfect') ||
+          iName.includes('harpic') ||
+          iName.includes('vim') ||
+          iName.includes('toilet') ||
+          iName.includes('gas') ||
+          iName.includes('lpg') ||
+          iName.includes('fuel') ||
+          iName.includes('broom') ||
+          iName.includes('brush') ||
+          iName.includes('idal') ||
+          iName.includes('kohu') ||
+          iName.includes('coir') ||
+          iName.includes('mop') ||
+          iName.includes('scrubber') ||
+          (iName.includes('sponge') && !iName.includes('mix') && !iName.includes('cake')) ||
+          iName.includes('serviette') ||
+          iName.includes('paper towel') ||
+          iName.includes('tissue')
 
         if (isOperating) {
           row.operatingIssuesQty += qty

@@ -690,7 +690,7 @@ async function onPost() {
     header.posted_at = doc.posted_at || new Date().toISOString()
 
     // 3. Post to Finance if GIN issue (COGS / Operating Expenses)
-    if (['GIN', 'GIN_ISSUE', 'WASTAGE'].includes(header.doc_type) && !header.target_warehouse_id) {
+    if (['GIN', 'GIN_ISSUE', 'WASTAGE'].includes(header.doc_type)) {
       try {
         await postGinToFinance(header.id)
       } catch (finErr) {

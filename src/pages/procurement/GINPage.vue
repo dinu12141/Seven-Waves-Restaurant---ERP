@@ -656,10 +656,12 @@ async function saveAndPost() {
   saving.value = true
   try {
     const targetWhId = form.value.target_warehouse?.id || form.value.target_warehouse || null
-    const isTransfer = !!targetWhId
-    const docType = isTransfer ? 'TRANSFER' : 'GIN'
+    const targetWh = warehouses.value.find(w => w.id === targetWhId)
+    // In GIN page, internal issues to kitchens or departments are GINs (consumption), NOT store transfers
+    const docType = 'GIN'
 
     const remarks = form.value.issue_purpose
+      + (targetWh ? ` [Kitchen / Section: ${targetWh.name}]` : '')
       + (form.value.remarks ? ` — ${form.value.remarks}` : '')
 
     const doc = await createDocument(
@@ -682,20 +684,16 @@ async function saveAndPost() {
     await postDocument(doc.id)
 
     let finResult = null
-    if (!isTransfer) {
-      try {
-        finResult = await postGinToFinance(doc.id)
-      } catch (finErr) {
-        console.error('Finance posting failed for GIN:', finErr)
-      }
+    try {
+      finResult = await postGinToFinance(doc.id)
+    } catch (finErr) {
+      console.error('Finance posting failed for GIN:', finErr)
     }
 
     $q.notify({
       type: 'positive',
-      message: isTransfer
-        ? `Transfer ${doc.doc_number} posted — stock moved to ${form.value.target_warehouse?.name || 'target store'}.`
-        : `GIN ${doc.doc_number} posted — stock deducted & finance entries posted (COGS / Expenses).`,
-      caption: finResult?.success ? `Finance: ${finResult.entries?.map(e => `${e.debitLedgerCode} Dr`).join(', ')}` : undefined,
+      message: `GIN ${doc.doc_number} posted — stock deducted & finance entries posted (COGS / Expenses).`,
+      caption: finResult?.success ? `Finance entries posted successfully.` : undefined,
     })
     dialogVisible.value = false
     await fetchGins()
