@@ -450,6 +450,45 @@ app.post('/send-pdf', async (req, res) => {
   }
 });
 
+// ── Send Plain Text WhatsApp Message API ──────────────────────────────────────
+app.post('/send-message', async (req, res) => {
+  if (!isConnected || !sock) {
+    return res.status(503).json({
+      success: false,
+      error: 'WhatsApp is not connected. Please scan the QR code first.'
+    });
+  }
+
+  try {
+    const { phone, message } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'Phone number is required.' });
+    }
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'Message text is required.' });
+    }
+
+    const clean = cleanPhone(phone);
+    const jid = `${clean}@s.whatsapp.net`;
+
+    console.log(`[WhatsApp Bridge] Sending text message to +${clean}...`);
+    const result = await sock.sendMessage(jid, { text: message });
+    console.log(`[WhatsApp Bridge] ✅ Text message delivered:`, result?.key?.id);
+
+    return res.json({
+      success: true,
+      recipient: clean,
+      messageId: result?.key?.id
+    });
+  } catch (err) {
+    console.error('[WhatsApp Bridge] ❌ Error sending text message:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to dispatch WhatsApp text message.'
+    });
+  }
+});
+
 // ── Send Test PDF API ────────────────────────────────────────────────────────
 app.post('/send-test', async (req, res) => {
   if (!isConnected || !sock) {

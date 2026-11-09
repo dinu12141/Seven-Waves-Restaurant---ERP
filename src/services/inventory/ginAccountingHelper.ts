@@ -13,7 +13,7 @@ export interface AccountAllocation {
   debitLedgerName: string
   creditLedgerCode: string
   creditLedgerName: string
-  allocationType: 'COGS' | 'EXPENSE'
+  allocationType: 'COGS' | 'OPERATING_EXPENSE'
 }
 
 /**
@@ -22,7 +22,7 @@ export interface AccountAllocation {
  */
 export function resolveItemGinAccounts(
   item: { name?: string; code?: string; category_name?: string } | null,
-  issuePurpose?: string
+  issuePurpose?: string,
 ): AccountAllocation {
   const itemName = (item?.name || '').toLowerCase()
   const catName = (item?.category_name || '').toLowerCase()
@@ -35,7 +35,7 @@ export function resolveItemGinAccounts(
       debitLedgerName: 'Staff Welfare',
       creditLedgerCode: '1005',
       creditLedgerName: 'Inventory - Raw Materials',
-      allocationType: 'EXPENSE',
+      allocationType: 'OPERATING_EXPENSE',
     }
   }
 
@@ -99,7 +99,7 @@ export function resolveItemGinAccounts(
       debitLedgerName: 'Cleaning & Sanitation Expenses',
       creditLedgerCode: '1009',
       creditLedgerName: 'Inventory - Cleaning Materials',
-      allocationType: 'EXPENSE',
+      allocationType: 'OPERATING_EXPENSE',
     }
   }
 
@@ -118,7 +118,7 @@ export function resolveItemGinAccounts(
       debitLedgerName: 'Gas Expense',
       creditLedgerCode: '1005',
       creditLedgerName: 'Inventory - Raw Materials',
-      allocationType: 'EXPENSE',
+      allocationType: 'OPERATING_EXPENSE',
     }
   }
 
@@ -171,7 +171,9 @@ export function resolveItemGinAccounts(
 /**
  * Posts double-entry legs to finance for a posted GIN document.
  */
-export async function postGinToFinance(docId: string): Promise<{ success: boolean; linesPosted: number }> {
+export async function postGinToFinance(
+  docId: string,
+): Promise<{ success: boolean; linesPosted: number }> {
   // 1. Try calling the dedicated server-side RPC if available
   try {
     const { data: rpcRes, error: rpcErr } = await supabase.rpc('fn_fin_post_gin', { p_doc_id: docId })
@@ -325,4 +327,3 @@ export async function postGinToFinance(docId: string): Promise<{ success: boolea
 
   return { success: true, linesPosted }
 }
-

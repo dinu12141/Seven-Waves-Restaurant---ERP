@@ -258,3 +258,4 @@ FOR EACH ROW
 EXECUTE FUNCTION public.trg_fn_auto_post_gin_to_finance();
 
 COMMIT;
+
