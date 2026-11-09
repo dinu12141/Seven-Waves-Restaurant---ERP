@@ -212,30 +212,51 @@
                   </div>
                 </div>
 
-                <!-- TAX AMOUNT -->
-                <div class="row justify-between items-center q-mb-sm q-col-gutter-sm" v-if="form.supplier?.tax_id">
+                <!-- TAX / VAT (Asset 1010 Input VAT) (% or Fixed) -->
+                <div class="row justify-between items-center q-mb-sm q-col-gutter-sm">
                   <div class="col-auto row items-center">
-                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-sm">Tax Amount</span>
+                    <span style="font-size: 14px; color: var(--erp-text-secondary)" class="q-mr-xs">Tax / VAT</span>
+                    <q-badge color="teal-8" text-color="white" label="1010 Asset" class="q-mr-sm text-caption" style="font-size: 10px" />
+                    <q-btn-toggle
+                      v-model="form.tax_type"
+                      :options="[
+                        {label: '%', value: 'percentage'},
+                        {label: 'Fixed', value: 'amount'}
+                      ]"
+                      size="sm"
+                      dense
+                      unelevated
+                      toggle-color="primary"
+                      class="border"
+                      :disable="!isAuthorizedEditor"
+                    />
                   </div>
                   <div class="col-4">
                     <q-input
-                      v-model.number="form.tax_pct"
+                      v-model.number="form.tax_value"
                       type="number"
                       dense
                       outlined
                       min="0"
-                      max="100"
+                      :max="form.tax_type === 'percentage' ? 100 : undefined"
                       input-class="text-right"
                       :readonly="!isAuthorizedEditor"
                     >
-                      <template v-slot:append>
+                      <template v-slot:append v-if="form.tax_type === 'percentage'">
                         <span class="text-caption">%</span>
+                      </template>
+                      <template v-slot:append v-else>
+                        <span class="text-caption" style="font-size: 10px">LKR</span>
                       </template>
                     </q-input>
                   </div>
-                  <div class="col-auto text-right text-primary" style="font-size: 16px; font-weight: 500; min-width: 90px;">
+                  <div class="col-auto text-right text-primary text-weight-bold" style="font-size: 16px; min-width: 90px;">
                     + {{ formatCurrency(taxAmount) }}
                   </div>
+                </div>
+                <div v-if="form.supplier?.tax_id" class="text-caption text-grey-6 text-right q-mb-xs" style="font-size: 11px">
+                  <q-icon name="verified" size="12px" color="positive" class="q-mr-xs" />
+                  Supplier TIN: <strong>{{ form.supplier.tax_id }}</strong>
                 </div>
 
                 <q-separator class="q-my-sm" />
@@ -381,6 +402,8 @@ const defaultForm = {
   lines: [],
   discount_type: 'percentage',
   discount_value: 0,
+  tax_type: 'percentage',
+  tax_value: 0,
   tax_pct: 0,
   tax_amount: 0,
   total_amount: 0,
@@ -415,8 +438,11 @@ const totalDiscountAmount = computed(() => itemDiscountsTotal.value + billDiscou
 
 const taxAmount = computed(() => {
   const taxable_amount = Math.max(0, netLinesSubtotal.value - billDiscountAmount.value)
-  const pct = Math.min(100, Math.max(0, Number(form.value.tax_pct) || 0))
-  return (taxable_amount * pct) / 100
+  const val = Math.max(0, Number(form.value.tax_value) || 0)
+  if (form.value.tax_type === 'percentage') {
+    return (taxable_amount * Math.min(100, val)) / 100
+  }
+  return val
 })
 
 const totalAmount = computed(() => Math.max(0, netLinesSubtotal.value - billDiscountAmount.value) + taxAmount.value)
@@ -617,6 +643,8 @@ async function editGRN(row) {
     warehouse_id: row.warehouse_id || '',
     discount_type: row.discount_type || 'percentage',
     discount_value: row.discount_value || 0,
+    tax_type: (Number(row.tax_amount || 0) > 0 && !Number(row.tax_pct || 0)) ? 'amount' : 'percentage',
+    tax_value: (Number(row.tax_amount || 0) > 0 && !Number(row.tax_pct || 0)) ? Number(row.tax_amount) : Number(row.tax_pct || 0),
     tax_pct: row.tax_pct || 0,
     tax_amount: row.tax_amount || 0,
     total_amount: row.total_amount || 0,
@@ -702,6 +730,8 @@ async function editGRN(row) {
           : null),
       discount_type: full.discount_type || 'percentage',
       discount_value: full.discount_value || 0,
+      tax_type: (Number(full.tax_amount || 0) > 0 && !Number(full.tax_pct || 0)) ? 'amount' : 'percentage',
+      tax_value: (Number(full.tax_amount || 0) > 0 && !Number(full.tax_pct || 0)) ? Number(full.tax_amount) : Number(full.tax_pct || 0),
       tax_pct: full.tax_pct || 0,
       tax_amount: full.tax_amount || 0,
       total_amount: full.total_amount || 0,
@@ -843,7 +873,7 @@ async function saveGRN() {
           discount_value: form.value.discount_value,
           discount_amount: totalDiscountAmount.value,
           subtotal: grossSubtotal.value,
-          tax_pct: form.value.tax_pct,
+          tax_pct: form.value.tax_type === 'percentage' ? (Number(form.value.tax_value) || 0) : ((taxAmount.value / Math.max(1, netLinesSubtotal.value - billDiscountAmount.value)) * 100),
           tax_amount: taxAmount.value,
           total_amount: totalAmount.value,
         },
@@ -888,7 +918,7 @@ async function saveGRN() {
           discount_value: form.value.discount_value,
           discount_amount: totalDiscountAmount.value,
           subtotal: grossSubtotal.value,
-          tax_pct: form.value.tax_pct,
+          tax_pct: form.value.tax_type === 'percentage' ? (Number(form.value.tax_value) || 0) : ((taxAmount.value / Math.max(1, netLinesSubtotal.value - billDiscountAmount.value)) * 100),
           tax_amount: taxAmount.value,
           total_amount: totalAmount.value,
         },

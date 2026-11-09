@@ -1324,12 +1324,64 @@ export async function updateGRN(grnId: string, header: Partial<GoodsReceipt>, li
 /**
  * Post a GRN via safe RPC wrapper.
  * On success: stock updated, PO received_qty updated, avg cost recalculated.
+ * If GRN has tax or needs an AP bill, pre-creates AP invoice so Dr 1005 + Dr 1010 / Cr 2000
+ * are accurately balanced upon posting.
  */
 export async function postGRN(
   grnId: string,
 ): Promise<{ success: boolean; doc_number?: string; error?: string }> {
+  // 1. Fetch GRN header to check tax and supplier details
+  const { data: grn } = await supabase
+    .from('goods_receipts')
+    .select('id, doc_number, supplier_id, subtotal, tax_amount, total_amount, status')
+    .eq('id', grnId)
+    .single()
+
+  const taxAmount = Number(grn?.tax_amount) || 0
+
+  // 2. Check if an AP invoice already exists for this GRN
+  const { data: existingInvoices } = await supabase
+    .from('ap_invoices')
+    .select('id, status')
+    .eq('grn_id', grnId)
+    .neq('status', 'cancelled')
+
+  let createdInvId: string | null = null
+
+  if ((!existingInvoices || existingInvoices.length === 0) && grn) {
+    try {
+      const inv = await createInvoiceFromGRN(grnId, { tax_amount: taxAmount })
+      if (inv?.id) {
+        createdInvId = inv.id
+      }
+    } catch (e) {
+      console.warn('[postGRN] Could not pre-create AP invoice, falling back to trigger:', e)
+    }
+  }
+
+  // 3. Post GRN via safe RPC wrapper
   const { data, error } = await supabase.rpc('post_grn', { p_grn_id: grnId })
-  if (error) return { success: false, error: error.message }
+  if (error) {
+    if (createdInvId) {
+      try {
+        await supabase.from('ap_invoice_lines').delete().eq('invoice_id', createdInvId)
+        await supabase.from('ap_invoices').delete().eq('id', createdInvId)
+      } catch {
+        /* ignore cleanup */
+      }
+    }
+    return { success: false, error: error.message }
+  }
+
+  // 4. If we pre-created the invoice with tax, post it now so GL entries reflect Dr 1005 + Dr 1010 / Cr 2000
+  if (createdInvId) {
+    try {
+      await postInvoice(createdInvId)
+    } catch (e) {
+      console.warn('[postGRN] Auto-posting pre-created AP invoice failed:', e)
+    }
+  }
+
   return data as { success: boolean; doc_number?: string; error?: string }
 }
 
@@ -1475,7 +1527,8 @@ export async function createInvoiceFromGRN(
   })
 
   const subtotal = linePayloads.reduce((s: number, l: any) => s + l.quantity * l.unit_price, 0)
-  const taxAmount = Number(overrides.tax_amount) || 0
+  const taxAmount =
+    overrides.tax_amount !== undefined ? Number(overrides.tax_amount) : Number(grn.tax_amount) || 0
   const totalAmount = subtotal + taxAmount
 
   const { data: invoice, error: invErr } = await supabase
