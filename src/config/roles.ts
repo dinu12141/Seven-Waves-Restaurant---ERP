@@ -991,6 +991,16 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'Payroll',
   },
   {
+    label: 'Pay Grades',
+    icon: 'badge',
+    to: '/hr/pay-grades',
+    roles: ['admin', 'hr', 'manager'],
+    permission: 'hr.payroll.view',
+    section: 'HR',
+    moduleCode: 'HR',
+    group: 'Payroll',
+  },
+  {
     label: 'Commission',
     icon: 'monetization_on',
     to: '/hr/commission',

@@ -108,6 +108,10 @@ export class CliCustomerReservationAgent {
       .select('id, name, reservation_date, reservation_time, guests, status')
       .single()
 
+    if (error) {
+      console.warn('[CliCustomerReservationAgent] DB Insert warning:', error.message)
+    }
+
     const replyText = `🎉 *Table Reservation Request Received!* 🌊🍽️\n\n` +
       `Dear *${sender}*,\n` +
       `We have received your table booking request at *Seven Waves Restaurant*:\n\n` +
@@ -122,34 +126,59 @@ export class CliCustomerReservationAgent {
     return {
       replyText,
       intent: 'RESERVATION_CREATED',
-      reservationCreated: true,
+      reservationCreated: !error && !!inserted,
       reservationId: inserted?.id
     }
   }
 
   async handleMenuInquiry(raw, text) {
     let keyword = ''
-    if (text.includes('pizza')) keyword = 'pizza'
-    else if (text.includes('burger')) keyword = 'burger'
-    else if (text.includes('seafood') || text.includes('prawn') || text.includes('fish')) keyword = 'seafood'
-    else if (text.includes('coffee')) keyword = 'coffee'
-
     let query = this.client
       .from('menu_items')
-      .select('name, sale_price')
-      .limit(5)
+      .select('name, base_price, is_available')
+      .is('deleted_at', null)
+      .eq('is_available', true)
+      .limit(6)
 
-    if (keyword) query = query.ilike('name', `%${keyword}%`)
+    if (text.includes('pizza')) {
+      query = query.ilike('name', '%pizza%')
+      keyword = 'pizza'
+    } else if (text.includes('burger')) {
+      query = query.ilike('name', '%burger%')
+      keyword = 'burger'
+    } else if (text.includes('kottu') || text.includes('koththu')) {
+      query = query.or('name.ilike.%kottu%,name.ilike.%koththu%')
+      keyword = 'kottu'
+    } else if (text.includes('rice')) {
+      query = query.ilike('name', '%rice%')
+      keyword = 'rice'
+    } else if (text.includes('seafood') || text.includes('prawn') || text.includes('fish') || text.includes('crab')) {
+      query = query.or('name.ilike.%seafood%,name.ilike.%prawn%,name.ilike.%fish%,name.ilike.%crab%')
+      keyword = 'seafood'
+    } else if (text.includes('pasta') || text.includes('spaghetti')) {
+      query = query.or('name.ilike.%pasta%,name.ilike.%spaghetti%')
+      keyword = 'pasta'
+    } else if (text.includes('coffee') || text.includes('tea') || text.includes('juice') || text.includes('drink')) {
+      query = query.or('name.ilike.%coffee%,name.ilike.%tea%,name.ilike.%juice%')
+      keyword = 'beverages'
+    } else if (text.includes('dessert') || text.includes('cake') || text.includes('ice cream')) {
+      query = query.or('name.ilike.%dessert%,name.ilike.%cake%,name.ilike.%ice cream%')
+      keyword = 'desserts'
+    }
 
-    const { data: dishes } = await query
+    const { data: dishes, error: menuErr } = await query
+    if (menuErr) {
+      console.warn('[CliCustomerReservationAgent] Menu query warning:', menuErr.message)
+    }
 
     let replyText = `🍽️ *Seven Waves Restaurant Menu & Highlights* 🌊\n\n`
     if (dishes && dishes.length > 0) {
       replyText += `Here are our popular selections${keyword ? ' for *' + keyword.toUpperCase() + '*' : ''}:\n\n`
       for (const d of dishes) {
-        const price = Number(d.sale_price || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const price = Number(d.base_price || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         replyText += `• *${d.name}* — LKR ${price}\n`
       }
+      replyText += `\n_Fresh ingredients prepared daily by our executive culinary team._\n`
     } else {
       replyText += `We offer an extensive international menu including Gourmet Burgers, Pizzas, and Fresh Seafood!\n`
     }
@@ -187,6 +216,13 @@ async function runCliTests() {
   console.log(r1.replyText)
   console.log('Intent:', r1.intent, '| Created in DB:', r1.reservationCreated, '| ResID:', r1.reservationId)
 
+  if (r1.reservationId) {
+    const { error: delErr } = await supabase.from('website_reservations').delete().eq('id', r1.reservationId)
+    if (!delErr) {
+      console.log(`🧹 Cleaned up test reservation record (${r1.reservationId})`)
+    }
+  }
+
   console.log('\n🤖 Test 2: Customer Food Menu Inquiry')
   console.log('--------------------------------------------------')
   const r2 = await agent.handleCustomerMessage({
@@ -212,3 +248,4 @@ runCliTests().catch(err => {
   console.error('Test error:', err)
   process.exit(1)
 })
+

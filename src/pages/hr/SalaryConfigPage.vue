@@ -11,6 +11,7 @@
 
     <div class="row items-center q-mb-md q-gutter-sm">
       <q-btn color="primary" icon="add" label="Configure Salary" @click="openConfig()" no-caps />
+      <q-btn outline color="amber-5" icon="badge" label="Pay Grades & Fixed Additions" @click="$router.push('/hr/pay-grades')" no-caps />
       <q-space />
       <q-input
         dark

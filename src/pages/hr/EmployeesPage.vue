@@ -191,6 +191,20 @@
         </q-td>
       </template>
 
+      <template #body-cell-pay_grade="props">
+        <q-td :props="props" class="text-center">
+          <q-badge
+            v-if="employeeGradeAssignments[props.row.id]"
+            color="amber-9"
+            text-color="black"
+            class="text-weight-bolder q-px-sm"
+          >
+            {{ employeeGradeAssignments[props.row.id] }}
+          </q-badge>
+          <span v-else :class="$q.dark.isActive ? 'text-grey-6' : 'text-grey-4'">—</span>
+        </q-td>
+      </template>
+
       <template #body-cell-actions="props">
         <q-td :props="props" class="q-gutter-xs">
           <q-btn
@@ -713,6 +727,25 @@
                 $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
               ]"
             >
+              <div class="col-12 col-md-6">
+                <div class="text-caption">Pay Grade (Fixed Additions)</div>
+                <q-select
+                  :dark="$q.dark.isActive"
+                  outlined
+                  dense
+                  v-model="form.pay_grade"
+                  :options="payGradeOptions"
+                  emit-value
+                  map-options
+                  clearable
+                  placeholder="Select Pay Grade (e.g. CR 02)"
+                >
+                  <template #prepend>
+                    <q-icon name="workspace_premium" color="amber-5" />
+                  </template>
+                </q-select>
+              </div>
+
               <div class="col-12 col-md-6">
                 <div class="text-caption">Salary Method *</div>
                 <div class="row no-wrap items-center">
@@ -1634,6 +1667,25 @@
                     </div>
                     <div
                       :class="[
+                        'q-pa-sm text-caption rounded-borders row items-center justify-between',
+                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
+                      ]"
+                    >
+                      <div>
+                        Pay Grade:
+                        <span
+                          :class="[
+                            'text-weight-bold',
+                            viewEmpGradeCode ? 'text-amber-5' : ($q.dark.isActive ? 'text-grey-5' : 'text-grey-6'),
+                          ]"
+                        >{{ viewEmpGradeCode || 'None Assigned' }}</span>
+                      </div>
+                      <q-badge v-if="viewEmpGradeCode" color="amber-9" text-color="black" class="text-weight-bold">
+                        {{ viewEmpPayGrade?.name || viewEmpGradeCode }}
+                      </q-badge>
+                    </div>
+                    <div
+                      :class="[
                         'q-pa-sm text-caption rounded-borders q-mb-md',
                         $q.dark.isActive ? 'text-grey-3' : 'text-grey-9',
                       ]"
@@ -1795,6 +1847,18 @@
                       :class="['text-subtitle2', $q.dark.isActive ? 'text-grey-4' : 'text-grey-9']"
                       >HR Allowance</span
                     >
+                    <div class="row items-center q-gutter-xs">
+                      <q-badge
+                        v-if="viewEmpGradeCode"
+                        color="amber-9"
+                        text-color="black"
+                        class="text-weight-bolder q-px-sm q-py-xs"
+                      >
+                        <q-icon name="workspace_premium" size="14px" class="q-mr-xs" />
+                        GRADE: {{ viewEmpGradeCode }}
+                      </q-badge>
+                      <q-badge v-else outline color="grey-6" class="q-px-xs">No Pay Grade Assigned</q-badge>
+                    </div>
                   </div>
                   <q-markup-table
                     :dark="$q.dark.isActive"
@@ -1821,51 +1885,73 @@
                             $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
                           ]"
                         >
-                          Amount
+                          Amount (LKR)
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-if="viewEmpSalary?.housing_allowance > 0">
+                      <!-- Pay Grade Fixed Additions -->
+                      <tr
+                        v-for="add in viewEmpPayGradeAdditions"
+                        :key="add.id || add.additionCode"
+                      >
+                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+                          <q-badge
+                            :color="$q.dark.isActive ? 'grey-8' : 'amber-2'"
+                            :text-color="$q.dark.isActive ? 'amber-4' : 'brown-10'"
+                            class="q-mr-xs font-mono text-weight-bold"
+                          >
+                            {{ add.additionCode }}
+                          </q-badge>
+                          {{ add.additionName }}
+                        </td>
+                        <td :class="['text-right text-weight-medium', $q.dark.isActive ? 'text-white' : 'text-dark']">
+                          {{ Number(add.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                        </td>
+                      </tr>
+
+                      <!-- Standalone Allowances if configured -->
+                      <tr v-if="viewEmpSalary?.housing_allowance > 0 && !viewEmpPayGradeAdditions.some((a) => (a.additionName || '').toUpperCase().includes('HOUSING'))">
                         <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
                           Housing Allowance
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ Number(viewEmpSalary.housing_allowance).toFixed(2) }}
+                          {{ Number(viewEmpSalary.housing_allowance).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
-                      <tr v-if="viewEmpSalary?.transport_allowance > 0">
+                      <tr v-if="viewEmpSalary?.transport_allowance > 0 && !viewEmpPayGradeAdditions.some((a) => (a.additionName || '').toUpperCase().includes('TRANSPORT'))">
                         <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
                           Transport Allowance
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ Number(viewEmpSalary.transport_allowance).toFixed(2) }}
+                          {{ Number(viewEmpSalary.transport_allowance).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
-                      <tr v-if="viewEmpSalary?.meal_allowance > 0">
+                      <tr v-if="viewEmpSalary?.meal_allowance > 0 && !viewEmpPayGradeAdditions.some((a) => (a.additionName || '').toUpperCase().includes('MEAL'))">
                         <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
                           Meal Allowance
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ Number(viewEmpSalary.meal_allowance).toFixed(2) }}
+                          {{ Number(viewEmpSalary.meal_allowance).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
-                      <tr v-if="viewEmpSalary?.other_allowances > 0">
+                      <tr v-if="viewEmpPayGradeAdditions.length === 0 && viewEmpSalary?.other_allowances > 0">
                         <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
                           Other Allowances
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ Number(viewEmpSalary.other_allowances).toFixed(2) }}
+                          {{ Number(viewEmpSalary.other_allowances).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
                       <tr
                         v-if="
-                          !viewEmpSalary ||
-                          Number(viewEmpSalary.housing_allowance || 0) +
-                            Number(viewEmpSalary.transport_allowance || 0) +
-                            Number(viewEmpSalary.meal_allowance || 0) +
-                            Number(viewEmpSalary.other_allowances || 0) ===
-                            0
+                          viewEmpPayGradeAdditions.length === 0 &&
+                          (!viewEmpSalary ||
+                            Number(viewEmpSalary.housing_allowance || 0) +
+                              Number(viewEmpSalary.transport_allowance || 0) +
+                              Number(viewEmpSalary.meal_allowance || 0) +
+                              Number(viewEmpSalary.other_allowances || 0) ===
+                              0)
                         "
                       >
                         <td
@@ -1875,12 +1961,14 @@
                           No allowances configured
                         </td>
                       </tr>
-                      <tr>
-                        <td :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-9'">
+
+                      <!-- Summary Totals -->
+                      <tr class="bg-grey-9-opacity">
+                        <td :class="['text-weight-medium', $q.dark.isActive ? 'text-grey-3' : 'text-grey-9']">
                           Total Allowances :
                         </td>
-                        <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ viewEmpTotalAllowance.toFixed(2) }}
+                        <td :class="['text-right text-weight-bold', $q.dark.isActive ? 'text-white' : 'text-dark']">
+                          {{ viewEmpTotalAllowance.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
                       <tr>
@@ -1888,12 +1976,12 @@
                           Basic Salary :
                         </td>
                         <td :class="['text-right', $q.dark.isActive ? 'text-white' : 'text-dark']">
-                          {{ Number(viewEmpSalary?.basic_salary || 0).toFixed(2) }}
+                          {{ Number(viewEmpSalary?.basic_salary || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                         </td>
                       </tr>
                       <tr class="text-weight-bold">
                         <td :class="$q.dark.isActive ? 'text-amber-4' : 'text-orange-9'">
-                          Total :
+                          Total (Gross) :
                         </td>
                         <td
                           :class="[
@@ -1904,7 +1992,7 @@
                           {{
                             (
                               Number(viewEmpSalary?.basic_salary || 0) + viewEmpTotalAllowance
-                            ).toFixed(2)
+                            ).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                           }}
                         </td>
                       </tr>
@@ -2304,6 +2392,32 @@
                           map-options
                           clearable
                         />
+                      </div>
+
+                      <div
+                        :class="[
+                          'col-3 text-right q-pr-md text-weight-medium',
+                          $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                        ]"
+                      >
+                        Pay Grade
+                      </div>
+                      <div class="col-9">
+                        <q-select
+                          :dark="$q.dark.isActive"
+                          outlined
+                          dense
+                          v-model="viewForm.pay_grade"
+                          :options="payGradeOptions"
+                          emit-value
+                          map-options
+                          clearable
+                          placeholder="Select Pay Grade (e.g. CR 02)"
+                        >
+                          <template #prepend>
+                            <q-icon name="workspace_premium" color="amber-5" />
+                          </template>
+                        </q-select>
                       </div>
 
                       <div
@@ -4073,7 +4187,8 @@
 
 <script setup>
 import ERPToolbar from 'src/components/erp/ERPToolbar.vue'
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { payGradesService } from 'src/services/hr/payGradesService'
 import { useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { localYmd } from 'src/services/hr/hrDates'
@@ -4104,7 +4219,58 @@ const viewEmp = ref(null)
 const viewEmpPhotoUrl = ref('')
 const viewEmpSalary = ref(null)
 
+// ── Pay Grades & Fixed Additions State (Real-Time Reactivity) ─────────────────
+const payGradesList = ref([])
+const employeeGradeAssignments = ref({})
+
+const payGradeOptions = computed(() =>
+  payGradesList.value.map((g) => ({
+    label: `${g.code} — ${g.name} (${g.department || 'GENERAL'})`,
+    value: g.code,
+  }))
+)
+
+const viewEmpGradeCode = computed(() => {
+  if (!viewEmp.value) return ''
+  return employeeGradeAssignments.value[viewEmp.value.id] || viewForm.pay_grade || ''
+})
+
+const viewEmpPayGrade = computed(() => {
+  if (!viewEmpGradeCode.value) return null
+  return payGradesList.value.find((g) => g.code === viewEmpGradeCode.value) || null
+})
+
+const viewEmpPayGradeAdditions = computed(() => {
+  return viewEmpPayGrade.value?.additions || []
+})
+
 const viewEmpTotalAllowance = computed(() => {
+  if (viewEmpPayGradeAdditions.value.length > 0) {
+    const gradeSum = viewEmpPayGradeAdditions.value.reduce(
+      (sum, a) => sum + (Number(a.amount) || 0),
+      0
+    )
+    const s = viewEmpSalary.value
+    let standalone = 0
+    if (s) {
+      const hasHousing = viewEmpPayGradeAdditions.value.some((a) =>
+        (a.additionName || '').toUpperCase().includes('HOUSING')
+      )
+      const hasTransport = viewEmpPayGradeAdditions.value.some((a) =>
+        (a.additionName || '').toUpperCase().includes('TRANSPORT')
+      )
+      const hasMeal = viewEmpPayGradeAdditions.value.some((a) =>
+        (a.additionName || '').toUpperCase().includes('MEAL')
+      )
+      if (!hasHousing && Number(s.housing_allowance || 0) > 0)
+        standalone += Number(s.housing_allowance)
+      if (!hasTransport && Number(s.transport_allowance || 0) > 0)
+        standalone += Number(s.transport_allowance)
+      if (!hasMeal && Number(s.meal_allowance || 0) > 0)
+        standalone += Number(s.meal_allowance)
+    }
+    return gradeSum + standalone
+  }
   if (!viewEmpSalary.value) return 0
   const s = viewEmpSalary.value
   return (
@@ -4721,6 +4887,7 @@ function onBankChange(formObj) {
 
 const defaultForm = {
   id: null,
+  pay_grade: '',
   employee_code: '',
   attendance_device_id: '',
   first_name: '',
@@ -4865,6 +5032,13 @@ const columns = [
     label: 'DESIGNATION',
     align: 'left',
     field: (r) => r.designations?.title || '—',
+    sortable: true,
+  },
+  {
+    name: 'pay_grade',
+    label: 'PAY GRADE',
+    align: 'center',
+    field: (r) => employeeGradeAssignments.value[r.id] || '—',
     sortable: true,
   },
   {
@@ -5699,6 +5873,7 @@ function removeArea(idx) {
 }
 
 const viewForm = reactive({
+  pay_grade: '',
   first_name: '',
   last_name: '',
   title: 'Mr.',
@@ -5944,6 +6119,7 @@ async function openForm(emp) {
 
 function populateViewForm(emp) {
   viewEmp.value = emp
+  viewForm.pay_grade = employeeGradeAssignments.value[emp.id] || ''
 
   viewForm.first_name = emp.first_name || ''
   viewForm.last_name = emp.last_name || ''
@@ -5997,31 +6173,9 @@ async function viewEmployee(emp) {
   // Clear previous data while loading
   viewEmpSalary.value = null
 
-  // Run heavy extra DB queries as non-blocking background tasks
-  const fetchSalary = async () => {
-    try {
-      const { data } = await supabase
-        .from('salary_structures')
-        .select('*')
-        .eq('employee_id', emp.id)
-        .eq('is_current', true)
-        .limit(1)
-        .single()
-      viewEmpSalary.value = data || null
-      // populate viewForm for EPF auto-calc
-      if (data) {
-        viewForm.basic_salary = data.basic_salary ?? 0
-        viewForm.epf_employee_pct = data.epf_employee_pct ?? 8
-        viewForm.epf_etf_eligible = emp.epf_etf_eligible ?? false
-      }
-    } catch {
-      viewEmpSalary.value = null
-    }
-  }
-
   // Fire and forget all at once so the dialog doesn't block the user
   Promise.all([
-    fetchSalary(),
+    fetchSalaryForEmp(emp.id),
     loadEmpDocuments(emp.id).catch(console.error),
     loadEmpLeaveBalances(emp.id).catch(console.error),
     loadEmpAdvances(emp.id).catch(console.error),
@@ -6246,6 +6400,12 @@ async function saveEmployee() {
       await uploadEmployeePhoto(targetEmpId, userPicFile)
     }
 
+    // ── Auto-assign pay grade if selected ──────────────────────────
+    if (rawPayload.pay_grade && targetEmpId) {
+      await payGradesService.assignEmployeeToGrade(targetEmpId, rawPayload.pay_grade, true, supabase)
+      employeeGradeAssignments.value[targetEmpId] = rawPayload.pay_grade
+    }
+
     // ── Auto-save salary structure ──────────────────────────────────
     if (targetEmpId) {
       salaryPayload.employee_id = targetEmpId
@@ -6335,6 +6495,20 @@ async function updateProfile() {
         .single()
       if (empData?.photo_url) viewEmpPhotoUrl.value = empData.photo_url
       viewForm.user_pic = null
+    }
+
+    // Sync Pay Grade assignment if changed
+    if (viewEmp.value?.id) {
+      const currentGrade = employeeGradeAssignments.value[viewEmp.value.id] || ''
+      if (viewForm.pay_grade !== currentGrade) {
+        await payGradesService.assignEmployeeToGrade(viewEmp.value.id, viewForm.pay_grade || '', true, supabase)
+        if (viewForm.pay_grade) {
+          employeeGradeAssignments.value[viewEmp.value.id] = viewForm.pay_grade
+        } else {
+          delete employeeGradeAssignments.value[viewEmp.value.id]
+        }
+        await fetchSalaryForEmp(viewEmp.value.id)
+      }
     }
 
     $q.notify({ type: 'positive', message: 'Employee profile updated successfully' })
@@ -6781,9 +6955,136 @@ function exportExcel() {
 
 watch(statusFilter, () => loadEmployees())
 
+// ── Pay Grades Real-Time Synchronization Logic ───────────────────────────────
+async function fetchSalaryForEmp(empId) {
+  if (!empId) {
+    viewEmpSalary.value = null
+    return
+  }
+  try {
+    const { data } = await supabase
+      .from('salary_structures')
+      .select('*')
+      .eq('employee_id', empId)
+      .eq('is_current', true)
+      .limit(1)
+      .maybeSingle()
+    viewEmpSalary.value = data || null
+    if (data) {
+      viewForm.basic_salary = data.basic_salary ?? 0
+      viewForm.epf_employee_pct = data.epf_employee_pct ?? 8
+      if (viewEmp.value) {
+        viewForm.epf_etf_eligible = viewEmp.value.epf_etf_eligible ?? false
+      }
+    }
+  } catch (err) {
+    console.warn('[HR] Failed to fetch salary structure:', err)
+    viewEmpSalary.value = null
+  }
+}
+
+async function loadPayGradesData() {
+  try {
+    const [grades, assignments] = await Promise.all([
+      payGradesService.getPayGrades(supabase),
+      payGradesService.getEmployeeGradeAssignments(supabase),
+    ])
+    payGradesList.value = grades || []
+    employeeGradeAssignments.value = assignments || {}
+  } catch (err) {
+    console.warn('[HR] Load pay grades data error:', err)
+  }
+}
+
+function handlePayGradesUpdated(e) {
+  if (e?.detail?.grades) {
+    payGradesList.value = e.detail.grades
+  } else {
+    loadPayGradesData()
+  }
+  if (viewEmp.value?.id) {
+    fetchSalaryForEmp(viewEmp.value.id)
+  }
+}
+
+function handleEmployeeGradeAssigned(e) {
+  if (e?.detail?.employeeId && e?.detail?.gradeCode !== undefined) {
+    employeeGradeAssignments.value = {
+      ...employeeGradeAssignments.value,
+      [e.detail.employeeId]: e.detail.gradeCode,
+    }
+    if (viewEmp.value?.id === e.detail.employeeId) {
+      viewForm.pay_grade = e.detail.gradeCode
+      fetchSalaryForEmp(e.detail.employeeId)
+    }
+  } else {
+    loadPayGradesData()
+  }
+}
+
+let payGradesRealtimeChannel = null
+function subscribePayGradesRealtime() {
+  if (payGradesRealtimeChannel) {
+    supabase.removeChannel(payGradesRealtimeChannel)
+    payGradesRealtimeChannel = null
+  }
+  payGradesRealtimeChannel = supabase
+    .channel('hr-pay-grades-global-channel')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'system_settings',
+      },
+      () => {
+        loadPayGradesData()
+        if (viewEmp.value?.id) {
+          fetchSalaryForEmp(viewEmp.value.id)
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'salary_structures',
+      },
+      (payload) => {
+        if (viewEmp.value?.id && payload.new?.employee_id === viewEmp.value.id) {
+          fetchSalaryForEmp(viewEmp.value.id)
+        }
+      }
+    )
+    .subscribe()
+}
+
+function unsubscribePayGradesRealtime() {
+  if (payGradesRealtimeChannel) {
+    supabase.removeChannel(payGradesRealtimeChannel)
+    payGradesRealtimeChannel = null
+  }
+}
+
 onMounted(() => {
   loadEmployees()
   loadOptions()
+  loadPayGradesData()
+  subscribePayGradesRealtime()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hr-pay-grades-updated', handlePayGradesUpdated)
+    window.addEventListener('hr-employee-grade-assigned', handleEmployeeGradeAssigned)
+  }
+})
+
+onUnmounted(() => {
+  unsubscribePayGradesRealtime()
+  unsubscribeProfileRealtime()
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('hr-pay-grades-updated', handlePayGradesUpdated)
+    window.removeEventListener('hr-employee-grade-assigned', handleEmployeeGradeAssigned)
+  }
 })
 </script>
 
