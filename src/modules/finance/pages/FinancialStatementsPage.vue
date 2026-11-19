@@ -63,6 +63,16 @@
               />
               <q-btn
                 unelevated
+                color="primary"
+                icon="article"
+                label="Word"
+                dense
+                padding="xs sm"
+                no-caps
+                @click="downloadTrialWord"
+              />
+              <q-btn
+                unelevated
                 color="negative"
                 icon="picture_as_pdf"
                 label="PDF"
@@ -106,6 +116,7 @@
           v-else
           :report="plReport"
           @download-excel="downloadPlExcel"
+          @download-word="downloadPlWord"
           @download-pdf="downloadPlPdf"
         />
       </q-tab-panel>
@@ -119,6 +130,7 @@
           v-else
           :report="bsReport"
           @download-excel="downloadBsExcel"
+          @download-word="downloadBsWord"
           @download-pdf="downloadBsPdf"
         />
       </q-tab-panel>
@@ -186,6 +198,12 @@ function downloadTrialExcel() {
   $q.notify({ type: 'positive', message: 'Trial Balance exported to Excel' })
 }
 
+function downloadTrialWord() {
+  if (!stmtStore.trialBalance) return
+  financeExportService.exportTrialBalanceToWord(stmtStore.trialBalance)
+  $q.notify({ type: 'positive', message: 'Trial Balance exported to Word' })
+}
+
 function downloadTrialPdf() {
   if (!stmtStore.trialBalance) return
   financeExportService.exportTrialBalanceToPdf(stmtStore.trialBalance)
@@ -198,6 +216,12 @@ function downloadPlExcel(opts = {}) {
   $q.notify({ type: 'positive', message: 'Profit & Loss Statement exported to Excel' })
 }
 
+function downloadPlWord(opts = {}) {
+  if (!stmtStore.profitLoss) return
+  financeExportService.exportProfitLossToWord(stmtStore.profitLoss, opts)
+  $q.notify({ type: 'positive', message: 'Profit & Loss Statement exported to Word' })
+}
+
 function downloadPlPdf(opts = {}) {
   if (!stmtStore.profitLoss) return
   financeExportService.exportProfitLossToPdf(stmtStore.profitLoss, opts)
@@ -208,6 +232,12 @@ function downloadBsExcel(opts = {}) {
   if (!stmtStore.balanceSheet) return
   financeExportService.exportBalanceSheetToExcel(stmtStore.balanceSheet, opts)
   $q.notify({ type: 'positive', message: 'Balance Sheet exported to Excel' })
+}
+
+function downloadBsWord(opts = {}) {
+  if (!stmtStore.balanceSheet) return
+  financeExportService.exportBalanceSheetToWord(stmtStore.balanceSheet, opts)
+  $q.notify({ type: 'positive', message: 'Balance Sheet exported to Word' })
 }
 
 function downloadBsPdf(opts = {}) {

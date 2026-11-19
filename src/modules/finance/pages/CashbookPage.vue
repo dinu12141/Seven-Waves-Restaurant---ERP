@@ -25,19 +25,35 @@
       <q-select v-if="branchOptions.length > 1" v-model="filters.branch_id" label="Branch" outlined dense clearable emit-value map-options
         style="min-width: 160px" :options="branchOptions" placeholder="All branches" @update:model-value="load" />
       <template #actions>
+        <q-btn
+          unelevated
+          no-caps
+          dense
+          color="purple-9"
+          icon="price_check"
+          label="Settle Staff IOU"
+          class="q-px-sm"
+          @click="showIouModal = true"
+        >
+          <q-tooltip>Set off staff advance with bills &amp; returned cash (0.00 discrepancy check)</q-tooltip>
+        </q-btn>
         <q-btn-dropdown outline no-caps dense color="primary" icon="file_download" label="Export" :disable="!rows.length">
           <q-list dense>
-            <q-item clickable v-close-popup @click="exportToCsv">
-              <q-item-section avatar><q-icon name="description" /></q-item-section>
-              <q-item-section>CSV</q-item-section>
-            </q-item>
             <q-item clickable v-close-popup @click="exportToExcel">
               <q-item-section avatar><q-icon name="table_view" color="positive" /></q-item-section>
               <q-item-section>Excel (.xlsx)</q-item-section>
             </q-item>
             <q-item clickable v-close-popup @click="exportToPdf">
               <q-item-section avatar><q-icon name="picture_as_pdf" color="negative" /></q-item-section>
-              <q-item-section>PDF</q-item-section>
+              <q-item-section>PDF (.pdf)</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="exportToWord">
+              <q-item-section avatar><q-icon name="article" color="primary" /></q-item-section>
+              <q-item-section>Word (.docx)</q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="exportToCsv">
+              <q-item-section avatar><q-icon name="description" color="grey-7" /></q-item-section>
+              <q-item-section>CSV (.csv)</q-item-section>
             </q-item>
           </q-list>
         </q-btn-dropdown>
@@ -48,6 +64,7 @@
       Showing only {{ sourceLabel }} rows — balances still include every movement of the ledger.
     </q-banner>
     <CashbookTable :report="report" :loading="loading" :title="title" />
+    <IOUSettlementDialog v-model="showIouModal" @settled="load" />
   </q-page>
 </template>
 
@@ -58,16 +75,19 @@ import { useAuthStore } from 'src/stores/auth'
 import CashbookTable from '../components/CashbookTable.vue'
 import FinancePageHeader from '../components/FinancePageHeader.vue'
 import FinanceFilterBar from '../components/FinanceFilterBar.vue'
+import IOUSettlementDialog from '../components/IOUSettlementDialog.vue'
 import { useSelectFilter } from '../composables/useSelectFilter'
 import { monthStart, todayLK, rangeLabel } from '../utils/finance-dates'
 import { CASHBOOK_SOURCE_OPTIONS } from '../services/finance-cashbook.builder'
 import { formatDrCr } from '../services/finance-ledger-statement.builder'
-import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from 'src/services/exportService'
+import { exportTableToCSV } from 'src/services/exportService'
+import { financeExportService } from '../services/finance-export.service'
 
 const props = defineProps({ petty: { type: Boolean, default: false } })
 
 const cashbookStore = useFinanceCashbookStore()
 const authStore = useAuthStore()
+const showIouModal = ref(false)
 const title = computed(() => (props.petty ? 'Petty Cash Book' : 'Cashbook'))
 const filters = ref({ date_from: firstOfMonth(), date_to: '', source_type: null, ledger_id: null, branch_id: null })
 const sourceOptions = CASHBOOK_SOURCE_OPTIONS
@@ -118,8 +138,27 @@ function subtitle() {
   return `Period: ${rangeLabel(f.date_from, f.date_to)}`
 }
 function exportToCsv() { exportTableToCSV(exportColumns, rows.value, fileName()) }
-function exportToExcel() { exportTableToExcel(exportColumns, rows.value, fileName()) }
-async function exportToPdf() { await exportTableToPDF(exportColumns, rows.value, `${title.value} Report`, subtitle()) }
+async function exportToExcel() {
+  await financeExportService.exportCashbookToExcel(report.value, {
+    title: title.value,
+    subtitle: subtitle(),
+    petty: props.petty,
+  })
+}
+async function exportToPdf() {
+  await financeExportService.exportCashbookToPdf(report.value, {
+    title: title.value,
+    subtitle: subtitle(),
+    petty: props.petty,
+  })
+}
+async function exportToWord() {
+  await financeExportService.exportCashbookToWord(report.value, {
+    title: title.value,
+    subtitle: subtitle(),
+    petty: props.petty,
+  })
+}
 
 onMounted(load)
 </script>

@@ -58,6 +58,7 @@ export type UserRole =
   | 'kitchen'
   | 'delivery'
   | 'inventory'
+  | 'stores'
   | 'finance'
   | 'hr'
   | 'procurement'

@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // GIN Accounting Helper
 // Allocates Goods Issue Notes between:
-// 1. Cost of Goods Sold (COGS - Account 6000, 6001, 6002, 6003)
-// 2. Direct Operating Expenses (Account 7044 Cleaning, 7011 Gas, 7005 Staff Meal)
-// Seven Waves Restaurant (Pvt) Ltd
+// 1. Cost of Goods Sold (COGS - Accounts 5010–5090)
+// 2. Direct Operating Expenses (Accounts 6010, 6020, 6120, 6140, 6170)
+// Seven Waves Restaurant (Pvt) Ltd - Kottawa Branch
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { supabase } from 'src/boot/supabase'
@@ -16,9 +16,23 @@ export interface AccountAllocation {
   allocationType: 'COGS' | 'OPERATING_EXPENSE'
 }
 
+/** Official Kottawa Kitchen & Operating Sections (Retaining 'Benmar' per specification) */
+export const KOTTAWA_SECTIONS = [
+  { code: 'KOT-01', label: 'Benmar' },
+  { code: 'KOT-02', label: 'Cashier' },
+  { code: 'KOT-03', label: 'Pastry / Bakery' },
+  { code: 'KOT-04', label: 'Chinese' },
+  { code: 'KOT-05', label: 'Rice and Curry' },
+  { code: 'KOT-06', label: 'Italian' },
+  { code: 'KOT-07', label: 'Juice Bar' },
+  { code: 'KOT-08', label: 'Cleaning' },
+  { code: 'KOT-09', label: 'Wash-up' },
+  { code: 'KOT-10', label: 'Kottu and Roti' },
+] as const
+
 /**
  * Resolves the appropriate Debit (COGS vs Expense) and Credit (Inventory Asset) accounts
- * for an item being issued via GIN.
+ * for an item being issued via GIN, conforming to the Kottawa 4-digit Chart of Accounts.
  */
 export function resolveItemGinAccounts(
   item: { name?: string; code?: string; category_name?: string } | null,
@@ -29,37 +43,17 @@ export function resolveItemGinAccounts(
   const purpose = (issuePurpose || '').toLowerCase()
 
   // 1. Check issue purpose overrides
-  if (purpose.includes('staff meal')) {
+  if (purpose.includes('staff meal') || purpose.includes('staff welfare')) {
     return {
-      debitLedgerCode: '7005',
+      debitLedgerCode: '6020',
       debitLedgerName: 'Staff Welfare',
-      creditLedgerCode: '1005',
-      creditLedgerName: 'Inventory - Raw Materials',
+      creditLedgerCode: '1080',
+      creditLedgerName: 'Inventory – General Food Raw Materials',
       allocationType: 'OPERATING_EXPENSE',
     }
   }
 
-  if (purpose.includes('wastage')) {
-    return {
-      debitLedgerCode: '6003',
-      debitLedgerName: 'Kitchen Wastage',
-      creditLedgerCode: '1005',
-      creditLedgerName: 'Inventory - Raw Materials',
-      allocationType: 'COGS',
-    }
-  }
-
-  if (purpose.includes('damaged')) {
-    return {
-      debitLedgerCode: '6004',
-      debitLedgerName: 'Inventory Adjustment',
-      creditLedgerCode: '1005',
-      creditLedgerName: 'Inventory - Raw Materials',
-      allocationType: 'COGS',
-    }
-  }
-
-  // 2. Cleaning equipment, chemicals, washing liquids, brooms (idal), coir (kohu), detergents, soaps, bleaches
+  // 2. Cleaning equipment, chemicals, washing liquids, detergents, soaps, bleaches
   const isCleaning =
     purpose.includes('clean') ||
     purpose.includes('maint') ||
@@ -95,10 +89,10 @@ export function resolveItemGinAccounts(
 
   if (isCleaning) {
     return {
-      debitLedgerCode: '7044',
-      debitLedgerName: 'Cleaning & Sanitation Expenses',
-      creditLedgerCode: '1009',
-      creditLedgerName: 'Inventory - Cleaning Materials',
+      debitLedgerCode: '6120',
+      debitLedgerName: 'Cleaning Expense',
+      creditLedgerCode: '1140',
+      creditLedgerName: 'Inventory – Cleaning Supplies',
       allocationType: 'OPERATING_EXPENSE',
     }
   }
@@ -114,10 +108,10 @@ export function resolveItemGinAccounts(
 
   if (isFuel) {
     return {
-      debitLedgerCode: '7011',
-      debitLedgerName: 'Gas Expense',
-      creditLedgerCode: '1005',
-      creditLedgerName: 'Inventory - Raw Materials',
+      debitLedgerCode: '6170',
+      debitLedgerName: 'Fuel Expenses (Gas & Fuel)',
+      creditLedgerCode: '1150',
+      creditLedgerName: 'Inventory – Kitchen Consumables',
       allocationType: 'OPERATING_EXPENSE',
     }
   }
@@ -133,37 +127,143 @@ export function resolveItemGinAccounts(
 
   if (isPackaging) {
     return {
-      debitLedgerCode: '6001',
-      debitLedgerName: 'Packaging Cost',
-      creditLedgerCode: '1008',
-      creditLedgerName: 'Inventory - Packaging Materials',
+      debitLedgerCode: '5080',
+      debitLedgerName: 'Packaging Consumption',
+      creditLedgerCode: '1110',
+      creditLedgerName: 'Inventory – Packaging',
       allocationType: 'COGS',
     }
   }
 
-  // 5. Beverage ingredients
+  // 5. Meat & Seafood
+  const isMeatOrFish =
+    catName.includes('meat') ||
+    catName.includes('fish') ||
+    catName.includes('seafood') ||
+    itemName.includes('chicken') ||
+    itemName.includes('beef') ||
+    itemName.includes('pork') ||
+    itemName.includes('fish') ||
+    itemName.includes('prawn') ||
+    itemName.includes('cuttlefish') ||
+    itemName.includes('crab')
+
+  if (isMeatOrFish) {
+    return {
+      debitLedgerCode: '5010',
+      debitLedgerName: 'Meat and Seafood Consumption',
+      creditLedgerCode: '1081',
+      creditLedgerName: 'Inventory – Meat and Seafood',
+      allocationType: 'COGS',
+    }
+  }
+
+  // 6. Dairy and Eggs
+  const isDairy =
+    catName.includes('dairy') ||
+    itemName.includes('milk') ||
+    itemName.includes('cheese') ||
+    itemName.includes('butter') ||
+    itemName.includes('cream') ||
+    itemName.includes('egg') ||
+    itemName.includes('yogurt')
+
+  if (isDairy) {
+    return {
+      debitLedgerCode: '5050',
+      debitLedgerName: 'Dairy and Egg Consumption',
+      creditLedgerCode: '1085',
+      creditLedgerName: 'Inventory – Dairy and Eggs',
+      allocationType: 'COGS',
+    }
+  }
+
+  // 7. Coffee & Tea
+  const isCoffeeTea =
+    catName.includes('coffee') ||
+    catName.includes('tea') ||
+    itemName.includes('coffee') ||
+    itemName.includes('tea')
+
+  if (isCoffeeTea) {
+    return {
+      debitLedgerCode: '5070',
+      debitLedgerName: 'Coffee and Tea Consumption',
+      creditLedgerCode: '1091',
+      creditLedgerName: 'Inventory – Coffee and Tea',
+      allocationType: 'COGS',
+    }
+  }
+
+  // 8. Beverage ingredients & Syrups
   const isBeverage =
     purpose.includes('bar') ||
     catName.includes('beverage') ||
     catName.includes('syrup') ||
-    catName.includes('flavour')
+    catName.includes('flavour') ||
+    itemName.includes('syrup') ||
+    itemName.includes('juice') ||
+    itemName.includes('soda')
 
   if (isBeverage) {
     return {
-      debitLedgerCode: '6000',
-      debitLedgerName: 'Food Cost',
-      creditLedgerCode: '1006',
-      creditLedgerName: 'Inventory - Beverages Stock',
+      debitLedgerCode: '5060',
+      debitLedgerName: 'Beverage Raw Material Consumption',
+      creditLedgerCode: '1090',
+      creditLedgerName: 'Inventory – Beverages',
       allocationType: 'COGS',
     }
   }
 
-  // 6. Default: Food / Raw Materials to Kitchen
+  // 9. Bakery Raw Materials
+  const isBakery =
+    catName.includes('bakery') ||
+    catName.includes('pastry') ||
+    itemName.includes('yeast') ||
+    itemName.includes('baking powder') ||
+    itemName.includes('icing') ||
+    itemName.includes('fondant')
+
+  if (isBakery) {
+    return {
+      debitLedgerCode: '5040',
+      debitLedgerName: 'Bakery Raw Material Consumption',
+      creditLedgerCode: '1084',
+      creditLedgerName: 'Inventory – Bakery Raw Materials',
+      allocationType: 'COGS',
+    }
+  }
+
+  // 10. Vegetables, Fruits, Rice & Dry Goods
+  const isVegOrFruit =
+    itemName.includes('veg') ||
+    itemName.includes('fruit') ||
+    itemName.includes('onion') ||
+    itemName.includes('garlic') ||
+    itemName.includes('tomato') ||
+    itemName.includes('potato') ||
+    itemName.includes('chilli') ||
+    itemName.includes('lime') ||
+    itemName.includes('carrot') ||
+    itemName.includes('leeks') ||
+    itemName.includes('cabbage')
+
+  if (isVegOrFruit) {
+    return {
+      debitLedgerCode: '5020',
+      debitLedgerName: 'Vegetables and Fruits Consumption',
+      creditLedgerCode: '1082',
+      creditLedgerName: 'Inventory – Vegetables and Fruits',
+      allocationType: 'COGS',
+    }
+  }
+
+  // 11. Rice & Dry Goods (Default Raw Materials)
   return {
-    debitLedgerCode: '6000',
-    debitLedgerName: 'Food Cost',
-    creditLedgerCode: '1005',
-    creditLedgerName: 'Inventory - Raw Materials',
+    debitLedgerCode: '5030',
+    debitLedgerName: 'Rice and Dry Goods Consumption',
+    creditLedgerCode: '1083',
+    creditLedgerName: 'Inventory – Rice and Dry Goods',
     allocationType: 'COGS',
   }
 }
@@ -173,6 +273,7 @@ export function resolveItemGinAccounts(
  */
 export async function postGinToFinance(
   docId: string,
+  sectionCode?: string,
 ): Promise<{ success: boolean; linesPosted: number }> {
   // 1. Try calling the dedicated server-side RPC if available
   try {
@@ -240,6 +341,13 @@ export async function postGinToFinance(
   let linesPosted = 0
   const issuePurpose = doc.remarks || ''
 
+  // Determine section code tag
+  let sectionTag = sectionCode ? `[Section: ${sectionCode}]` : ''
+  if (!sectionTag && doc.remarks) {
+    const match = doc.remarks.match(/\[Section:\s*(KOT-\d+[^\]]*)\]/i)
+    if (match) sectionTag = `[Section: ${match[1]}]`
+  }
+
   for (const line of lines) {
     const cost = Number(line.quantity || 0) * Number(line.unit_cost || 0)
     if (cost <= 0) continue
@@ -251,8 +359,8 @@ export async function postGinToFinance(
     }
 
     const alloc = resolveItemGinAccounts(itemMeta, issuePurpose)
-    const drLedger = ledgerMap.get(alloc.debitLedgerCode) || ledgerMap.get('6000')
-    const crLedger = ledgerMap.get(alloc.creditLedgerCode) || ledgerMap.get('1005')
+    const drLedger = ledgerMap.get(alloc.debitLedgerCode) || ledgerMap.get('5010') || ledgerMap.get('6000')
+    const crLedger = ledgerMap.get(alloc.creditLedgerCode) || ledgerMap.get('1080') || ledgerMap.get('1005')
 
     if (!drLedger || !crLedger) {
       console.warn('Missing ledger mapping for GIN line:', alloc)
@@ -260,7 +368,7 @@ export async function postGinToFinance(
     }
 
     const kitchenSuffix = doc.target_warehouse?.name ? ` [${doc.target_warehouse.name}]` : ''
-    const desc = `GIN ${doc.doc_number} — ${itemMeta.name} (${alloc.debitLedgerCode} ${alloc.allocationType}${kitchenSuffix})`
+    const desc = `GIN ${doc.doc_number} — ${itemMeta.name} (${alloc.debitLedgerCode} ${alloc.allocationType}${kitchenSuffix}) ${sectionTag}`.trim()
     const entryDate = doc.doc_date || new Date().toISOString().slice(0, 10)
 
     try {

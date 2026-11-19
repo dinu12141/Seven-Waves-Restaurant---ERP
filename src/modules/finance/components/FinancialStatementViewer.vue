@@ -3,11 +3,12 @@
     <!-- Corporate Header -->
     <div class="text-center q-mb-lg statement-header">
       <div class="text-h5 text-weight-bold text-primary">{{ report.company_name || 'SEVEN WAVES RESTAURANT (PVT) LTD' }}</div>
-      <div class="text-h6 text-weight-bold text-grey-9 q-mt-xs">{{ report.title || 'FINANCIAL STATEMENT' }}</div>
-      <div class="text-subtitle2 text-grey-6 q-mt-xs">{{ report.period || report.as_of_date || '' }}</div>
+      <div class="text-h6 text-weight-bold text-grey-9 q-mt-xs">{{ report.title || (report.type === 'pl' ? 'STATEMENT OF PROFIT OR LOSS AND OTHER COMPREHENSIVE INCOME (IAS 1)' : 'STATEMENT OF FINANCIAL POSITION (IAS 1)') }}</div>
+      <div class="text-subtitle2 text-grey-7 q-mt-xs">{{ report.period || (report.as_of_date ? `As at ${report.as_of_date}` : '') }}</div>
+      <div class="text-caption text-grey-6 text-italic q-mt-xs">Amounts in Sri Lankan Rupees (LKR)</div>
     </div>
 
-    <!-- Top Action Bar (Download Excel & PDF) -->
+    <!-- Top Action Bar (Download Excel, Word & PDF) -->
     <div class="row items-center justify-end q-mb-md q-gutter-sm print-hide">
       <q-btn
         unelevated
@@ -20,6 +21,18 @@
         @click="$emit('download-excel', { hideZero })"
       >
         <q-tooltip>Download professional Excel spreadsheet (.xlsx)</q-tooltip>
+      </q-btn>
+      <q-btn
+        unelevated
+        color="primary"
+        icon="article"
+        label="Download Word"
+        no-caps
+        dense
+        padding="xs md"
+        @click="$emit('download-word', { hideZero })"
+      >
+        <q-tooltip>Download professional Word document (.docx)</q-tooltip>
       </q-btn>
       <q-btn
         unelevated
@@ -182,7 +195,7 @@ defineProps({
   },
 })
 
-defineEmits(['download-excel', 'download-pdf'])
+defineEmits(['download-excel', 'download-pdf', 'download-word'])
 
 // Hides ledger lines with a zero balance; category headings and totals stay.
 const hideZero = ref(false)

@@ -380,12 +380,18 @@
         </q-tab-panels>
       </q-card>
     </div>
+
+    <!-- ══ KOTTAWA KITCHEN SECTIONS & DEPARTMENTAL COGS SECTION ═════ -->
+    <div class="q-mt-xl">
+      <SectionConfigManager />
+    </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch } from 'vue'
 import PageHeader from 'components/common/PageHeader.vue'
+import SectionConfigManager from 'components/admin/SectionConfigManager.vue'
 import { useQuasar } from 'quasar'
 import { useModulesStore } from 'src/stores/modules'
 import { useAuthStore } from 'src/stores/auth'

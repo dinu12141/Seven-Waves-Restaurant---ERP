@@ -64,6 +64,13 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
     'reports.inventory.*', 'reports.inventory_adjustments.view', 'reports.view',
   ],
 
+  stores: [
+    'inventory.*',
+    'reports.inventory.*',
+    'reports.inventory_adjustments.view',
+    'reports.view',
+  ],
+
   procurement: [
     'procurement.*', 'inventory.view', 'finance.view',
     'reports.procurement.*', 'reports.view',

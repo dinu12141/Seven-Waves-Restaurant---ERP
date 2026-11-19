@@ -52,6 +52,9 @@
       <q-btn flat dense icon="grid_on" color="green-4" @click="exportExcel" title="Download Excel"
         ><q-tooltip>Export Excel</q-tooltip></q-btn
       >
+      <q-btn flat dense icon="article" color="blue-4" @click="exportWord" title="Download Word"
+        ><q-tooltip>Export Word (.docx)</q-tooltip></q-btn
+      >
       <q-btn flat dense icon="description" color="amber-4" @click="exportCSV" title="Download CSV"
         ><q-tooltip>Export CSV</q-tooltip></q-btn
       >
@@ -187,6 +190,7 @@
             <FinancialStatementViewer
               :report="pnlData"
               @download-excel="(o) => financeExportService.exportProfitLossToExcel(pnlData, o)"
+              @download-word="(o) => financeExportService.exportProfitLossToWord(pnlData, o)"
               @download-pdf="(o) => financeExportService.exportProfitLossToPdf(pnlData, o)"
             />
           </div>
@@ -207,6 +211,7 @@
             <FinancialStatementViewer
               :report="bsData"
               @download-excel="(o) => financeExportService.exportBalanceSheetToExcel(bsData, o)"
+              @download-word="(o) => financeExportService.exportBalanceSheetToWord(bsData, o)"
               @download-pdf="(o) => financeExportService.exportBalanceSheetToPdf(bsData, o)"
             />
           </div>
@@ -338,9 +343,49 @@
       <!-- ═══════ CASH FLOW STATEMENT ═══════ -->
       <q-tab-panel name="cashflow" class="q-pa-none">
         <div class="fin-panel">
-          <div class="fin-panel__header">
-            <span class="fin-panel__title">Cash Flow Statement</span>
-            <span class="fin-panel__subtitle">{{ dateFrom }} to {{ dateTo }}</span>
+          <div class="fin-panel__header row items-center justify-between">
+            <div>
+              <span class="fin-panel__title">Statement of Cash Flows (IAS 7 / LKAS 7)</span>
+              <span class="fin-panel__subtitle">{{ dateFrom }} to {{ dateTo }}</span>
+            </div>
+            <div class="q-gutter-xs" v-if="cashFlowData">
+              <q-btn
+                unelevated
+                dense
+                size="sm"
+                color="positive"
+                icon="table_view"
+                label="Excel"
+                no-caps
+                @click="financeExportService.exportCashFlowToExcel(cashFlowData, { dateFrom, dateTo })"
+              >
+                <q-tooltip>Export Statement of Cash Flows (.xlsx)</q-tooltip>
+              </q-btn>
+              <q-btn
+                unelevated
+                dense
+                size="sm"
+                color="primary"
+                icon="article"
+                label="Word"
+                no-caps
+                @click="financeExportService.exportCashFlowToWord(cashFlowData, { dateFrom, dateTo })"
+              >
+                <q-tooltip>Export Statement of Cash Flows (.docx)</q-tooltip>
+              </q-btn>
+              <q-btn
+                unelevated
+                dense
+                size="sm"
+                color="negative"
+                icon="picture_as_pdf"
+                label="PDF"
+                no-caps
+                @click="financeExportService.exportCashFlowToPdf(cashFlowData, { dateFrom, dateTo })"
+              >
+                <q-tooltip>Export Statement of Cash Flows (.pdf)</q-tooltip>
+              </q-btn>
+            </div>
           </div>
           <div class="fin-panel__body q-pa-md" v-if="cashFlowData">
             <div
@@ -683,17 +728,26 @@ function exportCSV() {
   if (!d) return
   exportTableToCSV(d.cols, d.rows, d.title)
 }
-// P&L / Balance Sheet use the formatted statement exports (same layout as screen).
+// P&L / Balance Sheet / Cash Flow use the formatted statement exports (conforming to IAS 1 & IAS 7).
 function exportStatement(kind) {
   const tab = activeTab.value
   if (tab === 'pnl' && pnlData.value) {
     if (kind === 'pdf') financeExportService.exportProfitLossToPdf(pnlData.value)
+    else if (kind === 'word') financeExportService.exportProfitLossToWord(pnlData.value)
     else financeExportService.exportProfitLossToExcel(pnlData.value)
     return true
   }
   if (tab === 'bs' && bsData.value) {
     if (kind === 'pdf') financeExportService.exportBalanceSheetToPdf(bsData.value)
+    else if (kind === 'word') financeExportService.exportBalanceSheetToWord(bsData.value)
     else financeExportService.exportBalanceSheetToExcel(bsData.value)
+    return true
+  }
+  if (tab === 'cashflow' && cashFlowData.value) {
+    const opts = { dateFrom: dateFrom.value, dateTo: dateTo.value }
+    if (kind === 'pdf') financeExportService.exportCashFlowToPdf(cashFlowData.value, opts)
+    else if (kind === 'word') financeExportService.exportCashFlowToWord(cashFlowData.value, opts)
+    else financeExportService.exportCashFlowToExcel(cashFlowData.value, opts)
     return true
   }
   return false
@@ -703,6 +757,13 @@ function exportExcel() {
   const d = getExportData()
   if (!d) return
   exportTableToExcel(d.cols, d.rows, d.title)
+}
+function exportWord() {
+  if (exportStatement('word')) return
+  const d = getExportData()
+  if (!d) return
+  const subtitle = `Period: ${dateFrom.value} to ${dateTo.value}`
+  financeExportService.exportGenericTableToWord(d.cols, d.rows, d.title, subtitle)
 }
 function exportPDF() {
   if (exportStatement('pdf')) return

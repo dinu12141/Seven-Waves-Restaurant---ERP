@@ -5,29 +5,38 @@ import autoTable from 'jspdf-autotable'
 // @ts-ignore
 import logoUrl from 'src/assets/seven-waves-logo-transparent.png'
 
-interface LogoData {
+export interface LogoData {
   data: string
   width: number
   height: number
 }
 
 let cachedLogoData: LogoData | null = null
-async function getLogoData(): Promise<LogoData> {
+export async function getLogoData(): Promise<LogoData | null> {
   if (cachedLogoData) return cachedLogoData
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'Anonymous'
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext('2d')
-      if (ctx) ctx.drawImage(img, 0, 0)
-      cachedLogoData = { data: canvas.toDataURL('image/png'), width: img.width, height: img.height }
-      resolve(cachedLogoData)
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null
+  return new Promise((resolve) => {
+    try {
+      const img = new Image()
+      img.crossOrigin = 'Anonymous'
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          if (ctx) ctx.drawImage(img, 0, 0)
+          cachedLogoData = { data: canvas.toDataURL('image/png'), width: img.width, height: img.height }
+          resolve(cachedLogoData)
+        } catch {
+          resolve(null)
+        }
+      }
+      img.onerror = () => resolve(null)
+      img.src = logoUrl
+    } catch {
+      resolve(null)
     }
-    img.onerror = reject
-    img.src = logoUrl
   })
 }
 
@@ -199,37 +208,250 @@ export function exportTableToCSV(columns: any[], rows: any[], filename: string) 
 }
 
 /**
- * Generic Excel Export
+ * Generic Excel Export — International Accounting Standard with Corporate Header & Logo
  */
-export function exportTableToExcel(columns: any[], rows: any[], filename: string) {
+export async function exportTableToExcel(
+  columns: any[],
+  rows: any[],
+  filename: string,
+  title?: string,
+  subtitle?: string,
+) {
+  const exportCols = columns.filter(c => 
+    c.name !== 'image' && 
+    c.field !== 'image_url' && 
+    c.name !== 'image_url' && 
+    c.name !== 'actions'
+  )
+
+  const dateStr = new Date().toISOString().slice(0, 10)
+  const baseName = filename.replace(/\.xlsx$/i, '')
+  const finalName = `${baseName}_${dateStr}.xlsx`
+  const cleanTitle = title || baseName.replace(/_/g, ' ').toUpperCase()
+
+  try {
+    const ExcelJS = (await import('exceljs')).default || (await import('exceljs'))
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'Seven Waves Restaurant ERP'
+    const ws = wb.addWorksheet('Data')
+    ws.views = [{ showGridLines: true }]
+
+    // Embed logo
+    try {
+      const logoObj = await getLogoData()
+      if (logoObj?.data) {
+        const base64Data = logoObj.data.replace(/^data:image\/\w+;base64,/, '')
+        const imgId = wb.addImage({
+          base64: base64Data,
+          extension: 'png',
+        })
+        ws.addImage(imgId, {
+          tl: { col: 0.15, row: 0.15 },
+          ext: { width: 55, height: 55 },
+        })
+      }
+    } catch (e) {
+      console.warn('Could not add logo to Excel export', e)
+    }
+
+    // Company Header
+    const navyColor = 'FF1A237E'
+    const r1 = ws.addRow(['', '', 'SEVEN WAVES RESTAURANT (PVT) LTD'])
+    r1.getCell(3).font = { name: 'Calibri', size: 15, bold: true, color: { argb: navyColor } }
+
+    const r2 = ws.addRow(['', '', 'Kottawa Branch · International Accounting Standard Report'])
+    r2.getCell(3).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF455A64' } }
+
+    const r3 = ws.addRow(['', '', cleanTitle])
+    r3.getCell(3).font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF0D47A1' } }
+
+    const subText = subtitle || `Generated on ${new Date().toLocaleDateString('en-LK')} · Amounts in LKR`
+    const r4 = ws.addRow(['', '', subText])
+    r4.getCell(3).font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF555555' } }
+    ws.addRow([]) // Spacer row
+
+    // Table Header
+    const headers = exportCols.map((c) => c.label)
+    const headRow = ws.addRow(headers)
+    headRow.height = 25
+    headRow.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+    headRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: navyColor } }
+      cell.alignment = { vertical: 'middle', horizontal: 'left' }
+    })
+
+    // Data rows
+    const colWidths = headers.map((h) => Math.max(h.length + 4, 12))
+
+    rows.forEach((r, idx) => {
+      const rowValues = exportCols.map((col, colIdx) => {
+        let val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+        if (typeof val === 'string' && val.startsWith('http') && val.includes('supabase')) {
+          val = ''
+        }
+        const len = String(val ?? '').length
+        if (len + 4 > colWidths[colIdx]) colWidths[colIdx] = Math.min(len + 4, 50)
+        return val ?? ''
+      })
+
+      const dataRow = ws.addRow(rowValues)
+      dataRow.font = { name: 'Calibri', size: 10 }
+      const isZebra = idx % 2 === 0
+      dataRow.eachCell((cell) => {
+        const val = cell.value
+        if (typeof val === 'number') {
+          cell.numFmt = '#,##0.00;(#,##0.00);"-";@'
+          cell.alignment = { horizontal: 'right' }
+        }
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isZebra ? 'FFFFFFFF' : 'FFFBFDFF' } }
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFEAEAEA' } },
+          bottom: { style: 'thin', color: { argb: 'FFEAEAEA' } },
+          left: { style: 'thin', color: { argb: 'FFEAEAEA' } },
+          right: { style: 'thin', color: { argb: 'FFEAEAEA' } },
+        }
+      })
+    })
+
+    // Set column widths
+    ws.columns = colWidths.map((w) => ({ width: w }))
+
+    // Trigger download
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = finalName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.warn('ExcelJS export fallback to XLSX:', err)
+    const data = rows.map((r) => {
+      const obj: any = {}
+      exportCols.forEach((col) => {
+        let val = typeof col.field === 'function' ? col.field(r) : r[col.field]
+        obj[col.label] = val
+      })
+      return obj
+    })
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Data')
+    XLSX.writeFile(wb, finalName)
+  }
+}
+
+/**
+ * Generic Word Export (.docx)
+ */
+export async function exportTableToWord(columns: any[], rows: any[], filename: string, subtitle = '') {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, PageOrientation } = await import('docx')
   const exportCols = columns.filter(c => 
     c.name !== 'image' && 
     c.field !== 'image_url' && 
     c.name !== 'image_url' &&
     c.name !== 'actions'
   )
+  const isLandscape = exportCols.length > 5
+  const colWidth = Math.floor(100 / (exportCols.length || 1))
 
-  const data = rows.map((r) => {
-    const obj: any = {}
-    exportCols.forEach((col) => {
+  const tableRows: any[] = [
+    new TableRow({
+      children: exportCols.map(c => new TableCell({
+        children: [new Paragraph({
+          alignment: c.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+          children: [new TextRun({ text: c.label, font: 'Calibri', size: 18, bold: true, color: 'FFFFFF' })]
+        })],
+        shading: { fill: '1A237E' },
+        width: { size: colWidth, type: WidthType.PERCENTAGE },
+        margins: { top: 120, bottom: 120, left: 140, right: 140 },
+      }))
+    })
+  ]
+
+  let rowIndex = 0
+  for (const r of rows || []) {
+    const isEven = rowIndex % 2 === 0
+    const fill = isEven ? undefined : 'FAFAFA'
+    const cells = exportCols.map(col => {
       let val = typeof col.field === 'function' ? col.field(r) : r[col.field]
-      // Double-check: if it's still somehow an image link, clear it
       if (typeof val === 'string' && val.startsWith('http') && val.includes('supabase')) {
         val = ''
       }
-      obj[col.label] = val
+      const formatted = col.format ? col.format(val) : (val ?? '-')
+      return new TableCell({
+        children: [new Paragraph({
+          alignment: col.align === 'right' ? AlignmentType.RIGHT : AlignmentType.LEFT,
+          children: [new TextRun({ text: String(formatted), font: 'Calibri', size: 17, color: '212121' })]
+        })],
+        shading: fill ? { fill } : undefined,
+        width: { size: colWidth, type: WidthType.PERCENTAGE },
+        margins: { top: 80, bottom: 80, left: 140, right: 140 },
+        borders: {
+          top: { style: BorderStyle.NONE },
+          bottom: { style: BorderStyle.NONE },
+          left: { style: BorderStyle.NONE },
+          right: { style: BorderStyle.NONE },
+        }
+      })
     })
-    return obj
+    tableRows.push(new TableRow({ children: cells }))
+    rowIndex++
+  }
+
+  const table = new Table({
+    rows: tableRows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    }
   })
 
-  const dateStr = new Date().toISOString().slice(0, 10)
-  const baseName = filename.replace(/\.xlsx$/i, '')
-  const finalName = `${baseName}_${dateStr}.xlsx`
+  const baseTitle = filename.replace(/\.(docx|xlsx|csv)$/i, '').replace(/_/g, ' ')
+  const doc = new Document({
+    sections: [{
+      properties: { page: { size: { orientation: isLandscape ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT } } },
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [new TextRun({ text: 'SEVEN WAVES RESTAURANT (PVT) LTD', font: 'Calibri', size: 28, bold: true, color: '1A237E' })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [new TextRun({ text: baseTitle, font: 'Calibri', size: 22, bold: true, color: '212121' })]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 220 },
+          children: [new TextRun({ text: `${subtitle ? subtitle + ' · ' : ''}Generated: ${new Date().toLocaleDateString()}`, font: 'Calibri', size: 18, italics: true, color: '555555' })]
+        }),
+        table
+      ]
+    }]
+  })
 
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Data')
-  XLSX.writeFile(wb, finalName)
+  const blob = await Packer.toBlob(doc)
+  const dateStr = new Date().toISOString().slice(0, 10)
+  const finalName = `${filename.replace(/\.docx$/i, '')}_${dateStr}.docx`
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = finalName
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 async function fetchImageAsPNG(url: string): Promise<string | null> {
@@ -501,7 +723,7 @@ export async function exportPaymentReceiptToPDF(payment: {
             if (a.ap_invoices) {
               const matched = invLines.filter((l: any) => l.invoice_id === a.ap_invoices?.id)
               if (matched.length > 0) {
-                a.ap_invoices.ap_invoice_lines = matched
+                a.ap_invoices.ap_invoice_lines = matched as any
               }
             }
           }

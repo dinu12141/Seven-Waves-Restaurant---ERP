@@ -169,13 +169,14 @@ export const inventoryCostingService = {
     const history: ItemSupplierPriceAnalysis['history'] = []
 
     for (const l of postedLines) {
-      const sId = l.grn?.supplier_id || 'unknown'
-      const sName = (l.grn?.supplier as any)?.name || 'Direct Supplier'
-      const sPhone = (l.grn?.supplier as any)?.phone || ''
+      const grnObj: any = Array.isArray(l.grn) ? l.grn[0] : l.grn
+      const sId = grnObj?.supplier_id || 'unknown'
+      const sName = (grnObj?.supplier as any)?.name || 'Direct Supplier'
+      const sPhone = (grnObj?.supplier as any)?.phone || ''
       const price = Number(l.unit_cost || 0)
       const qty = Number(l.quantity || 0)
-      const date = l.grn?.doc_date || ''
-      const docNo = l.grn?.doc_number || ''
+      const date = grnObj?.doc_date || ''
+      const docNo = grnObj?.doc_number || ''
 
       history.push({
         id: l.id,

@@ -476,18 +476,20 @@ class PayGradesService {
 
       for (const a of grade.additions) {
         const name = (a.additionName || '').toUpperCase()
+        const code = String(a.additionCode || '')
         const amt = Number(a.amount || 0)
-        if (name.includes('HOUSING')) housing += amt
-        else if (name.includes('TRANSPORT')) transport += amt
-        else if (name.includes('MEAL')) meal += amt
-        else {
-          otherTotal += amt
-          if (name.includes('VARIABLE')) variable += amt
-          else if (name.includes('SERVICE')) service += amt
-          else if (name.includes('ATTENDANCE')) attendance += amt
-          else if (name.includes('EXTRA')) extraDays += amt
-        }
+        if (name.includes('HOUSING') || code === '03') housing += amt
+        else if (name.includes('TRANSPORT') || code === '04') transport += amt
+        else if (name.includes('MEAL') || code === '07') meal += amt
+        else if (name.includes('VARIABLE') || code === '01') variable += amt
+        else if (name.includes('SERVICE') || code === '02') service += amt
+        else if (name.includes('ATTENDANCE') || code === '05') attendance += amt
+        else if (name.includes('EXTRA') || code === '06') extraDays = amt
+        else otherTotal += amt
       }
+
+      // Fixed additions total (Extra Days is excluded as it is an earned daily rate)
+      otherTotal += variable + service + attendance
 
       // Update employee's salary_structures row
       const { data: existingSal } = await client
@@ -532,6 +534,44 @@ class PayGradesService {
       console.error('[PayGradesService] Sync allowances note:', err)
       return false
     }
+  }
+
+  /**
+   * Get parsed breakdown of additions for a given pay grade
+   */
+  getGradeAdditionsSummary(grade: PayGrade | undefined | null) {
+    let variable = 0
+    let service = 0
+    let attendance = 0
+    let extraRate = 1300
+    if (grade && Array.isArray(grade.additions)) {
+      for (const a of grade.additions) {
+        const name = (a.additionName || '').toUpperCase()
+        const code = String(a.additionCode || '')
+        const amt = Number(a.amount || 0)
+        if (name.includes('VARIABLE') || code === '01') variable += amt
+        else if (name.includes('SERVICE') || code === '02') service += amt
+        else if (name.includes('ATTENDANCE') || code === '05') attendance += amt
+        else if (name.includes('EXTRA') || code === '06') extraRate = amt
+      }
+    }
+    return { variable, service, attendance, extraRate }
+  }
+
+  /**
+   * Calculate required working days based on official policy:
+   * 30-Day Month -> 26 Days Required
+   * 31-Day Month -> 27 Days Required
+   * Other months -> Calendar Days - 4
+   */
+  getRequiredWorkingDays(periodStartOrDate: string | Date): number {
+    const d = new Date(periodStartOrDate)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1 // 1-12
+    const daysInMonth = new Date(year, month, 0).getDate()
+    if (daysInMonth === 31) return 27
+    if (daysInMonth === 30) return 26
+    return Math.max(1, daysInMonth - 4)
   }
 }
 

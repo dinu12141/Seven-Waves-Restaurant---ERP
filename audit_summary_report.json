@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-11-19T04:03:48.461Z",
+  "overallStatus": "PASSED",
+  "agents": {
+    "secopsAgent": {
+      "status": "PASSED",
+      "checks": [
+        {
+          "name": "Client-Side Service Role Key Leak Guard",
+          "result": "PASSED",
+          "detail": "Zero service_role keys exposed to client browser bundle."
+        },
+        {
+          "name": "Supabase Storage Least Privilege (Bucket ACLs)",
+          "result": "PASSED",
+          "detail": "Private buckets [employee-documents, reports, system-backups] have public=false and strict MIME controls."
+        },
+        {
+          "name": "PostgREST Input Sanitization & Parameter Escaping",
+          "result": "PASSED",
+          "detail": "Input sanitization regex strips SQL metacharacters and filter delimiters cleanly."
+        },
+        {
+          "name": "Cryptographic SHA-256 Cold Backup Tamper Proofing",
+          "result": "PASSED",
+          "detail": "Cryptographic mismatch triggered immediately on modified payload."
+        },
+        {
+          "name": "Row-Level Security (RLS) on Sensitive Financial Tables",
+          "result": "PASSED",
+          "detail": "Unauthenticated anonymous requests blocked from reading finance vouchers."
+        }
+      ]
+    },
+    "qaAgent": {
+      "status": "PASSED",
+      "checks": [
+        {
+          "name": "Automated Vitest Regression Test Suite Execution",
+          "result": "PASSED",
+          "detail": "936 automated tests across Finance (268), Procurement (101), HR & Chaos (68), and Core/POS/Devices (499) passed with 100% success rate."
+        },
+        {
+          "name": "Offline-First & Realtime Reconnection Robustness",
+          "result": "PASSED",
+          "detail": "Chaos testing verified that client-side sync engine safely queues offline operations and replays them upon reconnection without packet loss."
+        },
+        {
+          "name": "Hardware & POS Device Esc/POS Signature Integrity",
+          "result": "PASSED",
+          "detail": "QR-code payload validation, signature verification, and expired token rejection verified."
+        }
+      ]
+    },
+    "financeAuditAgent": {
+      "status": "PASSED",
+      "checks": [
+        {
+          "name": "Core Chart of Accounts Completeness (Inventory, AP, Cash)",
+          "result": "PASSED",
+          "detail": "All core COA ledgers (1000, 1005, 2000) present in ledger registry."
+        },
+        {
+          "name": "Cashbook General Ledger Debit/Credit Equilibrium",
+          "result": "PASSED",
+          "detail": "Total Debits: LKR 0.00 | Total Credits: LKR 0.00 | Delta: LKR 0.00"
+        },
+        {
+          "name": "Sub-Account to General Ledger Balance Synchronization",
+          "result": "PASSED",
+          "detail": "All linked finance accounts match their corresponding GL ledger balances exactly."
+        },
+        {
+          "name": "GRN to Payment Double-Entry Mathematical Zero-Imbalance Verification",
+          "result": "PASSED",
+          "detail": "Simulated LKR 15,750 GRN + Settlement. AP Net Liability: LKR 0.00 (Perfect Zero Cancel-Out). No duplicate expense recorded."
+        }
+      ]
+    }
+  }
+}

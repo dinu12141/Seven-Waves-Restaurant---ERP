@@ -87,7 +87,16 @@ export interface PurchaseOrder {
   total_amount?: number
   remarks?: string
   internal_memo?: string
+  source?: string
+  reject_reason?: string
+  rejected_by?: string
+  rejected_at?: string
+  approved_by?: string
+  approved_at?: string
+  created_by?: string
+  created_at?: string
   lines?: POLine[]
+  suppliers?: Supplier | { id: string; name: string; code?: string; tax_id?: string }
 }
 
 export interface GRNLine {
@@ -815,6 +824,7 @@ export async function createPO(header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
       exchange_rate: header.exchange_rate || 1,
       remarks: header.remarks || null,
       internal_memo: header.internal_memo || null,
+      source: header.source || 'procurement',
       status: 'draft',
       created_by: user_id,
     })
@@ -945,6 +955,195 @@ export async function closePO(poId: string) {
 
   if (error) throw new Error(error.message)
   return { success: true }
+}
+
+// ─────────────────────────────────────────────
+// STORES PURCHASE ORDERS (Stores -> Procurement)
+// ─────────────────────────────────────────────
+
+/**
+ * List Purchase Orders initiated from Stores (source = 'stores').
+ */
+export async function listStoresPOs(filters: POFilterOptions = {}): Promise<PurchaseOrder[]> {
+  const { company_id, branch_id } = getContext()
+
+  const build = () => {
+    let query = supabase
+      .from('purchase_orders')
+      .select(
+        `id, doc_number, doc_date, expected_date:delivery_date, status, source,
+         supplier_id, suppliers${filters.taxStatus ? '!inner' : ''}(id, name, code, tax_id),
+         warehouse_id,
+         subtotal, discount_amount, tax_amount, total_amount,
+         remarks, reject_reason, created_at, approved_at, cancelled_at`,
+      )
+      .eq('company_id', company_id)
+      .eq('branch_id', branch_id)
+      .eq('source', 'stores')
+
+    if (filters.status) query = query.eq('status', filters.status)
+    if (filters.supplier_id) query = query.eq('supplier_id', filters.supplier_id)
+    if (filters.from_date) query = query.gte('doc_date', filters.from_date)
+    if (filters.to_date) query = query.lte('doc_date', filters.to_date)
+
+    return query.order('created_at', { ascending: false }).order('id', { ascending: false })
+  }
+
+  return (await fetchAllProcRows(build)) as unknown as PurchaseOrder[]
+}
+
+/**
+ * Create a new Stores Purchase Order.
+ * Can be saved as 'draft' or submitted immediately for procurement approval ('pending_approval').
+ */
+export async function createStoresPO(
+  header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
+  lines: POLine[],
+  submitForApproval: boolean = true,
+) {
+  const { company_id, branch_id, user_id } = getContext()
+
+  const validLines = (lines || []).filter(
+    (l) => l && l.item_id && typeof l.item_id === 'string' && l.item_id.trim() !== '',
+  )
+  if (validLines.length === 0) throw new Error('At least one item line is required.')
+
+  let defaultUomId: string | null = null
+  try {
+    const { data: uomData } = await supabase.from('uom').select('id').limit(1).maybeSingle()
+    if (uomData) defaultUomId = uomData.id
+  } catch {
+    /* fallback */
+  }
+
+  const initialStatus = submitForApproval ? 'pending_approval' : 'draft'
+
+  const { data: po, error: poErr } = await supabase
+    .from('purchase_orders')
+    .insert({
+      company_id,
+      branch_id,
+      doc_number: `PO-STORES-${Date.now()}`,
+      doc_date: header.doc_date,
+      delivery_date: header.expected_date || null,
+      supplier_id: header.supplier_id,
+      warehouse_id: (header.warehouse_id && header.warehouse_id.trim()) ? header.warehouse_id.trim() : null,
+      currency: header.currency || 'LKR',
+      exchange_rate: header.exchange_rate || 1,
+      remarks: header.remarks || null,
+      internal_memo: header.internal_memo || null,
+      source: 'stores',
+      status: initialStatus,
+      created_by: user_id,
+    })
+    .select()
+    .single()
+
+  if (poErr) throw new Error(poErr.message)
+
+  const { data: docNum, error: seqErr } = await supabase.rpc('generate_proc_doc_number', {
+    p_company_id: company_id,
+    p_branch_id: branch_id,
+    p_doc_type: 'PO',
+  })
+  if (!seqErr && docNum) {
+    await supabase.from('purchase_orders').update({ doc_number: docNum }).eq('id', po.id)
+    po.doc_number = docNum
+  }
+
+  const linePayloads = validLines.map((l, idx) => {
+    const rawUom = typeof l.uom_id === 'string' ? l.uom_id.trim() : ''
+    const cleanUom = rawUom || defaultUomId
+    if (!cleanUom) throw new Error(`Unit of Measure (UOM) is missing for line #${idx + 1}.`)
+
+    const rawWarehouse = typeof l.warehouse_id === 'string' ? l.warehouse_id.trim() : ''
+    const cleanWarehouse = rawWarehouse || header.warehouse_id || null
+
+    return {
+      po_id: po.id,
+      line_number: idx + 1,
+      item_id: l.item_id.trim(),
+      description: l.description || null,
+      uom_id: cleanUom,
+      quantity: Number(l.quantity) || 1,
+      unit_price: Number(l.unit_price) || 0,
+      discount_pct: Number(l.discount_pct) || 0,
+      tax_pct: Number(l.tax_pct) || 0,
+      warehouse_id: cleanWarehouse,
+      notes: (l.notes && typeof l.notes === 'string' && l.notes.trim()) ? l.notes.trim() : null,
+    }
+  })
+
+  const { error: linesErr } = await supabase.from('purchase_order_lines').insert(linePayloads)
+  if (linesErr) throw new Error(linesErr.message)
+
+  const subtotal = validLines.reduce(
+    (s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_price) || 0) * (1 - (Number(l.discount_pct) || 0) / 100),
+    0,
+  )
+  await supabase
+    .from('purchase_orders')
+    .update({ subtotal, total_amount: subtotal })
+    .eq('id', po.id)
+
+  po.subtotal = subtotal
+  po.total_amount = subtotal
+  po.status = initialStatus
+
+  return po
+}
+
+/**
+ * Approve a Stores PO from Procurement.
+ * Sets status to 'approved' and records approved_by / approved_at.
+ */
+export async function approveStoresPO(
+  poId: string,
+): Promise<{ success: true; status: 'approved' | 'pending_approval'; message?: string }> {
+  const { user_id } = getContext()
+
+  // First try RPC approval if available
+  try {
+    const res = await approvePORpc(poId)
+    if (res.success) {
+      return { success: true, status: res.status ?? 'approved', message: res.message }
+    }
+  } catch {
+    /* Fallback to direct update */
+  }
+
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({
+      status: 'approved',
+      approved_by: user_id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', poId)
+    .in('status', ['pending_approval', 'draft'])
+
+  if (error) throw new Error(error.message)
+  return { success: true, status: 'approved' }
+}
+
+/**
+ * Reject a Stores PO from Procurement.
+ * Sets status to 'rejected' and records reject_reason and cancelled_at.
+ */
+export async function rejectStoresPO(poId: string, reason?: string) {
+  const { user_id } = getContext()
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({
+      status: 'rejected',
+      reject_reason: reason || null,
+      cancelled_at: new Date().toISOString(),
+    })
+    .eq('id', poId)
+    .in('status', ['pending_approval', 'draft'])
+
+  if (error) throw new Error(error.message)
+  return { success: true, status: 'rejected' }
 }
 
 // ─────────────────────────────────────────────

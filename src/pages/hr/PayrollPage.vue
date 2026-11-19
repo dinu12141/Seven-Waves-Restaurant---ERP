@@ -2630,9 +2630,27 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { localYmd } from 'src/services/hr/hrDates'
+import { payGradesService } from 'src/services/hr/payGradesService'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+
+// ── Pay Grades & Official Calculation Policies ──
+const payGradesList = ref([])
+const employeeGradeMap = ref({})
+
+async function loadPayGradesData() {
+  try {
+    const [grades, assignments] = await Promise.all([
+      payGradesService.getPayGrades(),
+      payGradesService.getEmployeeGradeAssignments(),
+    ])
+    payGradesList.value = grades || []
+    employeeGradeMap.value = assignments || {}
+  } catch (err) {
+    console.warn('[Payroll] Failed loading pay grades for breakdown fallback:', err)
+  }
+}
 
 // ── WhatsApp Gateway Bridge Status & QR Dialog ──
 const showWhatsAppDialog = ref(false)
@@ -4784,39 +4802,101 @@ function populatePdfData(payslip, bd) {
     .toUpperCase()
 
   const basicAmt = Number(findAmt(bd?.earnings, 'basic') || payslip.basic_salary || 0)
-  const attendanceAmt = Number(findAmt(bd?.earnings, 'attendance') || 0)
 
-  // Sum allowances: housing + transport + meal + other + commission + shift
+  // Resolve Pay Grade additions if mapped
+  const empId = payslip.employee_id || payslip.employees?.id
+  const gradeCode = employeeGradeMap.value[empId]
+  const gradeObj = payGradesList.value.find((g) => g.code === gradeCode)
+  const gradeSummary = payGradesService.getGradeAdditionsSummary(gradeObj)
+
   const housingAmt = Number(findAmt(bd?.earnings, 'housing') || payslip.housing_allowance || 0)
   const transportAmt = Number(findAmt(bd?.earnings, 'transport') || payslip.transport_allowance || 0)
   const mealAmt = Number(findAmt(bd?.earnings, 'meal') || payslip.meal_allowance || 0)
-  const otherAllowAmt = Number(findAmt(bd?.earnings, 'other allow') || payslip.other_allowances || 0)
   const commissionAmt = Number(findAmt(bd?.earnings, 'commission') || payslip.commission_amount || 0)
   const shiftAllowAmt = Number(findAmt(bd?.earnings, 'shift') || payslip.shift_allowance_amount || 0)
-  const totalVariable =
-    (housingAmt + transportAmt + mealAmt + otherAllowAmt + commissionAmt + shiftAllowAmt) ||
-    Number(payslip.total_allowances || 0)
 
-  const extraDayHrs =
-    payslip.holiday_ot_hours > 0 ? Number(payslip.holiday_ot_hours).toFixed(2) : '0.00'
-  const extraDayAmt = Number(findAmt(bd?.earnings, 'holiday') || payslip.holiday_ot_amount || 0)
-
-  const normalOtHrs =
-    payslip.normal_ot_hours > 0 ? Number(payslip.normal_ot_hours).toFixed(2) : '0.00'
-  const normalOtAmt = Number(findAmt(bd?.earnings, 'normal ot') || payslip.normal_ot_amount || 0)
-
-  const noPayD = bd?.days_absent != null ? Number(bd.days_absent) : Number(payslip.days_absent || 0)
-  const dailyRate = basicAmt > 0 ? basicAmt / 26.0 : Number(payslip.basic_salary || 0) / 26.0
-  const noPayAmt = Number(
-    findAmt(bd?.deductions, 'absent') ||
-    payslip.absent_deduction ||
-    (noPayD * dailyRate) ||
+  // Specific Grade additions: Variable Allowance, Service Charge, Attendance Allowance
+  const variableAmt = Number(
+    findAmt(bd?.earnings, 'variable') ||
+    gradeSummary.variable ||
+    payslip.other_allowances ||
+    0
+  )
+  const serviceChargeAmt = Number(
+    findAmt(bd?.earnings, 'service') ||
+    gradeSummary.service ||
+    0
+  )
+  const rawAttendanceAmt = Number(
+    findAmt(bd?.earnings, 'attendance') ||
+    gradeSummary.attendance ||
     0
   )
 
-  const grossVal = bd?.gross_salary ?? bd?.gross ?? payslip.gross_salary ?? 0
-  const totDedVal = bd?.total_deductions ?? payslip.total_deductions ?? 0
-  const netVal = bd?.net_salary ?? bd?.net ?? payslip.net_salary ?? 0
+  const noPayD = bd?.days_absent != null ? Number(bd.days_absent) : Number(payslip.days_absent || 0)
+
+  // Rule 3: Attendance Allowance Deduction
+  // If an employee takes no-pay leave during the period (noPayD > 0), Attendance Allowance is 100% forfeited (0)
+  const attendanceAmt = noPayD > 0 ? 0 : rawAttendanceAmt
+
+  // Rule 4: Extra Day Work Payment
+  // Rs. 1,300 work + Rs. 1,000 SC = Rs. 2,300 per extra working day
+  const extraDayHrs =
+    payslip.holiday_ot_hours > 0 ? Number(payslip.holiday_ot_hours).toFixed(2) : '0.00'
+  const extraDayAmt = Number(
+    findAmt(bd?.earnings, 'extra') ||
+    findAmt(bd?.earnings, 'holiday') ||
+    payslip.holiday_ot_amount ||
+    (Number(extraDayHrs) * 2300) ||
+    0
+  )
+
+  // Rule 5: Overtime (OT) Calculation
+  // OT Rate Per Hour = (Basic / 208) * 1.5
+  const normalOtHrs =
+    payslip.normal_ot_hours > 0 ? Number(payslip.normal_ot_hours).toFixed(2) : '0.00'
+  const calculatedOtAmt = Number(normalOtHrs) * (basicAmt / 208.0) * 1.5
+  const normalOtAmt = Number(
+    findAmt(bd?.earnings, 'normal ot') ||
+    payslip.normal_ot_amount ||
+    calculatedOtAmt ||
+    0
+  )
+
+  // Rule 2: No-Pay Calculation
+  // 1 Day No-Pay = (Basic Salary + Allowances + Service Charge) / 30
+  // No-Pay Deduction = Total No-Pay Days * 1 Day No-Pay Rate
+  const totalBaseAllowances = variableAmt + housingAmt + transportAmt + mealAmt
+  const dailyNoPayRate = (basicAmt + totalBaseAllowances + serviceChargeAmt) / 30.0
+  const noPayAmt = Number(
+    findAmt(bd?.deductions, 'absent') ||
+    findAmt(bd?.deductions, 'no pay') ||
+    payslip.absent_deduction ||
+    (noPayD * dailyNoPayRate) ||
+    0
+  )
+
+  const totalVariable = variableAmt + housingAmt + transportAmt + mealAmt + commissionAmt + shiftAllowAmt
+
+  const grossVal = Number(
+    bd?.gross_salary ??
+    bd?.gross ??
+    payslip.gross_salary ??
+    (basicAmt + attendanceAmt + totalVariable + serviceChargeAmt + extraDayAmt + normalOtAmt - noPayAmt)
+  )
+  const epfAmt = Number(findAmt(bd?.deductions, 'epf') || payslip.epf_employee || (basicAmt * 0.08) || 0)
+  const staffBillAmt = Number(findAmt(bd?.deductions, 'staff bill') || 0)
+  const staffLoanAmt = Number(findAmt(bd?.deductions, 'loan') || payslip.loan_deduction || 0)
+  const salaryAdvanceAmt = Number(findAmt(bd?.deductions, 'advance') || payslip.advance_deduction || 0)
+  const welfareAmt = Number(findAmt(bd?.deductions, 'welfare') || payslip.welfare_deduction || 0)
+  const otherDedAmt = Number(findAmt(bd?.deductions, 'other') || payslip.other_deductions || 0)
+
+  const totDedVal = Number(
+    bd?.total_deductions ??
+    payslip.total_deductions ??
+    (epfAmt + staffBillAmt + staffLoanAmt + salaryAdvanceAmt + welfareAmt + otherDedAmt)
+  )
+  const netVal = Number(bd?.net_salary ?? bd?.net ?? payslip.net_salary ?? (grossVal - totDedVal))
 
   pdfData.value = {
     year:
@@ -4830,8 +4910,8 @@ function populatePdfData(payslip, bd) {
     fingerprintId: payslip.employees?.fingerprint_id || bd?.code?.replace('EMP', '') || '-',
     grossPay: fmt(basicAmt),
     attendanceAllowance: fmt(attendanceAmt),
-    variableAllowance: fmt(totalVariable),
-    serviceCharge: fmt(findAmt(bd?.earnings, 'service')),
+    variableAllowance: fmt(variableAmt),
+    serviceCharge: fmt(serviceChargeAmt),
 
     extraDayHours: extraDayHrs,
     extraDayAmount: fmt(extraDayAmt),
@@ -4843,10 +4923,10 @@ function populatePdfData(payslip, bd) {
 
     grossSalary: fmt(grossVal),
 
-    epfDeduction: fmt(findAmt(bd?.deductions, 'epf') || payslip.epf_employee || 0),
-    staffBill: fmt(findAmt(bd?.deductions, 'staff bill') || 0),
-    staffLoan: fmt(findAmt(bd?.deductions, 'loan') || payslip.loan_deduction || 0),
-    salaryAdvance: fmt(findAmt(bd?.deductions, 'advance') || payslip.advance_deduction || 0),
+    epfDeduction: fmt(epfAmt),
+    staffBill: fmt(staffBillAmt),
+    staffLoan: fmt(staffLoanAmt),
+    salaryAdvance: fmt(salaryAdvanceAmt),
     totalDeduction: fmt(totDedVal),
     netSalary: fmt(netVal),
   }
@@ -5068,8 +5148,24 @@ async function sendPayslipWhatsApp(payslip) {
     const periodStr = `${selectedRun.value?.period_start || 'Period Start'} to ${selectedRun.value?.period_end || 'Period End'}`
     const empCode = payslip.employees?.employee_code || '—'
     const basic = fmt(payslip.basic_salary)
-    const allowances = fmt(payslip.total_allowances)
-    const ot = fmt(Number(payslip.normal_ot_amount || 0) + Number(payslip.holiday_ot_amount || 0))
+
+    // Resolve Grade additions
+    const empId = payslip.employee_id || payslip.employees?.id
+    const gradeCode = employeeGradeMap.value[empId]
+    const gradeObj = payGradesList.value.find((g) => g.code === gradeCode)
+    const gradeSummary = payGradesService.getGradeAdditionsSummary(gradeObj)
+
+    const variableAmt = gradeSummary.variable || payslip.other_allowances || 0
+    const serviceAmt = gradeSummary.service || 0
+    const noPayDays = Number(payslip.days_absent || 0)
+    const attendanceAmt = noPayDays > 0 ? 0 : (gradeSummary.attendance || 0)
+
+    const extraDayHrs = Number(payslip.holiday_ot_hours || 0).toFixed(2)
+    const extraDayAmt = Number(payslip.holiday_ot_amount || (Number(extraDayHrs) * 2300) || 0)
+    const normalOtHrs = Number(payslip.normal_ot_hours || 0).toFixed(2)
+    const normalOtAmt = Number(payslip.normal_ot_amount || 0)
+    const noPayAmt = Number(payslip.absent_deduction || 0)
+
     const gross = fmt(payslip.gross_salary)
     const epf8 = fmt(payslip.epf_employee)
     const advance = fmt(payslip.advance_deduction)
@@ -5096,8 +5192,12 @@ async function sendPayslipWhatsApp(payslip) {
 
 💵 *EARNINGS:*
   • Basic Salary: LKR ${basic}
-  • Allowances: LKR ${allowances}
-  • Overtime (OT): LKR ${ot}
+  • Attendance Allowance: LKR ${fmt(attendanceAmt)}${noPayDays > 0 ? ' (Forfeited - No Pay)' : ''}
+  • Variable Allowance: LKR ${fmt(variableAmt)}
+  • Service Charge: LKR ${fmt(serviceAmt)}
+  • Extra Day Work (${extraDayHrs} days @ 2,300): LKR ${fmt(extraDayAmt)}
+  • Normal OT (${normalOtHrs} hrs @ 1.5×): LKR ${fmt(normalOtAmt)}
+  • (Less) No Pay (${noPayDays} days @ /30): LKR (${fmt(noPayAmt)})
   ⭐ *Gross Salary: LKR ${gross}*
 
 📉 *DEDUCTIONS:*
@@ -5133,6 +5233,11 @@ watch(
 onMounted(() => {
   loadRuns()
   checkBridgeStatus()
+  loadPayGradesData()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('hr-pay-grades-updated', loadPayGradesData)
+    window.addEventListener('hr-employee-grade-assigned', loadPayGradesData)
+  }
 })
 </script>
 

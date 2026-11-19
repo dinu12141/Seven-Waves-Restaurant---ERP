@@ -36,7 +36,7 @@ export const COMPANY_NAME = 'SEVEN WAVES RESTAURANT (PVT) LTD'
 // Corporate income tax is presented below Profit before tax (LKAS 1.82(d)).
 // The live chart keeps 7043 inside "Admin and Operation Expenses", so it is
 // identified by code, or by any expense group named like an income-tax group.
-export const INCOME_TAX_CODES = ['7043']
+export const INCOME_TAX_CODES = ['7050', '7043']
 const INCOME_TAX_GROUP_RE = /income\s*tax|tax\s*expense/i
 
 // ── LKAS 1 layout ─────────────────────────────────────────────────────────────

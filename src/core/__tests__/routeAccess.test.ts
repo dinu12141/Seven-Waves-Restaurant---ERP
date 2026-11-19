@@ -30,7 +30,7 @@ const can = (roles: string[], path: string, perms: string[] = []) => {
 }
 
 const NON_ADMIN: UserRole[] = [
-  'manager', 'waiter', 'cashier', 'kitchen', 'delivery', 'inventory', 'finance', 'hr', 'procurement',
+  'manager', 'waiter', 'cashier', 'kitchen', 'delivery', 'inventory', 'stores', 'finance', 'hr', 'procurement',
 ] as UserRole[]
 
 describe('evaluateRouteAccess — shared router guard / sidebar decision', () => {

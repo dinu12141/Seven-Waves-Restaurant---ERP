@@ -157,8 +157,55 @@
             @uom-change="onUomChange"
           />
 
-          <!-- Totals -->
-          <div class="row justify-end q-mt-md">
+          <!-- Settlement & Totals Grid -->
+          <div class="row justify-between items-start q-col-gutter-md q-mt-md">
+            <!-- Payment / Settlement Method Card -->
+            <div class="col-12 col-md-6">
+              <div class="erp-card q-pa-md bg-grey-1" style="border-left: 4px solid var(--q-primary)">
+                <div class="row items-center justify-between q-mb-xs">
+                  <div class="text-subtitle2 text-weight-bold row items-center">
+                    <q-icon name="payments" size="20px" color="primary" class="q-mr-xs" />
+                    Payment / Settle Via
+                  </div>
+                  <q-badge :color="selectedPaymentOpt.color" class="text-weight-bold q-pa-xs">
+                    {{ selectedPaymentOpt.badgeLabel }}
+                  </q-badge>
+                </div>
+                <div class="text-caption text-grey-7 q-mb-sm">
+                  Select payment source. Cash / Petty Cash selections automatically deduct from Cash Book.
+                </div>
+                <q-select
+                  v-model="form.payment_source"
+                  :options="paymentSourceOptions"
+                  emit-value
+                  map-options
+                  outlined
+                  dense
+                  bg-white
+                  :readonly="!isAuthorizedEditor"
+                >
+                  <template #selected-item="props">
+                    <div class="row items-center">
+                      <q-icon :name="props.opt.icon" :color="props.opt.color" size="18px" class="q-mr-sm" />
+                      <span class="text-weight-medium">{{ props.opt.label }}</span>
+                    </div>
+                  </template>
+                  <template #option="props">
+                    <q-item v-bind="props.itemProps">
+                      <q-item-section avatar>
+                        <q-icon :name="props.opt.icon" :color="props.opt.color" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="text-weight-medium">{{ props.opt.label }}</q-item-label>
+                        <q-item-label caption>{{ props.opt.caption }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                </q-select>
+              </div>
+            </div>
+
+            <!-- Totals Card -->
             <div class="col-12 col-md-5">
               <div class="erp-card q-pa-md">
                 <!-- Subtotal (Gross before line discounts) -->
@@ -408,8 +455,21 @@ const defaultForm = {
   tax_amount: 0,
   total_amount: 0,
   remarks: '',
+  payment_source: 'credit',
 }
 const form = ref({ ...defaultForm })
+
+const paymentSourceOptions = [
+  { label: 'Credit / Pay Later (AP Invoice)', value: 'credit', icon: 'receipt_long', color: 'primary', caption: 'Post to Accounts Payable (2010) for scheduled supplier settlement', badgeLabel: 'AP Credit' },
+  { label: 'Store Petty Cash', value: 'store_petty_cash', icon: 'point_of_sale', color: 'amber-9', caption: 'Immediate payout from Store Petty Cash drawer (Ledger 1021)', badgeLabel: 'Store Petty Cash', account_id: '00c1ec1a-15f1-4ff6-951c-95a8e43574d6', ledger_code: '1021' },
+  { label: 'HR Petty Cash', value: 'hr_petty_cash', icon: 'payments', color: 'teal', caption: 'Immediate payout from HR Petty Cash drawer (Ledger 1022)', badgeLabel: 'HR Petty Cash', account_id: 'c278fc2e-a62b-4e77-827f-06ad89b9d7e6', ledger_code: '1022' },
+  { label: 'Main Cash Office Drawer', value: 'main_cash', icon: 'account_balance_wallet', color: 'blue-8', caption: 'Immediate payout from Main Cash drawer (Ledger 1001)', badgeLabel: 'Main Cash', account_id: '45644893-a8d9-4851-b0a0-fee9a05b6865', ledger_code: '1001' },
+  { label: 'Staff IOU / Market Advance', value: 'iou', icon: 'person_pin', color: 'purple-8', caption: 'Settles an outstanding staff market advance (Ledger 1060)', badgeLabel: 'Staff IOU', account_id: '23dbb705-9870-4a2e-a813-6d8fff313a41', ledger_code: '1060' },
+]
+
+const selectedPaymentOpt = computed(() => {
+  return paymentSourceOptions.find(p => p.value === form.value.payment_source) || paymentSourceOptions[0]
+})
 
 const grossSubtotal = computed(() =>
   (form.value.lines || []).reduce((acc, l) => {
@@ -506,6 +566,17 @@ const columns = [
     type: 'currency',
     align: 'right',
     sortable: true,
+    minWidth: 120,
+  },
+  {
+    name: 'payment_source',
+    label: 'Payment',
+    field: (row) => {
+      const m = row.remarks?.match(/\[Payment:\s*([^\]]+)\]/i)
+      return m ? m[1] : 'AP Credit'
+    },
+    type: 'text',
+    align: 'center',
     minWidth: 120,
   },
   { name: 'status', label: 'Status', field: 'status', type: 'status', align: 'center', width: 110 },
@@ -629,6 +700,14 @@ async function editGRN(row) {
 
   const cached = grnDetailsCache.get(row.id)
 
+  let paySource = 'credit'
+  if (row.remarks) {
+    if (row.remarks.includes('Store Petty Cash')) paySource = 'store_petty_cash'
+    else if (row.remarks.includes('HR Petty Cash')) paySource = 'hr_petty_cash'
+    else if (row.remarks.includes('Main Cash')) paySource = 'main_cash'
+    else if (row.remarks.includes('Staff IOU')) paySource = 'iou'
+  }
+
   // 1. Immediately prefill form with everything already available on the row
   // This makes doc number, date, supplier, warehouse, discount, and totals appear instantly
   form.value = {
@@ -641,6 +720,7 @@ async function editGRN(row) {
     supplier_id: row.supplier_id || '',
     warehouse: warehouseObj,
     warehouse_id: row.warehouse_id || '',
+    payment_source: paySource,
     discount_type: row.discount_type || 'percentage',
     discount_value: row.discount_value || 0,
     tax_type: (Number(row.tax_amount || 0) > 0 && !Number(row.tax_pct || 0)) ? 'amount' : 'percentage',
@@ -825,6 +905,87 @@ function onUomChange(line, uom) {
   line.uom_name = uom.name || uom.code || 'PCS'
 }
 
+// ── Settle GRN via Cash / Petty Cash / IOU ───────────────────────────────
+async function settleGrnViaCash(grnId, docNumber, sourceKey, amount, entryDate) {
+  const opt = paymentSourceOptions.find((p) => p.value === sourceKey)
+  if (!opt || !opt.ledger_code || Number(amount) <= 0) return
+
+  try {
+    const { data: payLedger } = await supabase
+      .from('finance_ledgers')
+      .select('id, ledger_code, ledger_name')
+      .eq('ledger_code', opt.ledger_code)
+      .single()
+
+    const { data: apLedger } = await supabase
+      .from('finance_ledgers')
+      .select('id, ledger_code, ledger_name')
+      .eq('ledger_code', '2010')
+      .maybeSingle()
+
+    if (payLedger) {
+      const payDesc = `GRN ${docNumber} — Immediate Settlement (${opt.label})`
+      const dateStr = entryDate || new Date().toISOString().slice(0, 10)
+      const companyId = '5c7ff29c-418a-461a-9624-3667375c2af4'
+      const branchId = '340efb20-513a-4d99-b1e7-f32f938e31a8'
+
+      await supabase.from('finance_cashbook_entries').insert([
+        {
+          company_id: companyId,
+          branch_id: branchId,
+          source_type: 'pay_voucher',
+          source_id: grnId,
+          entry_date: dateStr,
+          ledger_id: payLedger.id,
+          account_id: opt.account_id || null,
+          description: payDesc,
+          debit_amount: 0,
+          credit_amount: amount,
+        },
+        {
+          company_id: companyId,
+          branch_id: branchId,
+          source_type: 'pay_voucher',
+          source_id: grnId,
+          entry_date: dateStr,
+          ledger_id: apLedger?.id || payLedger.id,
+          description: payDesc,
+          debit_amount: amount,
+          credit_amount: 0,
+        },
+      ])
+
+      if (opt.account_id) {
+        const { data: currAcc } = await supabase
+          .from('finance_accounts')
+          .select('current_balance')
+          .eq('id', opt.account_id)
+          .single()
+        if (currAcc) {
+          await supabase
+            .from('finance_accounts')
+            .update({
+              current_balance: Number(currAcc.current_balance || 0) - amount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', opt.account_id)
+        }
+      }
+
+      await supabase
+        .from('ap_invoices')
+        .update({
+          payment_status: 'paid',
+          paid_amount: amount,
+          notes: `Settled via ${opt.label} on GRN creation`,
+        })
+        .eq('grn_id', grnId)
+    }
+  } catch (err) {
+    console.warn('[settleGrnViaCash] Failed to post cash settlement:', err)
+  }
+}
+
 // ── Save / Post ─────────────────────────────────────────────────────────
 async function saveGRN() {
   saving.value = true
@@ -862,13 +1023,15 @@ async function saveGRN() {
         notes: l.notes || null,
       }))
 
+      const remarksWithPay = `${form.value.remarks || ''} [Payment: ${selectedPaymentOpt.value.badgeLabel}]`.trim()
+
       grn = await createGRN(
         {
           doc_number: form.value.doc_number.trim(),
           supplier_id: supplierId,
           warehouse_id: warehouseId,
           doc_date: form.value.doc_date,
-          remarks: form.value.remarks,
+          remarks: remarksWithPay,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
           discount_amount: totalDiscountAmount.value,
@@ -886,7 +1049,14 @@ async function saveGRN() {
           try { await deleteGRN(grn.id) } catch { /* ignore */ }
           throw new Error(res.error || 'Failed to post GRN')
         }
-        $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
+        if (form.value.payment_source && form.value.payment_source !== 'credit') {
+          await settleGrnViaCash(grn.id, res.doc_number || form.value.doc_number, form.value.payment_source, totalAmount.value, form.value.doc_date)
+        }
+        $q.notify({
+          type: 'positive',
+          message: `GRN ${res.doc_number} Posted Successfully`,
+          caption: form.value.payment_source !== 'credit' ? `Settled via ${selectedPaymentOpt.value.label}` : undefined,
+        })
       }
     } else {
       // Existing draft GRN — update header and lines
@@ -907,13 +1077,15 @@ async function saveGRN() {
         expiry_date: l.expiry_date || null,
         notes: l.notes || null,
       }))
+      const remarksWithPay = `${form.value.remarks || ''} [Payment: ${selectedPaymentOpt.value.badgeLabel}]`.trim()
+
       grn = await updateGRN(
         form.value.id,
         { 
           doc_number: form.value.doc_number.trim(),
           doc_date: form.value.doc_date, 
           warehouse_id: warehouseId, 
-          remarks: form.value.remarks,
+          remarks: remarksWithPay,
           discount_type: form.value.discount_type,
           discount_value: form.value.discount_value,
           discount_amount: totalDiscountAmount.value,
@@ -941,7 +1113,14 @@ async function saveGRN() {
       } else if (grn?.id && form.value.status === 'draft') {
         const res = await postGRN(grn.id)
         if (!res.success) throw new Error(res.error || 'Failed to post GRN')
-        $q.notify({ type: 'positive', message: `GRN ${res.doc_number} Posted Successfully` })
+        if (form.value.payment_source && form.value.payment_source !== 'credit') {
+          await settleGrnViaCash(grn.id, res.doc_number || form.value.doc_number, form.value.payment_source, totalAmount.value, form.value.doc_date)
+        }
+        $q.notify({
+          type: 'positive',
+          message: `GRN ${res.doc_number} Posted Successfully`,
+          caption: form.value.payment_source !== 'credit' ? `Settled via ${selectedPaymentOpt.value.label}` : undefined,
+        })
       } else {
         $q.notify({ type: 'positive', message: 'GRN updated successfully' })
       }

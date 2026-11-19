@@ -77,27 +77,32 @@ const routes = [
         // Items, Categories, Stock, Warehouses, etc. — see config/roles.ts
         // NAV_ITEMS INVENTORY section) internally; the route itself can only
         // gate the page as a whole, not each tab, since it's one component.
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/dashboard',
         component: () => import('pages/inventory/InventoryDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/items',
         component: () => import('pages/inventory/ItemsPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.items.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.items.view' },
       },
       {
         path: 'inventory/adjustments',
         component: () => import('pages/inventory/StockAdjustmentPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.adjustments.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.adjustments.view' },
       },
       {
         path: 'inventory/stocktake',
         component: () => import('pages/inventory/StockTakePage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake.view' },
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.stocktake.view' },
+      },
+      {
+        path: 'inventory/purchase-orders',
+        component: () => import('pages/inventory/InventoryPOPage.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.purchase_orders.view' },
       },
       {
         path: 'finance',
@@ -175,7 +180,7 @@ const routes = [
           { path: 'attendance', component: () => import('pages/hr/AttendancePage.vue'), meta: { permission: 'hr.attendance.view' } },
           { path: 'payroll', component: () => import('pages/hr/PayrollPage.vue'), meta: { permission: 'hr.payroll.view' } },
           { path: 'salary-config', component: () => import('pages/hr/SalaryConfigPage.vue'), meta: { permission: 'hr.payroll.view' } },
-          { path: 'pay-grades', component: () => import('pages/hr/PayGradesPage.vue'), meta: { permission: 'hr.view' } },
+          { path: 'pay-grades', component: () => import('pages/hr/PayGradesPage.vue'), meta: { permission: 'hr.payroll.view' } },
           { path: 'commission', component: () => import('pages/hr/CommissionPage.vue'), meta: { permission: 'hr.commission.view' } },
           { path: 'audit', component: () => import('pages/hr/SalaryAuditPage.vue'), meta: { permission: 'hr.audit.view' } },
 
@@ -201,6 +206,11 @@ const routes = [
             path: 'purchase-orders',
             component: () => import('pages/procurement/PurchaseOrdersPage.vue'),
             meta: { permission: 'procurement.purchase_orders.view' },
+          },
+          {
+            path: 'stores-po',
+            component: () => import('pages/procurement/StoresPOPage.vue'),
+            meta: { permission: 'procurement.stores_po.view' },
           },
           { path: 'grn', component: () => import('pages/procurement/GRNPage.vue'), meta: { permission: 'procurement.grn.view' } },
           { path: 'gin', component: () => import('pages/procurement/GINPage.vue'), meta: { permission: 'procurement.gin.view' } },
@@ -348,7 +358,7 @@ const routes = [
       {
         path: 'reports',
         component: () => import('layouts/ReportsLayout.vue'),
-        meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'hr', 'procurement'], module: 'reports', permission: 'reports.view' },
+        meta: { roles: ['admin', 'manager', 'finance', 'inventory', 'stores', 'hr', 'procurement'], module: 'reports', permission: 'reports.view' },
         children: [
           { path: '', redirect: '/reports/dashboard' },
           { path: 'dashboard', component: () => import('pages/reports/ReportsDashboard.vue'), meta: { permission: 'reports.dashboard.view' } },

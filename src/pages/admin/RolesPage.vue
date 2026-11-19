@@ -60,6 +60,7 @@
                       finance: '#3b82f6',
                       hr: '#8b5cf6',
                       inventory: '#22c55e',
+                      stores: '#10b981',
                       delivery: '#14b8a6',
                       procurement: '#f59e0b'
                     })[role.key] || '#8b5cf6'
@@ -368,6 +369,7 @@ const matrixRoles = [
   { key: 'cashier', label: 'Cashier', caption: 'POS & payment access' },
   { key: 'kitchen', label: 'Kitchen Staff', caption: 'kitchen display only' },
   { key: 'inventory', label: 'Inventory Manager', caption: 'stock & recipes' },
+  { key: 'stores', label: 'Store Keeper', caption: 'stock & stores POs' },
   { key: 'finance', label: 'Finance Officer', caption: 'accounts & payroll' },
   { key: 'hr', label: 'HR Manager', caption: 'staff & shifts' },
   { key: 'manager', label: 'Branch Manager', caption: 'broad operational access' },
@@ -378,6 +380,7 @@ const defaultRoleModuleMap = {
   cashier: ['dashboard', 'pos', 'orders'],
   kitchen: ['dashboard', 'kitchen'],
   inventory: ['dashboard', 'inventory', 'procurement'],
+  stores: ['dashboard', 'inventory'],
   finance: ['dashboard', 'finance', 'reports'],
   hr: ['dashboard', 'hr'],
   manager: ['dashboard', 'pos', 'orders', 'kitchen', 'inventory', 'procurement', 'finance', 'hr', 'reports', 'crm'],

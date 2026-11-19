@@ -253,7 +253,7 @@ const $q = useQuasar()
 const router = useRouter()
 
 function goToProcurement(docType) {
-  const path = docType === 'PO' ? '/procurement/purchase-orders' : '/procurement/grn'
+  const path = docType === 'PO' ? '/inventory/purchase-orders' : '/procurement/grn'
   router.push({ path, query: { action: 'new' } })
 }
 

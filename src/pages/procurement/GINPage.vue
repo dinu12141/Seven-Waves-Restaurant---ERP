@@ -152,6 +152,35 @@
             </div>
             <div class="col-12 col-md-3">
               <q-select
+                v-model="form.receiving_section"
+                :options="sectionOptions"
+                option-label="displayName"
+                label="Receiving Section / Department *"
+                outlined
+                dense
+                :readonly="form.status !== 'draft'"
+                :rules="[v => !!v || 'Receiving section is required']"
+                hint="Cost Centre (KOT-01 to KOT-10)"
+              >
+                <template #selected-item="props">
+                  <q-badge color="primary" class="q-mr-xs">{{ props.opt.code }}</q-badge>
+                  <span>{{ props.opt.name }}</span>
+                </template>
+                <template #option="props">
+                  <q-item v-bind="props.itemProps">
+                    <q-item-section avatar>
+                      <q-badge :color="props.opt.is_production ? 'positive' : 'grey-7'">{{ props.opt.code }}</q-badge>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ props.opt.name }}</q-item-label>
+                      <q-item-label caption>{{ props.opt.cogs_label }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </div>
+            <div class="col-12 col-md-3">
+              <q-select
                 v-model="form.issue_purpose"
                 :options="issuePurposes"
                 label="Issue Purpose *"
@@ -162,13 +191,13 @@
                 @update:model-value="onPurposeChange"
               />
             </div>
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-6">
               <q-select
                 v-model="form.target_warehouse"
                 :options="targetWarehouseOptions"
                 option-label="name"
                 option-value="id"
-                label="To Store / Kitchen"
+                label="To Store / Kitchen (Optional)"
                 outlined
                 dense
                 clearable
@@ -176,7 +205,7 @@
                 :hint="form.target_warehouse ? 'Stock transfers into this store' : 'Optional (empty = direct consumption)'"
               />
             </div>
-            <div class="col-12">
+            <div class="col-12 col-md-6">
               <q-input
                 v-model="form.remarks"
                 label="Remarks"
@@ -381,6 +410,7 @@ import ErpPageHeader from 'components/common/ErpPageHeader.vue'
 import { useAuthStore } from 'src/stores/auth'
 import { requestDocumentAmendment } from 'src/services/amendmentService'
 import { resolveItemGinAccounts, postGinToFinance } from 'src/services/inventory/ginAccountingHelper'
+import { getKottawaSections } from 'src/services/inventory/sectionConfigService'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -399,6 +429,7 @@ const deleteVisible  = ref(false)
 const deleteTarget   = ref(null)
 const deleting       = ref(false)
 const stockMap       = ref({})  // item_id → qty_on_hand for selected warehouse
+const sectionOptions = ref([])
 
 const issuePurposes = [
   'Kitchen Use',
@@ -420,6 +451,7 @@ const emptyForm = () => ({
   doc_date: date.formatDate(Date.now(), 'YYYY-MM-DD'),
   warehouse: null,
   target_warehouse: null,
+  receiving_section: null,
   issue_purpose: null,
   remarks: '',
   status: 'draft',
@@ -467,6 +499,16 @@ const filteredGins = computed(() => {
 const columns = [
   { name: 'doc_number', label: 'Doc #',     field: 'doc_number',  align: 'left',   sortable: true, classes: 'text-weight-medium' },
   { name: 'doc_date',   label: 'Date',       field: 'doc_date',    align: 'left',   sortable: true },
+  {
+    name: 'receiving_section',
+    label: 'Receiving Section',
+    field: 'remarks',
+    align: 'left',
+    format: val => {
+      const m = val?.match(/\[Section:\s*(KOT-\d+[^\]]*)\]/i)
+      return m ? m[1] : '—'
+    }
+  },
   {
     name: 'warehouse_name',
     label: 'Warehouse / Store',
@@ -588,12 +630,21 @@ async function openView(row) {
     const warehouseObj = warehouses.value.find(w => w.id === doc.header.warehouse_id) || null
     const targetWhObj  = warehouses.value.find(w => w.id === doc.header.target_warehouse_id) || null
 
+    let foundSection = null
+    if (doc.header.remarks) {
+      const match = doc.header.remarks.match(/\[Section:\s*(KOT-\d+)/i)
+      if (match) {
+        foundSection = sectionOptions.value.find(s => s.code === match[1]) || null
+      }
+    }
+
     form.value = {
       id:            doc.header.id,
       doc_number:    doc.header.doc_number,
       doc_date:      doc.header.doc_date,
       warehouse:     warehouseObj,
       target_warehouse: targetWhObj,
+      receiving_section: foundSection,
       issue_purpose: doc.header.remarks?.startsWith('Purpose: ')
         ? doc.header.remarks.replace('Purpose: ', '').split(' | ')[0]
         : null,
@@ -628,6 +679,9 @@ async function saveAndPost() {
   if (!warehouseId) {
     $q.notify({ type: 'warning', message: 'Please select a warehouse.' }); return
   }
+  if (!form.value.receiving_section) {
+    $q.notify({ type: 'warning', message: 'Please select a receiving section / department (KOT-01 to KOT-10).' }); return
+  }
   if (!form.value.issue_purpose) {
     $q.notify({ type: 'warning', message: 'Please select an issue purpose.' }); return
   }
@@ -660,7 +714,8 @@ async function saveAndPost() {
     // In GIN page, internal issues to kitchens or departments are GINs (consumption), NOT store transfers
     const docType = 'GIN'
 
-    const remarks = form.value.issue_purpose
+    const sectionTag = `[Section: ${form.value.receiving_section.code} - ${form.value.receiving_section.name}]`
+    const remarks = `${form.value.issue_purpose || 'Internal Issue'} ${sectionTag}`
       + (targetWh ? ` [Kitchen / Section: ${targetWh.name}]` : '')
       + (form.value.remarks ? ` — ${form.value.remarks}` : '')
 
@@ -685,7 +740,7 @@ async function saveAndPost() {
 
     let finResult = null
     try {
-      finResult = await postGinToFinance(doc.id)
+      finResult = await postGinToFinance(doc.id, form.value.receiving_section.code)
     } catch (finErr) {
       console.error('Finance posting failed for GIN:', finErr)
     }
@@ -732,11 +787,16 @@ async function fetchGins() {
 }
 
 onMounted(async () => {
-  await Promise.all([
+  const [sections] = await Promise.all([
+    getKottawaSections(),
     fetchGins(),
     listItems(),
     listWarehouses(),
   ])
+  sectionOptions.value = (sections || []).map(s => ({
+    ...s,
+    displayName: `${s.code} - ${s.name}`,
+  }))
   itemOptions.value = items.value
 })
 
