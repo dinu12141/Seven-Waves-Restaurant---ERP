@@ -246,7 +246,7 @@
           <div class="row q-col-gutter-md justify-between items-start q-mt-md">
             <!-- Tax Treatment (Asset 1010 Input VAT) -->
             <div class="col-12 col-md-6" v-if="form.status === 'draft'">
-              <div class="erp-card q-pa-sm" style="border: 1px solid rgba(var(--q-primary-rgb), 0.3); border-left: 4px solid var(--q-primary)">
+              <div class="erp-card q-pa-sm" style="border: 1px solid rgba(var(--q-primary-rgb, 37, 99, 235), 0.3); border-left: 4px solid var(--q-primary, var(--erp-primary, #2563eb))">
                 <div class="text-caption text-weight-bold text-primary row items-center q-mb-xs">
                   <q-icon name="percent" size="16px" class="q-mr-xs" />
                   Tax / VAT Settings (Recoverable Asset)
@@ -316,13 +316,13 @@
                 </div>
                 <div v-if="form.paid_amount > 0" class="row justify-between items-center q-mt-xs">
                   <span style="font-size: 13px; color: var(--erp-text-secondary)">Paid</span>
-                  <span style="font-size: 14px; color: var(--q-positive)">
+                  <span style="font-size: 14px; color: var(--q-positive, var(--erp-success, #16a34a))">
                     {{ formatCurrency(form.paid_amount) }}
                   </span>
                 </div>
                 <div v-if="form.balance_due > 0" class="row justify-between items-center q-mt-xs">
                   <span style="font-size: 13px; color: var(--erp-text-secondary)">Balance Due</span>
-                  <span style="font-size: 15px; font-weight: 700; color: var(--q-negative)">
+                  <span style="font-size: 15px; font-weight: 700; color: var(--q-negative, var(--erp-danger, #dc2626))">
                     {{ formatCurrency(form.balance_due) }}
                   </span>
                 </div>

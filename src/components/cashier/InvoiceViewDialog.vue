@@ -133,16 +133,17 @@ const paymentStatusLabel = computed(() =>
   max-width: 96vw;
   border-radius: 16px !important;
   overflow: hidden;
-  background: var(--erp-bg-panel, #0d1117) !important;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--erp-bg-card) !important;
+  color: var(--erp-text-primary) !important;
+  border: 1px solid var(--erp-border);
 }
 
 .inv-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
 
   &--blue { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
   &--grey { background: linear-gradient(135deg, #374151, #6b7280); }
@@ -150,11 +151,12 @@ const paymentStatusLabel = computed(() =>
   &__left  { display: flex; align-items: center; gap: 12px; }
   &__icon  {
     width: 44px; height: 44px; border-radius: 11px;
-    background: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.22);
     display: flex; align-items: center; justify-content: center;
+    color: #ffffff !important;
   }
-  &__title { font-size: 16px; font-weight: 800; color: #fff; }
-  &__sub   { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+  &__title { font-size: 16px; font-weight: 800; color: #ffffff !important; }
+  &__sub   { font-size: 11px; color: rgba(255,255,255,0.85); margin-top: 2px; }
 }
 
 .inv-body {
@@ -172,17 +174,17 @@ const paymentStatusLabel = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--erp-bg-input);
+  border: 1px solid var(--erp-border);
   border-radius: 20px;
   padding: 3px 10px;
   font-size: 11px;
-  color: var(--erp-text-secondary, #9ca3af);
+  color: var(--erp-text-secondary);
 }
 
 .inv-divider {
   height: 1px;
-  background: rgba(255,255,255,0.07);
+  background: var(--erp-border);
   margin: 12px 0;
 }
 
@@ -190,7 +192,7 @@ const paymentStatusLabel = computed(() =>
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: #4b5563;
+  color: var(--erp-text-muted);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
@@ -208,17 +210,17 @@ const paymentStatusLabel = computed(() =>
   padding: 6px 10px;
   border-radius: 7px;
   transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.04); }
+  &:hover { background: var(--erp-bg-card-hover); }
   &.cancelled { opacity: 0.35; text-decoration: line-through; }
 
-  &__qty   { font-size: 11px; color: #6b7280; min-width: 20px; }
-  &__name  { flex: 1; font-size: 13px; color: var(--erp-text-primary, #f3f4f6); }
-  &__price { font-size: 12px; color: #9ca3af; font-variant-numeric: tabular-nums; }
+  &__qty   { font-size: 11px; color: var(--erp-text-secondary); min-width: 20px; }
+  &__name  { flex: 1; font-size: 13px; color: var(--erp-text-primary); }
+  &__price { font-size: 12px; color: var(--erp-text-primary); font-variant-numeric: tabular-nums; }
 }
 
 .inv-totals {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--erp-bg-input);
+  border: 1px solid var(--erp-border);
   border-radius: 10px;
   padding: 12px;
 
@@ -226,18 +228,18 @@ const paymentStatusLabel = computed(() =>
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--erp-text-secondary);
     padding: 3px 0;
   }
   &__divider {
     height: 1px;
-    background: rgba(255,255,255,0.08);
+    background: var(--erp-border);
     margin: 8px 0;
   }
   &__row--grand {
     font-size: 16px;
     font-weight: 800;
-    color: var(--erp-text-primary, #f3f4f6);
+    color: var(--erp-text-primary);
     padding-top: 4px;
   }
 }
@@ -253,7 +255,7 @@ const paymentStatusLabel = computed(() =>
   font-size: 13px;
   font-weight: 700;
 
-  &--paid    { background: rgba(5,150,105,0.15); color: #34d399; border: 1px solid rgba(5,150,105,0.3); }
-  &--pending { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  &--paid    { background: var(--erp-success-subtle); color: var(--erp-success); border: 1px solid var(--erp-success-subtle); }
+  &--pending { background: var(--erp-warning-subtle); color: var(--erp-warning); border: 1px solid var(--erp-warning-subtle); }
 }
 </style>

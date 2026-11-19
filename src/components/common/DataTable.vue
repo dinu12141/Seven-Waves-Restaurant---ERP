@@ -224,7 +224,7 @@ const defaultPagination = { rowsPerPage: props.rowsPerPage }
   }
 
   thead tr {
-    background-color: var(--erp-bg-table-header) !important;
+    background-color: var(--erp-bg-table-header, var(--erp-bg-stripe)) !important;
     th {
       font-size: 11px !important;
       font-weight: 600 !important;

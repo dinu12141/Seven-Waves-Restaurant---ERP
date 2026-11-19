@@ -926,8 +926,8 @@ onMounted(async () => {
 }
 
 .erp-tab__count {
-  background: var(--erp-badge-bg, #e2e8f0);
-  color: var(--erp-badge-text, #334155);
+  background: var(--erp-badge-bg, var(--erp-bg-hover));
+  color: var(--erp-badge-text, var(--erp-text-secondary));
   padding: 2px 6px;
   border-radius: 10px;
   font-size: 11px;

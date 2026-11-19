@@ -122,6 +122,8 @@ function close() {
   min-height: 48px;
   flex-shrink: 0;
   border-radius: 0;
+  background: var(--erp-primary, #2563eb) !important;
+  color: #ffffff !important;
 }
 
 .erp-dialog__title {

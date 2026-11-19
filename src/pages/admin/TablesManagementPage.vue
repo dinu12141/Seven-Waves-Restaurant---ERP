@@ -1249,11 +1249,11 @@ async function toggleDevice(device) {
 .page-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--q-dark, #111827);
+  color: var(--erp-text-primary);
 }
 .page-subtitle {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--erp-text-secondary);
   margin-top: 2px;
 }
 

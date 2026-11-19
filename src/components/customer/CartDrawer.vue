@@ -20,7 +20,7 @@
           @click="store.toggleCart"
         />
         <div class="q-ml-sm">
-          <div class="text-subtitle1 text-weight-bold text-white">Your Order</div>
+          <div class="text-subtitle1 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-grey-9'">Your Order</div>
           <div class="text-caption text-grey-6">{{ store.tableName }}</div>
         </div>
         <q-space />
@@ -33,8 +33,8 @@
         class="col column items-center justify-center text-center q-pa-xl q-gutter-y-md"
       >
         <div class="empty-icon">🛒</div>
-        <div class="text-subtitle1 text-grey-4">Your cart is empty</div>
-        <div class="text-caption text-grey-7">Browse our menu and add items you love</div>
+        <div class="text-subtitle1" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'">Your cart is empty</div>
+        <div class="text-caption" :class="$q.dark.isActive ? 'text-grey-7' : 'text-grey-6'">Browse our menu and add items you love</div>
         <q-btn
           unelevated
           outline
@@ -86,7 +86,7 @@
               placeholder="Add note (e.g. no onions)"
               dense
               outlined
-              dark
+              :dark="$q.dark.isActive"
               class="notes-input q-mt-sm"
               :input-style="{ fontSize: '0.78rem' }"
               @update:model-value="store.updateNotes(index, item.notes)"
@@ -110,7 +110,7 @@
               />
             </div>
 
-            <q-separator dark class="q-mt-sm" style="opacity: 0.08" />
+            <q-separator :dark="$q.dark.isActive" class="q-mt-sm" style="opacity: 0.15" />
           </div>
         </div>
       </q-scroll-area>
@@ -207,18 +207,20 @@ async function handlePlaceOrder() {
 
 <style lang="scss" scoped>
 .cart-drawer {
-  background: #12121c !important;
+  background: var(--erp-bg-card) !important;
+  color: var(--erp-text-primary) !important;
+  border-left: 1px solid var(--erp-border) !important;
 }
 
 .drawer-inner {
-  background: #12121c;
+  background: var(--erp-bg-card);
   height: 100%;
 }
 
 .drawer-header {
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--erp-border);
+  background: var(--erp-bg-stripe);
 }
 
 .cart-badge {
@@ -266,7 +268,7 @@ async function handlePlaceOrder() {
 .item-name {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--erp-text-primary, #e2e8f0);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -277,15 +279,15 @@ async function handlePlaceOrder() {
 
 .item-unit-price {
   font-size: 0.72rem;
-  color: #6b7280;
+  color: var(--erp-text-secondary, #6b7280);
   margin-top: 2px;
 }
 
 .qty-ctrl {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--erp-bg-input, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.1));
   border-radius: 20px;
   overflow: hidden;
 }
@@ -295,7 +297,7 @@ async function handlePlaceOrder() {
   height: 28px;
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: var(--erp-text-secondary, #9ca3af);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,7 +315,7 @@ async function handlePlaceOrder() {
   text-align: center;
   font-size: 0.85rem;
   font-weight: 700;
-  color: white;
+  color: var(--erp-text-primary, white);
 }
 
 .item-total-price {
@@ -324,27 +326,27 @@ async function handlePlaceOrder() {
 
 .notes-input {
   :deep(.q-field__control) {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--erp-bg-input, rgba(255, 255, 255, 0.03));
     border-radius: 8px;
     font-size: 0.78rem;
   }
 }
 
 .cart-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
+  background: var(--erp-bg-stripe, rgba(255, 255, 255, 0.02));
 }
 
 .special-req-input {
   :deep(.q-field__control) {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--erp-bg-input, rgba(255, 255, 255, 0.04));
     border-radius: 10px;
   }
 }
 
 .summary-box {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--erp-bg-input, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
 }
 
 .total-amount {

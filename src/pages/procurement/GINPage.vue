@@ -344,14 +344,14 @@
           <!-- Accounting Breakdown & Total -->
           <div class="row q-col-gutter-sm justify-end q-mt-md">
             <div class="col-12 col-md-4">
-              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-warning)">
+              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-warning, var(--erp-warning, #f59e0b))">
                 <div class="text-caption text-weight-bold text-amber-9">Cost of Goods Sold (COGS)</div>
                 <div class="text-subtitle1 text-weight-bolder">{{ fmtCurrency(totalCogs) }}</div>
                 <div class="text-caption text-grey-6" style="font-size: 11px">6000 Food Cost / 6001 Packaging</div>
               </div>
             </div>
             <div class="col-12 col-md-4">
-              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-positive)">
+              <div class="erp-card q-pa-sm" style="border-left: 4px solid var(--q-positive, var(--erp-success, #16a34a))">
                 <div class="text-caption text-weight-bold text-teal-8">Operating Expenses</div>
                 <div class="text-subtitle1 text-weight-bolder">{{ fmtCurrency(totalExpenses) }}</div>
                 <div class="text-caption text-grey-6" style="font-size: 11px">7044 Cleaning / 7011 Gas / 7005 Staff</div>

@@ -60,7 +60,7 @@ defineProps({
     display: inline-block;
     width: 6px;
     height: 6px;
-    background-color: var(--erp-error);
+    background-color: var(--erp-error, var(--erp-danger, #dc2626));
     border-radius: 50%;
   }
 
@@ -74,7 +74,7 @@ defineProps({
 
       &.q-field--error {
         .q-field__control:before {
-          border-color: var(--erp-error) !important;
+          border-color: var(--erp-error, var(--erp-danger, #dc2626)) !important;
         }
       }
 
@@ -121,7 +121,7 @@ defineProps({
   &__error-text {
     margin-top: 4px;
     font-size: 11px;
-    color: var(--erp-error);
+    color: var(--erp-error, var(--erp-danger, #dc2626));
     margin-bottom: 0px;
   }
 
@@ -134,7 +134,7 @@ defineProps({
 
   &--error {
     .erp-form-field__label {
-      color: var(--erp-error);
+      color: var(--erp-error, var(--erp-danger, #dc2626));
     }
   }
 }

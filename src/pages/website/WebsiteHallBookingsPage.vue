@@ -1135,7 +1135,7 @@ onMounted(() => {
     font-weight: var(--erp-font-weight-bold) !important;
   }
   &__sender {
-    font-size: var(--erp-font-size-body);
+    font-size: var(--erp-font-size-body, var(--erp-font-size-base, 13px));
     font-weight: var(--erp-font-weight-bold);
     color: var(--erp-text-primary);
   }

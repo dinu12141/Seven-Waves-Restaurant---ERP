@@ -253,7 +253,7 @@ BEGIN
 
     v_ref  := COALESCE(o.order_number::TEXT, left(o.id::TEXT, 8));
     v_desc := 'POS sale — Order #' || v_ref
-              || COALESCE(' | Inv ' || COALESCE(v_inv.invoice_number, v_inv.invoice_no), '')
+              || COALESCE(' | Inv ' || COALESCE(v_inv.invoice_number::TEXT, v_inv.invoice_no::TEXT), '')
               || COALESCE(' | ' || NULLIF(o.customer_name, ''), '');
 
     -- Debits

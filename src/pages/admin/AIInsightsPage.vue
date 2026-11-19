@@ -1168,9 +1168,9 @@ onMounted(async () => {
   border-left: 4px solid transparent;
   overflow: hidden;
 
-  &--pass    { border-left-color: var(--q-positive); }
-  &--warning { border-left-color: var(--q-warning); }
-  &--fail    { border-left-color: var(--q-negative); }
+  &--pass    { border-left-color: var(--q-positive, var(--erp-success, #16a34a)); }
+  &--warning { border-left-color: var(--q-warning, var(--erp-warning, #f59e0b)); }
+  &--fail    { border-left-color: var(--q-negative, var(--erp-danger, #dc2626)); }
 
   &__header {
     background: rgba(255, 255, 255, 0.02);

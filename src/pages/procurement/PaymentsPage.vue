@@ -1255,19 +1255,20 @@ async function savePayment(targetStatus) {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1.5px solid var(--erp-border, #e0e0e0);
+  border: 1.5px solid var(--erp-border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  background: var(--erp-bg, #fff);
+  background: var(--erp-bg-card);
+  color: var(--erp-text-primary);
 }
 .invoice-item:hover {
-  border-color: var(--erp-primary, #1976d2);
-  background: var(--erp-bg-hover, #f4f8ff);
+  border-color: var(--erp-primary);
+  background: var(--erp-bg-card-hover);
 }
 .invoice-item--selected {
-  border-color: var(--erp-primary, #1976d2);
-  background: #eef5ff;
+  border-color: var(--erp-primary);
+  background: var(--erp-primary-subtle);
 }
 .invoice-item__check {
   flex-shrink: 0;

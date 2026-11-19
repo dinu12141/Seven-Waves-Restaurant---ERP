@@ -24,7 +24,7 @@
       </q-card-section>
 
       <!-- ── Invoice Content ──────────────────────── -->
-      <q-card-section v-else class="inv-dialog__body q-pa-none flex flex-center" style="background-color: #e0e0e0; padding-top: 20px; padding-bottom: 20px;">
+      <q-card-section v-else class="inv-dialog__body q-pa-none flex flex-center" style="background-color: var(--erp-bg-main); padding-top: 20px; padding-bottom: 20px;">
         <BillPrintTemplate
           v-if="formattedInvoiceForTemplate"
           ref="billTemplate"
@@ -285,12 +285,14 @@ function printInvoice() {
   max-width: 95vw;
   margin: 0 auto;
   border-radius: 12px;
-  background: #f0f0f0;
+  background: var(--erp-bg-card);
+  color: var(--erp-text-primary);
+  border: 1px solid var(--erp-border);
 }
 
 .inv-dialog__toolbar {
-  background: #1a237e;
-  color: #fff;
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  color: #fff !important;
   min-height: 48px;
 }
 

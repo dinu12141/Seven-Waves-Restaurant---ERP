@@ -498,35 +498,35 @@ onMounted(loadData)
 .payslip-company {
   font-size: 22px;
   font-weight: 700;
-  color: #60a5fa;
+  color: var(--erp-primary, #2563eb);
   letter-spacing: 1px;
 }
 .payslip-title {
   font-size: 15px;
-  color: #9ca3af;
+  color: var(--erp-text-secondary, #64748b);
   text-transform: uppercase;
   letter-spacing: 3px;
 }
 .payslip-period {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--erp-text-muted, #94a3b8);
 }
 .payslip-line {
   display: flex;
   justify-content: space-between;
   padding: 5px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--erp-border, rgba(255, 255, 255, 0.06));
   font-size: 13px;
-  color: #d1d5db;
+  color: var(--erp-text-primary, #d1d5db);
 }
 .payslip-total {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
   font-weight: 700;
-  border-top: 2px solid #374151;
+  border-top: 2px solid var(--erp-border-strong, #374151);
   margin-top: 8px;
-  color: #f3f4f6;
+  color: var(--erp-text-primary, #f3f4f6);
 }
 .payslip-net {
   display: flex;
@@ -534,9 +534,9 @@ onMounted(loadData)
   padding: 16px;
   font-size: 20px;
   font-weight: 700;
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--erp-success-subtle, rgba(16, 185, 129, 0.08));
   border: 2px solid rgba(16, 185, 129, 0.3);
   border-radius: 8px;
-  color: #f3f4f6;
+  color: var(--erp-text-primary, #f3f4f6);
 }
 </style>

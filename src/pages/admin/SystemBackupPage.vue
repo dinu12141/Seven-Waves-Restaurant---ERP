@@ -845,8 +845,8 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 .scope-card--active {
-  border-color: var(--q-primary);
+  border-color: var(--q-primary, var(--erp-primary, #2563eb));
   border-width: 2px;
-  background: rgba(var(--q-primary-rgb), 0.05);
+  background: var(--erp-primary-subtle, rgba(var(--q-primary-rgb, 37, 99, 235), 0.05));
 }
 </style>

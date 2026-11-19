@@ -17,6 +17,7 @@
             no-caps
             rounded
             toggle-color="primary"
+            toggle-text-color="white"
             :color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
             :text-color="$q.dark.isActive ? 'grey-4' : 'grey-7'"
             :options="[
@@ -794,6 +795,12 @@ async function downloadInvoice() {
     font-size: 0.75rem;
     min-width: 0;
     padding: 6px 14px;
+  }
+  :deep(.q-btn--active) {
+    color: #ffffff !important;
+    .q-icon {
+      color: #ffffff !important;
+    }
   }
 }
 

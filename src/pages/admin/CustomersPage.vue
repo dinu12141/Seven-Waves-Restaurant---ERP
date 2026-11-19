@@ -540,8 +540,8 @@ onMounted(fetchCustomers)
 .customers-table-card {
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: var(--erp-bg-card) !important;
+  border: 1px solid var(--erp-border) !important;
 }
 
 .customers-table {
@@ -554,25 +554,25 @@ onMounted(fetchCustomers)
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6b7280;
-    background: rgba(255, 255, 255, 0.03);
+    color: var(--erp-text-secondary);
+    background: var(--erp-bg-stripe);
     padding: 10px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-bottom: 1px solid var(--erp-border) !important;
   }
   :deep(tbody tr) {
     cursor: pointer;
     &:hover {
-      background: rgba(59, 130, 246, 0.06) !important;
+      background: var(--erp-bg-card-hover) !important;
     }
   }
   :deep(tbody tr td) {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    color: #d1d5db;
+    border-bottom: 1px solid var(--erp-border);
+    color: var(--erp-text-primary);
   }
   :deep(.q-table__bottom) {
-    color: #6b7280;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--erp-text-secondary);
+    border-top: 1px solid var(--erp-border);
   }
 }
 

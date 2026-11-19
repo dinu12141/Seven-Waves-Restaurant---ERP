@@ -208,10 +208,10 @@ body.body--light {
    This provides utility alternatives.
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--light {
-  /* Catch common text-white on dark patterns */
-  [style*='color: #fff'],
-  [style*='color:#fff'],
-  [style*='color: white'] {
+  /* Catch common text-white on unstyled dark patterns (only if not inside a colored container) */
+  .q-page > [style*='color: #fff'],
+  .q-page > [style*='color:#fff'],
+  .q-page > [style*='color: white'] {
     color: var(--erp-text-primary) !important;
   }
 
@@ -558,8 +558,43 @@ body.body--light {
     background: var(--erp-bg-card) !important;
   }
 
-  /* text-white utility — force dark text for readability, EXCEPT on dark gradient areas */
-  .text-white:not(.hero-section *) {
+  /* Preserve crisp white text and icons on ALL buttons, badges, banners, headers, and colored surfaces */
+  .bg-primary, .bg-primary *,
+  .bg-secondary, .bg-secondary *,
+  .bg-positive, .bg-positive *,
+  .bg-negative, .bg-negative *,
+  .bg-warning, .bg-warning *,
+  .bg-info, .bg-info *,
+  .bg-dark .text-white,
+  .bg-black, .bg-black *,
+  .bg-amber-8, .bg-amber-8 *,
+  .bg-orange, .bg-orange *,
+  .bg-deep-purple, .bg-deep-purple *,
+  .q-badge, .q-badge *,
+  .q-banner[class*='bg-'], .q-banner[class*='bg-'] *,
+  .q-btn:not(.q-btn--flat):not(.q-btn--outline),
+  .q-btn:not(.q-btn--flat):not(.q-btn--outline) *,
+  .drawer-header, .drawer-header *,
+  [class*='drawer-header--'], [class*='drawer-header--'] *,
+  .ops-kpi-card, .ops-kpi-card *,
+  .hero-section, .hero-section *,
+  .inv-header, .inv-header * {
+    color: #ffffff;
+  }
+  .drawer-header .q-icon,
+  .drawer-header .drawer-header__title,
+  .drawer-header .drawer-title,
+  .drawer-header .drawer-subtitle,
+  .drawer-header .q-btn,
+  .ops-kpi-card .ops-kpi-value,
+  .ops-kpi-card .ops-kpi-label,
+  .ops-kpi-card .q-icon {
+    color: #ffffff !important;
+  }
+
+  /* Only bare text-white directly on page backgrounds is adapted to dark text */
+  .q-page > .text-white:not([class*='bg-']),
+  .q-page-container > .text-white:not([class*='bg-']) {
     color: var(--erp-text-primary) !important;
   }
 

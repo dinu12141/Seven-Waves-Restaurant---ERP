@@ -196,9 +196,11 @@ body.body--dark {
   --erp-info-light: #38bdf8;
 
   /* ═══ Backgrounds ════════════════════════════════════════════════════════ */
+  --erp-bg: #0f172a;
   --erp-bg-main: #0f172a;
   --erp-bg-page: #080e18;
   --erp-bg-card: #1e293b;
+  --erp-bg-panel: #161b22;
   --erp-bg-card-hover: rgba(255, 255, 255, 0.04);
   --erp-bg-elevated: #1e293b;
   --erp-bg-sidebar: #0b1220;
@@ -209,6 +211,16 @@ body.body--dark {
   --erp-bg-hover: rgba(255, 255, 255, 0.05);
   --erp-bg-active: rgba(255, 255, 255, 0.06);
   --erp-bg-toolbar-bottom: rgba(0, 0, 0, 0.18);
+  --erp-bg-table-header: rgba(255, 255, 255, 0.04);
+  --erp-badge-bg: rgba(255, 255, 255, 0.08);
+  --erp-badge-text: #e2e8f0;
+  --erp-error: #dc2626;
+  --erp-font-size-body: 13px;
+  --q-primary-rgb: 37, 99, 235;
+  --q-primary-opacity: rgba(37, 99, 235, 0.12);
+  --q-positive: #16a34a;
+  --q-warning: #f59e0b;
+  --q-negative: #dc2626;
 
   /* ═══ Borders ═════════════════════════════════════════════════════════════ */
   --erp-border: rgba(255, 255, 255, 0.06);
@@ -293,9 +305,11 @@ body.body--light {
   --erp-info-light: #0ea5e9;
 
   /* ═══ Backgrounds ════════════════════════════════════════════════════════ */
+  --erp-bg: #ffffff;
   --erp-bg-main: #f1f5f9;
   --erp-bg-page: #f8fafc;
   --erp-bg-card: #ffffff;
+  --erp-bg-panel: #ffffff;
   --erp-bg-card-hover: rgba(0, 0, 0, 0.02);
   --erp-bg-elevated: #ffffff;
   --erp-bg-sidebar: #ffffff;
@@ -306,6 +320,16 @@ body.body--light {
   --erp-bg-hover: rgba(0, 0, 0, 0.04);
   --erp-bg-active: rgba(0, 0, 0, 0.05);
   --erp-bg-toolbar-bottom: rgba(0, 0, 0, 0.03);
+  --erp-bg-table-header: #f1f5f9;
+  --erp-badge-bg: #e2e8f0;
+  --erp-badge-text: #334155;
+  --erp-error: #dc2626;
+  --erp-font-size-body: 13px;
+  --q-primary-rgb: 37, 99, 235;
+  --q-primary-opacity: rgba(37, 99, 235, 0.08);
+  --q-positive: #16a34a;
+  --q-warning: #d97706;
+  --q-negative: #dc2626;
 
   /* ═══ Borders ═════════════════════════════════════════════════════════════ */
   --erp-border: #e2e8f0;

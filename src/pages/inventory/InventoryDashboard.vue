@@ -189,7 +189,7 @@
             <q-linear-progress
               :value="shortagePercent / 100"
               :color="selectedAlert?.stock_status === 'out_of_stock' ? 'red' : 'orange'"
-              track-color="grey-8"
+              :track-color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
               rounded
               size="10px"
               class="q-mt-xs"
@@ -602,11 +602,11 @@ onUnmounted(() => clearInterval(timer))
   }
 
   &__title {
-    font-size: 18px; font-weight: 800; color: #fff;
+    font-size: 18px; font-weight: 800; color: #ffffff !important;
   }
 
   &__code {
-    font-size: 12px; color: rgba(255,255,255,0.7);
+    font-size: 12px; color: rgba(255,255,255,0.85) !important;
   }
 }
 
@@ -617,7 +617,7 @@ onUnmounted(() => clearInterval(timer))
 }
 
 .detail-metric {
-  background: var(--erp-bg-hover, rgba(0,0,0,0.03));
+  background: var(--erp-bg-input);
   border: 1px solid var(--erp-border);
   border-radius: 10px;
   padding: 14px;
@@ -629,19 +629,20 @@ onUnmounted(() => clearInterval(timer))
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    color: #6b7280;
+    color: var(--erp-text-secondary);
     margin-bottom: 6px;
   }
 
   &__value {
     font-size: 20px;
     font-weight: 800;
+    color: var(--erp-text-primary);
   }
 
   &__unit {
     font-size: 13px;
     font-weight: 500;
-    color: #9ca3af;
+    color: var(--erp-text-secondary);
   }
 }
 
@@ -650,7 +651,7 @@ onUnmounted(() => clearInterval(timer))
     display: flex;
     justify-content: space-between;
     font-size: 12px;
-    color: #6b7280;
+    color: var(--erp-text-secondary);
     margin-bottom: 4px;
   }
 }

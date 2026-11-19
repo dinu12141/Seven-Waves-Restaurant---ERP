@@ -94,9 +94,19 @@
       </div>
 
       <template v-else>
+        <!-- ── Unified High-Contrast Drawer Header ── -->
+        <div class="drawer-header" :class="`drawer-header--${currentDrawerHeader.color}`">
+          <div class="drawer-header__left">
+            <div class="drawer-header__icon">
+              <q-icon :name="currentDrawerHeader.icon" size="22px" class="text-white" />
+            </div>
+            <div class="drawer-header__title text-white">{{ currentDrawerHeader.title }}</div>
+          </div>
+          <q-btn flat round icon="close" color="white" class="text-white" aria-label="Close" @click="drawerOpen = false" />
+        </div>
+
         <!-- ── Active Orders ── -->
         <template v-if="drawerKey === 'active_orders'">
-          <DrawerHeader title="Active Orders" icon="receipt_long" color="blue" @close="drawerOpen=false" />
           <div class="drawer-body">
             <div v-if="!drawerData.orders?.length" class="drawer-empty">No active orders right now.</div>
             <div v-for="o in drawerData.orders" :key="o.id" class="drawer-row">
@@ -111,7 +121,6 @@
 
         <!-- ── Pending Waiter Actions ── -->
         <template v-else-if="drawerKey === 'pending_waiter'">
-          <DrawerHeader title="Pending Waiter Actions" icon="room_service" color="orange" @close="drawerOpen=false" />
           <div class="drawer-body">
             <div v-if="!drawerData.orders?.length" class="drawer-empty">No pending waiter actions.</div>
             <div v-for="o in drawerData.orders" :key="o.id" class="drawer-row">
@@ -126,7 +135,6 @@
 
         <!-- ── Kitchen Queue ── -->
         <template v-else-if="drawerKey === 'kitchen_queue'">
-          <DrawerHeader title="Kitchen Queue" icon="soup_kitchen" color="red" @close="drawerOpen=false" />
           <div class="drawer-body">
             <div v-if="!drawerData.tickets?.length" class="drawer-empty">Kitchen queue is clear!</div>
             <div v-for="k in drawerData.tickets" :key="k.id" class="drawer-row">
@@ -141,7 +149,6 @@
 
         <!-- ── Cashier Activity ── -->
         <template v-else-if="drawerKey === 'cashier_activity'">
-          <DrawerHeader title="Cashier Activity — Today" icon="local_atm" color="green" @close="drawerOpen=false" />
           <div class="drawer-body">
             <div v-if="!drawerData.cashiers?.length" class="drawer-empty">No cashier activity today.</div>
 
@@ -149,7 +156,7 @@
             <div class="drawer-summary q-mb-md">
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Total Sales</div>
-                <div class="drawer-summary__value text-green-4">
+                <div class="drawer-summary__value text-positive">
                   LKR {{ Number(drawerData.totalSales || 0).toLocaleString() }}
                 </div>
               </div>
@@ -164,7 +171,7 @@
                 <div class="drawer-row__primary">{{ c.cashier_name }}</div>
                 <div class="drawer-row__secondary">{{ c.transaction_count }} txns · Cash: LKR {{ Number(c.cash_total).toLocaleString() }}</div>
               </div>
-              <div class="text-green-4 text-weight-bold" style="font-size:13px">
+              <div class="text-positive text-weight-bold" style="font-size:13px">
                 LKR {{ Number(c.total_sales).toLocaleString() }}
               </div>
             </div>
@@ -173,28 +180,27 @@
 
         <!-- ── Table Occupancy ── -->
         <template v-else-if="drawerKey === 'table_occupancy'">
-          <DrawerHeader title="Table Occupancy" icon="deck" color="purple" @close="drawerOpen=false" />
           <div class="drawer-body">
             <!-- Occupancy donut summary -->
             <div class="drawer-summary q-mb-md">
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Occupied</div>
-                <div class="drawer-summary__value text-orange-4">{{ drawerData.occupied || 0 }}</div>
+                <div class="drawer-summary__value text-warning">{{ drawerData.occupied || 0 }}</div>
               </div>
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Available</div>
-                <div class="drawer-summary__value text-green-4">{{ drawerData.available || 0 }}</div>
+                <div class="drawer-summary__value text-positive">{{ drawerData.available || 0 }}</div>
               </div>
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Reserved</div>
-                <div class="drawer-summary__value text-blue-4">{{ drawerData.reserved || 0 }}</div>
+                <div class="drawer-summary__value text-primary">{{ drawerData.reserved || 0 }}</div>
               </div>
             </div>
 
             <q-linear-progress
               :value="(drawerData.occupied || 0) / Math.max(1, (drawerData.total || 1))"
               color="purple"
-              track-color="grey-8"
+              :track-color="$q.dark.isActive ? 'grey-9' : 'grey-3'"
               rounded
               size="10px"
               class="q-mb-md"
@@ -216,17 +222,16 @@
 
         <!-- ── Completed Today ── -->
         <template v-else-if="drawerKey === 'completed_today'">
-          <DrawerHeader title="Completed Today" icon="check_circle" color="teal" @close="drawerOpen=false" />
           <div class="drawer-body">
             <!-- Summary -->
             <div class="drawer-summary q-mb-md">
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Orders Done</div>
-                <div class="drawer-summary__value text-teal-4">{{ drawerData.orders?.length || 0 }}</div>
+                <div class="drawer-summary__value text-teal">{{ drawerData.orders?.length || 0 }}</div>
               </div>
               <div class="drawer-summary__item">
                 <div class="drawer-summary__label">Revenue</div>
-                <div class="drawer-summary__value text-green-4">
+                <div class="drawer-summary__value text-positive">
                   LKR {{ Number(drawerData.revenue || 0).toLocaleString() }}
                 </div>
               </div>
@@ -238,7 +243,7 @@
                 <div class="drawer-row__primary">#{{ o.order_number }} · {{ o.table_number || o.order_type }}</div>
                 <div class="drawer-row__secondary">{{ timeAgo(o.updated_at) }}</div>
               </div>
-              <div class="text-green-4 text-weight-bold" style="font-size:13px">
+              <div class="text-positive text-weight-bold" style="font-size:13px">
                 LKR {{ Number(o.total_amount).toLocaleString() }}
               </div>
             </div>
@@ -250,8 +255,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, defineComponent, h } from 'vue'
-import { date, QIcon, QBtn, useQuasar } from 'quasar'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { date, useQuasar } from 'quasar'
 import { supabase } from 'src/boot/supabase'
 import { useAuthStore } from 'src/stores/auth'
 import { localDateKey, localDayStartISO } from 'src/services/pos/posHelpers'
@@ -518,23 +523,17 @@ function kotColor(s) {
   return map[s] || 'grey'
 }
 
-// ── Drawer Header component (inline) ─────────────────────────────────────────
-const DrawerHeader = defineComponent({
-  props: { title: String, icon: String, color: String },
-  emits: ['close'],
-  setup(props, { emit }) {
-    return () => h('div', {
-      class: `drawer-header drawer-header--${props.color}`,
-    }, [
-      h('div', { class: 'drawer-header__left' }, [
-        h('div', { class: 'drawer-header__icon' }, [
-          h(QIcon, { name: props.icon, size: '22px', color: 'white' }),
-        ]),
-        h('div', { class: 'drawer-header__title' }, props.title),
-      ]),
-      h(QBtn, { flat: true, round: true, icon: 'close', color: 'white', 'aria-label': 'Close', onClick: () => emit('close') }),
-    ])
-  },
+// ── Unified Drawer Header config ──────────────────────────────────────────────
+const currentDrawerHeader = computed(() => {
+  const configs = {
+    active_orders:    { title: 'Active Orders',            icon: 'receipt_long', color: 'blue'   },
+    pending_waiter:   { title: 'Pending Waiter Actions',   icon: 'room_service', color: 'orange' },
+    kitchen_queue:    { title: 'Kitchen Queue',            icon: 'soup_kitchen', color: 'red'    },
+    cashier_activity: { title: 'Cashier Activity — Today', icon: 'local_atm',    color: 'green'  },
+    table_occupancy:  { title: 'Table Occupancy',          icon: 'deck',         color: 'purple' },
+    completed_today:  { title: 'Completed Today',          icon: 'check_circle', color: 'teal'   },
+  }
+  return configs[drawerKey.value] || { title: 'Overview', icon: 'info', color: 'blue' }
 })
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -615,19 +614,19 @@ onUnmounted(() => clearInterval(timer))
 
 // ── Pending panel ─────────────────────────────────────────────────────────────
 .ops-panel {
-  background: var(--erp-bg-panel, #161b22);
-  border: 1px solid var(--erp-border, rgba(255,255,255,0.08));
+  background: var(--erp-bg-card);
+  border: 1px solid var(--erp-border);
   border-radius: 14px; overflow: hidden;
   display: flex; flex-direction: column; height: 100%;
 
   &__header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--erp-border);
+    background: var(--erp-bg-stripe);
   }
   &__title {
-    font-size: 13px; font-weight: 700; color: #f3f4f6;
+    font-size: 13px; font-weight: 700; color: var(--erp-text-primary);
     display: flex; align-items: center;
   }
   &__body { flex: 1; padding: 10px; overflow-y: auto; max-height: 380px; }
@@ -639,29 +638,30 @@ onUnmounted(() => clearInterval(timer))
   border: 1px solid transparent;
   transition: all 0.2s;
 
-  &--waiter  { background: rgba(251,146,60,0.08); border-color: rgba(251,146,60,0.2); }
-  &--kitchen { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.2);  }
-  &--waiter:hover  { background: rgba(251,146,60,0.15); }
-  &--kitchen:hover { background: rgba(239,68,68,0.15);  }
+  &--waiter  { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.25); }
+  &--kitchen { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.25);  }
+  &--waiter:hover  { background: rgba(251,146,60,0.18); }
+  &--kitchen:hover { background: rgba(239,68,68,0.18);  }
 }
 .ops-action-icon {
   width: 32px; height: 32px;
-  border-radius: 8px; background: rgba(255,255,255,0.1);
+  border-radius: 8px; background: rgba(255,255,255,0.12);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.ops-action-title { font-size: 13px; font-weight: 600; color: #f3f4f6; }
-.ops-action-desc  { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.ops-action-title { font-size: 13px; font-weight: 600; color: var(--erp-text-primary); }
+.ops-action-desc  { font-size: 11px; color: var(--erp-text-secondary); margin-top: 2px; }
 
 .ops-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 30px; color: #4b5563; font-size: 13px; text-align: center; gap: 8px;
+  padding: 30px; color: var(--erp-text-muted); font-size: 13px; text-align: center; gap: 8px;
 }
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
 .ops-drawer {
-  background: var(--erp-bg-panel, #0d1117) !important;
-  border-left: 1px solid rgba(255,255,255,0.08) !important;
+  background: var(--erp-bg-card) !important;
+  color: var(--erp-text-primary) !important;
+  border-left: 1px solid var(--erp-border) !important;
 }
 
 .ops-drawer-loading {
@@ -671,16 +671,20 @@ onUnmounted(() => clearInterval(timer))
 
 .drawer-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
 
-  &__left  { display: flex; align-items: center; gap: 14px; }
+  &__left  { display: flex; align-items: center; gap: 12px; }
   &__icon  {
-    width: 46px; height: 46px; border-radius: 12px;
-    background: rgba(255,255,255,0.2);
+    width: 42px; height: 42px; border-radius: 10px;
+    background: rgba(255,255,255,0.22);
     display: flex; align-items: center; justify-content: center;
+    color: #ffffff !important;
   }
-  &__title { font-size: 17px; font-weight: 800; color: #fff; }
+  &__title {
+    font-size: 16px; font-weight: 700; color: #ffffff !important;
+    letter-spacing: -0.2px;
+  }
 
   &--blue   { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
   &--orange { background: linear-gradient(135deg, #78350f, #d97706); }
@@ -693,29 +697,36 @@ onUnmounted(() => clearInterval(timer))
 .drawer-body {
   padding: 16px;
   overflow-y: auto;
-  height: calc(100% - 90px);
+  height: calc(100% - 75px);
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.1) transparent;
+  scrollbar-color: var(--erp-border) transparent;
 }
 
 .drawer-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.05);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--erp-border);
+  background: var(--erp-bg-input);
   margin-bottom: 8px;
-  transition: background 0.15s;
-  &:hover { background: rgba(255,255,255,0.06); }
+  transition: background 0.15s, border-color 0.15s;
+  &:hover {
+    background: var(--erp-bg-card-hover);
+    border-color: var(--erp-border-hover);
+  }
 
   &__left   { flex: 1; min-width: 0; }
-  &__primary { font-size: 13px; font-weight: 600; color: #f3f4f6;
-               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  &__secondary { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  &__primary {
+    font-size: 13px; font-weight: 600; color: var(--erp-text-primary) !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  &__secondary {
+    font-size: 11px; color: var(--erp-text-secondary) !important; margin-top: 2px;
+  }
 }
 
 .drawer-empty {
-  text-align: center; color: #4b5563;
+  text-align: center; color: var(--erp-text-muted);
   font-size: 13px; padding: 40px;
 }
 
@@ -723,12 +734,16 @@ onUnmounted(() => clearInterval(timer))
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
 
   &__item {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--erp-bg-input);
+    border: 1px solid var(--erp-border);
     border-radius: 10px; padding: 12px; text-align: center;
   }
-  &__label { font-size: 10px; font-weight: 700; text-transform: uppercase;
-             letter-spacing: 0.6px; color: #6b7280; margin-bottom: 4px; }
-  &__value { font-size: 20px; font-weight: 800; color: #f3f4f6; }
+  &__label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--erp-text-secondary); margin-bottom: 4px;
+  }
+  &__value {
+    font-size: 18px; font-weight: 800; color: var(--erp-text-primary);
+  }
 }
 </style>

@@ -1539,10 +1539,10 @@ onMounted(() => {
 @import 'src/css/finance-common.scss';
 
 .ap-control {
-  border-left: 4px solid var(--q-positive);
+  border-left: 4px solid var(--q-positive, var(--erp-success, #16a34a));
 }
 .ap-control--warn {
-  border-left-color: var(--q-warning);
+  border-left-color: var(--q-warning, var(--erp-warning, #f59e0b));
 }
 
 .pay-lines-wrap {

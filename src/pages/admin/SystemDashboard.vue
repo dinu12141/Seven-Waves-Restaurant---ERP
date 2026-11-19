@@ -133,14 +133,14 @@
         <div class="drawer-header" :class="`drawer-header--${activeCard?.color}`">
           <div class="drawer-header__left">
             <div class="drawer-icon-wrap">
-              <q-icon :name="activeCard?.icon" size="24px" color="white" />
+              <q-icon :name="activeCard?.icon" size="24px" class="text-white" />
             </div>
             <div>
-              <div class="drawer-title">{{ activeCard?.title }}</div>
-              <div class="drawer-subtitle">{{ activeCard?.value }}</div>
+              <div class="drawer-title text-white">{{ activeCard?.title }}</div>
+              <div class="drawer-subtitle text-white">{{ activeCard?.value }}</div>
             </div>
           </div>
-          <q-btn flat round icon="close" color="white" @click="drawerOpen = false" />
+          <q-btn flat round icon="close" color="white" class="text-white" @click="drawerOpen = false" />
         </div>
 
         <!-- Drawer body -->
