@@ -126,21 +126,21 @@
             </div>
           </div>
 
-          <!-- Section 0: QR Table Order Guardian (Auto-Healing) -->
+          <!-- Section 0: Omnichannel Order & KOT Guardian (Auto-Healing) -->
           <div class="text-subtitle2 text-weight-bold q-mb-xs row items-center justify-between">
             <span class="row items-center q-gutter-x-xs">
               <q-icon name="healing" color="cyan" />
-              <span>QR Order Guardian (Self-Healing)</span>
+              <span>Omnichannel Order &amp; KOT Guardian (Self-Healing)</span>
             </span>
             <q-badge color="cyan-9" class="text-weight-bold" size="xs">
-              90s AUTO-DISPATCH ACTIVE
+              REALTIME HEALING ACTIVE
             </q-badge>
           </div>
 
           <div class="bg-dark-glass-light q-pa-sm rounded-borders q-mb-md">
             <div class="row items-center justify-between q-mb-xs">
               <div class="text-caption text-grey-4">
-                Protects customer QR orders from waiter delays &amp; routing glitches.
+                Guards POS, QR &amp; Online orders: auto-heals waiter delays &amp; repairs missing KOTs.
               </div>
               <q-btn
                 dense
@@ -156,7 +156,7 @@
 
             <div v-if="healedOrders.length === 0" class="text-caption text-grey-4 q-pa-xs">
               <q-icon name="verified_user" color="positive" size="14px" class="q-mr-xs" />
-              Zero dropped orders. All QR orders claimed or dispatched within 90s.
+              Zero dropped orders. All POS and QR orders routed to Kitchen Displays.
             </div>
             <div v-else class="q-gutter-y-xs">
               <div
@@ -166,9 +166,9 @@
               >
                 <div class="row items-center q-gutter-x-xs">
                   <q-icon name="check_circle" size="14px" />
-                  <span>Order #{{ ho.order_number }} (Table {{ ho.table_number || 'N/A' }})</span>
+                  <span>Order #{{ ho.order_number }} ({{ (ho.channel || 'POS').toUpperCase() }} · Table {{ ho.table_number || 'N/A' }})</span>
                 </div>
-                <span class="text-weight-bold">Rescued at {{ ho.elapsed_seconds }}s</span>
+                <span class="text-weight-bold">{{ ho.reason === 'missing_kot_repaired' ? 'KOT Repaired' : 'Dispatched at ' + ho.elapsed_seconds + 's' }}</span>
               </div>
             </div>
           </div>
@@ -2326,14 +2326,14 @@ async function triggerSelfHealManual() {
         $q.notify({
           type: 'positive',
           icon: 'healing',
-          message: `🤖 AI Self-Healed ${res.data.healed_count} QR order(s)! Dispatched directly to Kitchen.`,
+          message: `🤖 AI Self-Healed ${res.data.healed_count} order(s)! Dispatched / Repaired KOTs directly to Kitchen.`,
           position: 'top',
           timeout: 4000
         })
       } else {
         $q.notify({
           type: 'info',
-          message: 'All QR table orders are actively claimed. Zero stalled orders detected.',
+          message: 'All POS & QR orders are actively routed. Zero missing KOTs detected.',
           position: 'top',
           timeout: 2500
         })

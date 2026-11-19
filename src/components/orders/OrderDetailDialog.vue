@@ -140,9 +140,20 @@
       <!-- ═══ TAB: KOT TICKETS ═══ -->
       <div v-else-if="activeTab === 'kot'" class="detail-body">
         <div class="detail-content">
-          <div v-if="kotTickets.length === 0" class="empty-state">
+          <div v-if="kotTickets.length === 0" class="empty-state column items-center">
             <q-icon name="soup_kitchen" size="64px" style="opacity: 0.15" />
-            <div class="text-grey-6 q-mt-md">No KOT tickets for this order</div>
+            <div class="text-grey-6 q-mt-md q-mb-sm">No KOT tickets for this order</div>
+            <q-btn
+              color="primary"
+              icon="send"
+              label="Generate KOT &amp; Send to Kitchen"
+              unelevated
+              no-caps
+              size="sm"
+              class="q-mt-sm"
+              :loading="generatingKot"
+              @click="generateMissingKotForOrder"
+            />
           </div>
           <div v-else class="kot-grid">
             <div v-for="kot in kotTickets" :key="kot.id" class="kot-card">
@@ -442,6 +453,110 @@ async function fetchInvoice(invoiceId) {
     console.error('[OrderDetailDialog] Error fetching invoice:', err)
   } finally {
     invoiceLoading.value = false
+  }
+}
+
+// ── Manual Emergency Action: Generate missing KOT and dispatch to kitchen ──
+const generatingKot = ref(false)
+
+async function generateMissingKotForOrder() {
+  if (!orderData.value?.id) return
+  generatingKot.value = true
+  try {
+    const orderId = orderData.value.id
+    const { data: oItems, error: itemsErr } = await supabase
+      .from('order_items')
+      .select('id, quantity, notes, kitchen_id, menu_item_id, menu_items(kitchen_id)')
+      .eq('order_id', orderId)
+
+    if (itemsErr) throw itemsErr
+    if (!oItems || oItems.length === 0) {
+      $q.notify({ type: 'warning', message: 'No items in this order to send to kitchen.' })
+      return
+    }
+
+    let defaultKitchenId = null
+    const { data: defaultK } = await supabase
+      .from('kitchens')
+      .select('id')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    defaultKitchenId = defaultK?.id
+
+    const kitchenMap = new Map()
+    for (const item of oItems) {
+      const kId = item.kitchen_id || item.menu_items?.kitchen_id || defaultKitchenId
+      if (!kId) continue
+      if (!kitchenMap.has(kId)) kitchenMap.set(kId, [])
+      kitchenMap.get(kId).push(item)
+    }
+
+    if (kitchenMap.size === 0) {
+      $q.notify({ type: 'warning', message: 'No target kitchen found for these items.' })
+      return
+    }
+
+    let createdCount = 0
+    for (const [kId, kItems] of kitchenMap.entries()) {
+      const { data: existing } = await supabase
+        .from('kot_tickets')
+        .select('id')
+        .eq('order_id', orderId)
+        .eq('kitchen_id', kId)
+        .neq('status', 'cancelled')
+        .maybeSingle()
+
+      let kotId = existing?.id
+      if (!kotId) {
+        const { data: newKot, error: kotErr } = await supabase
+          .from('kot_tickets')
+          .insert({
+            order_id: orderId,
+            kitchen_id: kId,
+            status: 'created',
+          })
+          .select('id')
+          .single()
+
+        if (kotErr) throw kotErr
+        kotId = newKot.id
+        createdCount++
+      }
+
+      for (const ki of kItems) {
+        const { data: existingKi } = await supabase
+          .from('kot_items')
+          .select('id')
+          .eq('kot_id', kotId)
+          .eq('order_item_id', ki.id)
+          .maybeSingle()
+
+        if (!existingKi) {
+          await supabase.from('kot_items').insert({
+            kot_id: kotId,
+            order_item_id: ki.id,
+            quantity: ki.quantity || 1,
+            notes: ki.notes || null,
+            status: 'queued',
+          })
+        }
+      }
+    }
+
+    $q.notify({
+      type: 'positive',
+      icon: 'soup_kitchen',
+      message: `Successfully generated and dispatched ${createdCount} KOT(s) to Kitchen Display!`,
+    })
+
+    await fetchOrderDetails(orderId)
+  } catch (err) {
+    console.error('[OrderDetailDialog] Error generating KOT:', err)
+    $q.notify({ type: 'negative', message: `Failed to generate KOT: ${err.message || 'Error'}` })
+  } finally {
+    generatingKot.value = false
   }
 }
 

@@ -1428,58 +1428,137 @@ export async function runQrOrderSelfHeal(branchId, timeoutSeconds = 90) {
   const sixHoursAgo = new Date(now.getTime() - 6 * 3600 * 1000).toISOString()
 
   try {
+    // 1. Scan stalled pending_waiter orders (>timeoutSeconds)
     const { data: stuckOrders } = await supabase
       .from('orders')
-      .select('id, order_number, table_number, created_at, subtotal')
+      .select('id, order_number, table_number, created_at, subtotal, status, order_source')
       .eq('branch_id', branchId)
       .eq('status', 'pending_waiter')
       .lte('created_at', cutoff)
       .gte('created_at', sixHoursAgo)
 
-    const healed = []
-    if (stuckOrders && stuckOrders.length > 0) {
-      for (const ord of stuckOrders) {
-        // Auto confirm order
-        await supabase
-          .from('orders')
-          .update({
-            status: 'confirmed',
-            accepted_at: now.toISOString(),
-            notes: `[AI Auto-Dispatched: Waiter ${timeoutSeconds}s timeout]`,
-          })
-          .eq('id', ord.id)
+    // 2. Scan active orders (POS/QR/Delivery/Website) that might be missing KOTs
+    const { data: activeOrders } = await supabase
+      .from('orders')
+      .select('id, order_number, table_number, created_at, subtotal, status, order_source')
+      .eq('branch_id', branchId)
+      .in('status', ['accepted', 'confirmed', 'in_progress', 'ready'])
+      .gte('created_at', sixHoursAgo)
 
-        // Ensure KOT exists
+    const allCandidateOrders = [...(stuckOrders || [])]
+    const existingIds = new Set(allCandidateOrders.map((o) => o.id))
+    for (const ao of activeOrders || []) {
+      if (!existingIds.has(ao.id)) {
+        allCandidateOrders.push(ao)
+        existingIds.add(ao.id)
+      }
+    }
+
+    const healed = []
+    if (allCandidateOrders.length > 0) {
+      for (const ord of allCandidateOrders) {
+        let wasStuck = false
+        if (ord.status === 'pending_waiter') {
+          // Auto confirm order
+          await supabase
+            .from('orders')
+            .update({
+              status: 'confirmed',
+              accepted_at: now.toISOString(),
+              notes: `[AI Auto-Dispatched: Waiter ${timeoutSeconds}s timeout]`,
+            })
+            .eq('id', ord.id)
+          wasStuck = true
+        }
+
+        // Ensure KOT exists and items are linked
         const { data: items } = await supabase
           .from('order_items')
-          .select('id, kitchen_id')
+          .select('id, kitchen_id, quantity, notes')
           .eq('order_id', ord.id)
 
-        const kitchenIds = [...new Set((items || []).map((i) => i.kitchen_id).filter(Boolean))]
+        if (!items || items.length === 0) continue
 
-        for (const kId of kitchenIds) {
+        // Fallback kitchen if item has no kitchen_id
+        let defaultKitchenId = null
+        if (items.some((i) => !i.kitchen_id)) {
+          const { data: dk } = await supabase
+            .from('kitchens')
+            .select('id')
+            .eq('branch_id', branchId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+          defaultKitchenId = dk?.id
+        }
+
+        const kitchenMap = new Map()
+        for (const item of items) {
+          const kId = item.kitchen_id || defaultKitchenId
+          if (!kId) continue
+          if (!kitchenMap.has(kId)) kitchenMap.set(kId, [])
+          kitchenMap.get(kId).push(item)
+        }
+
+        let kotHealed = false
+        for (const [kId, kItems] of kitchenMap.entries()) {
           const { data: existingKot } = await supabase
             .from('kot_tickets')
             .select('id')
             .eq('order_id', ord.id)
             .eq('kitchen_id', kId)
+            .neq('status', 'cancelled')
             .maybeSingle()
 
-          if (!existingKot) {
-            await supabase.from('kot_tickets').insert({
-              order_id: ord.id,
-              kitchen_id: kId,
-              status: 'created',
-            })
+          let kotId = existingKot?.id
+          if (!kotId) {
+            const { data: newKot } = await supabase
+              .from('kot_tickets')
+              .insert({
+                order_id: ord.id,
+                kitchen_id: kId,
+                status: 'created',
+              })
+              .select('id')
+              .maybeSingle()
+            kotId = newKot?.id
+            kotHealed = true
+          }
+
+          if (kotId) {
+            for (const ki of kItems) {
+              const { data: existingKi } = await supabase
+                .from('kot_items')
+                .select('id')
+                .eq('kot_id', kotId)
+                .eq('order_item_id', ki.id)
+                .maybeSingle()
+
+              if (!existingKi) {
+                await supabase.from('kot_items').insert({
+                  kot_id: kotId,
+                  order_item_id: ki.id,
+                  quantity: ki.quantity || 1,
+                  notes: ki.notes || null,
+                  status: 'queued',
+                })
+                kotHealed = true
+              }
+            }
           }
         }
 
-        healed.push({
-          order_id: ord.id,
-          order_number: ord.order_number,
-          table_number: ord.table_number,
-          elapsed_seconds: Math.round((Date.now() - new Date(ord.created_at).getTime()) / 1000),
-        })
+        if (wasStuck || kotHealed) {
+          healed.push({
+            order_id: ord.id,
+            order_number: ord.order_number,
+            table_number: ord.table_number,
+            channel: ord.order_source || 'pos',
+            reason: wasStuck ? 'stalled_pending' : 'missing_kot_repaired',
+            elapsed_seconds: Math.round((Date.now() - new Date(ord.created_at).getTime()) / 1000),
+          })
+        }
       }
     }
 
