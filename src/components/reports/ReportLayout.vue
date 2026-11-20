@@ -327,6 +327,8 @@ const props = defineProps({
   exportRows: { type: Array, default: null },
   // Kitchen filter only makes sense for item/KOT-level reports that read filters.kitchen
   showKitchenFilter: { type: Boolean, default: false },
+  // defaultDateFilter: when false (default), page opens without pre-filtering by date
+  defaultDateFilter: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -342,7 +344,7 @@ const authStore = useAuthStore()
 
 const filtersOpen = ref(false)
 const advancedOpen = ref(false)
-const activePreset = ref('Today')
+const activePreset = ref(props.defaultDateFilter ? 'Today' : '')
 const appliedFilters = ref(null)
 
 // Business-local (Asia/Colombo) calendar day, evaluated on every call so a page
@@ -350,8 +352,8 @@ const appliedFilters = ref(null)
 const todayStr = () => businessDateStr()
 
 const filters = ref({
-  dateFrom: todayStr(),
-  dateTo: todayStr(),
+  dateFrom: props.defaultDateFilter ? todayStr() : null,
+  dateTo: props.defaultDateFilter ? todayStr() : null,
   branch: null,
   kitchen: null,
 })
@@ -380,7 +382,7 @@ const branchLabel = computed(() => {
 })
 const reportDateLabel = computed(() => {
   const f = appliedFilters.value || filters.value
-  if (f.dateFrom && f.dateTo) {
+  if (f?.dateFrom && f?.dateTo) {
     const from = new Date(f.dateFrom).toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
@@ -393,11 +395,7 @@ const reportDateLabel = computed(() => {
     })
     return `${from} To ${to}`
   }
-  return new Date().toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return 'All Dates'
 })
 
 const branchOptions = ref([{ label: 'All Kitchens', value: null }])
@@ -482,7 +480,7 @@ function applyFilters() {
   filtersOpen.value = false
 }
 
-// Reset returns to the same default the page opens with (Today), keeping any
+// Reset returns to an unfiltered state (all dates), keeping any
 // page-specific extra filter keys but clearing their values.
 function clearFilters() {
   const extra = Object.fromEntries(
@@ -490,9 +488,15 @@ function clearFilters() {
       .filter((k) => !['dateFrom', 'dateTo', 'branch', 'kitchen'].includes(k))
       .map((k) => [k, null]),
   )
-  filters.value = { ...extra, dateFrom: todayStr(), dateTo: todayStr(), branch: null, kitchen: null }
+  filters.value = {
+    ...extra,
+    dateFrom: props.defaultDateFilter ? todayStr() : null,
+    dateTo: props.defaultDateFilter ? todayStr() : null,
+    branch: null,
+    kitchen: null,
+  }
   appliedFilters.value = { ...filters.value }
-  activePreset.value = 'Today'
+  activePreset.value = props.defaultDateFilter ? 'Today' : ''
   emit('filter-change', appliedFilters.value)
 }
 
@@ -530,12 +534,12 @@ function formatDate(d) {
 function getExportSubtitle() {
   const f = appliedFilters.value || filters.value
   const branch = branchLabel.value
-  if (f.dateFrom && f.dateTo) {
+  if (f?.dateFrom && f?.dateTo) {
     const from = new Date(f.dateFrom).toLocaleDateString('en-GB')
     const to = new Date(f.dateTo).toLocaleDateString('en-GB')
     return `Location: ${branch} | ${from} To ${to}`
   }
-  return `Location: ${branch}`
+  return `Location: ${branch} | All Dates`
 }
 
 function handlePrint() {
