@@ -12,7 +12,7 @@
         </div>
       </div>
       <div class="um-header__actions">
-        <q-btn unelevated no-caps icon="admin_panel_settings" label="Access Control"
+        <q-btn outline no-caps icon="admin_panel_settings" label="Access Control"
           to="/admin/roles" class="um-btn um-btn--outline" />
         <PermissionGate permission="admin.users.create">
           <q-btn unelevated no-caps icon="add" label="Add User"
@@ -765,8 +765,20 @@ function initials(name) {
 
 // Buttons
 .um-btn { border-radius: 8px !important; font-weight: 600 !important; font-size: 0.88rem !important; }
-.um-btn--outline { background: var(--erp-bg-card) !important; border: 1px solid var(--erp-border) !important; color: var(--erp-text-secondary) !important;
-  &:hover { border-color: #8b5cf6 !important; color: #8b5cf6 !important; }
+.um-btn--outline {
+  background: var(--erp-bg-card) !important;
+  border: 1px solid var(--erp-border) !important;
+  color: var(--erp-text-secondary) !important;
+  &, * {
+    color: var(--erp-text-secondary) !important;
+  }
+  &:hover {
+    border-color: #8b5cf6 !important;
+    color: #8b5cf6 !important;
+    * {
+      color: #8b5cf6 !important;
+    }
+  }
 }
 .um-btn--primary { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; color: #fff !important; box-shadow: 0 4px 14px rgba(139,92,246,0.3) !important; }
 
