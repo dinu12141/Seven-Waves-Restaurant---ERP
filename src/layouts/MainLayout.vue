@@ -310,6 +310,11 @@ const isItemActive = (itemTo, routerIsActive) => {
     return true
   }
 
+  // If itemTo has no query params, but current route has a specific tab active (e.g. /admin/approvals?tab=wastage):
+  if (route.path === itemTo && route.query?.tab && route.query.tab !== 'dashboard') {
+    return false
+  }
+
   return routerIsActive
 }
 
