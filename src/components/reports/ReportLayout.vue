@@ -1148,9 +1148,9 @@ onUnmounted(() => {
 /* ── KPI Row ─────────────────────────────────────────────────────────── */
 .report-kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .report-kpi-card {
@@ -1265,15 +1265,15 @@ onUnmounted(() => {
 
   // ── Label ─────────────────────────────────────────────────
   &__label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.5px;
     margin-bottom: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.25;
+    word-break: break-word;
   }
 
   // ── Value ─────────────────────────────────────────────────

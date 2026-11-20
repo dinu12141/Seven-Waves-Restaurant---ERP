@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="percent"
-      subtitle="Output and input VAT for the period, read from the General Ledger"
       title="Tax Management"
       breadcrumbs="Finance / Expenses & Tax / Tax"
       show-refresh
@@ -22,12 +21,7 @@
       </template>
     </FinancePageHeader>
 
-    <FinanceFilterBar v-model:from="dateFrom" v-model:to="dateTo" persist-key="tax" @change="loadData">
-      <div class="text-caption text-grey-6">
-        VAT is read from the General Ledger: {{ OUTPUT_VAT_LEDGER_CODE }} Output VAT Payable and
-        {{ INPUT_VAT_LEDGER_CODE }} Input VAT - Recoverable.
-      </div>
-    </FinanceFilterBar>
+    <FinanceFilterBar v-model:from="dateFrom" v-model:to="dateTo" persist-key="tax" @change="loadData" />
 
     <q-banner v-if="loadError" dense class="bg-negative text-white q-mb-md">{{ loadError }}</q-banner>
     <q-banner
@@ -50,7 +44,7 @@
             <q-icon name="arrow_downward" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Output VAT (collected, {{ OUTPUT_VAT_LEDGER_CODE }})</div>
+            <div class="fin-kpi-card__label">Output VAT (Collected)</div>
             <div class="fin-kpi-card__value">{{ fmt(vat.outputVat) }}</div>
           </div>
         </div>
@@ -61,7 +55,7 @@
             <q-icon name="arrow_upward" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Input VAT (recoverable asset, {{ INPUT_VAT_LEDGER_CODE }})</div>
+            <div class="fin-kpi-card__label">Input VAT (Recoverable)</div>
             <div class="fin-kpi-card__value">{{ fmt(vat.inputVat) }}</div>
           </div>
         </div>
@@ -72,16 +66,11 @@
             <q-icon name="balance" size="20px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Net VAT {{ vat.netPayable >= 0 ? 'Payable' : 'Refundable' }} (period)</div>
+            <div class="fin-kpi-card__label">Net VAT {{ vat.netPayable >= 0 ? 'Payable' : 'Refundable' }}</div>
             <div class="fin-kpi-card__value">{{ fmt(Math.abs(vat.netPayable)) }}</div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="text-caption text-grey-5 q-mb-md">
-      Current GL balances — {{ OUTPUT_VAT_LEDGER_CODE }}: LKR {{ fmt(vat.outputLedgerBalance) }} (Cr) ·
-      {{ INPUT_VAT_LEDGER_CODE }}: LKR {{ fmt(vat.inputLedgerBalance) }} (Dr Recoverable Asset)
     </div>
 
     <q-banner v-if="vat.apBillTax.total > 0" dense class="bg-amber-2 text-black q-mb-md">

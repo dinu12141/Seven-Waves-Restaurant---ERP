@@ -8,11 +8,8 @@
           <span>APPROVALS / {{ activeTab === 'dashboard' ? 'OVERVIEW' : currentTabLabel.toUpperCase() }}</span>
         </div>
         <div class="text-h5 text-weight-bold row items-center">
-          <q-icon :name="currentTabIcon" color="primary" size="30px" class="q-mr-sm" />
+          <q-icon :name="currentTabIcon" color="primary" size="28px" class="q-mr-sm" />
           {{ activeTab === 'dashboard' ? 'Approvals & Governance Dashboard' : currentTabLabel }}
-        </div>
-        <div class="text-caption text-grey-7">
-          {{ currentTabSubtitle }}
         </div>
       </div>
       <div class="row q-gutter-sm items-center">
@@ -51,11 +48,10 @@
                 <span class="text-caption text-weight-medium text-grey-7">Total Pending Actions</span>
                 <q-avatar size="36px" color="blue-1" text-color="primary" icon="pending_actions" />
               </div>
-              <div class="text-h4 text-weight-bold text-primary q-my-xs">
-                {{ grandTotalPending }}
-              </div>
-              <div class="row items-center justify-between">
-                <span class="text-caption text-grey-6">Across 7 departments</span>
+              <div class="row items-baseline justify-between q-mt-xs">
+                <div class="text-h4 text-weight-bold text-primary">
+                  {{ grandTotalPending }}
+                </div>
                 <q-badge :color="grandTotalPending > 0 ? 'warning' : 'positive'" :text-color="grandTotalPending > 0 ? 'dark' : 'white'">
                   {{ grandTotalPending > 0 ? 'Action Needed' : 'All Clear' }}
                 </q-badge>
@@ -69,14 +65,13 @@
           <q-card flat bordered class="approvals-hero-card" :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'">
             <q-card-section class="q-pa-md">
               <div class="row items-center justify-between q-mb-xs">
-                <span class="text-caption text-weight-medium text-grey-7">Financial Outflow at Stake</span>
+                <span class="text-caption text-weight-medium text-grey-7">Financial Outflow</span>
                 <q-avatar size="36px" color="amber-1" text-color="amber-9" icon="account_balance_wallet" />
               </div>
-              <div class="text-h5 text-weight-bold text-amber-9 q-my-xs ellipsis">
-                {{ formatCurrency(totalFinancialAtStake) }}
-              </div>
-              <div class="row items-center justify-between">
-                <span class="text-caption text-grey-6">POs, Vouchers & Advances</span>
+              <div class="row items-baseline justify-between q-mt-xs">
+                <div class="text-h5 text-weight-bold text-amber-9 ellipsis">
+                  {{ formatCurrency(totalFinancialAtStake) }}
+                </div>
                 <q-badge color="amber-2" text-color="amber-10">Sign-off Queued</q-badge>
               </div>
             </q-card-section>
@@ -91,11 +86,10 @@
                 <span class="text-caption text-weight-medium text-grey-7">Kitchen Spoilage Loss</span>
                 <q-avatar size="36px" color="red-1" text-color="negative" icon="delete_sweep" />
               </div>
-              <div class="text-h5 text-weight-bold text-negative q-my-xs ellipsis">
-                {{ formatCurrency(totalWastageLoss) }}
-              </div>
-              <div class="row items-center justify-between">
-                <span class="text-caption text-grey-6">{{ wastageList.length }} documents pending</span>
+              <div class="row items-baseline justify-between q-mt-xs">
+                <div class="text-h5 text-weight-bold text-negative ellipsis">
+                  {{ formatCurrency(totalWastageLoss) }}
+                </div>
                 <q-badge color="red-2" text-color="red-10">Stock Write-off</q-badge>
               </div>
             </q-card-section>
@@ -110,11 +104,10 @@
                 <span class="text-caption text-weight-medium text-grey-7">Audits & Security Gates</span>
                 <q-avatar size="36px" color="purple-1" text-color="purple-9" icon="gavel" />
               </div>
-              <div class="text-h4 text-weight-bold text-purple-9 q-my-xs">
-                {{ totalAuditCount }}
-              </div>
-              <div class="row items-center justify-between">
-                <span class="text-caption text-grey-6">Unlocks, shifts & perms</span>
+              <div class="row items-baseline justify-between q-mt-xs">
+                <div class="text-h4 text-weight-bold text-purple-9">
+                  {{ totalAuditCount }}
+                </div>
                 <q-badge color="purple-2" text-color="purple-10">High Security</q-badge>
               </div>
             </q-card-section>
@@ -123,11 +116,8 @@
       </div>
 
       <!-- Department Inboxes Navigation Grid (Symmetrical 4x2 Layout) -->
-      <div class="row items-center justify-between q-mb-sm">
-        <div>
-          <div class="text-subtitle1 text-weight-bold">Department Governance Inboxes</div>
-          <div class="text-caption text-grey-6">Select an inbox to view and process department-specific pending requests</div>
-        </div>
+      <div class="row items-center justify-between q-mb-md">
+        <div class="text-subtitle1 text-weight-bold">Department Governance Inboxes</div>
       </div>
 
       <div class="row q-col-gutter-md q-mb-lg">
@@ -136,18 +126,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('wastage')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="delete_sweep" color="red-1" text-color="negative" size="42px" />
-                <q-badge :color="wastageList.length ? 'negative' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="delete_sweep" color="red-1" text-color="negative" size="38px" />
+                <q-badge :color="wastageList.length ? 'negative' : 'grey-5'" class="text-bold">
                   {{ wastageList.length }} Pending
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Kitchen & Store Wastage</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Spoilage write-offs & stock ledger reductions
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Kitchen & Store Wastage</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-negative">{{ formatCurrency(totalWastageLoss) }}</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -158,18 +145,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('procurement')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="shopping_cart" color="amber-1" text-color="amber-9" size="42px" />
-                <q-badge :color="poList.length ? 'amber-9' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="shopping_cart" color="amber-1" text-color="amber-9" size="38px" />
+                <q-badge :color="poList.length ? 'amber-9' : 'grey-5'" class="text-bold">
                   {{ poList.length }} Pending
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Purchase Orders (PO)</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Supplier procurement orders awaiting release
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Purchase Orders (PO)</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-amber-9">{{ formatCurrency(totalPoAmount) }}</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -180,18 +164,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('finance')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="receipt_long" color="blue-1" text-color="primary" size="42px" />
-                <q-badge :color="voucherList.length ? 'primary' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="receipt_long" color="blue-1" text-color="primary" size="38px" />
+                <q-badge :color="voucherList.length ? 'primary' : 'grey-5'" class="text-bold">
                   {{ voucherList.length }} Pending
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Finance & Pay Vouchers</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Cashbook & Bank payment disbursements
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Finance & Pay Vouchers</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-primary">{{ formatCurrency(totalVoucherAmount) }}</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -202,18 +183,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('shifts')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="point_of_sale" color="orange-1" text-color="deep-orange" size="42px" />
-                <q-badge :color="shiftVarianceList.length ? 'deep-orange' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="point_of_sale" color="orange-1" text-color="deep-orange" size="38px" />
+                <q-badge :color="shiftVarianceList.length ? 'deep-orange' : 'grey-5'" class="text-bold">
                   {{ shiftVarianceList.length }} Audits
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">POS Shift Variance</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Drawer discrepancies (|diff| > LKR 1,000)
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">POS Shift Variance</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-deep-orange">Cash Discrepancies</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -224,18 +202,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('amendments')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="lock_open" color="teal-1" text-color="teal-9" size="42px" />
-                <q-badge :color="amendmentList.length ? 'teal' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="lock_open" color="teal-1" text-color="teal-9" size="38px" />
+                <q-badge :color="amendmentList.length ? 'teal' : 'grey-5'" class="text-bold">
                   {{ amendmentList.length }} Locked
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Doc Amendments & Unlocks</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Posted GRN, GIN, AP bill edit requests
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Doc Amendments & Unlocks</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-teal-9">Audit Control</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -246,18 +221,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('hr')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="badge" color="purple-1" text-color="purple-9" size="42px" />
-                <q-badge :color="hrTotalPending ? 'purple' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="badge" color="purple-1" text-color="purple-9" size="38px" />
+                <q-badge :color="hrTotalPending ? 'purple' : 'grey-5'" class="text-bold">
                   {{ hrTotalPending }} Requests
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">HR & Staff Requests</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Staff leaves, loans, advances & shift swaps
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">HR & Staff Requests</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-purple-9">{{ hrLeaves.length }} Leaves · {{ hrAdvances.length }} Adv</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -268,18 +240,15 @@
           <q-card flat bordered class="approvals-inbox-card cursor-pointer" @click="switchTab('permissions')">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="security" color="indigo-1" text-color="indigo-9" size="42px" />
-                <q-badge :color="pendingPermissions.length ? 'indigo' : 'grey-5'" class="text-bold q-pa-xs">
+                <q-avatar icon="security" color="indigo-1" text-color="indigo-9" size="38px" />
+                <q-badge :color="pendingPermissions.length ? 'indigo' : 'grey-5'" class="text-bold">
                   {{ pendingPermissions.length }} Gates
                 </q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Permission Gates</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Elevated role & access authorization
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Permission Gates</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-indigo-9">Security Elevation</span>
-                <span class="text-primary text-weight-medium row items-center">Open Inbox <q-icon name="arrow_forward" size="14px" /></span>
+                <span class="text-primary text-weight-medium row items-center">Open <q-icon name="arrow_forward" size="14px" class="q-ml-xs" /></span>
               </div>
             </q-card-section>
           </q-card>
@@ -290,14 +259,11 @@
           <q-card flat bordered class="approvals-inbox-card" :class="$q.dark.isActive ? 'bg-dark' : 'bg-grey-1'">
             <q-card-section class="q-pa-md">
               <div class="row items-center no-wrap justify-between q-mb-sm">
-                <q-avatar icon="verified_user" color="green-1" text-color="positive" size="42px" />
-                <q-badge color="positive" class="text-bold q-pa-xs">Enforced</q-badge>
+                <q-avatar icon="verified_user" color="green-1" text-color="positive" size="38px" />
+                <q-badge color="positive" class="text-bold">Enforced</q-badge>
               </div>
-              <div class="text-subtitle2 text-weight-bold">Governance & Audit</div>
-              <div class="text-caption text-grey-6 q-mb-sm" style="min-height: 32px">
-                Full tamper-evident dual approval active
-              </div>
-              <div class="row items-center justify-between text-caption border-top q-pt-xs">
+              <div class="text-subtitle2 text-weight-bold q-mb-sm">Governance & Audit</div>
+              <div class="row items-center justify-between text-caption border-top q-pt-sm">
                 <span class="text-weight-bold text-positive">Policy Compliant</span>
                 <span class="text-grey-6">Realtime Active</span>
               </div>
@@ -309,14 +275,9 @@
       <!-- Urgent Pending Approvals Queue (Unified Action Stream) -->
       <div class="fin-panel q-mb-lg">
         <div class="row items-center justify-between q-pa-md border-bottom">
-          <div>
-            <div class="text-subtitle1 text-weight-bold row items-center">
-              <q-icon name="bolt" color="amber-9" size="22px" class="q-mr-xs" />
-              Urgent Pending Approvals Queue ({{ filteredUnifiedItems.length }})
-            </div>
-            <div class="text-caption text-grey-6">
-              Unified cross-department action queue sorted by priority and submission date
-            </div>
+          <div class="text-subtitle1 text-weight-bold row items-center">
+            <q-icon name="bolt" color="amber-9" size="22px" class="q-mr-xs" />
+            Urgent Pending Approvals Queue ({{ filteredUnifiedItems.length }})
           </div>
           <div class="row q-gutter-xs">
             <q-btn-toggle
@@ -442,10 +403,7 @@
           <!-- ══ 1. KITCHEN & STORE WASTAGE APPROVALS ═════════════════════ -->
           <q-tab-panel name="wastage" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Pending Wastage / Spoilage Documents</div>
-                <div class="text-caption text-grey-6">Approving deducts stock ledger and updates food cost reports</div>
-              </div>
+              <div class="text-subtitle1 text-weight-bold">Pending Wastage / Spoilage Documents</div>
               <div class="text-weight-bold text-negative">
                 Total Loss Value: {{ formatCurrency(totalWastageLoss) }}
               </div>
@@ -504,10 +462,7 @@
           <!-- ══ 2. PROCUREMENT PO APPROVALS ═════════════════════════════ -->
           <q-tab-panel name="procurement" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Pending Purchase Orders (POs)</div>
-                <div class="text-caption text-grey-6">Approved POs become Open and ready for Supplier Goods Receipts (GRN)</div>
-              </div>
+              <div class="text-subtitle1 text-weight-bold">Pending Purchase Orders (POs)</div>
               <div class="text-weight-bold text-amber-9">
                 Total PO Commitment: {{ formatCurrency(totalPoAmount) }}
               </div>
@@ -566,10 +521,7 @@
           <!-- ══ 3. FINANCE VOUCHERS APPROVALS ═══════════════════════════ -->
           <q-tab-panel name="finance" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Pending Finance Pay Vouchers</div>
-                <div class="text-caption text-grey-6">Approved vouchers authorize payment release from Cashbook / Bank Accounts</div>
-              </div>
+              <div class="text-subtitle1 text-weight-bold">Pending Finance Pay Vouchers</div>
               <div class="text-weight-bold text-primary">
                 Total Payment Release: {{ formatCurrency(totalVoucherAmount) }}
               </div>
@@ -628,10 +580,7 @@
           <!-- ══ 4. POS SHIFT VARIANCE REVIEW ════════════════════════════ -->
           <q-tab-panel name="shifts" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">POS Cash Variance Audits (|Variance| > LKR 1,000)</div>
-                <div class="text-caption text-grey-6">Management sign-off for cashier drawer discrepancies</div>
-              </div>
+              <div class="text-subtitle1 text-weight-bold">POS Cash Variance Audits</div>
             </div>
             <q-table
               :rows="shiftVarianceList"
@@ -671,14 +620,9 @@
           <!-- ══ 5. DOCUMENT AMENDMENTS & UNLOCK REQUESTS ══════════════ -->
           <q-tab-panel name="amendments" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold row items-center">
-                  <q-icon name="lock_open" color="teal" size="24px" class="q-mr-xs" />
-                  Locked Document Amendment & Unlock Requests
-                </div>
-                <div class="text-caption text-grey-6">
-                  Submitted GRN, GIN, AP Invoices, Vouchers, and POs require explicit Admin Approval before they can be edited or voided.
-                </div>
+              <div class="text-subtitle1 text-weight-bold row items-center">
+                <q-icon name="lock_open" color="teal" size="24px" class="q-mr-xs" />
+                Locked Document Amendment & Unlock Requests
               </div>
             </div>
             <q-table
@@ -730,7 +674,7 @@
           <!-- ══ 6. HR REQUESTS & SHIFT CHANGES ══════════════════════════ -->
           <q-tab-panel name="hr" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div class="text-subtitle1 text-weight-bold">Staff Requests (Shift Changes, Leaves, Advances, Loans, Claims)</div>
+              <div class="text-subtitle1 text-weight-bold">Staff Requests</div>
               <q-btn-toggle
                 v-model="hrSubTab"
                 dense
@@ -887,10 +831,7 @@
           <!-- ══ 7. ROLE & PERMISSION ELEVATION GATE ══════════════════════ -->
           <q-tab-panel name="permissions" class="q-pa-md">
             <div class="row items-center justify-between q-mb-md">
-              <div>
-                <div class="text-subtitle1 text-weight-bold">Elevated Privilege & Permission Gate</div>
-                <div class="text-caption text-grey-6">HR or Supervisor granted extra privileges require explicit Admin Approval before taking effect</div>
-              </div>
+              <div class="text-subtitle1 text-weight-bold">Elevated Privilege & Permission Gate</div>
             </div>
             <q-table
               :rows="pendingPermissions"
@@ -1026,48 +967,39 @@ const totalAuditCount = computed(() => {
 const tabMeta = {
   dashboard: {
     label: 'Approvals & Governance Dashboard',
-    subtitle: 'Unified governance and decision queue across all restaurant departments',
     icon: 'dashboard',
   },
   wastage: {
     label: 'Kitchen & Store Wastage',
-    subtitle: 'Approving deducts stock ledger and updates food cost reports',
     icon: 'delete_sweep',
   },
   procurement: {
     label: 'Purchase Orders',
-    subtitle: 'Approved POs become Open and ready for Supplier Goods Receipts (GRN)',
     icon: 'shopping_cart',
   },
   finance: {
     label: 'Finance & Pay Vouchers',
-    subtitle: 'Approved vouchers authorize payment release from Cashbook / Bank Accounts',
     icon: 'receipt_long',
   },
   shifts: {
     label: 'POS Shift Variance',
-    subtitle: 'Management sign-off for cashier drawer discrepancies (> LKR 1,000)',
     icon: 'point_of_sale',
   },
   amendments: {
     label: 'Document Amendments & Unlocks',
-    subtitle: 'Unlock locked GRN, GIN, AP Invoices, Vouchers and POs for correction',
     icon: 'lock_open',
   },
   hr: {
     label: 'HR & Staff Requests',
-    subtitle: 'Review staff leaves, loans, salary advances, claims, and shift swaps',
     icon: 'badge',
   },
   permissions: {
     label: 'Permission & Security Gates',
-    subtitle: 'Elevated staff privilege requests requiring executive sign-off',
     icon: 'security',
   },
 }
 
 const currentTabLabel = computed(() => tabMeta[activeTab.value]?.label || 'Approvals')
-const currentTabSubtitle = computed(() => tabMeta[activeTab.value]?.subtitle || '')
 const currentTabIcon = computed(() => tabMeta[activeTab.value]?.icon || 'verified')
 
 // Unified Action Queue Items (Flattened for Dashboard)

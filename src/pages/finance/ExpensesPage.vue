@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="money_off"
-      subtitle="Expense ledger movements from the General Ledger"
       title="Expense Management"
       breadcrumbs="Finance / Expenses & Tax / Expenses"
       show-refresh
@@ -21,13 +20,6 @@
         />
       </template>
     </FinancePageHeader>
-
-    <!-- Expenses are GL movements: they are recorded with a Pay Voucher, which posts Dr expense / Cr cash-bank. -->
-    <div class="text-caption text-grey-6 q-mb-sm">
-      <q-icon name="info" size="14px" />
-      Figures are read from the General Ledger (movements on expense ledgers). Record a new expense with a
-      <strong>Pay Voucher</strong> so it is approved and posted to the GL.
-    </div>
 
     <FinanceFilterBar
       v-model:from="dateFrom"
@@ -67,7 +59,7 @@
             <q-icon name="money_off" size="18px" color="white" />
           </div>
           <div class="fin-kpi-card__body">
-            <div class="fin-kpi-card__label">Net Expenses (period)</div>
+            <div class="fin-kpi-card__label">Net Expenses</div>
             <div class="fin-kpi-card__value">{{ fmt(report.total) }}</div>
           </div>
         </div>
