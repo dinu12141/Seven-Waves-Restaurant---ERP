@@ -128,14 +128,14 @@ describe('buildVatReport', () => {
 })
 
 describe('fetchVatReport', () => {
-  it('reads 2006 / 1010 from finance_ledgers and their GL movements in the period', async () => {
+  it('reads 2006 / 1160 from finance_ledgers and their GL movements in the period', async () => {
     m.queue('finance_ledgers', { data: [{ id: 'O', ledger_code: '2006', current_balance: -50 }] })
     m.queue('finance_cashbook_entries', {
       data: [{ id: '1', ledger_id: 'O', entry_date: '2026-10-01', credit_amount: 50, debit_amount: 0 }],
     })
     m.queue('ap_invoices', { data: [{ id: 'b1', tax_amount: 18 }] })
     const r = await fetchVatReport({ dateFrom: '2026-10-01', dateTo: '2026-10-31' })
-    expect(call(m.on('finance_ledgers')[0], 'in')?.args).toEqual(['ledger_code', ['2006', '1010']])
+    expect(call(m.on('finance_ledgers')[0], 'in')?.args).toEqual(['ledger_code', ['2006', '1160', '2070', '1010']])
     expect(r.outputVat).toBe(50)
     expect(r.inputLedgerFound).toBe(false)
     expect(r.apBillTax).toEqual({ count: 1, total: 18 })

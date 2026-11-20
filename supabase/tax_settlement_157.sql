@@ -37,15 +37,18 @@ BEGIN
 
     v_net_pay := ROUND(COALESCE(p_output_vat_clear, 0) - COALESCE(p_input_vat_offset, 0), 2);
 
-    -- Resolve ledgers
+    -- Resolve ledgers (Output VAT: 2006, Input VAT: 1160 VAT Recoverable with 1010 fallback)
     v_out_ledger := public.fn_fin_ledger_by_code(p_company_id, '2006', 'Output VAT Payable');
-    v_inp_ledger := public.fn_fin_ledger_by_code(p_company_id, '1010', 'Input VAT - Recoverable');
+    v_inp_ledger := public.fn_fin_ledger_by_code(p_company_id, '1160', 'VAT Recoverable – Input VAT');
+    IF v_inp_ledger IS NULL THEN
+        v_inp_ledger := public.fn_fin_ledger_by_code(p_company_id, '1010', 'Input VAT - Recoverable');
+    END IF;
 
     IF v_out_ledger IS NULL THEN
         RAISE EXCEPTION 'Output VAT ledger (2006) not found.';
     END IF;
     IF v_inp_ledger IS NULL THEN
-        RAISE EXCEPTION 'Input VAT ledger (1010) not found.';
+        RAISE EXCEPTION 'Input VAT ledger (1160 / 1010) not found.';
     END IF;
 
     -- Resolve paying/receiving bank account

@@ -68,22 +68,24 @@ export const taxSettlementService = {
   async recordVatSettlement(payload: VatSettlementPayload) {
     const netPay = Math.round((Number(payload.outputVatClear || 0) - Number(payload.inputVatOffset || 0)) * 100) / 100
 
-    // Fetch the 2006 and 1010 VAT ledgers
+    // Fetch the VAT ledgers (2006/2070 Output VAT, 1160/1010 Input VAT)
     const { data: ledgers, error: legErr } = await supabase
       .from('finance_ledgers')
       .select('id, company_id, ledger_code, ledger_name, current_balance')
-      .in('ledger_code', ['2006', '1010'])
+      .in('ledger_code', ['2006', '1160', '2070', '1010'])
       .is('deleted_at', null)
 
     if (legErr || !ledgers || ledgers.length === 0) {
-      throw new Error('Could not find VAT ledgers (2006 / 1010): ' + (legErr?.message || ''))
+      throw new Error('Could not find VAT ledgers (2006 / 1160): ' + (legErr?.message || ''))
     }
 
-    const outLedger = ledgers.find((l) => l.ledger_code === '2006')
-    const inpLedger = ledgers.find((l) => l.ledger_code === '1010')
+    const outLedger = ledgers.find((l) => l.ledger_code === '2006' || l.ledger_code === '2070')
+    const inpLedger = ledgers.find(
+      (l) => l.ledger_code === '1160' || (l.ledger_code === '1010' && l.ledger_name?.toLowerCase().includes('vat')),
+    )
 
     if (!outLedger || !inpLedger) {
-      throw new Error('Both 2006 Output VAT and 1010 Input VAT ledgers are required.')
+      throw new Error('Both 2006 Output VAT Payable and 1160 VAT Recoverable (Input VAT) ledgers are required.')
     }
 
     const companyId = payload.companyId || outLedger.company_id || ledgers[0].company_id

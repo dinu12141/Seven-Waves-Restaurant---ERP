@@ -167,7 +167,7 @@
           <div>
             <div class="text-h6 text-weight-bold">Settle VAT / IRD Return</div>
             <div class="text-caption text-blue-1">
-              Reconcile Output VAT (2006) vs Input VAT Asset (1010) and remit net to IRD
+              Reconcile Output VAT ({{ OUTPUT_VAT_LEDGER_CODE }}) vs Input VAT Asset ({{ INPUT_VAT_LEDGER_CODE }}) and remit net to IRD
             </div>
           </div>
           <q-space />
@@ -178,8 +178,8 @@
           <!-- Summary info alert -->
           <div class="q-pa-sm q-mb-md bg-blue-1 text-blue-9 rounded-borders text-caption">
             <q-icon name="info" size="18px" class="q-mr-xs" />
-            Posting this settlement will <strong>Debit 2006</strong> (clear Output VAT liability),
-            <strong>Credit 1010</strong> (offset Input VAT asset), and <strong>Credit Bank</strong> for the net
+            Posting this settlement will <strong>Debit {{ OUTPUT_VAT_LEDGER_CODE }}</strong> (clear Output VAT liability),
+            <strong>Credit {{ INPUT_VAT_LEDGER_CODE }}</strong> (offset Input VAT asset), and <strong>Credit Bank</strong> for the net
             remittance to the Inland Revenue Department (IRD).
           </div>
 
@@ -208,7 +208,7 @@
             <div class="col-6">
               <q-input
                 v-model.number="settlementForm.outputVatClear"
-                label="Output VAT to Clear (Dr 2006)"
+                :label="`Output VAT to Clear (Dr ${OUTPUT_VAT_LEDGER_CODE})`"
                 type="number"
                 step="0.01"
                 outlined
@@ -220,7 +220,7 @@
             <div class="col-6">
               <q-input
                 v-model.number="settlementForm.inputVatOffset"
-                label="Input VAT to Offset (Cr 1010)"
+                :label="`Input VAT to Offset (Cr ${INPUT_VAT_LEDGER_CODE})`"
                 type="number"
                 step="0.01"
                 outlined

@@ -13,7 +13,8 @@ import { supabase } from 'src/boot/supabase'
 
 export const GL_PAGE_SIZE = 1000
 export const OUTPUT_VAT_LEDGER_CODE = '2006'
-export const INPUT_VAT_LEDGER_CODE = '1010'
+export const INPUT_VAT_LEDGER_CODE = '1160'
+export const LEGACY_INPUT_VAT_LEDGER_CODE = '1010'
 export const COST_OF_SALES_GROUP = 'Cost of Sales'
 
 export interface GlLedger {
@@ -215,8 +216,12 @@ export interface VatReport {
 }
 
 export function buildVatReport(ledgers: GlLedger[], entries: GlEntry[]): VatReport {
-  const out = ledgers.find((l) => l.ledger_code === OUTPUT_VAT_LEDGER_CODE)
-  const inp = ledgers.find((l) => l.ledger_code === INPUT_VAT_LEDGER_CODE)
+  const out = ledgers.find((l) => l.ledger_code === OUTPUT_VAT_LEDGER_CODE || l.ledger_code === '2070')
+  const inp = ledgers.find(
+    (l) =>
+      l.ledger_code === INPUT_VAT_LEDGER_CODE ||
+      (l.ledger_code === LEGACY_INPUT_VAT_LEDGER_CODE && l.ledger_name?.toLowerCase().includes('vat')),
+  )
   let oc = 0
   let od = 0
   let id = 0
@@ -296,7 +301,7 @@ export async function fetchVatReport(
   const { data, error } = await supabase
     .from('finance_ledgers')
     .select('id, ledger_code, ledger_name, ledger_type, account_group, current_balance')
-    .in('ledger_code', [OUTPUT_VAT_LEDGER_CODE, INPUT_VAT_LEDGER_CODE])
+    .in('ledger_code', [OUTPUT_VAT_LEDGER_CODE, INPUT_VAT_LEDGER_CODE, '2070', LEGACY_INPUT_VAT_LEDGER_CODE])
     .is('deleted_at', null)
   if (error) throw new Error(error.message)
   const ledgers = (data || []) as GlLedger[]
