@@ -997,7 +997,7 @@ export async function listStoresPOs(filters: POFilterOptions = {}): Promise<Purc
  * Can be saved as 'draft' or submitted immediately for procurement approval ('pending_approval').
  */
 export async function createStoresPO(
-  header: Omit<PurchaseOrder, 'id' | 'doc_number'>,
+  header: Omit<PurchaseOrder, 'id' | 'doc_number' | 'supplier_id'> & { supplier_id?: string | null },
   lines: POLine[],
   submitForApproval: boolean = true,
 ) {
