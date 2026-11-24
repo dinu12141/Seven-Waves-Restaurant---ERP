@@ -703,25 +703,6 @@ async function fetchLookups() {
   }
 }
 
-function filterSuppliers(val, update) {
-  update(() => {
-    if (!val) {
-      supplierOptions.value = suppliers.value.map(s => ({
-        ...s,
-        displayName: `${s.name} ${s.code ? '(' + s.code + ')' : ''}`,
-      }))
-    } else {
-      const q = val.toLowerCase()
-      supplierOptions.value = suppliers.value
-        .filter(s => s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q))
-        .map(s => ({
-          ...s,
-          displayName: `${s.name} ${s.code ? '(' + s.code + ')' : ''}`,
-        }))
-    }
-  })
-}
-
 function filterItems(val, update) {
   update(() => {
     if (!val) {
