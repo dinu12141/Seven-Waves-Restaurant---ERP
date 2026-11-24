@@ -181,7 +181,6 @@ describe('Stores PO Workflow & Service', () => {
 describe('Stores Role & Navigation RBAC Access', () => {
   it('stores role is registered in ROLE_ROUTE_ACCESS and ROLE_LANDING', () => {
     expect(ROLE_ROUTE_ACCESS.stores).toBeDefined()
-    expect(ROLE_ROUTE_ACCESS.stores).toContain('/inventory')
     expect(ROLE_ROUTE_ACCESS.stores).toContain('/inventory/purchase-orders')
     expect(ROLE_LANDING.stores).toBe('/inventory/purchase-orders')
   })
@@ -220,12 +219,11 @@ describe('Stores Role & Navigation RBAC Access', () => {
       return evaluateRouteAccess(rolesList, perms, hit.matched, path).allowed
     }
 
-    // Stores role CAN access inventory purchase orders and inventory pages
+    // Stores role CAN access inventory purchase orders ONLY
     expect(canAccess(['stores'], '/inventory/purchase-orders')).toBe(true)
-    expect(canAccess(['stores'], '/inventory/items')).toBe(true)
-    expect(canAccess(['stores'], '/inventory/stocktake')).toBe(true)
-
-    // Stores role CANNOT access admin users or finance dashboard
+    // Stores role CANNOT access general inventory items, stocktake, admin or finance
+    expect(canAccess(['stores'], '/inventory/items')).toBe(false)
+    expect(canAccess(['stores'], '/inventory/stocktake')).toBe(false)
     expect(canAccess(['stores'], '/admin/users')).toBe(false)
     expect(canAccess(['stores'], '/finance/dashboard')).toBe(false)
 

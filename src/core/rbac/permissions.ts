@@ -65,10 +65,9 @@ const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   ],
 
   stores: [
-    'inventory.*',
-    'reports.inventory.*',
-    'reports.inventory_adjustments.view',
-    'reports.view',
+    'inventory.purchase_orders.*',
+    'inventory.purchase_orders.view',
+    'inventory.purchase_orders.create',
   ],
 
   procurement: [

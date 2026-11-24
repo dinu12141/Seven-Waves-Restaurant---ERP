@@ -103,7 +103,7 @@
       <!-- Second Row: Categories Navigation Menu -->
       <q-toolbar
         class="erp-toolbar erp-toolbar--bottom"
-        v-if="topNavSections.length > 0"
+        v-if="topNavSections.length > 1"
       >
         <div class="erp-top-nav">
           <q-tabs

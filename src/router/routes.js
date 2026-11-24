@@ -77,27 +77,27 @@ const routes = [
         // Items, Categories, Stock, Warehouses, etc. — see config/roles.ts
         // NAV_ITEMS INVENTORY section) internally; the route itself can only
         // gate the page as a whole, not each tab, since it's one component.
-        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.dashboard.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/dashboard',
         component: () => import('pages/inventory/InventoryDashboard.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.dashboard.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.dashboard.view' },
       },
       {
         path: 'inventory/items',
         component: () => import('pages/inventory/ItemsPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.items.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.items.view' },
       },
       {
         path: 'inventory/adjustments',
         component: () => import('pages/inventory/StockAdjustmentPage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.adjustments.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.adjustments.view' },
       },
       {
         path: 'inventory/stocktake',
         component: () => import('pages/inventory/StockTakePage.vue'),
-        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.stocktake.view' },
+        meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake.view' },
       },
       {
         path: 'inventory/purchase-orders',

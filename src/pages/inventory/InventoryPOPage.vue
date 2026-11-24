@@ -145,6 +145,24 @@
           </div>
         </q-td>
       </template>
+
+      <!-- Empty State -->
+      <template #no-data>
+        <div class="full-width text-center q-pa-xl">
+          <q-icon name="shopping_cart" size="56px" color="grey-4" class="q-mb-md" />
+          <div class="text-h6 text-weight-bold text-grey-8">No Purchase Orders Found</div>
+          <div class="text-body2 text-grey-6 q-mb-md">Create your first store replenishment purchase order to submit to procurement.</div>
+          <q-btn
+            unelevated
+            no-caps
+            icon="add"
+            label="New Purchase Order"
+            color="primary"
+            class="text-weight-bold q-px-md"
+            @click="openNewPODialog"
+          />
+        </div>
+      </template>
     </q-table>
 
     <!-- ── Full PO Create Dialog (Stores Input Form) ────────────────────────── -->

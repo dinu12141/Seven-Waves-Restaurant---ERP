@@ -6,6 +6,15 @@
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Stores PO' }]"
     >
       <template #actions>
+        <q-btn
+          unelevated
+          no-caps
+          icon="add"
+          label="New Stores PO"
+          color="primary"
+          class="text-weight-bold"
+          to="/inventory/purchase-orders?action=new"
+        />
         <q-btn flat round dense icon="refresh" :loading="loading" @click="fetchStoresPOs">
           <q-tooltip>Refresh</q-tooltip>
         </q-btn>
@@ -144,6 +153,24 @@
             <q-tooltip>View Details</q-tooltip>
           </q-btn>
         </q-td>
+      </template>
+
+      <!-- Empty State -->
+      <template #no-data>
+        <div class="full-width text-center q-pa-xl">
+          <q-icon name="storefront" size="56px" color="grey-4" class="q-mb-md" />
+          <div class="text-h6 text-weight-bold text-grey-8">No Stores Purchase Orders Found</div>
+          <div class="text-body2 text-grey-6 q-mb-md">No purchase orders have been submitted from stores yet.</div>
+          <q-btn
+            unelevated
+            no-caps
+            icon="add"
+            label="Create Stores PO"
+            color="primary"
+            class="text-weight-bold q-px-md"
+            to="/inventory/purchase-orders?action=new"
+          />
+        </div>
       </template>
     </q-table>
 
