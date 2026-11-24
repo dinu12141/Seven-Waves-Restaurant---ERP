@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { call } from '../helpers/supabaseMock'
-import { ROLE_ROUTE_ACCESS, ROLE_LANDING, NAV_ITEMS } from '../../src/config/roles'
+import { ROLE_ROUTE_ACCESS, ROLE_LANDING, NAV_ITEMS, getFilteredNavItems } from '../../src/config/roles'
 import routes from '../../src/router/routes.js'
 import { evaluateRouteAccess } from '../../src/core/rbac/routeAccess'
 import type { UserRole } from '../../src/stores/auth'
@@ -125,6 +125,42 @@ describe('Stores PO Workflow & Service', () => {
     expect(res.total_amount).toBe(5500)
   })
 
+  it('createStoresPO without supplier automatically assigns internal or default supplier', async () => {
+    sb.mock.queue('uom', { data: { id: 'uom-kg' } })
+    sb.mock.queue('suppliers', { data: { id: 'sup-internal-01' } })
+    sb.mock.queue('purchase_orders', {
+      data: {
+        id: 'po-store-no-sup',
+        doc_number: 'PO-STORES-AUTO-SUP',
+        source: 'stores',
+        status: 'pending_approval',
+      },
+    })
+    sb.mock.queue('purchase_order_lines', { data: [] })
+    sb.mock.queue('purchase_orders', { data: { id: 'po-store-no-sup' } })
+
+    const res = await createStoresPO(
+      {
+        doc_date: '2026-11-25',
+      },
+      [
+        {
+          line_number: 1,
+          item_id: 'item-eggs',
+          uom_id: 'uom-pcs',
+          quantity: 100,
+          unit_price: 35,
+        },
+      ],
+      true,
+    )
+
+    expect(res).toBeDefined()
+    const insertPo = sb.mock.on('purchase_orders').find((q: any) => call(q, 'insert'))
+    const insertArgs: any = call(insertPo, 'insert')?.args[0]
+    expect(insertArgs.supplier_id).toBe('sup-internal-01')
+  })
+
   it('approveStoresPO sets status=approved and timestamps approved_at', async () => {
     sb.mock.queue('purchase_orders', {
       data: [{ id: 'po-store-123', status: 'approved' }],
@@ -229,5 +265,15 @@ describe('Stores Role & Navigation RBAC Access', () => {
 
     // Procurement role CAN access procurement stores-po
     expect(canAccess(['procurement'], '/procurement/stores-po')).toBe(true)
+  })
+
+  it('getFilteredNavItems returns ONLY Stores Purchase Orders for stores role with PO permissions', () => {
+    const nav = getFilteredNavItems(
+      ['stores'],
+      ['inventory.purchase_orders.*', 'inventory.purchase_orders.view', 'inventory.purchase_orders.create'],
+    )
+    expect(nav).toHaveLength(1)
+    expect(nav[0].label).toBe('Stores Purchase Orders')
+    expect(nav[0].to).toBe('/inventory/purchase-orders')
   })
 })

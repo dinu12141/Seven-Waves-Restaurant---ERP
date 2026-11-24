@@ -1798,10 +1798,21 @@ export function getFilteredNavItems(
         // but the sidebar would never show it — exactly the "access saved
         // but nothing shows" bug. Mirror hasModuleAccess's own fallback: any
         // permission inside the module's dot-format namespace counts.
-        if (item.permission && userPermissions.includes(item.permission)) return true
+        if (item.permission) {
+          if (userPermissions.includes(item.permission) || userPermissions.includes('*')) return true
+          const itemNamespace = item.permission.split('.').slice(0, -1).join('.')
+          if (itemNamespace && userPermissions.includes(`${itemNamespace}.*`)) return true
+        }
         const moduleCode = item.moduleCode
-        if (moduleCode && userPermissions.some((p) => p.startsWith(`${moduleCode.toLowerCase()}.`))) {
-          return true
+        if (moduleCode) {
+          const mod = moduleCode.toLowerCase()
+          if (
+            userPermissions.includes(`${mod}.*`) ||
+            userPermissions.includes(`${mod}.view`) ||
+            userPermissions.includes(`${mod}:access`)
+          ) {
+            return true
+          }
         }
 
         return false

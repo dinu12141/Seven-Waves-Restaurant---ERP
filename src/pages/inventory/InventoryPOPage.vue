@@ -181,42 +181,7 @@
         <q-card-section class="col scroll q-pa-md">
           <!-- Header Information -->
           <div class="row q-col-gutter-md q-mb-md">
-            <div class="col-12 col-md-4">
-              <q-select
-                v-model="form.supplier"
-                :options="supplierOptions"
-                option-label="displayName"
-                dense
-                outlined
-                use-input
-                fill-input
-                hide-selected
-                label="Supplier *"
-                placeholder="Type to search supplier…"
-                :rules="[val => !!val || 'Supplier is required']"
-                @filter="filterSuppliers"
-              >
-                <template #no-option>
-                  <q-item>
-                    <q-item-section class="text-grey">No matching suppliers</q-item-section>
-                  </q-item>
-                </template>
-              </q-select>
-            </div>
-
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="form.warehouse_id"
-                :options="warehouseOptions"
-                dense
-                outlined
-                emit-value
-                map-options
-                label="Destination Warehouse"
-              />
-            </div>
-
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-4">
               <q-input
                 v-model="form.doc_date"
                 type="date"
@@ -227,13 +192,25 @@
               />
             </div>
 
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-4">
               <q-input
                 v-model="form.expected_date"
                 type="date"
                 dense
                 outlined
                 label="Expected Delivery Date"
+              />
+            </div>
+
+            <div class="col-12 col-sm-12 col-md-4">
+              <q-select
+                v-model="form.warehouse_id"
+                :options="warehouseOptions"
+                dense
+                outlined
+                emit-value
+                map-options
+                label="Destination Warehouse"
               />
             </div>
 
@@ -806,10 +783,6 @@ function openNewPODialog() {
 }
 
 async function savePO(submitForApproval = true) {
-  if (!form.value.supplier || !form.value.supplier.id) {
-    $q.notify({ type: 'warning', message: 'Please select a supplier.' })
-    return
-  }
   if (!form.value.doc_date) {
     $q.notify({ type: 'warning', message: 'Please select an order date.' })
     return
@@ -834,7 +807,7 @@ async function savePO(submitForApproval = true) {
     const header = {
       doc_date: form.value.doc_date,
       expected_date: form.value.expected_date,
-      supplier_id: form.value.supplier.id,
+      supplier_id: form.value.supplier?.id || null,
       warehouse_id: form.value.warehouse_id || undefined,
       remarks: form.value.remarks,
     }

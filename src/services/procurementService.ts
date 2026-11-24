@@ -1016,6 +1016,30 @@ export async function createStoresPO(
     /* fallback */
   }
 
+  let supplierId = header.supplier_id
+  if (!supplierId || typeof supplierId !== 'string' || !supplierId.trim()) {
+    try {
+      const { data: internalSup } = await supabase
+        .from('suppliers')
+        .select('id')
+        .eq('code', 'SUP-INTERNAL')
+        .maybeSingle()
+      if (internalSup?.id) {
+        supplierId = internalSup.id
+      } else {
+        const { data: defaultSup } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle()
+        supplierId = defaultSup?.id || '98c593a4-c813-415a-9a82-544aed8983d2'
+      }
+    } catch {
+      supplierId = '98c593a4-c813-415a-9a82-544aed8983d2'
+    }
+  }
+
   const initialStatus = submitForApproval ? 'pending_approval' : 'draft'
 
   const { data: po, error: poErr } = await supabase
@@ -1026,7 +1050,7 @@ export async function createStoresPO(
       doc_number: `PO-STORES-${Date.now()}`,
       doc_date: header.doc_date,
       delivery_date: header.expected_date || null,
-      supplier_id: header.supplier_id,
+      supplier_id: supplierId,
       warehouse_id: (header.warehouse_id && header.warehouse_id.trim()) ? header.warehouse_id.trim() : null,
       currency: header.currency || 'LKR',
       exchange_rate: header.exchange_rate || 1,
