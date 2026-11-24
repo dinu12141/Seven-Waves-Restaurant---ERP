@@ -183,8 +183,13 @@ export function exportTableToCSV(columns: any[], rows: any[], filename: string) 
           if (typeof val === 'string' && val.startsWith('http') && val.includes('supabase')) {
             val = ''
           }
-          // Escape commas and wrap in quotes
-          const escaped = ('' + (val || '')).replace(/"/g, '""')
+          let strVal = String(val ?? '')
+          // Neutralize CSV / Spreadsheet formula injection (CWE-1236)
+          if (/^[=\+\-@\t\r]/.test(strVal)) {
+            strVal = "'" + strVal
+          }
+          // Escape quotes and wrap in quotes
+          const escaped = strVal.replace(/"/g, '""')
           return `"${escaped}"`
         })
         .join(',')

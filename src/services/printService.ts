@@ -137,6 +137,16 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
+function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
   const orderType = ticket.order?.order_type
     ? ticket.order.order_type
@@ -154,10 +164,10 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
     .map(
       (item) => `
     <tr>
-      <td class="qty">${item.qty}x</td>
+      <td class="qty">${escapeHtml(item.qty)}x</td>
       <td class="item-name">
-        ${item.name}
-        ${item.notes ? `<div class="item-note">⚑ ${item.notes}</div>` : ''}
+        ${escapeHtml(item.name)}
+        ${item.notes ? `<div class="item-note">⚑ ${escapeHtml(item.notes)}</div>` : ''}
       </td>
     </tr>
   `,
@@ -324,9 +334,9 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
 <div class="preview-wrapper">
   <!-- Header -->
   <div class="header">
-    <div class="kitchen-name">${ticket.kitchen?.name ?? 'Kitchen'}</div>
-    ${ticket.branch?.name ? `<div class="branch-info">${ticket.branch.name}</div>` : ''}
-    ${ticket.branch?.address ? `<div class="branch-info">${ticket.branch.address}</div>` : ''}
+    <div class="kitchen-name">${escapeHtml(ticket.kitchen?.name ?? 'Kitchen')}</div>
+    ${ticket.branch?.name ? `<div class="branch-info">${escapeHtml(ticket.branch.name)}</div>` : ''}
+    ${ticket.branch?.address ? `<div class="branch-info">${escapeHtml(ticket.branch.address)}</div>` : ''}
   </div>
 
   ${reprintBadge}
@@ -334,26 +344,26 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
   <!-- Order Number (Prominent for Waiters/Cashiers) -->
   <div class="kot-number-block">
     <div class="kot-label">ORDER</div>
-    <div class="kot-number">#${ticket.order?.order_number ?? ticket.kot_number ?? '—'}</div>
+    <div class="kot-number">#${escapeHtml(ticket.order?.order_number ?? ticket.kot_number ?? '—')}</div>
   </div>
 
   <!-- Meta Info -->
   <div class="meta-grid">
     <div class="meta-item">
       <div class="meta-label">KOT</div>
-      <div class="meta-value">#${ticket.kot_number ?? '—'}</div>
+      <div class="meta-value">#${escapeHtml(ticket.kot_number ?? '—')}</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Type</div>
-      <div class="meta-value">${orderType}</div>
+      <div class="meta-value">${escapeHtml(orderType)}</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Table</div>
-      <div class="meta-value">${tableLabel}</div>
+      <div class="meta-value">${escapeHtml(tableLabel)}</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Time</div>
-      <div class="meta-value">${formatTime(ticket.created_at)}</div>
+      <div class="meta-value">${escapeHtml(formatTime(ticket.created_at))}</div>
     </div>
   </div>
 
@@ -371,7 +381,7 @@ function buildKotHtml(ticket: KotTicket, isReprint: boolean): string {
     ticket.order?.notes
       ? `<div class="order-notes">
     <div class="order-notes-label">Order Notes</div>
-    ${ticket.order.notes}
+    ${escapeHtml(ticket.order.notes)}
   </div>`
       : ''
   }
@@ -482,23 +492,23 @@ function buildShiftOpenBody(shift: any): string {
   return `
     <div class="info-row">
       <span class="info-label">Shift ID:</span>
-      <span class="info-val">${(shift.id || '').slice(0, 8).toUpperCase()}</span>
+      <span class="info-val">${escapeHtml((shift.id || '').slice(0, 8).toUpperCase())}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Branch:</span>
-      <span class="info-val">${shift.branch_name || 'Main Branch'}</span>
+      <span class="info-val">${escapeHtml(shift.branch_name || 'Main Branch')}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Terminal:</span>
-      <span class="info-val">${shift.terminal_id}</span>
+      <span class="info-val">${escapeHtml(shift.terminal_id)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Cashier:</span>
-      <span class="info-val">${shift.cashier_name}</span>
+      <span class="info-val">${escapeHtml(shift.cashier_name)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Open Time:</span>
-      <span class="info-val">${new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true })}</span>
+      <span class="info-val">${escapeHtml(new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true }))}</span>
     </div>
     <hr class="divider" />
     <div class="info-row total-row">
@@ -507,7 +517,7 @@ function buildShiftOpenBody(shift: any): string {
     </div>
     ${shift.opening_note ? `
     <div style="margin-top: 10px; font-size: 11px; font-style: italic; word-break: break-word;">
-      <strong>Note:</strong> ${shift.opening_note}
+      <strong>Note:</strong> ${escapeHtml(shift.opening_note)}
     </div>` : ''}
     <div class="sig-section">
       <div class="sig-line">Cashier Signature</div>
@@ -527,23 +537,23 @@ function buildCashMovementBody(movement: any): string {
   return `
     <div class="info-row">
       <span class="info-label">Trans ID:</span>
-      <span class="info-val">${(movement.id || '').slice(0, 8).toUpperCase()}</span>
+      <span class="info-val">${escapeHtml((movement.id || '').slice(0, 8).toUpperCase())}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Shift ID:</span>
-      <span class="info-val">${(movement.shift_id || '').slice(0, 8).toUpperCase()}</span>
+      <span class="info-val">${escapeHtml((movement.shift_id || '').slice(0, 8).toUpperCase())}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Terminal:</span>
-      <span class="info-val">${movement.terminal_id}</span>
+      <span class="info-val">${escapeHtml(movement.terminal_id)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Cashier:</span>
-      <span class="info-val">${movement.cashier_name}</span>
+      <span class="info-val">${escapeHtml(movement.cashier_name)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Timestamp:</span>
-      <span class="info-val">${new Date(movement.created_at).toLocaleString('en-LK', { hour12: true })}</span>
+      <span class="info-val">${escapeHtml(new Date(movement.created_at).toLocaleString('en-LK', { hour12: true }))}</span>
     </div>
     <hr class="divider" />
     <div class="info-row total-row">
@@ -552,7 +562,7 @@ function buildCashMovementBody(movement: any): string {
     </div>
     ${movement.reason ? `
     <div style="margin-top: 10px; font-size: 11px; font-style: italic; word-break: break-word;">
-      <strong>Reason:</strong> ${movement.reason}
+      <strong>Reason:</strong> ${escapeHtml(movement.reason)}
     </div>` : ''}
     <div class="sig-section">
       <div class="sig-line">Cashier Signature</div>
@@ -595,24 +605,24 @@ function buildShiftSummaryBody(shift: any, isClose: boolean = false): string {
   return `
     <div class="info-row">
       <span class="info-label">Shift ID:</span>
-      <span class="info-val">${(shift.id || '').slice(0, 8).toUpperCase()}</span>
+      <span class="info-val">${escapeHtml((shift.id || '').slice(0, 8).toUpperCase())}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Terminal:</span>
-      <span class="info-val">${shift.terminal_id}</span>
+      <span class="info-val">${escapeHtml(shift.terminal_id)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Cashier:</span>
-      <span class="info-val">${shift.cashier_name}</span>
+      <span class="info-val">${escapeHtml(shift.cashier_name)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Opened:</span>
-      <span class="info-val">${new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true })}</span>
+      <span class="info-val">${escapeHtml(new Date(shift.opened_at).toLocaleString('en-LK', { hour12: true }))}</span>
     </div>
     ${shift.closed_at ? `
     <div class="info-row">
       <span class="info-label">Closed:</span>
-      <span class="info-val">${new Date(shift.closed_at).toLocaleString('en-LK', { hour12: true })}</span>
+      <span class="info-val">${escapeHtml(new Date(shift.closed_at).toLocaleString('en-LK', { hour12: true }))}</span>
     </div>` : ''}
     
     <div class="double-divider"></div>
