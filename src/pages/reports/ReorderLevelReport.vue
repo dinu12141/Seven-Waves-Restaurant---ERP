@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Reorder Level Report"
-    subtitle="Items at or below minimum stock level — requires immediate attention"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

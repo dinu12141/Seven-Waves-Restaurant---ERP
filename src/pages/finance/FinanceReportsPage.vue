@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="assessment"
-      subtitle="Monthly summary, P&L, balance sheet, COGS and cash flow from the GL"
       title="Financial Reports"
       breadcrumbs="Finance / Reports"
       show-refresh

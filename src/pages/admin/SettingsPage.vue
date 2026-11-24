@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <PageHeader
       title="System Settings"
-      subtitle="Configure modules, features, and application preferences"
       show-back
       back-route="/admin"
     />
@@ -47,7 +46,6 @@
               />
               <div class="col">
                 <div class="text-subtitle1 text-weight-bold">{{ mod.name }}</div>
-                <div class="text-caption text-grey-5 q-mt-xs">{{ mod.description }}</div>
               </div>
             </q-card-section>
 

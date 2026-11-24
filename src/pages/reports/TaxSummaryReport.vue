@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Tax Summary Report"
-    subtitle="Tax collected breakdown by period"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

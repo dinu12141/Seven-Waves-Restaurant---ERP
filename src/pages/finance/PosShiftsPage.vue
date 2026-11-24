@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="point_of_sale"
-      subtitle="Cashier shift takings, variances and GL posting"
       title="POS Shifts Report"
       breadcrumbs="Finance / Cash & Banking / POS Shifts"
       show-refresh

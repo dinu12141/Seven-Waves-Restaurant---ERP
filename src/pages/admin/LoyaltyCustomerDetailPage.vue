@@ -3,7 +3,6 @@
     <!-- Header -->
     <PageHeader
       :title="customerName"
-      subtitle="Loyalty Member Detail"
       show-back
       back-route="/admin/loyalty"
     >

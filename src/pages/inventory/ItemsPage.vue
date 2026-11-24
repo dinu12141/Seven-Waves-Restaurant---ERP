@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Item Master"
-      subtitle="Manage ingredients and inventory items"
       icon="inventory_2"
       :breadcrumbs="[{ label: 'Inventory' }, { label: 'Item Master' }]"
     >

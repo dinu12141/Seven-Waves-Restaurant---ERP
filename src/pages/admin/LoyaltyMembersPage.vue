@@ -3,7 +3,6 @@
     <!-- Header -->
     <PageHeader
       title="Loyalty Program"
-      subtitle="Manage customer loyalty coins, tiers, and rewards"
       show-back
       back-route="/admin"
     >

@@ -26,7 +26,6 @@
 
       <div class="erp-page-header__titles">
         <h1 class="erp-page-header__title">{{ title }}</h1>
-        <p v-if="subtitle" class="erp-page-header__subtitle">{{ subtitle }}</p>
       </div>
 
       <div class="erp-page-header__actions">

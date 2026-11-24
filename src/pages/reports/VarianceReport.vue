@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Variance Report"
-    subtitle="Physical count vs system stock variance analysis"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Goods Receipts"
-      subtitle="Manage incoming stock from suppliers"
       icon="move_to_inbox"
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Goods Receipts' }]"
     >

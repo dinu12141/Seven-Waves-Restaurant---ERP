@@ -3,7 +3,6 @@
     <FinancePageHeader
       title="Financial Statements"
       icon="assessment"
-      subtitle="Trial balance, profit & loss and balance sheet — Seven Waves Restaurant (Pvt) Ltd"
       breadcrumbs="Finance / Reports"
     />
 

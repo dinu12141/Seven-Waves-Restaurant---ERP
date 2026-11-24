@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Sales Report"
-    subtitle="Daily, weekly and monthly revenue breakdown by branch, category, and payment mode"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="filteredRows"

@@ -3,7 +3,6 @@
     <FinancePageHeader
       title="Account Registration"
       icon="account_balance"
-      subtitle="Chart of accounts — control accounts each ledger rolls up to"
       breadcrumbs="Finance / Setup"
     >
       <template #actions>

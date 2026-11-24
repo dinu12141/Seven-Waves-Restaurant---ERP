@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="account_tree"
-      subtitle="Basic salary, allowances, deductions and additions per employee"
       title="Salary Structure"
       breadcrumbs="Finance / Payroll / Salary Structure"
       show-refresh

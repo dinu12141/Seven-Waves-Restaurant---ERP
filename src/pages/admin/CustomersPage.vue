@@ -3,7 +3,6 @@
     <!-- Header -->
     <PageHeader
       title="Customer Management"
-      subtitle="View, search, and manage all registered customers"
       show-back
       back-route="/admin"
     >

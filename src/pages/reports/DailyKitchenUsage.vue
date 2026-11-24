@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     :title="reportTitle"
-    subtitle="Detailed analysis of items used in the kitchen (BOM-based deductions)"
     @filter-change="loadData"
     @export-csv="exportCSV"
     @export-excel="exportExcel"

@@ -2,7 +2,6 @@
   <q-page class="printers-page q-pa-md">
     <PageHeader
       title="Printer Management"
-      subtitle="Configure receipt and kitchen printers for each branch"
       show-back
       back-route="/admin"
       breadcrumb="SYSTEM CONFIG"

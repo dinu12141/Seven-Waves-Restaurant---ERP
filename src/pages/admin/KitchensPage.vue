@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <PageHeader
       title="Kitchen Management"
-      subtitle="Configure kitchen stations and displays"
       show-back
       back-route="/admin"
     />

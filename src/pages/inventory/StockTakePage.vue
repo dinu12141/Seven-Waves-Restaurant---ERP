@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Stock Take"
-      subtitle="Physical count sheet — compare system quantities against actual counts"
       icon="fact_check"
       :breadcrumbs="[{ label: 'Inventory' }, { label: 'Stock Take' }]"
     />

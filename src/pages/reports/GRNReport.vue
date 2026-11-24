@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="GRN Report"
-    subtitle="Goods Received Notes — inventory receipts and receiving details"
     :export-columns="exportColumns"
     :export-rows="exportRows"
     @filter-change="loadData"

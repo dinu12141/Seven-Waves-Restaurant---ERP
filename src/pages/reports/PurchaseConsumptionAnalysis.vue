@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Purchase vs Consumption Analysis"
-    subtitle="Compare purchased quantities against consumed — identify variance"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

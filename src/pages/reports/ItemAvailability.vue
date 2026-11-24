@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Item Availability Report"
-    subtitle="Current availability status of all menu items — unavailable items marked during KOT"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="filteredRows"

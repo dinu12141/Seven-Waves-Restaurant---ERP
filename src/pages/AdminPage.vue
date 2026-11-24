@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <PageHeader title="Admin Console" subtitle="System configuration and management" />
+    <PageHeader title="Admin Console" />
 
     <div class="row q-col-gutter-md">
       <div
@@ -24,7 +24,6 @@
               class="q-mb-md shadow-2"
             />
             <div class="text-h6">{{ module.title }}</div>
-            <div class="text-caption text-grey-5 q-mt-sm">{{ module.description }}</div>
           </q-card-section>
 
           <q-separator color="grey-8" />

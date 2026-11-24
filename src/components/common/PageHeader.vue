@@ -20,7 +20,6 @@
         </q-btn>
         <h1 class="erp-h1 no-margin">{{ title }}</h1>
       </div>
-      <p v-if="subtitle" class="erp-page-header__subtitle q-mt-xs">{{ subtitle }}</p>
     </div>
     <div class="erp-page-header__actions">
       <slot name="actions" />

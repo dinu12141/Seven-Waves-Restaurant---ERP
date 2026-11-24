@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Group Summary"
-    subtitle="Department Summary — Sales broken down by menu category groups"
     :kpis="kpiData"
     :show-kitchen-filter="true"
     @filter-change="loadData"

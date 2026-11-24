@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Inventory Performance & Margin Analysis"
-    subtitle="Slow/Fast moving items, High/Low margin, and Profit movement report"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"

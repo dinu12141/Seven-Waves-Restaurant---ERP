@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Goods Issue Notes"
-      subtitle="Manage internal stock issues — kitchen, wastage, transfers"
       icon="outbox"
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Goods Issues' }]"
     >

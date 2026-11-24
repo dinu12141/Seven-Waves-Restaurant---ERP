@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Inventory Adjustment Log"
-    subtitle="Stock adjustment history — all manual corrections and counts"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

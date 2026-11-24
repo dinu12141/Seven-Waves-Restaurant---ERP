@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Delivery Performance Report"
-    subtitle="Delivery timing, success rates, and performance analysis"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

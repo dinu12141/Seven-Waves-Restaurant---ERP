@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Supplier Wise Purchases"
-    subtitle="Purchases grouped by supplier with spend analysis"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

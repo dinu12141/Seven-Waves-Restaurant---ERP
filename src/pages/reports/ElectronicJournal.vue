@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Electronic Journal"
-    subtitle="Complete audit trail of all bills entered into the system — SAP B1 format"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="flatRows"

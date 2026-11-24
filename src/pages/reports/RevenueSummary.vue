@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Revenue Summary"
-    subtitle="Settled (paid) sales by business day, net of refunds"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

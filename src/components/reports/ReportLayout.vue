@@ -11,7 +11,6 @@
           }}</span>
         </div>
         <h1 class="report-toolbar__title">{{ title }}</h1>
-        <p v-if="subtitle" class="report-toolbar__subtitle">{{ subtitle }}</p>
       </div>
       <div class="report-toolbar__right">
         <!-- SAP B1-style Icon Toolbar Strip -->

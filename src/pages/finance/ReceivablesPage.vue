@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="request_page"
-      subtitle="Customer invoices, receipts, ageing and write-offs"
       title="Accounts Receivable"
       breadcrumbs="Finance / Receivables & Payables / AR"
       show-refresh

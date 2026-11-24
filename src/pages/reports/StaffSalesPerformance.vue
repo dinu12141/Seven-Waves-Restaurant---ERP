@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Staff Sales Performance"
-    subtitle="Staff productivity metrics — orders handled, revenue generated, average order value"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

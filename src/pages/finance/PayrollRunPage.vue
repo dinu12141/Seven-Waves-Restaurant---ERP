@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="playlist_add_check"
-      subtitle="Approve payroll runs and post salary, EPF and ETF to the GL"
       title="Post Payroll to GL"
       breadcrumbs="Finance / Payroll / Post to GL"
       show-refresh

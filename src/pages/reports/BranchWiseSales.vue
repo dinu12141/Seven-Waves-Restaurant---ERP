@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Kitchen Wise Sales"
-    subtitle="Sales comparison across all kitchens"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

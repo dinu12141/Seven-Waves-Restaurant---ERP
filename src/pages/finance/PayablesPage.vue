@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="request_quote"
-      subtitle="Supplier bills, ageing and payments"
       title="Accounts Payable"
       breadcrumbs="Finance / Receivables & Payables / AP"
       show-refresh

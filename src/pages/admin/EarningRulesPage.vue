@@ -2,7 +2,6 @@
   <q-page class="q-pa-md earning-rules-page">
     <PageHeader
       title="Earning Rules"
-      subtitle="Configure how loyalty coins are earned on purchases"
       show-back
       back-route="/admin/loyalty"
     >

@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Void / Cancel / FOC Report"
-    subtitle="All voided, cancelled, and FOC transactions with reasons"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

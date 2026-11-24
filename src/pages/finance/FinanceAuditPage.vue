@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="fact_check"
-      subtitle="Who changed what in Finance — vouchers, journals, ledgers and periods"
       title="Finance Audit Log"
       breadcrumbs="Finance / Reports & Audit / Audit Log"
       show-refresh

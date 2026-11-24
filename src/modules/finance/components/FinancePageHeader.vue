@@ -7,9 +7,6 @@
       <div class="fin-page-header__text">
         <div v-if="breadcrumbs" class="fin-page-header__crumbs">{{ breadcrumbs }}</div>
         <h1 class="fin-page-header__title">{{ title }}</h1>
-        <div v-if="subtitle || $slots.subtitle" class="fin-page-header__subtitle">
-          <slot name="subtitle">{{ subtitle }}</slot>
-        </div>
       </div>
     </div>
     <div class="fin-page-header__actions">

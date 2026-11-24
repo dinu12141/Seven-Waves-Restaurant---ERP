@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="groups"
-      subtitle="Monthly payroll totals and employee payslips"
       title="Payroll Overview"
       breadcrumbs="Finance / Payroll / Overview"
       show-refresh

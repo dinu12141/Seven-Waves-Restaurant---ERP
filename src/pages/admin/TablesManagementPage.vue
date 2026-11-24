@@ -3,7 +3,6 @@
     <!-- Page Header -->
     <PageHeader
       title="Table Management"
-      subtitle="Register tables, generate QR codes & manage table devices"
       show-back
       back-route="/admin"
     >

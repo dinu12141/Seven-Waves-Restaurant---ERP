@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Reservation Report"
-    subtitle="Reservation statistics and occupancy tracking"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

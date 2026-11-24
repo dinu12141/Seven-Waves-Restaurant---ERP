@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Pickup vs Delivery Summary"
-    subtitle="Order type comparison — dine-in, pickup, delivery, online"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

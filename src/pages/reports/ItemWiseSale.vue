@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Item Wise Sale Report"
-    subtitle="POS Sales Report By Item — Quantity sold per item, grouped by subgroup"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="displayRows"

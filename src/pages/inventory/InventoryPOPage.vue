@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Purchase Orders"
-      subtitle="Create and track Purchase Orders submitted to Procurement"
       icon="shopping_cart"
       :breadcrumbs="[{ label: 'Inventory' }, { label: 'Purchase Orders' }]"
     >

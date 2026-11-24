@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="KOT Deduction Log"
-    subtitle="BOM-based stock deductions triggered by Kitchen Order Tickets"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

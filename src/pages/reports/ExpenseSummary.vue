@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Expense Summary"
-    subtitle="Posted pay vouchers by expense ledger"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"

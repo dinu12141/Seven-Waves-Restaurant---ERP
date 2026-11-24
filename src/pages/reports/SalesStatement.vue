@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Sales Statement"
-    subtitle="Comprehensive breakdown of total sales, settlements, and collections"
     :kpis="kpiData"
     @filter-change="loadData"
     @export-csv="exportCSV"

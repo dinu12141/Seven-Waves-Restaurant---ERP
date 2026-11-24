@@ -3,7 +3,6 @@
     <ErpPageHeader
       title="Fiscal Periods"
       icon="calendar_month"
-      subtitle="Manage and lock accounting periods"
     >
       <template v-slot:actions>
         <q-btn

@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Cashier Performance"
-    subtitle="Cashier throughput analysis — transaction volumes and speed"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

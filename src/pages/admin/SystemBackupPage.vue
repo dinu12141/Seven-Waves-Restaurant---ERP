@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <PageHeader
       title="System Backup & Disaster Recovery"
-      subtitle="Full & modular database snapshots, SQL dumps, and Google Drive cloud synchronization"
       show-back
       back-route="/admin"
     />

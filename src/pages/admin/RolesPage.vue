@@ -2,7 +2,6 @@
   <q-page class="acm-page q-pa-lg">
     <PageHeader
       title="Access Control Matrix"
-      subtitle="Configure role-based module access and fine-grained permissions"
       show-back
       back-route="/admin"
     />

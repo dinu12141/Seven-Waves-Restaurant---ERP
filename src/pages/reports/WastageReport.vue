@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Wastage Report"
-    subtitle="Wastage and spoilage entries — track and minimize food waste"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

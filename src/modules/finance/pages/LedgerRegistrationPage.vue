@@ -3,7 +3,6 @@
     <FinancePageHeader
       title="Ledger Registration"
       icon="book"
-      subtitle="General Ledger accounts, opening balances and current balances"
       breadcrumbs="Finance / Setup"
     >
       <template #actions>

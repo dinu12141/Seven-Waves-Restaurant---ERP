@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Purchase Orders"
-      subtitle="Manage stock procurement from suppliers"
       icon="shopping_cart"
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Purchase Orders' }]"
     >

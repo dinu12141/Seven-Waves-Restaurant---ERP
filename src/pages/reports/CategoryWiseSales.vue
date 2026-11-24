@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     :title="reportTitle"
-    subtitle="Sales breakdown by category with revenue, margin, and item movement analysis"
     :kpis="kpiData"
     :export-columns="exportCols"
     :export-rows="displayedItems"

@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Item Availability Report"
-    subtitle="Track items marked as available or unavailable by waiters during order acceptance"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="filteredRows"

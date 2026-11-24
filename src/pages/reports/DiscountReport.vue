@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Discount Report"
-    subtitle="All discounts applied — amounts, percentages, and approval details"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

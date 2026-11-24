@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Order Status Report"
-    subtitle="Orders breakdown by current status"
     :export-columns="columns"
     :export-rows="rows"
     @filter-change="loadData"

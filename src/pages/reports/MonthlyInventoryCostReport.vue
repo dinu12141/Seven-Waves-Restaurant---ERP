@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Monthly Inventory Cost (COGS) & Valuation"
-    subtitle="Monthly inventory movements, moving weighted average valuation, and COGS reconciliation"
     :kpis="kpiData"
     :export-columns="exportColumns"
     :export-rows="filteredRows"

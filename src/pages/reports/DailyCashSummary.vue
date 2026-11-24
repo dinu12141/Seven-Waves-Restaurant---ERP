@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Daily Cash Summary"
-    subtitle="Cash register reconciliation — opening, sales, expenses, closing"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

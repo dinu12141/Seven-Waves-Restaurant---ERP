@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Stock Adjustment"
-      subtitle="Record stock reductions for damage, wastage, theft, or stocktake corrections"
       icon="tune"
       :breadcrumbs="[{ label: 'Inventory' }, { label: 'Stock Adjustment' }]"
     />

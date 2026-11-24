@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Payment Method Summary"
-    subtitle="Revenue breakdown by payment method — cash, card, online, etc."
     :kpis="kpiData"
     :export-columns="activeExportColumns"
     :export-rows="activeExportRows"

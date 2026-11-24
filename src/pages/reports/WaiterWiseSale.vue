@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Waiter Wise Sale"
-    subtitle="Waiter Wise Sales — Performance and table-level breakdown per waiter"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="displayRows"

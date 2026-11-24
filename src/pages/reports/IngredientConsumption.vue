@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Ingredient Consumption Report"
-    subtitle="BOM-based consumption analysis from KOT-driven deductions"
     :kpis="kpiData"
     :export-columns="columns"
     :export-rows="rows"

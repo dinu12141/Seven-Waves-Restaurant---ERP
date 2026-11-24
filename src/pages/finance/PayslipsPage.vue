@@ -2,7 +2,6 @@
   <q-page class="q-pa-md finance-page">
     <FinancePageHeader
       icon="receipt_long"
-      subtitle="Employee payslips, payment status and references"
       title="Payslips"
       breadcrumbs="Finance / Payroll / Payslips"
       show-refresh

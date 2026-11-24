@@ -1,7 +1,6 @@
 <template>
   <ReportLayout
     title="Purchase Summary"
-    subtitle="Purchase order totals and trends"
     :kpis="kpis"
     :export-columns="columns"
     :export-rows="rows"

@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <ErpPageHeader
       title="Stores Purchase Orders"
-      subtitle="Review and approve or reject Purchase Orders submitted by Stores"
       icon="storefront"
       :breadcrumbs="[{ label: 'Procurement' }, { label: 'Stores PO' }]"
     >

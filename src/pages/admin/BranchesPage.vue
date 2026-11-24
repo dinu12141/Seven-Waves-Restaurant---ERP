@@ -2,7 +2,6 @@
   <q-page class="q-pa-md">
     <PageHeader
       title="Branch Management"
-      subtitle="Manage restaurant outlets and locations"
       show-back
       back-route="/admin"
     />
