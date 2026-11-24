@@ -167,7 +167,7 @@
 
     <!-- ── Full PO Create Dialog (Stores Input Form) ────────────────────────── -->
     <q-dialog v-model="createDialogVisible" persistent maximized-mobile>
-      <q-card style="width: 1000px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column" class="erp-dialog-card shadow-5">
+      <q-card style="width: 1280px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column" class="erp-dialog-card shadow-5">
         <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
           <div class="row items-center q-gutter-sm">
             <q-icon name="shopping_cart" size="24px" />
@@ -244,23 +244,23 @@
             />
           </div>
 
-          <div class="q-table__container erp-table erp-border-radius overflow-hidden shadow-1 q-mb-md">
-            <table class="q-table q-table--horizontal-separator" style="width: 100%">
+          <div class="q-table__container erp-table erp-border-radius shadow-1 q-mb-md" style="overflow-x: auto">
+            <table class="q-table q-table--horizontal-separator po-lines-table" style="width: 100%; min-width: 960px">
               <thead>
                 <tr class="bg-grey-2 text-dark">
                   <th style="width: 40px" class="text-center">#</th>
-                  <th style="width: 320px" class="text-left">Item *</th>
-                  <th class="text-left">Description</th>
-                  <th style="width: 120px" class="text-left">UOM *</th>
-                  <th style="width: 100px" class="text-right">Qty *</th>
-                  <th style="width: 130px" class="text-right">Unit Cost (LKR)</th>
-                  <th style="width: 140px" class="text-right">Total (LKR)</th>
-                  <th style="width: 50px" class="text-center"></th>
+                  <th style="min-width: 340px; width: 34%" class="text-left">Item *</th>
+                  <th style="min-width: 240px; width: 25%" class="text-left">Description</th>
+                  <th style="min-width: 150px; width: 14%" class="text-left">UOM *</th>
+                  <th style="min-width: 95px; width: 95px" class="text-right">Qty *</th>
+                  <th style="min-width: 120px; width: 120px" class="text-right">Unit Cost (LKR)</th>
+                  <th style="min-width: 125px; width: 125px; white-space: nowrap" class="text-right">Total (LKR)</th>
+                  <th style="width: 44px" class="text-center"></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(line, idx) in form.lines" :key="idx">
-                  <td class="text-center text-grey-7">{{ idx + 1 }}</td>
+                  <td class="text-center text-grey-7 q-pt-md">{{ idx + 1 }}</td>
                   <td>
                     <q-select
                       v-model="line._item"
@@ -268,16 +268,51 @@
                       option-label="displayName"
                       dense
                       outlined
+                      clearable
                       use-input
-                      fill-input
-                      hide-selected
-                      placeholder="Select item…"
+                      input-debounce="0"
+                      :placeholder="line._item ? '' : 'Select item…'"
+                      class="po-item-select"
+                      popup-content-style="max-width: 480px"
                       @filter="(val, update) => filterItems(val, update)"
                       @update:model-value="val => onItemSelect(line, val)"
-                    />
+                    >
+                      <template #selected-item="scope">
+                        <div class="po-item-selected-text">
+                          <span class="text-weight-medium">{{ scope.opt.name }}</span>
+                          <q-badge v-if="scope.opt.code" color="blue-grey-2" text-color="blue-grey-9" class="q-ml-xs">
+                            {{ scope.opt.code }}
+                          </q-badge>
+                        </div>
+                      </template>
+                      <template #option="scope">
+                        <q-item v-bind="scope.itemProps">
+                          <q-item-section>
+                            <q-item-label style="white-space: normal; word-break: break-word;">
+                              {{ scope.opt.name }}
+                            </q-item-label>
+                            <q-item-label caption v-if="scope.opt.code">
+                              {{ scope.opt.code }}
+                            </q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                      <template #no-option>
+                        <q-item>
+                          <q-item-section class="text-grey">No matching items</q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select>
                   </td>
                   <td>
-                    <q-input v-model="line.description" dense outlined placeholder="Optional line note" />
+                    <q-input
+                      v-model="line.description"
+                      dense
+                      outlined
+                      autogrow
+                      class="po-desc-input"
+                      placeholder="Optional line note"
+                    />
                   </td>
                   <td>
                     <q-select
@@ -297,7 +332,7 @@
                       step="any"
                       dense
                       outlined
-                      class="text-right"
+                      input-class="text-right"
                     />
                   </td>
                   <td>
@@ -308,13 +343,13 @@
                       step="any"
                       dense
                       outlined
-                      class="text-right"
+                      input-class="text-right"
                     />
                   </td>
-                  <td class="text-right text-weight-bold">
+                  <td class="text-right text-weight-bold q-pt-md" style="white-space: nowrap">
                     {{ formatCurrency((Number(line.quantity) || 0) * (Number(line.unit_price) || 0)) }}
                   </td>
-                  <td class="text-center">
+                  <td class="text-center q-pt-sm">
                     <q-btn
                       flat
                       round
@@ -377,7 +412,7 @@
 
     <!-- ── View PO Dialog (Read-Only) ──────────────────────────────────────── -->
     <q-dialog v-model="viewDialogVisible" maximized-mobile>
-      <q-card style="width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column" class="erp-dialog-card shadow-5">
+      <q-card style="width: 1100px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column" class="erp-dialog-card shadow-5">
         <q-card-section class="row items-center justify-between bg-primary text-white q-py-sm">
           <div class="row items-center q-gutter-sm">
             <q-icon name="description" size="24px" />
@@ -449,28 +484,28 @@
             <q-spinner color="primary" size="30px" />
           </q-inner-loading>
 
-          <div class="q-table__container erp-table erp-border-radius overflow-hidden shadow-1">
-            <table class="q-table q-table--horizontal-separator" style="width: 100%">
+          <div class="q-table__container erp-table erp-border-radius shadow-1" style="overflow-x: auto">
+            <table class="q-table q-table--horizontal-separator po-lines-table" style="width: 100%; min-width: 780px">
               <thead>
                 <tr class="bg-grey-2 text-dark">
                   <th style="width: 40px" class="text-center">#</th>
-                  <th class="text-left">Item Name</th>
-                  <th class="text-left">Description</th>
+                  <th style="min-width: 240px" class="text-left">Item Name</th>
+                  <th style="min-width: 200px" class="text-left">Description</th>
                   <th style="width: 120px" class="text-left">UOM</th>
-                  <th style="width: 100px" class="text-right">Qty</th>
-                  <th style="width: 130px" class="text-right">Unit Price</th>
-                  <th style="width: 140px" class="text-right">Total</th>
+                  <th style="width: 90px" class="text-right">Qty</th>
+                  <th style="width: 120px" class="text-right">Unit Price</th>
+                  <th style="width: 130px" class="text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(l, idx) in selectedPOLines" :key="l.id || idx">
                   <td class="text-center">{{ idx + 1 }}</td>
-                  <td class="text-weight-medium">{{ l.items?.name || l.item_name || l.description }}</td>
-                  <td class="text-grey-8">{{ l.description || '—' }}</td>
+                  <td class="text-weight-medium" style="white-space: normal; word-break: break-word">{{ l.items?.name || l.item_name || l.description }}</td>
+                  <td class="text-grey-8" style="white-space: normal; word-break: break-word">{{ l.description || '—' }}</td>
                   <td>{{ l.uom?.name || l.uom?.code || l.uom_name || '—' }}</td>
                   <td class="text-right text-weight-bold">{{ Number(l.quantity).toLocaleString() }}</td>
                   <td class="text-right">{{ formatCurrency(l.unit_price) }}</td>
-                  <td class="text-right text-weight-bold">
+                  <td class="text-right text-weight-bold" style="white-space: nowrap">
                     {{ formatCurrency((Number(l.quantity) || 0) * (Number(l.unit_price) || 0)) }}
                   </td>
                 </tr>
@@ -902,5 +937,42 @@ onMounted(async () => {
   padding: 2px 6px;
   border-radius: 10px;
   font-size: 11px;
+}
+
+.po-lines-table td {
+  vertical-align: top;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.po-item-select :deep(.q-field__control),
+.po-item-select :deep(.q-field__native) {
+  height: auto !important;
+  min-height: 40px;
+}
+
+.po-item-select :deep(.q-field__input--padding:not(:focus)) {
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0px !important;
+  padding: 0 !important;
+  opacity: 0;
+}
+
+.po-item-select :deep(.q-field__input--padding:focus) {
+  min-width: 90px !important;
+  opacity: 1;
+}
+
+.po-item-selected-text {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  padding: 4px 0;
+}
+
+.po-desc-input :deep(textarea) {
+  line-height: 1.35;
+  word-break: break-word;
 }
 </style>
