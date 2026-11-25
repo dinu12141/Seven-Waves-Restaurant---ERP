@@ -100,6 +100,11 @@ const routes = [
         meta: { roles: ['admin', 'manager', 'inventory'], module: 'inventory', permission: 'inventory.stocktake.view' },
       },
       {
+        path: 'inventory/stores-dashboard',
+        component: () => import('pages/inventory/StoresDashboardPage.vue'),
+        meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.purchase_orders.view' },
+      },
+      {
         path: 'inventory/purchase-orders',
         component: () => import('pages/inventory/InventoryPOPage.vue'),
         meta: { roles: ['admin', 'manager', 'inventory', 'stores'], module: 'inventory', permission: 'inventory.purchase_orders.view' },

@@ -94,7 +94,7 @@
           outline
           no-caps
           class="erp-toolbar__secondary-btn"
-          color="white"
+          :color="$q.dark.isActive ? 'grey-4' : 'grey-8'"
           label="Export"
           icon="file_download"
         >
@@ -137,7 +137,7 @@
           v-if="secondaryActions && secondaryActions.length > 0"
           class="erp-toolbar__dropdown-btn"
           outline
-          color="white"
+          :color="$q.dark.isActive ? 'grey-4' : 'grey-8'"
           icon="more_vert"
         >
           <q-list class="erp-toolbar__dropdown-list" style="min-width: 180px">

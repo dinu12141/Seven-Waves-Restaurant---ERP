@@ -4,6 +4,8 @@
       moduleName="procurement"
       title="Procurement Dashboard"
       breadcrumbs="Procurement / Overview"
+      :show-refresh="true"
+      @refresh="fetchData"
     />
 
     <!-- KPI Cards -->
@@ -12,6 +14,60 @@
         <DashboardCard v-bind="stat" />
       </div>
     </div>
+
+    <!-- Pending POs Quick Action Panel -->
+    <q-card v-if="pendingPOList.length > 0" flat bordered class="erp-dashboard-panel shadow-1 q-mb-lg">
+      <q-card-section class="row items-center justify-between q-pb-sm">
+        <div class="row items-center q-gutter-sm">
+          <q-icon name="pending_actions" color="amber-9" size="24px" />
+          <div>
+            <div class="text-subtitle1 text-weight-bold">
+              Pending Purchase Orders ({{ pendingPOList.length }})
+            </div>
+            <div class="text-caption text-grey-7">
+              Purchase orders awaiting approval before supplier ordering
+            </div>
+          </div>
+        </div>
+        <q-btn
+          unelevated
+          no-caps
+          size="sm"
+          color="primary"
+          icon="storefront"
+          label="Open Stores PO Approvals"
+          to="/procurement/stores-po"
+        />
+      </q-card-section>
+      <q-separator />
+      <q-list separator>
+        <q-item v-for="po in pendingPOList" :key="po.id" class="q-py-sm">
+          <q-item-section>
+            <q-item-label class="text-weight-bold">
+              {{ po.doc_number }}
+              <q-badge color="amber-2" text-color="dark" class="q-ml-xs">
+                {{ po.status === 'pending_approval' ? 'Pending Approval' : 'Draft' }}
+              </q-badge>
+            </q-item-label>
+            <q-item-label caption class="text-grey-7">
+              {{ po.suppliers?.name || 'Stores Requisition (Direct)' }} · Date: {{ po.doc_date }} · {{ formatCurrency(po.total_amount) }}
+            </q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-btn
+              unelevated
+              dense
+              no-caps
+              size="sm"
+              color="primary"
+              icon="rate_review"
+              label="Review & Approve"
+              :to="po.source === 'stores' ? '/procurement/stores-po' : '/procurement/purchase-orders'"
+            />
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
 
     <!-- Main Content -->
     <div class="row q-col-gutter-md">
@@ -49,7 +105,7 @@
                   <q-item-label class="text-body2 text-weight-medium">{{
                     alert.title
                   }}</q-item-label>
-                  <q-item-label caption class="text-grey-5">{{ alert.desc }}</q-item-label>
+                  <q-item-label caption class="text-grey-7">{{ alert.desc }}</q-item-label>
                 </q-item-section>
               </q-item>
               <div v-if="!loading && alerts.length === 0" class="text-grey-6 text-center q-pa-md">
@@ -88,6 +144,7 @@ const kpis = ref([
 ])
 
 const alerts = ref([])
+const pendingPOList = ref([])
 
 // Last 7 day labels for chart
 function last7DayLabels() {
@@ -155,12 +212,14 @@ const fetchData = async () => {
       weekPORes,
       weekGRNRes,
     ] = await Promise.all([
-      // KPI 1 — Pending POs (awaiting approval or delivery, incl. partially received)
+      // KPI 1 — Pending POs (awaiting approval or draft only — excludes already approved/open/closed POs)
       supabase
         .from('purchase_orders')
-        .select('id', { count: 'exact', head: true })
+        .select('id, doc_number, doc_date, total_amount, status, source, suppliers(name)', { count: 'exact' })
         .eq('company_id', companyId)
-        .in('status', ['pending_approval', 'open', 'approved', 'partial']),
+        .in('status', ['pending_approval', 'draft'])
+        .order('created_at', { ascending: false })
+        .limit(10),
 
       // KPI 2 — Active suppliers
       supabase
@@ -229,7 +288,8 @@ const fetchData = async () => {
     ])
 
     // KPI updates
-    kpis.value[0].value = String(pendingPORes.count ?? '—')
+    pendingPOList.value = pendingPORes.data || []
+    kpis.value[0].value = String(pendingPORes.count ?? pendingPOList.value.length)
     kpis.value[1].value = String(activeSuppliersRes.count ?? '—')
     kpis.value[2].value = String(todayGRNRes.count ?? '—')
 
@@ -237,13 +297,13 @@ const fetchData = async () => {
       (sum, r) => sum + Number(r.balance_due || 0),
       0,
     )
-    kpis.value[3].value = String(pendingAP)
+    kpis.value[3].value = formatCurrency(pendingAP)
 
     const paidToday = (paidTodayRes.data || []).reduce(
       (sum, r) => sum + Number(r.total_amount || 0),
       0,
     )
-    kpis.value[4].value = String(paidToday)
+    kpis.value[4].value = formatCurrency(paidToday)
 
     kpis.value[5].value = String(overdueAPCountRes.count ?? '—')
     kpis.value[5].title = 'Overdue AP'

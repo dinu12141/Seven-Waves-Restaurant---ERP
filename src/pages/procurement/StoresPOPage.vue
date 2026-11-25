@@ -31,7 +31,7 @@
         @click="activeTab = t.value"
       >
         {{ t.label }}
-        <span class="erp-tab__count" :class="{ 'bg-amber-8 text-white': t.value === 'pending_approval' && tabCount(t.value) > 0 }">
+        <span class="erp-tab__count" :class="{ 'bg-amber-8 text-dark': t.value === 'pending_approval' && tabCount(t.value) > 0 }">
           {{ tabCount(t.value) }}
         </span>
       </button>
@@ -227,14 +227,14 @@
           <!-- PO Overview Cards -->
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-12 col-sm-6 col-md-3">
-              <q-card flat bordered class="q-pa-sm bg-grey-1">
+              <q-card flat bordered class="q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="text-caption text-grey-7">PO Number</div>
                 <div class="text-weight-bold text-subtitle2">{{ currentPO.doc_number }}</div>
               </q-card>
             </div>
 
             <div class="col-12 col-sm-6 col-md-3">
-              <q-card flat bordered class="q-pa-sm bg-grey-1">
+              <q-card flat bordered class="q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="text-caption text-grey-7">Supplier</div>
                 <div class="text-weight-bold text-subtitle2">{{ currentPO.suppliers?.name || '—' }}</div>
                 <div v-if="currentPO.suppliers?.code" class="text-caption text-grey-6">
@@ -244,21 +244,21 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-3">
-              <q-card flat bordered class="q-pa-sm bg-grey-1">
+              <q-card flat bordered class="q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="text-caption text-grey-7">Order Date</div>
                 <div class="text-weight-bold text-subtitle2">{{ currentPO.doc_date }}</div>
               </q-card>
             </div>
 
             <div class="col-12 col-sm-6 col-md-3">
-              <q-card flat bordered class="q-pa-sm bg-grey-1">
+              <q-card flat bordered class="q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="text-caption text-grey-7">Expected Delivery</div>
                 <div class="text-weight-bold text-subtitle2">{{ currentPO.expected_date || 'Not specified' }}</div>
               </q-card>
             </div>
 
             <div class="col-12" v-if="currentPO.remarks">
-              <q-card flat bordered class="q-pa-sm bg-grey-1">
+              <q-card flat bordered class="q-pa-sm" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="text-caption text-grey-7">Stores Remarks / Instructions</div>
                 <div class="text-body2">{{ currentPO.remarks }}</div>
               </q-card>
@@ -279,31 +279,31 @@
             <q-spinner color="primary" size="30px" />
           </q-inner-loading>
 
-          <div class="q-table__container erp-table erp-border-radius overflow-hidden shadow-1 q-mb-md">
-            <table class="q-table q-table--horizontal-separator" style="width: 100%">
+          <div class="q-table__container erp-table erp-border-radius shadow-1 q-mb-md" style="overflow-x: auto">
+            <table class="q-table q-table--horizontal-separator" style="width: 100%; min-width: 780px">
               <thead>
-                <tr class="bg-grey-2 text-dark">
+                <tr :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-2 text-dark'">
                   <th style="width: 40px" class="text-center">#</th>
-                  <th class="text-left">Item Name & Code</th>
-                  <th class="text-left">Description</th>
+                  <th style="min-width: 240px" class="text-left">Item Name & Code</th>
+                  <th style="min-width: 200px" class="text-left">Description</th>
                   <th style="width: 120px" class="text-left">UOM</th>
-                  <th style="width: 100px" class="text-right">Qty</th>
-                  <th style="width: 140px" class="text-right">Unit Price (LKR)</th>
-                  <th style="width: 150px" class="text-right">Total (LKR)</th>
+                  <th style="width: 90px" class="text-right">Qty</th>
+                  <th style="width: 130px" class="text-right">Unit Price (LKR)</th>
+                  <th style="width: 140px" class="text-right">Total (LKR)</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(l, idx) in currentPOLines" :key="l.id || idx">
                   <td class="text-center text-grey-7">{{ idx + 1 }}</td>
-                  <td>
+                  <td style="white-space: normal; word-break: break-word">
                     <div class="text-weight-medium">{{ l.items?.name || l.item_name || 'Item' }}</div>
                     <div v-if="l.items?.code" class="text-caption text-grey-6">Code: {{ l.items.code }}</div>
                   </td>
-                  <td class="text-grey-8">{{ l.description || '—' }}</td>
+                  <td class="text-grey-8" style="white-space: normal; word-break: break-word">{{ l.description || '—' }}</td>
                   <td>{{ l.uom?.name || l.uom?.code || l.uom_name || '—' }}</td>
                   <td class="text-right text-weight-bold">{{ Number(l.quantity).toLocaleString() }}</td>
                   <td class="text-right">{{ formatCurrency(l.unit_price) }}</td>
-                  <td class="text-right text-weight-bold">
+                  <td class="text-right text-weight-bold" style="white-space: nowrap">
                     {{ formatCurrency((Number(l.quantity) || 0) * (Number(l.unit_price) || 0)) }}
                   </td>
                 </tr>
@@ -314,7 +314,7 @@
           <!-- Total Summary -->
           <div class="row justify-end q-mt-md">
             <div class="col-12 col-md-5">
-              <q-card flat bordered class="q-pa-md bg-grey-1">
+              <q-card flat bordered class="q-pa-md" :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-dark'">
                 <div class="row justify-between items-center text-h6 text-weight-bold text-primary">
                   <span>Grand Total:</span>
                   <span>{{ formatCurrency(currentPO.total_amount) }}</span>
@@ -327,7 +327,7 @@
         <q-separator />
 
         <!-- Action Footer -->
-        <q-card-actions align="between" class="q-pa-md bg-grey-1">
+        <q-card-actions align="between" class="q-pa-md" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'">
           <q-btn flat no-caps label="Close" color="grey-7" v-close-popup />
 
           <!-- Approve / Reject actions ONLY when pending_approval -->

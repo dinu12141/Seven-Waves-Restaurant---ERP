@@ -217,11 +217,17 @@ describe('Stores PO Workflow & Service', () => {
 describe('Stores Role & Navigation RBAC Access', () => {
   it('stores role is registered in ROLE_ROUTE_ACCESS and ROLE_LANDING', () => {
     expect(ROLE_ROUTE_ACCESS.stores).toBeDefined()
+    expect(ROLE_ROUTE_ACCESS.stores).toContain('/inventory/stores-dashboard')
     expect(ROLE_ROUTE_ACCESS.stores).toContain('/inventory/purchase-orders')
-    expect(ROLE_LANDING.stores).toBe('/inventory/purchase-orders')
+    expect(ROLE_LANDING.stores).toBe('/inventory/stores-dashboard')
   })
 
-  it('NAV_ITEMS contains Purchase Orders under INVENTORY with stores role', () => {
+  it('NAV_ITEMS contains Stores Dashboard and Purchase Orders under INVENTORY with stores role', () => {
+    const invDash = NAV_ITEMS.find((n) => n.to === '/inventory/stores-dashboard')
+    expect(invDash).toBeDefined()
+    expect(invDash?.roles).toContain('stores')
+    expect(invDash?.permission).toBe('inventory.purchase_orders.view')
+
     const invPO = NAV_ITEMS.find((n) => n.to === '/inventory/purchase-orders')
     expect(invPO).toBeDefined()
     expect(invPO?.roles).toContain('stores')
@@ -255,7 +261,8 @@ describe('Stores Role & Navigation RBAC Access', () => {
       return evaluateRouteAccess(rolesList, perms, hit.matched, path).allowed
     }
 
-    // Stores role CAN access inventory purchase orders ONLY
+    // Stores role CAN access stores dashboard and inventory purchase orders ONLY
+    expect(canAccess(['stores'], '/inventory/stores-dashboard')).toBe(true)
     expect(canAccess(['stores'], '/inventory/purchase-orders')).toBe(true)
     // Stores role CANNOT access general inventory items, stocktake, admin or finance
     expect(canAccess(['stores'], '/inventory/items')).toBe(false)
@@ -267,13 +274,12 @@ describe('Stores Role & Navigation RBAC Access', () => {
     expect(canAccess(['procurement'], '/procurement/stores-po')).toBe(true)
   })
 
-  it('getFilteredNavItems returns ONLY Stores Purchase Orders for stores role with PO permissions', () => {
+  it('getFilteredNavItems returns ONLY Stores Dashboard & Purchase Orders for stores role', () => {
     const nav = getFilteredNavItems(
       ['stores'],
       ['inventory.purchase_orders.*', 'inventory.purchase_orders.view', 'inventory.purchase_orders.create'],
     )
-    expect(nav).toHaveLength(1)
-    expect(nav[0].label).toBe('Stores Purchase Orders')
-    expect(nav[0].to).toBe('/inventory/purchase-orders')
+    expect(nav).toHaveLength(2)
+    expect(nav.map(n => n.to)).toEqual(['/inventory/stores-dashboard', '/inventory/purchase-orders'])
   })
 })
