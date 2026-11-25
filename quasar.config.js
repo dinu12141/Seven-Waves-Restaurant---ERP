@@ -172,10 +172,10 @@ export default defineConfig((ctx) => {
           warning: '#F59E0B',
         },
         notify: {
-          position: 'top-right',
-          timeout: 3000,
+          position: 'bottom-right',
+          timeout: 2800,
           progress: true,
-          actions: [{ icon: 'close', color: 'white', round: true }],
+          actions: [{ icon: 'close', round: true, dense: true }],
         },
         loading: {
           spinnerColor: 'primary',

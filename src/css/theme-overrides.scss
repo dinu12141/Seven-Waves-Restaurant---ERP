@@ -160,35 +160,7 @@ body.body--light {
     color: var(--erp-text-primary) !important;
   }
 
-  /* Notifications: neutral toasts adapt to light surface; semantic colored toasts keep their colors & high-contrast text */
-  .q-notification:not([class*='bg-']) {
-    background: var(--erp-bg-elevated) !important;
-    color: var(--erp-text-primary) !important;
-    border: 1px solid var(--erp-border) !important;
-  }
-  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) {
-    color: #ffffff !important;
-  }
-  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-notification__message,
-  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-notification__caption,
-  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-icon,
-  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-btn {
-    color: #ffffff !important;
-  }
-  .q-notification.bg-warning,
-  .q-notification[class*='bg-amber'] {
-    color: #0f172a !important;
-  }
-  .q-notification.bg-warning .q-notification__message,
-  .q-notification.bg-warning .q-notification__caption,
-  .q-notification.bg-warning .q-icon,
-  .q-notification.bg-warning .q-btn,
-  .q-notification[class*='bg-amber'] .q-notification__message,
-  .q-notification[class*='bg-amber'] .q-notification__caption,
-  .q-notification[class*='bg-amber'] .q-icon,
-  .q-notification[class*='bg-amber'] .q-btn {
-    color: #0f172a !important;
-  }
+  /* Neutral notification fallback (enterprise styled below for both Light & Dark modes) */
 
   /* Scroll area */
   .q-scrollarea__thumb {
@@ -611,20 +583,20 @@ body.body--light {
     color: #ffffff !important;
   }
 
-  /* Preserve crisp white text and icons ONLY on dark/solid colored surfaces — never clobber light pastel (-1/-2/-3), white, amber/warning, or explicit text-* colors */
-  .bg-primary, .bg-primary *,
-  .bg-secondary, .bg-secondary *,
-  .bg-positive, .bg-positive *,
-  .bg-negative, .bg-negative *,
-  .bg-warning:not([class*='text-dark']):not(.q-banner),
-  .bg-info, .bg-info *,
-  .bg-black, .bg-black *,
-  .bg-amber-8:not([class*='text-dark']),
-  .bg-orange, .bg-orange *,
-  .bg-orange-9, .bg-orange-9 *,
-  .bg-deep-purple, .bg-deep-purple *,
-  .bg-purple-9, .bg-purple-9 *,
-  .bg-purple-8, .bg-purple-8 *,
+  /* Preserve crisp white text and icons ONLY on dark/solid colored surfaces — never clobber toasts, light pastel (-1/-2/-3), white, amber/warning, or explicit text-* colors */
+  .bg-primary:not(.q-notification), .bg-primary:not(.q-notification) *,
+  .bg-secondary:not(.q-notification), .bg-secondary:not(.q-notification) *,
+  .bg-positive:not(.q-notification), .bg-positive:not(.q-notification) *,
+  .bg-negative:not(.q-notification), .bg-negative:not(.q-notification) *,
+  .bg-warning:not([class*='text-dark']):not(.q-banner):not(.q-notification),
+  .bg-info:not(.q-notification), .bg-info:not(.q-notification) *,
+  .bg-black:not(.q-notification), .bg-black:not(.q-notification) *,
+  .bg-amber-8:not([class*='text-dark']):not(.q-notification),
+  .bg-orange:not(.q-notification), .bg-orange:not(.q-notification) *,
+  .bg-orange-9:not(.q-notification), .bg-orange-9:not(.q-notification) *,
+  .bg-deep-purple:not(.q-notification), .bg-deep-purple:not(.q-notification) *,
+  .bg-purple-9:not(.q-notification), .bg-purple-9:not(.q-notification) *,
+  .bg-purple-8:not(.q-notification), .bg-purple-8:not(.q-notification) *,
   .q-badge:not([class*='text-']):not([class*='bg-amber']):not([class*='bg-warning']):not([class*='bg-yellow']):not([class*='bg-white']):not([class*='bg-grey']):not([class*='-1']):not([class*='-2']):not([class*='-3']),
   .q-banner.text-white, .q-banner.text-white *,
   .q-btn[class*='bg-']:not([class*='bg-white']):not([class*='bg-transparent']):not([class*='bg-grey']):not([class*='bg-amber']):not([class*='bg-warning']):not([class*='bg-yellow']):not([class*='-1']):not([class*='-2']):not([class*='-3']):not([class*='text-dark']):not([class*='text-black']):not([class*='text-primary']),
@@ -932,6 +904,93 @@ body.body--light {
     /* Separators */
     .q-separator {
       background: #333333 !important;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ENTERPRISE ERP TOAST NOTIFICATIONS (Light & Dark Mode — System-Wide)
+   Replaces loud full-solid bright green/red/amber/blue toast banners with
+   clean SAP/Odoo-style surface cards + crisp 4px semantic accent border & icon.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+body.body--light .q-notification:not(.order-reminder-toast),
+body.body--dark .q-notification:not(.order-reminder-toast) {
+  background: var(--erp-bg-elevated) !important;
+  color: var(--erp-text-primary) !important;
+  border: 1px solid var(--erp-border) !important;
+  border-left: 4px solid var(--erp-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14) !important;
+  min-height: 44px !important;
+  padding: 6px 14px !important;
+
+  .q-notification__message,
+  .q-notification__caption {
+    color: var(--erp-text-primary) !important;
+  }
+
+  .q-notification__caption {
+    opacity: 0.78 !important;
+  }
+
+  .q-notification__actions .q-btn,
+  .q-notification__actions .q-icon {
+    color: var(--erp-text-muted) !important;
+  }
+
+  .q-notification__badge {
+    background: var(--erp-primary) !important;
+    color: #ffffff !important;
+  }
+
+  .q-notification__progress {
+    opacity: 0.35 !important;
+  }
+
+  &[class*='bg-positive'],
+  &[class*='bg-green'] {
+    border-left-color: #16a34a !important;
+    .q-notification__icon {
+      color: #16a34a !important;
+    }
+    .q-notification__progress {
+      background: #16a34a !important;
+    }
+  }
+
+  &[class*='bg-negative'],
+  &[class*='bg-red'] {
+    border-left-color: #dc2626 !important;
+    .q-notification__icon {
+      color: #dc2626 !important;
+    }
+    .q-notification__progress {
+      background: #dc2626 !important;
+    }
+  }
+
+  &[class*='bg-warning'],
+  &[class*='bg-amber'],
+  &[class*='bg-orange'],
+  &[class*='bg-deep-orange'] {
+    border-left-color: #d97706 !important;
+    .q-notification__icon {
+      color: #d97706 !important;
+    }
+    .q-notification__progress {
+      background: #d97706 !important;
+    }
+  }
+
+  &[class*='bg-info'],
+  &[class*='bg-primary'],
+  &[class*='bg-blue'] {
+    border-left-color: #2563eb !important;
+    .q-notification__icon {
+      color: #2563eb !important;
+    }
+    .q-notification__progress {
+      background: #2563eb !important;
     }
   }
 }
