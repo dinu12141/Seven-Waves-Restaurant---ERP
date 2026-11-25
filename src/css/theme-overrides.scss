@@ -24,8 +24,8 @@ body.body--light {
     color: var(--erp-text-primary) !important;
   }
 
-  /* Cards should always use theme token */
-  .q-card {
+  /* Cards should always use theme token unless explicitly given a semantic color */
+  .q-card:not([class*='bg-primary']):not([class*='bg-positive']):not([class*='bg-negative']):not([class*='bg-info']):not([class*='bg-warning']) {
     background: var(--erp-bg-card) !important;
     color: var(--erp-text-primary) !important;
     border-color: var(--erp-border) !important;
@@ -160,11 +160,34 @@ body.body--light {
     color: var(--erp-text-primary) !important;
   }
 
-  /* Notifications */
-  .q-notification {
+  /* Notifications: neutral toasts adapt to light surface; semantic colored toasts keep their colors & high-contrast text */
+  .q-notification:not([class*='bg-']) {
     background: var(--erp-bg-elevated) !important;
     color: var(--erp-text-primary) !important;
     border: 1px solid var(--erp-border) !important;
+  }
+  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) {
+    color: #ffffff !important;
+  }
+  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-notification__message,
+  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-notification__caption,
+  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-icon,
+  .q-notification[class*='bg-']:not(.bg-warning):not([class*='bg-amber']):not(.bg-grey-1):not(.bg-grey-2):not(.bg-grey-3) .q-btn {
+    color: #ffffff !important;
+  }
+  .q-notification.bg-warning,
+  .q-notification[class*='bg-amber'] {
+    color: #0f172a !important;
+  }
+  .q-notification.bg-warning .q-notification__message,
+  .q-notification.bg-warning .q-notification__caption,
+  .q-notification.bg-warning .q-icon,
+  .q-notification.bg-warning .q-btn,
+  .q-notification[class*='bg-amber'] .q-notification__message,
+  .q-notification[class*='bg-amber'] .q-notification__caption,
+  .q-notification[class*='bg-amber'] .q-icon,
+  .q-notification[class*='bg-amber'] .q-btn {
+    color: #0f172a !important;
   }
 
   /* Scroll area */
@@ -553,14 +576,18 @@ body.body--light {
    Override bg-dark, text-white, text-grey-* utility classes used in templates
    ═══════════════════════════════════════════════════════════════════════════════ */
 body.body--light {
-  /* Cards/tables with legacy .bg-dark utility adapt to light theme */
+  /* Cards/tables with legacy .bg-dark / .bg-grey-9 / .bg-grey-10 utility adapt to light theme */
   .q-card.bg-dark:not(.q-btn),
+  .q-card.bg-grey-9:not(.q-btn):not(.open-shift-card):not(.function-menu-card):not(.cash-movement-card):not(.pos-shift-summary-card):not(.close-shift-card),
+  .q-card.bg-grey-10:not(.q-btn):not(.open-shift-card):not(.function-menu-card):not(.cash-movement-card):not(.pos-shift-summary-card):not(.close-shift-card),
   .q-table.bg-dark,
   .erp-panel.bg-dark {
     background: var(--erp-bg-card) !important;
     color: var(--erp-text-primary) !important;
   }
   .q-card.bg-dark:not(.q-btn) .text-white,
+  .q-card.bg-grey-9:not(.q-btn):not(.open-shift-card):not(.function-menu-card):not(.cash-movement-card):not(.pos-shift-summary-card):not(.close-shift-card) .text-white,
+  .q-card.bg-grey-10:not(.q-btn):not(.open-shift-card):not(.function-menu-card):not(.cash-movement-card):not(.pos-shift-summary-card):not(.close-shift-card) .text-white,
   .q-table.bg-dark .text-white {
     color: var(--erp-text-primary) !important;
   }

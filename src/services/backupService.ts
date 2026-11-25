@@ -58,8 +58,8 @@ const SCOPE_TABLE_MAP: Record<BackupScope, string[]> = {
     'inventory_document_lines',
     'recipes',
     'recipe_ingredients',
-    'procurement_purchase_orders',
-    'procurement_purchase_order_items',
+    'purchase_orders',
+    'purchase_order_lines',
     'suppliers',
   ],
   hr: [

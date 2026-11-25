@@ -872,13 +872,17 @@ async function submitDraft(po) {
     persistent: true,
   }).onOk(async () => {
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('purchase_orders')
         .update({ status: 'pending_approval' })
         .eq('id', po.id)
         .eq('status', 'draft')
+        .select('id, status')
 
       if (error) throw error
+      if (!updated || updated.length === 0) {
+        throw new Error('Could not update PO status. Please check permissions or refresh.')
+      }
 
       $q.notify({ type: 'positive', message: `PO ${po.doc_number} submitted for approval.` })
       await fetchPOs()

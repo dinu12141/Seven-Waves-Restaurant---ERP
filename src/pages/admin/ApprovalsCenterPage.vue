@@ -1334,10 +1334,10 @@ const permissionColumns = [
 
 const shiftVarianceColumns = [
   { name: 'created_at', label: 'Shift Date', field: 'created_at', align: 'left' },
-  { name: 'cashier_name', label: 'Cashier', field: 'cashier_name', align: 'left' },
-  { name: 'opening_cash', label: 'Opening Cash', field: 'opening_cash', align: 'right' },
-  { name: 'closing_cash', label: 'Closing Cash', field: 'closing_cash', align: 'right' },
-  { name: 'cash_variance', label: 'Variance', field: 'cash_variance', align: 'right' },
+  { name: 'cashier_name', label: 'Cashier', field: (r) => r.cashier?.full_name || r.cashier_name || 'Cashier', align: 'left' },
+  { name: 'opening_cash', label: 'Opening Cash', field: (r) => r.opening_cash_float ?? r.opening_cash ?? 0, align: 'right' },
+  { name: 'closing_cash', label: 'Closing Cash', field: (r) => r.counted_cash ?? r.closing_cash ?? 0, align: 'right' },
+  { name: 'cash_variance', label: 'Variance', field: (r) => r.variance ?? r.cash_variance ?? 0, align: 'right' },
   { name: 'actions', label: 'Actions', field: 'id', align: 'center' },
 ]
 
@@ -1347,16 +1347,16 @@ async function loadAllPending() {
   try {
     const [wRes, poRes, vRes, amendRes, ssRes, lRes, aRes, loRes, eRes, pRes, sRes] = await Promise.allSettled([
       supabase.from('inventory_documents').select('*, warehouses(name)').eq('doc_type', 'WASTAGE').in('status', ['draft', 'pending', 'pending_approval']),
-      supabase.from('procurement_purchase_orders').select('*, suppliers(name)').eq('status', 'draft'),
+      supabase.from('purchase_orders').select('*, suppliers(name)').in('status', ['draft', 'pending_approval']),
       supabase.from('finance_vouchers').select('*').in('status', ['draft', 'pending']),
       fetchPendingAmendments(),
-      supabase.from('shift_swap_requests').select('*, employees(full_name), current_shift:shifts!current_shift_id(name), requested_shift:shifts!requested_shift_id(name)').eq('status', 'pending'),
+      Promise.resolve({ data: [], error: null }),
       supabase.from('leave_requests').select('*, employees(full_name), leave_types(name)').eq('status', 'pending'),
       supabase.from('employee_advances').select('*, employees(full_name)').eq('status', 'pending'),
       supabase.from('employee_loans').select('*, employees(full_name)').eq('status', 'pending'),
       supabase.from('employee_expenses').select('*, employees(full_name)').eq('status', 'pending'),
-      supabase.from('user_permissions').select('*').eq('is_active', false),
-      supabase.from('pos_shifts').select('*').or('cash_variance.gt.1000,cash_variance.lt.-1000').order('created_at', { ascending: false }).limit(20),
+      supabase.from('user_permissions').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('pos_shifts').select('*, cashier:profiles!cashier_id(full_name)').is('approved_at', null).or('variance.gt.1000,variance.lt.-1000').order('created_at', { ascending: false }).limit(20),
     ])
 
     if (wRes.status === 'fulfilled') wastageList.value = wRes.value.data || []
@@ -1433,13 +1433,15 @@ async function approvePOItem(po) {
 
 async function rejectPOItem(po) {
   try {
-    const { error } = await supabase
-      .from('procurement_purchase_orders')
-      .update({ status: 'cancelled' })
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .update({ status: po.source === 'stores' ? 'rejected' : 'cancelled' })
       .eq('id', po.id)
+      .select('id')
 
     if (error) throw error
-    $q.notify({ type: 'warning', message: `PO ${po.doc_number || ''} Cancelled` })
+    if (!data || data.length === 0) throw new Error('PO could not be updated (check permissions)')
+    $q.notify({ type: 'warning', message: `PO ${po.doc_number || ''} Rejected / Cancelled` })
     loadAllPending()
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to cancel PO', caption: err.message })
@@ -1635,8 +1637,23 @@ async function approveStaffReceivable(type, id) {
   })
 }
 
-function signOffShift(row) {
-  $q.notify({ type: 'positive', message: `Shift Variance for ${row.cashier_name || 'Cashier'} signed off` })
+async function signOffShift(row) {
+  try {
+    const { error } = await supabase
+      .from('pos_shifts')
+      .update({
+        approved_by: authStore.user?.id || null,
+        approved_at: new Date().toISOString(),
+        approval_note: 'Signed off via Approvals Center',
+      })
+      .eq('id', row.id)
+
+    if (error) throw error
+    $q.notify({ type: 'positive', message: `Shift Variance for ${row.cashier?.full_name || row.cashier_name || 'Cashier'} signed off` })
+    loadAllPending()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to sign off shift variance', caption: err.message })
+  }
 }
 
 async function handleApproveAmendment(row) {

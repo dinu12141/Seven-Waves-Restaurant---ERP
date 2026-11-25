@@ -334,7 +334,7 @@ export async function approveDocumentAmendment(
     try {
       await supabase
         .from('inventory_documents')
-        .update({ status: 'draft', notes: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
+        .update({ status: 'draft', remarks: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
         .eq('id', docId)
     } catch (err: any) {
       console.warn('[AmendmentService] Unlock inventory_documents error:', err)
@@ -342,8 +342,8 @@ export async function approveDocumentAmendment(
   } else if (docType === 'PO') {
     try {
       await supabase
-        .from('procurement_purchase_orders')
-        .update({ status: 'draft', notes: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
+        .from('purchase_orders')
+        .update({ status: 'draft', remarks: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
         .eq('id', docId)
     } catch (err: any) {
       console.warn('[AmendmentService] Unlock PO error:', err)
@@ -352,7 +352,7 @@ export async function approveDocumentAmendment(
     try {
       await supabase
         .from('ap_invoices')
-        .update({ status: 'draft', notes: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
+        .update({ status: 'draft', remarks: `[UNLOCKED BY ADMIN] ${adminNotes || ''}` })
         .eq('id', docId)
     } catch (err: any) {
       console.warn('[AmendmentService] Unlock AP invoice error:', err)

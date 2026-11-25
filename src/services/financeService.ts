@@ -328,13 +328,12 @@ export async function createCashTransaction(txn: FinanceFilters) {
   if (!error && data) {
     // Update bank account balance
     const multiplier = ['deposit', 'transfer_in'].includes(txn.txn_type) ? 1 : -1
-    try {
-      await supabase.rpc('increment_bank_balance', {
-        p_account_id: txn.bank_account_id,
-        p_amount: txn.amount * multiplier,
-      })
-    } catch {
-      // RPC may not exist yet; manual update as fallback
+    const { error: balErr } = await supabase.rpc('increment_bank_balance', {
+      p_account_id: txn.bank_account_id,
+      p_delta: txn.amount * multiplier,
+    })
+    if (balErr) {
+      console.warn('[financeService] increment_bank_balance RPC warning:', balErr.message)
     }
   }
 
