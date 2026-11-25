@@ -386,14 +386,15 @@
         <q-separator />
 
         <q-card-actions align="right" class="q-pa-md bg-grey-1">
-          <q-btn flat no-caps label="Cancel" color="grey-7" v-close-popup />
+          <q-btn flat no-caps label="Cancel" color="grey-7" :disable="savingAction !== null" v-close-popup />
           <q-btn
             outline
             no-caps
             label="Save as Draft"
-            color="secondary"
+            :color="$q.dark.isActive ? 'blue-grey-3' : 'blue-grey-8'"
             icon="save"
-            :loading="saving"
+            :loading="savingAction === 'draft'"
+            :disable="savingAction !== null"
             @click="savePO(false)"
           />
           <q-btn
@@ -403,7 +404,8 @@
             color="primary"
             icon="send"
             class="text-weight-bold q-px-md"
-            :loading="saving"
+            :loading="savingAction === 'submit'"
+            :disable="savingAction !== null"
             @click="savePO(true)"
           />
         </q-card-actions>
@@ -553,7 +555,7 @@ const $q = useQuasar()
 const route = useRoute()
 
 const loading = ref(false)
-const saving = ref(false)
+const savingAction = ref(null) // 'draft' | 'submit' | null
 const loadingLines = ref(false)
 const pos = ref([])
 const activeTab = ref('all')
@@ -799,6 +801,7 @@ function openNewPODialog() {
 }
 
 async function savePO(submitForApproval = true) {
+  if (savingAction.value !== null) return
   if (!form.value.doc_date) {
     $q.notify({ type: 'warning', message: 'Please select an order date.' })
     return
@@ -818,7 +821,7 @@ async function savePO(submitForApproval = true) {
     }
   }
 
-  saving.value = true
+  savingAction.value = submitForApproval ? 'submit' : 'draft'
   try {
     const header = {
       doc_date: form.value.doc_date,
@@ -842,7 +845,7 @@ async function savePO(submitForApproval = true) {
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to create PO: ' + (err.message || err) })
   } finally {
-    saving.value = false
+    savingAction.value = null
   }
 }
 

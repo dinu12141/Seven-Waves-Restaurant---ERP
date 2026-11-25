@@ -338,7 +338,8 @@
               label="Reject PO"
               color="negative"
               icon="close"
-              :loading="actionLoading"
+              :loading="actionType === 'reject'"
+              :disable="actionType !== null"
               @click="promptReject"
             />
             <q-btn
@@ -348,7 +349,8 @@
               color="positive"
               icon="check_circle"
               class="text-weight-bold q-px-md"
-              :loading="actionLoading"
+              :loading="actionType === 'approve'"
+              :disable="actionType !== null"
               @click="confirmApprove"
             />
           </div>
@@ -390,7 +392,8 @@
             no-caps
             label="Confirm Rejection"
             color="negative"
-            :loading="actionLoading"
+            :loading="actionType === 'reject'"
+            :disable="actionType !== null"
             @click="submitReject"
           />
         </q-card-actions>
@@ -414,7 +417,7 @@ import {
 const $q = useQuasar()
 
 const loading = ref(false)
-const actionLoading = ref(false)
+const actionType = ref(null) // 'approve' | 'reject' | null
 const loadingLines = ref(false)
 
 const storesPOs = ref([])
@@ -551,7 +554,7 @@ async function openReviewDialog(po) {
 }
 
 function confirmApprove() {
-  if (!currentPO.value) return
+  if (!currentPO.value || actionType.value !== null) return
 
   $q.dialog({
     title: 'Approve Purchase Order',
@@ -559,7 +562,7 @@ function confirmApprove() {
     cancel: true,
     persistent: true,
   }).onOk(async () => {
-    actionLoading.value = true
+    actionType.value = 'approve'
     try {
       await approveStoresPO(currentPO.value.id)
       $q.notify({
@@ -572,7 +575,7 @@ function confirmApprove() {
     } catch (err) {
       $q.notify({ type: 'negative', message: 'Failed to approve PO: ' + (err.message || err) })
     } finally {
-      actionLoading.value = false
+      actionType.value = null
     }
   })
 }
@@ -583,12 +586,13 @@ function promptReject() {
 }
 
 async function submitReject() {
+  if (actionType.value !== null) return
   if (!rejectReason.value || !rejectReason.value.trim()) {
     $q.notify({ type: 'warning', message: 'Please enter a reason for rejection.' })
     return
   }
 
-  actionLoading.value = true
+  actionType.value = 'reject'
   try {
     await rejectStoresPO(currentPO.value.id, rejectReason.value.trim())
     $q.notify({
@@ -603,7 +607,7 @@ async function submitReject() {
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to reject PO: ' + (err.message || err) })
   } finally {
-    actionLoading.value = false
+    actionType.value = null
   }
 }
 
