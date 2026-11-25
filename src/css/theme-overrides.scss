@@ -611,23 +611,24 @@ body.body--light {
     color: #ffffff !important;
   }
 
-  /* Preserve crisp white text and icons on ALL buttons, badges, banners, headers, and colored surfaces */
+  /* Preserve crisp white text and icons ONLY on dark/solid colored surfaces — never clobber light pastel (-1/-2/-3), white, amber/warning, or explicit text-* colors */
   .bg-primary, .bg-primary *,
   .bg-secondary, .bg-secondary *,
   .bg-positive, .bg-positive *,
   .bg-negative, .bg-negative *,
-  .bg-warning:not([class*='text-dark']),
+  .bg-warning:not([class*='text-dark']):not(.q-banner),
   .bg-info, .bg-info *,
   .bg-black, .bg-black *,
   .bg-amber-8:not([class*='text-dark']),
   .bg-orange, .bg-orange *,
+  .bg-orange-9, .bg-orange-9 *,
   .bg-deep-purple, .bg-deep-purple *,
   .bg-purple-9, .bg-purple-9 *,
   .bg-purple-8, .bg-purple-8 *,
-  .q-badge:not([class*='text-dark']):not([class*='bg-amber']):not([class*='bg-warning']),
-  .q-banner[class*='bg-'], .q-banner[class*='bg-'] *,
-  .q-btn[class*='bg-']:not([class*='bg-white']):not([class*='bg-transparent']):not([class*='text-dark']):not([class*='text-black']),
-  .q-btn[class*='bg-']:not([class*='bg-white']):not([class*='bg-transparent']):not([class*='text-dark']):not([class*='text-black']) *,
+  .q-badge:not([class*='text-']):not([class*='bg-amber']):not([class*='bg-warning']):not([class*='bg-yellow']):not([class*='bg-white']):not([class*='bg-grey']):not([class*='-1']):not([class*='-2']):not([class*='-3']),
+  .q-banner.text-white, .q-banner.text-white *,
+  .q-btn[class*='bg-']:not([class*='bg-white']):not([class*='bg-transparent']):not([class*='bg-grey']):not([class*='bg-amber']):not([class*='bg-warning']):not([class*='bg-yellow']):not([class*='-1']):not([class*='-2']):not([class*='-3']):not([class*='text-dark']):not([class*='text-black']):not([class*='text-primary']),
+  .q-btn[class*='bg-']:not([class*='bg-white']):not([class*='bg-transparent']):not([class*='bg-grey']):not([class*='bg-amber']):not([class*='bg-warning']):not([class*='bg-yellow']):not([class*='-1']):not([class*='-2']):not([class*='-3']):not([class*='text-dark']):not([class*='text-black']):not([class*='text-primary']) *,
   .drawer-header, .drawer-header *,
   [class*='drawer-header--'], [class*='drawer-header--'] *,
   .ops-kpi-card, .ops-kpi-card *,
@@ -636,10 +637,33 @@ body.body--light {
     color: #ffffff;
   }
 
+  /* Ensure light/pastel banners & warning banners always have high-contrast dark text & icons */
+  .q-banner.bg-amber-1, .q-banner.bg-amber-1 *,
+  .q-banner.bg-amber-2, .q-banner.bg-amber-2 *,
+  .q-banner.bg-amber-3, .q-banner.bg-amber-3 *,
+  .q-banner.bg-warning, .q-banner.bg-warning *,
+  .q-banner.bg-yellow-1, .q-banner.bg-yellow-1 *,
+  .q-banner.bg-grey-1, .q-banner.bg-grey-1 *,
+  .q-banner.bg-grey-2, .q-banner.bg-grey-2 *,
+  .q-banner.bg-grey-3, .q-banner.bg-grey-3 *,
+  .q-banner[class*='text-dark'], .q-banner[class*='text-dark'] * {
+    color: #0f172a !important;
+  }
+  .q-banner.bg-amber-1 .q-icon,
+  .q-banner.bg-amber-2 .q-icon {
+    color: #b45309 !important;
+  }
+
   /* Preserve high-contrast dark text on warning/amber buttons and badges */
   .q-btn[class*='text-dark'], .q-btn[class*='text-dark'] *,
   .q-btn[class*='text-black'], .q-btn[class*='text-black'] *,
   .q-badge[class*='text-dark'], .q-badge[class*='text-dark'] * {
+    color: #0f172a !important;
+  }
+  .q-badge.bg-blue-grey-2,
+  .q-badge.bg-amber-2,
+  .q-badge.bg-red-2,
+  .q-badge.bg-purple-2 {
     color: #0f172a !important;
   }
   .drawer-header .q-icon,

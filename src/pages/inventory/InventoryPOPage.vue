@@ -431,7 +431,7 @@
             rounded
             class="q-mb-md"
             :class="{
-              'bg-amber-1 text-amber-10': selectedPO.status === 'pending_approval',
+              'bg-amber-2 text-dark': selectedPO.status === 'pending_approval',
               'bg-positive text-white': selectedPO.status === 'approved',
               'bg-negative text-white': selectedPO.status === 'rejected',
               'bg-grey-3 text-dark': selectedPO.status === 'draft',
